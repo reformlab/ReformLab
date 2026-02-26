@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ReformLab — Minimal Precision</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --white: #FFFFFF;
+    --slate-50: #F8FAFC;
+    --slate-100: #F1F5F9;
+    --slate-200: #E2E8F0;
+    --slate-300: #CBD5E1;
+    --slate-400: #94A3B8;
+    --slate-500: #64748B;
+    --slate-700: #334155;
+    --slate-900: #0F172A;
+    --blue-50: #EFF6FF;
+    --blue-500: #3B82F6;
+    --blue-600: #2563EB;
+    --violet-500: #8B5CF6;
+    --emerald-500: #10B981;
+    --amber-500: #F59E0B;
+    --red-500: #EF4444;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--white);
+    color: var(--slate-900);
+  }
+
+  .slide {
+    width: 100vw; height: 100vh;
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .slide.active { display: flex; }
+
+  /* ── Slide 1: Title ── */
+  .slide-title {
+    background: var(--white);
+    padding: 0 10vw;
+    text-align: center;
+  }
+
+  .slide-title .logo-mark {
+    margin-bottom: 3rem;
+  }
+
+  .slide-title .logo-mark svg {
+    width: 80px;
+    height: auto;
+  }
+
+  .slide-title h1 {
+    font-size: clamp(2rem, 4vw, 3.5rem);
+    font-weight: 600;
+    color: var(--slate-900);
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin-bottom: 1.5rem;
+  }
+
+  .slide-title .tagline {
+    font-size: clamp(1rem, 1.8vw, 1.5rem);
+    font-weight: 400;
+    color: var(--slate-500);
+    line-height: 1.5;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .slide-title .bottom-line {
+    position: absolute;
+    bottom: 3rem;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 48px;
+    height: 2px;
+    background: var(--blue-500);
+  }
+
+  /* ── Slide 2: Content / Chart ── */
+  .slide-content {
+    background: var(--white);
+    padding: 5vh 8vw;
+    align-items: flex-start;
+    justify-content: flex-start;
+  }
+
+  .slide-content .slide-header {
+    width: 100%;
+    margin-bottom: 4vh;
+    padding-top: 4vh;
+  }
+
+  .slide-content .slide-header h2 {
+    font-size: clamp(1.4rem, 2.2vw, 2rem);
+    font-weight: 600;
+    color: var(--slate-900);
+    letter-spacing: -0.01em;
+  }
+
+  .slide-content .slide-header p {
+    font-size: clamp(0.875rem, 1.2vw, 1.125rem);
+    color: var(--slate-500);
+    margin-top: 0.5rem;
+    font-weight: 400;
+  }
+
+  .chart-area {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 2vw;
+    padding-bottom: 8vh;
+  }
+
+  .chart-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .chart-group .bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    height: 40vh;
+  }
+
+  .chart-group .bar {
+    width: clamp(32px, 3vw, 48px);
+    border-radius: 3px 3px 0 0;
+    transition: height 0.3s ease;
+    position: relative;
+  }
+
+  .chart-group .bar .value {
+    position: absolute;
+    top: -2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--slate-700);
+    white-space: nowrap;
+  }
+
+  .chart-group .label {
+    font-size: 0.875rem;
+    color: var(--slate-500);
+    font-weight: 400;
+    text-align: center;
+  }
+
+  .chart-legend {
+    position: absolute;
+    top: 5vh;
+    right: 8vw;
+    display: flex;
+    gap: 1.5rem;
+  }
+
+  .chart-legend .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--slate-500);
+  }
+
+  .chart-legend .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+  }
+
+  /* ── Slide 3: Comparison ── */
+  .slide-comparison {
+    background: var(--white);
+    padding: 5vh 6vw;
+    align-items: stretch;
+    justify-content: flex-start;
+  }
+
+  .slide-comparison .slide-header {
+    width: 100%;
+    margin-bottom: 4vh;
+    padding-top: 4vh;
+  }
+
+  .slide-comparison .slide-header h2 {
+    font-size: clamp(1.4rem, 2.2vw, 2rem);
+    font-weight: 600;
+    color: var(--slate-900);
+    letter-spacing: -0.01em;
+  }
+
+  .comparison-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    width: 100%;
+    border: 1px solid var(--slate-200);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .comparison-side {
+    padding: 4vh 3vw;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .comparison-side.before {
+    background: var(--slate-50);
+    border-right: 1px solid var(--slate-200);
+  }
+
+  .comparison-side.after {
+    background: var(--white);
+  }
+
+  .comparison-side .side-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 2rem;
+  }
+
+  .comparison-side.before .side-label { color: var(--slate-400); }
+  .comparison-side.after .side-label { color: var(--blue-500); }
+
+  .comparison-side .side-title {
+    font-size: clamp(1.1rem, 1.6vw, 1.5rem);
+    font-weight: 600;
+    color: var(--slate-900);
+    margin-bottom: 1.5rem;
+    line-height: 1.3;
+  }
+
+  .comparison-side ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .comparison-side li {
+    font-size: clamp(0.875rem, 1.1vw, 1.05rem);
+    color: var(--slate-500);
+    line-height: 1.5;
+    padding-left: 1.5rem;
+    position: relative;
+  }
+
+  .comparison-side.before li::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0.55em;
+    width: 8px; height: 1px;
+    background: var(--slate-300);
+  }
+
+  .comparison-side.after li::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0.35em;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--blue-500);
+    opacity: 0.5;
+  }
+
+  /* ── Slide counter ── */
+  .slide-counter {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 2rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--slate-400);
+    z-index: 100;
+  }
+</style>
+</head>
+<body>
+
+<!-- Slide 1: Title -->
+<section class="slide slide-title active" data-slide="1">
+  <div class="logo-mark">
+    <svg viewBox="0 0 120 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="52" r="4" fill="#334155"/>
+      <circle cx="22" cy="52" r="4" fill="#10B981"/>
+      <circle cx="22" cy="42" r="4" fill="#334155"/>
+      <circle cx="32" cy="52" r="4" fill="#10B981"/>
+      <circle cx="32" cy="42" r="4" fill="#334155"/>
+      <circle cx="32" cy="32" r="4" fill="#10B981"/>
+      <circle cx="42" cy="52" r="4" fill="#334155"/>
+      <circle cx="42" cy="42" r="4" fill="#10B981"/>
+      <circle cx="52" cy="52" r="4" fill="#334155"/>
+      <circle cx="62" cy="52" r="4" fill="#10B981"/>
+      <circle cx="62" cy="42" r="4" fill="#334155"/>
+      <circle cx="72" cy="52" r="4" fill="#10B981"/>
+      <circle cx="72" cy="42" r="4" fill="#334155"/>
+      <circle cx="72" cy="32" r="4" fill="#10B981"/>
+      <circle cx="72" cy="22" r="4" fill="#334155"/>
+      <circle cx="82" cy="52" r="4" fill="#334155"/>
+      <circle cx="82" cy="42" r="4" fill="#10B981"/>
+      <circle cx="82" cy="32" r="4" fill="#334155"/>
+      <circle cx="82" cy="22" r="4" fill="#10B981"/>
+      <circle cx="82" cy="12" r="4" fill="#334155"/>
+      <circle cx="92" cy="52" r="4" fill="#10B981"/>
+      <circle cx="92" cy="42" r="4" fill="#334155"/>
+      <circle cx="92" cy="32" r="4" fill="#10B981"/>
+      <circle cx="92" cy="22" r="4" fill="#334155"/>
+      <circle cx="102" cy="52" r="4" fill="#334155"/>
+      <circle cx="102" cy="42" r="4" fill="#10B981"/>
+      <circle cx="102" cy="32" r="4" fill="#334155"/>
+      <circle cx="112" cy="52" r="4" fill="#10B981"/>
+      <circle cx="112" cy="42" r="4" fill="#334155"/>
+    </svg>
+  </div>
+  <h1>ReformLab</h1>
+  <p class="tagline">See the impact before the vote.</p>
+  <div class="bottom-line"></div>
+</section>
+
+<!-- Slide 2: Content / Chart -->
+<section class="slide slide-content" data-slide="2">
+  <div class="slide-header">
+    <h2>Carbon tax hits lowest incomes hardest</h2>
+    <p>Household burden as share of disposable income, by quintile</p>
+  </div>
+  <div class="chart-legend">
+    <div class="legend-item">
+      <div class="legend-dot" style="background: var(--slate-400);"></div>
+      Baseline
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background: var(--blue-500);"></div>
+      Carbon tax + rebate
+    </div>
+  </div>
+  <div class="chart-area">
+    <div class="chart-group">
+      <div class="bars">
+        <div class="bar" style="height: 55%; background: var(--slate-400);">
+          <span class="value">4.2%</span>
+        </div>
+        <div class="bar" style="height: 35%; background: var(--blue-500);">
+          <span class="value">1.8%</span>
+        </div>
+      </div>
+      <span class="label">Q1 (lowest)</span>
+    </div>
+    <div class="chart-group">
+      <div class="bars">
+        <div class="bar" style="height: 42%; background: var(--slate-400);">
+          <span class="value">3.1%</span>
+        </div>
+        <div class="bar" style="height: 32%; background: var(--blue-500);">
+          <span class="value">2.0%</span>
+        </div>
+      </div>
+      <span class="label">Q2</span>
+    </div>
+    <div class="chart-group">
+      <div class="bars">
+        <div class="bar" style="height: 35%; background: var(--slate-400);">
+          <span class="value">2.5%</span>
+        </div>
+        <div class="bar" style="height: 30%; background: var(--blue-500);">
+          <span class="value">2.1%</span>
+        </div>
+      </div>
+      <span class="label">Q3</span>
+    </div>
+    <div class="chart-group">
+      <div class="bars">
+        <div class="bar" style="height: 28%; background: var(--slate-400);">
+          <span class="value">1.9%</span>
+        </div>
+        <div class="bar" style="height: 27%; background: var(--blue-500);">
+          <span class="value">1.9%</span>
+        </div>
+      </div>
+      <span class="label">Q4</span>
+    </div>
+    <div class="chart-group">
+      <div class="bars">
+        <div class="bar" style="height: 18%; background: var(--slate-400);">
+          <span class="value">1.1%</span>
+        </div>
+        <div class="bar" style="height: 22%; background: var(--blue-500);">
+          <span class="value">1.5%</span>
+        </div>
+      </div>
+      <span class="label">Q5 (highest)</span>
+    </div>
+  </div>
+</section>
+
+<!-- Slide 3: Comparison -->
+<section class="slide slide-comparison" data-slide="3">
+  <div class="slide-header">
+    <h2>From months of manual work to minutes of structured analysis</h2>
+  </div>
+  <div class="comparison-grid">
+    <div class="comparison-side before">
+      <span class="side-label">Before ReformLab</span>
+      <h3 class="side-title">Every assessment starts from scratch</h3>
+      <ul>
+        <li>Weeks to assemble data from public sources</li>
+        <li>Custom scripts per analysis, not reusable</li>
+        <li>Results are static PDFs, no scenario comparison</li>
+        <li>Assumptions are buried, not documented</li>
+      </ul>
+    </div>
+    <div class="comparison-side after">
+      <span class="side-label">With ReformLab</span>
+      <h3 class="side-title">End-to-end assessment, no code required</h3>
+      <ul>
+        <li>Open data pre-connected and validated</li>
+        <li>Reusable scenario templates with governance</li>
+        <li>Dynamic multi-scenario comparison dashboards</li>
+        <li>Full assumption transparency in every run</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<div class="slide-counter">
+  <span id="current">1</span> / <span id="total">3</span>
+</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  let current = 0;
+
+  function goTo(index) {
+    if (index < 0 || index >= slides.length) return;
+    slides[current].classList.remove('active');
+    current = index;
+    slides[current].classList.add('active');
+    document.getElementById('current').textContent = current + 1;
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+      e.preventDefault();
+      goTo(current + 1);
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      goTo(current - 1);
+    }
+  });
+
+  document.getElementById('total').textContent = slides.length;
+</script>
+</body>
+</html>
