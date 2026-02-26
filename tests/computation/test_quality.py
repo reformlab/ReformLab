@@ -438,6 +438,87 @@ class TestRangeWarnings:
         assert warning.issue_type == "range_rule_invalid"
         assert "non-numeric type" in warning.message
 
+    def test_unknown_field_range_rule_is_non_blocking_warning(
+        self, output_schema: DataSchema
+    ) -> None:
+        """Given a rule for a missing field, emit a structured warning."""
+        table = pa.table(
+            {
+                "household_id": pa.array([1, 2], type=pa.int64()),
+                "person_id": pa.array([10, 20], type=pa.int64()),
+                "income_tax": pa.array([3000.0, 6750.0], type=pa.float64()),
+                "carbon_tax": pa.array([134.0, 200.0], type=pa.float64()),
+            }
+        )
+        result = ComputationResult(
+            output_fields=table, adapter_version="test-1.0", period=2025
+        )
+        rules = (
+            RangeRule(field="unknown_field", min_value=0.0, max_value=1.0),
+        )
+
+        qr = validate_output(result, output_schema, range_rules=rules)
+        assert qr.passed
+        assert len(qr.warnings) == 1
+        warning = qr.warnings[0]
+        assert warning.field == "unknown_field"
+        assert warning.issue_type == "range_rule_invalid"
+        assert "not found in output columns" in warning.message
+
+    def test_range_rule_without_bounds_is_non_blocking_warning(
+        self, output_schema: DataSchema
+    ) -> None:
+        """Given min/max are both None, emit a structured warning."""
+        table = pa.table(
+            {
+                "household_id": pa.array([1, 2], type=pa.int64()),
+                "person_id": pa.array([10, 20], type=pa.int64()),
+                "income_tax": pa.array([3000.0, 6750.0], type=pa.float64()),
+                "carbon_tax": pa.array([134.0, 200.0], type=pa.float64()),
+            }
+        )
+        result = ComputationResult(
+            output_fields=table, adapter_version="test-1.0", period=2025
+        )
+        rules = (
+            RangeRule(field="income_tax", min_value=None, max_value=None),
+        )
+
+        qr = validate_output(result, output_schema, range_rules=rules)
+        assert qr.passed
+        assert len(qr.warnings) == 1
+        warning = qr.warnings[0]
+        assert warning.field == "income_tax"
+        assert warning.issue_type == "range_rule_invalid"
+        assert "no bounds configured" in warning.message
+
+    def test_inverted_bounds_range_rule_is_non_blocking_warning(
+        self, output_schema: DataSchema
+    ) -> None:
+        """Given min_value > max_value, emit invalid-rule warning."""
+        table = pa.table(
+            {
+                "household_id": pa.array([1, 2], type=pa.int64()),
+                "person_id": pa.array([10, 20], type=pa.int64()),
+                "income_tax": pa.array([3000.0, 6750.0], type=pa.float64()),
+                "carbon_tax": pa.array([134.0, 200.0], type=pa.float64()),
+            }
+        )
+        result = ComputationResult(
+            output_fields=table, adapter_version="test-1.0", period=2025
+        )
+        rules = (
+            RangeRule(field="income_tax", min_value=500.0, max_value=100.0),
+        )
+
+        qr = validate_output(result, output_schema, range_rules=rules)
+        assert qr.passed
+        assert len(qr.warnings) == 1
+        warning = qr.warnings[0]
+        assert warning.field == "income_tax"
+        assert warning.issue_type == "range_rule_invalid"
+        assert "invalid bounds" in warning.message
+
 
 # ---------------------------------------------------------------------------
 # Empty table behavior

@@ -201,6 +201,52 @@ def _check_ranges(
     warnings: list[QualityIssue] = []
     for rule in range_rules:
         if rule.field not in available:
+            warnings.append(
+                QualityIssue(
+                    field=rule.field,
+                    issue_type="range_rule_invalid",
+                    message=(
+                        "Range rule skipped - "
+                        f"'{rule.field}' not found in output columns - "
+                        "Define range rules for columns present in adapter output"
+                    ),
+                    actual=rule.field,
+                )
+            )
+            continue
+        if rule.min_value is None and rule.max_value is None:
+            warnings.append(
+                QualityIssue(
+                    field=rule.field,
+                    issue_type="range_rule_invalid",
+                    message=(
+                        "Range rule skipped - "
+                        f"'{rule.field}' has no bounds configured - "
+                        "Set min_value and/or max_value for this rule"
+                    ),
+                    expected="at least one of min_value/max_value",
+                    actual="min_value=None,max_value=None",
+                )
+            )
+            continue
+        if (
+            rule.min_value is not None
+            and rule.max_value is not None
+            and rule.min_value > rule.max_value
+        ):
+            warnings.append(
+                QualityIssue(
+                    field=rule.field,
+                    issue_type="range_rule_invalid",
+                    message=(
+                        "Range rule skipped - "
+                        f"'{rule.field}' has invalid bounds (min > max) - "
+                        "Use bounds where min_value <= max_value"
+                    ),
+                    expected=f"min <= max ({rule.min_value} <= {rule.max_value})",
+                    actual=f"min > max ({rule.min_value} > {rule.max_value})",
+                )
+            )
             continue
         if table.num_rows == 0:
             continue
