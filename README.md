@@ -19,8 +19,8 @@ Policy microsimulation tools are powerful but hard to use. Analysts spend more t
 
 ```bash
 # Prerequisites: Python 3.13+, uv
-git clone https://github.com/lucas-vivier/Microsimulation.git
-cd Microsimulation
+git clone https://github.com/lucas-vivier/reformlab.git
+cd reformlab
 
 # Install dependencies
 uv sync

@@ -1,4 +1,4 @@
-# Microsimulation — Project Documentation Index
+# ReformLab — Project Documentation Index
 
 **Generated:** 2026-02-25
 **Status:** Pre-implementation (planning phase complete, ready for development)

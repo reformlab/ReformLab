@@ -1,4 +1,4 @@
-# Planning Artifacts Inventory — Microsimulation
+# Planning Artifacts Inventory — ReformLab
 
 **Generated:** 2026-02-25
 
@@ -12,7 +12,7 @@ This project is in the pre-implementation (planning) phase. All existing documen
 
 | Document | Path | Date | Description |
 |----------|------|------|-------------|
-| Product Brief | `_bmad-output/planning-artifacts/product-brief-Microsimulation-2026-02-23.md` | 2026-02-23 | Strategic direction, vision, target users, key differentiators |
+| Product Brief | `_bmad-output/planning-artifacts/product-brief-ReformLab-2026-02-23.md` | 2026-02-23 | Strategic direction, vision, target users, key differentiators |
 | PRD | `_bmad-output/planning-artifacts/prd.md` | 2026-02-24 | Full product requirements: 35 functional requirements, 21 non-functional requirements |
 | Architecture | `_bmad-output/planning-artifacts/architecture.md` | 2026-02-25 | Architecture decision document: layered design, adapter pattern, subsystems |
 | UX Design | `_bmad-output/planning-artifacts/ux-design-specification.md` | 2026-02-24 | User experience specification: personas (Sophie, Marco, Claire), design challenges |
@@ -23,7 +23,7 @@ This project is in the pre-implementation (planning) phase. All existing documen
 |----------|------|------|-------------|
 | PRD Validation | `_bmad-output/planning-artifacts/prd-validation-report.md` | 2026-02-25 | PRD validation results |
 | Validation Report | `_bmad-output/planning-artifacts/validation-report-2026-02-24.md` | 2026-02-24 | Additional validation report |
-| Stakeholder Review | `_bmad-output/planning-artifacts/stakeholder-review-brief-Microsimulation-2026-02-24.md` | 2026-02-24 | Stakeholder review brief |
+| Stakeholder Review | `_bmad-output/planning-artifacts/stakeholder-review-brief-ReformLab-2026-02-24.md` | 2026-02-24 | Stakeholder review brief |
 | Implementation Readiness | `_bmad-output/planning-artifacts/implementation-readiness-report-2026-02-25.md` | 2026-02-25 | Implementation readiness assessment |
 
 ### Implementation Planning

@@ -1,4 +1,4 @@
-# Microsimulation — Go-to-Market & Ecosystem Strategy
+# ReformLab — Go-to-Market & Ecosystem Strategy
 
 **Author:** Lucas
 **Date:** 2026-02-25
@@ -16,7 +16,7 @@
 
 ```mermaid
 ---
-title: Microsimulation — Go-to-Market & Ecosystem Strategy
+title: ReformLab — Go-to-Market & Ecosystem Strategy
 ---
 flowchart LR
     classDef upcoming fill:#adb5bd,stroke:#6c757d,color:#000
@@ -24,7 +24,7 @@ flowchart LR
     subgraph OSS ["🔓 Open Source Setup"]
         direction TB
         GH["🔲 GitHub Public Repo<br><i>License, README,<br>contributing guide</i>"]:::upcoming
-        PYPI["🔲 PyPI Package<br><i>pip install microsimulation<br>ready for users</i>"]:::upcoming
+        PYPI["🔲 PyPI Package<br><i>pip install reformlab<br>ready for users</i>"]:::upcoming
         GH --> PYPI
     end
 
@@ -48,7 +48,7 @@ flowchart LR
         direction TB
         DATA["🔲 Data Partnerships<br><i>INSEE, Eurostat,<br>real microdata access</i>"]:::upcoming
         WP["🔲 Working Paper<br><i>Methodology, architecture,<br>carbon tax case study</i>"]:::upcoming
-        PEER["🔲 Journal Submission<br><i>Peer-reviewed publication<br>using Microsimulation</i>"]:::upcoming
+        PEER["🔲 Journal Submission<br><i>Peer-reviewed publication<br>using ReformLab</i>"]:::upcoming
         DATA --> WP
         WP --> PEER
     end

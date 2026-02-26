@@ -1,11 +1,11 @@
-# Project Overview — Microsimulation
+# Project Overview — ReformLab
 
 **Generated:** 2026-02-25
 **Status:** Pre-implementation (planning phase)
 
 ## Executive Summary
 
-Microsimulation is an OpenFisca-first environmental policy analysis platform. It addresses the operational gap between policy-calculation outputs and decision-ready environmental analysis by adding data harmonization, scenario templates, dynamic multi-year projection with vintage tracking, reproducibility governance, and user interfaces (notebook + no-code GUI).
+ReformLab is an OpenFisca-first environmental policy analysis platform. It addresses the operational gap between policy-calculation outputs and decision-ready environmental analysis by adding data harmonization, scenario templates, dynamic multi-year projection with vintage tracking, reproducibility governance, and user interfaces (notebook + no-code GUI).
 
 The product targets policy analysts and researchers who need ten-year scenario projections, subsidy modeling, welfare indicators, and transparent run tracking without rebuilding tax-benefit logic.
 
@@ -13,7 +13,7 @@ The product targets policy analysts and researchers who need ten-year scenario p
 
 | Attribute | Value |
 |-----------|-------|
-| **Project Name** | Microsimulation |
+| **Project Name** | ReformLab |
 | **Repository Type** | Monolith |
 | **Primary Language** | Python 3.13+ |
 | **Core Dependency** | OpenFisca (tax-benefit computation engine) |

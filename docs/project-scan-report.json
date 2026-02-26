@@ -7,8 +7,8 @@
   },
   "mode": "initial_scan",
   "scan_level": "quick",
-  "project_root": "/Users/lucas/Workspace/Microsimulation",
-  "project_knowledge": "/Users/lucas/Workspace/Microsimulation/docs",
+  "project_root": "/Users/lucas/Workspace/reformlab",
+  "project_knowledge": "/Users/lucas/Workspace/reformlab/docs",
   "project_types": [
     {
       "part_id": "main",

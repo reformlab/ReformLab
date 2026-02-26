@@ -1,4 +1,4 @@
-# Architecture — Microsimulation
+# Architecture — ReformLab
 
 **Generated:** 2026-02-25
 **Source:** `_bmad-output/planning-artifacts/architecture.md`
@@ -6,7 +6,7 @@
 
 ## Strategic Direction
 
-Microsimulation does **not** build a replacement tax-benefit microsimulation core. OpenFisca is the policy-calculation foundation, accessed through a clean adapter interface. This project builds differentiated layers above it: data preparation, environmental policy orchestration, multi-year projection with vintage tracking, indicators, governance, and user interfaces.
+ReformLab does **not** build a replacement tax-benefit microsimulation core. OpenFisca is the policy-calculation foundation, accessed through a clean adapter interface. This project builds differentiated layers above it: data preparation, environmental policy orchestration, multi-year projection with vintage tracking, indicators, governance, and user interfaces.
 
 **The dynamic orchestrator is the core product** — not a computation engine.
 

@@ -904,7 +904,7 @@ flowchart TD
 
 These Shadcn/ui components cover standard UI needs with no customization beyond our design tokens:
 
-| Component | Usage in Microsimulation |
+| Component | Usage in ReformLab |
 |-----------|------------------------|
 | Button | Run, Export, Clone, Compare actions |
 | Input | Numeric parameter values, search fields |
@@ -927,7 +927,7 @@ These Shadcn/ui components cover standard UI needs with no customization beyond 
 
 ### Custom Components
 
-Components not available in Shadcn/ui, designed specifically for Microsimulation's domain:
+Components not available in Shadcn/ui, designed specifically for ReformLab's domain:
 
 #### ParameterRow
 
@@ -1304,7 +1304,7 @@ Components not available in Shadcn/ui, designed specifically for Microsimulation
 
 ### Responsive Strategy
 
-**Desktop-only for MVP.** Microsimulation is an analytical workstation used on laptops and desktop monitors. There is no mobile or tablet use case for policy microsimulation analysis.
+**Desktop-only for MVP.** ReformLab is an analytical workstation used on laptops and desktop monitors. There is no mobile or tablet use case for policy microsimulation analysis.
 
 **Target viewports:**
 
@@ -1316,7 +1316,7 @@ Components not available in Shadcn/ui, designed specifically for Microsimulation
 | Small laptop | 1280-1365px | Side panels collapsed by default, main content fills width |
 | Minimum supported | 1280px | Below this, the workspace is not optimized (warning shown) |
 
-**No mobile or tablet layouts.** If accessed on a device < 1280px, a message displays: "Microsimulation is designed for desktop use. Please use a laptop or desktop browser for the best experience."
+**No mobile or tablet layouts.** If accessed on a device < 1280px, a message displays: "ReformLab is designed for desktop use. Please use a laptop or desktop browser for the best experience."
 
 ### Breakpoint Strategy
 
@@ -1344,7 +1344,7 @@ xl: 1440px — full three-column layout
 
 This is the industry standard for professional web applications. It covers the accessibility needs of most users without the exceptional requirements of AAA compliance.
 
-**What AA compliance means for Microsimulation:**
+**What AA compliance means for ReformLab:**
 
 | Requirement | Implementation |
 |-------------|---------------|

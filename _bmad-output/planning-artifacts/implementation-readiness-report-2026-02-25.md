@@ -11,13 +11,13 @@ stepsCompleted:
   - step-06-final-assessment
 filesIncluded:
   prd:
-    - /Users/lucas/Workspace/Microsimulation/_bmad-output/planning-artifacts/prd.md
+    - /Users/lucas/Workspace/reformlab/_bmad-output/planning-artifacts/prd.md
   architecture:
-    - /Users/lucas/Workspace/Microsimulation/_bmad-output/planning-artifacts/architecture.md
+    - /Users/lucas/Workspace/reformlab/_bmad-output/planning-artifacts/architecture.md
   epics_stories:
-    - /Users/lucas/Workspace/Microsimulation/_bmad-output/planning-artifacts/phase-1-implementation-backlog-2026-02-25.md
+    - /Users/lucas/Workspace/reformlab/_bmad-output/planning-artifacts/phase-1-implementation-backlog-2026-02-25.md
   ux:
-    - /Users/lucas/Workspace/Microsimulation/_bmad-output/planning-artifacts/ux-design-specification.md
+    - /Users/lucas/Workspace/reformlab/_bmad-output/planning-artifacts/ux-design-specification.md
 ---
 
 # Implementation Readiness Assessment Report
@@ -30,8 +30,8 @@ filesIncluded:
 ### PRD Files Found
 
 **Whole Documents:**
-- /Users/lucas/Workspace/Microsimulation/_bmad-output/planning-artifacts/prd.md (40,047 bytes, modified 2026-02-25 08:59:32)
-- /Users/lucas/Workspace/Microsimulation/_bmad-output/planning-artifacts/prd-validation-report.md (29,466 bytes, modified 2026-02-25 08:07:21)
+- /Users/lucas/Workspace/reformlab/_bmad-output/planning-artifacts/prd.md (40,047 bytes, modified 2026-02-25 08:59:32)
+- /Users/lucas/Workspace/reformlab/_bmad-output/planning-artifacts/prd-validation-report.md (29,466 bytes, modified 2026-02-25 08:07:21)
 
 **Sharded Documents:**
 - None found (`*prd*/index.md`)
@@ -39,7 +39,7 @@ filesIncluded:
 ### Architecture Files Found
 
 **Whole Documents:**
-- /Users/lucas/Workspace/Microsimulation/_bmad-output/planning-artifacts/architecture.md (10,593 bytes, modified 2026-02-25 08:58:28)
+- /Users/lucas/Workspace/reformlab/_bmad-output/planning-artifacts/architecture.md (10,593 bytes, modified 2026-02-25 08:58:28)
 
 **Sharded Documents:**
 - None found (`*architecture*/index.md`)
@@ -53,12 +53,12 @@ filesIncluded:
 - None found (`*epic*/index.md`)
 
 **Related candidate selected by user:**
-- /Users/lucas/Workspace/Microsimulation/_bmad-output/planning-artifacts/phase-1-implementation-backlog-2026-02-25.md (10,802 bytes, modified 2026-02-25 09:00:33)
+- /Users/lucas/Workspace/reformlab/_bmad-output/planning-artifacts/phase-1-implementation-backlog-2026-02-25.md (10,802 bytes, modified 2026-02-25 09:00:33)
 
 ### UX Files Found
 
 **Whole Documents:**
-- /Users/lucas/Workspace/Microsimulation/_bmad-output/planning-artifacts/ux-design-specification.md (3,405 bytes, modified 2026-02-24 23:12:23)
+- /Users/lucas/Workspace/reformlab/_bmad-output/planning-artifacts/ux-design-specification.md (3,405 bytes, modified 2026-02-24 23:12:23)
 
 **Sharded Documents:**
 - None found (`*ux*/index.md`)
@@ -286,7 +286,7 @@ FR31: User can configure workflows with YAML/JSON files for analyst-friendly ver
 ### UX Document Status
 
 Found:
-- /Users/lucas/Workspace/Microsimulation/_bmad-output/planning-artifacts/ux-design-specification.md
+- /Users/lucas/Workspace/reformlab/_bmad-output/planning-artifacts/ux-design-specification.md
 
 Assessment:
 - UX document exists and reflects the OpenFisca-first strategic direction.

@@ -3,7 +3,7 @@
 # Version: 6.0.2
 # Date: 2026-02-23T13:57:36.017Z
 
-project_name: Microsimulation
+project_name: ReformLab
 user_skill_level: intermediate
 planning_artifacts: "{project-root}/_bmad-output/planning-artifacts"
 implementation_artifacts: "{project-root}/_bmad-output/implementation-artifacts"

@@ -1,4 +1,4 @@
-# Source Tree Analysis — Microsimulation
+# Source Tree Analysis — ReformLab
 
 **Generated:** 2026-02-25
 **Status:** Pre-implementation (no source code yet)
@@ -6,7 +6,7 @@
 ## Current Project Structure
 
 ```
-Microsimulation/
+reformlab/
 ├── .agents/                    # Agent skill configurations (BMAD)
 │   └── skills/                 # Skill definitions for various BMAD agents
 ├── .claude/                    # Claude Code configuration
@@ -33,12 +33,12 @@ Microsimulation/
 │   │   ├── phase-1-implementation-backlog-2026-02-25.md
 │   │   ├── prd-validation-report.md
 │   │   ├── prd.md              # Product requirements document
-│   │   ├── product-brief-Microsimulation-2026-02-23.md
+│   │   ├── product-brief-ReformLab-2026-02-23.md
 │   │   ├── research/           # Research documents
 │   │   │   ├── domain-generic-microsimulation-frameworks-research-2026-02-23.md
 │   │   │   └── technical-entity-graph-data-modeling-and-vectorized-simulation-engines-research-2026-02-23.md
 │   │   ├── sprint-change-proposal-2026-02-25.md
-│   │   ├── stakeholder-review-brief-Microsimulation-2026-02-24.md
+│   │   ├── stakeholder-review-brief-ReformLab-2026-02-24.md
 │   │   ├── ux-design-specification.md
 │   │   └── validation-report-2026-02-24.md
 │   └── test-artifacts/         # (empty) Test outputs
@@ -56,7 +56,7 @@ Microsimulation/
 When implementation begins, the following source structure is planned:
 
 ```
-microsimulation/                # Python package root (planned)
+src/reformlab/                  # Python package root
 ├── computation/                # Adapter interface + OpenFiscaAdapter
 │   ├── __init__.py
 │   ├── adapter.py              # ComputationAdapter protocol
@@ -120,7 +120,7 @@ microsimulation/                # Python package root (planned)
 ## Entry Points (Planned)
 
 Since no source code exists yet, the primary entry points will be:
-- `microsimulation/__init__.py` — Package entry point
-- `microsimulation/orchestrator/engine.py` — Core orchestration engine
-- `microsimulation/interfaces/api.py` — Python API surface
-- Jupyter notebooks in `microsimulation/interfaces/notebooks/`
+- `src/reformlab/__init__.py` — Package entry point
+- `src/reformlab/orchestrator/engine.py` — Core orchestration engine
+- `src/reformlab/interfaces/api.py` — Python API surface
+- Jupyter notebooks in `src/reformlab/interfaces/notebooks/`

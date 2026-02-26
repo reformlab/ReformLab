@@ -1,4 +1,4 @@
-# Development Guide — Microsimulation
+# Development Guide — ReformLab
 
 **Generated:** 2026-02-25
 **Status:** Pre-implementation (planned setup)
@@ -19,13 +19,13 @@ The project uses standard scientific Python tooling:
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd Microsimulation
+cd reformlab
 
 # Install dependencies with uv
 uv sync
 
 # Verify installation
-uv run python -c "import microsimulation; print(microsimulation.__version__)"
+uv run python -c "import reformlab; print(reformlab.__version__)"
 ```
 
 ## Package Configuration
@@ -55,7 +55,7 @@ uv run pytest tests/integration
 uv run ruff check .
 
 # Type check
-uv run mypy microsimulation/
+uv run mypy src/reformlab/
 
 # Format
 uv run ruff format .

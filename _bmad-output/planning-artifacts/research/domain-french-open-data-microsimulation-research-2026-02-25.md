@@ -24,7 +24,7 @@ source_verification: true
 
 ## Research Overview
 
-This report catalogs publicly available French datasets relevant to building an environmental policy microsimulation platform on top of OpenFisca. Each dataset is assessed for: currentness (latest vintage), format, granularity, key variables, access method, and connectability to the Microsimulation framework.
+This report catalogs publicly available French datasets relevant to building an environmental policy microsimulation platform on top of OpenFisca. Each dataset is assessed for: currentness (latest vintage), format, granularity, key variables, access method, and connectability to the ReformLab framework.
 
 **Methodology:** All datasets verified via web search against their official source portals (INSEE, ADEME, SDES, data.gouv.fr, Enedis, GRDF, BDNB) as of February 2026.
 
@@ -412,7 +412,7 @@ The BDNB aggregates DPE data and other sources at building group level:
 
 ### 8.2 What You Need to Build
 
-The existing pipeline only handles ERFS (restricted data). For an **open-data-first** approach, your Microsimulation framework needs a **parallel ingestion pathway** for:
+The existing pipeline only handles ERFS (restricted data). For an **open-data-first** approach, your ReformLab framework needs a **parallel ingestion pathway** for:
 
 1. **Synthetic population generator** — build household/individual records from open census + Filosofi aggregates (no existing open-source tool does this fully for France)
 2. **Building/equipment enrichment** — join BDNB or DPE data to synthetic households (matching by commune/IRIS, housing type, construction period)
@@ -466,7 +466,7 @@ The existing pipeline only handles ERFS (restricted data). For an **open-data-fi
               └────────┬─────────┘
                        │ outputs to
               ┌────────▼─────────┐
-              │  Microsimulation │
+              │  ReformLab       │
               │  Orchestrator    │
               │  (your product)  │
               └──────────────────┘
@@ -656,13 +656,13 @@ The existing pipeline only handles ERFS (restricted data). For an **open-data-fi
 
 **Relevance:** Directly usable in your framework to transform raw DPE CSV files into structured equipment data. Handles the extraction of heating generator labels, energy types, primary/secondary/tertiary classification.
 
-### 11.5 Closest Comparables — Detailed Comparison with Microsimulation
+### 11.5 Closest Comparables — Detailed Comparison with ReformLab
 
-The four initiatives closest to what Microsimulation aims to do are: **INES**, **TAXIPP/TAXIPP-LIFE**, **EUROMOD**, and **eqasim-france**. Each covers part of the problem space but none covers the full scope.
+The four initiatives closest to what ReformLab aims to do are: **INES**, **TAXIPP/TAXIPP-LIFE**, **EUROMOD**, and **eqasim-france**. Each covers part of the problem space but none covers the full scope.
 
 #### Head-to-Head Feature Comparison
 
-| Capability | **INES** (INSEE/DREES) | **TAXIPP / TAXIPP-LIFE** (IPP) | **EUROMOD** (JRC) | **eqasim-france** | **Microsimulation** (your project) |
+| Capability | **INES** (INSEE/DREES) | **TAXIPP / TAXIPP-LIFE** (IPP) | **EUROMOD** (JRC) | **eqasim-france** | **ReformLab** (your project) |
 |---|---|---|---|---|---|
 | **Core purpose** | Redistribute French taxes & benefits | Full French tax-benefit + life-course (LIFE) | EU-wide tax-benefit comparison | Synthetic population + transport simulation | Environmental policy assessment with distributional analysis |
 | **Data requirement** | ERFS (restricted) | Fideli + Felin + DADS + BNS (restricted) | EU-SILC + HBS (restricted) | Census + Filosofi + BPE (**open**) | Census + Filosofi + DPE + Enedis/GRDF + Base Carbone (**open**) |
@@ -714,13 +714,13 @@ eqasim-france is the only initiative that produces a **fully open synthetic popu
 
 ### 11.6 Your Project's Unique Value Proposition
 
-Based on the comparison above, **Microsimulation occupies a space that no existing initiative covers:**
+Based on the comparison above, **ReformLab occupies a space that no existing initiative covers:**
 
 ```
                     Environmental Policy Focus
                            ▲
                            │
-                           │    ★ Microsimulation
+                           │    ★ ReformLab
                            │    (your project)
                            │
                            │
