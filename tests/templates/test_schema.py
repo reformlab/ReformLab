@@ -107,6 +107,37 @@ class TestCarbonTaxParameters:
         params = CarbonTaxParameters(rate_schedule={2026: 44.60})
         assert isinstance(params, PolicyParameters)
 
+    def test_carbon_tax_with_redistribution_fields(self) -> None:
+        """CarbonTaxParameters supports redistribution type and income weights (AC-3)."""
+        params = CarbonTaxParameters(
+            rate_schedule={2026: 44.60},
+            redistribution_type="progressive_dividend",
+            income_weights={
+                "decile_1": 1.5,
+                "decile_2": 1.3,
+                "decile_10": 0.2,
+            },
+        )
+        assert params.redistribution_type == "progressive_dividend"
+        assert params.income_weights["decile_1"] == 1.5
+        assert params.income_weights["decile_10"] == 0.2
+
+    def test_carbon_tax_redistribution_defaults_to_empty(self) -> None:
+        """CarbonTaxParameters redistribution fields default to empty values."""
+        params = CarbonTaxParameters(rate_schedule={2026: 44.60})
+        assert params.redistribution_type == ""
+        assert params.income_weights == {}
+
+    def test_carbon_tax_lump_sum_redistribution(self) -> None:
+        """CarbonTaxParameters supports lump_sum redistribution type."""
+        params = CarbonTaxParameters(
+            rate_schedule={2026: 44.60},
+            redistribution_type="lump_sum",
+        )
+        assert params.redistribution_type == "lump_sum"
+        # lump_sum doesn't need income_weights
+        assert params.income_weights == {}
+
 
 class TestSubsidyParameters:
     """Tests for the SubsidyParameters dataclass (Subtask 1.4)."""

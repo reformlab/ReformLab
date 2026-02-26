@@ -5,6 +5,7 @@ This module provides:
 - YAML loader/serializer for scenario template files
 - Reform-as-delta resolution for reform scenarios
 - JSON Schema for IDE validation support
+- Template pack discovery and loading utilities
 """
 
 from reformlab.templates.exceptions import ScenarioError
@@ -14,6 +15,11 @@ from reformlab.templates.loader import (
     get_schema_path,
     load_scenario_template,
     validate_schema_version,
+)
+from reformlab.templates.packs import (
+    get_carbon_tax_pack_dir,
+    list_carbon_tax_templates,
+    load_carbon_tax_template,
 )
 from reformlab.templates.reform import resolve_reform_definition
 from reformlab.templates.schema import (
@@ -45,6 +51,10 @@ __all__ = [
     "load_scenario_template",
     "resolve_reform_definition",
     "validate_schema_version",
+    # Pack utilities
+    "get_carbon_tax_pack_dir",
+    "list_carbon_tax_templates",
+    "load_carbon_tax_template",
     # Exceptions
     "ScenarioError",
     # Constants

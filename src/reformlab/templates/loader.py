@@ -287,11 +287,23 @@ def _parse_parameters(
 
     # Build policy-specific parameters
     if policy_type == PolicyType.CARBON_TAX:
+        # Parse redistribution fields for carbon tax
+        redistribution_type = ""
+        income_weights: dict[str, float] = {}
+        if "redistribution" in raw:
+            redist = raw["redistribution"]
+            if "type" in redist:
+                redistribution_type = str(redist["type"])
+            if "income_weights" in redist:
+                for k, v in redist["income_weights"].items():
+                    income_weights[str(k)] = float(v)
         return CarbonTaxParameters(
             rate_schedule=rate_schedule,
             exemptions=exemptions,
             thresholds=thresholds,
             covered_categories=covered_categories,
+            redistribution_type=redistribution_type,
+            income_weights=income_weights,
         )
     elif policy_type == PolicyType.SUBSIDY:
         eligible_categories = tuple(raw.get("eligible_categories", []))
@@ -405,7 +417,16 @@ def _parameters_to_dict(params: PolicyParameters) -> dict[str, Any]:
         result["covered_categories"] = list(params.covered_categories)
 
     # Handle subclass-specific fields
-    if isinstance(params, SubsidyParameters):
+    if isinstance(params, CarbonTaxParameters):
+        # Serialize redistribution as a sub-dict for consistency with YAML format
+        if params.redistribution_type or params.income_weights:
+            redistribution: dict[str, Any] = {}
+            if params.redistribution_type:
+                redistribution["type"] = params.redistribution_type
+            if params.income_weights:
+                redistribution["income_weights"] = params.income_weights
+            result["redistribution"] = redistribution
+    elif isinstance(params, SubsidyParameters):
         if params.eligible_categories:
             result["eligible_categories"] = list(params.eligible_categories)
         if params.income_caps:

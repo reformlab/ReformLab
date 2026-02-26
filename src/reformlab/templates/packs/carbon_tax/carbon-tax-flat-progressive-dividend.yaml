@@ -1,0 +1,53 @@
+$schema: "../../../schema/scenario-template.schema.json"
+version: "1.0"
+
+name: "Carbon Tax - Flat Rate with Progressive Dividend"
+description: >
+  Uniform carbon tax with income-weighted dividend redistribution. Tax revenue
+  is returned to households with lower-income households receiving a higher
+  share. This design combines environmental pricing with explicit redistribution
+  to lower income deciles, maximizing progressivity while maintaining carbon
+  price signal.
+policy_type: carbon_tax
+
+year_schedule:
+  start_year: 2026
+  end_year: 2036
+
+parameters:
+  rate_schedule:
+    # EUR per tonne CO2 - based on EU ETS and French carbon tax trajectory
+    2026: 44.60
+    2027: 50.00
+    2028: 55.00
+    2029: 60.00
+    2030: 65.00
+    2031: 70.00
+    2032: 75.00
+    2033: 80.00
+    2034: 85.00
+    2035: 90.00
+    2036: 100.00
+
+  covered_categories:
+    - "transport_fuel"    # Gasoline, diesel
+    - "heating_fuel"      # Heating oil
+    - "natural_gas"       # Natural gas for heating/cooking
+
+  exemptions: []
+
+  redistribution:
+    type: "progressive_dividend"
+    income_weights:
+      # Weights determine share of redistribution per decile
+      # Higher weights = larger share of total redistribution
+      decile_1: 1.5    # Bottom 10% income - highest share
+      decile_2: 1.3
+      decile_3: 1.2
+      decile_4: 1.1
+      decile_5: 1.0    # Median income - baseline weight
+      decile_6: 0.9
+      decile_7: 0.8
+      decile_8: 0.7
+      decile_9: 0.5
+      decile_10: 0.2   # Top 10% income - lowest share

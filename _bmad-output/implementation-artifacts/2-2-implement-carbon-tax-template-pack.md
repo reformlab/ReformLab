@@ -1,6 +1,6 @@
 # Story 2.2: Implement Carbon Tax Template Pack
 
-Status: ready-for-dev (blocked until Story 2.1 is `done`)
+Status: review
 
 ## Story
 
@@ -39,48 +39,48 @@ Scope note: BKL-202 baseline is template pack + execution utilities needed for p
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Confirm data prerequisites for carbon-tax computation (AC: #2)
-  - [ ] 0.1 Ensure `SYNTHETIC_POPULATION_SCHEMA` supports optional energy columns in `src/reformlab/data/schemas.py`:
+- [x] Task 0: Confirm data prerequisites for carbon-tax computation (AC: #2)
+  - [x] 0.1 Ensure `SYNTHETIC_POPULATION_SCHEMA` supports optional energy columns in `src/reformlab/data/schemas.py`:
     - `energy_transport_fuel` (float64)
     - `energy_heating_fuel` (float64)
     - `energy_natural_gas` (float64)
-  - [ ] 0.2 Update/extend data fixtures and ingestion tests for populations that include energy columns
-  - [ ] 0.3 Define behavior for missing optional energy columns (treat as `0.0`, not hard failure)
+  - [x] 0.2 Update/extend data fixtures and ingestion tests for populations that include energy columns
+  - [x] 0.3 Define behavior for missing optional energy columns (treat as `0.0`, not hard failure)
 
-- [ ] Task 1: Add typed redistribution support for carbon-tax templates (AC: #1, #3)
-  - [ ] 1.1 Extend scenario schema types so carbon-tax templates preserve redistribution metadata (`type`, `income_weights`)
-  - [ ] 1.2 Update `load_scenario_template()` parsing for carbon-tax redistribution fields without breaking existing templates
-  - [ ] 1.3 Add serialization and validation tests for redistribution fields in carbon-tax templates
+- [x] Task 1: Add typed redistribution support for carbon-tax templates (AC: #1, #3)
+  - [x] 1.1 Extend scenario schema types so carbon-tax templates preserve redistribution metadata (`type`, `income_weights`)
+  - [x] 1.2 Update `load_scenario_template()` parsing for carbon-tax redistribution fields without breaking existing templates
+  - [x] 1.3 Add serialization and validation tests for redistribution fields in carbon-tax templates
 
-- [ ] Task 2: Create carbon-tax computation module (AC: #2, #3)
-  - [ ] 2.1 Create `src/reformlab/templates/carbon_tax/compute.py` with core functions
-  - [ ] 2.2 Implement `assign_income_deciles(incomes: pa.Array) -> pa.Array` using percentile ranking
-  - [ ] 2.3 Implement `compute_tax_burden(population: pa.Table, parameters: CarbonTaxParameters, emission_index: EmissionFactorIndex, year: int) -> pa.Array`
-  - [ ] 2.4 Implement redistribution functions for `lump_sum` and `progressive_dividend`
-  - [ ] 2.5 Implement exemption handling over covered categories
-  - [ ] 2.6 Create `CarbonTaxResult` and `DecileResults` dataclasses
+- [x] Task 2: Create carbon-tax computation module (AC: #2, #3)
+  - [x] 2.1 Create `src/reformlab/templates/carbon_tax/compute.py` with core functions
+  - [x] 2.2 Implement `assign_income_deciles(incomes: pa.Array) -> pa.Array` using percentile ranking
+  - [x] 2.3 Implement `compute_tax_burden(population: pa.Table, parameters: CarbonTaxParameters, emission_index: EmissionFactorIndex, year: int) -> pa.Array`
+  - [x] 2.4 Implement redistribution functions for `lump_sum` and `progressive_dividend`
+  - [x] 2.5 Implement exemption handling over covered categories
+  - [x] 2.6 Create `CarbonTaxResult` and `DecileResults` dataclasses
 
-- [ ] Task 3: Create 4-5 carbon-tax template YAML files (AC: #1, #5)
-  - [ ] 3.1 Create `carbon-tax-flat-no-redistribution.yaml`
-  - [ ] 3.2 Create `carbon-tax-flat-lump-sum-dividend.yaml`
-  - [ ] 3.3 Create `carbon-tax-flat-progressive-dividend.yaml`
-  - [ ] 3.4 Create `carbon-tax-progressive-no-redistribution.yaml`
-  - [ ] 3.5 Create `carbon-tax-progressive-progressive-dividend.yaml` (optional 5th variant)
-  - [ ] 3.6 Create pack README.md documenting variants and assumptions
+- [x] Task 3: Create 4-5 carbon-tax template YAML files (AC: #1, #5)
+  - [x] 3.1 Create `carbon-tax-flat-no-redistribution.yaml`
+  - [x] 3.2 Create `carbon-tax-flat-lump-sum-dividend.yaml`
+  - [x] 3.3 Create `carbon-tax-flat-progressive-dividend.yaml`
+  - [x] 3.4 Create `carbon-tax-progressive-no-redistribution.yaml`
+  - [x] 3.5 Create `carbon-tax-progressive-progressive-dividend.yaml` (optional 5th variant)
+  - [x] 3.6 Create pack README.md documenting variants and assumptions
 
-- [ ] Task 4: Implement template pack loader and batch comparison utilities (AC: #4, #5)
-  - [ ] 4.1 Create `src/reformlab/templates/packs/__init__.py` with pack discovery utilities
-  - [ ] 4.2 Implement `list_carbon_tax_templates()` returning available variant names
-  - [ ] 4.3 Implement `load_carbon_tax_template(variant_name)` returning `BaselineScenario`
-  - [ ] 4.4 Create `src/reformlab/templates/carbon_tax/compare.py` with `run_carbon_tax_batch()` and `compare_decile_impacts()`
-  - [ ] 4.5 Add pack loader to `reformlab.templates` public API
+- [x] Task 4: Implement template pack loader and batch comparison utilities (AC: #4, #5)
+  - [x] 4.1 Create `src/reformlab/templates/packs/__init__.py` with pack discovery utilities
+  - [x] 4.2 Implement `list_carbon_tax_templates()` returning available variant names
+  - [x] 4.3 Implement `load_carbon_tax_template(variant_name)` returning `BaselineScenario`
+  - [x] 4.4 Create `src/reformlab/templates/carbon_tax/compare.py` with `run_carbon_tax_batch()` and `compare_decile_impacts()`
+  - [x] 4.5 Add pack loader to `reformlab.templates` public API
 
-- [ ] Task 5: Write focused tests for shipped scope (AC: all)
-  - [ ] 5.1 Unit tests for tax burden computation (including exemptions and kg→tonne conversion)
-  - [ ] 5.2 Unit tests for redistribution computation (flat and progressive)
-  - [ ] 5.3 Integration tests for template loading, pack discovery, and batch comparison
-  - [ ] 5.4 Golden-file tests for expected per-household and per-decile outputs
-  - [ ] 5.5 Performance smoke test aligned with NFR5 target on representative input
+- [x] Task 5: Write focused tests for shipped scope (AC: all)
+  - [x] 5.1 Unit tests for tax burden computation (including exemptions and kg→tonne conversion)
+  - [x] 5.2 Unit tests for redistribution computation (flat and progressive)
+  - [x] 5.3 Integration tests for template loading, pack discovery, and batch comparison
+  - [x] 5.4 Golden-file tests for expected per-household and per-decile outputs
+  - [x] 5.5 Performance smoke test aligned with NFR5 target on representative input
 
 ## Dev Notes
 

@@ -1,0 +1,40 @@
+$schema: "../../../schema/scenario-template.schema.json"
+version: "1.0"
+
+name: "Carbon Tax - Flat Rate with Lump-Sum Dividend"
+description: >
+  Uniform carbon tax with equal per-capita dividend redistribution. 100% of
+  tax revenue is returned to households as an equal payment regardless of
+  income. This design is revenue-neutral and tends to benefit lower-income
+  households who consume less energy but receive the same dividend.
+policy_type: carbon_tax
+
+year_schedule:
+  start_year: 2026
+  end_year: 2036
+
+parameters:
+  rate_schedule:
+    # EUR per tonne CO2 - based on EU ETS and French carbon tax trajectory
+    2026: 44.60
+    2027: 50.00
+    2028: 55.00
+    2029: 60.00
+    2030: 65.00
+    2031: 70.00
+    2032: 75.00
+    2033: 80.00
+    2034: 85.00
+    2035: 90.00
+    2036: 100.00
+
+  covered_categories:
+    - "transport_fuel"    # Gasoline, diesel
+    - "heating_fuel"      # Heating oil
+    - "natural_gas"       # Natural gas for heating/cooking
+
+  exemptions: []
+
+  redistribution:
+    type: "lump_sum"
+    # Equal per-capita dividend - no income weighting needed

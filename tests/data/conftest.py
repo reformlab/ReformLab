@@ -96,6 +96,69 @@ def population_parquet(tmp_path: Path) -> Path:
 
 
 @pytest.fixture()
+def population_with_energy_csv(tmp_path: Path) -> Path:
+    """Create a synthetic population CSV with energy consumption columns."""
+    table = pa.table(
+        {
+            "household_id": pa.array([1, 1, 2, 2, 3], type=pa.int64()),
+            "person_id": pa.array([1, 2, 3, 4, 5], type=pa.int64()),
+            "age": pa.array([35, 32, 45, 12, 67], type=pa.int64()),
+            "income": pa.array(
+                [30000.0, 28000.0, 52000.0, 0.0, 18000.0], type=pa.float64()
+            ),
+            "region_code": pa.array(["75", "75", "13", "13", "69"], type=pa.utf8()),
+            "energy_transport_fuel": pa.array(
+                [1200.0, 800.0, 2000.0, 0.0, 500.0], type=pa.float64()
+            ),
+            "energy_heating_fuel": pa.array(
+                [500.0, 500.0, 800.0, 800.0, 400.0], type=pa.float64()
+            ),
+            "energy_natural_gas": pa.array(
+                [1000.0, 1000.0, 1500.0, 1500.0, 600.0], type=pa.float64()
+            ),
+        }
+    )
+    csv_path = tmp_path / "population_with_energy.csv"
+    pcsv.write_csv(table, csv_path)
+    return csv_path
+
+
+@pytest.fixture()
+def population_with_energy_table() -> pa.Table:
+    """Create a PyArrow table with energy consumption data for testing."""
+    return pa.table(
+        {
+            "household_id": pa.array([1, 2, 3, 4, 5], type=pa.int64()),
+            "income": pa.array(
+                [20000.0, 35000.0, 50000.0, 70000.0, 100000.0], type=pa.float64()
+            ),
+            "energy_transport_fuel": pa.array(
+                [1000.0, 1500.0, 2000.0, 2500.0, 3000.0], type=pa.float64()
+            ),
+            "energy_heating_fuel": pa.array(
+                [600.0, 700.0, 800.0, 900.0, 1000.0], type=pa.float64()
+            ),
+            "energy_natural_gas": pa.array(
+                [800.0, 1000.0, 1200.0, 1400.0, 1600.0], type=pa.float64()
+            ),
+        }
+    )
+
+
+@pytest.fixture()
+def population_without_energy_table() -> pa.Table:
+    """Create a PyArrow table without energy consumption columns."""
+    return pa.table(
+        {
+            "household_id": pa.array([1, 2, 3, 4, 5], type=pa.int64()),
+            "income": pa.array(
+                [20000.0, 35000.0, 50000.0, 70000.0, 100000.0], type=pa.float64()
+            ),
+        }
+    )
+
+
+@pytest.fixture()
 def emission_csv(tmp_path: Path) -> Path:
     """Create a small valid emission factor CSV."""
     table = pa.table(

@@ -66,10 +66,19 @@ class CarbonTaxParameters(PolicyParameters):
     """Carbon tax specific parameters.
 
     Includes rate schedule (EUR per tonne CO2), exemptions by category,
-    and covered energy categories.
+    covered energy categories, and optional redistribution configuration.
+
+    Redistribution types:
+    - "" (empty): No redistribution, tax revenue retained by government
+    - "lump_sum": Equal per-capita dividend to all households
+    - "progressive_dividend": Income-weighted dividend, lower deciles receive more
+
+    When redistribution_type is "progressive_dividend", income_weights should
+    map decile names (e.g., "decile_1") to weight multipliers (e.g., 1.5).
     """
 
-    pass
+    redistribution_type: str = ""
+    income_weights: dict[str, float] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

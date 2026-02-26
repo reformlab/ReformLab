@@ -259,3 +259,130 @@ class TestDumpScenarioTemplate:
         assert loaded.name == scenario.name
         assert loaded.baseline_ref == scenario.baseline_ref
         assert loaded.parameters.rate_schedule == scenario.parameters.rate_schedule
+
+
+class TestCarbonTaxRedistributionLoading:
+    """Tests for loading carbon tax templates with redistribution fields (Story 2.2)."""
+
+    def test_load_carbon_tax_with_lump_sum_redistribution(self, tmp_path: Path) -> None:
+        """Carbon tax template with lump_sum redistribution loads correctly."""
+        content = textwrap.dedent("""\
+            $schema: "./schema/scenario-template.schema.json"
+            version: "1.0"
+            name: "Carbon Tax with Lump Sum Dividend"
+            policy_type: carbon_tax
+            year_schedule:
+              start_year: 2026
+              end_year: 2036
+            parameters:
+              rate_schedule:
+                2026: 44.60
+                2027: 50.00
+                2028: 55.00
+                2029: 60.00
+                2030: 65.00
+                2031: 70.00
+                2032: 75.00
+                2033: 80.00
+                2034: 85.00
+                2035: 90.00
+                2036: 100.00
+              covered_categories:
+                - transport_fuel
+                - heating_fuel
+              redistribution:
+                type: lump_sum
+        """)
+        p = tmp_path / "carbon-tax-lump-sum.yaml"
+        p.write_text(content, encoding="utf-8")
+
+        scenario = load_scenario_template(p)
+        assert isinstance(scenario, BaselineScenario)
+        assert isinstance(scenario.parameters, CarbonTaxParameters)
+        assert scenario.parameters.redistribution_type == "lump_sum"
+        assert scenario.parameters.income_weights == {}
+
+    def test_load_carbon_tax_with_progressive_dividend(self, tmp_path: Path) -> None:
+        """Carbon tax template with progressive_dividend redistribution loads correctly."""
+        content = textwrap.dedent("""\
+            $schema: "./schema/scenario-template.schema.json"
+            version: "1.0"
+            name: "Carbon Tax with Progressive Dividend"
+            policy_type: carbon_tax
+            year_schedule:
+              start_year: 2026
+              end_year: 2036
+            parameters:
+              rate_schedule:
+                2026: 44.60
+                2027: 50.00
+                2028: 55.00
+                2029: 60.00
+                2030: 65.00
+                2031: 70.00
+                2032: 75.00
+                2033: 80.00
+                2034: 85.00
+                2035: 90.00
+                2036: 100.00
+              covered_categories:
+                - transport_fuel
+                - heating_fuel
+              redistribution:
+                type: progressive_dividend
+                income_weights:
+                  decile_1: 1.5
+                  decile_2: 1.3
+                  decile_3: 1.1
+                  decile_4: 1.0
+                  decile_5: 1.0
+                  decile_6: 0.9
+                  decile_7: 0.8
+                  decile_8: 0.7
+                  decile_9: 0.5
+                  decile_10: 0.2
+        """)
+        p = tmp_path / "carbon-tax-progressive.yaml"
+        p.write_text(content, encoding="utf-8")
+
+        scenario = load_scenario_template(p)
+        assert isinstance(scenario, BaselineScenario)
+        assert isinstance(scenario.parameters, CarbonTaxParameters)
+        assert scenario.parameters.redistribution_type == "progressive_dividend"
+        assert scenario.parameters.income_weights["decile_1"] == 1.5
+        assert scenario.parameters.income_weights["decile_10"] == 0.2
+
+    def test_load_carbon_tax_no_redistribution(self, valid_carbon_tax_yaml: Path) -> None:
+        """Carbon tax template without redistribution defaults to empty values."""
+        scenario = load_scenario_template(valid_carbon_tax_yaml)
+        assert isinstance(scenario, BaselineScenario)
+        assert isinstance(scenario.parameters, CarbonTaxParameters)
+        assert scenario.parameters.redistribution_type == ""
+        assert scenario.parameters.income_weights == {}
+
+    def test_round_trip_carbon_tax_with_redistribution(self, tmp_path: Path) -> None:
+        """Carbon tax with redistribution can round-trip through dump/load."""
+        scenario = BaselineScenario(
+            name="Carbon Tax Progressive",
+            policy_type=PolicyType.CARBON_TAX,
+            year_schedule=YearSchedule(2026, 2036),
+            parameters=CarbonTaxParameters(
+                rate_schedule={2026: 44.60, 2027: 50.00, 2028: 55.00,
+                               2029: 60.00, 2030: 65.00, 2031: 70.00,
+                               2032: 75.00, 2033: 80.00, 2034: 85.00,
+                               2035: 90.00, 2036: 100.00},
+                covered_categories=("transport_fuel", "heating_fuel"),
+                redistribution_type="progressive_dividend",
+                income_weights={"decile_1": 1.5, "decile_10": 0.2},
+            ),
+            description="Test carbon tax with redistribution",
+            version="1.0",
+        )
+        output_path = tmp_path / "roundtrip-redist.yaml"
+        dump_scenario_template(scenario, output_path)
+
+        loaded = load_scenario_template(output_path)
+        assert isinstance(loaded, BaselineScenario)
+        assert isinstance(loaded.parameters, CarbonTaxParameters)
+        assert loaded.parameters.redistribution_type == "progressive_dividend"
+        assert loaded.parameters.income_weights == {"decile_1": 1.5, "decile_10": 0.2}

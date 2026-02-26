@@ -1,0 +1,55 @@
+$schema: "../../../schema/scenario-template.schema.json"
+version: "1.0"
+
+name: "Carbon Tax - Progressive Rate, No Redistribution"
+description: >
+  Carbon tax with rates that increase for higher-income households, implementing
+  the ability-to-pay principle. All tax revenue is retained by government.
+  Note: Progressive rates require income-based rate lookup during computation,
+  which is handled by the computation module using decile-specific rate multipliers.
+  The base rate_schedule is multiplied by household-specific factors.
+policy_type: carbon_tax
+
+year_schedule:
+  start_year: 2026
+  end_year: 2036
+
+parameters:
+  rate_schedule:
+    # Base EUR per tonne CO2 - multiplied by income-based factor
+    2026: 44.60
+    2027: 50.00
+    2028: 55.00
+    2029: 60.00
+    2030: 65.00
+    2031: 70.00
+    2032: 75.00
+    2033: 80.00
+    2034: 85.00
+    2035: 90.00
+    2036: 100.00
+
+  covered_categories:
+    - "transport_fuel"    # Gasoline, diesel
+    - "heating_fuel"      # Heating oil
+    - "natural_gas"       # Natural gas for heating/cooking
+
+  exemptions: []
+
+  # Note: Progressive rate structure is defined via income_weights
+  # but applied to the tax rate rather than redistribution
+  redistribution:
+    type: ""  # No redistribution
+    income_weights:
+      # These weights are applied as rate multipliers for progressive taxation
+      # Effective rate = base_rate * weight
+      decile_1: 0.5     # Bottom 10% pays 50% of base rate
+      decile_2: 0.6
+      decile_3: 0.7
+      decile_4: 0.8
+      decile_5: 0.9
+      decile_6: 1.0     # Median pays base rate
+      decile_7: 1.1
+      decile_8: 1.2
+      decile_9: 1.4
+      decile_10: 1.5    # Top 10% pays 150% of base rate

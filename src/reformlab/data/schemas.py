@@ -4,6 +4,36 @@ import pyarrow as pa
 
 from reformlab.computation.ingestion import DataSchema
 
+# Energy columns used for carbon tax computation
+ENERGY_COLUMNS = (
+    "energy_transport_fuel",
+    "energy_heating_fuel",
+    "energy_natural_gas",
+)
+
+
+def fill_missing_energy_columns(table: pa.Table) -> pa.Table:
+    """Fill missing energy columns with zeros.
+
+    This function ensures that a population table has all required energy
+    consumption columns for carbon tax computation. Missing columns are
+    added with all values set to 0.0.
+
+    Args:
+        table: A PyArrow table that may or may not have energy columns.
+
+    Returns:
+        A table with all energy columns present. Existing values are preserved.
+    """
+    result = table
+    num_rows = table.num_rows
+    for col_name in ENERGY_COLUMNS:
+        if col_name not in table.column_names:
+            zeros = pa.array([0.0] * num_rows, type=pa.float64())
+            result = result.append_column(col_name, zeros)
+    return result
+
+
 SYNTHETIC_POPULATION_SCHEMA = DataSchema(
     schema=pa.schema(
         [
@@ -14,10 +44,21 @@ SYNTHETIC_POPULATION_SCHEMA = DataSchema(
             pa.field("region_code", pa.utf8()),
             pa.field("housing_status", pa.utf8()),
             pa.field("household_size", pa.int64()),
+            # Energy consumption columns for carbon tax computation (Story 2.2)
+            pa.field("energy_transport_fuel", pa.float64()),
+            pa.field("energy_heating_fuel", pa.float64()),
+            pa.field("energy_natural_gas", pa.float64()),
         ]
     ),
     required_columns=("household_id", "person_id", "age", "income"),
-    optional_columns=("region_code", "housing_status", "household_size"),
+    optional_columns=(
+        "region_code",
+        "housing_status",
+        "household_size",
+        "energy_transport_fuel",
+        "energy_heating_fuel",
+        "energy_natural_gas",
+    ),
 )
 
 EMISSION_FACTOR_SCHEMA = DataSchema(
