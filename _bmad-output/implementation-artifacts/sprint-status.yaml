@@ -56,7 +56,7 @@ development_status:
   epic-2: in-progress
   2-1-define-scenario-template-schema: review
   2-2-implement-carbon-tax-template-pack: review
-  2-3-implement-subsidy-rebate-feebate-template-pack: backlog
+  2-3-implement-subsidy-rebate-feebate-template-pack: ready-for-dev
   2-4-build-scenario-registry: backlog
   2-5-implement-scenario-cloning: backlog
   2-6-add-schema-migration-helper: backlog
