@@ -27,10 +27,15 @@
 - [Development Guide](./development-guide.md) — Prerequisites, setup instructions, build commands, CI strategy
 - [Planning Artifacts Inventory](./planning-artifacts-inventory.md) — Complete inventory of all planning documents with lineage
 
+## Roadmap
+
+- [Product Delivery Roadmap](./../_bmad-output/roadmap/product-delivery-roadmap-2026-02-25.md) — Delivery path from planning to implementation phases
+- [Go-to-Market & Ecosystem Strategy](./../_bmad-output/roadmap/go-to-market-and-ecosystem-strategy-2026-02-25.md) — Parallel adoption, outreach, and funding strategy
+
 ## Planning Artifacts (Source Documents)
 
 ### Core Product Documents
-- [Product Brief](./../_bmad-output/planning-artifacts/product-brief-Microsimulation-2026-02-23.md) — Strategic direction and vision
+- [Product Brief](./../_bmad-output/planning-artifacts/product-brief-ReformLab-2026-02-23.md) — Strategic direction and vision
 - [PRD](./../_bmad-output/planning-artifacts/prd.md) — Full product requirements (35 FRs, 21 NFRs)
 - [Architecture Decision Document](./../_bmad-output/planning-artifacts/architecture.md) — Original architecture decisions
 - [UX Design Specification](./../_bmad-output/planning-artifacts/ux-design-specification.md) — Persona-driven UX design
@@ -43,14 +48,20 @@
 ### Validation
 - [PRD Validation Report](./../_bmad-output/planning-artifacts/prd-validation-report.md) — PRD quality validation
 - [Validation Report](./../_bmad-output/planning-artifacts/validation-report-2026-02-24.md) — Additional validation
-- [Stakeholder Review Brief](./../_bmad-output/planning-artifacts/stakeholder-review-brief-Microsimulation-2026-02-24.md) — Stakeholder feedback
+- [Stakeholder Review Brief](./../_bmad-output/planning-artifacts/stakeholder-review-brief-ReformLab-2026-02-24.md) — Stakeholder feedback
 
 ### Research
 - [Domain Research](./../_bmad-output/planning-artifacts/research/domain-generic-microsimulation-frameworks-research-2026-02-23.md) — Microsimulation frameworks landscape
+- [Domain Research (French Open Data)](./../_bmad-output/planning-artifacts/research/domain-french-open-data-microsimulation-research-2026-02-25.md) — French open-data sources and applicability
+- [Market Research](./../_bmad-output/planning-artifacts/research/market-microsimulation-platform-research-2026-02-25.md) — Market landscape, competitors, and positioning
 - [Technical Research](./../_bmad-output/planning-artifacts/research/technical-entity-graph-data-modeling-and-vectorized-simulation-engines-research-2026-02-23.md) — Entity graph and vectorized engines
 
 ### Brainstorming
 - [Brainstorming Session](./../_bmad-output/brainstorming/brainstorming-session-2026-02-23.md) — Initial project ideation
+
+### Communication Deliverables
+- [Audience Narratives and Story Pack](./../_bmad-output/communication/audience-narratives-2026-02-25.md) — Multi-audience narrative assets (public, expert, investor)
+- [Email Outreach Pack (French)](./../_bmad-output/communication/email-outreach-french-2026-02-25.md) — Ready-to-send outreach emails and adaptation notes
 
 ## Getting Started
 
