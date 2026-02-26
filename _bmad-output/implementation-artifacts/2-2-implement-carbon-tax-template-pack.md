@@ -1,6 +1,6 @@
 # Story 2.2: Implement Carbon Tax Template Pack
 
-Status: ready-for-dev
+Status: ready-for-dev (blocked until Story 2.1 is `done`)
 
 ## Story
 
@@ -10,77 +10,77 @@ so that **I can immediately run carbon tax scenario comparisons without writing 
 
 ## Acceptance Criteria
 
+Scope note: BKL-202 baseline is template pack + execution utilities needed for per-household computation and per-decile comparison. Registry persistence, orchestrator wiring, and rich report export are out of scope.
+
 1. **AC-1: Template pack provides at least 4 variants**
-   - Given the shipped carbon-tax template pack, when listed, then at least 4 variants are available covering: flat rate, progressive rate, flat dividend, and progressive dividend combinations.
-   - Template variants are named descriptively (e.g., `carbon-tax-flat-no-dividend`, `carbon-tax-progressive-lump-sum`).
-   - All templates pass schema validation from Story 2.1.
+   - Given the shipped carbon-tax template pack, when listed, then at least 4 variants are available covering flat/progressive rate and with/without redistribution combinations.
+   - Variants are named descriptively and consistently (e.g., `carbon-tax-flat-no-redistribution`, `carbon-tax-progressive-progressive-dividend`).
+   - All templates pass `load_scenario_template()` validation and have year schedules of at least 10 years.
 
 2. **AC-2: Tax burden computation per household**
-   - Given a carbon-tax template, when executed with a baseline population, then tax burden is computed per household based on energy consumption and applicable rates.
-   - Tax burden computation uses emission factors and energy category consumption from population data.
-   - Exemption rules from template parameters are applied correctly (partial exemptions, category exemptions).
+   - Given a carbon-tax template, when executed with a baseline population, then tax burden is computed per household from energy consumption and year/category emission factors.
+   - Computation converts `kg CO2` factors to `tonnes CO2` before applying EUR-per-tonne rates.
+   - Exemption rules from template parameters are applied correctly (partial and full category exemptions).
 
-3. **AC-3: Redistribution amounts computed per household**
+3. **AC-3: Redistribution and net impact computation**
    - Given a carbon-tax template with redistribution parameters, when executed, then redistribution amounts are computed per household.
-   - Flat dividend: total tax revenue divided equally across households.
-   - Progressive dividend: weighted by income decile using template-defined `income_weights`.
-   - Net impact (tax burden minus redistribution) is computed per household.
+   - Supported modes are `lump_sum` and `progressive_dividend` with template-defined `income_weights` for progressive mode.
+   - Net impact is computed per household as `redistribution - tax_burden`.
 
 4. **AC-4: Per-decile comparison output**
-   - Given two carbon-tax variants, when run in batch, then comparison output shows per-decile differences.
-   - Output includes: mean tax burden by decile, mean redistribution by decile, mean net impact by decile.
-   - Output format supports both programmatic access (dict/DataFrame) and YAML/CSV export.
+   - Given two or more carbon-tax variants, when run in batch, then output includes per-decile metrics for each scenario.
+   - Output includes mean tax burden, mean redistribution, and mean net impact by decile.
+   - Output is available programmatically as typed Python structures (`CarbonTaxResult`, `DecileResults`) and a `pa.Table` comparison view.
 
 5. **AC-5: Template pack is documented and discoverable**
    - Template pack files are shipped in `src/reformlab/templates/packs/carbon_tax/`.
-   - Pack includes a README.md describing each variant and parameter meanings.
+   - Pack includes a README.md describing each variant, assumptions, and parameter meanings.
    - API provides `list_carbon_tax_templates()` and `load_carbon_tax_template(variant_name)` functions.
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Extend population schema with energy consumption columns (prerequisite)
-  - [ ] 0.1 Add energy consumption columns to `SYNTHETIC_POPULATION_SCHEMA` in `src/reformlab/data/schemas.py`:
-    - `energy_transport_fuel` (float64, optional)
-    - `energy_heating_fuel` (float64, optional)
-    - `energy_natural_gas` (float64, optional)
-  - [ ] 0.2 Update `tests/data/test_pipeline.py` with energy column fixtures
-  - [ ] 0.3 Create sample synthetic population with energy data for testing
+- [ ] Task 0: Confirm data prerequisites for carbon-tax computation (AC: #2)
+  - [ ] 0.1 Ensure `SYNTHETIC_POPULATION_SCHEMA` supports optional energy columns in `src/reformlab/data/schemas.py`:
+    - `energy_transport_fuel` (float64)
+    - `energy_heating_fuel` (float64)
+    - `energy_natural_gas` (float64)
+  - [ ] 0.2 Update/extend data fixtures and ingestion tests for populations that include energy columns
+  - [ ] 0.3 Define behavior for missing optional energy columns (treat as `0.0`, not hard failure)
 
-- [ ] Task 1: Create carbon tax computation module (AC: #2, #3)
-  - [ ] 1.1 Create `src/reformlab/templates/carbon_tax/compute.py` with core functions
-  - [ ] 1.2 Implement `assign_income_deciles(incomes: pa.Array) -> pa.Array` using percentile ranking
-  - [ ] 1.3 Implement `compute_tax_burden(population: pa.Table, parameters: CarbonTaxParameters, emission_index: EmissionFactorIndex, year: int) -> pa.Array`
-  - [ ] 1.4 Implement `compute_flat_redistribution(total_revenue: float, num_households: int) -> pa.Array`
-  - [ ] 1.5 Implement `compute_progressive_redistribution(total_revenue: float, deciles: pa.Array, income_weights: dict[str, float]) -> pa.Array`
-  - [ ] 1.6 Implement `apply_exemptions(base_tax: pa.Array, categories: list[str], exemptions: tuple[dict, ...]) -> pa.Array`
-  - [ ] 1.7 Create `CarbonTaxResult` and `DecileResults` dataclasses
+- [ ] Task 1: Add typed redistribution support for carbon-tax templates (AC: #1, #3)
+  - [ ] 1.1 Extend scenario schema types so carbon-tax templates preserve redistribution metadata (`type`, `income_weights`)
+  - [ ] 1.2 Update `load_scenario_template()` parsing for carbon-tax redistribution fields without breaking existing templates
+  - [ ] 1.3 Add serialization and validation tests for redistribution fields in carbon-tax templates
 
-- [ ] Task 2: Create 4-5 carbon tax template YAML files (AC: #1, #5)
-  - [ ] 2.1 Create `carbon-tax-flat-no-redistribution.yaml` - flat rate, no dividend
-  - [ ] 2.2 Create `carbon-tax-flat-lump-sum-dividend.yaml` - flat rate, equal per-capita dividend
-  - [ ] 2.3 Create `carbon-tax-flat-progressive-dividend.yaml` - flat rate, income-weighted dividend
-  - [ ] 2.4 Create `carbon-tax-progressive-no-redistribution.yaml` - income-indexed rates, no dividend
-  - [ ] 2.5 Create `carbon-tax-progressive-progressive-dividend.yaml` - income-indexed rates, income-weighted dividend
-  - [ ] 2.6 Create pack README.md documenting variants and use cases
+- [ ] Task 2: Create carbon-tax computation module (AC: #2, #3)
+  - [ ] 2.1 Create `src/reformlab/templates/carbon_tax/compute.py` with core functions
+  - [ ] 2.2 Implement `assign_income_deciles(incomes: pa.Array) -> pa.Array` using percentile ranking
+  - [ ] 2.3 Implement `compute_tax_burden(population: pa.Table, parameters: CarbonTaxParameters, emission_index: EmissionFactorIndex, year: int) -> pa.Array`
+  - [ ] 2.4 Implement redistribution functions for `lump_sum` and `progressive_dividend`
+  - [ ] 2.5 Implement exemption handling over covered categories
+  - [ ] 2.6 Create `CarbonTaxResult` and `DecileResults` dataclasses
 
-- [ ] Task 3: Implement template pack loader and discovery (AC: #5)
-  - [ ] 3.1 Create `src/reformlab/templates/packs/__init__.py` with pack discovery utilities
-  - [ ] 3.2 Implement `list_carbon_tax_templates()` returning available variant names
-  - [ ] 3.3 Implement `load_carbon_tax_template(variant_name)` returning `BaselineScenario`
-  - [ ] 3.4 Add pack loader to `reformlab.templates` public API
+- [ ] Task 3: Create 4-5 carbon-tax template YAML files (AC: #1, #5)
+  - [ ] 3.1 Create `carbon-tax-flat-no-redistribution.yaml`
+  - [ ] 3.2 Create `carbon-tax-flat-lump-sum-dividend.yaml`
+  - [ ] 3.3 Create `carbon-tax-flat-progressive-dividend.yaml`
+  - [ ] 3.4 Create `carbon-tax-progressive-no-redistribution.yaml`
+  - [ ] 3.5 Create `carbon-tax-progressive-progressive-dividend.yaml` (optional 5th variant)
+  - [ ] 3.6 Create pack README.md documenting variants and assumptions
 
-- [ ] Task 4: Implement batch execution and comparison (AC: #4)
-  - [ ] 4.1 Create `src/reformlab/templates/carbon_tax/compare.py` for comparison utilities
-  - [ ] 4.2 Implement `run_carbon_tax_batch(population, template_names)` function
-  - [ ] 4.3 Implement `compare_decile_impacts(results: dict[str, DecileResults])` function
-  - [ ] 4.4 Support output as dict, DataFrame, and YAML/CSV export
+- [ ] Task 4: Implement template pack loader and batch comparison utilities (AC: #4, #5)
+  - [ ] 4.1 Create `src/reformlab/templates/packs/__init__.py` with pack discovery utilities
+  - [ ] 4.2 Implement `list_carbon_tax_templates()` returning available variant names
+  - [ ] 4.3 Implement `load_carbon_tax_template(variant_name)` returning `BaselineScenario`
+  - [ ] 4.4 Create `src/reformlab/templates/carbon_tax/compare.py` with `run_carbon_tax_batch()` and `compare_decile_impacts()`
+  - [ ] 4.5 Add pack loader to `reformlab.templates` public API
 
-- [ ] Task 5: Write comprehensive tests (AC: all)
-  - [ ] 5.1 Unit tests for tax burden computation with various exemption scenarios
+- [ ] Task 5: Write focused tests for shipped scope (AC: all)
+  - [ ] 5.1 Unit tests for tax burden computation (including exemptions and kg→tonne conversion)
   - [ ] 5.2 Unit tests for redistribution computation (flat and progressive)
-  - [ ] 5.3 Integration tests for template loading and pack discovery
-  - [ ] 5.4 Golden file tests for expected computation outputs
-  - [ ] 5.5 Comparison output format tests
+  - [ ] 5.3 Integration tests for template loading, pack discovery, and batch comparison
+  - [ ] 5.4 Golden-file tests for expected per-household and per-decile outputs
+  - [ ] 5.5 Performance smoke test aligned with NFR5 target on representative input
 
 ## Dev Notes
 
@@ -111,19 +111,8 @@ so that **I can immediately run carbon tax scenario comparisons without writing 
 ```python
 @dataclass(frozen=True)
 class CarbonTaxParameters(PolicyParameters):
-    """Carbon tax specific parameters.
-
-    Includes rate schedule (EUR per tonne CO2), exemptions by category,
-    and covered energy categories.
-    """
-    pass  # Inherits rate_schedule, exemptions, thresholds, covered_categories
-```
-
-**Redistribution parameter structure (from RebateParameters):**
-```python
-@dataclass(frozen=True)
-class RebateParameters(PolicyParameters):
-    rebate_type: str = ""  # "lump_sum" or "progressive_dividend"
+    """Carbon tax parameters extended in this story to include redistribution metadata."""
+    redistribution_type: str = ""  # "", "lump_sum", "progressive_dividend"
     income_weights: dict[str, float] = field(default_factory=dict)
 ```
 
@@ -164,14 +153,14 @@ tests/templates/carbon_tax/
 
 - `pyyaml` - Already in project for YAML loading
 - `numpy` - For vectorized tax/redistribution computation
-- `polars` or `pandas` - For DataFrame output format (check existing data layer usage)
+- `pyarrow` - Existing table/array type used across data + template layers
 - Story 2.1 schema types - `BaselineScenario`, `CarbonTaxParameters`, `load_scenario_template`
 
 ### Cross-Story Dependencies
 
-- **Depends on Story 2.1 / BKL-201 (required):** Schema types and YAML loader ✓ Complete
-- **Depends on Story 1.2 / BKL-102 (required):** Population data structure for energy consumption
-- **Depends on Story 1.3 / BKL-103 (required):** Mapping patterns for emission factor data
+- **Depends on Story 2.1 / BKL-201 (required gate):** Schema types and YAML loader. Current status is `review`; must be `done` before starting Story 2.2 implementation.
+- **Depends on Story 1.4 / BKL-104 (required):** Open-data ingestion and emission factor indexing (`EmissionFactorIndex`) used by this story.
+- **Depends on Story 1.3 / BKL-103 (supporting):** Mapping patterns for external dataset field alignment when categories differ from internal names.
 - **Related downstream stories:**
   - Story 2.3 / BKL-203: Subsidy/rebate/feebate template pack (similar pattern)
   - Story 2.4 / BKL-204: Scenario registry will store these templates
@@ -179,9 +168,9 @@ tests/templates/carbon_tax/
 
 ### Required Population Data Columns
 
-The carbon tax computation requires the following columns in the population data. **CRITICAL:** The current `SYNTHETIC_POPULATION_SCHEMA` in `src/reformlab/data/schemas.py` does NOT include energy consumption columns - this story needs to either:
-1. Extend the schema (recommended - add optional energy consumption columns), OR
-2. Accept energy consumption as a separate input table
+The carbon tax computation requires the following columns in the population data. **CRITICAL:** The current `SYNTHETIC_POPULATION_SCHEMA` in `src/reformlab/data/schemas.py` does NOT include energy consumption columns.
+
+Decision for this story: extend `SYNTHETIC_POPULATION_SCHEMA` with optional energy columns and treat missing values as `0.0` at compute time. Separate energy-input table support is deferred.
 
 **Required columns for carbon tax computation:**
 ```python
@@ -189,13 +178,13 @@ The carbon tax computation requires the following columns in the population data
 "household_id"     # int64, required - unique household identifier
 "income"           # float64, required - household annual income (for decile assignment)
 
-# Energy consumption columns (need to be added or provided separately)
+# Energy consumption columns (to be added as optional)
 "energy_transport_fuel"   # float64 - annual transport fuel consumption (liters or kWh)
 "energy_heating_fuel"     # float64 - annual heating fuel consumption (liters or kWh)
 "energy_natural_gas"      # float64 - annual natural gas consumption (m³ or kWh)
 ```
 
-**Recommended approach:** Add optional energy consumption columns to `SYNTHETIC_POPULATION_SCHEMA` in a separate data-layer sub-task, then consume in this story.
+**Implementation approach for this story:** Treat energy columns as optional in schema, but default missing values to `0.0` during computation to keep template execution deterministic and backward-compatible.
 
 ### Emission Factor Integration
 
@@ -227,14 +216,13 @@ def assign_income_deciles(incomes: pa.Array) -> pa.Array:
 
 **Carbon tax burden formula:**
 ```
-tax_burden_household = Σ (energy_consumption[category] × emission_factor[category] × rate[year])
-                       × (1 - exemption_rate[category])
+tax_burden_household = Σ (energy_consumption[category] × (emission_factor_kg_per_unit[category] / 1000.0) × rate_eur_per_tonne[year] × (1 - exemption_rate[category]))
 ```
 
 Where:
 - `energy_consumption[category]` = household's annual consumption in category units (liters, kWh, m³)
-- `emission_factor[category]` = kg CO2 per unit from `EmissionFactorIndex`
-- `rate[year]` = EUR per tonne CO2 from template `rate_schedule`
+- `emission_factor_kg_per_unit[category]` = kg CO2 per unit from `EmissionFactorIndex`
+- `rate_eur_per_tonne[year]` = EUR per tonne CO2 from template `rate_schedule`
 - `exemption_rate[category]` = from template `exemptions` (0.0 if no exemption)
 
 **Flat dividend formula:**
@@ -306,6 +294,7 @@ class ComparisonResult:
 
 - No orchestrator integration (Story 3.x handles multi-year execution)
 - No scenario registry persistence (Story 2.4)
+- No advanced export/reporting surface (YAML/CSV report packs or notebook UI formatting)
 - No GUI/notebook visualization (Story 6.x)
 - No behavioral responses or elasticity adjustments (Phase 2)
 - Computation is static/mechanical - no equilibrium effects
@@ -341,7 +330,7 @@ class ComparisonResult:
 
 ```yaml
 # carbon-tax-flat-lump-sum-dividend.yaml
-$schema: "../schema/scenario-template.schema.json"
+$schema: "../../schema/scenario-template.schema.json"
 version: "1.0"
 
 name: "Carbon Tax - Flat Rate with Lump-Sum Dividend"
@@ -394,4 +383,3 @@ parameters:
 ### Completion Notes List
 
 ### File List
-
