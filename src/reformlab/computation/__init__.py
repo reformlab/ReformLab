@@ -1,7 +1,12 @@
 from __future__ import annotations
 
 from reformlab.computation.adapter import ComputationAdapter
-from reformlab.computation.exceptions import CompatibilityError
+from reformlab.computation.compat_matrix import (
+    CompatibilityInfo,
+    get_compatibility_info,
+    load_matrix,
+)
+from reformlab.computation.exceptions import ApiMappingError, CompatibilityError
 from reformlab.computation.ingestion import (
     DEFAULT_OPENFISCA_OUTPUT_SCHEMA,
     DataSchema,
@@ -24,6 +29,7 @@ from reformlab.computation.mapping import (
     merge_mappings,
     validate_mapping,
 )
+from reformlab.computation.openfisca_api_adapter import OpenFiscaApiAdapter
 from reformlab.computation.quality import (
     DataQualityError,
     QualityCheckResult,
@@ -39,9 +45,12 @@ from reformlab.computation.types import (
 )
 
 __all__ = [
+    "ApiMappingError",
+    "CompatibilityInfo",
     "ComputationAdapter",
     "ComputationResult",
     "CompatibilityError",
+    "OpenFiscaApiAdapter",
     "DEFAULT_OPENFISCA_OUTPUT_SCHEMA",
     "DataQualityError",
     "DataSchema",
@@ -67,5 +76,7 @@ __all__ = [
     "load_mappings",
     "merge_mappings",
     "validate_mapping",
+    "get_compatibility_info",
+    "load_matrix",
     "validate_output",
 ]

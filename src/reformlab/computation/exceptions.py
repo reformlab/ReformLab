@@ -24,3 +24,38 @@ class CompatibilityError(Exception):
             f"{' ' + details if details else ''}"
         )
         super().__init__(message)
+
+
+class ApiMappingError(Exception):
+    """Raised when entity or variable names cannot be resolved against OpenFisca.
+
+    Follows the project structured error pattern: [summary] - [reason] - [fix].
+
+    Attributes:
+        summary: Short description of the error.
+        reason: Explanation of what went wrong.
+        fix: Actionable guidance to resolve the issue.
+        invalid_names: Names that could not be resolved.
+        valid_names: Names that are accepted.
+        suggestions: Close-match suggestions for each invalid name.
+    """
+
+    def __init__(
+        self,
+        *,
+        summary: str,
+        reason: str,
+        fix: str,
+        invalid_names: tuple[str, ...] = (),
+        valid_names: tuple[str, ...] = (),
+        suggestions: dict[str, list[str]] | None = None,
+    ) -> None:
+        self.summary = summary
+        self.reason = reason
+        self.fix = fix
+        self.invalid_names = invalid_names
+        self.valid_names = valid_names
+        self.suggestions = suggestions or {}
+
+        message = f"{summary} - {reason} - {fix}"
+        super().__init__(message)
