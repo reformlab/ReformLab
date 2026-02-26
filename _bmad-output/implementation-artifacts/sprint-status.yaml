@@ -1,0 +1,114 @@
+# generated: 2026-02-25
+# project: Microsimulation
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-02-25
+project: Microsimulation
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  # EPIC-1: Computation Adapter and Data Layer
+  epic-1: in-progress
+  1-1-define-computationadapter-interface-and-openfiscaadapter-implementation: done
+  1-2-implement-csv-parquet-ingestion: done
+  1-3-build-input-output-mapping-configuration: done
+  1-4-implement-open-data-ingestion-pipeline: done
+  1-5-add-data-quality-checks: review
+  1-6-add-direct-openfisca-api-orchestration-mode: backlog
+  1-7-create-compatibility-matrix: backlog
+  1-8-set-up-project-scaffold: backlog
+  epic-1-retrospective: optional
+
+  # EPIC-2: Scenario Templates and Registry
+  epic-2: backlog
+  2-1-define-scenario-template-schema: backlog
+  2-2-implement-carbon-tax-template-pack: backlog
+  2-3-implement-subsidy-rebate-feebate-template-pack: backlog
+  2-4-build-scenario-registry: backlog
+  2-5-implement-scenario-cloning: backlog
+  2-6-add-schema-migration-helper: backlog
+  2-7-implement-yaml-json-workflow-configuration: backlog
+  epic-2-retrospective: optional
+
+  # EPIC-3: Step-Pluggable Dynamic Orchestrator and Vintage Tracking
+  epic-3: backlog
+  3-1-implement-yearly-loop-orchestrator: backlog
+  3-2-define-orchestrator-step-interface: backlog
+  3-3-implement-carry-forward-step: backlog
+  3-4-implement-vintage-transition-step: backlog
+  3-5-integrate-computationadapter-calls: backlog
+  3-6-log-seed-controls: backlog
+  3-7-produce-scenario-year-panel-output: backlog
+  epic-3-retrospective: optional
+
+  # EPIC-4: Indicators and Scenario Comparison
+  epic-4: backlog
+  4-1-implement-distributional-indicators: backlog
+  4-2-implement-geographic-aggregation-indicators: backlog
+  4-3-implement-welfare-indicators: backlog
+  4-4-implement-fiscal-indicators: backlog
+  4-5-implement-scenario-comparison-tables: backlog
+  4-6-implement-custom-derived-indicator-formulas: backlog
+  epic-4-retrospective: optional
+
+  # EPIC-5: Governance and Reproducibility
+  epic-5: backlog
+  5-1-define-immutable-run-manifest-schema: backlog
+  5-2-capture-assumptions-mappings-parameters: backlog
+  5-3-implement-run-lineage-graph: backlog
+  5-4-hash-input-output-artifacts: backlog
+  5-5-add-reproducibility-check-harness: backlog
+  5-6-add-warning-system-for-unvalidated-templates: backlog
+  epic-5-retrospective: optional
+
+  # EPIC-6: Interfaces (Python API, Notebooks, Early No-Code GUI)
+  epic-6: backlog
+  6-1-implement-stable-python-api: backlog
+  6-2-build-quickstart-notebook: backlog
+  6-3-build-advanced-notebook: backlog
+  6-4-implement-early-no-code-gui: backlog
+  6-5-add-export-actions: backlog
+  6-6-improve-operational-error-ux: backlog
+  epic-6-retrospective: optional
+
+  # EPIC-7: Trusted Outputs and External Pilot Validation
+  epic-7: backlog
+  7-1-verify-simulation-outputs-against-benchmarks: backlog
+  7-2-warn-before-exceeding-memory-limits: backlog
+  7-3-enforce-ci-quality-gates: backlog
+  7-4-external-pilot-run-carbon-tax-workflow: backlog
+  7-5-define-phase-1-exit-checklist: backlog
+  epic-7-retrospective: optional
