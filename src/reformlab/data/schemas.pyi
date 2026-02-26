@@ -1,0 +1,4 @@
+from reformlab.computation.ingestion import DataSchema
+
+SYNTHETIC_POPULATION_SCHEMA: DataSchema
+EMISSION_FACTOR_SCHEMA: DataSchema
