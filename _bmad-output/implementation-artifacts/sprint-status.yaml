@@ -48,7 +48,7 @@ development_status:
   1-4-implement-open-data-ingestion-pipeline: done
   1-5-add-data-quality-checks: done
   1-6-add-direct-openfisca-api-orchestration-mode: done
-  1-7-create-compatibility-matrix: review
+  1-7-create-compatibility-matrix: done
   1-8-set-up-project-scaffold: backlog
   epic-1-retrospective: optional
 

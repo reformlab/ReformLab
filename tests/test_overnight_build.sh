@@ -354,7 +354,17 @@ fi
 echo "mock-python: $*"
 '
 
-  run_script_live 1
+  # Verify the mock is on PATH.
+  local mock_path
+  mock_path="$(which python)"
+  echo "  [debug] python mock at: ${mock_path}"
+
+  # Run directly, capturing exit code explicitly.
+  local rc=0
+  RUN_OUTPUT="$(cd "$WORK_DIR" && bash ./overnight-build.sh 1 2>&1)" || rc=$?
+  RUN_EXIT_CODE=$rc
+  echo "  [debug] exit code: ${rc}"
+  echo "  [debug] output tail: $(echo "$RUN_OUTPUT" | tail -5)"
 
   assert_exit_code "exits 1 when tests fail" "1" "$RUN_EXIT_CODE"
   assert_contains "reports test gate failure" "FAILED the test gate" "$RUN_OUTPUT"

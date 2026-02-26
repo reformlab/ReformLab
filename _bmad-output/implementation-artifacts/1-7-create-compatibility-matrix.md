@@ -166,7 +166,7 @@ Claude Opus 4.6
 - Added explicit backward-compatibility requirement for `openfisca_adapter` compatibility symbol imports.
 - Added verified latest-version metadata timestamped to 2026-02-26.
 - Implementation: YAML matrix is single source of truth; `openfisca_common.py` no longer hardcodes version list.
-- All 9 acceptance criteria satisfied. Quality gates: ruff clean, mypy clean (17 files), 205 tests pass (170 baseline + 35 new).
+- All 9 acceptance criteria satisfied. Quality gates: ruff clean, mypy clean (17 files), 207 tests pass (170 baseline + 37 new).
 - `openfisca_adapter.py` re-exports (`SUPPORTED_VERSIONS`, `MIN_SUPPORTED`, `COMPAT_MATRIX_URL`, `_check_version`, `_detect_openfisca_version`) preserved — no downstream breakage.
 - `COMPAT_MATRIX_URL` now points to project-owned docs URL instead of upstream OpenFisca changelog.
 - Untested versions (44.0.3, 44.0.4) included in matrix; unlisted versions >= min_supported return "untested" from query API but are rejected by strict runtime `_check_version()`.
@@ -206,5 +206,5 @@ The following additional changed files were present in the working tree during c
 
 ## Change Log
 
-- 2026-02-26: Implemented compatibility matrix (Story 1-7). Created YAML matrix as single source of truth for supported OpenFisca versions. Added `compat_matrix.py` with `CompatibilityInfo` dataclass and query API. Refactored `openfisca_common.py` to derive version policy from matrix. Added 35 new tests (25 matrix + 10 version). All quality gates pass (ruff, mypy, 205 pytest).
+- 2026-02-26: Implemented compatibility matrix (Story 1-7). Created YAML matrix as single source of truth for supported OpenFisca versions. Added `compat_matrix.py` with `CompatibilityInfo` dataclass and query API. Refactored `openfisca_common.py` to derive version policy from matrix. Added 35 new tests (25 matrix + 10 version). All quality gates pass (ruff, mypy, pytest).
 - 2026-02-26: Senior code-review fixes applied. Updated `COMPAT_MATRIX_URL` to `docs/compatibility.md`, added `docs/compatibility.md`, made `matrix_url` a required non-empty key in loader validation, and strengthened malformed-matrix/project-owned URL regression tests. Re-ran quality gates: ruff clean, mypy clean, pytest `207 passed`.
