@@ -1,0 +1,44 @@
+$schema: "../../schema/scenario-template.schema.json"
+version: "1.0"
+
+name: "Rebate - Progressive Income Dividend"
+description: "Progressive rebate distributed based on income decile weights. Lower-income households receive higher rebates than higher-income households. Designed for redistributing environmental policy revenues."
+policy_type: rebate
+
+year_schedule:
+  start_year: 2026
+  end_year: 2036
+
+parameters:
+  # Base rebate pool per capita (EUR) - actual distribution weighted by income
+  # This represents the per-capita amount before weighting
+  rate_schedule:
+    2026: 100.0
+    2027: 110.0
+    2028: 120.0
+    2029: 130.0
+    2030: 140.0
+    2031: 150.0
+    2032: 160.0
+    2033: 170.0
+    2034: 180.0
+    2035: 190.0
+    2036: 200.0
+
+  # Distribution method: "lump_sum" or "progressive_dividend"
+  rebate_type: "progressive_dividend"
+
+  # Weights by income decile (decile_1 = lowest income, decile_10 = highest)
+  # Higher weights mean larger rebate shares
+  # Sum of weights determines relative distribution
+  income_weights:
+    decile_1: 2.0    # Lowest income - gets 2x base share
+    decile_2: 1.8
+    decile_3: 1.5
+    decile_4: 1.3
+    decile_5: 1.1
+    decile_6: 0.9
+    decile_7: 0.7
+    decile_8: 0.5
+    decile_9: 0.3
+    decile_10: 0.2   # Highest income - gets 0.2x base share

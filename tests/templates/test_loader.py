@@ -386,3 +386,264 @@ class TestCarbonTaxRedistributionLoading:
         assert isinstance(loaded.parameters, CarbonTaxParameters)
         assert loaded.parameters.redistribution_type == "progressive_dividend"
         assert loaded.parameters.income_weights == {"decile_1": 1.5, "decile_10": 0.2}
+
+
+class TestSubsidyParameterLoading:
+    """Tests for loading subsidy templates (Story 2.3)."""
+
+    def test_load_subsidy_with_eligible_categories_and_income_caps(
+        self, tmp_path: Path
+    ) -> None:
+        """Subsidy template with eligible_categories and income_caps loads correctly."""
+        from reformlab.templates.schema import SubsidyParameters
+
+        content = textwrap.dedent("""\
+            $schema: "./schema/scenario-template.schema.json"
+            version: "1.0"
+            name: "Energy Retrofit Subsidy"
+            policy_type: subsidy
+            year_schedule:
+              start_year: 2026
+              end_year: 2036
+            parameters:
+              rate_schedule:
+                2026: 5000.0
+                2027: 4500.0
+                2028: 4000.0
+                2029: 3500.0
+                2030: 3000.0
+                2031: 2500.0
+                2032: 2000.0
+                2033: 1500.0
+                2034: 1000.0
+                2035: 500.0
+                2036: 250.0
+              eligible_categories:
+                - owner_occupier
+                - low_efficiency_home
+              income_caps:
+                2026: 45000.0
+                2027: 42000.0
+                2028: 40000.0
+                2029: 38000.0
+                2030: 36000.0
+                2031: 35000.0
+                2032: 34000.0
+                2033: 33000.0
+                2034: 32000.0
+                2035: 31000.0
+                2036: 30000.0
+        """)
+        p = tmp_path / "subsidy-retrofit.yaml"
+        p.write_text(content, encoding="utf-8")
+
+        scenario = load_scenario_template(p)
+        assert isinstance(scenario, BaselineScenario)
+        assert isinstance(scenario.parameters, SubsidyParameters)
+        assert scenario.parameters.eligible_categories == ("owner_occupier", "low_efficiency_home")
+        assert scenario.parameters.income_caps[2026] == 45000.0
+        assert scenario.parameters.income_caps[2027] == 42000.0
+        assert scenario.parameters.rate_schedule[2026] == 5000.0
+
+    def test_load_subsidy_minimal(self, tmp_path: Path) -> None:
+        """Subsidy template with minimal fields loads with defaults."""
+        from reformlab.templates.schema import SubsidyParameters
+
+        content = textwrap.dedent("""\
+            $schema: "./schema/scenario-template.schema.json"
+            version: "1.0"
+            name: "Minimal Subsidy"
+            policy_type: subsidy
+            year_schedule:
+              start_year: 2026
+              end_year: 2036
+            parameters:
+              rate_schedule:
+                2026: 1000.0
+                2027: 1000.0
+                2028: 1000.0
+                2029: 1000.0
+                2030: 1000.0
+                2031: 1000.0
+                2032: 1000.0
+                2033: 1000.0
+                2034: 1000.0
+                2035: 1000.0
+                2036: 1000.0
+        """)
+        p = tmp_path / "subsidy-minimal.yaml"
+        p.write_text(content, encoding="utf-8")
+
+        scenario = load_scenario_template(p)
+        assert isinstance(scenario.parameters, SubsidyParameters)
+        assert scenario.parameters.eligible_categories == ()
+        assert scenario.parameters.income_caps == {}
+
+
+class TestRebateParameterLoading:
+    """Tests for loading rebate templates (Story 2.3)."""
+
+    def test_load_rebate_with_lump_sum(self, tmp_path: Path) -> None:
+        """Rebate template with lump_sum type loads correctly."""
+        from reformlab.templates.schema import RebateParameters
+
+        content = textwrap.dedent("""\
+            $schema: "./schema/scenario-template.schema.json"
+            version: "1.0"
+            name: "Lump Sum Rebate"
+            policy_type: rebate
+            year_schedule:
+              start_year: 2026
+              end_year: 2036
+            parameters:
+              rate_schedule:
+                2026: 100.0
+                2027: 100.0
+                2028: 100.0
+                2029: 100.0
+                2030: 100.0
+                2031: 100.0
+                2032: 100.0
+                2033: 100.0
+                2034: 100.0
+                2035: 100.0
+                2036: 100.0
+              rebate_type: lump_sum
+        """)
+        p = tmp_path / "rebate-lump-sum.yaml"
+        p.write_text(content, encoding="utf-8")
+
+        scenario = load_scenario_template(p)
+        assert isinstance(scenario, BaselineScenario)
+        assert isinstance(scenario.parameters, RebateParameters)
+        assert scenario.parameters.rebate_type == "lump_sum"
+        assert scenario.parameters.income_weights == {}
+
+    def test_load_rebate_with_progressive_dividend(self, tmp_path: Path) -> None:
+        """Rebate template with progressive_dividend type and weights loads correctly."""
+        from reformlab.templates.schema import RebateParameters
+
+        content = textwrap.dedent("""\
+            $schema: "./schema/scenario-template.schema.json"
+            version: "1.0"
+            name: "Progressive Rebate"
+            policy_type: rebate
+            year_schedule:
+              start_year: 2026
+              end_year: 2036
+            parameters:
+              rate_schedule:
+                2026: 100.0
+                2027: 110.0
+                2028: 120.0
+                2029: 130.0
+                2030: 140.0
+                2031: 150.0
+                2032: 160.0
+                2033: 170.0
+                2034: 180.0
+                2035: 190.0
+                2036: 200.0
+              rebate_type: progressive_dividend
+              income_weights:
+                decile_1: 2.0
+                decile_2: 1.8
+                decile_3: 1.5
+                decile_4: 1.3
+                decile_5: 1.1
+                decile_6: 0.9
+                decile_7: 0.7
+                decile_8: 0.5
+                decile_9: 0.3
+                decile_10: 0.2
+        """)
+        p = tmp_path / "rebate-progressive.yaml"
+        p.write_text(content, encoding="utf-8")
+
+        scenario = load_scenario_template(p)
+        assert isinstance(scenario.parameters, RebateParameters)
+        assert scenario.parameters.rebate_type == "progressive_dividend"
+        assert scenario.parameters.income_weights["decile_1"] == 2.0
+        assert scenario.parameters.income_weights["decile_10"] == 0.2
+
+
+class TestFeebateParameterLoading:
+    """Tests for loading feebate templates (Story 2.3)."""
+
+    def test_load_feebate_with_pivot_and_rates(self, tmp_path: Path) -> None:
+        """Feebate template with pivot_point, fee_rate, rebate_rate loads correctly."""
+        from reformlab.templates.schema import FeebateParameters
+
+        content = textwrap.dedent("""\
+            $schema: "./schema/scenario-template.schema.json"
+            version: "1.0"
+            name: "Vehicle Emissions Feebate"
+            policy_type: feebate
+            year_schedule:
+              start_year: 2026
+              end_year: 2036
+            parameters:
+              pivot_point: 120.0
+              fee_rate: 50.0
+              rebate_rate: 50.0
+              covered_categories:
+                - passenger_vehicle
+        """)
+        p = tmp_path / "feebate-vehicle.yaml"
+        p.write_text(content, encoding="utf-8")
+
+        scenario = load_scenario_template(p)
+        assert isinstance(scenario, BaselineScenario)
+        assert isinstance(scenario.parameters, FeebateParameters)
+        assert scenario.parameters.pivot_point == 120.0
+        assert scenario.parameters.fee_rate == 50.0
+        assert scenario.parameters.rebate_rate == 50.0
+        assert scenario.parameters.covered_categories == ("passenger_vehicle",)
+
+    def test_load_feebate_minimal(self, tmp_path: Path) -> None:
+        """Feebate template with minimal fields loads with defaults."""
+        from reformlab.templates.schema import FeebateParameters
+
+        content = textwrap.dedent("""\
+            $schema: "./schema/scenario-template.schema.json"
+            version: "1.0"
+            name: "Minimal Feebate"
+            policy_type: feebate
+            year_schedule:
+              start_year: 2026
+              end_year: 2036
+            parameters: {}
+        """)
+        p = tmp_path / "feebate-minimal.yaml"
+        p.write_text(content, encoding="utf-8")
+
+        scenario = load_scenario_template(p)
+        assert isinstance(scenario.parameters, FeebateParameters)
+        assert scenario.parameters.pivot_point == 0.0
+        assert scenario.parameters.fee_rate == 0.0
+        assert scenario.parameters.rebate_rate == 0.0
+
+    def test_load_feebate_asymmetric_rates(self, tmp_path: Path) -> None:
+        """Feebate template with different fee and rebate rates loads correctly."""
+        from reformlab.templates.schema import FeebateParameters
+
+        content = textwrap.dedent("""\
+            $schema: "./schema/scenario-template.schema.json"
+            version: "1.0"
+            name: "Asymmetric Feebate"
+            policy_type: feebate
+            year_schedule:
+              start_year: 2026
+              end_year: 2036
+            parameters:
+              pivot_point: 100.0
+              fee_rate: 75.0
+              rebate_rate: 25.0
+        """)
+        p = tmp_path / "feebate-asymmetric.yaml"
+        p.write_text(content, encoding="utf-8")
+
+        scenario = load_scenario_template(p)
+        assert isinstance(scenario.parameters, FeebateParameters)
+        assert scenario.parameters.fee_rate == 75.0
+        assert scenario.parameters.rebate_rate == 25.0

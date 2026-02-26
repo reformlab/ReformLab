@@ -1,6 +1,6 @@
 # Story 2.3: Implement Subsidy/Rebate/Feebate Template Pack
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -46,67 +46,67 @@ Scope note: BKL-203 baseline is template packs + execution utilities needed for 
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Confirm schema and loader compatibility for subsidy/rebate/feebate (AC: #1, #2, #3, #4)
-  - [ ] 0.1 Review existing `SubsidyParameters`, `RebateParameters`, `FeebateParameters` in `src/reformlab/templates/schema.py`
-  - [ ] 0.2 Verify required fields are used as currently defined (no schema expansion in BKL-203): subsidy `eligible_categories` + `income_caps`; rebate `rebate_type` + `income_weights`; feebate `pivot_point` + `fee_rate` + `rebate_rate`
-  - [ ] 0.3 Update loader parsing in `_parse_parameters()` only if compatibility fixes are required for existing fields
-  - [ ] 0.4 Add/extend schema validation tests for valid and invalid values of the existing fields
+- [x] Task 0: Confirm schema and loader compatibility for subsidy/rebate/feebate (AC: #1, #2, #3, #4)
+  - [x] 0.1 Review existing `SubsidyParameters`, `RebateParameters`, `FeebateParameters` in `src/reformlab/templates/schema.py`
+  - [x] 0.2 Verify required fields are used as currently defined (no schema expansion in BKL-203): subsidy `eligible_categories` + `income_caps`; rebate `rebate_type` + `income_weights`; feebate `pivot_point` + `fee_rate` + `rebate_rate`
+  - [x] 0.3 Update loader parsing in `_parse_parameters()` only if compatibility fixes are required for existing fields
+  - [x] 0.4 Add/extend schema validation tests for valid and invalid values of the existing fields
 
-- [ ] Task 1: Create subsidy computation module (AC: #2, #5)
-  - [ ] 1.1 Create `src/reformlab/templates/subsidy/__init__.py`
-  - [ ] 1.2 Create `src/reformlab/templates/subsidy/compute.py` with:
+- [x] Task 1: Create subsidy computation module (AC: #2, #5)
+  - [x] 1.1 Create `src/reformlab/templates/subsidy/__init__.py`
+  - [x] 1.2 Create `src/reformlab/templates/subsidy/compute.py` with:
     - `SubsidyResult` dataclass (household_ids, subsidy_amount, is_eligible, income_decile, total_cost, year, template_name)
     - `compute_subsidy_eligibility(population, parameters)` → eligibility mask
     - `compute_subsidy_amount(population, parameters, eligibility_mask)` → per-household amounts
     - `compute_subsidy(population, parameters, year, template_name)` → `SubsidyResult`
-  - [ ] 1.3 Implement income cap filtering (household income <= cap for run year)
-  - [ ] 1.4 Implement category eligibility (household has eligible characteristic)
-  - [ ] 1.5 Create `aggregate_subsidy_by_decile(result)` → `DecileResults`
+  - [x] 1.3 Implement income cap filtering (household income <= cap for run year)
+  - [x] 1.4 Implement category eligibility (household has eligible characteristic)
+  - [x] 1.5 Create `aggregate_subsidy_by_decile(result)` → `DecileResults`
 
-- [ ] Task 2: Create rebate computation module (AC: #3, #5)
-  - [ ] 2.1 Create `src/reformlab/templates/rebate/__init__.py`
-  - [ ] 2.2 Create `src/reformlab/templates/rebate/compute.py` with:
+- [x] Task 2: Create rebate computation module (AC: #3, #5)
+  - [x] 2.1 Create `src/reformlab/templates/rebate/__init__.py`
+  - [x] 2.2 Create `src/reformlab/templates/rebate/compute.py` with:
     - `RebateResult` dataclass (household_ids, rebate_amount, income_decile, total_distributed, year, template_name)
     - `compute_rebate(population, parameters, rebate_pool, year, template_name)` → `RebateResult`
-  - [ ] 2.3 Implement lump_sum rebate: `rebate_pool / num_households`
-  - [ ] 2.4 Implement progressive_dividend rebate using income_weights (reuse pattern from carbon_tax)
-  - [ ] 2.5 Create `aggregate_rebate_by_decile(result)` → `DecileResults`
+  - [x] 2.3 Implement lump_sum rebate: `rebate_pool / num_households`
+  - [x] 2.4 Implement progressive_dividend rebate using income_weights (reuse pattern from carbon_tax)
+  - [x] 2.5 Create `aggregate_rebate_by_decile(result)` → `DecileResults`
 
-- [ ] Task 3: Create feebate computation module (AC: #4, #5)
-  - [ ] 3.1 Create `src/reformlab/templates/feebate/__init__.py`
-  - [ ] 3.2 Create `src/reformlab/templates/feebate/compute.py` with:
+- [x] Task 3: Create feebate computation module (AC: #4, #5)
+  - [x] 3.1 Create `src/reformlab/templates/feebate/__init__.py`
+  - [x] 3.2 Create `src/reformlab/templates/feebate/compute.py` with:
     - `FeebateResult` dataclass (household_ids, fee_amount, rebate_amount, net_impact, metric_value, income_decile, total_fees, total_rebates, net_fiscal_balance, year, template_name)
     - `compute_feebate(population, parameters, metric_column, year, template_name)` → `FeebateResult`
-  - [ ] 3.3 Implement pivot logic: if metric > pivot_point → fee; if metric < pivot_point → rebate
-  - [ ] 3.4 Implement fee/rebate calculation: `(metric_value - pivot_point) * fee_rate` or `(pivot_point - metric_value) * rebate_rate`
-  - [ ] 3.5 Create `aggregate_feebate_by_decile(result)` → `DecileResults`
+  - [x] 3.3 Implement pivot logic: if metric > pivot_point → fee; if metric < pivot_point → rebate
+  - [x] 3.4 Implement fee/rebate calculation: `(metric_value - pivot_point) * fee_rate` or `(pivot_point - metric_value) * rebate_rate`
+  - [x] 3.5 Create `aggregate_feebate_by_decile(result)` → `DecileResults`
 
-- [ ] Task 4: Create template YAML files (AC: #1, #6)
-  - [ ] 4.1 Create `src/reformlab/templates/packs/subsidy/` directory
-  - [ ] 4.2 Create `subsidy-energy-retrofit.yaml` (home energy efficiency subsidy)
-  - [ ] 4.3 Create `src/reformlab/templates/packs/rebate/` directory
-  - [ ] 4.4 Create `rebate-progressive-income.yaml` (progressive dividend rebate)
-  - [ ] 4.5 Create `src/reformlab/templates/packs/feebate/` directory
-  - [ ] 4.6 Create `feebate-vehicle-emissions.yaml` (vehicle emissions pivot)
-  - [ ] 4.7 Create README.md for each pack documenting templates and assumptions
+- [x] Task 4: Create template YAML files (AC: #1, #6)
+  - [x] 4.1 Create `src/reformlab/templates/packs/subsidy/` directory
+  - [x] 4.2 Create `subsidy-energy-retrofit.yaml` (home energy efficiency subsidy)
+  - [x] 4.3 Create `src/reformlab/templates/packs/rebate/` directory
+  - [x] 4.4 Create `rebate-progressive-income.yaml` (progressive dividend rebate)
+  - [x] 4.5 Create `src/reformlab/templates/packs/feebate/` directory
+  - [x] 4.6 Create `feebate-vehicle-emissions.yaml` (vehicle emissions pivot)
+  - [x] 4.7 Create README.md for each pack documenting templates and assumptions
 
-- [ ] Task 5: Implement template pack loader and comparison utilities (AC: #5, #6)
-  - [ ] 5.1 Add `list_subsidy_templates()`, `load_subsidy_template(name)` to `packs/__init__.py`
-  - [ ] 5.2 Add `list_rebate_templates()`, `load_rebate_template(name)` to `packs/__init__.py`
-  - [ ] 5.3 Add `list_feebate_templates()`, `load_feebate_template(name)` to `packs/__init__.py`
-  - [ ] 5.4 Create comparison utilities in each module's `compare.py`:
+- [x] Task 5: Implement template pack loader and comparison utilities (AC: #5, #6)
+  - [x] 5.1 Add `list_subsidy_templates()`, `load_subsidy_template(name)` to `packs/__init__.py`
+  - [x] 5.2 Add `list_rebate_templates()`, `load_rebate_template(name)` to `packs/__init__.py`
+  - [x] 5.3 Add `list_feebate_templates()`, `load_feebate_template(name)` to `packs/__init__.py`
+  - [x] 5.4 Create comparison utilities in each module's `compare.py`:
     - `subsidy/compare.py` with `run_subsidy_batch()`, `compare_subsidy_decile_impacts()`
     - `rebate/compare.py` with `run_rebate_batch()`, `compare_rebate_decile_impacts()`
     - `feebate/compare.py` with `run_feebate_batch()`, `compare_feebate_decile_impacts()`
-  - [ ] 5.5 Export public API from `reformlab.templates` module
+  - [x] 5.5 Export public API from `reformlab.templates` module
 
-- [ ] Task 6: Write focused tests (AC: all)
-  - [ ] 6.1 Unit tests for subsidy eligibility and computation
-  - [ ] 6.2 Unit tests for rebate computation (lump_sum and progressive)
-  - [ ] 6.3 Unit tests for feebate pivot logic and fee/rebate calculation
-  - [ ] 6.4 Integration tests for template loading and pack discovery
-  - [ ] 6.5 Integration tests for batch comparison across policy types
-  - [ ] 6.6 Golden-file tests for expected per-household and per-decile outputs
+- [x] Task 6: Write focused tests (AC: all)
+  - [x] 6.1 Unit tests for subsidy eligibility and computation
+  - [x] 6.2 Unit tests for rebate computation (lump_sum and progressive)
+  - [x] 6.3 Unit tests for feebate pivot logic and fee/rebate calculation
+  - [x] 6.4 Integration tests for template loading and pack discovery
+  - [x] 6.5 Integration tests for batch comparison across policy types
+  - [x] 6.6 Golden-file tests for expected per-household and per-decile outputs
 
 ## Dev Notes
 
@@ -449,10 +449,63 @@ From existing test patterns:
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.5 (claude-opus-4-5-20251101)
 
 ### Debug Log References
 
+None
+
 ### Completion Notes List
 
+- All 6 tasks completed successfully following the carbon_tax implementation pattern
+- Created subsidy, rebate, and feebate computation modules with consistent API design
+- Each module includes: compute.py (core computation), compare.py (batch execution and comparison), __init__.py (public API)
+- Template YAML files created with 10+ year schedules (2026-2036)
+- Pack loaders added to packs/__init__.py with list_*_templates() and load_*_template() functions
+- Full test coverage: 88 new tests added, 453 total tests passing
+- Fixed FeebateParameters fixture issue: rate_schedule field was missing in test fixtures (inherited from PolicyParameters)
+- Reused assign_income_deciles() from carbon_tax module for consistency across all policy types
+- All acceptance criteria verified through tests
+
 ### File List
+
+**New Files Created:**
+- `src/reformlab/templates/subsidy/__init__.py` - Subsidy module public API
+- `src/reformlab/templates/subsidy/compute.py` - SubsidyResult, compute_subsidy, eligibility logic
+- `src/reformlab/templates/subsidy/compare.py` - Batch execution and comparison utilities
+- `src/reformlab/templates/rebate/__init__.py` - Rebate module public API
+- `src/reformlab/templates/rebate/compute.py` - RebateResult, lump_sum and progressive rebate computation
+- `src/reformlab/templates/rebate/compare.py` - Batch execution and comparison utilities
+- `src/reformlab/templates/feebate/__init__.py` - Feebate module public API
+- `src/reformlab/templates/feebate/compute.py` - FeebateResult, pivot-based fee/rebate computation
+- `src/reformlab/templates/feebate/compare.py` - Batch execution and comparison utilities
+- `src/reformlab/templates/packs/subsidy/subsidy-energy-retrofit.yaml` - Energy retrofit subsidy template
+- `src/reformlab/templates/packs/subsidy/README.md` - Subsidy pack documentation
+- `src/reformlab/templates/packs/rebate/rebate-progressive-income.yaml` - Progressive income rebate template
+- `src/reformlab/templates/packs/rebate/README.md` - Rebate pack documentation
+- `src/reformlab/templates/packs/feebate/feebate-vehicle-emissions.yaml` - Vehicle emissions feebate template
+- `src/reformlab/templates/packs/feebate/README.md` - Feebate pack documentation
+- `tests/templates/subsidy/__init__.py` - Test package init
+- `tests/templates/subsidy/conftest.py` - Subsidy test fixtures
+- `tests/templates/subsidy/test_compute.py` - Subsidy computation tests
+- `tests/templates/subsidy/test_compare.py` - Subsidy comparison tests
+- `tests/templates/rebate/__init__.py` - Test package init
+- `tests/templates/rebate/conftest.py` - Rebate test fixtures
+- `tests/templates/rebate/test_compute.py` - Rebate computation tests
+- `tests/templates/rebate/test_compare.py` - Rebate comparison tests
+- `tests/templates/feebate/__init__.py` - Test package init
+- `tests/templates/feebate/conftest.py` - Feebate test fixtures
+- `tests/templates/feebate/test_compute.py` - Feebate computation tests
+- `tests/templates/feebate/test_compare.py` - Feebate comparison tests
+- `tests/templates/test_pack_loaders_new.py` - Integration tests for all pack loaders
+
+**Modified Files:**
+- `src/reformlab/templates/packs/__init__.py` - Added list/load functions for subsidy, rebate, feebate packs
+- `src/reformlab/templates/__init__.py` - Exported new pack loader functions
+- `tests/templates/test_loader.py` - Added validation tests for subsidy/rebate/feebate parameter loading
+
+## Change Log
+
+| Date | Change | Author |
+|------|--------|--------|
+| 2026-02-26 | Implementation complete - all 6 tasks done, 88 tests added, ready for review | Claude Opus 4.5 |

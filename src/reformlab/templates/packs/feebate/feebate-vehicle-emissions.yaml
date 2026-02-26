@@ -1,0 +1,42 @@
+$schema: "../../schema/scenario-template.schema.json"
+version: "1.0"
+
+name: "Feebate - Vehicle Emissions"
+description: "Vehicle emissions-based feebate with pivot at average emissions. Households with high-emission vehicles pay fees; households with low-emission vehicles receive rebates. Symmetric rates create revenue-neutral design at population average."
+policy_type: feebate
+
+year_schedule:
+  start_year: 2026
+  end_year: 2036
+
+parameters:
+  # Rate schedule not directly used for feebate computation
+  # but maintained for schema compatibility
+  rate_schedule:
+    2026: 0.0
+    2027: 0.0
+    2028: 0.0
+    2029: 0.0
+    2030: 0.0
+    2031: 0.0
+    2032: 0.0
+    2033: 0.0
+    2034: 0.0
+    2035: 0.0
+    2036: 0.0
+
+  # Pivot point: average vehicle emissions in g CO2/km
+  # Based on EU average for new passenger cars ~120 g/km
+  pivot_point: 120.0
+
+  # Fee rate: EUR per g/km above pivot
+  # Vehicle at 160 g/km pays (160-120) * 50 = 2000 EUR
+  fee_rate: 50.0
+
+  # Rebate rate: EUR per g/km below pivot
+  # Vehicle at 80 g/km receives (120-80) * 50 = 2000 EUR
+  rebate_rate: 50.0
+
+  # Covered vehicle categories
+  covered_categories:
+    - "passenger_vehicle"

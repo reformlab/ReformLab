@@ -1,0 +1,47 @@
+$schema: "../../schema/scenario-template.schema.json"
+version: "1.0"
+
+name: "Subsidy - Home Energy Retrofit"
+description: "Targeted subsidy for home energy efficiency improvements (insulation, heating systems, windows). Eligibility based on income caps and housing characteristics. Subsidy amount declines over time as adoption increases."
+policy_type: subsidy
+
+year_schedule:
+  start_year: 2026
+  end_year: 2036
+
+parameters:
+  # Flat subsidy amount per eligible household (EUR)
+  # Declining schedule reflects expected market maturation
+  rate_schedule:
+    2026: 5000.0
+    2027: 4500.0
+    2028: 4000.0
+    2029: 3500.0
+    2030: 3000.0
+    2031: 2500.0
+    2032: 2000.0
+    2033: 1500.0
+    2034: 1000.0
+    2035: 500.0
+    2036: 250.0
+
+  # Household must match at least one eligible category
+  # Categories represent housing characteristics in population data
+  eligible_categories:
+    - "owner_occupier"          # Must own their home
+    - "low_efficiency_home"     # Energy performance rating below threshold
+
+  # Maximum annual household income for subsidy eligibility (EUR)
+  # Income caps decline over time to target lower-income households
+  income_caps:
+    2026: 45000.0
+    2027: 42000.0
+    2028: 40000.0
+    2029: 38000.0
+    2030: 36000.0
+    2031: 35000.0
+    2032: 34000.0
+    2033: 33000.0
+    2034: 32000.0
+    2035: 31000.0
+    2036: 30000.0
