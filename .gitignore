@@ -36,6 +36,8 @@ yarn-error.log*
 _bmad/_memory/*.yaml
 !_bmad/_memory/config.yaml
 
+overnight-build.sh
+
 # === Testing ===
 coverage/
 .coverage
