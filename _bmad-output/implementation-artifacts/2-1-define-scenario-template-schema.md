@@ -10,27 +10,29 @@ so that **I can configure carbon tax, subsidy, rebate, and feebate scenarios usi
 
 ## Acceptance Criteria
 
-1. **AC1: Schema defines baseline scenario structure**
+Scope note: AC-1 through AC-3 are the required BKL-201 baseline. AC-4 and AC-5 are still in-scope for this story but must be implemented as schema/validation artifacts only (no registry persistence, cloning workflows, or orchestrator execution wiring).
+
+1. **AC-1: Schema defines baseline scenario structure**
    - Given a YAML template definition with baseline parameters, when loaded, then the schema validates required fields (policy type, year schedule, parameter values).
    - Schema supports policy types: `carbon_tax`, `subsidy`, `rebate`, `feebate`.
    - Year schedule supports at least 10 years of policy parameters.
 
-2. **AC2: Schema supports reform-as-delta pattern**
+2. **AC-2: Schema supports reform-as-delta pattern**
    - Given a reform defined as parameter overrides to a baseline, when loaded, then only the overridden fields differ from baseline defaults.
    - Reforms inherit all unspecified parameters from their linked baseline.
-   - Reform-to-baseline linkage is explicit and validated.
+   - Reform-to-baseline linkage (`baseline_ref`) is explicit and structurally validated at load time.
 
-3. **AC3: Schema validation produces actionable errors**
+3. **AC-3: Schema validation produces actionable errors**
    - Given a template with a year schedule shorter than 10 years, when validated, then a warning is emitted (error if enforcement mode is strict).
    - Given an invalid field type or missing required field, when validated, then the error message identifies the exact line/field and suggests corrections.
    - Given an unknown policy type, when loaded, then the error lists valid policy types.
 
-4. **AC4: Schema is documented and machine-readable**
-   - JSON Schema file is generated for the YAML template format.
+4. **AC-4: Schema is documented and machine-readable**
+   - JSON Schema file is provided in-repo for the YAML template format.
    - Schema includes descriptions for all fields for IDE autocompletion and validation.
    - Schema version is embedded in every template file header.
 
-5. **AC5: Python dataclasses mirror the schema**
+5. **AC-5: Python dataclasses mirror the schema**
    - Frozen dataclasses represent `ScenarioTemplate`, `BaselineScenario`, `ReformScenario`, `YearSchedule`, `PolicyParameters`.
    - YAML loading produces typed Python objects, not raw dicts.
    - Round-trip (load → save → load) preserves all data without loss.
@@ -50,15 +52,16 @@ so that **I can configure carbon tax, subsidy, rebate, and feebate scenarios usi
   - [ ] 2.3 Add required field validation with actionable error messages
   - [ ] 2.4 Add type coercion from YAML strings to Python types
   - [ ] 2.5 Add year schedule length validation (warning < 10 years, error in strict mode)
+  - [ ] 2.6 Create `dump_scenario_template()` serializer to support round-trip stability required by AC-5
 
 - [ ] Task 3: Implement reform-as-delta mechanics (AC: #2)
   - [ ] 3.1 Add `baseline_ref` field to `ReformScenario` for baseline linkage
   - [ ] 3.2 Implement parameter inheritance: reform inherits all unspecified values from baseline
-  - [ ] 3.3 Add validation that baseline_ref points to a valid baseline scenario
-  - [ ] 3.4 Create `resolve_reform()` function that merges baseline + reform overrides
+  - [ ] 3.3 Add structural validation for `baseline_ref` format/presence during load (existence in registry is handled in Story 2.5)
+  - [ ] 3.4 Create `resolve_reform_definition()` function for schema-level merge of baseline + reform overrides (no persistence or bidirectional linking)
 
-- [ ] Task 4: Generate JSON Schema for YAML validation (AC: #4)
-  - [ ] 4.1 Create JSON Schema file at `src/reformlab/templates/schema/scenario-template.schema.json`
+- [ ] Task 4: Provide JSON Schema for YAML validation (AC: #4)
+  - [ ] 4.1 Create JSON Schema file at `src/reformlab/templates/schema/scenario-template.schema.json` and check it into source control
   - [ ] 4.2 Add field descriptions for IDE autocompletion
   - [ ] 4.3 Add `$schema` and `version` to template YAML format
   - [ ] 4.4 Add schema version validation in loader
@@ -149,6 +152,22 @@ def load_scenario_template(path: str | Path) -> ScenarioTemplate:
 - `pyarrow` - Already used throughout for type definitions
 - `dataclasses` - Standard library, frozen dataclasses pattern established
 - `typing` - Literal, Any types as used in existing code
+
+### Cross-Story Dependencies
+
+- **Depends on Story 1.3 / BKL-103 (required):** Reuse YAML load + structured validation patterns from `src/reformlab/computation/mapping.py`.
+- **Depends on Story 1.8 / BKL-108 (required):** `src/reformlab/templates/` package scaffold must exist (already created).
+- **Related downstream stories (do not implement here):**
+  - Story 2.2 / BKL-202 and Story 2.3 / BKL-203 consume this schema for concrete template packs.
+  - Story 2.4 / BKL-204 handles registry/version persistence.
+  - Story 2.5 / BKL-205 handles scenario cloning and full baseline/reform link navigation.
+
+### Out of Scope Guardrails
+
+- No scenario registry persistence or immutable version ID logic (Story 2.4).
+- No cloning workflows or bidirectional baseline/reform navigation APIs (Story 2.5).
+- No orchestration execution behavior; this story defines and validates template schema only.
+- No YAML formula-string execution or custom formula compiler; policy logic remains Python-module based per architecture.
 
 ### Testing Standards
 
@@ -253,4 +272,3 @@ parameters:
 ### Completion Notes List
 
 ### File List
-
