@@ -5,59 +5,21 @@ from pathlib import Path
 
 import pyarrow as pa
 
-from reformlab.computation.exceptions import CompatibilityError
 from reformlab.computation.ingestion import DEFAULT_OPENFISCA_OUTPUT_SCHEMA, ingest
-from reformlab.computation.types import ComputationResult, PolicyConfig, PopulationData
-
-SUPPORTED_VERSIONS: list[str] = [
-    "44.0.0",
-    "44.0.1",
-    "44.1.0",
-    "44.2.0",
-    "44.2.1",
-    "44.2.2",
-]
-
-MIN_SUPPORTED = "44.0.0"
-COMPAT_MATRIX_URL = (
-    "https://github.com/openfisca/openfisca-core/blob/master/CHANGELOG.md"
+from reformlab.computation.openfisca_common import (
+    COMPAT_MATRIX_URL as COMPAT_MATRIX_URL,
 )
-
-
-def _detect_openfisca_version() -> str:
-    """Detect the installed OpenFisca-Core version via importlib.metadata."""
-    from importlib.metadata import PackageNotFoundError, version
-
-    try:
-        return version("openfisca-core")
-    except PackageNotFoundError:
-        return "not-installed"
-
-
-def _check_version(actual: str) -> None:
-    """Raise CompatibilityError if *actual* is not in the supported set."""
-    expected_versions = ", ".join(SUPPORTED_VERSIONS)
-
-    if actual == "not-installed":
-        raise CompatibilityError(
-            expected=expected_versions,
-            actual=actual,
-            details=(
-                "openfisca-core is not installed. "
-                "Install it with: uv add 'openfisca-core>=44.0.0'. "
-                f"See {COMPAT_MATRIX_URL}"
-            ),
-        )
-
-    if actual not in SUPPORTED_VERSIONS:
-        raise CompatibilityError(
-            expected=expected_versions,
-            actual=actual,
-            details=(
-                f"Unsupported version. Supported versions: {expected_versions}. "
-                f"See {COMPAT_MATRIX_URL}"
-            ),
-        )
+from reformlab.computation.openfisca_common import (
+    MIN_SUPPORTED as MIN_SUPPORTED,
+)
+from reformlab.computation.openfisca_common import (
+    SUPPORTED_VERSIONS as SUPPORTED_VERSIONS,
+)
+from reformlab.computation.openfisca_common import (
+    _check_version,
+    _detect_openfisca_version,
+)
+from reformlab.computation.types import ComputationResult, PolicyConfig, PopulationData
 
 
 class OpenFiscaAdapter:

@@ -1,0 +1,79 @@
+schema_version: "1.0"
+
+matrix_url: "https://github.com/lucas-vivier/Microsimulation/blob/main/docs/compatibility.md"
+
+min_supported: "44.0.0"
+
+versions:
+  "44.0.0":
+    status: supported
+    modes_tested:
+      - pre-computed
+      - api
+    known_issues: []
+    tested_date: "2026-02-25"
+    guidance: "Minimum supported version."
+
+  "44.0.1":
+    status: supported
+    modes_tested:
+      - pre-computed
+      - api
+    known_issues: []
+    tested_date: "2026-02-25"
+    guidance: "Patch release; fully compatible."
+
+  "44.0.3":
+    status: untested
+    modes_tested: []
+    known_issues: []
+    tested_date: null
+    guidance: "Released on PyPI but not yet validated. May work; please report issues."
+
+  "44.0.4":
+    status: untested
+    modes_tested: []
+    known_issues: []
+    tested_date: null
+    guidance: "Released on PyPI but not yet validated. May work; please report issues."
+
+  "44.1.0":
+    status: supported
+    modes_tested:
+      - pre-computed
+      - api
+    known_issues: []
+    tested_date: "2026-02-25"
+    guidance: "Minor release; fully compatible."
+
+  "44.2.0":
+    status: supported
+    modes_tested:
+      - pre-computed
+      - api
+    known_issues: []
+    tested_date: "2026-02-25"
+    guidance: "Minor release; fully compatible."
+
+  "44.2.1":
+    status: supported
+    modes_tested:
+      - pre-computed
+      - api
+    known_issues: []
+    tested_date: "2026-02-25"
+    guidance: "Patch release; fully compatible."
+
+  "44.2.2":
+    status: supported
+    modes_tested:
+      - pre-computed
+      - api
+    known_issues: []
+    tested_date: "2026-02-26"
+    guidance: "Latest validated release."
+
+# Unsupported version guidance (applied to any version not listed above):
+# - Versions below min_supported (e.g. 43.x) are unsupported.
+# - Unlisted versions >= min_supported are treated as "untested" by the query API
+#   but rejected at runtime by strict adapter version checks.
