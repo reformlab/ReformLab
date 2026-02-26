@@ -8,11 +8,11 @@ Status: ready-for-dev
 
 As a **policy analyst**,
 I want **ready-to-use subsidy, rebate, and feebate template packs**,
-so that **I can immediately run environmental policy comparisons covering incentive-based instruments without writing code, comparing targeted subsidies, income-conditioned rebates, and revenue-neutral feebates**.
+so that **I can immediately run environmental policy comparisons covering incentive-based instruments without writing code, comparing targeted subsidies, income-conditioned rebates, and feebates with explicit pivot-based fee/rebate effects**.
 
 ## Acceptance Criteria
 
-Scope note: BKL-203 baseline is template packs + execution utilities needed for per-household computation and per-decile comparison. Registry persistence, orchestrator wiring, and rich report export are out of scope.
+Scope note: BKL-203 baseline is template packs + execution utilities needed for per-household computation and per-decile comparison. Exactly one shipped template per policy type is required for this story. Registry persistence, orchestrator wiring, and rich report export are out of scope.
 
 1. **AC-1: Template pack provides subsidy, rebate, and feebate templates**
    - Given the shipped template packs, when listed, then at least 3 templates are available: one subsidy, one rebate, one feebate.
@@ -20,24 +20,24 @@ Scope note: BKL-203 baseline is template packs + execution utilities needed for 
    - All templates pass `load_scenario_template()` validation and have year schedules of at least 10 years.
 
 2. **AC-2: Subsidy computation per household**
-   - Given a subsidy template, when executed with a population, then subsidy amounts are computed per household based on eligibility criteria.
-   - Eligibility rules apply: income caps, eligible categories, and household characteristics.
-   - Subsidy amounts respect the rate schedule (amount per eligible unit or fixed amount).
+   - Given a subsidy template, when executed with a population, then output includes `subsidy_amount` and `is_eligible` for every household.
+   - Eligibility applies the template's `income_caps[year]` and `eligible_categories`; ineligible households receive `subsidy_amount = 0.0`.
+   - `total_cost` equals the sum of per-household `subsidy_amount` values for the run year.
 
 3. **AC-3: Rebate computation with income conditioning**
    - Given a rebate template with income-conditioned parameters, when executed, then rebate amounts vary by income group.
-   - Supported modes are `lump_sum` and `progressive_dividend` with template-defined `income_weights`.
-   - Rebate amounts are computed per household based on their income decile and rebate pool.
+   - Supported modes are `lump_sum` and `progressive_dividend` using template-defined `rebate_type` and `income_weights`.
+   - `lump_sum` distributes equally; `progressive_dividend` uses decile weights and produces higher amounts for higher-weight deciles.
 
 4. **AC-4: Feebate computation with pivot point**
    - Given a feebate template, when applied to a population, then households above the pivot threshold pay fees and households below receive rebates.
-   - Net fiscal balance is computed (total fees minus total rebates).
-   - Revenue neutrality can be enforced by adjusting rates or accepting the imbalance.
+   - For each household, output includes `fee_amount`, `rebate_amount`, and `net_impact = rebate_amount - fee_amount`.
+   - Run-level `net_fiscal_balance` is reported as `total_fees - total_rebates` (no automatic rate tuning in this story).
 
 5. **AC-5: Per-decile comparison output**
    - Given two or more templates from the pack, when run in batch, then output includes per-decile metrics for each scenario.
-   - Output includes mean benefit/cost, mean net impact by decile.
-   - Output is available programmatically as typed Python structures and a `pa.Table` comparison view.
+   - Output includes per-decile household counts and mean net impact for each scenario, plus policy-specific mean components (e.g., subsidy, rebate, fee).
+   - Output is available programmatically as typed Python structures (`*Result`, `DecileResults`) and a `pa.Table` comparison view.
 
 6. **AC-6: Template pack is documented and discoverable**
    - Template pack files are shipped in `src/reformlab/templates/packs/subsidy/`, `packs/rebate/`, `packs/feebate/`.
@@ -46,22 +46,20 @@ Scope note: BKL-203 baseline is template packs + execution utilities needed for 
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Review and extend schema types for subsidy/rebate/feebate (AC: #1, #2, #3, #4)
+- [ ] Task 0: Confirm schema and loader compatibility for subsidy/rebate/feebate (AC: #1, #2, #3, #4)
   - [ ] 0.1 Review existing `SubsidyParameters`, `RebateParameters`, `FeebateParameters` in `src/reformlab/templates/schema.py`
-  - [ ] 0.2 Ensure `SubsidyParameters` has: `eligible_categories`, `income_caps`, `rate_schedule`, `eligibility_rules`
-  - [ ] 0.3 Ensure `RebateParameters` has: `rebate_type` ("lump_sum" | "progressive_dividend"), `income_weights`, `rebate_pool_source`
-  - [ ] 0.4 Ensure `FeebateParameters` has: `pivot_point`, `fee_rate`, `rebate_rate`, `pivot_metric` (e.g., "emissions", "efficiency")
-  - [ ] 0.5 Update loader parsing in `_parse_parameters()` if any new fields needed
-  - [ ] 0.6 Add schema validation tests for new/extended fields
+  - [ ] 0.2 Verify required fields are used as currently defined (no schema expansion in BKL-203): subsidy `eligible_categories` + `income_caps`; rebate `rebate_type` + `income_weights`; feebate `pivot_point` + `fee_rate` + `rebate_rate`
+  - [ ] 0.3 Update loader parsing in `_parse_parameters()` only if compatibility fixes are required for existing fields
+  - [ ] 0.4 Add/extend schema validation tests for valid and invalid values of the existing fields
 
 - [ ] Task 1: Create subsidy computation module (AC: #2, #5)
   - [ ] 1.1 Create `src/reformlab/templates/subsidy/__init__.py`
   - [ ] 1.2 Create `src/reformlab/templates/subsidy/compute.py` with:
-    - `SubsidyResult` dataclass (household_ids, subsidy_amount, eligibility_status, income_decile, total_cost, year, template_name)
+    - `SubsidyResult` dataclass (household_ids, subsidy_amount, is_eligible, income_decile, total_cost, year, template_name)
     - `compute_subsidy_eligibility(population, parameters)` → eligibility mask
     - `compute_subsidy_amount(population, parameters, eligibility_mask)` → per-household amounts
     - `compute_subsidy(population, parameters, year, template_name)` → `SubsidyResult`
-  - [ ] 1.3 Implement income cap filtering (household income <= cap for their decile/year)
+  - [ ] 1.3 Implement income cap filtering (household income <= cap for run year)
   - [ ] 1.4 Implement category eligibility (household has eligible characteristic)
   - [ ] 1.5 Create `aggregate_subsidy_by_decile(result)` → `DecileResults`
 
@@ -360,19 +358,18 @@ parameters:
   rate_schedule:
     2026: 100.0    # Base rebate amount (pool per capita before weighting)
 
-  redistribution:
-    type: "progressive_dividend"
-    income_weights:
-      decile_1: 2.0
-      decile_2: 1.8
-      decile_3: 1.5
-      decile_4: 1.3
-      decile_5: 1.1
-      decile_6: 0.9
-      decile_7: 0.7
-      decile_8: 0.5
-      decile_9: 0.3
-      decile_10: 0.2
+  rebate_type: "progressive_dividend"
+  income_weights:
+    decile_1: 2.0
+    decile_2: 1.8
+    decile_3: 1.5
+    decile_4: 1.3
+    decile_5: 1.1
+    decile_6: 0.9
+    decile_7: 0.7
+    decile_8: 0.5
+    decile_9: 0.3
+    decile_10: 0.2
 ```
 
 **feebate-vehicle-emissions.yaml:**
@@ -399,8 +396,8 @@ parameters:
 
 ### Cross-Story Dependencies
 
-- **Depends on Story 2.1 (done):** Schema types and YAML loader with `SubsidyParameters`, `RebateParameters`, `FeebateParameters`
-- **Depends on Story 2.2 (review):** Carbon tax computation patterns, `DecileResults`, pack loader pattern
+- **Depends on Story 2.1 / BKL-201 (done, hard gate):** Schema types and YAML loader with `SubsidyParameters`, `RebateParameters`, `FeebateParameters`
+- **Depends on Story 2.2 / BKL-202 (currently review, soft gate):** Carbon tax computation patterns, `DecileResults`, and pack loader pattern reused by this story. If 2.2 is not merged yet, this story must vendor the shared decile utility or land after 2.2.
 - **Related downstream:**
   - Story 2.4 / BKL-204: Scenario registry will store these templates
   - Story 4.1 / BKL-401: Distributional indicators by income decile (consumes outputs)
