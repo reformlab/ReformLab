@@ -106,9 +106,7 @@ class TestMatrixDrivenVersionChecks:
         upstream OpenFisca changelog."""
         url = COMPAT_MATRIX_URL.lower()
         assert "your-org" not in url
-        assert "github.com/lucas-vivier/microsimulation" in url
-        assert "/docs/compatibility.md" in url
-        assert COMPAT_MATRIX_URL.startswith("http")
+        assert url.endswith("docs/compatibility.md")
 
     def test_error_includes_matrix_url(self) -> None:
         """AC 2: CompatibilityError includes actionable matrix link."""
@@ -143,7 +141,7 @@ class TestImportPathRegression:
         from reformlab.computation.openfisca_adapter import COMPAT_MATRIX_URL as URL
 
         assert isinstance(URL, str)
-        assert URL.startswith("http")
+        assert URL.endswith("docs/compatibility.md")
 
     def test_import_check_version(self) -> None:
         from reformlab.computation.openfisca_adapter import _check_version as cv

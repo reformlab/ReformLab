@@ -1,6 +1,6 @@
 # Story 1.7: Create Compatibility Matrix for Supported OpenFisca Versions
 
-Status: review
+Status: done
 
 <!-- Story context reviewed and corrected on 2026-02-26 against backlog BKL-107, PRD (NFR15, NFR21), architecture constraints, current codebase, test baseline, and PyPI release metadata. -->
 
@@ -170,6 +170,10 @@ Claude Opus 4.6
 - `openfisca_adapter.py` re-exports (`SUPPORTED_VERSIONS`, `MIN_SUPPORTED`, `COMPAT_MATRIX_URL`, `_check_version`, `_detect_openfisca_version`) preserved — no downstream breakage.
 - `COMPAT_MATRIX_URL` now points to project-owned docs URL instead of upstream OpenFisca changelog.
 - Untested versions (44.0.3, 44.0.4) included in matrix; unlisted versions >= min_supported return "untested" from query API but are rejected by strict runtime `_check_version()`.
+- Senior review follow-up fixes applied: replaced placeholder matrix link with repo-owned docs path (`docs/compatibility.md`) and added the actual docs page.
+- Hardened matrix defensive validation: `matrix_url` is now required and must be non-empty.
+- Strengthened regression tests to prevent placeholder URL regressions and validate `matrix_url` malformed-input behavior.
+- Quality gates re-run after review fixes: `ruff`, `mypy`, and full `pytest` all pass (`207 passed`).
 
 ### File List
 
@@ -181,9 +185,26 @@ Claude Opus 4.6
 - `src/reformlab/computation/__init__.pyi` (modified)
 - `tests/computation/test_compat_matrix.py` (created)
 - `tests/computation/test_version.py` (modified)
+- `docs/compatibility.md` (created)
 - `_bmad-output/implementation-artifacts/1-7-create-compatibility-matrix.md` (updated)
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` (updated)
+
+### Workspace Diff Reconciliation
+
+The following additional changed files were present in the working tree during code review and are outside Story 1.7 scope; they were reviewed for risk but are not attributable to this story implementation:
+
+- `src/reformlab/computation/openfisca_adapter.py`
+- `src/reformlab/computation/exceptions.py`
+- `src/reformlab/computation/exceptions.pyi`
+- `src/reformlab/computation/openfisca_api_adapter.py`
+- `src/reformlab/computation/openfisca_api_adapter.pyi`
+- `src/reformlab/computation/quality.py`
+- `tests/computation/test_openfisca_api_adapter.py`
+- `tests/computation/test_quality.py`
+- `overnight-build.sh`
+- `tests/test_overnight_build.sh`
 
 ## Change Log
 
 - 2026-02-26: Implemented compatibility matrix (Story 1-7). Created YAML matrix as single source of truth for supported OpenFisca versions. Added `compat_matrix.py` with `CompatibilityInfo` dataclass and query API. Refactored `openfisca_common.py` to derive version policy from matrix. Added 35 new tests (25 matrix + 10 version). All quality gates pass (ruff, mypy, 205 pytest).
+- 2026-02-26: Senior code-review fixes applied. Updated `COMPAT_MATRIX_URL` to `docs/compatibility.md`, added `docs/compatibility.md`, made `matrix_url` a required non-empty key in loader validation, and strengthened malformed-matrix/project-owned URL regression tests. Re-ran quality gates: ruff clean, mypy clean, pytest `207 passed`.

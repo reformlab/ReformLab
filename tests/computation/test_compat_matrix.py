@@ -46,7 +46,7 @@ class TestLoadMatrix:
     def test_matrix_url_present(self) -> None:
         matrix = load_matrix()
         assert "matrix_url" in matrix
-        assert matrix["matrix_url"].startswith("http")
+        assert matrix["matrix_url"].endswith("docs/compatibility.md")
 
     def test_caching_returns_same_object(self) -> None:
         m1 = load_matrix()
@@ -144,7 +144,7 @@ class TestGetCompatibilityInfo:
 
     def test_matrix_url_in_result(self) -> None:
         info = get_compatibility_info("44.2.2")
-        assert info.matrix_url.startswith("http")
+        assert info.matrix_url.endswith("docs/compatibility.md")
 
     def test_version_field_matches_query(self) -> None:
         info = get_compatibility_info("44.2.2")

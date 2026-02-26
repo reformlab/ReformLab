@@ -1,6 +1,6 @@
 schema_version: "1.0"
 
-matrix_url: "https://github.com/lucas-vivier/Microsimulation/blob/main/docs/compatibility.md"
+matrix_url: "docs/compatibility.md"
 
 min_supported: "44.0.0"
 
