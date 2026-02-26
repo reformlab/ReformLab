@@ -364,7 +364,8 @@ echo "mock-python: $*"
   RUN_OUTPUT="$(cd "$WORK_DIR" && bash ./overnight-build.sh 1 2>&1)" || rc=$?
   RUN_EXIT_CODE=$rc
   echo "  [debug] exit code: ${rc}"
-  echo "  [debug] output tail: $(echo "$RUN_OUTPUT" | tail -5)"
+  echo "  [debug] output grep test: $(echo "$RUN_OUTPUT" | grep -i "test gate")"
+  echo "  [debug] output grep pytest: $(echo "$RUN_OUTPUT" | grep -i "pytest")"
 
   assert_exit_code "exits 1 when tests fail" "1" "$RUN_EXIT_CODE"
   assert_contains "reports test gate failure" "FAILED the test gate" "$RUN_OUTPUT"
