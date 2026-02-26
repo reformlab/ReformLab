@@ -1,17 +1,154 @@
 #!/bin/bash
-# overnight-build.sh — Full BMAD cycle: Create Story → Dev Story → Code Review
-# Claude handles creation & development, Codex handles reviews
-# Run: chmod +x overnight-build.sh && ./overnight-build.sh
+# overnight-build.sh - Single-epic BMAD cycle for stories not yet done.
+# Claude handles create/dev, Codex validates story files and reviews the epic.
+# Usage:
+#   ./overnight-build.sh <epic-number>
+#   TARGET_EPIC=<epic-number> ./overnight-build.sh
+# If no epic is provided, the script auto-selects the first in-progress epic
+# from sprint-status.yaml.
+#
+# Options (env vars):
+#   DRY_RUN=1              Print what would run without executing
+#   SKIP_TESTS=1           Skip the pytest gate after dev
+#   SKIP_CODEX_REVIEW=1    Skip the final Codex epic review
 
-set -euo pipefail
+set -uo pipefail
+# Note: -e is intentionally omitted. We handle errors per-story so one
+# failure doesn't kill the entire overnight run.
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
-LOG_DIR="${PROJECT_DIR}/logs/overnight-$(date +%Y%m%d-%H%M%S)"
+cd "$PROJECT_DIR"
+
+SPRINT_STATUS_FILE="_bmad-output/implementation-artifacts/sprint-status.yaml"
+DRY_RUN="${DRY_RUN:-0}"
+SKIP_TESTS="${SKIP_TESTS:-0}"
+SKIP_CODEX_REVIEW="${SKIP_CODEX_REVIEW:-0}"
+
+require_command() {
+  local cmd="$1"
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    echo "ERROR: Required command not found: $cmd"
+    exit 1
+  fi
+}
+
+# Flat-key YAML parser. Handles only simple "key: value" lines.
+# Limitations: no nested structures, no multi-line values, no quoted strings.
+# Strips inline comments (anything after " #").
+get_status_value() {
+  local key="$1"
+  awk -F': *' -v wanted_key="$key" '
+    {
+      found_key = $1
+      found_value = $2
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", found_key)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", found_value)
+      sub(/[[:space:]]+#.*/, "", found_value)
+      if (found_key == wanted_key) {
+        print found_value
+        exit
+      }
+    }
+  ' "$SPRINT_STATUS_FILE"
+}
+
+detect_default_epic() {
+  awk -F': *' '
+    {
+      found_key = $1
+      found_value = $2
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", found_key)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", found_value)
+      sub(/[[:space:]]+#.*/, "", found_value)
+      if (found_key ~ /^epic-[0-9]+$/ && found_value == "in-progress") {
+        sub(/^epic-/, "", found_key)
+        print found_key
+        exit
+      }
+    }
+  ' "$SPRINT_STATUS_FILE"
+}
+
+# Auto-commit all changes with a conventional message.
+# Usage: git_checkpoint "story-id" "phase description"
+git_checkpoint() {
+  local story="$1"
+  local phase="$2"
+  if [[ -z "$(git status --porcelain)" ]]; then
+    echo "  (no changes to commit)"
+    return 0
+  fi
+  git add -A
+  git commit -m "overnight-build: ${story} — ${phase}" --no-gpg-sign --quiet
+  echo "  Committed: overnight-build: ${story} — ${phase}"
+}
+
+# Verify sprint-status.yaml has a sane value for a story key.
+# Returns 0 if value is a known status, 1 otherwise.
+verify_story_status() {
+  local story="$1"
+  local expected_statuses="backlog ready-for-dev in-progress review done"
+  local current
+  current="$(get_status_value "$story")"
+  for s in $expected_statuses; do
+    if [[ "$current" == "$s" ]]; then
+      return 0
+    fi
+  done
+  echo "WARNING: Story ${story} has unexpected status '${current}' in sprint-status.yaml"
+  return 1
+}
+
+# Run pytest and return its exit code. Logs output.
+run_test_gate() {
+  local story="$1"
+  local log_file="$2"
+
+  if [[ "$SKIP_TESTS" == "1" ]]; then
+    echo "  (test gate skipped via SKIP_TESTS=1)"
+    return 0
+  fi
+
+  echo "  Running pytest..."
+  local rc=0
+  python -m pytest tests/ --tb=short -q 2>&1 | tee "$log_file" || rc=$?
+  if [[ $rc -ne 0 ]]; then
+    echo "  FAIL: Tests failed after implementing ${story} (exit code ${rc})"
+  else
+    echo "  PASS: All tests passed"
+  fi
+  return $rc
+}
+
+if [[ ! -f "$SPRINT_STATUS_FILE" ]]; then
+  echo "ERROR: Missing sprint status file: $SPRINT_STATUS_FILE"
+  exit 1
+fi
+
+require_command claude
+require_command npx
+require_command git
+
+TARGET_EPIC="${1:-${TARGET_EPIC:-}}"
+if [[ -z "$TARGET_EPIC" ]]; then
+  TARGET_EPIC="$(detect_default_epic || true)"
+fi
+if [[ -z "$TARGET_EPIC" ]]; then
+  echo "ERROR: Could not determine target epic."
+  echo "Pass it explicitly: ./overnight-build.sh <epic-number>"
+  exit 1
+fi
+if [[ ! "$TARGET_EPIC" =~ ^[0-9]+$ ]]; then
+  echo "ERROR: Epic must be numeric (received: $TARGET_EPIC)"
+  exit 1
+fi
+
+LOG_DIR="${PROJECT_DIR}/logs/overnight-epic-${TARGET_EPIC}-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$LOG_DIR"
 
-CODEX="npx @openai/codex"
+CODEX=(npx @openai/codex)
 
-# Common context paths for all prompts
+# Common context paths for all prompts.
 CONTEXT="
 Architecture: _bmad-output/planning-artifacts/architecture.md
 PRD: _bmad-output/planning-artifacts/prd.md
@@ -23,10 +160,10 @@ Existing code: src/
 Tests: tests/
 "
 
-# All stories grouped by epic, in order
+# All stories grouped by epic, in order.
 # Format: "epic_number:story_id"
 STORIES=(
-  # Epic 1 — remaining
+  # Epic 1
   "1:1-5-add-data-quality-checks"
   "1:1-6-add-direct-openfisca-api-orchestration-mode"
   "1:1-7-create-compatibility-matrix"
@@ -76,125 +213,215 @@ STORIES=(
   "7:7-5-define-phase-1-exit-checklist"
 )
 
-CURRENT_EPIC=""
-EPIC_FIRST_COMMIT=""
-STORY_COUNT=0
-TOTAL=${#STORIES[@]}
-
-echo "============================================"
-echo "  OVERNIGHT BUILD — ${TOTAL} stories"
-echo "  Claude: Create Story + Dev Story"
-echo "  Codex:  Story Validation + Code Review"
-echo "  Logs: ${LOG_DIR}"
-echo "  Started: $(date)"
-echo "============================================"
-
-# Capture the starting commit for diffing
-STARTING_COMMIT="$(git rev-parse HEAD)"
+EPIC_STORIES=()
+DONE_STORIES=()
+PENDING_STORIES=()
 
 for entry in "${STORIES[@]}"; do
-  EPIC="${entry%%:*}"
-  STORY="${entry#*:}"
-  STORY_COUNT=$((STORY_COUNT + 1))
+  epic="${entry%%:*}"
+  story="${entry#*:}"
+  if [[ "$epic" != "$TARGET_EPIC" ]]; then
+    continue
+  fi
 
-  # Track epic transitions — run Codex code review at epic boundary
-  if [[ "$EPIC" != "$CURRENT_EPIC" ]]; then
-    if [[ -n "$CURRENT_EPIC" ]]; then
-      echo ""
-      echo ">>> Epic ${CURRENT_EPIC} complete. Codex code review..."
+  EPIC_STORIES+=("$story")
+  status="$(get_status_value "$story")"
+  if [[ -z "$status" ]]; then
+    status="unknown"
+  fi
 
-      # Codex review: diff everything since the epic started
-      $CODEX review --uncommitted "
-Review all code implemented for Epic ${CURRENT_EPIC} of the ReformLab project.
-Check against the story acceptance criteria in _bmad-output/implementation-artifacts/.
-Verify: code quality, test coverage, architecture compliance with _bmad-output/planning-artifacts/architecture.md.
-Flag any bugs, security issues, missing tests, or deviations from the PRD.
-" 2>&1 | tee "${LOG_DIR}/epic-${CURRENT_EPIC}-codex-review.log"
+  if [[ "$status" == "done" ]]; then
+    DONE_STORIES+=("$story")
+  else
+    PENDING_STORIES+=("$story")
+  fi
+done
 
-      echo ">>> Epic ${CURRENT_EPIC} Codex review done."
-    fi
-    CURRENT_EPIC="$EPIC"
-    EPIC_FIRST_COMMIT="$(git rev-parse HEAD)"
-    echo ""
-    echo "============================================"
-    echo "  STARTING EPIC ${EPIC}"
-    echo "============================================"
+if [[ ${#EPIC_STORIES[@]} -eq 0 ]]; then
+  echo "ERROR: No stories configured for epic ${TARGET_EPIC} in overnight-build.sh"
+  exit 1
+fi
+
+# Record the baseline commit so the final Codex review only sees
+# changes made during this run (not pre-existing uncommitted work).
+BASELINE_DIRTY=""
+if [[ -n "$(git status --porcelain)" ]]; then
+  BASELINE_DIRTY=1
+  echo "WARNING: Working tree is not clean. Stashing pre-existing changes."
+  git stash push -m "overnight-build: pre-existing changes" --quiet
+  echo "  Stashed. Will restore after the run."
+fi
+BASELINE_COMMIT="$(git rev-parse HEAD)"
+
+echo "============================================"
+echo "  OVERNIGHT BUILD - Epic ${TARGET_EPIC}"
+echo "  Claude: Create Story + Dev Story (fresh print sessions)"
+echo "  Codex:  Story Validation + Epic Review"
+echo "  Pending stories: ${#PENDING_STORIES[@]} / ${#EPIC_STORIES[@]}"
+echo "  Already done: ${#DONE_STORIES[@]}"
+echo "  Baseline commit: ${BASELINE_COMMIT:0:10}"
+echo "  Logs: ${LOG_DIR}"
+echo "  Started: $(date)"
+[[ "$DRY_RUN" == "1" ]] && echo "  *** DRY RUN MODE ***"
+echo "============================================"
+
+if [[ ${#DONE_STORIES[@]} -gt 0 ]]; then
+  printf 'Skipping done stories:\n- %s\n' "${DONE_STORIES[@]}"
+fi
+
+if [[ ${#PENDING_STORIES[@]} -eq 0 ]]; then
+  echo ""
+  echo "No pending stories for epic ${TARGET_EPIC}. Nothing to run."
+  [[ "$BASELINE_DIRTY" == "1" ]] && git stash pop --quiet
+  exit 0
+fi
+
+story_count=0
+total=${#PENDING_STORIES[@]}
+FAILED_STORIES=()
+SUCCEEDED_STORIES=()
+
+for story in "${PENDING_STORIES[@]}"; do
+  story_count=$((story_count + 1))
+  status="$(get_status_value "$story")"
+  story_file="_bmad-output/implementation-artifacts/${story}.md"
+  if [[ -z "$status" ]]; then
+    status="unknown"
   fi
 
   echo ""
-  echo "--- [${STORY_COUNT}/${TOTAL}] Story: ${STORY} ---"
+  echo "--- [${story_count}/${total}] Story: ${story} (status: ${status}) ---"
 
-  # Step 1: Claude creates the story
-  echo "--- Step 1/3: Create Story (Claude) ---"
-  claude -p --dangerously-skip-permissions "
+  story_failed=0
+
+  # Step 1: Create story (only for backlog stories or missing files).
+  if [[ "$status" == "backlog" || ! -f "$story_file" ]]; then
+    echo "--- Step 1/4: Create Story (Claude) ---"
+    if [[ "$DRY_RUN" == "1" ]]; then
+      echo "  [dry-run] Would run: claude -p /bmad-bmm-create-story for ${story}"
+    else
+      if ! claude -p --no-session-persistence --dangerously-skip-permissions "
 /bmad-bmm-create-story
-Create story ${STORY} for Epic ${EPIC}.
+Create story ${story} for Epic ${TARGET_EPIC}.
 Story files location: _bmad-output/implementation-artifacts/
 ${CONTEXT}
 Update sprint-status.yaml to reflect story status changes.
-" 2>&1 | tee "${LOG_DIR}/${STORY}-1-create.log"
+" 2>&1 | tee "${LOG_DIR}/${story}-1-create.log"; then
+        echo "  WARN: Create story step exited non-zero for ${story}"
+      fi
+      git_checkpoint "$story" "create story"
+      verify_story_status "$story" || true
+    fi
+  else
+    echo "--- Step 1/4: Skipped (status is ${status}) ---"
+  fi
 
-  # Step 2: Codex validates the story file
-  echo "--- Step 2/3: Validate Story (Codex) ---"
-  $CODEX exec "
-Review the story file at _bmad-output/implementation-artifacts/${STORY}.md
+  # Step 2: Validate story file (Codex).
+  echo "--- Step 2/4: Validate Story (Codex) ---"
+  if [[ "$DRY_RUN" == "1" ]]; then
+    echo "  [dry-run] Would run: codex exec for ${story}"
+  else
+    if ! "${CODEX[@]}" exec --sandbox workspace-write --ephemeral "
+Review the story file at _bmad-output/implementation-artifacts/${story}.md
 Check that it has:
 - Clear acceptance criteria
 - Technical tasks that align with the architecture in _bmad-output/planning-artifacts/architecture.md
 - Consistent scope (not too big, not too small)
 - Dependencies on prior stories are noted
 If there are issues, fix the story file directly.
-" 2>&1 | tee "${LOG_DIR}/${STORY}-2-validate.log"
+" 2>&1 | tee "${LOG_DIR}/${story}-2-validate.log"; then
+      echo "  WARN: Codex validation exited non-zero for ${story}"
+    fi
+    git_checkpoint "$story" "validate story"
+  fi
 
-  # Step 3: Claude implements the story
-  echo "--- Step 3/3: Dev Story (Claude) ---"
-  claude -p --dangerously-skip-permissions "
+  # Step 3: Implement story (Claude).
+  echo "--- Step 3/4: Dev Story (Claude) ---"
+  if [[ "$DRY_RUN" == "1" ]]; then
+    echo "  [dry-run] Would run: claude -p /bmad-bmm-dev-story for ${story}"
+  else
+    if ! claude -p --no-session-persistence --dangerously-skip-permissions "
 /bmad-bmm-dev-story
-Implement story ${STORY} for Epic ${EPIC}.
-Story file: _bmad-output/implementation-artifacts/${STORY}.md
+Implement story ${story} for Epic ${TARGET_EPIC}.
+Story file: _bmad-output/implementation-artifacts/${story}.md
 ${CONTEXT}
 Build on existing code in src/. Run tests after implementation.
 Update sprint-status.yaml to reflect story status changes.
-" 2>&1 | tee "${LOG_DIR}/${STORY}-3-dev.log"
+" 2>&1 | tee "${LOG_DIR}/${story}-3-dev.log"; then
+      echo "  WARN: Dev story step exited non-zero for ${story}"
+    fi
+    verify_story_status "$story" || true
+  fi
 
-  echo "--- Story ${STORY} done ---"
+  # Step 4: Test gate — hard pytest check after dev.
+  echo "--- Step 4/4: Test Gate ---"
+  if [[ "$DRY_RUN" == "1" ]]; then
+    echo "  [dry-run] Would run: pytest"
+  else
+    if ! run_test_gate "$story" "${LOG_DIR}/${story}-4-tests.log"; then
+      story_failed=1
+      echo "  Story ${story} FAILED the test gate."
+    fi
+    git_checkpoint "$story" "dev + tests"
+  fi
+
+  if [[ $story_failed -eq 1 ]]; then
+    FAILED_STORIES+=("$story")
+    echo "--- Story ${story} FAILED — continuing to next story ---"
+  else
+    SUCCEEDED_STORIES+=("$story")
+    echo "--- Story ${story} complete ---"
+  fi
 done
 
-# Final epic review with Codex
-if [[ -n "$CURRENT_EPIC" ]]; then
-  echo ""
-  echo ">>> Final epic (${CURRENT_EPIC}) Codex code review..."
-  $CODEX review --uncommitted "
-Review all code implemented for Epic ${CURRENT_EPIC} of the ReformLab project.
+# Epic-level Codex review — only reviews changes from this run.
+echo ""
+if [[ "$SKIP_CODEX_REVIEW" == "1" ]]; then
+  echo ">>> Skipping Codex epic review (SKIP_CODEX_REVIEW=1)"
+elif [[ "$DRY_RUN" == "1" ]]; then
+  echo ">>> [dry-run] Would run: codex review for epic ${TARGET_EPIC}"
+else
+  echo ">>> Epic ${TARGET_EPIC} Codex code review (changes since ${BASELINE_COMMIT:0:10})..."
+  "${CODEX[@]}" review --diff "${BASELINE_COMMIT}..HEAD" "
+Review all code implemented for Epic ${TARGET_EPIC} of the ReformLab project.
 Check against the story acceptance criteria in _bmad-output/implementation-artifacts/.
 Verify: code quality, test coverage, architecture compliance with _bmad-output/planning-artifacts/architecture.md.
 Flag any bugs, security issues, missing tests, or deviations from the PRD.
-" 2>&1 | tee "${LOG_DIR}/epic-${CURRENT_EPIC}-codex-review.log"
+" 2>&1 | tee "${LOG_DIR}/epic-${TARGET_EPIC}-codex-review.log" || true
 fi
 
-# Final full-project review with Codex
-echo ""
-echo ">>> Full project Codex review..."
-$CODEX review --uncommitted "
-Full project review for ReformLab.
-Architecture: _bmad-output/planning-artifacts/architecture.md
-PRD: _bmad-output/planning-artifacts/prd.md
-Check: overall code quality, consistency across epics, test coverage, security, architecture compliance.
-Produce a summary of issues found ranked by severity.
-" 2>&1 | tee "${LOG_DIR}/final-codex-review.log"
+# Restore stashed changes if we stashed at the start.
+if [[ "$BASELINE_DIRTY" == "1" ]]; then
+  echo ""
+  echo ">>> Restoring pre-existing stashed changes..."
+  git stash pop --quiet || echo "  WARN: Could not restore stash (may need manual resolution)"
+fi
 
 echo ""
 echo "============================================"
 echo "  OVERNIGHT BUILD COMPLETE"
+echo "  Epic: ${TARGET_EPIC}"
+echo "  Succeeded: ${#SUCCEEDED_STORIES[@]} / ${total}"
+if [[ ${#FAILED_STORIES[@]} -gt 0 ]]; then
+  echo "  FAILED: ${FAILED_STORIES[*]}"
+fi
 echo "  Finished: $(date)"
 echo "  Logs: ${LOG_DIR}"
 echo "============================================"
 
-# Final sprint status via Claude
 echo ""
 echo ">>> Final sprint status check..."
-claude -p --dangerously-skip-permissions "
+if [[ "$DRY_RUN" == "1" ]]; then
+  echo "  [dry-run] Would run: claude -p /bmad-bmm-sprint-status"
+else
+  claude -p --no-session-persistence --dangerously-skip-permissions "
 /bmad-bmm-sprint-status
 Summarize the current sprint status.
 Sprint status: _bmad-output/implementation-artifacts/sprint-status.yaml
 " 2>&1 | tee "${LOG_DIR}/final-sprint-status.log"
+fi
+
+# Exit with failure if any stories failed.
+if [[ ${#FAILED_STORIES[@]} -gt 0 ]]; then
+  exit 1
+fi
