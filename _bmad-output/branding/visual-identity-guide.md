@@ -160,7 +160,9 @@ These tokens define what colors *mean* in the application context:
 
 ### Chart Color Palette
 
-When showing scenario comparisons or multi-series data, always use this order:
+When showing scenario comparisons or multi-series data, use the context-appropriate color order:
+
+**Application UI chart color order:**
 
 | Position | Scenario | Color | Hex |
 |----------|----------|-------|-----|
@@ -169,6 +171,18 @@ When showing scenario comparisons or multi-series data, always use this order:
 | 3 | Reform B | Violet 500 | `#8B5CF6` |
 | 4 | Reform C | Emerald 500 | `#10B981` |
 | 5 | Reform D | Amber 500 | `#F59E0B` |
+
+**Presentation chart color order:**
+
+| Position | Scenario | Color | Hex |
+|----------|----------|-------|-----|
+| 1 | Baseline | Slate 400 | `#94A3B8` |
+| 2 | Reform A | Emerald 500 | `#10B981` |
+| 3 | Reform B | Blue 500 | `#3B82F6` |
+| 4 | Reform C | Violet 500 | `#8B5CF6` |
+| 5 | Reform D | Amber 500 | `#F59E0B` |
+
+**Rationale:** In presentations, Emerald 500 leads as the primary reform accent to maintain visual continuity with the brand mark (logo). In the application UI, Blue 500 leads because it signals interactivity and focus. Both orders keep Slate 400 as baseline and Amber 500 as the final position.
 
 Maximum 5 scenarios overlaid before visual degradation — enforced by the UI.
 
@@ -600,6 +614,18 @@ Extend the default Tailwind theme with:
 - **Slide margins:** 0.5 inch minimum on all sides
 - **Content:** Never extends to slide edges
 
+### Presentation Accent Color
+
+**Emerald 500 (`#10B981`) is the primary accent color in all presentations.** This aligns the presentation visual identity with the brand mark (logo), creating immediate recognition.
+
+- **Primary accent / Reform A highlight:** Emerald 500 (`#10B981`)
+- **Secondary accent (when needed):** Blue 500 (`#3B82F6`)
+- **Positive outcomes in data:** Emerald 500
+- **Negative outcomes in data:** Red 500 (`#EF4444`)
+- **Neutral/cautionary:** Amber 500 (`#F59E0B`)
+
+This differs from the application UI, where Blue 500 is the primary accent (signaling interactivity). In presentations, the goal is brand cohesion, not interactivity — so the logo's Emerald leads.
+
 ### Hard Constraints (Non-Negotiable)
 
 1. **Minimum font size: 14pt.** Nothing smaller — if content doesn't fit, reduce the content.
@@ -624,15 +650,15 @@ Extend the default Tailwind theme with:
 
 **Pattern 2 — Comparison Grid:** Title. 2–4 columns with icon + label + short description each. Consistent alignment.
 
-**Pattern 3 — Before/After Split:** Left half = "before" (Slate 50 bg, Slate 500 text). Right half = "after" (White bg, Blue 500 accents). Title spans full width.
+**Pattern 3 — Before/After Split:** Left half = "before" (Slate 50 bg, Slate 500 text). Right half = "after" (White bg, Emerald 500 accents). Title spans full width.
 
 **Pattern 4 — Data Table:** Title. Clean table: Slate 50 header, White body, 1px Slate 200 borders. Accent colors for highlight cells. Numbers in monospace.
 
 **Pattern 5 — Flow/Process:** Title. 3–5 steps, horizontal or vertical. Icon + label + optional description per step. Slate 300 arrow connectors.
 
-**Pattern 6 — Quote/Testimonial:** Large quote (20–24pt, Slate 700). Blue 500 quotation marks. Slate 50 background with Blue 500 left border.
+**Pattern 6 — Quote/Testimonial:** Large quote (20–24pt, Slate 700). Emerald 500 quotation marks. Slate 50 background with Emerald 500 left border.
 
-**Pattern 7 — Positioning Map:** Title. 2x2 quadrant with labeled axes. ReformLab highlighted in Blue 500. Its quadrant subtly highlighted with Blue 50 background.
+**Pattern 7 — Positioning Map:** Title. 2x2 quadrant with labeled axes. ReformLab highlighted in Emerald 500. Its quadrant subtly highlighted with Emerald 50 background.
 
 ### Speaker Notes
 
@@ -733,7 +759,7 @@ This guide was synthesized from the following source files. This guide is the ca
 
 1. **Chart baseline color:** The UX spec used `slate-500` in CSS custom properties while the presentation spec used Slate 400 (`#94A3B8`). This guide standardizes on **Slate 400 (`#94A3B8`)** as the chart baseline across all touchpoints — it was the deliberate choice in the more recent presentation spec and provides better visual recession for baseline data.
 
-2. **Logo colors vs. UI accent:** The logo uses Slate 700 + Emerald 500 (brand mark colors), while the UI uses Blue 500 as primary accent. These are documented as separate concerns — brand mark palette is fixed; interface accent is contextual.
+2. **Logo colors vs. UI accent vs. presentation accent:** The logo uses Slate 700 + Emerald 500 (brand mark colors, fixed). The application UI uses Blue 500 as primary accent (signals interactivity). Presentations use Emerald 500 as primary accent (brand cohesion with logo). Three contexts, one clear rule each — see Section 8 (Chart Color Palette) and Section 12 (Presentation Accent Color) for the full specification.
 
 3. **Wordmark font:** The logo prompt said "Inter or similar." This guide canonizes **Inter** as the wordmark font.
 

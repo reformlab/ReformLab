@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ReformLab — Pitch Deck</title>
+<!--
+  ╔══════════════════════════════════════════════════════════════════╗
+  ║  ReformLab Presentation Template — Bold Editorial               ║
+  ║  Design: Option C with Emerald accent                           ║
+  ║  Source: visual-identity-guide.md, Section 12                   ║
+  ║  Arrow keys / Space to navigate, S for speaker notes            ║
+  ╚══════════════════════════════════════════════════════════════════╝
+-->
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --white:      #FFFFFF;
+    --slate-50:   #F8FAFC;
+    --slate-100:  #F1F5F9;
+    --slate-200:  #E2E8F0;
+    --slate-300:  #CBD5E1;
+    --slate-400:  #94A3B8;
+    --slate-500:  #64748B;
+    --slate-600:  #475569;
+    --slate-700:  #334155;
+    --slate-800:  #1E293B;
+    --slate-900:  #0F172A;
+    --accent:     #10B981;
+    --accent-dark:#0d9668;
+    --accent-light:#D1FAE5;
+    --blue-500:   #3B82F6;
+    --violet-500: #8B5CF6;
+    --amber-500:  #F59E0B;
+    --red-500:    #EF4444;
+    --font-sans:  'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono:  'IBM Plex Mono', Consolas, Monaco, monospace;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    font-family: var(--font-sans);
+    background: var(--slate-900);
+    color: var(--slate-900);
+  }
+
+  /* ── Core slide system ── */
+  .slide {
+    width: 100vw; height: 100vh;
+    display: none;
+    position: relative;
+    overflow: hidden;
+  }
+  .slide.active { display: flex; }
+
+  .speaker-notes {
+    display: none;
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    background: rgba(15, 23, 42, 0.95);
+    color: var(--slate-300);
+    padding: 1.5rem 3rem;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    z-index: 200;
+    max-height: 30vh;
+    overflow-y: auto;
+  }
+  body.show-notes .speaker-notes { display: block; }
+
+  /* ── Slide number (top-right only) ── */
+  .slide-num {
+    position: absolute;
+    top: 2rem; right: 3rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    z-index: 50;
+  }
+  .slide-num.light { color: rgba(255,255,255,0.25); }
+  .slide-num.dark { color: var(--slate-300); }
+
+  /* ═══════════════════════════════════════════════ */
+  /* ── TITLE ── */
+  /* ═══════════════════════════════════════════════ */
+  .slide-title { background: var(--slate-900); flex-direction: row; }
+
+  .title-left {
+    flex: 1; display: flex; flex-direction: column;
+    justify-content: center; padding: 4vh 5vw 6vh 6vw;
+  }
+  .title-left .logo-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 5rem; }
+  .title-left .logo-row svg { width: 80px; height: auto; }
+  .title-left .logo-row .wordmark { font-size: 1.8rem; font-weight: 700; color: var(--white); letter-spacing: 0.01em; }
+  .title-left h1 { font-size: clamp(2.8rem, 5.5vw, 5rem); font-weight: 800; color: var(--white); line-height: 1.05; letter-spacing: -0.03em; margin-bottom: 1.5rem; }
+  .title-left h1 .accent { color: var(--accent); }
+  .title-left .subtitle { font-size: clamp(1rem, 1.5vw, 1.25rem); font-weight: 400; color: var(--slate-400); line-height: 1.5; max-width: 520px; }
+
+  .title-right {
+    width: 38%; background: var(--accent); display: flex; flex-direction: column;
+    justify-content: center; align-items: flex-start; padding: 4rem; position: relative;
+  }
+  .title-right .domain-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.5); margin-bottom: 2.5rem; }
+  .title-right .policy-item { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+  .title-right .policy-item svg { width: 28px; height: 28px; color: rgba(255,255,255,0.7); flex-shrink: 0; }
+  .title-right .policy-item span { font-size: 1.1rem; font-weight: 500; color: var(--white); line-height: 1.3; }
+
+  /* ═══════════════════════════════════════════════ */
+  /* ── SECTION DIVIDER ── */
+  /* ═══════════════════════════════════════════════ */
+  .slide-section { background: var(--slate-900); flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 0 10vw; }
+  .slide-section .section-number { font-family: var(--font-mono); font-size: 1rem; font-weight: 500; color: var(--accent); margin-bottom: 1.5rem; letter-spacing: 0.1em; }
+  .slide-section h2 { font-size: clamp(2rem, 4vw, 3.5rem); font-weight: 800; color: var(--white); line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 1rem; }
+  .slide-section .section-subtitle { font-size: clamp(0.9rem, 1.3vw, 1.15rem); font-weight: 400; color: var(--slate-400); max-width: 600px; line-height: 1.5; }
+
+  /* ═══════════════════════════════════════════════ */
+  /* ── STATEMENT (cards, visual area) ── */
+  /* ═══════════════════════════════════════════════ */
+  .slide-statement { background: var(--white); flex-direction: column; padding: 5vh 6vw 4vh; }
+  .slide-statement h2 { font-size: clamp(1.8rem, 3.5vw, 3rem); font-weight: 800; color: var(--slate-900); line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 1rem; }
+  .slide-statement h2 .highlight { color: var(--accent); }
+  .slide-statement .statement-subtitle { font-size: 1rem; color: var(--slate-500); margin-bottom: 3vh; }
+  .slide-statement .visual-area { flex: 1; display: flex; align-items: center; justify-content: center; }
+
+  .card-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; width: 100%; }
+  .card-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .card { background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: 6px; padding: 1.75rem; display: flex; flex-direction: column; gap: 0.75rem; }
+  .card .card-icon { width: 36px; height: 36px; color: var(--accent); flex-shrink: 0; }
+  .card .card-title { font-size: 0.95rem; font-weight: 700; color: var(--slate-900); }
+  .card .card-desc { font-size: 0.85rem; color: var(--slate-500); line-height: 1.5; }
+  .card .card-example { font-size: 0.8rem; color: var(--accent-dark); font-style: italic; margin-top: 0.25rem; }
+
+  /* ═══════════════════════════════════════════════ */
+  /* ── AUDIENCE (persona cards — larger) ── */
+  /* ═══════════════════════════════════════════════ */
+  .slide-audience { background: var(--white); flex-direction: column; padding: 5vh 5vw 4vh; }
+  .slide-audience h2 { font-size: clamp(1.8rem, 3.5vw, 3rem); font-weight: 800; color: var(--slate-900); line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 2.5vh; }
+  .persona-grid { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; align-items: stretch; }
+  .persona-card { background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: 8px; padding: 2.5rem 2rem; display: flex; flex-direction: column; gap: 0.75rem; }
+  .persona-card .persona-icon { width: 44px; height: 44px; color: var(--accent); margin-bottom: 0.25rem; }
+  .persona-card .persona-title { font-size: 1.3rem; font-weight: 700; color: var(--slate-900); }
+  .persona-card .persona-context { font-size: 0.95rem; color: var(--slate-600); line-height: 1.5; }
+  .persona-card .persona-divider { width: 100%; height: 1px; background: var(--slate-200); margin: 0.5rem 0; }
+  .persona-card .persona-section-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--slate-400); }
+  .persona-card .persona-need { font-size: 0.95rem; color: var(--slate-700); font-weight: 600; line-height: 1.4; }
+  .persona-card .persona-today { font-size: 0.9rem; color: var(--slate-500); line-height: 1.4; }
+
+  /* ═══════════════════════════════════════════════ */
+  /* ── PROBLEM (vertical left-right, bigger) ── */
+  /* ═══════════════════════════════════════════════ */
+  .slide-problem { background: var(--white); flex-direction: column; padding: 4vh 5vw 3vh; }
+  .slide-problem h2 { font-size: clamp(1.8rem, 3.5vw, 3rem); font-weight: 800; color: var(--slate-900); line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 2.5vh; }
+  .problem-layout { flex: 1; display: grid; grid-template-columns: 1.1fr 1fr; gap: 2.5vw; align-items: stretch; }
+  .problem-steps { display: flex; flex-direction: column; gap: 0; position: relative; }
+  /* Vertical line connecting steps */
+  .problem-steps::before { content: ''; position: absolute; left: 24px; top: 28px; bottom: 28px; width: 2px; background: var(--slate-200); z-index: 0; }
+  .problem-step { display: flex; align-items: flex-start; gap: 1.25rem; position: relative; z-index: 1; padding: 0.6rem 0; }
+  .problem-step .step-num { width: 48px; height: 48px; border-radius: 50%; background: var(--slate-900); color: var(--white); font-family: var(--font-mono); font-size: 1.1rem; font-weight: 500; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .problem-step .step-icon { width: 20px; height: 20px; position: absolute; left: 34px; top: 0.6rem; color: var(--slate-400); }
+  .problem-step .step-content { display: flex; flex-direction: column; gap: 0.2rem; padding-top: 0.5rem; }
+  .problem-step .step-title { font-size: 1.05rem; font-weight: 700; color: var(--slate-900); }
+  .problem-step .step-desc { font-size: 0.85rem; color: var(--slate-500); line-height: 1.4; }
+  .problem-detail { background: var(--slate-900); border-radius: 10px; padding: 3rem; display: flex; flex-direction: column; justify-content: center; gap: 1.5rem; }
+  .problem-detail .detail-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--slate-500); }
+  .problem-detail .detail-stat { font-family: var(--font-mono); font-size: clamp(3rem, 6vw, 5rem); font-weight: 500; color: var(--red-500); line-height: 1; }
+  .problem-detail .detail-text { font-size: 1rem; color: var(--slate-400); line-height: 1.5; }
+  .problem-detail .detail-items { display: flex; flex-direction: column; gap: 0.5rem; }
+  .problem-detail .detail-item { font-size: 0.9rem; color: var(--slate-400); line-height: 1.4; padding-left: 1rem; position: relative; }
+  .problem-detail .detail-item::before { content: ''; position: absolute; left: 0; top: 0.55em; width: 4px; height: 4px; border-radius: 50%; background: var(--red-500); opacity: 0.6; }
+  .problem-detail .detail-punch { font-size: 1.1rem; color: var(--white); font-weight: 700; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1.5rem; line-height: 1.4; }
+
+  /* ═══════════════════════════════════════════════ */
+  /* ── DATA TABLE ── */
+  /* ═══════════════════════════════════════════════ */
+  .slide-table { background: var(--white); flex-direction: column; padding: 5vh 5vw 4vh; }
+  .slide-table h2 { font-size: clamp(1.8rem, 3.5vw, 3rem); font-weight: 800; color: var(--slate-900); line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 3vh; }
+  .data-table-wrap { flex: 1; display: flex; align-items: flex-start; overflow: hidden; }
+  .data-table { width: 100%; border-collapse: collapse; font-size: 1rem; }
+  .data-table thead th { text-align: left; padding: 0.9rem 1.25rem; font-weight: 600; color: var(--slate-700); background: var(--slate-50); border-bottom: 2px solid var(--slate-200); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .data-table thead th:not(:first-child) { text-align: center; }
+  .data-table tbody td { padding: 0.85rem 1.25rem; border-bottom: 1px solid var(--slate-100); color: var(--slate-700); font-size: 0.95rem; }
+  .data-table tbody td:first-child { font-weight: 500; }
+  .data-table tbody td:not(:first-child) { text-align: center; font-weight: 600; }
+  .data-table .val-positive { color: var(--accent); }
+  .data-table .val-negative { color: var(--red-500); }
+  .data-table .val-warning { color: var(--amber-500); }
+  .data-table .cap-icon { display: inline-block; width: 18px; height: 18px; vertical-align: middle; margin-right: 0.5rem; color: var(--slate-400); }
+  .data-table .table-conclusion { font-size: 1rem; font-weight: 700; color: var(--slate-900); margin-top: 2vh; }
+
+  /* ═══════════════════════════════════════════════ */
+  /* ── FLOW / PROCESS (bigger) ── */
+  /* ═══════════════════════════════════════════════ */
+  .slide-flow { background: var(--white); flex-direction: column; padding: 5vh 5vw 4vh; }
+  .slide-flow h2 { font-size: clamp(2rem, 4vw, 3.2rem); font-weight: 800; color: var(--slate-900); line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 4vh; }
+  .flow-steps { flex: 1; display: flex; align-items: center; justify-content: center; gap: 0; }
+  .flow-step { display: flex; flex-direction: column; align-items: center; gap: 1rem; flex: 1; max-width: 240px; text-align: center; }
+  .flow-step .flow-step-icon { width: 56px; height: 56px; border-radius: 14px; background: var(--accent); color: var(--white); display: flex; align-items: center; justify-content: center; }
+  .flow-step .flow-step-icon svg { width: 28px; height: 28px; }
+  .flow-step .step-title { font-size: 1.15rem; font-weight: 700; color: var(--slate-900); }
+  .flow-step .step-desc { font-size: 0.9rem; color: var(--slate-500); line-height: 1.5; }
+  .flow-arrow { font-size: 1.8rem; color: var(--slate-300); padding: 0 1rem; flex-shrink: 0; }
+
+  /* ═══════════════════════════════════════════════ */
+  /* ── EDITORIAL (statement + FULL chart) ── */
+  /* ═══════════════════════════════════════════════ */
+  .slide-editorial { background: var(--white); flex-direction: column; }
+  .editorial-top { padding: 4vh 5vw 0; display: flex; align-items: flex-start; justify-content: space-between; }
+  .editorial-top h2 { font-size: clamp(1.8rem, 3.5vw, 2.8rem); font-weight: 800; color: var(--slate-900); line-height: 1.05; letter-spacing: -0.02em; max-width: 55%; }
+  .editorial-top h2 .highlight { color: var(--accent); }
+  .editorial-top .pull-stat { text-align: right; padding-top: 0.5rem; }
+  .editorial-top .pull-stat .number { font-family: var(--font-mono); font-size: clamp(2rem, 4vw, 3.5rem); font-weight: 500; color: var(--accent); line-height: 1; }
+  .editorial-top .pull-stat .caption { font-size: 0.9rem; color: var(--slate-500); margin-top: 0.25rem; }
+  .editorial-chart { flex: 1; padding: 1.5vh 5vw 3vh; display: flex; flex-direction: column; }
+  .chart-subtitle { font-size: 0.85rem; color: var(--slate-500); margin-bottom: 1rem; display: flex; align-items: center; gap: 1.5rem; }
+  .chart-subtitle .legend-item { display: flex; align-items: center; gap: 0.4rem; }
+  .chart-subtitle .legend-bar { width: 16px; height: 4px; border-radius: 2px; }
+
+  /* Full-width vertical bars */
+  .vertical-bars { flex: 1; display: flex; align-items: flex-end; justify-content: space-around; padding: 0 2vw 0; }
+  .v-bar-group { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; flex: 1; }
+  .v-bar-pair { display: flex; align-items: flex-end; gap: 8px; width: 100%; justify-content: center; }
+  .v-bar-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; width: 40px; }
+  .v-bar { width: 100%; border-radius: 4px 4px 0 0; min-height: 4px; transition: height 0.3s; }
+  .v-bar.baseline { background: var(--slate-300); }
+  .v-bar.reform { background: var(--accent); }
+  .v-bar-val { font-family: var(--font-mono); font-size: 0.9rem; font-weight: 500; margin-bottom: 6px; }
+  .v-bar-val.baseline { color: var(--slate-500); }
+  .v-bar-val.reform { color: var(--accent-dark); }
+  .v-bar-label { font-size: 0.9rem; font-weight: 600; color: var(--slate-700); text-align: center; }
+
+  /* ═══════════════════════════════════════════════ */
+  /* ── COMPARISON GRID ── */
+  /* ═══════════════════════════════════════════════ */
+  .slide-grid { background: var(--slate-900); flex-direction: column; }
+  .grid-header { padding: 5vh 6vw 0; display: flex; align-items: flex-end; justify-content: space-between; }
+  .grid-header h2 { font-size: clamp(1.8rem, 3.5vw, 3rem); font-weight: 800; color: var(--white); line-height: 1.05; letter-spacing: -0.02em; }
+  .grid-header .col-labels { display: flex; gap: 2rem; padding-bottom: 0.5rem; }
+  .grid-header .col-label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+  .grid-header .col-label.baseline { color: var(--slate-400); }
+  .grid-header .col-label.reform { color: var(--accent); }
+  .grid-header .col-label .pip { width: 10px; height: 10px; border-radius: 2px; }
+  .metrics-grid { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr 1fr; gap: 1px; margin: 3vh 6vw 4vh; background: rgba(255,255,255,0.06); border-radius: 6px; overflow: hidden; }
+  .metric-cell { background: var(--slate-900); padding: 2.5rem 2rem; display: flex; flex-direction: column; justify-content: center; }
+  .metric-cell .cell-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--slate-500); margin-bottom: 1rem; }
+  .metric-cell .cell-values { display: flex; align-items: baseline; gap: 1.5rem; }
+  .metric-cell .val-baseline { font-family: var(--font-mono); font-size: 1.5rem; font-weight: 500; color: var(--slate-400); text-decoration: line-through; text-decoration-color: rgba(148,163,184,0.3); }
+  .metric-cell .val-reform { font-family: var(--font-mono); font-size: 2rem; font-weight: 500; color: var(--white); }
+  .metric-cell .val-reform.positive { color: var(--accent); }
+  .metric-cell .val-reform.negative { color: var(--red-500); }
+  .metric-cell .val-reform.accent { color: var(--accent); }
+  .metric-cell .cell-arrow { font-family: var(--font-mono); font-size: 1rem; color: var(--slate-500); }
+  .metric-cell .cell-context { font-size: 0.75rem; color: var(--slate-500); margin-top: 0.5rem; }
+  .metric-cell.accent-left { border-left: 3px solid var(--accent); }
+
+  /* ═══════════════════════════════════════════════ */
+  /* ── BEFORE/AFTER SPLIT ── */
+  /* ═══════════════════════════════════════════════ */
+  .slide-split { background: var(--white); flex-direction: column; }
+  .split-header { padding: 5vh 6vw 0; }
+  .split-header h2 { font-size: clamp(1.8rem, 3.5vw, 3rem); font-weight: 800; color: var(--slate-900); line-height: 1.05; letter-spacing: -0.02em; }
+  .split-grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin: 3vh 6vw 4vh; border: 1px solid var(--slate-200); border-radius: 6px; overflow: hidden; }
+  .split-side { padding: 4vh 3vw; display: flex; flex-direction: column; justify-content: center; }
+  .split-side.before { background: var(--slate-50); border-right: 1px solid var(--slate-200); }
+  .split-side.after { background: var(--white); }
+  .split-side .side-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 2rem; }
+  .split-side.before .side-label { color: var(--slate-400); }
+  .split-side.after .side-label { color: var(--accent); }
+  .split-side .side-title { font-size: clamp(1.1rem, 1.6vw, 1.5rem); font-weight: 700; color: var(--slate-900); margin-bottom: 1.5rem; line-height: 1.3; }
+  .split-side ul { list-style: none; display: flex; flex-direction: column; gap: 1rem; }
+  .split-side li { font-size: clamp(0.875rem, 1.1vw, 1.05rem); color: var(--slate-500); line-height: 1.5; padding-left: 1.5rem; position: relative; }
+  .split-side.before li::before { content: ''; position: absolute; left: 0; top: 0.55em; width: 8px; height: 1px; background: var(--slate-300); }
+  .split-side.after li::before { content: ''; position: absolute; left: 0; top: 0.35em; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); opacity: 0.5; }
+
+  /* ═══════════════════════════════════════════════ */
+  /* ── POSITIONING MAP (2-axis diagram) ── */
+  /* ═══════════════════════════════════════════════ */
+  .slide-positioning { background: var(--white); flex-direction: column; padding: 5vh 6vw 4vh; }
+  .slide-positioning h2 { font-size: clamp(1.8rem, 3.5vw, 3rem); font-weight: 800; color: var(--slate-900); line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 2vh; }
+  .positioning-wrap { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; }
+  .axis-diagram { width: 85%; max-width: 750px; aspect-ratio: 1.2; position: relative; }
+  .axis-h { position: absolute; top: 50%; left: 0; right: 0; height: 2px; background: var(--slate-200); }
+  .axis-v { position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: var(--slate-200); }
+  .axis-label { position: absolute; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--slate-400); }
+  .axis-label.top { top: -0.5rem; left: 50%; transform: translateX(-50%); }
+  .axis-label.bottom { bottom: -0.5rem; left: 50%; transform: translateX(-50%); }
+  .axis-label.left { left: -0.5rem; top: 50%; transform: translateY(-50%) rotate(-90deg); transform-origin: center; white-space: nowrap; }
+  .axis-label.right { right: -0.5rem; top: 50%; transform: translateY(-50%) rotate(90deg); transform-origin: center; white-space: nowrap; }
+  .plot-item { position: absolute; display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 500; color: var(--slate-600); }
+  .plot-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .plot-item.hero { font-size: 1.1rem; font-weight: 700; color: var(--accent); }
+  .plot-item.hero .plot-dot { width: 16px; height: 16px; }
+
+  /* ═══════════════════════════════════════════════ */
+  /* ── CLOSING / RESOURCES ── */
+  /* ═══════════════════════════════════════════════ */
+  .slide-closing { background: var(--slate-900); flex-direction: row; }
+  .closing-left {
+    flex: 1; display: flex; flex-direction: column;
+    justify-content: center; padding: 4vh 5vw 6vh 6vw;
+  }
+  .closing-left .logo-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 3rem; }
+  .closing-left .logo-row svg { width: 80px; height: auto; }
+  .closing-left .logo-row .wordmark { font-size: 1.8rem; font-weight: 700; color: var(--white); letter-spacing: 0.01em; }
+  .closing-left h2 { font-size: clamp(2rem, 4vw, 3.5rem); font-weight: 800; color: var(--white); line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 1rem; }
+  .closing-left .closing-tagline { font-size: clamp(1rem, 1.5vw, 1.25rem); color: var(--slate-400); margin-bottom: 3rem; line-height: 1.5; max-width: 440px; }
+
+  .closing-right {
+    width: 40%; background: rgba(255,255,255,0.03);
+    border-left: 1px solid rgba(255,255,255,0.06);
+    display: flex; flex-direction: column;
+    justify-content: center; padding: 4rem;
+  }
+  .resource-group { margin-bottom: 2.5rem; }
+  .resource-group:last-child { margin-bottom: 0; }
+  .resource-group .group-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--slate-500); margin-bottom: 0.75rem; }
+  .resource-item { display: flex; align-items: baseline; gap: 0.75rem; margin-bottom: 0.5rem; }
+  .resource-item .resource-name { font-size: 0.9rem; font-weight: 500; color: var(--white); }
+  .resource-item .resource-url { font-family: var(--font-mono); font-size: 0.75rem; color: var(--accent); }
+
+  @media print {
+    .slide { display: flex !important; page-break-after: always; height: auto; min-height: 100vh; }
+    .speaker-notes { display: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══ SLIDE 1: TITLE ═══ -->
+<section class="slide slide-title active">
+  <span class="slide-num light">01 / 14</span>
+  <div class="title-left">
+    <div class="logo-row">
+      <svg viewBox="0 0 120 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="52" r="4" fill="#64748B"/><circle cx="22" cy="52" r="4" fill="#10B981"/>
+        <circle cx="22" cy="42" r="4" fill="#64748B"/><circle cx="32" cy="52" r="4" fill="#10B981"/>
+        <circle cx="32" cy="42" r="4" fill="#64748B"/><circle cx="32" cy="32" r="4" fill="#10B981"/>
+        <circle cx="42" cy="52" r="4" fill="#64748B"/><circle cx="42" cy="42" r="4" fill="#10B981"/>
+        <circle cx="52" cy="52" r="4" fill="#64748B"/><circle cx="62" cy="52" r="4" fill="#10B981"/>
+        <circle cx="62" cy="42" r="4" fill="#64748B"/><circle cx="72" cy="52" r="4" fill="#10B981"/>
+        <circle cx="72" cy="42" r="4" fill="#64748B"/><circle cx="72" cy="32" r="4" fill="#10B981"/>
+        <circle cx="72" cy="22" r="4" fill="#64748B"/><circle cx="82" cy="52" r="4" fill="#64748B"/>
+        <circle cx="82" cy="42" r="4" fill="#10B981"/><circle cx="82" cy="32" r="4" fill="#64748B"/>
+        <circle cx="82" cy="22" r="4" fill="#10B981"/><circle cx="82" cy="12" r="4" fill="#64748B"/>
+        <circle cx="92" cy="52" r="4" fill="#10B981"/><circle cx="92" cy="42" r="4" fill="#64748B"/>
+        <circle cx="92" cy="32" r="4" fill="#10B981"/><circle cx="92" cy="22" r="4" fill="#64748B"/>
+        <circle cx="102" cy="52" r="4" fill="#64748B"/><circle cx="102" cy="42" r="4" fill="#10B981"/>
+        <circle cx="102" cy="32" r="4" fill="#64748B"/><circle cx="112" cy="52" r="4" fill="#10B981"/>
+        <circle cx="112" cy="42" r="4" fill="#64748B"/>
+      </svg>
+      <span class="wordmark">ReformLab</span>
+    </div>
+    <h1>See the impact<br/><span class="accent">before the vote.</span></h1>
+    <p class="subtitle">Simulate environmental reforms. Understand who wins, who loses. Trust the results.</p>
+  </div>
+  <div class="title-right">
+    <div class="domain-label">Assess any environmental policy</div>
+    <div class="policy-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      <span>Carbon tax &amp; rebate design</span>
+    </div>
+    <div class="policy-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-3"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+      <span>Leasing social &amp; mobility aid</span>
+    </div>
+    <div class="policy-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9v.01M9 12v.01M9 15v.01M9 18v.01"/></svg>
+      <span>MaPrimeR&eacute;nov' &amp; renovation</span>
+    </div>
+    <div class="policy-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+      <span>Green dividends &amp; redistribution</span>
+    </div>
+  </div>
+  <aside class="speaker-notes">Hook the audience with real French policies they know. The right panel shows concrete examples — not abstract stats.</aside>
+</section>
+
+<!-- ═══ SLIDE 2: SECTION — Context ═══ -->
+<section class="slide slide-section">
+  <span class="slide-num light">02 / 14</span>
+  <div class="section-number">CONTEXT</div>
+  <h2>Governments are reshaping<br/>how we live, move, and consume energy.</h2>
+  <p class="section-subtitle">Every reform affects every household differently. The question is always the same.</p>
+  <aside class="speaker-notes">Set the stage. The audience needs to feel the scale and variety of environmental policy.</aside>
+</section>
+
+<!-- ═══ SLIDE 3: STATEMENT — Policy domains ═══ -->
+<section class="slide slide-statement">
+  <span class="slide-num dark">03 / 14</span>
+  <h2>Four <span class="highlight">economic and policy</span> domains, one question</h2>
+  <p class="statement-subtitle">Who pays, who benefits, and by how much?</p>
+  <div class="visual-area">
+    <div class="card-grid">
+      <div class="card">
+        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        <div class="card-title">Energy pricing</div>
+        <div class="card-desc">Carbon taxes, energy tariffs, fuel levies</div>
+        <div class="card-example">Taxe carbone, contribution climat-&eacute;nergie</div>
+      </div>
+      <div class="card">
+        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-3"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+        <div class="card-title">Transport</div>
+        <div class="card-desc">Emission standards, low-emission zones, mobility subsidies</div>
+        <div class="card-example">Leasing social v&eacute;hicules &eacute;lectriques</div>
+      </div>
+      <div class="card">
+        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9v.01M9 12v.01M9 15v.01M9 18v.01"/></svg>
+        <div class="card-title">Housing</div>
+        <div class="card-desc">Renovation incentives, heating regulations, efficiency mandates</div>
+        <div class="card-example">MaPrimeR&eacute;nov', r&eacute;novation &eacute;nerg&eacute;tique</div>
+      </div>
+      <div class="card">
+        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/><circle cx="12" cy="12" r="3"/></svg>
+        <div class="card-title">Redistribution</div>
+        <div class="card-desc">Green dividends, targeted rebates, progressive compensation</div>
+        <div class="card-example">Ch&egrave;que &eacute;nergie, dividende carbone</div>
+      </div>
+    </div>
+  </div>
+  <aside class="speaker-notes">Educate. Real French policies the audience recognizes. Transition: "Three groups need rigorous answers."</aside>
+</section>
+
+<!-- ═══ SLIDE 4: AUDIENCE — Three target personas ═══ -->
+<section class="slide slide-audience">
+  <span class="slide-num dark">04 / 14</span>
+  <h2>Three groups need rigorous, fast assessment</h2>
+  <div class="persona-grid">
+    <div class="persona-card">
+      <svg class="persona-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <div class="persona-title">Policy Analysts</div>
+      <div class="persona-context">Government departments, consulting firms, think tanks. Assess proposed reforms before they're enacted.</div>
+      <div class="persona-divider"></div>
+      <div class="persona-section-label">Need</div>
+      <div class="persona-need">Fast, reproducible, briefing-ready analysis</div>
+      <div class="persona-divider"></div>
+      <div class="persona-section-label">Today's reality</div>
+      <div class="persona-today">Weeks of manual work chaining 3+ tools for each assessment</div>
+    </div>
+    <div class="persona-card">
+      <svg class="persona-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+      <div class="persona-title">Researchers</div>
+      <div class="persona-context">Universities and research institutes. Project estimated effects on real populations with full reproducibility.</div>
+      <div class="persona-divider"></div>
+      <div class="persona-section-label">Need</div>
+      <div class="persona-need">Clean, reproducible simulation for publications</div>
+      <div class="persona-divider"></div>
+      <div class="persona-section-label">Today's reality</div>
+      <div class="persona-today">800 lines of throwaway code per paper, impossible replication</div>
+    </div>
+    <div class="persona-card">
+      <svg class="persona-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+      <div class="persona-title">Engaged Citizens</div>
+      <div class="persona-context">Voters, activists, journalists. Understand how reforms affect their household and people like them.</div>
+      <div class="persona-divider"></div>
+      <div class="persona-section-label">Need</div>
+      <div class="persona-need">Personal relevance: "what does this mean for me?"</div>
+      <div class="persona-divider"></div>
+      <div class="persona-section-label">Today's reality</div>
+      <div class="persona-today">Abstract numbers in media, zero personal context</div>
+    </div>
+  </div>
+  <aside class="speaker-notes">Identification. "That's me / that's my team." Need and Today are separated for clarity.</aside>
+</section>
+
+<!-- ═══ SLIDE 5: PROBLEM — Vertical with icons, bigger ═══ -->
+<section class="slide slide-problem">
+  <span class="slide-num dark">05 / 14</span>
+  <h2>Every assessment starts from scratch</h2>
+  <div class="problem-layout">
+    <div class="problem-steps">
+      <div class="problem-step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <div class="step-title">Find and prepare data</div>
+          <div class="step-desc">Population surveys, energy consumption, emission factors — scattered across sources, incompatible formats</div>
+        </div>
+      </div>
+      <div class="problem-step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <div class="step-title">Build the simulation</div>
+          <div class="step-desc">Custom scripts connecting income, energy, and behavioral models — rebuilt from scratch every time</div>
+        </div>
+      </div>
+      <div class="problem-step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <div class="step-title">Run projections</div>
+          <div class="step-desc">Manually loop year by year — track fleet turnover, heating transitions, policy phase-in</div>
+        </div>
+      </div>
+      <div class="problem-step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <div class="step-title">Analyze impact and optimize</div>
+          <div class="step-desc">Custom code for distributional impact, fiscal cost, subsidy calibration, rebate optimization</div>
+        </div>
+      </div>
+      <div class="problem-step">
+        <div class="step-num">5</div>
+        <div class="step-content">
+          <div class="step-title">Document methodology</div>
+          <div class="step-desc">Usually skipped entirely. No audit trail, no reproducibility.</div>
+        </div>
+      </div>
+    </div>
+    <div class="problem-detail">
+      <div class="detail-label">The result</div>
+      <div class="detail-stat">Weeks</div>
+      <div class="detail-items">
+        <div class="detail-item">Unreliable data cobbled from fragile sources</div>
+        <div class="detail-item">Spaghetti code nobody else can run</div>
+        <div class="detail-item">Excel files passed around as "models"</div>
+        <div class="detail-item">Undocumented assumptions baked in</div>
+      </div>
+      <div class="detail-punch">When the minister asks "what about low-income rural households?" — you start over.</div>
+    </div>
+  </div>
+  <aside class="speaker-notes">Pain. The right panel hits hard: spaghetti code, Excel files, unreliable data. The gut punch closes it.</aside>
+</section>
+
+<!-- ═══ SLIDE 6: TABLE — The gap (merged rows, icons) ═══ -->
+<section class="slide slide-table">
+  <span class="slide-num dark">06 / 14</span>
+  <h2>No existing tool covers the full workflow</h2>
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width:40%;">Capability</th>
+          <th>Tax-benefit tools</th>
+          <th>Energy tools</th>
+          <th>Ad-hoc scripts</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <svg class="cap-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+            Cross-domain environmental policy
+          </td>
+          <td class="val-negative">No</td>
+          <td class="val-negative">No</td>
+          <td class="val-warning">Fragile</td>
+        </tr>
+        <tr>
+          <td>
+            <svg class="cap-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Multi-year dynamic projections
+          </td>
+          <td class="val-negative">No</td>
+          <td class="val-negative">No</td>
+          <td class="val-warning">Manual</td>
+        </tr>
+        <tr>
+          <td>
+            <svg class="cap-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+            Distributional impact (who wins/loses)
+          </td>
+          <td class="val-warning">Partial</td>
+          <td class="val-negative">No</td>
+          <td class="val-warning">Manual</td>
+        </tr>
+        <tr>
+          <td>
+            <svg class="cap-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            Built-in reproducibility
+          </td>
+          <td class="val-negative">No</td>
+          <td class="val-negative">No</td>
+          <td class="val-negative">No</td>
+        </tr>
+        <tr>
+          <td>
+            <svg class="cap-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            No-code access for non-programmers
+          </td>
+          <td class="val-negative">No</td>
+          <td class="val-negative">No</td>
+          <td class="val-negative">No</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <aside class="speaker-notes">Frustration. "Right, nothing solves this properly." Cross-domain and environmental focus merged — they're the same gap.</aside>
+</section>
+
+<!-- ═══ SLIDE 7: FLOW — The solution (bigger fonts) ═══ -->
+<section class="slide slide-flow">
+  <span class="slide-num dark">07 / 14</span>
+  <h2>End-to-end environmental policy assessment — no code required</h2>
+  <div class="flow-steps">
+    <div class="flow-step">
+      <div class="flow-step-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      </div>
+      <div class="step-title">Configure</div>
+      <div class="step-desc">Pick a policy template. Adjust parameters. Define the timeline.</div>
+    </div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-step">
+      <div class="flow-step-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      </div>
+      <div class="step-title">Simulate</div>
+      <div class="step-desc">Run against a realistic population with multi-year projections.</div>
+    </div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-step">
+      <div class="flow-step-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      </div>
+      <div class="step-title">Analyze</div>
+      <div class="step-desc">Distributional impact by income, region, household type.</div>
+    </div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-step">
+      <div class="flow-step-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      </div>
+      <div class="step-title">Trust</div>
+      <div class="step-desc">Every assumption logged. Every result reproducible.</div>
+    </div>
+  </div>
+  <aside class="speaker-notes">Relief. "Wait, this does everything in one place?" The four steps mirror the five-step problem but collapse them.</aside>
+</section>
+
+<!-- ═══ SLIDE 8: EDITORIAL — Carbon tax example (FULL SIZE vertical bars) ═══ -->
+<section class="slide slide-editorial">
+  <span class="slide-num dark">08 / 14</span>
+  <div class="editorial-top">
+    <h2>The poorest pay <span class="highlight">4&times; more</span> than the wealthiest</h2>
+    <div class="pull-stat">
+      <div class="number">-57%</div>
+      <div class="caption">Q1 burden reduction<br/>with targeted rebates</div>
+    </div>
+  </div>
+  <div class="editorial-chart">
+    <div class="chart-subtitle">
+      <span>Household burden as % of disposable income</span>
+      <div class="legend-item"><div class="legend-bar" style="background:var(--slate-300);"></div> Flat tax</div>
+      <div class="legend-item"><div class="legend-bar" style="background:var(--accent);"></div> + Rebates</div>
+    </div>
+    <div class="vertical-bars" style="padding-bottom: 1rem;">
+      <div class="v-bar-group">
+        <div class="v-bar-pair" style="height: 100%;">
+          <div class="v-bar-col" style="height: 100%;">
+            <span class="v-bar-val baseline">4.2%</span>
+            <div class="v-bar baseline" style="flex: 0 0 84%;"></div>
+          </div>
+          <div class="v-bar-col" style="height: 100%;">
+            <span class="v-bar-val reform">1.8%</span>
+            <div class="v-bar reform" style="flex: 0 0 36%;"></div>
+          </div>
+        </div>
+        <div class="v-bar-label">Q1 (lowest)</div>
+      </div>
+      <div class="v-bar-group">
+        <div class="v-bar-pair" style="height: 100%;">
+          <div class="v-bar-col" style="height: 100%;">
+            <span class="v-bar-val baseline">3.1%</span>
+            <div class="v-bar baseline" style="flex: 0 0 62%;"></div>
+          </div>
+          <div class="v-bar-col" style="height: 100%;">
+            <span class="v-bar-val reform">2.0%</span>
+            <div class="v-bar reform" style="flex: 0 0 40%;"></div>
+          </div>
+        </div>
+        <div class="v-bar-label">Q2</div>
+      </div>
+      <div class="v-bar-group">
+        <div class="v-bar-pair" style="height: 100%;">
+          <div class="v-bar-col" style="height: 100%;">
+            <span class="v-bar-val baseline">2.5%</span>
+            <div class="v-bar baseline" style="flex: 0 0 50%;"></div>
+          </div>
+          <div class="v-bar-col" style="height: 100%;">
+            <span class="v-bar-val reform">2.1%</span>
+            <div class="v-bar reform" style="flex: 0 0 42%;"></div>
+          </div>
+        </div>
+        <div class="v-bar-label">Q3</div>
+      </div>
+      <div class="v-bar-group">
+        <div class="v-bar-pair" style="height: 100%;">
+          <div class="v-bar-col" style="height: 100%;">
+            <span class="v-bar-val baseline">1.9%</span>
+            <div class="v-bar baseline" style="flex: 0 0 38%;"></div>
+          </div>
+          <div class="v-bar-col" style="height: 100%;">
+            <span class="v-bar-val reform">1.9%</span>
+            <div class="v-bar reform" style="flex: 0 0 38%;"></div>
+          </div>
+        </div>
+        <div class="v-bar-label">Q4</div>
+      </div>
+      <div class="v-bar-group">
+        <div class="v-bar-pair" style="height: 100%;">
+          <div class="v-bar-col" style="height: 100%;">
+            <span class="v-bar-val baseline">1.1%</span>
+            <div class="v-bar baseline" style="flex: 0 0 22%;"></div>
+          </div>
+          <div class="v-bar-col" style="height: 100%;">
+            <span class="v-bar-val reform">1.5%</span>
+            <div class="v-bar reform" style="flex: 0 0 30%;"></div>
+          </div>
+        </div>
+        <div class="v-bar-label">Q5 (highest)</div>
+      </div>
+    </div>
+  </div>
+  <aside class="speaker-notes">Conviction. Show what ReformLab actually produces. Q1 bar towers over Q5 — the regressivity is visceral. Rebates flatten the curve.</aside>
+</section>
+
+<!-- ═══ SLIDE 9: GRID — Full comparison ═══ -->
+<section class="slide slide-grid">
+  <span class="slide-num light">09 / 14</span>
+  <div class="grid-header">
+    <h2>The numbers change<br/>when you redistribute.</h2>
+    <div class="col-labels">
+      <div class="col-label baseline"><div class="pip" style="background:var(--slate-400);"></div> Flat tax</div>
+      <div class="col-label reform"><div class="pip" style="background:var(--accent);"></div> + Rebates</div>
+    </div>
+  </div>
+  <div class="metrics-grid">
+    <div class="metric-cell accent-left">
+      <span class="cell-label">Q1 Household Burden</span>
+      <div class="cell-values">
+        <span class="val-baseline">4.2%</span>
+        <span class="cell-arrow">&rarr;</span>
+        <span class="val-reform positive">1.8%</span>
+      </div>
+      <span class="cell-context">Lowest-income quintile, % of disposable income</span>
+    </div>
+    <div class="metric-cell">
+      <span class="cell-label">Revenue Generated</span>
+      <div class="cell-values">
+        <span class="val-baseline">&euro;8.2B</span>
+        <span class="cell-arrow">&rarr;</span>
+        <span class="val-reform accent">&euro;6.8B</span>
+      </div>
+      <span class="cell-context">Annual, after rebate deductions</span>
+    </div>
+    <div class="metric-cell">
+      <span class="cell-label">CO&#8322; Reduction</span>
+      <div class="cell-values">
+        <span class="val-baseline">-12%</span>
+        <span class="cell-arrow">&rarr;</span>
+        <span class="val-reform accent">-10%</span>
+      </div>
+      <span class="cell-context">Slight trade-off for equity gains</span>
+    </div>
+    <div class="metric-cell accent-left">
+      <span class="cell-label">Poverty Rate</span>
+      <div class="cell-values">
+        <span class="val-baseline">14.4%</span>
+        <span class="cell-arrow">&rarr;</span>
+        <span class="val-reform positive">13.8%</span>
+      </div>
+      <span class="cell-context">With redistribution, poverty falls below baseline</span>
+    </div>
+    <div class="metric-cell">
+      <span class="cell-label">Gini Delta</span>
+      <div class="cell-values">
+        <span class="val-baseline">+0.008</span>
+        <span class="cell-arrow">&rarr;</span>
+        <span class="val-reform positive">-0.003</span>
+      </div>
+      <span class="cell-context">From regressive to progressive</span>
+    </div>
+    <div class="metric-cell">
+      <span class="cell-label">Median Household Cost</span>
+      <div class="cell-values">
+        <span class="val-baseline">&euro;310</span>
+        <span class="cell-arrow">&rarr;</span>
+        <span class="val-reform positive">&euro;280</span>
+      </div>
+      <span class="cell-context">Annual per-household impact</span>
+    </div>
+  </div>
+  <aside class="speaker-notes">Data speaks. Six metrics at a glance — this is the dashboard-to-slide pipeline.</aside>
+</section>
+
+<!-- ═══ SLIDE 10: STATEMENT — Differentiators ═══ -->
+<section class="slide slide-statement">
+  <span class="slide-num dark">10 / 14</span>
+  <h2>What makes ReformLab <span class="highlight">genuinely different</span></h2>
+  <div class="visual-area">
+    <div class="card-grid cols-3" style="grid-template-rows: 1fr 1fr; gap: 1.25rem;">
+      <div class="card">
+        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        <div class="card-title">No-code, end-to-end</div>
+        <div class="card-desc">From policy definition to distributional charts without writing code</div>
+      </div>
+      <div class="card">
+        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+        <div class="card-title">Policy templates</div>
+        <div class="card-desc">Pre-built for carbon taxes, subsidies, transport, renovation. Configure and run.</div>
+      </div>
+      <div class="card">
+        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <div class="card-title">Dynamic multi-year</div>
+        <div class="card-desc">10+ year projections as fleets turn over and policies phase in</div>
+      </div>
+      <div class="card">
+        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        <div class="card-title">Full transparency</div>
+        <div class="card-desc">Every parameter, data source, and assumption logged automatically</div>
+      </div>
+      <div class="card">
+        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.78 7.78 5.5 5.5 0 017.78-7.78zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+        <div class="card-title">Open-data default</div>
+        <div class="card-desc">Works out of the box with public data. Bring your own when you have it.</div>
+      </div>
+      <div class="card">
+        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        <div class="card-title">Python API</div>
+        <div class="card-desc">Researchers get full programmatic control via notebooks when needed</div>
+      </div>
+    </div>
+  </div>
+  <aside class="speaker-notes">Conviction. "Okay, this is genuinely different." Six differentiators — the no-code workflow is the headline.</aside>
+</section>
+
+<!-- ═══ SLIDE 11: SPLIT — For the policy analyst ═══ -->
+<section class="slide slide-split">
+  <span class="slide-num dark">11 / 14</span>
+  <div class="split-header">
+    <h2>From weeks of manual chaining to instant scenario comparison</h2>
+  </div>
+  <div class="split-grid">
+    <div class="split-side before">
+      <span class="side-label">Before ReformLab</span>
+      <h3 class="side-title">Every assessment starts from scratch</h3>
+      <ul>
+        <li>Chain three tools for every assessment</li>
+        <li>Rebuild pipelines each quarter</li>
+        <li>Manual methodology documentation</li>
+        <li>Hours to answer follow-up questions</li>
+      </ul>
+    </div>
+    <div class="split-side after">
+      <span class="side-label">With ReformLab</span>
+      <h3 class="side-title">Configure, run, analyze — instantly</h3>
+      <ul>
+        <li>Configure the reform in the GUI</li>
+        <li>Run against the built-in population</li>
+        <li>Distributional charts and fiscal costs instantly</li>
+        <li>Change an assumption and re-run in minutes</li>
+      </ul>
+    </div>
+  </div>
+  <aside class="speaker-notes">Recognition. "I see myself using this." The before/after makes the value concrete.</aside>
+</section>
+
+<!-- ═══ SLIDE 12: POSITIONING — 2-axis map ═══ -->
+<section class="slide slide-positioning">
+  <span class="slide-num dark">12 / 14</span>
+  <h2>The field is clearing — no one occupies this space</h2>
+  <div class="positioning-wrap">
+    <div class="axis-diagram">
+      <div class="axis-h"></div>
+      <div class="axis-v"></div>
+      <span class="axis-label top">Dynamic / No-code</span>
+      <span class="axis-label bottom">Static / Code-only</span>
+      <span class="axis-label left">Tax-benefit focused</span>
+      <span class="axis-label right">Environmental focused</span>
+
+      <div class="plot-item" style="left: 12%; bottom: 28%;">
+        <div class="plot-dot" style="background: var(--slate-400);"></div>
+        <span class="plot-label">OpenFisca</span>
+      </div>
+      <div class="plot-item" style="left: 8%; bottom: 20%;">
+        <div class="plot-dot" style="background: var(--slate-400);"></div>
+        <span class="plot-label">EUROMOD</span>
+      </div>
+      <div class="plot-item" style="right: 12%; bottom: 24%;">
+        <div class="plot-dot" style="background: var(--slate-400);"></div>
+        <span class="plot-label">ResStock</span>
+      </div>
+      <div class="plot-item" style="right: 18%; bottom: 16%;">
+        <div class="plot-dot" style="background: var(--slate-400);"></div>
+        <span class="plot-label">demod</span>
+      </div>
+      <div class="plot-item" style="left: 30%; bottom: 12%;">
+        <div class="plot-dot" style="background: var(--slate-300); opacity: 0.5;"></div>
+        <span class="plot-label" style="color: var(--slate-400); text-decoration: line-through;">LIAM2</span>
+      </div>
+      <div class="plot-item" style="left: 24%; bottom: 6%;">
+        <div class="plot-dot" style="background: var(--slate-300); opacity: 0.5;"></div>
+        <span class="plot-label" style="color: var(--slate-400); text-decoration: line-through;">OpenM++</span>
+      </div>
+      <div class="plot-item" style="left: 14%; top: 22%;">
+        <div class="plot-dot" style="background: var(--blue-500);"></div>
+        <span class="plot-label">PolicyEngine</span>
+      </div>
+      <div class="plot-item hero" style="right: 10%; top: 12%;">
+        <div class="plot-dot" style="background: var(--accent);"></div>
+        <span class="plot-label">ReformLab</span>
+      </div>
+    </div>
+  </div>
+  <aside class="speaker-notes">Confidence. ReformLab alone in top-right: environmental + dynamic/no-code. Legacy tools struck through.</aside>
+</section>
+
+<!-- ═══ SLIDE 13: STATEMENT — Why now ═══ -->
+<section class="slide slide-statement">
+  <span class="slide-num dark">13 / 14</span>
+  <h2>Three forces converging <span class="highlight">right now</span></h2>
+  <div class="visual-area">
+    <div class="card-grid cols-3">
+      <div class="card">
+        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <div class="card-title">The policy moment</div>
+        <div class="card-desc">EU Green Deal, carbon border adjustment, national carbon taxes. Assessment tools needed faster than ever.</div>
+      </div>
+      <div class="card">
+        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <div class="card-title">The tool gap</div>
+        <div class="card-desc">LIAM2 discontinued, OpenM++ archived. No replacement serves the environmental policy workflow.</div>
+      </div>
+      <div class="card">
+        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        <div class="card-title">The technology shift</div>
+        <div class="card-desc">Mature open-source engines, scientific Python stack, AI-assisted development. Buildable now.</div>
+      </div>
+    </div>
+  </div>
+  <aside class="speaker-notes">Urgency without panic. These are opportunities, not threats.</aside>
+</section>
+
+<!-- ═══ SLIDE 14: CLOSING — Resources ═══ -->
+<section class="slide slide-closing">
+  <span class="slide-num light">14 / 14</span>
+  <div class="closing-left">
+    <div class="logo-row">
+      <svg viewBox="0 0 120 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="52" r="4" fill="#64748B"/><circle cx="22" cy="52" r="4" fill="#10B981"/>
+        <circle cx="22" cy="42" r="4" fill="#64748B"/><circle cx="32" cy="52" r="4" fill="#10B981"/>
+        <circle cx="32" cy="42" r="4" fill="#64748B"/><circle cx="32" cy="32" r="4" fill="#10B981"/>
+        <circle cx="42" cy="52" r="4" fill="#64748B"/><circle cx="42" cy="42" r="4" fill="#10B981"/>
+        <circle cx="52" cy="52" r="4" fill="#64748B"/><circle cx="62" cy="52" r="4" fill="#10B981"/>
+        <circle cx="62" cy="42" r="4" fill="#64748B"/><circle cx="72" cy="52" r="4" fill="#10B981"/>
+        <circle cx="72" cy="42" r="4" fill="#64748B"/><circle cx="72" cy="32" r="4" fill="#10B981"/>
+        <circle cx="72" cy="22" r="4" fill="#64748B"/><circle cx="82" cy="52" r="4" fill="#64748B"/>
+        <circle cx="82" cy="42" r="4" fill="#10B981"/><circle cx="82" cy="32" r="4" fill="#64748B"/>
+        <circle cx="82" cy="22" r="4" fill="#10B981"/><circle cx="82" cy="12" r="4" fill="#64748B"/>
+        <circle cx="92" cy="52" r="4" fill="#10B981"/><circle cx="92" cy="42" r="4" fill="#64748B"/>
+        <circle cx="92" cy="32" r="4" fill="#10B981"/><circle cx="92" cy="22" r="4" fill="#64748B"/>
+        <circle cx="102" cy="52" r="4" fill="#64748B"/><circle cx="102" cy="42" r="4" fill="#10B981"/>
+        <circle cx="102" cy="32" r="4" fill="#64748B"/><circle cx="112" cy="52" r="4" fill="#10B981"/>
+        <circle cx="112" cy="42" r="4" fill="#64748B"/>
+      </svg>
+      <span class="wordmark">ReformLab</span>
+    </div>
+    <h2>See the impact<br/>before the vote.</h2>
+    <p class="closing-tagline">Open-source. Open-data-first. France and Europe.</p>
+  </div>
+  <div class="closing-right">
+    <div class="resource-group">
+      <div class="group-label">Project</div>
+      <div class="resource-item">
+        <span class="resource-name">GitHub</span>
+        <span class="resource-url">github.com/reformlab</span>
+      </div>
+      <div class="resource-item">
+        <span class="resource-name">Documentation</span>
+        <span class="resource-url">docs.reformlab.eu</span>
+      </div>
+    </div>
+    <div class="resource-group">
+      <div class="group-label">Built on</div>
+      <div class="resource-item">
+        <span class="resource-name">OpenFisca</span>
+        <span class="resource-url">openfisca.org</span>
+      </div>
+    </div>
+    <div class="resource-group">
+      <div class="group-label">Contact</div>
+      <div class="resource-item">
+        <span class="resource-name">Lucas</span>
+        <span class="resource-url">lucas@reformlab.eu</span>
+      </div>
+    </div>
+    <div class="resource-group">
+      <div class="group-label">License</div>
+      <div class="resource-item">
+        <span class="resource-name">Open-source</span>
+        <span class="resource-url">AGPL-3.0</span>
+      </div>
+    </div>
+  </div>
+  <aside class="speaker-notes">Action. "I want to try this." Mirror the opening visual. Let the tagline land one more time.</aside>
+</section>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  let current = 0;
+
+  function goTo(index) {
+    if (index < 0 || index >= slides.length) return;
+    slides[current].classList.remove('active');
+    current = index;
+    slides[current].classList.add('active');
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+      e.preventDefault();
+      goTo(current + 1);
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      goTo(current - 1);
+    } else if (e.key === 's' || e.key === 'S') {
+      document.body.classList.toggle('show-notes');
+    }
+  });
+</script>
+</body>
+</html>
