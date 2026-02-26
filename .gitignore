@@ -43,7 +43,12 @@ htmlcov/
 .pytest_cache/
 .nyc_output/
 
-# === General ===
+# === Build / Logs ===
+logs/
 *.log
 *.tmp
 *.bak
+
+# === Data artifacts ===
+*.parquet
+data/

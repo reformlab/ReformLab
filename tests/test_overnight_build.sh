@@ -124,10 +124,7 @@ echo "mock-python: $*"
 create_mock() {
   local name="$1"
   local body="$2"
-  cat > "${WORK_DIR}/bin/${name}" <<MOCK_EOF
-#!/bin/bash
-${body}
-MOCK_EOF
+  printf '#!/bin/bash\n%s\n' "$body" > "${WORK_DIR}/bin/${name}"
   chmod +x "${WORK_DIR}/bin/${name}"
 }
 
