@@ -1,0 +1,23 @@
+$schema: "./schema/scenario-template.schema.json"
+version: "1.0"
+
+name: "Progressive Carbon Dividend Reform"
+description: "Golden file: reform scenario with progressive redistribution"
+policy_type: carbon_tax
+
+baseline_ref: "french-carbon-tax-2026"
+
+parameters:
+  redistribution:
+    type: "progressive_dividend"
+    income_weights:
+      decile_1: 1.5
+      decile_2: 1.3
+      decile_3: 1.1
+      decile_4: 1.0
+      decile_5: 1.0
+      decile_6: 0.9
+      decile_7: 0.8
+      decile_8: 0.7
+      decile_9: 0.5
+      decile_10: 0.2

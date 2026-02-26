@@ -40,7 +40,6 @@ def test_scaffold_directory_structure_exists() -> None:
 
 
 _SCAFFOLD_ONLY = (
-    "templates",
     "orchestrator",
     "vintage",
     "indicators",
