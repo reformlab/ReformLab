@@ -1,0 +1,256 @@
+# Story 2.1: Define Scenario Template Schema
+
+Status: ready-for-dev
+
+## Story
+
+As a **policy analyst**,
+I want **a validated schema for defining environmental policy scenarios (baseline + reform overrides)**,
+so that **I can configure carbon tax, subsidy, rebate, and feebate scenarios using YAML without writing code, with confidence that my configuration is correct**.
+
+## Acceptance Criteria
+
+1. **AC1: Schema defines baseline scenario structure**
+   - Given a YAML template definition with baseline parameters, when loaded, then the schema validates required fields (policy type, year schedule, parameter values).
+   - Schema supports policy types: `carbon_tax`, `subsidy`, `rebate`, `feebate`.
+   - Year schedule supports at least 10 years of policy parameters.
+
+2. **AC2: Schema supports reform-as-delta pattern**
+   - Given a reform defined as parameter overrides to a baseline, when loaded, then only the overridden fields differ from baseline defaults.
+   - Reforms inherit all unspecified parameters from their linked baseline.
+   - Reform-to-baseline linkage is explicit and validated.
+
+3. **AC3: Schema validation produces actionable errors**
+   - Given a template with a year schedule shorter than 10 years, when validated, then a warning is emitted (error if enforcement mode is strict).
+   - Given an invalid field type or missing required field, when validated, then the error message identifies the exact line/field and suggests corrections.
+   - Given an unknown policy type, when loaded, then the error lists valid policy types.
+
+4. **AC4: Schema is documented and machine-readable**
+   - JSON Schema file is generated for the YAML template format.
+   - Schema includes descriptions for all fields for IDE autocompletion and validation.
+   - Schema version is embedded in every template file header.
+
+5. **AC5: Python dataclasses mirror the schema**
+   - Frozen dataclasses represent `ScenarioTemplate`, `BaselineScenario`, `ReformScenario`, `YearSchedule`, `PolicyParameters`.
+   - YAML loading produces typed Python objects, not raw dicts.
+   - Round-trip (load → save → load) preserves all data without loss.
+
+## Tasks / Subtasks
+
+- [ ] Task 1: Define core schema dataclasses (AC: #1, #5)
+  - [ ] 1.1 Create `ScenarioTemplate` frozen dataclass with policy_type, name, description, version, year_schedule
+  - [ ] 1.2 Create `YearSchedule` dataclass supporting 10+ year policy parameter schedules
+  - [ ] 1.3 Create `PolicyParameters` base dataclass with common fields (rate, thresholds, exemptions)
+  - [ ] 1.4 Create policy-specific parameter dataclasses: `CarbonTaxParameters`, `SubsidyParameters`, `RebateParameters`, `FeebateParameters`
+  - [ ] 1.5 Create `BaselineScenario` and `ReformScenario` dataclasses with linkage support
+
+- [ ] Task 2: Implement YAML schema loader with validation (AC: #1, #3)
+  - [ ] 2.1 Create `load_scenario_template()` function following `load_mapping()` pattern from `mapping.py`
+  - [ ] 2.2 Implement `ScenarioError` exception class following `MappingError`/`IngestionError` pattern
+  - [ ] 2.3 Add required field validation with actionable error messages
+  - [ ] 2.4 Add type coercion from YAML strings to Python types
+  - [ ] 2.5 Add year schedule length validation (warning < 10 years, error in strict mode)
+
+- [ ] Task 3: Implement reform-as-delta mechanics (AC: #2)
+  - [ ] 3.1 Add `baseline_ref` field to `ReformScenario` for baseline linkage
+  - [ ] 3.2 Implement parameter inheritance: reform inherits all unspecified values from baseline
+  - [ ] 3.3 Add validation that baseline_ref points to a valid baseline scenario
+  - [ ] 3.4 Create `resolve_reform()` function that merges baseline + reform overrides
+
+- [ ] Task 4: Generate JSON Schema for YAML validation (AC: #4)
+  - [ ] 4.1 Create JSON Schema file at `src/reformlab/templates/schema/scenario-template.schema.json`
+  - [ ] 4.2 Add field descriptions for IDE autocompletion
+  - [ ] 4.3 Add `$schema` and `version` to template YAML format
+  - [ ] 4.4 Add schema version validation in loader
+
+- [ ] Task 5: Write comprehensive tests (AC: all)
+  - [ ] 5.1 Unit tests for each dataclass validation
+  - [ ] 5.2 Integration tests for YAML load/save round-trip
+  - [ ] 5.3 Error message tests verifying actionable feedback
+  - [ ] 5.4 Tests for reform-baseline inheritance
+  - [ ] 5.5 Golden file tests for schema validation
+
+## Dev Notes
+
+### Architecture Patterns to Follow
+
+**From architecture.md:**
+- Scenario Template Layer sits above Data Layer and below Dynamic Orchestrator
+- Templates are Python code in template modules, not YAML formula strings (formulas are not compiled)
+- Year-indexed policy schedules for at least 10 years (FR12)
+- Schema version is required for auditability (FR9, FR28)
+
+**From PRD:**
+- FR7: Analyst can load prebuilt environmental policy templates (carbon tax, subsidy, rebate, feebate)
+- FR8: Analyst can define reforms as parameter overrides to a baseline scenario
+- FR12: Scenario configuration supports year-indexed policy schedules for at least ten years
+- NFR4: YAML configuration loading and validation completes in under 1 second
+
+### Existing Code Patterns to Follow
+
+**Error handling pattern (from `mapping.py`, `ingestion.py`):**
+```python
+class ScenarioError(Exception):
+    """Structured scenario error following IngestionError pattern."""
+    def __init__(
+        self,
+        *,
+        file_path: Path,
+        summary: str,
+        reason: str,
+        fix: str,
+        invalid_fields: tuple[str, ...] = (),
+    ) -> None:
+        # ... follows same structure as MappingError
+```
+
+**Dataclass pattern (from `types.py`):**
+```python
+@dataclass(frozen=True)
+class ScenarioTemplate:
+    """Immutable scenario template configuration."""
+    policy_type: Literal["carbon_tax", "subsidy", "rebate", "feebate"]
+    name: str
+    description: str = ""
+    version: str = "1.0"
+    year_schedule: YearSchedule
+    parameters: PolicyParameters
+```
+
+**YAML loader pattern (from `mapping.py`):**
+```python
+def load_scenario_template(path: str | Path) -> ScenarioTemplate:
+    """Load a YAML scenario template file and return a validated ScenarioTemplate."""
+    # 1. Resolve and validate path
+    # 2. Load YAML with yaml.safe_load
+    # 3. Validate structure and required keys
+    # 4. Build typed dataclasses
+    # 5. Return validated object
+```
+
+### Project Structure Notes
+
+**Target module location:** `src/reformlab/templates/`
+
+**Files to create:**
+- `src/reformlab/templates/schema.py` - Core dataclasses and types
+- `src/reformlab/templates/loader.py` - YAML loading and validation
+- `src/reformlab/templates/exceptions.py` - ScenarioError and related exceptions
+- `src/reformlab/templates/schema/scenario-template.schema.json` - JSON Schema file
+- `tests/templates/test_schema.py` - Unit tests for dataclasses
+- `tests/templates/test_loader.py` - Integration tests for YAML loading
+- `tests/templates/conftest.py` - Test fixtures
+
+**Existing empty module:** `src/reformlab/templates/__init__.py` (placeholder from Epic 1 scaffold)
+
+### Key Dependencies
+
+- `pyyaml` - Already in project dependencies for YAML parsing
+- `pyarrow` - Already used throughout for type definitions
+- `dataclasses` - Standard library, frozen dataclasses pattern established
+- `typing` - Literal, Any types as used in existing code
+
+### Testing Standards
+
+**From existing tests:**
+- Use `pytest` with fixtures in `conftest.py`
+- Use `tmp_path` fixture for file operations
+- Test both success and failure paths
+- Error messages must include: summary, reason, fix guidance
+- Golden file tests for complex validation scenarios
+
+### YAML Template Example Structure
+
+```yaml
+# scenario-template.schema.yaml
+$schema: "./schema/scenario-template.schema.json"
+version: "1.0"
+
+name: "French Carbon Tax 2026"
+description: "Baseline carbon tax scenario for French households"
+policy_type: carbon_tax
+
+year_schedule:
+  start_year: 2026
+  end_year: 2036
+
+parameters:
+  # Year-indexed rates (EUR per tonne CO2)
+  rate_schedule:
+    2026: 44.60
+    2027: 50.00
+    2028: 55.00
+    2029: 60.00
+    2030: 65.00
+    2031: 70.00
+    2032: 75.00
+    2033: 80.00
+    2034: 85.00
+    2035: 90.00
+    2036: 100.00
+
+  # Exemptions
+  exemptions:
+    - category: "heating_oil_essential"
+      rate_reduction: 0.5
+    - category: "agricultural_fuel"
+      rate_reduction: 1.0
+
+  # Energy categories covered
+  covered_categories:
+    - "transport_fuel"
+    - "heating_fuel"
+    - "natural_gas"
+```
+
+### Reform-as-Delta Example
+
+```yaml
+# reform-progressive-dividend.yaml
+$schema: "./schema/scenario-template.schema.json"
+version: "1.0"
+
+name: "Progressive Carbon Dividend Reform"
+description: "Carbon tax with progressive redistribution"
+policy_type: carbon_tax
+
+baseline_ref: "french-carbon-tax-2026"  # Links to baseline scenario
+
+# Only specify overridden parameters
+parameters:
+  redistribution:
+    type: "progressive_dividend"
+    income_weights:
+      decile_1: 1.5
+      decile_2: 1.3
+      decile_3: 1.1
+      decile_4: 1.0
+      decile_5: 1.0
+      decile_6: 0.9
+      decile_7: 0.8
+      decile_8: 0.7
+      decile_9: 0.5
+      decile_10: 0.2
+```
+
+### References
+
+- [Source: _bmad-output/planning-artifacts/architecture.md#Scenario Template Layer]
+- [Source: _bmad-output/planning-artifacts/prd.md#FR7-FR12, NFR4]
+- [Source: _bmad-output/planning-artifacts/phase-1-implementation-backlog-2026-02-25.md#BKL-201]
+- [Source: src/reformlab/computation/mapping.py - Error handling and YAML loading patterns]
+- [Source: src/reformlab/computation/types.py - Dataclass patterns]
+- [Source: src/reformlab/computation/ingestion.py - DataSchema pattern]
+
+## Dev Agent Record
+
+### Agent Model Used
+
+{{agent_model_name_version}}
+
+### Debug Log References
+
+### Completion Notes List
+
+### File List
+

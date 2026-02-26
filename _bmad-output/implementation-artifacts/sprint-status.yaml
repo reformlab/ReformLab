@@ -53,8 +53,8 @@ development_status:
   epic-1-retrospective: optional
 
   # EPIC-2: Scenario Templates and Registry
-  epic-2: backlog
-  2-1-define-scenario-template-schema: backlog
+  epic-2: in-progress
+  2-1-define-scenario-template-schema: ready-for-dev
   2-2-implement-carbon-tax-template-pack: backlog
   2-3-implement-subsidy-rebate-feebate-template-pack: backlog
   2-4-build-scenario-registry: backlog
