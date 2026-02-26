@@ -2,13 +2,13 @@
 stepsCompleted: [1, 2, 3, 4, 5]
 inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
-  - _bmad-output/planning-artifacts/product-brief-Microsimulation-2026-02-23.md
-  - _bmad-output/planning-artifacts/stakeholder-review-brief-Microsimulation-2026-02-24.md
+  - _bmad-output/planning-artifacts/product-brief-ReformLab-2026-02-23.md
+  - _bmad-output/planning-artifacts/stakeholder-review-brief-ReformLab-2026-02-24.md
   - _bmad-output/planning-artifacts/ux-design-specification.md
   - _bmad-output/planning-artifacts/research/technical-entity-graph-data-modeling-and-vectorized-simulation-engines-research-2026-02-23.md
   - _bmad-output/planning-artifacts/research/domain-generic-microsimulation-frameworks-research-2026-02-23.md
 workflowType: 'architecture'
-project_name: 'Microsimulation'
+project_name: 'ReformLab'
 user_name: 'Lucas'
 date: '2026-02-25'
 ---
@@ -21,7 +21,7 @@ _Updated 2026-02-25: Legacy custom engine sections removed per Sprint Change Pro
 
 ### Decision
 
-Microsimulation will **not** build a replacement tax-benefit microsimulation core.
+ReformLab will **not** build a replacement tax-benefit microsimulation core.
 OpenFisca is the policy-calculation foundation, accessed through a clean adapter interface. This project builds differentiated layers above it: data preparation, environmental policy orchestration, multi-year projection with vintage tracking, indicators, governance, and user interfaces.
 
 The **dynamic orchestrator is the core product** — not a computation engine.
@@ -83,7 +83,7 @@ The **dynamic orchestrator is the core product** — not a computation engine.
 
 ### Core Design Principle
 
-Microsimulation does NOT build a policy computation engine. OpenFisca is the tax-benefit computation layer. This project builds everything around it: data preparation, environmental policy orchestration, multi-year projection, vintage tracking, indicators, governance, and user interfaces.
+ReformLab does NOT build a policy computation engine. OpenFisca is the tax-benefit computation layer. This project builds everything around it: data preparation, environmental policy orchestration, multi-year projection, vintage tracking, indicators, governance, and user interfaces.
 
 ### Layered Architecture
 

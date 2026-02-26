@@ -1,7 +1,7 @@
 ---
 workflow: check-implementation-readiness
 date: 2026-02-25
-project: Microsimulation
+project: ReformLab
 stepsCompleted:
   - step-01-document-discovery
   - step-02-prd-analysis
@@ -23,7 +23,7 @@ filesIncluded:
 # Implementation Readiness Assessment Report
 
 **Date:** 2026-02-25
-**Project:** Microsimulation
+**Project:** ReformLab
 
 ## Step 1: Document Discovery
 

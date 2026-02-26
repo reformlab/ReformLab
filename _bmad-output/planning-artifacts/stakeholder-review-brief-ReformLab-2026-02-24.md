@@ -1,29 +1,29 @@
 ---
-title: Microsimulation Stakeholder Review Brief
+title: ReformLab Stakeholder Review Brief
 description: Stakeholder-friendly review brief derived from the Product Requirements Document (PRD)
 author: Lucas
 date: 2026-02-24
 source: _bmad-output/planning-artifacts/prd.md
 ---
 
-# Microsimulation Stakeholder Review Brief
+# ReformLab Stakeholder Review Brief
 
 ## Purpose Of This Brief
 
-This brief prepares stakeholders to review and approve the Phase 1 direction for Microsimulation.  
+This brief prepares stakeholders to review and approve the Phase 1 direction for ReformLab.  
 It translates the PRD into a decision-ready summary focused on value, scope, risk, and governance.
 
 ## One-Page Snapshot
 
-Microsimulation is an OpenFisca-first policy analysis product focused on environmental workflows.  
+ReformLab is an OpenFisca-first policy analysis product focused on environmental workflows.  
 It helps analysts and researchers answer distributional policy questions in one governed workflow instead of stitching together multiple tools and undocumented scripts.
 
-The Phase 1 goal is to prove that OpenFisca + Microsimulation layers can deliver credible carbon-tax and subsidy analysis on French households with transparent assumptions, dynamic projection, and reproducible outputs.
+The Phase 1 goal is to prove that OpenFisca + ReformLab layers can deliver credible carbon-tax and subsidy analysis on French households with transparent assumptions, dynamic projection, and reproducible outputs.
 
 The core strategic position is complementary, not competitive, with OpenFisca:
 
 - OpenFisca computes tax-benefit baseline results.
-- Microsimulation handles data harmonization, environmental scenario templates, dynamic year-by-year orchestration, and analyst-facing workflows.
+- ReformLab handles data harmonization, environmental scenario templates, dynamic year-by-year orchestration, and analyst-facing workflows.
 
 ## Why Stakeholders Should Care
 

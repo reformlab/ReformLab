@@ -1,6 +1,6 @@
 # Sprint Change Proposal — Strategic Pivot to OpenFisca-Based Platform
 
-**Project:** Microsimulation
+**Project:** ReformLab
 **Author:** Lucas
 **Date:** 2026-02-25
 **Change Scope:** Major — Architectural pivot affecting PRD, Architecture, and Backlog

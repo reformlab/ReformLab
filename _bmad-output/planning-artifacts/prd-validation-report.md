@@ -2,7 +2,7 @@
 validationTarget: '_bmad-output/planning-artifacts/prd.md'
 validationDate: '2026-02-25'
 inputDocuments:
-  - _bmad-output/planning-artifacts/product-brief-Microsimulation-2026-02-23.md
+  - _bmad-output/planning-artifacts/product-brief-ReformLab-2026-02-23.md
   - _bmad-output/planning-artifacts/research/domain-generic-microsimulation-frameworks-research-2026-02-23.md
   - _bmad-output/planning-artifacts/research/technical-entity-graph-data-modeling-and-vectorized-simulation-engines-research-2026-02-23.md
   - _bmad-output/brainstorming/brainstorming-session-2026-02-23.md
@@ -33,7 +33,7 @@ overallStatus: Pass (with warnings)
 ## Input Documents
 
 - PRD: prd.md
-- Product Brief: product-brief-Microsimulation-2026-02-23.md
+- Product Brief: product-brief-ReformLab-2026-02-23.md
 - Domain Research: domain-generic-microsimulation-frameworks-research-2026-02-23.md
 - Technical Research: technical-entity-graph-data-modeling-and-vectorized-simulation-engines-research-2026-02-23.md
 - Brainstorming: brainstorming-session-2026-02-23.md
@@ -87,7 +87,7 @@ overallStatus: Pass (with warnings)
 
 ## Product Brief Coverage
 
-**Product Brief:** product-brief-Microsimulation-2026-02-23.md
+**Product Brief:** product-brief-ReformLab-2026-02-23.md
 
 ### Coverage Map
 
@@ -304,7 +304,7 @@ Domain Requirements specifies vectorized execution contract (100k+ households in
 PRD specifies "Latest stable Python (3.13+)" in Developer Tool Specific Requirements. Single-language project, so a full matrix is unnecessary — language specification is clear.
 
 **Installation Methods:** Present
-"Primary distribution: PyPI via `pip install microsimulation`" with Conda noted as future consideration and standalone executable as post-MVP.
+"Primary distribution: PyPI via `pip install reformlab`" with Conda noted as future consideration and standalone executable as post-MVP.
 
 **API Surface:** Present and Comprehensive
 Two interfaces fully documented: Python API (programmatic — entity graph, policy rules, simulation, analytics, reporting) and YAML Configuration (declarative — entity types, policy rules, reforms, templates, data sources). YAML schema requirements also specified (JSON Schema reference, validated on load, versionable).

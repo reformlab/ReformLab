@@ -9,19 +9,19 @@ date: 2026-02-23
 author: Lucas
 ---
 
-# Product Brief: Microsimulation
+# Product Brief: ReformLab
 
 ## Strategic Direction Update (2026-02-24)
 
 This brief is updated to reflect the current product decision:
 
 - OpenFisca is the core policy-calculation engine.
-- Microsimulation focuses on differentiated layers: data collection/manipulation, environmental templates, dynamic year-by-year orchestration with vintage tracking, run governance, and a no-code workflow.
+- ReformLab focuses on differentiated layers: data collection/manipulation, environmental templates, dynamic year-by-year orchestration with vintage tracking, run governance, and a no-code workflow.
 - Building a replacement core microsimulation engine is out of MVP scope.
 
 ## Executive Summary
 
-Microsimulation is an OpenFisca-first environmental policy analysis product. It addresses the operational gap between policy-calculation outputs and decision-ready environmental analysis by adding data harmonization, scenario templates, dynamic projection, and reproducibility governance.
+ReformLab is an OpenFisca-first environmental policy analysis product. It addresses the operational gap between policy-calculation outputs and decision-ready environmental analysis by adding data harmonization, scenario templates, dynamic projection, and reproducibility governance.
 
 Built by a domain expert with AI-assisted execution, the product targets policy analysts and researchers who need ten-year scenario projections, subsidy modeling, welfare indicators, and transparent run tracking without rebuilding tax-benefit logic.
 
@@ -108,7 +108,7 @@ A Python-first OpenFisca companion platform that lets a researcher define a carb
 - Replication packages are incomplete because the simulation code is ad-hoc
 - Peer reviewers can't verify methodology without running his custom scripts
 
-**Success Vision:** Marco plugs his estimated elasticities into Microsimulation's behavioral response layer, runs the simulation via Jupyter notebook, and exports a complete replication package — code, data references, parameters, and methodology — ready for a journal appendix. He publishes his elasticity template so other researchers can reuse it.
+**Success Vision:** Marco plugs his estimated elasticities into ReformLab's behavioral response layer, runs the simulation via Jupyter notebook, and exports a complete replication package — code, data references, parameters, and methodology — ready for a journal appendix. He publishes his elasticity template so other researchers can reuse it.
 
 **Primary Interface:** Python API + Jupyter notebooks. Contributes model templates back to the ecosystem.
 
@@ -126,9 +126,9 @@ A Python-first OpenFisca companion platform that lets a researcher define a carb
 - No way to see the distributional impact of competing proposals side by side
 - Media coverage rarely shows "who wins, who loses" by income group
 
-**Success Vision:** Claire visits a public web application built on Microsimulation that compares all candidates' environmental proposals. She enters her household profile (income, region, housing type, commuting pattern) and sees: "Under Candidate A's carbon tax, your household pays €X more but receives €Y in rebates. Under Candidate B's approach, the effect is €Z." She also sees the full distributional picture across income deciles.
+**Success Vision:** Claire visits a public web application built on ReformLab that compares all candidates' environmental proposals. She enters her household profile (income, region, housing type, commuting pattern) and sees: "Under Candidate A's carbon tax, your household pays €X more but receives €Y in rebates. Under Candidate B's approach, the effect is €Z." She also sees the full distributional picture across income deciles.
 
-**Primary Interface:** Web-based showcase application (built on top of the Microsimulation framework by the project maintainer or contributors).
+**Primary Interface:** Web-based showcase application (built on top of the ReformLab framework by the project maintainer or contributors).
 
 ### User Journey
 
@@ -136,7 +136,7 @@ A Python-first OpenFisca companion platform that lets a researcher define a carb
 
 | Stage | Sophie (Policy Analyst) | Marco (Researcher) | Claire (Citizen) |
 |-------|------------------------|--------------------|--------------------|
-| **Discovery** | Finds Microsimulation through a colleague or conference presentation on carbon tax modeling | Discovers it in a journal paper that used it for distributional analysis, or through the Python/open-source ecosystem | Sees the election comparison tool shared on social media or in a news article |
+| **Discovery** | Finds ReformLab through a colleague or conference presentation on carbon tax modeling | Discovers it in a journal paper that used it for distributional analysis, or through the Python/open-source ecosystem | Sees the election comparison tool shared on social media or in a news article |
 | **Onboarding** | Installs the library, runs the carbon tax example, sees distributional charts in minutes — "this used to take me weeks" | Reads the API docs, runs a notebook example, plugs in her own elasticities | Opens the web app, answers household profile questions |
 | **Aha Moment** | Modifies a YAML parameter, re-runs, and gets updated charts instantly — realizes she'll never chain three tools again | Exports a complete replication package with one command | Sees side-by-side candidate comparison with her household highlighted |
 | **Core Usage** | Configures new policy assessments in YAML, generates briefing-ready visualizations for her department | Uses Python API for papers, contributes templates for reuse | Returns before elections to compare updated proposals |
@@ -157,13 +157,13 @@ A Python-first OpenFisca companion platform that lets a researcher define a carb
 
 ### Business Objectives
 
-Since Microsimulation is an open-source project (not a commercial product), "business" objectives are adoption, credibility, and real-world policy impact.
+Since ReformLab is an open-source project (not a commercial product), "business" objectives are adoption, credibility, and real-world policy impact.
 
 | Objective | Definition | 12-Month Target |
 |-----------|-----------|-----------------|
 | **Government adoption** | Evaluation departments or policy teams within public administration actively using the framework | 5 teams in government/administration |
 | **Correctness credibility** | Framework produces validated, trustworthy results that withstand methodological scrutiny | Validation suite covering core policy domains; results reproducible by independent users |
-| **Ecosystem seeding** | Researchers contributing model templates or using the framework in published work | At least 1 published paper or working paper using Microsimulation |
+| **Ecosystem seeding** | Researchers contributing model templates or using the framework in published work | At least 1 published paper or working paper using ReformLab |
 | **Showcase impact** | Election comparison tool generates public engagement and policy debate visibility | Measurable public engagement (visitors, social media shares, media citations) |
 
 ### Key Performance Indicators
@@ -228,7 +228,7 @@ Since Microsimulation is an open-source project (not a commercial product), "bus
 
 - Full Python API for programmatic use (Marco's notebook workflow)
 - No-code GUI for scenario creation/execution/comparison (Sophie's operational workflow)
-- `pip install microsimulation` quickstart with OpenFisca integration examples
+- `pip install reformlab` quickstart with OpenFisca integration examples
 
 ### Out of Scope for MVP
 
@@ -280,4 +280,4 @@ The MVP is validated when:
 - Structural behavioral models (labor supply, energy demand)
 - Multi-country support beyond France
 - AI-assisted model building and interpretation
-- "Built with Microsimulation" certification/credibility standard
+- "Built with ReformLab" certification/credibility standard

@@ -1,6 +1,6 @@
 ---
 title: Phase 1 Implementation Backlog
-project: Microsimulation
+project: ReformLab
 date: 2026-02-25
 source_documents:
   - _bmad-output/planning-artifacts/prd.md
@@ -386,7 +386,7 @@ Story-level acceptance criteria:
 - Given a pull request with test coverage below the threshold, when CI runs, then the merge is blocked with coverage report.
 
 **BKL-704: External pilot user can run complete carbon-tax workflow from shipped package**
-- Given the pilot package on a clean Python environment, when `pip install microsimulation` and the example are run, then the carbon-tax workflow completes end-to-end with charts and indicators.
+- Given the pilot package on a clean Python environment, when `pip install reformlab` and the example are run, then the carbon-tax workflow completes end-to-end with charts and indicators.
 - Given the pilot package, when an external user follows the documentation, then they can reproduce the example results without assistance.
 
 **BKL-705: Define Phase 1 exit checklist and pilot sign-off criteria**

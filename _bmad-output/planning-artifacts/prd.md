@@ -16,7 +16,7 @@ stepsCompleted:
   - step-11-polish
   - step-12-complete
 inputDocuments:
-  - _bmad-output/planning-artifacts/product-brief-Microsimulation-2026-02-23.md
+  - _bmad-output/planning-artifacts/product-brief-ReformLab-2026-02-23.md
   - _bmad-output/planning-artifacts/research/domain-generic-microsimulation-frameworks-research-2026-02-23.md
   - _bmad-output/planning-artifacts/research/technical-entity-graph-data-modeling-and-vectorized-simulation-engines-research-2026-02-23.md
   - _bmad-output/brainstorming/brainstorming-session-2026-02-23.md
@@ -33,7 +33,7 @@ classification:
   projectContext: greenfield
 ---
 
-# Product Requirements Document - Microsimulation
+# Product Requirements Document - ReformLab
 
 **Author:** Lucas
 **Date:** 2026-02-24
@@ -45,7 +45,7 @@ This PRD follows an **OpenFisca-first platform strategy**.
 - **OpenFisca is the tax-benefit computation backend**, accessed through a clean adapter interface (`ComputationAdapter`). No custom policy engine, formula compiler, or entity graph engine will be built.
 - **The dynamic orchestrator is the core product.** It manages multi-year projections by executing a pluggable step pipeline between yearly OpenFisca computations: vintage transitions, state carry-forward, and (Phase 2) behavioral response adjustments.
 - **Open-data-first:** The platform works out of the box with public data (synthetic populations, emission factors). Custom data is optional.
-- Microsimulation provides the end-to-end environmental policy assessment experience: data preparation, scenario templates, dynamic orchestration with vintage tracking, indicators, governance, and user interfaces.
+- ReformLab provides the end-to-end environmental policy assessment experience: data preparation, scenario templates, dynamic orchestration with vintage tracking, indicators, governance, and user interfaces.
 - The adapter pattern ensures the platform is not locked to OpenFisca — computation backends can be swapped without changing the orchestration layer.
 - Endogenous market-clearing and physical system feedback loops are explicitly out of MVP scope.
 
@@ -53,7 +53,7 @@ If a statement elsewhere implies "new core simulation engine replacing OpenFisca
 
 ## Executive Summary
 
-Microsimulation is an OpenFisca-first policy analysis platform for environmental and distributional assessment. Instead of rebuilding a microsimulation core, it turns OpenFisca outputs plus external data into a single operational workflow: ingest and harmonize data, define environmental policy scenarios, run multi-year projections, track assumptions, and produce decision-ready indicators.
+ReformLab is an OpenFisca-first policy analysis platform for environmental and distributional assessment. Instead of rebuilding a microsimulation core, it turns OpenFisca outputs plus external data into a single operational workflow: ingest and harmonize data, define environmental policy scenarios, run multi-year projections, track assumptions, and produce decision-ready indicators.
 
 The target users are analysts and researchers already chaining scripts and tools for carbon-tax and subsidy analysis. The product promise is speed and trust: reusable templates, deterministic scenario execution, ten-year projection support through iterative orchestration, and full run provenance. MVP validates the approach with French household carbon-tax and redistribution scenarios while preserving full compatibility with OpenFisca.
 
@@ -89,13 +89,13 @@ Built by a domain expert with AI-assisted execution, the immediate objective is 
 
 ### Business Success
 
-Since Microsimulation is an open-source project, "business" success means adoption, credibility, and real-world policy impact.
+Since ReformLab is an open-source project, "business" success means adoption, credibility, and real-world policy impact.
 
 | Objective | 12-Month Target |
 | --- | --- |
 | **Government adoption** | At least 1 evaluation team in French/EU public administration actively using the framework |
 | **Correctness credibility** | Validation suite covering the carbon tax domain; results independently reproducible |
-| **Research adoption** | At least 1 published paper or working paper using Microsimulation |
+| **Research adoption** | At least 1 published paper or working paper using ReformLab |
 | **Ecosystem seeding** | Carbon tax MVP fully functional with 4-5 redistribution scenario templates |
 
 ### Technical Success
@@ -209,11 +209,11 @@ Since Microsimulation is an open-source project, "business" success means adopti
 
 ### Journey 1: First-Time Installer — "Alex"
 
-**Profile:** Alex is a PhD student in environmental economics at Sciences Po. He's seen Microsimulation mentioned in a conference talk and wants to evaluate whether it's worth using for his dissertation on carbon tax incidence. He's comfortable with Python but has never used a microsimulation framework.
+**Profile:** Alex is a PhD student in environmental economics at Sciences Po. He's seen ReformLab mentioned in a conference talk and wants to evaluate whether it's worth using for his dissertation on carbon tax incidence. He's comfortable with Python but has never used a microsimulation framework.
 
 **Opening Scene:** Alex finds the PyPI page after a quick search. He's skeptical — he's tried OpenFisca before and gave up after two hours of configuration. He has 30 minutes before his next seminar.
 
-**Rising Action:** `pip install microsimulation` works cleanly. He opens the quickstart notebook linked in the README. The first cell loads a pre-configured carbon tax scenario on synthetic French households. He runs it — distributional charts by income decile appear in seconds. He modifies the tax rate from €44/tCO2 to €100/tCO2, re-runs. The charts update. He switches the redistribution scenario from flat dividend to progressive rebate. New charts, new winners/losers table, all in the same notebook.
+**Rising Action:** `pip install reformlab` works cleanly. He opens the quickstart notebook linked in the README. The first cell loads a pre-configured carbon tax scenario on synthetic French households. He runs it — distributional charts by income decile appear in seconds. He modifies the tax rate from €44/tCO2 to €100/tCO2, re-runs. The charts update. He switches the redistribution scenario from flat dividend to progressive rebate. New charts, new winners/losers table, all in the same notebook.
 
 **Climax:** Alex realizes he just did in 15 minutes what took him three weeks of ad-hoc scripting last semester — and the results come with full methodology documentation he didn't have to write.
 
@@ -229,7 +229,7 @@ Since Microsimulation is an open-source project, "business" success means adopti
 
 **Opening Scene:** Sophie's director asks for a distributional impact assessment of a proposed carbon tax reform with three redistribution options — due in two weeks. Normally this means: pull the latest INSEE data, chain OpenFisca for income effects, write custom scripts for energy consumption, build Excel charts, and manually document methodology. She's done this five times and dreads it.
 
-**Rising Action:** Sophie opens Microsimulation, copies the carbon tax template YAML, and adjusts the parameters to match the proposed reform: tax rate, energy categories, exemptions. She defines the three redistribution scenarios as YAML diffs against the baseline. She points the framework at the synthetic French population (already built-in) and runs all three scenarios.
+**Rising Action:** Sophie opens ReformLab, copies the carbon tax template YAML, and adjusts the parameters to match the proposed reform: tax rate, energy categories, exemptions. She defines the three redistribution scenarios as YAML diffs against the baseline. She points the framework at the synthetic French population (already built-in) and runs all three scenarios.
 
 **Climax:** Within an hour, Sophie has distributional impact charts by income decile for all three scenarios, a winners/losers table, and fiscal cost estimates in her notebook workflow. She runs manual parameter variations (for example, tax rate ±20%) by editing YAML and rerunning. The methodology trail is already documented through run manifests.
 
@@ -245,11 +245,11 @@ Since Microsimulation is an open-source project, "business" success means adopti
 
 **Opening Scene:** Marco has a set of estimated elasticities in a CSV file from his Stata analysis. He needs a microsimulation layer to compute distributional impacts. Last time, he wrote 800 lines of custom NumPy code that took a month, produced results he couldn't easily replicate, and generated a replication package his co-author couldn't run.
 
-**Rising Action:** Marco opens a Jupyter notebook with the Microsimulation carbon tax template. He loads the built-in synthetic French population, defines his carbon tax reform in YAML, and — crucially — his elasticities aren't needed for the MVP (behavioral responses are Phase 2). But the static simulation already gives him the mechanical distributional impact. He runs the simulation and gets distributional charts with deterministic run manifests for reproducibility.
+**Rising Action:** Marco opens a Jupyter notebook with the ReformLab carbon tax template. He loads the built-in synthetic French population, defines his carbon tax reform in YAML, and — crucially — his elasticities aren't needed for the MVP (behavioral responses are Phase 2). But the static simulation already gives him the mechanical distributional impact. He runs the simulation and gets distributional charts with deterministic run manifests for reproducibility.
 
 **Climax:** Marco shares the YAML configuration, notebook, and run manifest with his co-author. The co-author reruns the analysis in a clean environment and gets matching outputs because assumptions, parameters, and engine context are pinned.
 
-**Resolution:** Marco includes the Microsimulation results in his paper's simulation section. When Phase 2 adds replication package export and behavioral responses, he'll use those for journal appendices and elasticity integration. Even the Phase 1 static results are publishable and credible, so he starts planning an energy poverty template contribution.
+**Resolution:** Marco includes the ReformLab results in his paper's simulation section. When Phase 2 adds replication package export and behavioral responses, he'll use those for journal appendices and elasticity integration. Even the Phase 1 static results are publishable and credible, so he starts planning an energy poverty template contribution.
 
 **Requirements revealed:** Jupyter notebook workflow, Python API, static simulation as credible standalone output, run-manifest-based cross-machine reproducibility, and clear extension points for future behavioral and replication features.
 
@@ -259,7 +259,7 @@ Since Microsimulation is an open-source project, "business" success means adopti
 
 **Profile:** Claire is a French teacher, 32, politically engaged. She wants to understand how proposed environmental policies would affect her household and others like hers. She doesn't code.
 
-**Opening Scene:** Before municipal or national elections, Claire sees a link shared on social media: "Compare candidates' carbon tax proposals — see who wins, who loses." She clicks through to a web application built on the Microsimulation framework.
+**Opening Scene:** Before municipal or national elections, Claire sees a link shared on social media: "Compare candidates' carbon tax proposals — see who wins, who loses." She clicks through to a web application built on the ReformLab framework.
 
 **Rising Action:** Claire answers a short questionnaire: monthly household income, region, housing type (apartment, gas heating), commuting pattern (15km by car), household composition. The app builds her household profile and runs pre-configured simulations for each candidate's environmental proposal.
 
@@ -302,7 +302,7 @@ Since Microsimulation is an open-source project, "business" success means adopti
 ### Reproducibility & Auditability
 
 - **Immutable run manifests:** Every simulation run produces a manifest: engine version, dependency versions, input data hashes, all parameters, all assumptions, timestamp. Manifests are append-only and tamper-evident.
-- **Replication package standard:** Exported packages must be self-contained and reproducible on a clean environment with only `pip install microsimulation` and the package contents.
+- **Replication package standard:** Exported packages must be self-contained and reproducible on a clean environment with only `pip install reformlab` and the package contents.
 - **Version-pinned results:** Results are tied to specific engine version + data version + parameter version. Upgrading any component produces a clear diff, not silent changes.
 
 ### Computational Performance
@@ -327,11 +327,11 @@ Risks and mitigations are consolidated in **Product Scope → Risk Mitigation St
 
 **1. Step-Pluggable Dynamic Orchestrator (Core Differentiator)**
 
-The dynamic orchestrator is the product's central innovation. It manages multi-year policy projections by executing a pipeline of pluggable steps between yearly OpenFisca computations: vintage transitions, state carry-forward, and (Phase 2) behavioral response adjustments. No existing open-source tool offers this for environmental policy assessment. OpenFisca computes static snapshots; Microsimulation turns them into dynamic projections.
+The dynamic orchestrator is the product's central innovation. It manages multi-year policy projections by executing a pipeline of pluggable steps between yearly OpenFisca computations: vintage transitions, state carry-forward, and (Phase 2) behavioral response adjustments. No existing open-source tool offers this for environmental policy assessment. OpenFisca computes static snapshots; ReformLab turns them into dynamic projections.
 
 **2. OpenFisca-First Environmental Product Layer (Strategic Positioning)**
 
-Microsimulation does not replace OpenFisca. It delegates all tax-benefit computation to OpenFisca through a clean adapter interface, then layers environmental policy orchestration, vintage tracking, and governance on top. The adapter pattern ensures the platform is not locked to a single computation backend.
+ReformLab does not replace OpenFisca. It delegates all tax-benefit computation to OpenFisca through a clean adapter interface, then layers environmental policy orchestration, vintage tracking, and governance on top. The adapter pattern ensures the platform is not locked to a single computation backend.
 
 **3. Template-Driven Policy Modeling (Operational DSL)**
 
@@ -347,13 +347,13 @@ The vintage tracking module produces aggregate stock trajectories (fleet turnove
 
 ### OpenFisca/PolicyEngine Interoperability Strategy
 
-Microsimulation does not aim to replace OpenFisca or PolicyEngine for tax-benefit legislation encoding. It treats OpenFisca as the core computational layer and focuses on differentiated workflow layers:
+ReformLab does not aim to replace OpenFisca or PolicyEngine for tax-benefit legislation encoding. It treats OpenFisca as the core computational layer and focuses on differentiated workflow layers:
 
-- **Canonical workflow:** OpenFisca baseline (tax-benefit + income) -> Microsimulation data harmonization -> environmental policy templates -> dynamic multi-year loop with vintage updates -> distributional/welfare/fiscal indicators.
+- **Canonical workflow:** OpenFisca baseline (tax-benefit + income) -> ReformLab data harmonization -> environmental policy templates -> dynamic multi-year loop with vintage updates -> distributional/welfare/fiscal indicators.
 - **What this unlocks:** Analysts can evaluate environmental policy incidence over time without rebuilding tax-benefit rules.
 - **MVP scope:** CSV/Parquet ingestion and versioned mapping of OpenFisca outputs, with optional direct API orchestration in controlled workflows.
 - **Growth phase:** Stronger API coupling, richer template ecosystem, and optional connectors to external physical or macro modules.
-- **Strategic positioning:** OpenFisca for core policy formulas, Microsimulation for environmental scenario operations.
+- **Strategic positioning:** OpenFisca for core policy formulas, ReformLab for environmental scenario operations.
 
 ### Market Context & Competitive Landscape
 
@@ -384,11 +384,11 @@ Innovation-related risks and fallbacks are tracked in **Product Scope → Risk M
 
 ### Project-Type Overview
 
-Microsimulation is a Python library distributed via PyPI (`pip install microsimulation`) with a heavier default install that includes all analytical and visualization dependencies out of the box. The framework exposes two complementary interfaces: YAML configuration for policy analysts and a full Python API for researchers working in Jupyter notebooks. No IDE integration or language server needed — this is a scientific computing library, not a developer productivity tool.
+ReformLab is a Python library distributed via PyPI (`pip install reformlab`) with a heavier default install that includes all analytical and visualization dependencies out of the box. The framework exposes two complementary interfaces: YAML configuration for policy analysts and a full Python API for researchers working in Jupyter notebooks. No IDE integration or language server needed — this is a scientific computing library, not a developer productivity tool.
 
 ### Installation & Distribution
 
-- **Primary distribution:** PyPI via `pip install microsimulation` — single command, all dependencies included
+- **Primary distribution:** PyPI via `pip install reformlab` — single command, all dependencies included
 - **Python version:** Latest stable Python (3.13+). No backward compatibility burden — users in this domain typically manage their own environments
 - **Dependency philosophy:** Batteries-included default install. MVP ships core + analytics + visualization (NumPy, pandas/Polars, matplotlib, PyArrow). Report-templating dependencies (Jinja2, python-docx) are introduced with Phase 2 report generation.
 - **Conda:** Future consideration, not MVP priority. Many researchers use conda environments but pip-in-conda works fine

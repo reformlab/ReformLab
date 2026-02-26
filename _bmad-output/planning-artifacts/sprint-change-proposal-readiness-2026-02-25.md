@@ -1,6 +1,6 @@
 # Sprint Change Proposal — Backlog Readiness Corrections
 
-**Project:** Microsimulation
+**Project:** ReformLab
 **Author:** Lucas
 **Date:** 2026-02-25
 **Trigger:** Implementation Readiness Assessment — NEEDS WORK (12 issues, 4 categories)
