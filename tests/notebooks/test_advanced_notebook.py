@@ -97,6 +97,18 @@ def test_advanced_notebook_covers_reproducibility_and_lineage() -> None:
     assert "quickstart notebook" in source.lower()
 
 
+def test_advanced_notebook_includes_export_examples_and_roundtrip() -> None:
+    """Story 6-5: notebook shows export flows and Parquet round-trip verification."""
+    source = _all_sources(_load_notebook())
+    assert "Export simulation results for external analysis (Story 6-5)" in source
+    assert "result_multi.export_parquet(" in source
+    assert "fiscal_reform.export_parquet(" in source
+    assert "fiscal_comparison.export_parquet(" in source
+    assert "pq.read_table(" in source
+    assert "schema_metadata" in source
+    assert "result_multi.scenario.start_year" not in source
+
+
 def test_ci_executes_advanced_notebook_with_nbmake() -> None:
     """CI should execute the advanced notebook in fresh kernel mode."""
     ci_workflow = CI_WORKFLOW_PATH.read_text(encoding="utf-8")

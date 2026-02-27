@@ -71,3 +71,13 @@ def test_quickstart_notebook_includes_story_key_sections() -> None:
     assert "Baseline vs. Reform" in source
     assert "result.manifest" in source
     assert "import matplotlib.pyplot as plt" in source
+
+
+def test_quickstart_notebook_includes_export_examples() -> None:
+    """Story 6-5: notebook includes panel/indicator export and round-trip examples."""
+    source = _all_sources(_load_notebook())
+    assert "## 6. Export Actions" in source
+    assert "result.export_csv(" in source
+    assert "result.export_parquet(" in source
+    assert "indicators.export_csv(" in source
+    assert "pa_csv.read_csv(" in source

@@ -342,6 +342,25 @@ class TestPanelOutputParquetExport:
         assert metadata is not None
         assert b"reformlab_panel_version" in metadata
 
+    def test_parquet_includes_custom_metadata(self, tmp_path: Path) -> None:
+        """Parquet export merges custom schema metadata keys."""
+        result = make_orchestrator_result([2020], num_households=3)
+        panel = PanelOutput.from_orchestrator_result(result)
+
+        parquet_path = tmp_path / "panel.parquet"
+        panel.to_parquet(
+            parquet_path,
+            schema_metadata={
+                "reformlab_manifest_id": "manifest-test",
+                "reformlab_engine_version": "9.9.9",
+            },
+        )
+
+        metadata = pa.parquet.ParquetFile(parquet_path).schema_arrow.metadata
+        assert metadata is not None
+        assert metadata[b"reformlab_manifest_id"] == b"manifest-test"
+        assert metadata[b"reformlab_engine_version"] == b"9.9.9"
+
 
 class TestComparePanels:
     """Test panel comparison functionality (AC-4)."""

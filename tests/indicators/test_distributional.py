@@ -430,30 +430,36 @@ class TestIndicatorResultExport:
 
     def test_export_all_indicator_types(self, tmp_path) -> None:
         """Verify export works for all indicator types (distributional, geographic, welfare, fiscal)."""
-        import pyarrow as pa
-        from pathlib import Path
-
         from reformlab.indicators.distributional import compute_distributional_indicators
         from reformlab.indicators.fiscal import compute_fiscal_indicators
         from reformlab.indicators.geographic import compute_geographic_indicators
+        from reformlab.indicators.welfare import compute_welfare_indicators
         from reformlab.indicators.types import FiscalConfig, GeographicConfig
         from reformlab.orchestrator.panel import PanelOutput
 
         # Create test panel with all required fields
+        disposable_income = [20000.0 + (i * 900.0) for i in range(20)]
         table = pa.table(
             {
                 "household_id": pa.array(list(range(1, 21)), type=pa.int64()),
                 "year": pa.array([2025] * 20, type=pa.int64()),
-                "income": pa.array([20000.0 + (i * 1000.0) for i in range(20)], type=pa.float64()),
+                "income": pa.array(
+                    [20000.0 + (i * 1000.0) for i in range(20)],
+                    type=pa.float64(),
+                ),
                 "region_code": pa.array(["11"] * 10 + ["32"] * 10, type=pa.utf8()),
-                "carbon_tax": pa.array([100.0 + (i * 5.0) for i in range(20)], type=pa.float64()),
+                "carbon_tax": pa.array(
+                    [100.0 + (i * 5.0) for i in range(20)],
+                    type=pa.float64(),
+                ),
                 "rebate": pa.array([50.0] * 20, type=pa.float64()),
+                "disposable_income": pa.array(disposable_income, type=pa.float64()),
             }
         )
-        panel = PanelOutput(table=table, metadata={})
+        baseline_panel = PanelOutput(table=table, metadata={})
 
         # Test distributional export
-        dist_result = compute_distributional_indicators(panel)
+        dist_result = compute_distributional_indicators(baseline_panel)
         dist_csv = tmp_path / "dist.csv"
         dist_parquet = tmp_path / "dist.parquet"
         assert dist_result.export_csv(dist_csv).exists()
@@ -461,7 +467,7 @@ class TestIndicatorResultExport:
 
         # Test geographic export
         geo_result = compute_geographic_indicators(
-            panel, config=GeographicConfig(region_field="region_code")
+            baseline_panel, config=GeographicConfig(region_field="region_code")
         )
         geo_csv = tmp_path / "geo.csv"
         geo_parquet = tmp_path / "geo.parquet"
@@ -470,7 +476,7 @@ class TestIndicatorResultExport:
 
         # Test fiscal export
         fiscal_result = compute_fiscal_indicators(
-            panel,
+            baseline_panel,
             config=FiscalConfig(
                 revenue_fields=["carbon_tax"],
                 cost_fields=["rebate"],
@@ -480,3 +486,16 @@ class TestIndicatorResultExport:
         fiscal_parquet = tmp_path / "fiscal.parquet"
         assert fiscal_result.export_csv(fiscal_csv).exists()
         assert fiscal_result.export_parquet(fiscal_parquet).exists()
+
+        # Test welfare export
+        reform_table = table.set_column(
+            table.schema.get_field_index("disposable_income"),
+            "disposable_income",
+            pa.array([value + 250.0 for value in disposable_income], type=pa.float64()),
+        )
+        reform_panel = PanelOutput(table=reform_table, metadata={})
+        welfare_result = compute_welfare_indicators(baseline_panel, reform_panel)
+        welfare_csv = tmp_path / "welfare.csv"
+        welfare_parquet = tmp_path / "welfare.parquet"
+        assert welfare_result.export_csv(welfare_csv).exists()
+        assert welfare_result.export_parquet(welfare_parquet).exists()

@@ -122,27 +122,42 @@ class PanelOutput:
         pa_csv.write_csv(self.table, path)
         return path
 
-    def to_parquet(self, path: str | Path) -> Path:
+    def to_parquet(
+        self,
+        path: str | Path,
+        schema_metadata: dict[str, str | bytes] | None = None,
+    ) -> Path:
         """Export panel to Parquet file with schema preservation.
 
         The Parquet file includes panel format metadata for version tracking.
+        Additional metadata can be attached for provenance traceability.
 
         Args:
             path: Path for output Parquet file.
+            schema_metadata: Optional key/value metadata to merge into the
+                written Parquet schema metadata.
 
         Returns:
             Path to the written Parquet file.
         """
         path = Path(path)
 
-        # Add panel version to schema metadata
-        existing_metadata = self.table.schema.metadata or {}
-        new_metadata = {
+        # Add panel version to schema metadata, preserving existing keys.
+        existing_metadata = dict(self.table.schema.metadata or {})
+        new_metadata: dict[bytes, bytes] = {
             **existing_metadata,
             b"reformlab_panel_version": PANEL_VERSION.encode(),
         }
-        schema_with_metadata = self.table.schema.with_metadata(new_metadata)
-        table_with_metadata = self.table.cast(schema_with_metadata)
+
+        if schema_metadata:
+            for key, value in schema_metadata.items():
+                key_bytes = key if isinstance(key, bytes) else str(key).encode()
+                value_bytes = (
+                    value if isinstance(value, bytes) else str(value).encode()
+                )
+                new_metadata[key_bytes] = value_bytes
+
+        table_with_metadata = self.table.replace_schema_metadata(new_metadata)
 
         pq.write_table(table_with_metadata, path)
         return path

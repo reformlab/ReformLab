@@ -211,7 +211,7 @@ class SimulationResult:
         """Export simulation panel output to Parquet file.
 
         Parquet export includes run provenance metadata in the schema metadata,
-        including manifest_id and engine version information for traceability.
+        including manifest ID and engine version context for traceability.
 
         Args:
             path: Destination file path for Parquet export.
@@ -232,7 +232,19 @@ class SimulationResult:
             msg = "No panel output available (simulation may have failed)"
             raise SimulationError(msg)
 
-        return self.panel_output.to_parquet(path)
+        provenance_metadata = {
+            "reformlab_manifest_id": self.manifest.manifest_id,
+            "reformlab_manifest_created_at": self.manifest.created_at,
+            "reformlab_engine_version": self.manifest.engine_version,
+            "reformlab_openfisca_version": self.manifest.openfisca_version,
+            "reformlab_adapter_version": self.manifest.adapter_version,
+            "reformlab_scenario_version": self.manifest.scenario_version,
+        }
+
+        return self.panel_output.to_parquet(
+            path,
+            schema_metadata=provenance_metadata,
+        )
 
 
 def create_quickstart_adapter(

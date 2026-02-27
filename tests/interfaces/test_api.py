@@ -325,6 +325,8 @@ class TestSimulationResult:
 
         from reformlab import SimulationResult
 
+        created_at = datetime.now(timezone.utc).isoformat()
+
         panel_table = pa.table(
             {
                 "household_id": pa.array([1, 2], type=pa.int64()),
@@ -340,7 +342,7 @@ class TestSimulationResult:
             panel_output=PanelOutput(table=panel_table, metadata={}),
             manifest=RunManifest(
                 manifest_id="manifest-123",
-                created_at=datetime.now(timezone.utc).isoformat(),
+                created_at=created_at,
                 engine_version="1.0.0",
                 openfisca_version="2.0.0",
                 adapter_version="2.0.0",
@@ -366,6 +368,12 @@ class TestSimulationResult:
         schema_metadata = loaded_table.schema.metadata
         assert schema_metadata is not None
         assert b"reformlab_panel_version" in schema_metadata
+        assert schema_metadata[b"reformlab_manifest_id"] == b"manifest-123"
+        assert schema_metadata[b"reformlab_manifest_created_at"] == created_at.encode()
+        assert schema_metadata[b"reformlab_engine_version"] == b"1.0.0"
+        assert schema_metadata[b"reformlab_openfisca_version"] == b"2.0.0"
+        assert schema_metadata[b"reformlab_adapter_version"] == b"2.0.0"
+        assert schema_metadata[b"reformlab_scenario_version"] == b"1.0.0"
 
     def test_simulation_result_export_no_panel(self, tmp_path: Path) -> None:
         """export methods raise SimulationError when panel_output is None."""
