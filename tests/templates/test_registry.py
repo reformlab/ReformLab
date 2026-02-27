@@ -961,8 +961,26 @@ class TestBaselineReformNavigation:
         )
         registry.save(reform, "orphan-reform")
 
-        with pytest.raises(ScenarioNotFoundError):
+        with pytest.raises(RegistryError) as exc_info:
             registry.get_baseline("orphan-reform")
+        assert exc_info.value.summary == "Broken baseline link"
+
+    def test_get_baseline_malformed_ref_raises_error(
+        self,
+        registry: ScenarioRegistry,
+    ) -> None:
+        """Malformed baseline_ref returns a clear RegistryError."""
+        reform = ReformScenario(
+            name="Malformed Reform",
+            policy_type=PolicyType.CARBON_TAX,
+            baseline_ref="baseline@",
+            parameters=CarbonTaxParameters(rate_schedule={}),
+        )
+        registry.save(reform, "malformed-reform")
+
+        with pytest.raises(RegistryError) as exc_info:
+            registry.get_baseline("malformed-reform")
+        assert exc_info.value.summary == "Invalid baseline reference"
 
     def test_list_reforms_for_baseline(
         self,
@@ -1032,6 +1050,33 @@ class TestBaselineReformNavigation:
         reforms = registry.list_reforms("lonely-baseline")
         assert reforms == []
 
+    def test_list_reforms_for_non_baseline_raises_error(
+        self,
+        registry: ScenarioRegistry,
+        sample_baseline: BaselineScenario,
+    ) -> None:
+        """list_reforms requires a baseline scenario target."""
+        registry.save(sample_baseline, "baseline")
+        reform = ReformScenario(
+            name="Reform",
+            policy_type=PolicyType.CARBON_TAX,
+            baseline_ref="baseline",
+            parameters=CarbonTaxParameters(rate_schedule={}),
+        )
+        registry.save(reform, "my-reform")
+
+        with pytest.raises(RegistryError) as exc_info:
+            registry.list_reforms("my-reform")
+        assert exc_info.value.summary == "Not a baseline scenario"
+
+    def test_list_reforms_missing_baseline_raises_error(
+        self,
+        registry: ScenarioRegistry,
+    ) -> None:
+        """list_reforms raises when the baseline target does not exist."""
+        with pytest.raises(ScenarioNotFoundError):
+            registry.list_reforms("missing-baseline")
+
     def test_list_reforms_includes_version_ids(
         self,
         registry: ScenarioRegistry,
@@ -1088,10 +1133,19 @@ class TestBaselineRefParsing:
         self,
         registry: ScenarioRegistry,
     ) -> None:
-        """Parse baseline_ref with trailing @ treats empty as None (latest)."""
-        name, version = registry._parse_baseline_ref("baseline@")
-        assert name == "baseline"
-        assert version is None  # Empty string is normalized to None
+        """Trailing @ is invalid because pinned refs require a version ID."""
+        with pytest.raises(RegistryError) as exc_info:
+            registry._parse_baseline_ref("baseline@")
+        assert exc_info.value.summary == "Invalid baseline reference"
+
+    def test_parse_baseline_ref_missing_name_raises_error(
+        self,
+        registry: ScenarioRegistry,
+    ) -> None:
+        """Pinned refs require a baseline name before @."""
+        with pytest.raises(RegistryError) as exc_info:
+            registry._parse_baseline_ref("@abc123def")
+        assert exc_info.value.summary == "Invalid baseline reference"
 
 
 class TestCloneIntegration:

@@ -614,11 +614,46 @@ class ScenarioRegistry:
 
         Returns:
             Tuple of (scenario_name, version_id or None).
+
+        Raises:
+            RegistryError: If baseline_ref is malformed.
         """
-        if "@" in baseline_ref:
-            name, version = baseline_ref.rsplit("@", 1)
-            return (name, version if version else None)
-        return (baseline_ref, None)
+        normalized = baseline_ref.strip()
+        if not normalized:
+            raise RegistryError(
+                summary="Invalid baseline reference",
+                reason="baseline_ref cannot be empty",
+                fix=(
+                    "Use baseline_ref in the form 'scenario-name' or "
+                    "'scenario-name@version_id'"
+                ),
+            )
+
+        if normalized.startswith("@"):
+            raise RegistryError(
+                summary="Invalid baseline reference",
+                reason=f"baseline_ref '{baseline_ref}' is missing a scenario name",
+                fix=(
+                    "Use baseline_ref in the form 'scenario-name' or "
+                    "'scenario-name@version_id'"
+                ),
+            )
+
+        if normalized.endswith("@"):
+            raise RegistryError(
+                summary="Invalid baseline reference",
+                reason=f"baseline_ref '{baseline_ref}' is missing a version ID",
+                fix=(
+                    "Use baseline_ref in the form 'scenario-name' or "
+                    "'scenario-name@version_id'"
+                ),
+            )
+
+        if "@" not in normalized:
+            return (_validate_scenario_name(normalized), None)
+
+        name, version = normalized.rsplit("@", 1)
+        return (_validate_scenario_name(name), version)
 
     def get_baseline(
         self,
@@ -659,7 +694,26 @@ class ScenarioRegistry:
 
         # Parse baseline_ref (supports "name" or "name@version")
         baseline_name, baseline_version = self._parse_baseline_ref(reform.baseline_ref)
-        result = self.get(baseline_name, baseline_version)
+        try:
+            result = self.get(baseline_name, baseline_version)
+        except (ScenarioNotFoundError, VersionNotFoundError):
+            ref_display = (
+                f"{baseline_name}@{baseline_version}"
+                if baseline_version is not None
+                else baseline_name
+            )
+            raise RegistryError(
+                summary="Broken baseline link",
+                reason=(
+                    f"Reform '{reform_name}' references baseline '{ref_display}', "
+                    "but that target does not exist"
+                ),
+                fix=(
+                    "Update baseline_ref to an existing baseline scenario "
+                    "(optionally pinned with @version_id)"
+                ),
+                scenario_name=reform_name,
+            ) from None
 
         # Type narrowing: baseline should be BaselineScenario
         if not isinstance(result, BaselineScenario):
@@ -698,6 +752,19 @@ class ScenarioRegistry:
             >>> reforms = registry.list_reforms("carbon-tax-2026")
             >>> # Returns: [("progressive-dividend", "abc123"), ("lump-sum", "def456")]
         """
+        baseline = self.get(baseline_name, version_id)
+        if not isinstance(baseline, BaselineScenario):
+            raise RegistryError(
+                summary="Not a baseline scenario",
+                reason=f"'{baseline_name}' is a reform, not a baseline",
+                fix=(
+                    "Use list_reforms() only with a baseline scenario name "
+                    "(and optional baseline version ID)"
+                ),
+                scenario_name=baseline_name,
+                version_id=version_id or "",
+            )
+
         reforms: list[tuple[str, str]] = []
 
         for scenario_name in self.list_scenarios():
