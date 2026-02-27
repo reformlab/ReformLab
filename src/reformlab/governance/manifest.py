@@ -16,7 +16,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
+from copy import deepcopy
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
@@ -27,6 +29,24 @@ from reformlab.governance.errors import (
 
 # SHA-256 hex digest pattern (64 hex characters)
 SHA256_PATTERN = re.compile(r"^[a-fA-F0-9]{64}$")
+REQUIRED_STRING_FIELDS = (
+    "manifest_id",
+    "created_at",
+    "engine_version",
+    "openfisca_version",
+    "adapter_version",
+    "scenario_version",
+)
+REQUIRED_JSON_FIELDS = (
+    *REQUIRED_STRING_FIELDS,
+    "data_hashes",
+    "output_hashes",
+    "seeds",
+    "parameters",
+    "assumptions",
+    "step_pipeline",
+    "integrity_hash",
+)
 
 
 @dataclass(frozen=True)
@@ -68,23 +88,20 @@ class RunManifest:
 
     def __post_init__(self) -> None:
         """Validate required fields and hash formats on construction."""
-        # Validate required string fields are non-empty
-        required_fields = [
-            "manifest_id",
-            "created_at",
-            "engine_version",
-            "openfisca_version",
-            "adapter_version",
-            "scenario_version",
-        ]
-        for field_name in required_fields:
+        self._validate()
+        self._normalize_mutable_fields()
+
+    def _validate(self) -> None:
+        """Validate manifest schema and field invariants."""
+        # Validate required string fields are non-empty.
+        for field_name in REQUIRED_STRING_FIELDS:
             value = getattr(self, field_name)
             if not isinstance(value, str) or not value.strip():
                 raise ManifestValidationError(
                     f"Required field '{field_name}' must be a non-empty string"
                 )
 
-        # Validate hash formats (SHA-256 hex digests)
+        # Validate hash formats (SHA-256 hex digests).
         for hash_dict_name in ["data_hashes", "output_hashes"]:
             hash_dict = getattr(self, hash_dict_name)
             if not isinstance(hash_dict, dict):
@@ -92,6 +109,11 @@ class RunManifest:
                     f"Field '{hash_dict_name}' must be a dictionary"
                 )
             for key, hash_value in hash_dict.items():
+                if not isinstance(key, str) or not key.strip():
+                    raise ManifestValidationError(
+                        f"Invalid hash key in '{hash_dict_name}': expected non-empty "
+                        f"string, got {key!r}"
+                    )
                 if not isinstance(hash_value, str) or not SHA256_PATTERN.match(
                     hash_value
                 ):
@@ -107,39 +129,53 @@ class RunManifest:
                 f"got {self.integrity_hash!r}"
             )
 
-        # Validate seeds dictionary
+        # Validate seeds dictionary.
         if not isinstance(self.seeds, dict):
             raise ManifestValidationError("Field 'seeds' must be a dictionary")
         for key, seed_value in self.seeds.items():
-            if not isinstance(seed_value, int):
+            if not isinstance(key, str) or not key.strip():
+                raise ManifestValidationError(
+                    f"Invalid seed key: expected non-empty string, got {key!r}"
+                )
+            if not isinstance(seed_value, int) or isinstance(seed_value, bool):
                 raise ManifestValidationError(
                     f"Invalid seed value in 'seeds[{key!r}]': "
                     f"expected int, got {type(seed_value).__name__}"
                 )
 
-        # Validate parameters dictionary
+        # Validate parameters dictionary.
         if not isinstance(self.parameters, dict):
             raise ManifestValidationError("Field 'parameters' must be a dictionary")
+        _validate_json_compatible(self.parameters, "parameters")
 
-        # Validate assumptions list
+        # Validate assumptions list.
         if not isinstance(self.assumptions, list):
             raise ManifestValidationError("Field 'assumptions' must be a list")
         for i, assumption in enumerate(self.assumptions):
-            if not isinstance(assumption, str):
+            if not isinstance(assumption, str) or not assumption.strip():
                 raise ManifestValidationError(
                     f"Invalid assumption at index {i}: "
                     f"expected str, got {type(assumption).__name__}"
                 )
 
-        # Validate step_pipeline list
+        # Validate step_pipeline list.
         if not isinstance(self.step_pipeline, list):
             raise ManifestValidationError("Field 'step_pipeline' must be a list")
         for i, step_name in enumerate(self.step_pipeline):
-            if not isinstance(step_name, str):
+            if not isinstance(step_name, str) or not step_name.strip():
                 raise ManifestValidationError(
                     f"Invalid step name at index {i}: "
                     f"expected str, got {type(step_name).__name__}"
                 )
+
+    def _normalize_mutable_fields(self) -> None:
+        """Copy mutable containers to prevent external aliasing side effects."""
+        object.__setattr__(self, "data_hashes", dict(self.data_hashes))
+        object.__setattr__(self, "output_hashes", dict(self.output_hashes))
+        object.__setattr__(self, "seeds", dict(self.seeds))
+        object.__setattr__(self, "parameters", deepcopy(self.parameters))
+        object.__setattr__(self, "assumptions", list(self.assumptions))
+        object.__setattr__(self, "step_pipeline", list(self.step_pipeline))
 
     def to_json(self) -> str:
         """Serialize manifest to canonical JSON.
@@ -182,22 +218,34 @@ class RunManifest:
                 f"Invalid manifest JSON: expected object, got {type(data).__name__}"
             )
 
-        # Extract fields with defaults for optional dict/list fields
+        missing_fields = [key for key in REQUIRED_JSON_FIELDS if key not in data]
+        if missing_fields:
+            raise ManifestValidationError(
+                "Missing required manifest fields: "
+                + ", ".join(sorted(missing_fields))
+            )
+
+        unknown_fields = sorted(set(data) - set(REQUIRED_JSON_FIELDS))
+        if unknown_fields:
+            raise ManifestValidationError(
+                "Unknown manifest fields: " + ", ".join(unknown_fields)
+            )
+
         try:
             return cls(
-                manifest_id=data.get("manifest_id", ""),
-                created_at=data.get("created_at", ""),
-                engine_version=data.get("engine_version", ""),
-                openfisca_version=data.get("openfisca_version", ""),
-                adapter_version=data.get("adapter_version", ""),
-                scenario_version=data.get("scenario_version", ""),
-                data_hashes=data.get("data_hashes", {}),
-                output_hashes=data.get("output_hashes", {}),
-                seeds=data.get("seeds", {}),
-                parameters=data.get("parameters", {}),
-                assumptions=data.get("assumptions", []),
-                step_pipeline=data.get("step_pipeline", []),
-                integrity_hash=data.get("integrity_hash", ""),
+                manifest_id=data["manifest_id"],
+                created_at=data["created_at"],
+                engine_version=data["engine_version"],
+                openfisca_version=data["openfisca_version"],
+                adapter_version=data["adapter_version"],
+                scenario_version=data["scenario_version"],
+                data_hashes=data["data_hashes"],
+                output_hashes=data["output_hashes"],
+                seeds=data["seeds"],
+                parameters=data["parameters"],
+                assumptions=data["assumptions"],
+                step_pipeline=data["step_pipeline"],
+                integrity_hash=data["integrity_hash"],
             )
         except (TypeError, KeyError) as e:
             raise ManifestValidationError(
@@ -230,6 +278,8 @@ class RunManifest:
         Raises:
             ManifestIntegrityError: If integrity verification fails.
         """
+        self._validate()
+
         if not self.integrity_hash:
             raise ManifestIntegrityError(
                 "Cannot verify integrity: integrity_hash is empty"
@@ -269,3 +319,35 @@ class RunManifest:
             step_pipeline=self.step_pipeline,
             integrity_hash=computed_hash,
         )
+
+
+def _validate_json_compatible(value: Any, path: str) -> None:
+    """Validate that a value is canonical-JSON compatible and deterministic."""
+    if isinstance(value, dict):
+        for key, nested_value in value.items():
+            if not isinstance(key, str) or not key.strip():
+                raise ManifestValidationError(
+                    f"Invalid key at {path}: expected non-empty string, got {key!r}"
+                )
+            _validate_json_compatible(nested_value, f"{path}[{key!r}]")
+        return
+
+    if isinstance(value, (list, tuple)):
+        for index, nested_value in enumerate(value):
+            _validate_json_compatible(nested_value, f"{path}[{index}]")
+        return
+
+    if isinstance(value, bool | str | int) or value is None:
+        return
+
+    if isinstance(value, float):
+        if math.isfinite(value):
+            return
+        raise ManifestValidationError(
+            f"Invalid float at {path}: expected finite JSON number, got {value!r}"
+        )
+
+    raise ManifestValidationError(
+        f"Invalid value at {path}: expected JSON-compatible type, "
+        f"got {type(value).__name__}"
+    )

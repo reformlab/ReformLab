@@ -115,6 +115,47 @@ class TestRunManifestCreation:
                 seeds={"master": "not-an-int"},  # type: ignore
             )
 
+    def test_bool_seed_raises_validation_error(self) -> None:
+        """Boolean seed values are rejected even though bool is an int subtype."""
+        with pytest.raises(ManifestValidationError, match="Invalid seed value"):
+            RunManifest(
+                manifest_id="test-001",
+                created_at="2026-02-27T10:00:00Z",
+                engine_version="0.1.0",
+                openfisca_version="40.0.0",
+                adapter_version="1.0.0",
+                scenario_version="v1.0",
+                seeds={"master": True},  # type: ignore[arg-type]
+            )
+
+    def test_non_string_hash_key_raises_validation_error(self) -> None:
+        """Hash maps require non-empty string keys."""
+        with pytest.raises(ManifestValidationError, match="Invalid hash key"):
+            RunManifest(
+                manifest_id="test-001",
+                created_at="2026-02-27T10:00:00Z",
+                engine_version="0.1.0",
+                openfisca_version="40.0.0",
+                adapter_version="1.0.0",
+                scenario_version="v1.0",
+                data_hashes={123: "a" * 64},  # type: ignore[dict-item]
+            )
+
+    def test_non_json_compatible_parameter_value_raises_validation_error(self) -> None:
+        """Parameters must contain deterministic JSON-compatible values."""
+        with pytest.raises(
+            ManifestValidationError, match="expected JSON-compatible type"
+        ):
+            RunManifest(
+                manifest_id="test-001",
+                created_at="2026-02-27T10:00:00Z",
+                engine_version="0.1.0",
+                openfisca_version="40.0.0",
+                adapter_version="1.0.0",
+                scenario_version="v1.0",
+                parameters={"unsupported": {1, 2, 3}},
+            )
+
 
 class TestManifestImmutability:
     """Test frozen dataclass immutability behavior."""
@@ -124,18 +165,28 @@ class TestManifestImmutability:
         with pytest.raises(FrozenInstanceError):
             minimal_manifest.manifest_id = "modified"  # type: ignore
 
-    def test_nested_dict_modification_does_not_affect_original(
+    def test_constructor_defensive_copy_prevents_alias_mutation(self) -> None:
+        """Mutating caller-owned containers cannot alter a constructed manifest."""
+        input_hashes = {"population.csv": "a" * 64}
+        manifest = RunManifest(
+            manifest_id="test-001",
+            created_at="2026-02-27T10:00:00Z",
+            engine_version="0.1.0",
+            openfisca_version="40.0.0",
+            adapter_version="1.0.0",
+            scenario_version="v1.0",
+            data_hashes=input_hashes,
+        )
+        input_hashes["population.csv"] = "b" * 64
+        assert manifest.data_hashes["population.csv"] == "a" * 64
+
+    def test_with_integrity_hash_uses_independent_container_copies(
         self, full_manifest: RunManifest
     ) -> None:
-        """Modifying input dicts after construction doesn't alter manifest.
-
-        Note: This test documents current behavior. For deep immutability,
-        Phase 2 could use immutable types (frozendict, tuple).
-        """
-        original_hashes = full_manifest.data_hashes.copy()
-        # Attempting to modify the dict reference (won't affect frozen dataclass)
-        # but the dict itself is mutable - this is acceptable for MVP
-        assert full_manifest.data_hashes == original_hashes
+        """Derived manifest should not share mutable container references."""
+        manifest_with_hash = full_manifest.with_integrity_hash()
+        manifest_with_hash.data_hashes["new.csv"] = "e" * 64
+        assert "new.csv" not in full_manifest.data_hashes
 
 
 class TestManifestSerialization:
@@ -194,8 +245,31 @@ class TestManifestSerialization:
     def test_from_json_with_missing_fields_raises_error(self) -> None:
         """from_json() raises ManifestValidationError for missing required fields."""
         incomplete_json = json.dumps({"manifest_id": "test-001"})
-        with pytest.raises(ManifestValidationError, match="Required field"):
+        with pytest.raises(ManifestValidationError, match="Missing required manifest"):
             RunManifest.from_json(incomplete_json)
+
+    def test_from_json_with_unknown_fields_raises_error(self) -> None:
+        """from_json() rejects unknown fields to avoid silent schema drift."""
+        manifest_json = json.dumps(
+            {
+                "manifest_id": "test-001",
+                "created_at": "2026-02-27T10:00:00Z",
+                "engine_version": "0.1.0",
+                "openfisca_version": "40.0.0",
+                "adapter_version": "1.0.0",
+                "scenario_version": "v1.0",
+                "data_hashes": {},
+                "output_hashes": {},
+                "seeds": {},
+                "parameters": {},
+                "assumptions": [],
+                "step_pipeline": [],
+                "integrity_hash": "",
+                "unexpected_field": "oops",
+            }
+        )
+        with pytest.raises(ManifestValidationError, match="Unknown manifest fields"):
+            RunManifest.from_json(manifest_json)
 
 
 class TestManifestIntegrity:
@@ -315,6 +389,15 @@ class TestManifestIntegrity:
         ):
             tampered.verify_integrity()
 
+    def test_verify_integrity_validates_structure_before_hash_check(
+        self, minimal_manifest: RunManifest
+    ) -> None:
+        """Structural tampering must raise validation errors during verification."""
+        manifest_with_hash = minimal_manifest.with_integrity_hash()
+        manifest_with_hash.data_hashes["invalid"] = "not-a-hash"
+        with pytest.raises(ManifestValidationError, match="Invalid SHA-256 hash"):
+            manifest_with_hash.verify_integrity()
+
 
 class TestManifestValidation:
     """Test explicit validation and error messages."""
@@ -340,6 +423,13 @@ class TestManifestValidation:
             "openfisca_version": "40.0.0",
             "adapter_version": "1.0.0",
             "scenario_version": "v1.0",
+            "data_hashes": {},
+            "output_hashes": {},
+            "seeds": {},
+            "parameters": {},
+            "assumptions": [],
+            "step_pipeline": [],
+            "integrity_hash": "",
         })
         with pytest.raises(ManifestValidationError, match="Required field"):
             RunManifest.from_json(invalid_json)
