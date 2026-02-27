@@ -51,6 +51,9 @@ logs/
 *.tmp
 *.bak
 
+# === Kamal / Deployment ===
+.kamal/secrets
+
 # === Data artifacts ===
 *.parquet
 data/
