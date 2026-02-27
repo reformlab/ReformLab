@@ -222,7 +222,9 @@ def test_assign_regions_basic(simple_regional_panel: PanelOutput) -> None:
 
 def test_assign_regions_with_missing(panel_with_missing_regions: PanelOutput) -> None:
     """Test region assignment with missing region codes."""
-    with pytest.warns(UserWarning, match="Excluded 10 household.*missing region"):
+    with pytest.warns(
+        UserWarning, match="Excluded 10 household.*missing/blank region"
+    ):
         table, excluded_count, unmatched_count = assign_regions(
             panel_with_missing_regions.table,
             "region_code",
@@ -277,6 +279,44 @@ def test_assign_regions_all_null_error(panel_with_missing_regions: PanelOutput) 
 
     with pytest.raises(ValueError, match="No households with valid region codes"):
         assign_regions(table, "region_code")
+
+
+def test_assign_regions_with_blank_codes() -> None:
+    """Test that blank/whitespace region codes are treated as missing."""
+    table = pa.table(
+        {
+            "household_id": pa.array([1, 2, 3, 4], type=pa.int64()),
+            "year": pa.array([2020, 2020, 2020, 2020], type=pa.int64()),
+            "region_code": pa.array(["11", "", "  ", "44"], type=pa.utf8()),
+            "income": pa.array([10000.0, 20000.0, 30000.0, 40000.0], type=pa.float64()),
+        }
+    )
+
+    with pytest.warns(UserWarning, match="Excluded 2 household.*missing/blank region"):
+        filtered, excluded_count, unmatched_count = assign_regions(table, "region_code")
+
+    assert filtered.num_rows == 2
+    assert excluded_count == 2
+    assert unmatched_count == 0
+    assert filtered.column("region_code").to_pylist() == ["11", "44"]
+
+
+def test_assign_regions_with_empty_reference_table(
+    simple_regional_panel: PanelOutput,
+) -> None:
+    """Test that an empty reference table groups all codes as unmatched."""
+    empty_reference = pa.table({"region_code": pa.array([], type=pa.utf8())})
+
+    with pytest.warns(UserWarning, match="Found 100 household.*unmatched region"):
+        table, excluded_count, unmatched_count = assign_regions(
+            simple_regional_panel.table,
+            "region_code",
+            empty_reference,
+        )
+
+    assert excluded_count == 0
+    assert unmatched_count == 100
+    assert set(table.column("region_code").to_pylist()) == {"_UNMATCHED"}
 
 
 def test_aggregate_by_region_basic(simple_regional_panel: PanelOutput) -> None:
@@ -399,6 +439,27 @@ def test_compute_geographic_indicators_by_year(
     # Check that year is populated
     years = {ind.year for ind in result.indicators}
     assert years == {2020, 2021}
+
+
+def test_compute_geographic_indicators_aggregate_years(
+    multi_year_regional_panel: PanelOutput,
+) -> None:
+    """Test geographic indicators aggregated across all years."""
+    config = GeographicConfig(by_year=False, aggregate_years=True)
+
+    result = compute_geographic_indicators(multi_year_regional_panel, config)
+
+    # 2 regions × 2 fields = 4 indicators (years collapsed)
+    assert len(result.indicators) == 4
+    assert all(ind.year is None for ind in result.indicators)
+
+    # Region 11 has 10 households/year across 2 years.
+    income_r11 = next(
+        ind
+        for ind in result.indicators
+        if ind.field_name == "income" and ind.region == "11"
+    )
+    assert income_r11.count == 20
 
 
 def test_compute_geographic_indicators_with_missing_regions(

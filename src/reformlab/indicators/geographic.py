@@ -26,6 +26,30 @@ if TYPE_CHECKING:
     from reformlab.orchestrator.panel import PanelOutput
 
 
+def _valid_region_mask(
+    region_col: pa.ChunkedArray,
+    region_type: pa.DataType,
+) -> pa.ChunkedArray:
+    """Return a boolean mask for non-missing region values.
+
+    Missing region values are:
+    - null
+    - non-finite values for floating region columns
+    - blank/whitespace-only values for string region columns
+    """
+    valid_mask = pc.invert(pc.is_null(region_col))
+
+    if pa.types.is_floating(region_type):
+        valid_mask = pc.and_kleene(valid_mask, pc.is_finite(region_col))
+
+    if pa.types.is_string(region_type) or pa.types.is_large_string(region_type):
+        trimmed = pc.utf8_trim_whitespace(region_col)
+        non_empty = pc.greater(pc.utf8_length(trimmed), pa.scalar(0, type=pa.int32()))
+        valid_mask = pc.and_kleene(valid_mask, non_empty)
+
+    return valid_mask
+
+
 def assign_regions(
     table: pa.Table,
     region_field: str,
@@ -33,7 +57,8 @@ def assign_regions(
 ) -> tuple[pa.Table, int, int]:
     """Validate region codes and handle missing/unmatched values.
 
-    Filters out households with null/missing region codes, and optionally
+    Filters out households with null/missing region codes (including blank
+    string values), and optionally
     validates region codes against a reference table. Unmatched region codes
     are reassigned to "_UNMATCHED" category when a reference table is provided.
 
@@ -64,15 +89,16 @@ def assign_regions(
 
     region_col = table.column(region_field)
 
-    # Filter out null region values
-    valid_region_mask = pc.invert(pc.is_null(region_col))
+    # Filter out missing region values.
+    region_type = table.schema.field(region_field).type
+    valid_region_mask = _valid_region_mask(region_col, region_type)
     valid_table = table.filter(valid_region_mask)
     excluded_count = table.num_rows - valid_table.num_rows
 
     if excluded_count > 0:
         warnings.warn(
-            f"Excluded {excluded_count} household(s) with missing region codes "
-            f"from geographic grouping.",
+            f"Excluded {excluded_count} household(s) with missing/blank region "
+            "codes from geographic grouping.",
             stacklevel=2,
         )
 
@@ -91,15 +117,30 @@ def assign_regions(
                 f"Available columns: {reference_table.column_names}"
             )
 
-        # Get valid region codes from reference table
-        valid_regions = reference_table.column(region_field)
-        valid_region_set = set(valid_regions.to_pylist())
+        # Get valid reference region codes (excluding missing values).
+        reference_regions = reference_table.column(region_field)
+        reference_type = reference_table.schema.field(region_field).type
+        reference_mask = _valid_region_mask(reference_regions, reference_type)
+        reference_regions = pc.filter(reference_regions, reference_mask)
 
         # Identify unmatched region codes
         panel_regions = valid_table.column(region_field)
-        is_matched = pc.is_in(panel_regions, value_set=pa.array(list(valid_region_set)))
-        unmatched_mask = pc.invert(is_matched)
-        unmatched_count = pc.sum(pc.cast(unmatched_mask, pa.int64())).as_py()
+        if reference_regions.type != panel_regions.type:
+            try:
+                reference_regions = pc.cast(reference_regions, panel_regions.type)
+            except (pa.ArrowInvalid, pa.ArrowTypeError) as exc:
+                raise ValueError(
+                    "Reference region column type cannot be cast to panel region "
+                    f"type ({reference_regions.type} -> {panel_regions.type})."
+                ) from exc
+
+        if reference_regions.length() == 0:
+            unmatched_mask = pa.array([True] * valid_table.num_rows, type=pa.bool_())
+        else:
+            is_matched = pc.is_in(panel_regions, value_set=reference_regions)
+            unmatched_mask = pc.invert(is_matched)
+
+        unmatched_count = int(pc.sum(pc.cast(unmatched_mask, pa.int64())).as_py() or 0)
 
         if unmatched_count > 0:
             warnings.warn(
@@ -109,6 +150,12 @@ def assign_regions(
             )
 
             # Replace unmatched region codes with "_UNMATCHED"
+            if not (
+                pa.types.is_string(panel_regions.type)
+                or pa.types.is_large_string(panel_regions.type)
+            ):
+                panel_regions = pc.cast(panel_regions, pa.utf8())
+
             updated_regions = pc.if_else(
                 unmatched_mask,
                 pa.scalar("_UNMATCHED"),
