@@ -1,6 +1,7 @@
 """Tests for distributional indicator computation.
 
 Story 4.1: Implement Distributional Indicators by Income Decile
+Story 6.5: Add Export Actions for CSV/Parquet Outputs
 
 Tests cover:
 - Decile assignment across controlled income distributions (AC-1)
@@ -8,10 +9,12 @@ Tests cover:
 - Metric correctness for numeric fields (AC-3)
 - Multi-year by_year and aggregate_years behavior (AC-4)
 - IndicatorResult.to_table() schema stability (AC-5)
+- IndicatorResult export methods (Story 6-5, AC-2)
 """
 
 from __future__ import annotations
 
+import pyarrow as pa
 import pytest
 
 from reformlab.indicators.distributional import compute_distributional_indicators
@@ -357,3 +360,123 @@ class TestEdgeCases:
         assert len(result.indicators) == 1
         assert result.indicators[0].count == 1
         assert result.indicators[0].decile == 1  # Should be in lowest decile
+
+
+class TestIndicatorResultExport:
+    """Test IndicatorResult export methods (Story 6-5, AC-2)."""
+
+    def test_export_csv(
+        self, tmp_path, simple_income_distribution_panel: PanelOutput
+    ) -> None:
+        """export_csv() writes indicator table to CSV and returns Path."""
+        import pyarrow.csv as pa_csv
+        from pathlib import Path
+
+        result = compute_distributional_indicators(simple_income_distribution_panel)
+
+        output_path = tmp_path / "indicators.csv"
+        returned_path = result.export_csv(output_path)
+
+        # AC-2: export_csv returns Path to written file
+        assert returned_path == output_path
+        assert isinstance(returned_path, Path)
+        assert output_path.exists()
+
+        # Verify CSV content is readable and has expected schema
+        loaded_table = pa_csv.read_csv(output_path)
+        assert loaded_table.num_rows > 0
+        assert set(loaded_table.column_names) == {
+            "field_name",
+            "decile",
+            "year",
+            "metric",
+            "value",
+        }
+
+    def test_export_parquet(
+        self, tmp_path, simple_income_distribution_panel: PanelOutput
+    ) -> None:
+        """export_parquet() writes indicator table to Parquet and returns Path."""
+        import pyarrow.parquet as pq
+        from pathlib import Path
+
+        result = compute_distributional_indicators(simple_income_distribution_panel)
+
+        output_path = tmp_path / "indicators.parquet"
+        returned_path = result.export_parquet(output_path)
+
+        # AC-2: export_parquet returns Path to written file
+        assert returned_path == output_path
+        assert isinstance(returned_path, Path)
+        assert output_path.exists()
+
+        # AC-5: Verify round-trip through PyArrow with expected schema
+        loaded_table = pq.read_table(output_path)
+        assert loaded_table.num_rows > 0
+        assert set(loaded_table.column_names) == {
+            "field_name",
+            "decile",
+            "year",
+            "metric",
+            "value",
+        }
+
+        # Verify schema types
+        assert loaded_table.schema.field("field_name").type == pa.utf8()
+        assert loaded_table.schema.field("decile").type == pa.int64()
+        assert loaded_table.schema.field("year").type == pa.int64()
+        assert loaded_table.schema.field("metric").type == pa.utf8()
+        assert loaded_table.schema.field("value").type == pa.float64()
+
+    def test_export_all_indicator_types(self, tmp_path) -> None:
+        """Verify export works for all indicator types (distributional, geographic, welfare, fiscal)."""
+        import pyarrow as pa
+        from pathlib import Path
+
+        from reformlab.indicators.distributional import compute_distributional_indicators
+        from reformlab.indicators.fiscal import compute_fiscal_indicators
+        from reformlab.indicators.geographic import compute_geographic_indicators
+        from reformlab.indicators.types import FiscalConfig, GeographicConfig
+        from reformlab.orchestrator.panel import PanelOutput
+
+        # Create test panel with all required fields
+        table = pa.table(
+            {
+                "household_id": pa.array(list(range(1, 21)), type=pa.int64()),
+                "year": pa.array([2025] * 20, type=pa.int64()),
+                "income": pa.array([20000.0 + (i * 1000.0) for i in range(20)], type=pa.float64()),
+                "region_code": pa.array(["11"] * 10 + ["32"] * 10, type=pa.utf8()),
+                "carbon_tax": pa.array([100.0 + (i * 5.0) for i in range(20)], type=pa.float64()),
+                "rebate": pa.array([50.0] * 20, type=pa.float64()),
+            }
+        )
+        panel = PanelOutput(table=table, metadata={})
+
+        # Test distributional export
+        dist_result = compute_distributional_indicators(panel)
+        dist_csv = tmp_path / "dist.csv"
+        dist_parquet = tmp_path / "dist.parquet"
+        assert dist_result.export_csv(dist_csv).exists()
+        assert dist_result.export_parquet(dist_parquet).exists()
+
+        # Test geographic export
+        geo_result = compute_geographic_indicators(
+            panel, config=GeographicConfig(region_field="region_code")
+        )
+        geo_csv = tmp_path / "geo.csv"
+        geo_parquet = tmp_path / "geo.parquet"
+        assert geo_result.export_csv(geo_csv).exists()
+        assert geo_result.export_parquet(geo_parquet).exists()
+
+        # Test fiscal export
+        fiscal_result = compute_fiscal_indicators(
+            panel,
+            config=FiscalConfig(
+                revenue_fields=["carbon_tax"],
+                cost_fields=["rebate"],
+            ),
+        )
+        fiscal_csv = tmp_path / "fiscal.csv"
+        fiscal_parquet = tmp_path / "fiscal.parquet"
+        assert fiscal_result.export_csv(fiscal_csv).exists()
+        assert fiscal_result.export_parquet(fiscal_parquet).exists()

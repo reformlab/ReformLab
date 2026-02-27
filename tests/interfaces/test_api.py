@@ -276,6 +276,128 @@ class TestSimulationResult:
         assert indicators.indicators
         assert indicators.metadata["group_type"] == "decile"
 
+    def test_simulation_result_export_csv(self, tmp_path: Path) -> None:
+        """export_csv() writes panel output to CSV and returns Path."""
+        from datetime import datetime, timezone
+
+        from reformlab import SimulationResult
+
+        panel_table = pa.table(
+            {
+                "household_id": pa.array([1, 2, 3], type=pa.int64()),
+                "year": pa.array([2025, 2025, 2025], type=pa.int64()),
+                "income": pa.array([20000.0, 30000.0, 40000.0], type=pa.float64()),
+            }
+        )
+
+        result = SimulationResult(
+            success=True,
+            scenario_id="test-scenario",
+            yearly_states={},
+            panel_output=PanelOutput(table=panel_table, metadata={}),
+            manifest=RunManifest(
+                manifest_id="test-id",
+                created_at=datetime.now(timezone.utc).isoformat(),
+                engine_version="1.0",
+                openfisca_version="1.0",
+                adapter_version="1.0",
+                scenario_version="1.0",
+            ),
+        )
+
+        output_path = tmp_path / "output.csv"
+        returned_path = result.export_csv(output_path)
+
+        # AC-1: export_csv returns Path to written file
+        assert returned_path == output_path
+        assert output_path.exists()
+
+        # Verify CSV content is readable
+        import pyarrow.csv as pa_csv
+
+        loaded_table = pa_csv.read_csv(output_path)
+        assert loaded_table.num_rows == 3
+        assert set(loaded_table.column_names) == {"household_id", "year", "income"}
+
+    def test_simulation_result_export_parquet(self, tmp_path: Path) -> None:
+        """export_parquet() writes panel output to Parquet and returns Path."""
+        from datetime import datetime, timezone
+
+        from reformlab import SimulationResult
+
+        panel_table = pa.table(
+            {
+                "household_id": pa.array([1, 2], type=pa.int64()),
+                "year": pa.array([2025, 2025], type=pa.int64()),
+                "carbon_tax": pa.array([150.0, 200.0], type=pa.float64()),
+            }
+        )
+
+        result = SimulationResult(
+            success=True,
+            scenario_id="carbon-tax",
+            yearly_states={},
+            panel_output=PanelOutput(table=panel_table, metadata={}),
+            manifest=RunManifest(
+                manifest_id="manifest-123",
+                created_at=datetime.now(timezone.utc).isoformat(),
+                engine_version="1.0.0",
+                openfisca_version="2.0.0",
+                adapter_version="2.0.0",
+                scenario_version="1.0.0",
+            ),
+        )
+
+        output_path = tmp_path / "output.parquet"
+        returned_path = result.export_parquet(output_path)
+
+        # AC-1: export_parquet returns Path to written file
+        assert returned_path == output_path
+        assert output_path.exists()
+
+        # Verify Parquet content is readable with schema metadata
+        import pyarrow.parquet as pq
+
+        loaded_table = pq.read_table(output_path)
+        assert loaded_table.num_rows == 2
+        assert set(loaded_table.column_names) == {"household_id", "year", "carbon_tax"}
+
+        # AC-4: Parquet schema metadata includes provenance
+        schema_metadata = loaded_table.schema.metadata
+        assert schema_metadata is not None
+        assert b"reformlab_panel_version" in schema_metadata
+
+    def test_simulation_result_export_no_panel(self, tmp_path: Path) -> None:
+        """export methods raise SimulationError when panel_output is None."""
+        from datetime import datetime, timezone
+
+        from reformlab import SimulationError, SimulationResult
+
+        result = SimulationResult(
+            success=False,
+            scenario_id="failed",
+            yearly_states={},
+            panel_output=None,
+            manifest=RunManifest(
+                manifest_id="fail-id",
+                created_at=datetime.now(timezone.utc).isoformat(),
+                engine_version="1.0",
+                openfisca_version="1.0",
+                adapter_version="1.0",
+                scenario_version="1.0",
+            ),
+        )
+
+        output_csv = tmp_path / "output.csv"
+        output_parquet = tmp_path / "output.parquet"
+
+        # AC-1: Raise clear SimulationError when panel_output is unavailable
+        with pytest.raises(SimulationError, match="No panel output available"):
+            result.export_csv(output_csv)
+
+        with pytest.raises(SimulationError, match="No panel output available"):
+            result.export_parquet(output_parquet)
+
 
 class TestConfigurationTypes:
     """Test configuration dataclasses."""

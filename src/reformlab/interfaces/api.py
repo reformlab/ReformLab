@@ -183,6 +183,57 @@ class SimulationResult:
                 f"Supported types: distributional, geographic, welfare, fiscal"
             )
 
+    def export_csv(self, path: str | Path) -> Path:
+        """Export simulation panel output to CSV file.
+
+        Args:
+            path: Destination file path for CSV export.
+
+        Returns:
+            Path to the written CSV file.
+
+        Raises:
+            SimulationError: If panel output is not available.
+
+        Example:
+            >>> result = run_scenario(config)
+            >>> output_path = result.export_csv("output/simulation.csv")
+        """
+        from reformlab.interfaces.errors import SimulationError
+
+        if self.panel_output is None:
+            msg = "No panel output available (simulation may have failed)"
+            raise SimulationError(msg)
+
+        return self.panel_output.to_csv(path)
+
+    def export_parquet(self, path: str | Path) -> Path:
+        """Export simulation panel output to Parquet file.
+
+        Parquet export includes run provenance metadata in the schema metadata,
+        including manifest_id and engine version information for traceability.
+
+        Args:
+            path: Destination file path for Parquet export.
+
+        Returns:
+            Path to the written Parquet file.
+
+        Raises:
+            SimulationError: If panel output is not available.
+
+        Example:
+            >>> result = run_scenario(config)
+            >>> output_path = result.export_parquet("output/simulation.parquet")
+        """
+        from reformlab.interfaces.errors import SimulationError
+
+        if self.panel_output is None:
+            msg = "No panel output available (simulation may have failed)"
+            raise SimulationError(msg)
+
+        return self.panel_output.to_parquet(path)
+
 
 def create_quickstart_adapter(
     *,

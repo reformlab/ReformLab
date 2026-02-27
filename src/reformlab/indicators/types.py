@@ -20,6 +20,7 @@ This module provides:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Sequence
 
 import pyarrow as pa
@@ -178,6 +179,46 @@ class IndicatorResult:
     warnings: list[str] = field(default_factory=list)
     excluded_count: int = 0
     unmatched_count: int = 0
+
+    def export_csv(self, path: str | Path) -> Path:
+        """Export indicator results to CSV file.
+
+        Args:
+            path: Destination file path for CSV export.
+
+        Returns:
+            Path to the written CSV file.
+
+        Example:
+            >>> indicators = result.indicators("distributional")
+            >>> output_path = indicators.export_csv("output/indicators.csv")
+        """
+        import pyarrow.csv as pa_csv
+
+        path = Path(path)
+        table = self.to_table()
+        pa_csv.write_csv(table, path)
+        return path
+
+    def export_parquet(self, path: str | Path) -> Path:
+        """Export indicator results to Parquet file.
+
+        Args:
+            path: Destination file path for Parquet export.
+
+        Returns:
+            Path to the written Parquet file.
+
+        Example:
+            >>> indicators = result.indicators("distributional")
+            >>> output_path = indicators.export_parquet("output/indicators.parquet")
+        """
+        import pyarrow.parquet as pq
+
+        path = Path(path)
+        table = self.to_table()
+        pq.write_table(table, path)
+        return path
 
     def to_table(self) -> pa.Table:
         """Convert indicator results to a stable PyArrow table.

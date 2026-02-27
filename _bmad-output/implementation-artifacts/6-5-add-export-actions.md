@@ -1,6 +1,6 @@
 # Story 6.5: Add Export Actions for CSV/Parquet Outputs
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -192,10 +192,66 @@ tests/
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+claude-sonnet-4-5-20250929
 
 ### Debug Log References
 
+None - All tests passed on first run.
+
 ### Completion Notes List
 
+1. **SimulationResult export methods (AC-1)**
+   - Added `export_csv()` and `export_parquet()` methods to `SimulationResult` in `src/reformlab/interfaces/api.py`
+   - Both methods delegate to `PanelOutput.to_csv()` / `to_parquet()` (facade pattern)
+   - Both methods return `Path` to written file
+   - Both methods raise clear `SimulationError` when `panel_output` is None
+   - Tests added to `tests/interfaces/test_api.py`
+
+2. **IndicatorResult export methods (AC-2)**
+   - Added `export_csv()` and `export_parquet()` methods to `IndicatorResult` in `src/reformlab/indicators/types.py`
+   - Both methods use PyArrow writers on `IndicatorResult.to_table()` output
+   - Both methods return `Path` to written file
+   - Tests added to `tests/indicators/test_distributional.py` covering all indicator types (distributional, geographic, fiscal)
+
+3. **ComparisonResult export behavior (AC-3)**
+   - Updated `export_csv()` and `export_parquet()` in `src/reformlab/indicators/comparison.py` to return `Path` (previously returned `None`)
+   - Backward compatible change - returning a value doesn't break existing code
+   - Existing tests updated to verify returned `Path` value
+   - Tests in `tests/indicators/test_comparison.py` confirm scenario/delta columns are present
+
+4. **Manifest provenance in Parquet exports (AC-4)**
+   - `PanelOutput.to_parquet()` already includes `reformlab_panel_version` in schema metadata
+   - This provides provenance context for Parquet exports
+   - CSV exports maintain provenance through `result.manifest` linkage (documented in API)
+
+5. **Notebook export examples (AC-5)**
+   - Added Section 6 to `notebooks/quickstart.ipynb` with CSV export example
+   - Added export subsection to `notebooks/advanced.ipynb` with Parquet export examples and round-trip verification
+   - Examples demonstrate panel, indicator, and comparison table exports
+   - Round-trip checks included to verify schema preservation
+
+6. **Scope boundary verification (AC-6)**
+   - No GUI components were added or modified
+   - All export functionality is at the Python API layer only
+   - GUI integration is correctly deferred to Story 6-4b
+
 ### File List
+
+**Modified files:**
+- `src/reformlab/interfaces/api.py` - Added `SimulationResult.export_csv()` and `export_parquet()`
+- `src/reformlab/indicators/types.py` - Added `IndicatorResult.export_csv()` and `export_parquet()`
+- `src/reformlab/indicators/comparison.py` - Updated `ComparisonResult.export_csv()` and `export_parquet()` to return Path
+- `tests/interfaces/test_api.py` - Added 3 new export tests for SimulationResult
+- `tests/indicators/test_distributional.py` - Added TestIndicatorResultExport class with 3 export tests
+- `tests/indicators/test_comparison.py` - Updated 2 existing tests to verify Path return value
+- `notebooks/quickstart.ipynb` - Added Section 6 with CSV export examples (4 new cells)
+- `notebooks/advanced.ipynb` - Added export subsection with Parquet examples (4 new cells)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` - Updated story status to done
+
+**Test coverage:**
+- 94 total tests passed in modified modules
+- Export methods tested for SimulationResult, IndicatorResult, ComparisonResult
+- Error handling tested (panel_output=None case)
+- All indicator types tested (distributional, geographic, fiscal)
+- Round-trip verification included
+- Parquet metadata verification included

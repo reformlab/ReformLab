@@ -93,21 +93,31 @@ class ComparisonResult:
         """
         return self.table
 
-    def export_csv(self, path: str | Path) -> None:
+    def export_csv(self, path: str | Path) -> Path:
         """Export comparison table to CSV file.
 
         Args:
             path: Destination file path.
-        """
-        csv.write_csv(self.table, str(path))
 
-    def export_parquet(self, path: str | Path) -> None:
+        Returns:
+            Path to the written CSV file.
+        """
+        path = Path(path)
+        csv.write_csv(self.table, str(path))
+        return path
+
+    def export_parquet(self, path: str | Path) -> Path:
         """Export comparison table to Parquet file.
 
         Args:
             path: Destination file path.
+
+        Returns:
+            Path to the written Parquet file.
         """
+        path = Path(path)
         pq.write_table(self.table, str(path))
+        return path
 
 
 def _detect_indicator_schema(result: IndicatorResult) -> str:

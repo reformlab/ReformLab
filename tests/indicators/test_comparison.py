@@ -464,7 +464,7 @@ class TestCSVExport:
         baseline_scenario_distributional: IndicatorResult,
         reform_scenario_distributional: IndicatorResult,
     ) -> None:
-        """AC-4: CSV export creates a valid file."""
+        """AC-4: CSV export creates a valid file and returns Path (Story 6-5, AC-3)."""
         scenarios = [
             ScenarioInput(
                 label="baseline", indicators=baseline_scenario_distributional
@@ -476,7 +476,11 @@ class TestCSVExport:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             csv_path = Path(tmpdir) / "comparison.csv"
-            result.export_csv(csv_path)
+            returned_path = result.export_csv(csv_path)
+
+            # Story 6-5, AC-3: export_csv returns Path to written file
+            assert returned_path == csv_path
+            assert isinstance(returned_path, Path)
 
             # Check file exists
             assert csv_path.exists()
@@ -528,7 +532,7 @@ class TestParquetExport:
         baseline_scenario_distributional: IndicatorResult,
         reform_scenario_distributional: IndicatorResult,
     ) -> None:
-        """AC-5: Parquet export creates a valid file."""
+        """AC-5: Parquet export creates a valid file and returns Path (Story 6-5, AC-3)."""
         scenarios = [
             ScenarioInput(
                 label="baseline", indicators=baseline_scenario_distributional
@@ -540,7 +544,11 @@ class TestParquetExport:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             parquet_path = Path(tmpdir) / "comparison.parquet"
-            result.export_parquet(parquet_path)
+            returned_path = result.export_parquet(parquet_path)
+
+            # Story 6-5, AC-3: export_parquet returns Path to written file
+            assert returned_path == parquet_path
+            assert isinstance(returned_path, Path)
 
             # Check file exists
             assert parquet_path.exists()
