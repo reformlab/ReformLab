@@ -15,35 +15,37 @@ so that **I can understand how to use ReformLab's full dynamic orchestration cap
 From backlog (BKL-603), aligned with FR30 (Python API workflows), FR35 (template authoring and dynamic-run documentation).
 
 1. **AC-1: Notebook demonstrates multi-year simulation**
-   - Given the notebook execution, when the multi-year simulation cells run, then a 10-year (or configurable horizon) projection completes successfully.
-   - The notebook shows year-by-year panel output with clear yearly progression.
-   - Uses the same public API (`run_scenario`, `RunConfig`, `ScenarioConfig`) as quickstart.
+   - Given the notebook execution, when the multi-year simulation cells run, then a projection with `end_year - start_year + 1 >= 10` completes successfully.
+   - The notebook outputs a year-indexed panel containing every year in the configured horizon.
+   - The notebook uses only public API imports from `reformlab` for scenario execution (`run_scenario`, `RunConfig`, `ScenarioConfig`), matching quickstart patterns.
 
 2. **AC-2: Notebook demonstrates vintage tracking**
    - Given the notebook, when vintage tracking cells run, then vintage/cohort state changes are visible year-over-year.
    - At least one asset class (vehicle or heating) demonstrates vintage transitions.
-   - Vintage composition is displayed per year in panel results.
+   - Vintage composition is displayed per year in panel/derived tables or charts, and at least one cohort value changes between consecutive years.
 
 3. **AC-3: Notebook demonstrates baseline/reform comparison**
    - Given the notebook, when baseline and reform scenarios are run, then side-by-side or overlaid comparison outputs are displayed.
-   - Comparison shows per-household per-year differences.
+   - Comparison output includes per-household (or decile-level) per-year differences.
    - At least distributional and one additional indicator type (welfare, fiscal) are compared.
 
 4. **AC-4: Notebook runs without errors in CI**
    - Given the CI pipeline, when tests run, then the advanced notebook executes successfully via `pytest --nbmake` or equivalent.
-   - Notebook cell outputs are cleared before commit (executed fresh in CI).
+   - Notebook cell outputs are cleared before commit and executed fresh in CI.
    - No external data downloads or API keys required.
 
 5. **AC-5: Notebook includes research-grade reproducibility features**
    - Given the notebook, when a user inspects reproducibility cells, then run manifest with full lineage is displayed.
-   - The notebook demonstrates how to verify deterministic reruns.
-   - Cross-scenario lineage relationships are visible.
+   - The notebook demonstrates deterministic reruns with fixed seed/config and verifies matching outputs (exact match or documented tolerance).
+   - Cross-scenario lineage relationships are visible for baseline and reform runs.
 
 6. **AC-6: Notebook builds on quickstart knowledge**
-   - Given a user who completed the quickstart notebook (Story 6-2), when they open the advanced notebook, then they recognize the API patterns and can follow the progression.
+   - Given a user who completed the quickstart notebook (Story 6-2), when they open the advanced notebook, then the first execution cells reuse the same API patterns and extend them incrementally.
    - The notebook references quickstart concepts and introduces advanced features incrementally.
 
 ## Dependencies
+
+Dependency gate: if any hard dependency below is not `done`, set this story to `blocked` and do not start implementation.
 
 - **Hard dependency (backlog-declared): Story 6-1 (BKL-601) — DONE**
   - Provides `run_scenario()`, `SimulationResult`, `ScenarioConfig`, `RunConfig`
@@ -76,12 +78,14 @@ From backlog (BKL-603), aligned with FR30 (Python API workflows), FR35 (template
   - [ ] 0.1 Confirm Story 6-1 and 6-2 are `done` in `sprint-status.yaml`
   - [ ] 0.2 Confirm supporting EPIC-3, EPIC-4, EPIC-5 stories are `done`
   - [ ] 0.3 Review quickstart notebook structure for API pattern consistency
+  - [ ] 0.4 If any dependency is not `done`, mark story `blocked` and stop implementation
 
 - [ ] Task 1: Create advanced notebook scaffold (AC: #1, #6)
   - [ ] 1.1 Create `notebooks/advanced.ipynb` as the primary deliverable
   - [ ] 1.2 Add markdown sections for introduction, multi-year runs, vintage tracking, comparison, lineage, and reproducibility
   - [ ] 1.3 Include explicit reference to quickstart as prerequisite
   - [ ] 1.4 Use consistent API import patterns from quickstart
+  - [ ] 1.5 Enforce architecture boundary: no direct `openfisca` or internal subsystem imports for scenario execution
 
 - [ ] Task 2: Implement multi-year simulation section (AC: #1)
   - [ ] 2.1 Define scenario with 10-year horizon (`start_year=2025`, `end_year=2034`)
@@ -110,7 +114,7 @@ From backlog (BKL-603), aligned with FR30 (Python API workflows), FR35 (template
   - [ ] 5.1 Display full run manifest for a completed scenario
   - [ ] 5.2 Show run lineage graph (parent scenario -> yearly child runs)
   - [ ] 5.3 Demonstrate cross-scenario lineage relationships
-  - [ ] 5.4 Show how to verify deterministic rerun (same inputs -> same outputs)
+  - [ ] 5.4 Show how to verify deterministic rerun (fixed seed/config -> matching outputs or documented tolerance)
   - [ ] 5.5 Explain reproducibility concepts and manifest fields
 
 - [ ] Task 6: Add CI notebook execution coverage (AC: #4)
@@ -122,8 +126,9 @@ From backlog (BKL-603), aligned with FR30 (Python API workflows), FR35 (template
   - [ ] 7.1 Run notebook from a clean environment install path
   - [ ] 7.2 Verify all cells execute without error
   - [ ] 7.3 Verify vintage tracking shows visible state changes
-  - [ ] 7.4 Verify comparison outputs show meaningful differences
+  - [ ] 7.4 Verify comparison outputs show expected per-year deltas for baseline vs reform
   - [ ] 7.5 Run notebook test in CI-equivalent command
+  - [ ] 7.6 Verify architecture guardrails: API facade-only usage and no direct adapter/backend calls in notebook
 
 ## Dev Notes
 
