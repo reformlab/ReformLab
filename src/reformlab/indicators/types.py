@@ -68,8 +68,8 @@ class IndicatorResult:
     def to_table(self) -> pa.Table:
         """Convert indicator results to a stable PyArrow table.
 
-        Returns a table with columns for field_name, decile, year, and
-        all metric values (count, mean, median, sum, min, max).
+        Returns a long-form table with one row per metric and
+        columns: field_name, decile, year, metric, value.
 
         This table is suitable for downstream CSV/Parquet export workflows
         and scenario comparison operations.
@@ -84,48 +84,44 @@ class IndicatorResult:
                     "field_name": pa.array([], type=pa.utf8()),
                     "decile": pa.array([], type=pa.int64()),
                     "year": pa.array([], type=pa.int64()),
-                    "count": pa.array([], type=pa.int64()),
-                    "mean": pa.array([], type=pa.float64()),
-                    "median": pa.array([], type=pa.float64()),
-                    "sum": pa.array([], type=pa.float64()),
-                    "min": pa.array([], type=pa.float64()),
-                    "max": pa.array([], type=pa.float64()),
+                    "metric": pa.array([], type=pa.utf8()),
+                    "value": pa.array([], type=pa.float64()),
                 }
             )
 
-        # Build arrays from indicators
+        # Build arrays in long format: one row per metric.
+        metric_names = ("count", "mean", "median", "sum", "min", "max")
         field_names: list[str] = []
         deciles: list[int | None] = []
         years: list[int | None] = []
-        counts: list[int] = []
-        means: list[float] = []
-        medians: list[float] = []
-        sums: list[float] = []
-        mins: list[float] = []
-        maxs: list[float] = []
+        metrics: list[str] = []
+        values: list[float] = []
 
         for ind in self.indicators:
-            field_names.append(ind.field_name)
-            deciles.append(ind.decile)
-            years.append(ind.year)
-            counts.append(ind.count)
-            means.append(ind.mean)
-            medians.append(ind.median)
-            sums.append(ind.sum)
-            mins.append(ind.min)
-            maxs.append(ind.max)
+            metric_values = (
+                float(ind.count),
+                ind.mean,
+                ind.median,
+                ind.sum,
+                ind.min,
+                ind.max,
+            )
+            for metric_name, metric_value in zip(
+                metric_names, metric_values, strict=True
+            ):
+                field_names.append(ind.field_name)
+                deciles.append(ind.decile)
+                years.append(ind.year)
+                metrics.append(metric_name)
+                values.append(metric_value)
 
         return pa.table(
             {
                 "field_name": pa.array(field_names, type=pa.utf8()),
                 "decile": pa.array(deciles, type=pa.int64()),
                 "year": pa.array(years, type=pa.int64()),
-                "count": pa.array(counts, type=pa.int64()),
-                "mean": pa.array(means, type=pa.float64()),
-                "median": pa.array(medians, type=pa.float64()),
-                "sum": pa.array(sums, type=pa.float64()),
-                "min": pa.array(mins, type=pa.float64()),
-                "max": pa.array(maxs, type=pa.float64()),
+                "metric": pa.array(metrics, type=pa.utf8()),
+                "value": pa.array(values, type=pa.float64()),
             }
         )
 

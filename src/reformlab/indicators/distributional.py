@@ -36,9 +36,9 @@ def compute_distributional_indicators(
     each numeric field in the panel.
 
     Supports three modes:
-    1. Single-year or aggregate across years (default): Groups by decile only
-    2. by_year=True: Groups by (decile, year) for year-by-year analysis
-    3. aggregate_years=True: Explicitly aggregates across all years by decile
+    1. Single-year or aggregate across years (default): groups by decile only
+    2. by_year=True: groups by (decile, year) for year-by-year analysis
+    3. aggregate_years=False (with by_year=False): groups by (decile, year)
 
     Args:
         panel: PanelOutput from orchestrator run containing household-year data.
@@ -88,7 +88,9 @@ def compute_distributional_indicators(
             numeric_fields.append(field_name)
 
     # Compute aggregations
-    group_by_year = config.by_year
+    # by_year has precedence. If by_year=False and aggregate_years=False,
+    # keep annual detail instead of collapsing across years.
+    group_by_year = config.by_year or not config.aggregate_years
     agg_table = aggregate_by_decile(
         table_with_deciles,
         numeric_fields,
@@ -130,9 +132,11 @@ def compute_distributional_indicators(
         "income_field": config.income_field,
         "by_year": config.by_year,
         "aggregate_years": config.aggregate_years,
+        "group_by_year": group_by_year,
         "panel_shape": panel.shape,
         "panel_metadata": panel.metadata,
         "numeric_fields": numeric_fields,
+        "excluded_count": excluded_count,
     }
 
     return IndicatorResult(

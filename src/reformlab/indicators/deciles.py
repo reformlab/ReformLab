@@ -10,13 +10,9 @@ This module provides:
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 import pyarrow.compute as pc
-
-if TYPE_CHECKING:
-    pass
 
 
 def assign_deciles(
@@ -50,9 +46,13 @@ def assign_deciles(
         )
 
     income_col = table.column(income_field)
+    income_type = table.schema.field(income_field).type
 
-    # Filter out null income values
+    # Filter out null income values (and NaN/Inf for floating-point income).
     valid_income_mask = pc.invert(pc.is_null(income_col))
+    if pa.types.is_floating(income_type):
+        valid_income_mask = pc.and_(valid_income_mask, pc.is_finite(income_col))
+
     valid_table = table.filter(valid_income_mask)
     excluded_count = table.num_rows - valid_table.num_rows
 
@@ -134,19 +134,10 @@ def aggregate_by_decile(
     if group_by_year and "year" not in table.column_names:
         raise ValueError("Table must have 'year' column when group_by_year=True.")
 
-    # Build aggregation results
-    results: list[dict[str, Any]] = []
+    group_keys = ["decile", "year"] if group_by_year else ["decile"]
+    grouped = table.group_by(group_keys)
+    result_tables: list[pa.Table] = []
 
-    # Determine grouping keys
-    if group_by_year:
-        group_keys = ["decile", "year"]
-    else:
-        group_keys = ["decile"]
-
-    # Get unique group combinations
-    group_table = table.select(group_keys).combine_chunks()
-
-    # Use PyArrow's group_by for efficient aggregation
     for field_name in numeric_fields:
         if field_name not in table.column_names:
             continue
@@ -157,108 +148,65 @@ def aggregate_by_decile(
         if not (pa.types.is_floating(field_type) or pa.types.is_integer(field_type)):
             continue
 
-        # Group by decile (and year if specified)
-        grouped = table.group_by(group_keys)
-
-        # Compute aggregations using PyArrow compute functions
+        # Compute aggregations (including grouped approximate median) in one pass.
         agg_result = grouped.aggregate([
             (field_name, "count"),
             (field_name, "sum"),
             (field_name, "mean"),
+            (field_name, "approximate_median"),
             (field_name, "min"),
             (field_name, "max"),
         ])
-
-        # Compute median separately (not available in aggregate)
-        # For each group, filter and compute median
-        for i in range(agg_result.num_rows):
-            row = {}
-            for key in group_keys:
-                row[key] = agg_result.column(key)[i].as_py()
-
-            # Filter table to this group
-            filter_mask = None
-            for key in group_keys:
-                key_mask = pc.equal(table.column(key), pa.scalar(row[key]))
-                if filter_mask is None:
-                    filter_mask = key_mask
-                else:
-                    filter_mask = pc.and_(filter_mask, key_mask)
-
-            group_table = table.filter(filter_mask)
-            group_field = group_table.column(field_name)
-
-            # Compute median
-            median_val = pc.approximate_median(group_field).as_py()
-
-            # Extract other metrics from agg_result
-            count_val = agg_result.column(f"{field_name}_count")[i].as_py()
-            sum_val = agg_result.column(f"{field_name}_sum")[i].as_py()
-            mean_val = agg_result.column(f"{field_name}_mean")[i].as_py()
-            min_val = agg_result.column(f"{field_name}_min")[i].as_py()
-            max_val = agg_result.column(f"{field_name}_max")[i].as_py()
-
-            result_row = {
-                "field_name": field_name,
-                "decile": row["decile"],
-                "count": count_val,
-                "mean": mean_val,
-                "median": median_val,
-                "sum": sum_val,
-                "min": min_val,
-                "max": max_val,
-            }
-
-            if group_by_year:
-                result_row["year"] = row["year"]
-
-            results.append(result_row)
-
-    # Build result table from collected rows
-    if not results:
-        # Return empty table with stable schema
-        schema_dict = {
-            "field_name": pa.array([], type=pa.utf8()),
-            "decile": pa.array([], type=pa.int64()),
+        # Build one normalized result table per field.
+        column_dict: dict[str, pa.Array] = {
+            "field_name": pa.array(
+                [field_name] * agg_result.num_rows,
+                type=pa.utf8(),
+            ),
+            "decile": agg_result.column("decile"),
+            "count": agg_result.column(f"{field_name}_count"),
+            "mean": agg_result.column(f"{field_name}_mean"),
+            "median": agg_result.column(f"{field_name}_approximate_median"),
+            "sum": agg_result.column(f"{field_name}_sum"),
+            "min": agg_result.column(f"{field_name}_min"),
+            "max": agg_result.column(f"{field_name}_max"),
         }
         if group_by_year:
-            schema_dict["year"] = pa.array([], type=pa.int64())
-        schema_dict.update({
-            "count": pa.array([], type=pa.int64()),
-            "mean": pa.array([], type=pa.float64()),
-            "median": pa.array([], type=pa.float64()),
-            "sum": pa.array([], type=pa.float64()),
-            "min": pa.array([], type=pa.float64()),
-            "max": pa.array([], type=pa.float64()),
-        })
-        return pa.table(schema_dict)
+            column_dict["year"] = agg_result.column("year")
 
-    # Extract columns from results
-    field_names = [r["field_name"] for r in results]
-    deciles = [r["decile"] for r in results]
-    counts = [r["count"] for r in results]
-    means = [r["mean"] for r in results]
-    medians = [r["median"] for r in results]
-    sums = [r["sum"] for r in results]
-    mins = [r["min"] for r in results]
-    maxs = [r["max"] for r in results]
+        result_table = pa.table(column_dict)
+        ordered_columns = ["field_name", "decile"]
+        if group_by_year:
+            ordered_columns.append("year")
+        ordered_columns.extend(["count", "mean", "median", "sum", "min", "max"])
+        result_tables.append(result_table.select(ordered_columns))
 
-    result_dict = {
-        "field_name": pa.array(field_names, type=pa.utf8()),
-        "decile": pa.array(deciles, type=pa.int64()),
-    }
+    if not result_tables:
+        return _empty_aggregation_table(group_by_year)
 
+    combined = pa.concat_tables(result_tables)
+    sort_keys: list[tuple[str, str]] = [("field_name", "ascending")]
     if group_by_year:
-        years = [r["year"] for r in results]
-        result_dict["year"] = pa.array(years, type=pa.int64())
+        sort_keys.extend([("year", "ascending"), ("decile", "ascending")])
+    else:
+        sort_keys.append(("decile", "ascending"))
+    return combined.sort_by(sort_keys)
 
-    result_dict.update({
-        "count": pa.array(counts, type=pa.int64()),
-        "mean": pa.array(means, type=pa.float64()),
-        "median": pa.array(medians, type=pa.float64()),
-        "sum": pa.array(sums, type=pa.float64()),
-        "min": pa.array(mins, type=pa.float64()),
-        "max": pa.array(maxs, type=pa.float64()),
+
+def _empty_aggregation_table(group_by_year: bool) -> pa.Table:
+    """Return an empty aggregation table with the stable output schema."""
+    schema_dict = {
+        "field_name": pa.array([], type=pa.utf8()),
+        "decile": pa.array([], type=pa.int64()),
+    }
+    if group_by_year:
+        schema_dict["year"] = pa.array([], type=pa.int64())
+    schema_dict.update({
+        "count": pa.array([], type=pa.int64()),
+        "mean": pa.array([], type=pa.float64()),
+        "median": pa.array([], type=pa.float64()),
+        "sum": pa.array([], type=pa.float64()),
+        "min": pa.array([], type=pa.float64()),
+        "max": pa.array([], type=pa.float64()),
     })
-
-    return pa.table(result_dict)
+    return pa.table(schema_dict)

@@ -100,6 +100,7 @@ class TestMissingIncomeHandling:
         result = compute_distributional_indicators(panel_with_missing_income)
 
         assert result.excluded_count == 10
+        assert result.metadata["excluded_count"] == 10
 
 
 class TestAggregationMetrics:
@@ -191,6 +192,17 @@ class TestMultiYearSupport:
         total_count = sum(ind.count for ind in result.indicators)
         assert total_count == 90
 
+    def test_no_aggregate_years_keeps_annual_groups(
+        self, multi_year_panel: PanelOutput
+    ) -> None:
+        """AC-4: With aggregate_years=False, keep year-level decile groups."""
+        config = DistributionalConfig(by_year=False, aggregate_years=False)
+        result = compute_distributional_indicators(multi_year_panel, config)
+
+        assert len(result.indicators) == 30
+        years = {ind.year for ind in result.indicators}
+        assert years == {2020, 2021, 2022}
+
     def test_single_year_default(
         self, simple_income_distribution_panel: PanelOutput
     ) -> None:
@@ -216,12 +228,8 @@ class TestIndicatorResultTable:
             "field_name",
             "decile",
             "year",
-            "count",
-            "mean",
-            "median",
-            "sum",
-            "min",
-            "max",
+            "metric",
+            "value",
         }
         assert set(table.column_names) == expected_columns
 
@@ -238,21 +246,27 @@ class TestIndicatorResultTable:
         assert schema.field("field_name").type == pa.utf8()
         assert schema.field("decile").type == pa.int64()
         assert schema.field("year").type == pa.int64()
-        assert schema.field("count").type == pa.int64()
-        assert schema.field("mean").type == pa.float64()
-        assert schema.field("median").type == pa.float64()
-        assert schema.field("sum").type == pa.float64()
-        assert schema.field("min").type == pa.float64()
-        assert schema.field("max").type == pa.float64()
+        assert schema.field("metric").type == pa.utf8()
+        assert schema.field("value").type == pa.float64()
 
     def test_to_table_row_count(
         self, simple_income_distribution_panel: PanelOutput
     ) -> None:
-        """AC-5: to_table() has one row per indicator."""
+        """AC-5: to_table() has one row per (indicator, metric)."""
         result = compute_distributional_indicators(simple_income_distribution_panel)
         table = result.to_table()
 
-        assert table.num_rows == len(result.indicators)
+        assert table.num_rows == len(result.indicators) * 6
+
+    def test_to_table_metrics(
+        self, simple_income_distribution_panel: PanelOutput
+    ) -> None:
+        """AC-5: to_table() includes all standard metric names."""
+        result = compute_distributional_indicators(simple_income_distribution_panel)
+        table = result.to_table()
+
+        metrics = set(table.column("metric").to_pylist())
+        assert metrics == {"count", "mean", "median", "sum", "min", "max"}
 
     def test_to_table_empty_result(self, empty_panel: PanelOutput) -> None:
         """AC-5: to_table() handles empty results with stable schema."""
