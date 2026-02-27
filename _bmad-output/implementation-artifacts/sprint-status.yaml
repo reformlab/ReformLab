@@ -78,7 +78,7 @@ development_status:
   epic-4: in-progress
   4-1-implement-distributional-indicators: done
   4-2-implement-geographic-aggregation-indicators: done
-  4-3-implement-welfare-indicators: backlog
+  4-3-implement-welfare-indicators: ready-for-dev
   4-4-implement-fiscal-indicators: backlog
   4-5-implement-scenario-comparison-tables: backlog
   4-6-implement-custom-derived-indicator-formulas: backlog
