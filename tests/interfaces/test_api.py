@@ -12,6 +12,7 @@ Tests cover:
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import pyarrow as pa
 import pytest
@@ -574,6 +575,130 @@ class TestRunScenario:
         assert len(error.issues) >= 1
         assert any("population_path" in issue.field_path for issue in error.issues)
         assert "file" in error.message.lower()
+
+    def test_run_scenario_validation_reports_multiple_issues(
+        self, tmp_path: Path
+    ) -> None:
+        """run_scenario aggregates multiple config validation issues in one error."""
+        from reformlab.interfaces.errors import ValidationErrors
+        from reformlab import RunConfig, ScenarioConfig, run_scenario
+
+        output_file = tmp_path / "not-a-directory.txt"
+        output_file.write_text("not a directory", encoding="utf-8")
+
+        config = RunConfig(
+            scenario=ScenarioConfig(
+                template_name="test",
+                parameters={},
+                start_year=1800,  # Invalid: out of range
+                end_year=1700,  # Invalid: before start_year and out of range
+                population_path=tmp_path / "missing-population.csv",  # Invalid: missing
+            ),
+            output_dir=output_file,  # Invalid: points to file, not directory
+        )
+
+        with pytest.raises(ValidationErrors) as exc_info:
+            run_scenario(config, adapter=MockAdapter())
+
+        issue_fields = {issue.field_path for issue in exc_info.value.issues}
+        assert "output_dir" in issue_fields
+        assert "scenario.start_year" in issue_fields
+        assert "scenario.end_year" in issue_fields
+        assert "scenario.population_path" in issue_fields
+        assert len(exc_info.value.issues) >= 4
+
+    def test_run_scenario_raises_simulation_error_with_run_state_context(self) -> None:
+        """run_scenario raises SimulationError with failed year/step and partial states."""
+        from reformlab.computation.types import PolicyConfig, PopulationData
+        from reformlab import ScenarioConfig, SimulationError, run_scenario
+
+        class FailOnSecondYearAdapter(MockAdapter):
+            def compute(
+                self,
+                population: PopulationData,
+                policy: PolicyConfig,
+                period: int,
+            ) -> Any:
+                if period == 2026:
+                    raise ValueError("invalid payload shape")
+                return super().compute(population, policy, period)
+
+        config = ScenarioConfig(
+            template_name="test",
+            parameters={},
+            start_year=2025,
+            end_year=2026,
+        )
+
+        with pytest.raises(SimulationError) as exc_info:
+            run_scenario(config, adapter=FailOnSecondYearAdapter())
+
+        error = exc_info.value
+        assert "year 2026" in error.message
+        assert "step 'computation'" in error.message
+        assert "completed years: [2025]" in error.message
+        assert "ValueError" not in error.message
+        assert set(error.partial_states.keys()) == {2025}
+        assert error.cause is not None
+        assert hasattr(error.cause, "partial_states")
+        assert set(error.cause.partial_states.keys()) == {2025}
+
+    def test_run_scenario_mapping_error_includes_context_and_suggestion(self) -> None:
+        """Mapping failures expose field context and close-match guidance."""
+        from reformlab.computation.exceptions import ApiMappingError
+        from reformlab.computation.types import PolicyConfig, PopulationData
+        from reformlab import ScenarioConfig, SimulationError, run_scenario
+
+        class MappingFailureAdapter(MockAdapter):
+            def compute(
+                self,
+                population: PopulationData,
+                policy: PolicyConfig,
+                period: int,
+            ) -> Any:
+                raise ApiMappingError(
+                    summary="Mapping validation failed",
+                    reason="Variable 'incme_tax' not found in OpenFisca",
+                    fix="Did you mean 'income_tax'? Check variable name spelling",
+                    invalid_names=("incme_tax",),
+                    valid_names=("income_tax",),
+                    suggestions={"incme_tax": ["income_tax"]},
+                )
+
+        config = ScenarioConfig(
+            template_name="test",
+            parameters={},
+            start_year=2025,
+            end_year=2025,
+        )
+
+        with pytest.raises(SimulationError) as exc_info:
+            run_scenario(config, adapter=MappingFailureAdapter())
+
+        message = exc_info.value.message
+        assert "Mapping validation failed" in message
+        assert "incme_tax" in message
+        assert "Did you mean 'income_tax'?" in message
+        assert "ApiMappingError" not in message
+
+    def test_run_scenario_surfaces_manifest_warnings(self) -> None:
+        """run_scenario exposes warnings in both metadata and manifest."""
+        from reformlab import ScenarioConfig, run_scenario
+
+        config = ScenarioConfig(
+            template_name="warning-check",
+            parameters={},
+            start_year=2025,
+            end_year=2025,
+        )
+
+        result = run_scenario(config, adapter=MockAdapter())
+
+        metadata_warnings = result.metadata.get("warnings")
+        assert isinstance(metadata_warnings, list)
+        assert metadata_warnings
+        assert all(isinstance(warning, str) and warning for warning in metadata_warnings)
+        assert result.manifest.warnings == metadata_warnings
 
     def test_run_scenario_returns_simulation_result(self) -> None:
         """run_scenario returns SimulationResult with expected structure."""

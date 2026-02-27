@@ -19,6 +19,7 @@ Key architectural principles:
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
@@ -332,6 +333,7 @@ def run_scenario(
 
     Raises:
         ConfigurationError: If configuration is invalid.
+        ValidationErrors: If multiple configuration validation issues are found.
         SimulationError: If simulation fails during execution.
 
     Example:
@@ -383,21 +385,35 @@ def run_scenario(
         from reformlab.orchestrator.errors import OrchestratorError
 
         if isinstance(exc, OrchestratorError):
-            # Build message with orchestrator context
-            what = "Simulation execution failed"
-            why = exc.reason
-            if exc.year is not None and exc.step_name:
-                why += f" at year {exc.year}, step '{exc.step_name}'"
-            elif exc.year is not None:
-                why += f" at year {exc.year}"
-
+            root_cause = _unwrap_original_error(exc)
             completed = sorted(exc.partial_states.keys()) if exc.partial_states else []
-            if completed:
-                why += f" (completed years: {completed})"
-
-            fix = "Check adapter configuration and input data"
+            context_parts: list[str] = []
             if exc.year is not None:
-                fix += f" for year {exc.year}"
+                context_parts.append(f"year {exc.year}")
+            if exc.step_name:
+                context_parts.append(f"step '{exc.step_name}'")
+            if completed:
+                context_parts.append(f"completed years: {completed}")
+            context_suffix = (
+                f" (failure context: {', '.join(context_parts)})"
+                if context_parts
+                else ""
+            )
+
+            from reformlab.computation.exceptions import ApiMappingError
+
+            if isinstance(root_cause, ApiMappingError):
+                what = _sanitize_error_text(root_cause.summary) or "Mapping failed"
+                why = _sanitize_error_text(root_cause.reason)
+                fix = _sanitize_error_text(root_cause.fix)
+            else:
+                what = "Simulation execution failed"
+                why = _sanitize_error_text(exc.reason)
+                fix = "Check adapter configuration and input data"
+                if exc.year is not None:
+                    fix += f" for year {exc.year}"
+
+            why = f"{why}{context_suffix}" if why else context_suffix.strip() or "An operational step failed"
 
             raise SimulationError(
                 f"{what} — {why} — {fix}",
@@ -496,6 +512,34 @@ def _normalize_config(
         actual=type(config).__name__,
         fix="Provide config as RunConfig object, YAML file path, or dictionary",
     )
+
+
+_ERROR_PREFIX_RE = re.compile(r"\b[A-Za-z_][A-Za-z0-9_]*Error:\s*")
+
+
+def _sanitize_error_text(value: str) -> str:
+    """Normalize low-level error text for user-facing API messages."""
+    text = " ".join(value.strip().split())
+    if not text:
+        return ""
+    if "traceback" in text.lower():
+        return "An internal error occurred"
+    cleaned = _ERROR_PREFIX_RE.sub("", text)
+    return cleaned.strip(" :-")
+
+
+def _unwrap_original_error(exc: Exception) -> Exception:
+    """Unwrap nested ``original_error`` links to reach root cause."""
+    current: Exception = exc
+    seen_ids: set[int] = set()
+    while id(current) not in seen_ids:
+        seen_ids.add(id(current))
+        nested = getattr(current, "original_error", None)
+        if isinstance(nested, Exception):
+            current = nested
+            continue
+        break
+    return current
 
 
 def _workflow_config_to_run_config(workflow_config: Any) -> RunConfig:
@@ -967,19 +1011,34 @@ def _execute_orchestration(
                 metadata=dict(state_raw.get("metadata", {})),
             )
 
+    failed_year = _coerce_optional_int(
+        workflow_result.metadata.get("failed_year"),
+        field_path="metadata.failed_year",
+    )
+    failed_step = (
+        workflow_result.metadata.get("failed_step")
+        if isinstance(workflow_result.metadata.get("failed_step"), str)
+        else None
+    )
+
+    if not workflow_result.success:
+        from reformlab.orchestrator.errors import OrchestratorError
+
+        reason = workflow_result.errors[0] if workflow_result.errors else "Unknown execution error"
+        raise OrchestratorError(
+            summary="Simulation workflow failed",
+            reason=reason,
+            year=failed_year,
+            step_name=failed_step,
+            partial_states=yearly_states,
+        )
+
     orchestrator_result = OrchestratorResult(
         success=workflow_result.success,
         yearly_states=yearly_states,
         errors=list(workflow_result.errors),
-        failed_year=_coerce_optional_int(
-            workflow_result.metadata.get("failed_year"),
-            field_path="metadata.failed_year",
-        ),
-        failed_step=(
-            workflow_result.metadata.get("failed_step")
-            if isinstance(workflow_result.metadata.get("failed_step"), str)
-            else None
-        ),
+        failed_year=failed_year,
+        failed_step=failed_step,
         metadata=dict(workflow_result.metadata),
     )
     panel_output = PanelOutput.from_orchestrator_result(orchestrator_result)
