@@ -75,13 +75,13 @@ development_status:
   epic-3-retrospective: optional
 
   # EPIC-4: Indicators and Scenario Comparison
-  epic-4: in-progress
+  epic-4: done
   4-1-implement-distributional-indicators: done
   4-2-implement-geographic-aggregation-indicators: done
   4-3-implement-welfare-indicators: done
   4-4-implement-fiscal-indicators: done
   4-5-implement-scenario-comparison-tables: done
-  4-6-implement-custom-derived-indicator-formulas: ready-for-dev
+  4-6-implement-custom-derived-indicator-formulas: done
   epic-4-retrospective: optional
 
   # EPIC-5: Governance and Reproducibility

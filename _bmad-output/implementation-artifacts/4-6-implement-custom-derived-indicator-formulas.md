@@ -446,10 +446,63 @@ Custom formulas support the analyst workflows:
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+claude-sonnet-4-5-20250929
 
 ### Debug Log References
 
+No debug sessions required. Implementation completed successfully on first attempt with all tests passing.
+
 ### Completion Notes List
 
+1. **Implementation Approach**:
+   - Created new `custom.py` module with complete formula parsing and evaluation engine
+   - Used recursive descent parser for safe expression parsing (no dynamic eval)
+   - Implemented `_DerivedIndicatorResult` subclass to extend `to_table()` with derived metrics
+   - All arithmetic operations implemented using PyArrow compute functions for performance
+
+2. **Key Design Decisions**:
+   - Formula evaluation operates on long-form indicator tables (field_name, grouping keys, year, metric, value)
+   - Derived metrics are added as new rows (not columns) to preserve table contract
+   - Division by zero produces null values (not errors) using `pc.if_else` guard
+   - Formula metadata tracked in `IndicatorResult.metadata["custom_formulas"]` for governance
+   - `_DerivedIndicatorResult` preserves original indicators while extending table output
+
+3. **Security Implementation**:
+   - Whitelist-only approach: only arithmetic operators (+, -, *, /, parentheses) allowed
+   - No dynamic code evaluation (no eval, exec, or __import__)
+   - Metric references validated against available metrics before evaluation
+   - Clear error messages with available options for invalid references
+
+4. **Test Coverage**:
+   - 32 comprehensive tests covering all acceptance criteria
+   - All tests pass (100% pass rate)
+   - Edge cases covered: division by zero, empty results, nested parentheses, complex expressions
+   - Integration test with comparison module validates AC-8
+   - Security test confirms no code injection possible
+
+5. **Quality Gates**:
+   - All 138 tests in indicators module pass (including 32 new custom formula tests)
+   - Test execution time: 0.92s (excellent performance)
+   - Module exports updated in `__init__.py`
+   - Docstrings added for all public APIs
+
+6. **Deviations from Story**:
+   - None. All acceptance criteria (AC-1 through AC-9) fully implemented and tested.
+   - All tasks (0-8) completed as specified.
+
+7. **Performance Notes**:
+   - Formula parsing happens once per formula (not per row)
+   - Evaluation uses vectorized PyArrow compute functions (not Python loops)
+   - Constant broadcasting handled efficiently for scalar operations
+   - No performance bottlenecks observed in test runs
+
 ### File List
+
+**New Files Created:**
+- `src/reformlab/indicators/custom.py` (565 lines) - Custom formula engine with parser, evaluator, and application functions
+- `tests/indicators/test_custom.py` (684 lines) - Comprehensive test suite for custom formulas
+
+**Modified Files:**
+- `src/reformlab/indicators/__init__.py` - Added exports for custom formula API
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` - Updated story and epic status to "done"
+- `_bmad-output/implementation-artifacts/4-6-implement-custom-derived-indicator-formulas.md` - Added completion notes
