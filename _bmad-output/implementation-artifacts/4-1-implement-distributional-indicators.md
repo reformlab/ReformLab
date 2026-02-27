@@ -10,83 +10,103 @@ so that **I can analyze how environmental policies affect different income group
 
 ## Acceptance Criteria
 
-1. **AC1: Decile computation for completed runs**
-   - Given a completed scenario run with household-level results (via PanelOutput)
-   - When distributional analysis is invoked
-   - Then indicators are computed for each of the 10 income deciles (D1-D10)
-   - And the output includes per-decile aggregations of all numeric output fields
+From backlog (BKL-401), aligned with FR19 and NFR5.
 
-2. **AC2: Missing income data handling**
-   - Given a population with missing income data for some households
-   - When analysis runs
-   - Then those households are flagged and excluded from decile assignment
-   - And a count warning is emitted with the exact number of excluded households
-   - And the analysis proceeds with valid households only
+Scope note: this story implements the core decile indicator engine over `PanelOutput` (read-only consumer of orchestrator outputs). File export workflows remain downstream concerns (Story 4-5 and interface stories), while this story provides a stable in-memory tabular indicator result.
 
-3. **AC3: Standard indicator metrics**
-   - Given decile-grouped results
+1. **AC-1: Decile computation for completed runs**
+   - Given a completed scenario run with household-level results provided as `PanelOutput`
+   - When `compute_distributional_indicators()` is invoked
+   - Then households with valid income are assigned to 10 income deciles (`D1`-`D10`)
+   - And decile indicators are returned for each numeric panel field
+
+2. **AC-2: Missing income data handling**
+   - Given a panel where some households have null/missing income
+   - When decile computation runs
+   - Then those households are excluded from decile assignment
+   - And a warning is emitted with the exact excluded-household count
+   - And excluded count is present in result metadata
+
+3. **AC-3: Standard indicator metrics**
+   - Given decile-grouped households
    - When indicators are computed
-   - Then the following metrics are produced per decile: count, mean, median, sum, min, max
-   - And indicators are available for all numeric fields in the panel output
+   - Then metrics include `count`, `mean`, `median`, `sum`, `min`, and `max` per decile
+   - And metrics are computed for all numeric output fields in the panel
 
-4. **AC4: Multi-year panel support**
-   - Given a multi-year scenario run (10-year horizon)
-   - When distributional analysis is invoked
-   - Then indicators can be computed per-year or aggregated across years
-   - And year-by-year decile trajectories are computable
+4. **AC-4: Multi-year support**
+   - Given a multi-year panel with a `year` column
+   - When analysis is requested with `by_year=True`
+   - Then indicators are grouped by `(year, decile)`
+   - And when `aggregate_years=True`, indicators are grouped by `decile` across all years
 
-5. **AC5: Export to CSV/Parquet**
+5. **AC-5: Stable tabular result contract**
    - Given computed distributional indicators
-   - When export is requested
-   - Then indicators are exportable to CSV/Parquet with correct schema
-   - And the export includes decile labels (D1-D10) and metric names
+   - When `IndicatorResult.to_table()` is called
+   - Then a PyArrow table is returned with stable columns for decile, metric, field name, and value
+   - And the table is suitable for downstream CSV/Parquet export workflows
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create indicator types and data structures (AC: 1, 3)
-  - [ ] 1.1 Define `DecileIndicators` dataclass with decile-level aggregations
-  - [ ] 1.2 Define `IndicatorResult` dataclass for structured output
-  - [ ] 1.3 Define `DistributionalConfig` for analysis configuration options
-  - [ ] 1.4 Add type definitions to `src/reformlab/indicators/types.py`
+- [ ] Task 0: Confirm prerequisites and input contracts (AC: dependency check)
+  - [ ] 0.1 Verify Story 3-6 and Story 3-7 are `done` in `_bmad-output/implementation-artifacts/sprint-status.yaml`
+  - [ ] 0.2 Confirm `PanelOutput` contract in `src/reformlab/orchestrator/panel.py` (`table`, `metadata`, `year`, `household_id`)
+  - [ ] 0.3 Confirm canonical income field name/config contract for decile assignment
 
-- [ ] Task 2: Implement income decile assignment (AC: 1, 2)
-  - [ ] 2.1 Create `assign_deciles()` function that computes income decile (1-10) for each household
-  - [ ] 2.2 Use weighted percentile calculation (weights optional, default to equal weights)
-  - [ ] 2.3 Handle null/missing income values by exclusion with warning
-  - [ ] 2.4 Add to `src/reformlab/indicators/deciles.py`
+- [ ] Task 1: Create indicator types and configuration models (AC: #1, #3, #5)
+  - [ ] 1.1 Define `DecileIndicators` for decile-level metric payloads
+  - [ ] 1.2 Define `IndicatorResult` for result table + metadata + warnings
+  - [ ] 1.3 Define `DistributionalConfig` (`income_field`, `by_year`, `aggregate_years`, optional weights)
+  - [ ] 1.4 Add definitions to `src/reformlab/indicators/types.py`
 
-- [ ] Task 3: Implement decile aggregation functions (AC: 1, 3)
-  - [ ] 3.1 Create `aggregate_by_decile()` function that groups panel data by decile
-  - [ ] 3.2 Compute standard metrics: count, mean, median, sum, min, max per numeric field
-  - [ ] 3.3 Use PyArrow compute functions for vectorized aggregation
-  - [ ] 3.4 Return structured `DecileIndicators` with all metrics
+- [ ] Task 2: Implement income decile assignment (AC: #1, #2)
+  - [ ] 2.1 Create `assign_deciles()` in `src/reformlab/indicators/deciles.py`
+  - [ ] 2.2 Compute decile boundaries with PyArrow quantile utilities
+  - [ ] 2.3 Exclude null income records with explicit warning + excluded count
+  - [ ] 2.4 Ensure deterministic boundary behavior for tied values
 
-- [ ] Task 4: Implement distributional indicator computation (AC: 1, 3, 4)
-  - [ ] 4.1 Create `compute_distributional_indicators()` main entry point
-  - [ ] 4.2 Accept PanelOutput from orchestrator as input
-  - [ ] 4.3 Support single-year and multi-year modes
-  - [ ] 4.4 Return `IndicatorResult` with decile breakdown and metadata
+- [ ] Task 3: Implement decile aggregations (AC: #1, #3)
+  - [ ] 3.1 Create `aggregate_by_decile()` in `src/reformlab/indicators/deciles.py`
+  - [ ] 3.2 Compute `count`, `mean`, `median`, `sum`, `min`, `max` for each numeric field
+  - [ ] 3.3 Use vectorized PyArrow operations only (no row-wise Python loops on hot paths)
 
-- [ ] Task 5: Implement multi-year support (AC: 4)
-  - [ ] 5.1 Add `by_year=True` option to compute year-by-year decile indicators
-  - [ ] 5.2 Add `aggregate_years=True` option to compute across all years
-  - [ ] 5.3 Track decile trajectories over simulation horizon
+- [ ] Task 4: Implement main distributional computation API (AC: #1, #2, #3, #4)
+  - [ ] 4.1 Create `compute_distributional_indicators(panel: PanelOutput, config: DistributionalConfig)` in `src/reformlab/indicators/distributional.py`
+  - [ ] 4.2 Support single-year (default), `by_year=True`, and `aggregate_years=True` modes
+  - [ ] 4.3 Return `IndicatorResult` containing stable metadata and warning details
 
-- [ ] Task 6: Implement export functionality (AC: 5)
-  - [ ] 6.1 Add `to_table()` method returning PyArrow Table
-  - [ ] 6.2 Add `to_csv()` method for CSV export
-  - [ ] 6.3 Add `to_parquet()` method for Parquet export with schema metadata
+- [ ] Task 5: Implement stable in-memory result table output (AC: #5)
+  - [ ] 5.1 Add `IndicatorResult.to_table() -> pa.Table`
+  - [ ] 5.2 Define and test stable output column contract for downstream export/comparison flows
+  - [ ] 5.3 Keep file export (`to_csv`/`to_parquet`) out of this story scope
 
-- [ ] Task 7: Write comprehensive tests
-  - [ ] 7.1 Test decile assignment with various income distributions
-  - [ ] 7.2 Test missing income handling and warning emission
-  - [ ] 7.3 Test aggregation metrics accuracy
-  - [ ] 7.4 Test multi-year indicator computation
-  - [ ] 7.5 Test export round-trip (CSV/Parquet)
+- [ ] Task 6: Add focused tests and quality gates (AC: all)
+  - [ ] 6.1 Create `tests/indicators/test_distributional.py`
+  - [ ] 6.2 Test decile assignment across controlled income distributions
+  - [ ] 6.3 Test missing income exclusion + warning emission + metadata count
+  - [ ] 6.4 Test metric correctness for numeric fields
+  - [ ] 6.5 Test multi-year `by_year` and `aggregate_years` behavior
+  - [ ] 6.6 Test `IndicatorResult.to_table()` schema stability
+  - [ ] 6.7 Run `ruff check src/reformlab/indicators tests/indicators`
+  - [ ] 6.8 Run `mypy src/reformlab/indicators`
+  - [ ] 6.9 Run `pytest tests/indicators/test_distributional.py -v`
 
-- [ ] Task 8: Update module exports and documentation
-  - [ ] 8.1 Export public API from `src/reformlab/indicators/__init__.py`
-  - [ ] 8.2 Add docstrings with examples to all public functions
+- [ ] Task 7: Module exports and API surface (AC: #5)
+  - [ ] 7.1 Export public API from `src/reformlab/indicators/__init__.py`
+  - [ ] 7.2 Add concise docstrings for public indicator functions/classes
+
+## Dependencies
+
+- **Required prior stories:**
+  - Story 3-6 (BKL-306): Seed/step trace metadata available in orchestrator outputs
+  - Story 3-7 (BKL-307): `PanelOutput` available as canonical household-year input
+- **Current prerequisite status (from `_bmad-output/implementation-artifacts/sprint-status.yaml`, checked 2026-02-27):**
+  - `3-6-log-seed-controls`: `done`
+  - `3-7-produce-scenario-year-panel-output`: `done`
+- **Follow-on stories:**
+  - Story 4-2 (BKL-402): Geographic aggregation indicators (depends on 4-1)
+  - Story 4-3 (BKL-403): Welfare indicators (depends on 4-1)
+  - Story 4-4 (BKL-404): Fiscal indicators (depends on 4-1)
+  - Story 4-5 (BKL-405): Scenario comparison/export tables across indicator families
 
 ## Dev Notes
 
@@ -103,7 +123,7 @@ This story implements the first component of the Indicator Engine layer from the
 │  Dynamic Orchestrator (year loop + step pipeline)│  ← Epic 3 complete
 ```
 
-The indicator layer sits above the orchestrator and consumes `PanelOutput` from `src/reformlab/orchestrator/panel.py`. This is a read-only consumer of orchestrator results.
+The indicator layer sits above the orchestrator and consumes `PanelOutput` from `src/reformlab/orchestrator/panel.py`. This story must remain a read-only consumer of orchestrator results (no orchestration state mutations).
 
 ### Data Flow
 
@@ -116,14 +136,14 @@ compute_distributional_indicators(panel: PanelOutput)
     ↓
 IndicatorResult (with DecileIndicators per numeric field)
     ↓
-Export to CSV/Parquet
+IndicatorResult.to_table() for downstream export/comparison workflows
 ```
 
 ### Technical Stack
 
 - **PyArrow** for all data manipulation (consistent with existing codebase)
 - Use `pyarrow.compute` functions for vectorized aggregation
-- Follow existing patterns from `src/reformlab/orchestrator/panel.py` for table handling
+- Follow existing patterns from `src/reformlab/orchestrator/panel.py` for table handling and metadata contracts
 
 ### Key Implementation Details
 
@@ -148,6 +168,17 @@ Export to CSV/Parquet
    - Group by (decile, year) for year-by-year analysis
    - Aggregate across years by grouping by decile only
 
+### Scope Guardrails
+
+- **In scope:**
+  - Income-decile assignment and metric aggregation over `PanelOutput`
+  - Single-year and multi-year (`by_year` / `aggregate_years`) indicator computation
+  - Stable in-memory indicator table contract (`to_table()`)
+- **Out of scope:**
+  - CSV/Parquet file export methods on indicator objects
+  - Scenario side-by-side comparison tables across indicator families (Story 4-5)
+  - Governance manifest persistence for indicator outputs (Epic 5)
+
 ### File Structure
 
 ```
@@ -155,7 +186,7 @@ src/reformlab/indicators/
 ├── __init__.py           # Public exports
 ├── types.py              # DecileIndicators, IndicatorResult, DistributionalConfig
 ├── deciles.py            # assign_deciles(), aggregate_by_decile()
-└── distributional.py     # compute_distributional_indicators(), export functions
+└── distributional.py     # compute_distributional_indicators()
 ```
 
 ### Testing Standards
@@ -183,8 +214,10 @@ src/reformlab/indicators/
 
 - [Source: _bmad-output/planning-artifacts/architecture.md#Subsystems] - Indicator layer definition
 - [Source: _bmad-output/planning-artifacts/prd.md#FR19] - FR19: Analyst can compute distributional indicators by income decile
+- [Source: _bmad-output/planning-artifacts/prd.md#FR33] - FR33: User can export tables and indicators in CSV/Parquet (downstream via table contract)
 - [Source: _bmad-output/planning-artifacts/prd.md#NFR5] - NFR5: Analytical operations execute in under 5 seconds for 100k households
 - [Source: _bmad-output/planning-artifacts/phase-1-implementation-backlog-2026-02-25.md#BKL-401] - Story acceptance criteria
+- [Source: _bmad-output/planning-artifacts/phase-1-implementation-backlog-2026-02-25.md#BKL-402-BKL-405] - Epic-4 dependency chain
 - [Source: src/reformlab/orchestrator/panel.py] - PanelOutput class, input data structure
 - [Source: src/reformlab/data/schemas.py] - SYNTHETIC_POPULATION_SCHEMA with income field
 
@@ -199,4 +232,3 @@ src/reformlab/indicators/
 ### Completion Notes List
 
 ### File List
-
