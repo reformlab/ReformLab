@@ -5,39 +5,41 @@ Status: ready-for-dev
 ## Story
 
 As a **policy analyst**,
-I want **to define and run complete scenario workflows from YAML configuration files with schema validation**,
+I want **to define and run complete scenario workflows from YAML/JSON configuration files with schema validation**,
 so that **I can version-control my analysis workflows, share configurations with colleagues, and avoid writing code for common operations**.
 
 ## Acceptance Criteria
 
-From backlog (BKL-207), aligned with FR31, NFR4, NFR20:
+From backlog (BKL-207), aligned with FR31, NFR4, NFR20.
 
-1. **AC-1: Load and execute complete workflow from YAML configuration**
-   - Given a valid YAML workflow configuration file, when loaded through the workflow API, then the workflow executes end-to-end (data load, scenario selection, run, indicators output).
-   - The configuration supports specifying: data sources, scenario template references, run parameters, and output format preferences.
-   - Workflow execution returns structured results accessible via the Python API.
+Scope note: this story delivers workflow configuration contracts (schema, load/validate, serialize, and execution handoff APIs) in the `templates/` subsystem. It does not implement orchestrator or indicator engines owned by EPIC-3/EPIC-4.
 
-2. **AC-2: Schema validation with field-level error messages**
-   - Given a YAML file with an invalid field, when validated, then the error message identifies the exact line number and field name.
-   - Given a YAML file with missing required fields, when validated, then all missing fields are listed with their expected types.
-   - Given a YAML file with type mismatches, when validated, then the error specifies expected vs. actual type for each mismatch.
+1. **AC-1: Load validated workflow configuration from YAML or JSON and hand off for execution**
+   - Given a valid `.yaml`, `.yml`, or `.json` workflow configuration file, when loaded through the workflow API, then it is parsed into a typed `WorkflowConfig` and passes schema validation.
+   - The configuration supports specifying: data sources, scenario template references, run parameters, and output preferences.
+   - A workflow run can be initiated through a handoff API that delegates to an injected/existing runtime entrypoint and returns structured results when a backend is available.
 
-3. **AC-3: Round-trip stability and version control friendliness**
-   - Given a YAML file saved and reloaded, when compared, then the content is round-trip stable (no silent changes, no reordering of stable fields).
-   - YAML files use human-readable formatting with consistent indentation and key ordering.
-   - Comments in YAML files are preserved on round-trip (where feasible with PyYAML limitations).
+2. **AC-2: Schema validation with field-level error messages for both formats**
+   - Given a YAML or JSON file with an invalid field, when validated, then the error identifies the field path and source location (line number where available; JSON pointer otherwise).
+   - Given missing required fields, validation lists all missing fields with expected types.
+   - Given type mismatches, validation reports expected vs actual type for each mismatch.
 
-4. **AC-4: CI validation of shipped examples**
-   - Given the shipped YAML workflow examples, when CI runs validation, then all examples pass schema checks.
-   - Example workflows include: carbon tax analysis, scenario comparison, multi-scenario batch run.
+3. **AC-3: Deterministic round-trip stability and version-control-friendly output**
+   - Given a valid workflow config serialized and reloaded in the same format (YAML or JSON), semantic content remains unchanged with deterministic key ordering for stable fields.
+   - YAML output is human-readable and consistently indented; JSON output is pretty-printed with stable ordering.
+   - YAML comment preservation is explicitly documented as out of guarantee with the chosen parser/dumper.
+
+4. **AC-4: CI validation of shipped workflow examples**
+   - Given the shipped workflow examples in YAML and JSON, when CI runs validation, then all examples pass schema checks.
+   - Example workflows include: carbon tax analysis, scenario comparison, and multi-scenario batch run.
 
 ## Tasks / Subtasks
 
 - [ ] Task 0: Validate prerequisites and boundaries
-  - [ ] 0.1 Confirm Story 2.1 (schema/loader) is `done` or `review` in sprint-status.yaml
-  - [ ] 0.2 Confirm existing YAML loading patterns in `src/reformlab/templates/loader.py`
-  - [ ] 0.3 Confirm JSON Schema infrastructure exists at `src/reformlab/templates/schema/`
-  - [ ] 0.4 Define scope boundary: workflow config is for analyst batch operations, not GUI state persistence
+  - [ ] 0.1 Confirm Story 2.1 (schema/loader) and Story 2.4 (registry) are `done` or `review` in `_bmad-output/implementation-artifacts/sprint-status.yaml`
+  - [ ] 0.2 Confirm Story 2.6 migration helper APIs are available for schema-version compatibility checks (or document fallback behavior)
+  - [ ] 0.3 Confirm existing YAML/JSON loading patterns in `src/reformlab/templates/loader.py` and error shape patterns in `src/reformlab/templates/exceptions.py`
+  - [ ] 0.4 Define scope boundary: this story owns config contracts + execution handoff only, not orchestrator/indicator implementation
 
 - [ ] Task 1: Define workflow configuration schema (AC: #1, #2)
   - [ ] 1.1 Create `src/reformlab/templates/workflow.py` with workflow dataclasses
@@ -50,7 +52,8 @@ From backlog (BKL-207), aligned with FR31, NFR4, NFR20:
     - `run_config`: dict - Orchestrator settings (years, output format)
     - `outputs`: list - Requested output types (indicators, exports)
   - [ ] 1.3 Define `DataSourceConfig`, `ScenarioRef`, `RunConfig`, `OutputConfig` supporting dataclasses
-  - [ ] 1.4 Implement validation methods with field-path error reporting
+  - [ ] 1.4 Add `format` metadata (`yaml`/`json`) and schema-version metadata for deterministic serialization and compatibility checks
+  - [ ] 1.5 Implement validation methods with field-path error reporting
 
 - [ ] Task 2: Create JSON Schema for workflow validation (AC: #2, #4)
   - [ ] 2.1 Create `src/reformlab/templates/schema/workflow.schema.json`
@@ -62,43 +65,44 @@ From backlog (BKL-207), aligned with FR31, NFR4, NFR20:
   - [ ] 2.3 Add `$schema` reference support for IDE validation
   - [ ] 2.4 Test schema with `jsonschema` library validation
 
-- [ ] Task 3: Implement workflow loader with validation (AC: #1, #2)
+- [ ] Task 3: Implement workflow loader with validation (AC: #1, #2, #3)
   - [ ] 3.1 Add `load_workflow_config(path)` function to `workflow.py`
-  - [ ] 3.2 Implement YAML parsing with `yaml.safe_load()`
-  - [ ] 3.3 Implement JSON Schema validation with line number tracking via `jsonschema`
-  - [ ] 3.4 Return `WorkflowConfig` dataclass on success, raise `WorkflowError` on failure
-  - [ ] 3.5 Add `validate_workflow_config(data)` for programmatic dict validation
-  - [ ] 3.6 Error messages follow existing `ScenarioError` pattern: summary, reason, fix, invalid_fields
+  - [ ] 3.2 Implement format detection by extension (`.yaml`, `.yml`, `.json`)
+  - [ ] 3.3 Implement YAML parsing with `yaml.safe_load()` and JSON parsing with `json.loads()`
+  - [ ] 3.4 Implement JSON Schema validation with field-path and source-location reporting
+  - [ ] 3.5 Return `WorkflowConfig` dataclass on success, raise `WorkflowError` on failure
+  - [ ] 3.6 Add `validate_workflow_config(data)` for programmatic dict validation
+  - [ ] 3.7 Error messages follow existing `ScenarioError` pattern: summary, reason, fix, invalid_fields
 
 - [ ] Task 4: Implement workflow serializer with round-trip stability (AC: #3)
-  - [ ] 4.1 Add `dump_workflow_config(config, path)` function
-  - [ ] 4.2 Use `yaml.safe_dump()` with `sort_keys=False` for stable ordering
-  - [ ] 4.3 Use `default_flow_style=False` for readable multi-line format
-  - [ ] 4.4 Add round-trip unit tests (load → dump → load → compare)
-  - [ ] 4.5 Document comment preservation limitations (PyYAML does not preserve comments)
+  - [ ] 4.1 Add `dump_workflow_config(config, path, *, format: str | None = None)` function
+  - [ ] 4.2 Use deterministic YAML output (`yaml.safe_dump(..., sort_keys=False, default_flow_style=False)`)
+  - [ ] 4.3 Use deterministic JSON output (`json.dumps(..., indent=2, sort_keys=True)`)
+  - [ ] 4.4 Add round-trip unit tests (YAML: load → dump → load, JSON: load → dump → load)
+  - [ ] 4.5 Document comment preservation limitations (YAML comments are not guaranteed to survive round-trip)
 
-- [ ] Task 5: Implement workflow executor (AC: #1)
-  - [ ] 5.1 Add `WorkflowRunner` class for orchestrating workflow execution
-  - [ ] 5.2 Implement data source resolution (registry lookup, file paths)
-  - [ ] 5.3 Implement scenario resolution (registry lookup, inline parsing)
-  - [ ] 5.4 Integrate with existing registry and template loading APIs
-  - [ ] 5.5 Return `WorkflowResult` with structured output access
-  - [ ] 5.6 Stub orchestrator/indicator integration for EPIC-3/4 (return mock results for now)
+- [ ] Task 5: Implement execution handoff API (AC: #1)
+  - [ ] 5.1 Add `prepare_workflow_request(config)` to normalize config into runtime request payload
+  - [ ] 5.2 Add `run_workflow(config, *, runner=None)` that delegates to an injected runner or existing API entrypoint
+  - [ ] 5.3 Validate scenario/data-source references before handoff using existing template/registry lookup helpers where available
+  - [ ] 5.4 Return structured delegated result on success; if runtime backend is unavailable, raise actionable `WorkflowError` with fix guidance
+  - [ ] 5.5 Keep runtime semantics thin: no orchestrator step logic or indicator computations are implemented in this story
 
 - [ ] Task 6: Create example workflow configurations (AC: #4)
   - [ ] 6.1 Create `examples/workflows/` directory
   - [ ] 6.2 Add `carbon_tax_analysis.yaml` - Single scenario analysis workflow
   - [ ] 6.3 Add `scenario_comparison.yaml` - Baseline vs reform comparison workflow
-  - [ ] 6.4 Add `batch_sensitivity.yaml` - Multi-scenario batch analysis workflow
-  - [ ] 6.5 Add `README.md` documenting example workflows
+  - [ ] 6.4 Add `batch_sensitivity.json` - Multi-scenario batch analysis workflow
+  - [ ] 6.5 Add `README.md` documenting YAML/JSON example workflows
 
 - [ ] Task 7: Add tests and CI integration (AC: #2, #4)
   - [ ] 7.1 Create `tests/templates/test_workflow.py`
-  - [ ] 7.2 Add unit tests for schema validation (valid, invalid, edge cases)
-  - [ ] 7.3 Add unit tests for loader error messages (line numbers, field paths)
-  - [ ] 7.4 Add round-trip stability tests
-  - [ ] 7.5 Add integration test that validates all shipped examples
-  - [ ] 7.6 Ensure CI runs example validation on every push
+  - [ ] 7.2 Add unit tests for schema validation in YAML and JSON (valid, invalid, edge cases)
+  - [ ] 7.3 Add unit tests for loader error messages (line numbers where available, field paths / JSON pointers)
+  - [ ] 7.4 Add round-trip stability tests for both formats
+  - [ ] 7.5 Add integration tests validating all shipped examples
+  - [ ] 7.6 Add execution-handoff contract tests (runner available vs unavailable backend path)
+  - [ ] 7.7 Ensure CI runs example validation on every push
 
 - [ ] Task 8: Export APIs and documentation
   - [ ] 8.1 Export workflow APIs in `src/reformlab/templates/__init__.py`
@@ -116,7 +120,7 @@ From backlog (BKL-207), aligned with FR31, NFR4, NFR20:
 - NFR4: "YAML configuration loading and validation completes in under 1 second for typical policy definitions."
 - NFR20: "YAML examples are tested in CI to prevent documentation drift."
 
-This story extends the templates subsystem with workflow-level configuration while reusing existing scenario and loader infrastructure.
+This story extends the `templates/` subsystem with workflow-level configuration contracts and execution handoff APIs while reusing existing scenario and loader infrastructure. Runtime execution internals remain in orchestrator/indicator subsystems.
 
 ### Existing Code Patterns to Reuse
 
@@ -143,7 +147,7 @@ This story extends the templates subsystem with workflow-level configuration whi
 **New files:**
 - `src/reformlab/templates/workflow.py` - Workflow schema and loader
 - `src/reformlab/templates/schema/workflow.schema.json` - JSON Schema
-- `examples/workflows/*.yaml` - Example workflow configurations
+- `examples/workflows/*.{yaml,json}` - Example workflow configurations
 - `examples/workflows/README.md` - Example documentation
 - `tests/templates/test_workflow.py` - Workflow tests
 
@@ -153,7 +157,8 @@ This story extends the templates subsystem with workflow-level configuration whi
 ### Key Dependencies
 
 - **Story 2.1 / BKL-201:** Scenario schema dataclasses and loader semantics (prerequisite)
-- **Story 2.4 / BKL-204:** Scenario registry for scenario references in workflows
+- **Story 2.4 / BKL-204:** Scenario registry APIs for scenario references in workflows
+- **Story 2.6 / BKL-206:** Schema migration/version compatibility utilities (optional reuse for workflow schema versions)
 - **Standard library:** `dataclasses`, `typing`, `pathlib`
 - **External packages:**
   - `pyyaml` (already in use)
@@ -163,10 +168,11 @@ This story extends the templates subsystem with workflow-level configuration whi
 
 - **Hard gates (must be done/review):**
   - Story 2.1 / BKL-201 (scenario schema and loader)
+  - Story 2.4 / BKL-204 (registry lookups for scenario references)
 - **Related but non-blocking:**
-  - Story 2.4 / BKL-204 (registry for scenario references - enhancement path)
-  - EPIC-3 orchestrator (workflow executor will integrate when available)
-  - EPIC-4 indicators (workflow outputs will integrate when available)
+  - Story 2.6 / BKL-206 (version compatibility/migration helper reuse)
+  - EPIC-3 orchestrator (runtime backend used by handoff API when available)
+  - EPIC-4 indicators (result payloads may include indicator outputs when backend supports them)
 
 ### Out-of-Scope Guardrails
 
@@ -174,7 +180,7 @@ This story extends the templates subsystem with workflow-level configuration whi
 - No real-time workflow editing/hot-reload
 - No workflow execution history/lineage (governance layer handles this in EPIC-5)
 - No distributed/parallel workflow execution
-- Orchestrator integration returns stubs until EPIC-3 is implemented
+- No orchestrator step implementation, yearly loop logic, or indicator computation logic in this story
 
 ### Implementation Guidelines
 
@@ -224,16 +230,17 @@ outputs:
 ### Testing Standards
 
 - Use `pytest` and existing template fixtures
-- Test valid workflows load and execute successfully
+- Test valid workflows load/validate/serialize successfully in YAML and JSON
 - Test invalid workflows produce actionable error messages
 - Test round-trip stability (load → dump → load → compare)
 - Test CI validation of shipped examples
+- Test execution handoff behavior for available and unavailable runtime backends
 - Assert error messages include file path, line number (where available), and fix guidance
 
 ### Performance Considerations
 
 - NFR4 requires validation under 1 second for typical configurations
-- Use lazy loading for referenced scenarios (don't load all until execution)
+- Keep config validation independent of heavy runtime execution paths
 - Cache JSON Schema compilation for repeated validations
 
 ### References
