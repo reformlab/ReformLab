@@ -2,13 +2,15 @@
 
 Executes a step pipeline for each year in a projection horizon,
 managing deterministic state transitions and seed control.
+
+Story 3-6: Adds structured logging and execution trace metadata.
 """
 
 from __future__ import annotations
 
 import logging
 from dataclasses import replace
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypedDict
 
 from reformlab.orchestrator.errors import OrchestratorError
 from reformlab.orchestrator.types import (
@@ -22,6 +24,20 @@ if TYPE_CHECKING:
     from reformlab.templates.workflow import WorkflowConfig, WorkflowResult
 
 logger = logging.getLogger(__name__)
+
+# Stable metadata keys for execution trace (AC-6)
+STEP_EXECUTION_LOG_KEY = "step_execution_log"
+SEED_LOG_KEY = "seed_log"
+
+
+class StepExecutionRecord(TypedDict):
+    """Single step execution record for the execution log."""
+
+    year: int
+    step_index: int
+    step_total: int
+    step_name: str
+    status: str  # "completed" or "failed"
 
 
 class Orchestrator:
@@ -59,6 +75,10 @@ class Orchestrator:
         """
         yearly_states: dict[int, YearState] = {}
 
+        # AC-6: Collect execution trace metadata
+        seed_log: dict[int, int | None] = {}
+        step_execution_log: list[StepExecutionRecord] = []
+
         # Initialize state for year before start
         current_state = YearState(
             year=self.config.start_year - 1,
@@ -78,8 +98,11 @@ class Orchestrator:
             logger.debug("Starting year %d", year)
 
             try:
-                current_state = self._run_year(year, current_state)
+                current_state, year_step_records = self._run_year(year, current_state)
                 yearly_states[year] = current_state
+                # AC-6: Collect seed and step execution records
+                seed_log[year] = current_state.seed
+                step_execution_log.extend(year_step_records)
                 logger.debug("Completed year %d", year)
 
             except OrchestratorError as e:
@@ -103,6 +126,9 @@ class Orchestrator:
                             self.config.step_pipeline
                         ),
                         "completed_years": sorted(yearly_states.keys()),
+                        # AC-6: Include trace on failure path
+                        SEED_LOG_KEY: seed_log,
+                        STEP_EXECUTION_LOG_KEY: step_execution_log,
                     },
                 )
 
@@ -122,10 +148,15 @@ class Orchestrator:
                 "end_year": self.config.end_year,
                 "seed": self.config.seed,
                 "step_pipeline": _step_pipeline_names(self.config.step_pipeline),
+                # AC-6: Include trace on success path
+                SEED_LOG_KEY: seed_log,
+                STEP_EXECUTION_LOG_KEY: step_execution_log,
             },
         )
 
-    def _run_year(self, year: int, state: YearState) -> YearState:
+    def _run_year(
+        self, year: int, state: YearState
+    ) -> tuple[YearState, list[StepExecutionRecord]]:
         """Execute all steps for a single year.
 
         Args:
@@ -133,17 +164,29 @@ class Orchestrator:
             state: Input state from previous year.
 
         Returns:
-            Updated state after all steps complete.
+            Tuple of (updated state after all steps complete, step execution records).
 
         Raises:
             OrchestratorError: If any step fails.
         """
         # Create state for this year with appropriate seed
+        year_seed = self._derive_year_seed(year)
         current = replace(
             state,
             year=year,
-            seed=self._derive_year_seed(year),
+            seed=year_seed,
             metadata={"previous_year": state.year},
+        )
+
+        # AC-6: Collect step execution records for this year
+        step_records: list[StepExecutionRecord] = []
+
+        # AC-1: Emit year-start INFO log with stable markers
+        logger.info(
+            "year=%d seed=%s master_seed=%s event=year_start",
+            year,
+            year_seed,
+            self.config.seed,
         )
         logger.debug(
             "Year %d initialized with seed=%s (previous_year=%d)",
@@ -153,22 +196,58 @@ class Orchestrator:
         )
 
         # Execute empty pipeline gracefully
-        if not self.config.step_pipeline:
+        step_total = len(self.config.step_pipeline)
+        if step_total == 0:
             logger.debug("Year %d: empty pipeline, no steps to execute", year)
-            return current
+            # AC-4: Emit year-complete INFO summary (empty pipeline case)
+            logger.info(
+                "year=%d steps_executed=0 seed=%s adapter_version=n/a "
+                "event=year_complete",
+                year,
+                year_seed,
+            )
+            return current, step_records
 
-        # Execute each step in order
-        for step in self.config.step_pipeline:
-            current = self._execute_step(step, year, current)
+        # Execute each step in order (AC-2)
+        adapter_version: str | None = None
+        for step_index, step in enumerate(self.config.step_pipeline, start=1):
+            step_name = _extract_step_name(step)
+            current, step_adapter_version = self._execute_step(
+                step, year, current, step_index, step_total
+            )
+            # Capture adapter version from computation step if present
+            if step_adapter_version is not None:
+                adapter_version = step_adapter_version
+            # AC-6: Record step execution
+            step_records.append(
+                StepExecutionRecord(
+                    year=year,
+                    step_index=step_index,
+                    step_total=step_total,
+                    step_name=step_name,
+                    status="completed",
+                )
+            )
 
-        return current
+        # AC-4: Emit year-complete INFO summary
+        logger.info(
+            "year=%d steps_executed=%d seed=%s adapter_version=%s event=year_complete",
+            year,
+            step_total,
+            year_seed,
+            adapter_version or "n/a",
+        )
+
+        return current, step_records
 
     def _execute_step(
         self,
         step: "PipelineStep",
         year: int,
         state: YearState,
-    ) -> YearState:
+        step_index: int,
+        step_total: int,
+    ) -> tuple[YearState, str | None]:
         """Execute a single step with error handling.
 
         Supports both protocol-based steps (OrchestratorStep) and
@@ -178,16 +257,26 @@ class Orchestrator:
             step: The step to execute (protocol step or callable).
             year: Current year.
             state: Current state.
+            step_index: 1-based index of current step in pipeline.
+            step_total: Total number of steps in pipeline.
 
         Returns:
-            Updated state from step.
+            Tuple of (updated state from step, adapter_version if computation step).
 
         Raises:
             OrchestratorError: If step raises an exception.
         """
         # Extract step name: prefer step.name for protocol steps
         step_name = _extract_step_name(step)
-        logger.debug("Year %d: executing step %s", year, step_name)
+
+        # AC-2: Emit step-start DEBUG log with stable markers
+        logger.debug(
+            "year=%d step_index=%d step_total=%d step_name=%s event=step_start",
+            year,
+            step_index,
+            step_total,
+            step_name,
+        )
 
         try:
             # Dispatch based on step type
@@ -201,7 +290,25 @@ class Orchestrator:
                 raise TypeError(
                     f"step returned {type(result).__name__}; expected YearState"
                 )
-            return result
+
+            # AC-2: Emit step-end DEBUG log with stable markers
+            logger.debug(
+                "year=%d step_index=%d step_total=%d step_name=%s event=step_end",
+                year,
+                step_index,
+                step_total,
+                step_name,
+            )
+
+            # Extract adapter version from computation metadata if present
+            adapter_version: str | None = None
+            from reformlab.orchestrator.computation_step import COMPUTATION_METADATA_KEY
+
+            computation_meta = result.metadata.get(COMPUTATION_METADATA_KEY)
+            if isinstance(computation_meta, dict):
+                adapter_version = computation_meta.get("adapter_version")
+
+            return result, adapter_version
 
         except Exception as e:
             logger.exception("Step %s failed at year %d", step_name, year)

@@ -7,10 +7,12 @@ This module provides:
 - COMPUTATION_METADATA_KEY: Stable key for computation metadata in YearState.metadata
 
 Story 3-5: Integrate ComputationAdapter calls into orchestrator yearly loop.
+Story 3-6: Add adapter version runtime logging (AC-3).
 """
 
 from __future__ import annotations
 
+import logging
 from dataclasses import replace
 from typing import TYPE_CHECKING
 
@@ -18,6 +20,8 @@ if TYPE_CHECKING:
     from reformlab.computation.adapter import ComputationAdapter
     from reformlab.computation.types import PolicyConfig, PopulationData
     from reformlab.orchestrator.types import YearState
+
+logger = logging.getLogger(__name__)
 
 
 # Stable keys for computation data in YearState
@@ -148,6 +152,22 @@ class ComputationStep:
                 adapter_version=adapter_version,
                 original_error=e,
             ) from e
+
+        # AC-3: Emit INFO log with adapter version for governance tracing
+        logger.info(
+            "year=%d step_name=%s adapter_version=%s",
+            year,
+            self._name,
+            adapter_version,
+        )
+
+        # DEBUG: Emit computation context log with row count
+        logger.debug(
+            "year=%d step_name=%s row_count=%d",
+            year,
+            self._name,
+            row_count,
+        )
 
         # Build computation metadata
         computation_metadata = {

@@ -27,6 +27,8 @@ Public API:
 - ComputationStepError: Error during computation step execution (Story 3-5)
 - COMPUTATION_RESULT_KEY: Stable key for ComputationResult in YearState.data (Story 3-5)
 - COMPUTATION_METADATA_KEY: Stable key for computation metadata (Story 3-5)
+- SEED_LOG_KEY: Stable key for seed log in metadata (Story 3-6)
+- STEP_EXECUTION_LOG_KEY: Stable key for step execution log in metadata (Story 3-6)
 """
 
 from reformlab.orchestrator.carry_forward import (
@@ -44,6 +46,8 @@ from reformlab.orchestrator.computation_step import (
 )
 from reformlab.orchestrator.errors import OrchestratorError
 from reformlab.orchestrator.runner import (
+    SEED_LOG_KEY,
+    STEP_EXECUTION_LOG_KEY,
     Orchestrator,
     OrchestratorRunner,
     from_workflow_config,
@@ -98,4 +102,7 @@ __all__ = [
     "ComputationStepError",
     "COMPUTATION_RESULT_KEY",
     "COMPUTATION_METADATA_KEY",
+    # Logging keys (Story 3-6)
+    "SEED_LOG_KEY",
+    "STEP_EXECUTION_LOG_KEY",
 ]

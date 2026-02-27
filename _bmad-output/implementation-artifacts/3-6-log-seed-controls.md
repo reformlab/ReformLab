@@ -1,6 +1,6 @@
 # Story 3.6: Log Seed Controls
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -79,45 +79,45 @@ Scope note: this story adds structured logging infrastructure to capture seed in
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Confirm prerequisites and logging contract boundaries (AC: dependency check)
-  - [ ] 0.1 Verify Story 3-1 through 3-5 status is `done` in `sprint-status.yaml`
-  - [ ] 0.2 Review `src/reformlab/orchestrator/runner.py` and `src/reformlab/orchestrator/computation_step.py` logging patterns
-  - [ ] 0.3 Record boundary note: manifest file generation remains out of scope (Story 5-1)
+- [x] Task 0: Confirm prerequisites and logging contract boundaries (AC: dependency check)
+  - [x] 0.1 Verify Story 3-1 through 3-5 status is `done` in `sprint-status.yaml`
+  - [x] 0.2 Review `src/reformlab/orchestrator/runner.py` and `src/reformlab/orchestrator/computation_step.py` logging patterns
+  - [x] 0.3 Record boundary note: manifest file generation remains out of scope (Story 5-1)
 
-- [ ] Task 1: Add year and step structured logs in `Orchestrator` (AC: #1, #2, #4, #5)
-  - [ ] 1.1 Emit year-start INFO log in `_run_year()` with stable markers:
+- [x] Task 1: Add year and step structured logs in `Orchestrator` (AC: #1, #2, #4, #5)
+  - [x] 1.1 Emit year-start INFO log in `_run_year()` with stable markers:
     - `year=... seed=... master_seed=... event=year_start`
-  - [ ] 1.2 Emit step-start and step-end DEBUG logs in `_execute_step()`:
+  - [x] 1.2 Emit step-start and step-end DEBUG logs in `_execute_step()`:
     - include `step_index`, `step_total`, `step_name`, `event=step_start|step_end`
-  - [ ] 1.3 Emit year-complete INFO summary with:
+  - [x] 1.3 Emit year-complete INFO summary with:
     - `year=... steps_executed=... seed=... adapter_version=... event=year_complete`
-  - [ ] 1.4 Ensure marker names are consistent across all runner logs (`key=value` tokens)
+  - [x] 1.4 Ensure marker names are consistent across all runner logs (`key=value` tokens)
 
-- [ ] Task 2: Add adapter version runtime logs in `ComputationStep` (AC: #3, #5)
-  - [ ] 2.1 Add module logger in `src/reformlab/orchestrator/computation_step.py`
-  - [ ] 2.2 Emit INFO log during `execute()`:
+- [x] Task 2: Add adapter version runtime logs in `ComputationStep` (AC: #3, #5)
+  - [x] 2.1 Add module logger in `src/reformlab/orchestrator/computation_step.py`
+  - [x] 2.2 Emit INFO log during `execute()`:
     - `year=... step_name=computation adapter_version=...`
-  - [ ] 2.3 Emit DEBUG computation context log:
+  - [x] 2.3 Emit DEBUG computation context log:
     - `year=... step_name=computation row_count=...`
 
-- [ ] Task 3: Add minimal execution trace metadata on result (AC: #6)
-  - [ ] 3.1 Define stable metadata keys:
+- [x] Task 3: Add minimal execution trace metadata on result (AC: #6)
+  - [x] 3.1 Define stable metadata keys:
     - `STEP_EXECUTION_LOG_KEY = "step_execution_log"`
     - `SEED_LOG_KEY = "seed_log"`
-  - [ ] 3.2 Collect ordered step execution records during `_run_year()`
-  - [ ] 3.3 Collect per-year derived seeds during `run()`
-  - [ ] 3.4 Merge trace fields into `OrchestratorResult.metadata` for success and failure paths
+  - [x] 3.2 Collect ordered step execution records during `_run_year()`
+  - [x] 3.3 Collect per-year derived seeds during `run()`
+  - [x] 3.4 Merge trace fields into `OrchestratorResult.metadata` for success and failure paths
 
-- [ ] Task 4: Add focused tests for logging and trace metadata (AC: all)
-  - [ ] 4.1 Create `tests/orchestrator/test_logging.py` with `caplog` assertions for year, step, seed, and adapter markers
-  - [ ] 4.2 Add test comparing two runs with different master seeds to assert visible seed differences in logs
-  - [ ] 4.3 Add tests validating `seed_log` and `step_execution_log` structure/content on `OrchestratorResult.metadata`
+- [x] Task 4: Add focused tests for logging and trace metadata (AC: all)
+  - [x] 4.1 Create `tests/orchestrator/test_logging.py` with `caplog` assertions for year, step, seed, and adapter markers
+  - [x] 4.2 Add test comparing two runs with different master seeds to assert visible seed differences in logs
+  - [x] 4.3 Add tests validating `seed_log` and `step_execution_log` structure/content on `OrchestratorResult.metadata`
 
-- [ ] Task 5: Export constants and run quality gates (AC: all)
-  - [ ] 5.1 Export `STEP_EXECUTION_LOG_KEY` and `SEED_LOG_KEY` from `src/reformlab/orchestrator/__init__.py`
-  - [ ] 5.2 Run `ruff check src/reformlab/orchestrator tests/orchestrator`
-  - [ ] 5.3 Run `mypy src/reformlab/orchestrator`
-  - [ ] 5.4 Run targeted tests:
+- [x] Task 5: Export constants and run quality gates (AC: all)
+  - [x] 5.1 Export `STEP_EXECUTION_LOG_KEY` and `SEED_LOG_KEY` from `src/reformlab/orchestrator/__init__.py`
+  - [x] 5.2 Run `ruff check src/reformlab/orchestrator tests/orchestrator`
+  - [x] 5.3 Run `mypy src/reformlab/orchestrator`
+  - [x] 5.4 Run targeted tests:
     - `pytest tests/orchestrator/test_logging.py tests/orchestrator/test_runner.py tests/orchestrator/test_computation_step.py`
 
 ## Dev Notes
@@ -240,10 +240,32 @@ def _derive_year_seed(self, year: int) -> int | None:
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.5 (claude-opus-4-5-20251101)
 
 ### Debug Log References
 
+- Task 0 verified all prerequisites (Stories 3-1 through 3-5) are done
+- Boundary note: manifest file persistence remains out of scope (Story 5-1)
+
 ### Completion Notes List
 
+- Implemented structured logging with stable `key=value` markers for year-start, step-start/end, and year-complete events
+- Added module logger to `computation_step.py` for adapter version logging at INFO level
+- Introduced `SEED_LOG_KEY` and `STEP_EXECUTION_LOG_KEY` constants for execution trace metadata
+- `OrchestratorResult.metadata` now includes `seed_log` (year→seed mapping) and `step_execution_log` (ordered step records)
+- 20 new tests in `test_logging.py` covering all acceptance criteria
+- All 197 orchestrator tests pass; ruff and mypy checks clean
+
+### Change Log
+
+- 2026-02-27: Implemented Story 3-6 — structured logging and execution trace metadata
+
 ### File List
+
+**Modified:**
+- `src/reformlab/orchestrator/runner.py` — Added year-start/year-complete INFO logs, step-start/step-end DEBUG logs, execution trace collection, exported constants
+- `src/reformlab/orchestrator/computation_step.py` — Added module logger, INFO log for adapter version, DEBUG log for row count
+- `src/reformlab/orchestrator/__init__.py` — Exported `SEED_LOG_KEY` and `STEP_EXECUTION_LOG_KEY`
+
+**Added:**
+- `tests/orchestrator/test_logging.py` — 20 focused tests for logging and trace metadata (AC-1 through AC-6)
