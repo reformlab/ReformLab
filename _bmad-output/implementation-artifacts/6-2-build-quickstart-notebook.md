@@ -15,31 +15,31 @@ so that **I can see distributional charts in under 15 minutes and understand how
 From backlog (BKL-602), aligned with FR34 (quickstart in under 30 minutes) and NFR19 (examples run without modification).
 
 1. **AC-1: Notebook runs without errors on fresh install**
-   - Given a fresh install of the reformlab package (`pip install reformlab`), when the quickstart notebook is run cell-by-cell, then it completes without errors.
+   - Given a fresh install of the reformlab package (`pip install reformlab`), when the quickstart notebook is run cell-by-cell from a clean kernel, then it completes without errors.
    - No external data downloads or API keys required.
-   - Uses synthetic French household population bundled with the package or generated on-the-fly.
+   - Uses synthetic data bundled with the package or generated in-notebook.
 
 2. **AC-2: Notebook produces distributional charts**
    - Given the notebook execution, when the distributional analysis cells run, then income decile impact bar charts are displayed inline.
-   - Charts show tax burden and redistribution effects by income decile.
+   - Charts show baseline/reform net impact by income decile.
    - Visual output uses matplotlib (standard Jupyter rendering).
 
 3. **AC-3: Notebook demonstrates parameter modification and rerun**
    - Given the notebook, when the user modifies a carbon tax rate from €44/tCO2 to €100/tCO2 and re-runs, then updated charts reflect the higher rate impact.
-   - The notebook includes commented guidance explaining what to modify.
+   - The notebook includes explicit "Try it yourself" guidance on what value to change.
 
-4. **AC-4: Notebook demonstrates scenario comparison**
-   - Given the notebook, when the user runs baseline vs. reform comparison cells, then side-by-side or overlaid comparison charts are displayed.
-   - At least two redistribution variants are compared (e.g., flat dividend vs. progressive rebate).
+4. **AC-4: Notebook demonstrates basic scenario comparison**
+   - Given the notebook, when the user runs baseline vs. reform comparison cells, then a side-by-side or overlaid comparison view is displayed.
+   - Comparison scope is single-year quickstart only (multi-year/vintage comparison stays in Story 6-3).
 
 5. **AC-5: Total execution time under 30 minutes**
    - Given a user reading instructions and running cells sequentially, when timed end-to-end, then total execution is under 30 minutes including reading.
    - Target: under 15 minutes for pure execution (excluding reading).
    - Computation cells complete in seconds, not minutes.
 
-6. **AC-6: Notebook includes methodology documentation**
-   - Given the notebook, when a user inspects markdown cells, then each major section explains: what data is used, what policy is being simulated, and how to interpret results.
-   - Run manifest and assumption transparency are demonstrated.
+6. **AC-6: Notebook includes brief methodology and reproducibility context**
+   - Given the notebook, when a user inspects markdown cells, then each major section explains data source, policy setup, and chart interpretation.
+   - At least one cell displays run manifest metadata for transparency.
 
 7. **AC-7: Notebook tested in CI**
    - Given the CI pipeline, when tests run, then the quickstart notebook executes successfully via `pytest --nbmake` or equivalent.
@@ -47,17 +47,16 @@ From backlog (BKL-602), aligned with FR34 (quickstart in under 30 minutes) and N
 
 ## Dependencies
 
-- **Story 6-1 (BKL-601): Implement stable Python API** — DONE
+- **Hard dependency (backlog-declared): Story 6-1 (BKL-601) — DONE**
   - Provides `run_scenario()`, `SimulationResult`, `ScenarioConfig`, `RunConfig`
   - Provides `SimulationResult.indicators()` for distributional analysis
 
-- **Story 2-2 (BKL-202): Carbon-tax template pack** — DONE
+- **Supporting completed stories (required for full quickstart value):**
+  - Story 2-2 (BKL-202): Carbon-tax template pack — DONE
   - Provides carbon tax scenario templates
-
-- **Story 4-1 (BKL-401): Distributional indicators** — DONE
+  - Story 4-1 (BKL-401): Distributional indicators — DONE
   - Provides `compute_distributional_indicators()` for decile analysis
-
-- **Story 4-5 (BKL-405): Scenario comparison tables** — DONE
+  - Story 4-5 (BKL-405): Scenario comparison tables — DONE
   - Provides comparison output generation
 
 - **Follow-on stories:**
@@ -66,100 +65,46 @@ From backlog (BKL-602), aligned with FR34 (quickstart in under 30 minutes) and N
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Review existing patterns and prepare test data (AC: dependency check)
-  - [ ] 0.1 Review `src/reformlab/interfaces/api.py` for API usage patterns
-  - [ ] 0.2 Review `src/reformlab/templates/carbon_tax/` for available templates and parameters
-  - [ ] 0.3 Review `src/reformlab/indicators/distributional.py` for indicator API
-  - [ ] 0.4 Review `tests/` for MockAdapter usage patterns
-  - [ ] 0.5 Identify or create synthetic population fixture data
+- [ ] Task 0: Confirm blockers and architecture guardrails (AC: dependency check)
+  - [ ] 0.1 Confirm backlog blocker `BKL-601` is `done` in `sprint-status.yaml`
+  - [ ] 0.2 Confirm supporting stories `BKL-202`, `BKL-401`, `BKL-405` are `done`
+  - [ ] 0.3 Confirm notebook implementation will use public API imports only (`from reformlab import ...`)
 
-- [ ] Task 1: Create notebook directory structure (AC: #7)
-  - [ ] 1.1 Create `notebooks/` directory at project root (if not exists)
-  - [ ] 1.2 Create `notebooks/quickstart.ipynb` as main deliverable
-  - [ ] 1.3 Create `notebooks/data/` for any embedded sample data
-  - [ ] 1.4 Add `notebooks/` to pytest collection with nbmake
+- [ ] Task 1: Create quickstart notebook scaffold (AC: #1, #6)
+  - [ ] 1.1 Create `notebooks/quickstart.ipynb` as the primary deliverable
+  - [ ] 1.2 Add short markdown sections for setup, first run, analysis, comparison, reproducibility, and next steps
+  - [ ] 1.3 Keep content scoped to single-year quickstart flow
 
-- [ ] Task 2: Build Section 1 - Introduction and Setup (AC: #1, #6)
-  - [ ] 2.1 Markdown cell: Title, overview, what user will learn
-  - [ ] 2.2 Code cell: Import statements (`from reformlab import ...`)
-  - [ ] 2.3 Code cell: Verify installation (`reformlab.__version__`)
-  - [ ] 2.4 Markdown cell: Explain OpenFisca-first approach and synthetic data
+- [ ] Task 2: Implement first-run simulation via API facade (AC: #1, #5)
+  - [ ] 2.1 Import public API symbols only (`run_scenario`, `RunConfig`, `ScenarioConfig`)
+  - [ ] 2.2 Define baseline scenario with `rate_schedule={2025: 44.0}` and run it
+  - [ ] 2.3 Show notebook-friendly `SimulationResult` output and panel table shape
+  - [ ] 2.4 Add concise markdown on synthetic data assumptions and expected runtime
 
-- [ ] Task 3: Build Section 2 - First Simulation Run (AC: #1, #2, #5)
-  - [ ] 3.1 Markdown cell: Explain what we're about to run
-  - [ ] 3.2 Code cell: Define basic carbon tax ScenarioConfig
-      ```python
-      config = ScenarioConfig(
-          template_name="carbon-tax",
-          parameters={"rate_schedule": {2025: 44.0}},  # €44/tCO2
-          start_year=2025,
-          end_year=2025,
-      )
-      ```
-  - [ ] 3.3 Code cell: Run simulation with MockAdapter for reproducible demo
-  - [ ] 3.4 Code cell: Display SimulationResult (shows __repr__)
-  - [ ] 3.5 Code cell: Access panel output and show shape
-  - [ ] 3.6 Markdown cell: Explain what we just computed
+- [ ] Task 3: Implement distributional chart section (AC: #2)
+  - [ ] 3.1 Compute `result.indicators("distributional")`
+  - [ ] 3.2 Plot decile impacts with matplotlib inline
+  - [ ] 3.3 Add brief interpretation guidance for first-time users
 
-- [ ] Task 4: Build Section 3 - Distributional Analysis (AC: #2, #6)
-  - [ ] 4.1 Markdown cell: Explain distributional indicators
-  - [ ] 4.2 Code cell: Compute distributional indicators
-      ```python
-      indicators = result.indicators("distributional")
-      ```
-  - [ ] 4.3 Code cell: Create income decile bar chart with matplotlib
-  - [ ] 4.4 Markdown cell: Interpret the chart (who pays more, who benefits)
-  - [ ] 4.5 Code cell: Show winners/losers summary if available
+- [ ] Task 4: Implement parameter change and basic comparison (AC: #3, #4)
+  - [ ] 4.1 Add "Try it yourself" cell changing carbon tax from €44/tCO2 to €100/tCO2
+  - [ ] 4.2 Re-run scenario and show updated chart
+  - [ ] 4.3 Add one baseline-vs-reform comparison view (chart or table)
+  - [ ] 4.4 Explicitly defer advanced multi-year/vintage comparison to Story 6-3
 
-- [ ] Task 5: Build Section 4 - Parameter Modification (AC: #3)
-  - [ ] 5.1 Markdown cell: "Try it yourself" - modify the tax rate
-  - [ ] 5.2 Code cell: Higher tax rate scenario (€100/tCO2)
-  - [ ] 5.3 Code cell: Re-run simulation
-  - [ ] 5.4 Code cell: New distributional chart
-  - [ ] 5.5 Markdown cell: Compare results and explain impact
+- [ ] Task 5: Add reproducibility and docs cells (AC: #6)
+  - [ ] 5.1 Display `result.manifest` and highlight key provenance fields
+  - [ ] 5.2 Add concise next-step links to Story 6-3 materials and API docs
 
-- [ ] Task 6: Build Section 5 - Scenario Comparison (AC: #4)
-  - [ ] 6.1 Markdown cell: Explain baseline vs. reform comparison
-  - [ ] 6.2 Code cell: Define baseline scenario (no carbon tax or lower rate)
-  - [ ] 6.3 Code cell: Define reform scenario (with carbon tax + redistribution)
-  - [ ] 6.4 Code cell: Run both scenarios
-  - [ ] 6.5 Code cell: Side-by-side comparison chart
-  - [ ] 6.6 Code cell: Comparison of two redistribution variants (flat vs. progressive)
-  - [ ] 6.7 Markdown cell: Interpret comparison results
+- [ ] Task 6: Add CI notebook execution coverage (AC: #7)
+  - [ ] 6.1 Ensure `nbmake` (or equivalent) is included in dev test dependencies
+  - [ ] 6.2 Ensure pytest/CI executes `notebooks/quickstart.ipynb`
+  - [ ] 6.3 Ensure committed notebook has cleared outputs
 
-- [ ] Task 7: Build Section 6 - Run Manifest and Reproducibility (AC: #6)
-  - [ ] 7.1 Markdown cell: Explain run manifest and assumption transparency
-  - [ ] 7.2 Code cell: Access and display manifest
-      ```python
-      result.manifest
-      ```
-  - [ ] 7.3 Code cell: Show key manifest fields (parameters, seeds, versions)
-  - [ ] 7.4 Markdown cell: Explain reproducibility guarantee
-
-- [ ] Task 8: Build Section 7 - Next Steps (AC: #6)
-  - [ ] 8.1 Markdown cell: Summary of what was learned
-  - [ ] 8.2 Markdown cell: Links to advanced notebook (Story 6-3)
-  - [ ] 8.3 Markdown cell: Links to API documentation
-  - [ ] 8.4 Markdown cell: Links to YAML workflow configuration
-
-- [ ] Task 9: Create test fixtures and mock data (AC: #1, #7)
-  - [ ] 9.1 Create synthetic population generator or fixture for notebook
-  - [ ] 9.2 Ensure MockAdapter works correctly for notebook demos
-  - [ ] 9.3 Verify notebook can run in CI without real OpenFisca
-
-- [ ] Task 10: Add CI integration for notebook testing (AC: #7)
-  - [ ] 10.1 Install nbmake or pytest-notebook in dev dependencies
-  - [ ] 10.2 Add `notebooks/` to pytest configuration
-  - [ ] 10.3 Create CI job or step to run notebook tests
-  - [ ] 10.4 Clear notebook outputs before commit (add pre-commit hook or CI check)
-
-- [ ] Task 11: Final validation (AC: #1-7)
-  - [ ] 11.1 Run notebook fresh from `pip install -e .`
-  - [ ] 11.2 Time full execution (target: <15 min)
-  - [ ] 11.3 Verify all charts render correctly
-  - [ ] 11.4 Run `ruff check notebooks/` (if .py cells extracted)
-  - [ ] 11.5 Run notebook via pytest nbmake
-  - [ ] 11.6 Verify notebook documentation is clear for new users
+- [ ] Task 7: Final validation against acceptance criteria (AC: #1-7)
+  - [ ] 7.1 Run notebook from a clean environment install path
+  - [ ] 7.2 Verify timed run is <30 minutes end-to-end
+  - [ ] 7.3 Run notebook test in CI-equivalent command
 
 ## Dev Notes
 
@@ -169,10 +114,10 @@ This story implements **FR34** (quickstart in under 30 minutes) and **NFR19** (e
 
 **Key architectural constraints:**
 
-- **API facade only** - Notebook uses public API (`run_scenario`, `SimulationResult.indicators`) - no direct subsystem imports. [Source: architecture.md#Layered-Architecture]
-- **MockAdapter for demos** - Use `MockAdapter` from `computation/mock_adapter.py` to ensure reproducible, fast execution without real OpenFisca dependency. [Source: architecture.md#Computation-Adapter-Pattern]
-- **PyArrow-first** - Panel output is PyArrow (`pa.Table`), convert to pandas only for plotting. [Source: project-context.md#Critical-Implementation-Rules]
-- **Matplotlib for plotting** - Standard Jupyter visualization, no additional dependencies. [Source: prd.md#Developer-Tool-Specific-Requirements]
+- **API facade only** - Notebook uses public API (`run_scenario`, `RunConfig`, `ScenarioConfig`, `SimulationResult.indicators`) and avoids direct subsystem imports. [Source: architecture.md#Layered-Architecture]
+- **Adapter boundary respected** - Notebook remains adapter-agnostic; any adapter injection stays in tests, not user-facing notebook cells. [Source: architecture.md#Computation-Adapter-Pattern]
+- **Governance visibility** - Notebook surfaces run manifest metadata for transparency/reproducibility. [Source: architecture.md#Reproducibility-&-Governance]
+- **Matplotlib for plotting** - Keep visualization dependency lightweight and notebook-native. [Source: prd.md#Developer-Tool-Specific-Requirements]
 
 ### User Journey Alignment
 
@@ -202,15 +147,6 @@ print(result)  # SimulationResult(SUCCESS, scenario='carbon-tax', years=2025-203
 
 # Indicator access
 indicators = result.indicators("distributional")
-```
-
-**From `computation/mock_adapter.py`:**
-```python
-from reformlab.computation.mock_adapter import MockAdapter
-
-# Use MockAdapter for reproducible notebook execution
-adapter = MockAdapter(seed=42)
-result = run_scenario(config, adapter=adapter)
 ```
 
 **From `indicators/distributional.py`:**
@@ -253,8 +189,7 @@ notebooks/
 
 5. **Scenario Comparison** (~5 min)
    - Baseline vs. reform
-   - Two redistribution variants
-   - Comparison charts
+   - One quickstart comparison view (chart or table)
 
 6. **Reproducibility** (~2 min)
    - View run manifest
@@ -313,7 +248,7 @@ pytest --nbmake notebooks/quickstart.ipynb -v
 
 **In scope:**
 - `notebooks/quickstart.ipynb` with 7 sections
-- Synthetic population data or MockAdapter-based execution
+- Single-year quickstart flow using public API only
 - matplotlib charts for distributional analysis
 - Basic scenario comparison (baseline vs. reform)
 - Run manifest display
@@ -322,6 +257,7 @@ pytest --nbmake notebooks/quickstart.ipynb -v
 **Out of scope:**
 - Multi-year projections with vintage tracking (Story 6-3)
 - Advanced comparison workflows (Story 6-3)
+- Internal adapter implementation details in notebook content
 - CSV/Parquet export demos (Story 6-5)
 - Interactive widgets or dashboards
 - Custom template creation tutorial
@@ -334,14 +270,14 @@ pytest --nbmake notebooks/quickstart.ipynb -v
 - Charts must render (matplotlib inline)
 - Outputs cleared before commit (CI renders fresh)
 - No hardcoded file paths outside notebook directory
-- Use `tmp_path` equivalent or MockAdapter for data
+- Notebook uses public API imports only; internal adapters may be used in tests, not notebook cells
 
 ### Previous Story Intelligence
 
 **From Story 6-1 (Python API):**
 - `SimulationResult.__repr__()` provides notebook-friendly display
 - `result.indicators("distributional")` returns `IndicatorResult`
-- MockAdapter can be injected via `run_scenario(config, adapter=adapter)`
+- Adapter injection is available for tests via `run_scenario(config, adapter=adapter)`
 - Error messages are user-friendly (`ConfigurationError`, `SimulationError`)
 
 **From EPIC-2 (Templates):**
@@ -358,7 +294,7 @@ pytest --nbmake notebooks/quickstart.ipynb -v
 - [Source: prd.md#Functional-Requirements] - FR34 quickstart in under 30 minutes
 - [Source: prd.md#Non-Functional-Requirements] - NFR19 examples run without modification
 - [Source: backlog BKL-602] - Story acceptance criteria
-- [Source: architecture.md#Computation-Adapter-Pattern] - MockAdapter for testing
+- [Source: architecture.md#Computation-Adapter-Pattern] - adapter boundary and testability
 - [Source: ux-design-specification.md#Journey-2-First-Run-Onboarding] - Onboarding UX patterns
 - [Source: interfaces/api.py] - Python API usage patterns
 
