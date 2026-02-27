@@ -192,6 +192,37 @@ def _scenario_to_dict_for_registry(
     return data
 
 
+def _validate_scenario_name(name: str) -> str:
+    """Validate and normalize a scenario key used as a registry directory."""
+    normalized = name.strip()
+    if not normalized:
+        raise RegistryError(
+            summary="Invalid scenario name",
+            reason="Scenario name must be a non-empty string",
+            fix="Provide a non-empty scenario name, for example: 'carbon-tax-2026'",
+            scenario_name=name,
+        )
+
+    if "/" in normalized or "\\" in normalized:
+        raise RegistryError(
+            summary="Invalid scenario name",
+            reason="Scenario name cannot include path separators",
+            fix="Use a plain name without '/' or '\\\\' characters",
+            scenario_name=normalized,
+        )
+
+    path = Path(normalized)
+    if path.is_absolute() or any(part in {".", ".."} for part in path.parts):
+        raise RegistryError(
+            summary="Invalid scenario name",
+            reason="Scenario name cannot be absolute or use path traversal",
+            fix="Use a simple relative name, for example: 'scenario-alpha'",
+            scenario_name=normalized,
+        )
+
+    return normalized
+
+
 def _generate_version_id(scenario: BaselineScenario | ReformScenario) -> str:
     """Generate deterministic version ID from scenario content.
 
@@ -276,8 +307,9 @@ class ScenarioRegistry:
         """
         self.initialize()
 
+        scenario_name = _validate_scenario_name(name)
         version_id = _generate_version_id(scenario)
-        scenario_dir = self._path / name
+        scenario_dir = self._path / scenario_name
         versions_dir = scenario_dir / "versions"
         version_file = versions_dir / f"{version_id}.yaml"
         metadata_file = scenario_dir / "metadata.yaml"
@@ -286,6 +318,11 @@ class ScenarioRegistry:
         if version_file.exists():
             # Verify content matches (idempotent save)
             existing = self._load_scenario_file(version_file)
+            self._ensure_version_integrity(
+                scenario=existing,
+                expected_version_id=version_id,
+                scenario_name=scenario_name,
+            )
             if existing == scenario:
                 return version_id
             else:
@@ -296,7 +333,7 @@ class ScenarioRegistry:
                         "This should not happen with content-addressable IDs. "
                         "Check for hash collisions."
                     ),
-                    scenario_name=name,
+                    scenario_name=scenario_name,
                     version_id=version_id,
                 )
 
@@ -309,6 +346,17 @@ class ScenarioRegistry:
 
         if metadata_file.exists():
             metadata = self._load_metadata(metadata_file)
+            metadata_name = str(metadata.get("name", ""))
+            if metadata_name and metadata_name != scenario_name:
+                raise RegistryError(
+                    summary="Corrupted registry metadata",
+                    reason=(
+                        f"Scenario metadata name '{metadata_name}' does not match "
+                        f"directory name '{scenario_name}'"
+                    ),
+                    fix="Repair or recreate metadata.yaml for this scenario",
+                    scenario_name=scenario_name,
+                )
             parent_version = metadata["latest_version"]
             created = datetime.fromisoformat(metadata["created"])
         else:
@@ -332,7 +380,7 @@ class ScenarioRegistry:
             metadata["versions"].append(new_version)
         else:
             metadata = {
-                "name": name,
+                "name": scenario_name,
                 "created": created.isoformat(),
                 "latest_version": version_id,
                 "versions": [new_version],
@@ -360,28 +408,56 @@ class ScenarioRegistry:
             ScenarioNotFoundError: If the scenario doesn't exist.
             VersionNotFoundError: If the version doesn't exist.
         """
-        scenario_dir = self._path / name
+        scenario_name = _validate_scenario_name(name)
+        scenario_dir = self._path / scenario_name
 
         if not scenario_dir.exists():
             available = self.list_scenarios()
-            raise ScenarioNotFoundError(name, available)
+            raise ScenarioNotFoundError(scenario_name, available)
 
         metadata_file = scenario_dir / "metadata.yaml"
         if not metadata_file.exists():
             available = self.list_scenarios()
-            raise ScenarioNotFoundError(name, available)
+            raise ScenarioNotFoundError(scenario_name, available)
 
         metadata = self._load_metadata(metadata_file)
+        versions = self._versions_from_metadata(metadata, scenario_name=scenario_name)
+        available_versions = [v.version_id for v in versions]
 
         if version_id is None:
-            version_id = metadata["latest_version"]
+            latest_version = metadata.get("latest_version")
+            if not isinstance(latest_version, str) or not latest_version:
+                raise RegistryError(
+                    summary="Corrupted registry metadata",
+                    reason="Missing or invalid latest_version in metadata",
+                    fix="Repair metadata.yaml for this scenario",
+                    scenario_name=scenario_name,
+                )
+            version_id = latest_version
+
+        if version_id not in available_versions:
+            raise VersionNotFoundError(scenario_name, version_id, available_versions)
 
         version_file = scenario_dir / "versions" / f"{version_id}.yaml"
         if not version_file.exists():
-            available_versions = [v["version_id"] for v in metadata["versions"]]
-            raise VersionNotFoundError(name, version_id, available_versions)
+            raise RegistryError(
+                summary="Registry data missing",
+                reason=(
+                    f"Metadata references version '{version_id}' but the version "
+                    "file is missing"
+                ),
+                fix="Restore the missing version file or repair metadata.yaml",
+                scenario_name=scenario_name,
+                version_id=version_id,
+            )
 
-        return self._load_scenario_file(version_file)
+        loaded = self._load_scenario_file(version_file)
+        self._ensure_version_integrity(
+            scenario=loaded,
+            expected_version_id=version_id,
+            scenario_name=scenario_name,
+        )
+        return loaded
 
     def list_scenarios(self) -> list[str]:
         """List all scenario names in the registry.
@@ -411,29 +487,20 @@ class ScenarioRegistry:
         Raises:
             ScenarioNotFoundError: If the scenario doesn't exist.
         """
-        scenario_dir = self._path / name
+        scenario_name = _validate_scenario_name(name)
+        scenario_dir = self._path / scenario_name
 
         if not scenario_dir.exists():
             available = self.list_scenarios()
-            raise ScenarioNotFoundError(name, available)
+            raise ScenarioNotFoundError(scenario_name, available)
 
         metadata_file = scenario_dir / "metadata.yaml"
         if not metadata_file.exists():
             available = self.list_scenarios()
-            raise ScenarioNotFoundError(name, available)
+            raise ScenarioNotFoundError(scenario_name, available)
 
         metadata = self._load_metadata(metadata_file)
-        versions = []
-        for v in metadata["versions"]:
-            versions.append(
-                ScenarioVersion(
-                    version_id=v["version_id"],
-                    timestamp=datetime.fromisoformat(v["timestamp"]),
-                    parent_version=v.get("parent_version"),
-                    change_description=v.get("change_description", ""),
-                )
-            )
-        return versions
+        return self._versions_from_metadata(metadata, scenario_name=scenario_name)
 
     def exists(self, name: str, version_id: str | None = None) -> bool:
         """Check if a scenario or version exists.
@@ -446,7 +513,12 @@ class ScenarioRegistry:
         Returns:
             True if the scenario/version exists, False otherwise.
         """
-        scenario_dir = self._path / name
+        try:
+            scenario_name = _validate_scenario_name(name)
+        except RegistryError:
+            return False
+
+        scenario_dir = self._path / scenario_name
         if not scenario_dir.exists():
             return False
 
@@ -472,28 +544,20 @@ class ScenarioRegistry:
         Raises:
             ScenarioNotFoundError: If the scenario doesn't exist.
         """
-        scenario_dir = self._path / name
+        scenario_name = _validate_scenario_name(name)
+        scenario_dir = self._path / scenario_name
 
         if not scenario_dir.exists():
             available = self.list_scenarios()
-            raise ScenarioNotFoundError(name, available)
+            raise ScenarioNotFoundError(scenario_name, available)
 
         metadata_file = scenario_dir / "metadata.yaml"
         if not metadata_file.exists():
             available = self.list_scenarios()
-            raise ScenarioNotFoundError(name, available)
+            raise ScenarioNotFoundError(scenario_name, available)
 
         metadata = self._load_metadata(metadata_file)
-        versions = []
-        for v in metadata["versions"]:
-            versions.append(
-                ScenarioVersion(
-                    version_id=v["version_id"],
-                    timestamp=datetime.fromisoformat(v["timestamp"]),
-                    parent_version=v.get("parent_version"),
-                    change_description=v.get("change_description", ""),
-                )
-            )
+        versions = self._versions_from_metadata(metadata, scenario_name=scenario_name)
 
         return RegistryEntry(
             name=metadata["name"],
@@ -501,6 +565,79 @@ class ScenarioRegistry:
             latest_version=metadata["latest_version"],
             versions=tuple(versions),
         )
+
+    def _ensure_version_integrity(
+        self,
+        *,
+        scenario: BaselineScenario | ReformScenario,
+        expected_version_id: str,
+        scenario_name: str,
+    ) -> None:
+        """Verify scenario content still matches its content-addressable ID."""
+        actual_version_id = _generate_version_id(scenario)
+        if actual_version_id != expected_version_id:
+            raise RegistryError(
+                summary="Registry integrity check failed",
+                reason=(
+                    f"Version file content hashes to '{actual_version_id}', expected "
+                    f"'{expected_version_id}'"
+                ),
+                fix=(
+                    "Restore the original immutable version file content or create "
+                    "a new version with save()"
+                ),
+                scenario_name=scenario_name,
+                version_id=expected_version_id,
+            )
+
+    def _versions_from_metadata(
+        self,
+        metadata: dict[str, Any],
+        *,
+        scenario_name: str,
+    ) -> list[ScenarioVersion]:
+        """Parse and normalize version metadata records."""
+        raw_versions = metadata.get("versions")
+        if not isinstance(raw_versions, list):
+            raise RegistryError(
+                summary="Corrupted registry metadata",
+                reason="Metadata field 'versions' must be a list",
+                fix="Repair metadata.yaml to include a valid versions list",
+                scenario_name=scenario_name,
+            )
+
+        versions: list[ScenarioVersion] = []
+        for raw_version in raw_versions:
+            if not isinstance(raw_version, dict):
+                raise RegistryError(
+                    summary="Corrupted registry metadata",
+                    reason="Version entries must be mapping objects",
+                    fix=(
+                        "Repair metadata.yaml to ensure each version entry "
+                        "is a mapping"
+                    ),
+                    scenario_name=scenario_name,
+                )
+
+            try:
+                parsed = ScenarioVersion(
+                    version_id=str(raw_version["version_id"]),
+                    timestamp=datetime.fromisoformat(str(raw_version["timestamp"])),
+                    parent_version=raw_version.get("parent_version"),
+                    change_description=str(raw_version.get("change_description", "")),
+                )
+            except (KeyError, TypeError, ValueError) as exc:
+                raise RegistryError(
+                    summary="Corrupted registry metadata",
+                    reason=f"Invalid version metadata entry: {exc}",
+                    fix="Repair metadata.yaml with valid version_id/timestamp fields",
+                    scenario_name=scenario_name,
+                ) from None
+
+            versions.append(parsed)
+
+        versions.sort(key=lambda entry: entry.timestamp)
+        return versions
 
     def _save_scenario_file(
         self,

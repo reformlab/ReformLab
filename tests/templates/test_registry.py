@@ -19,6 +19,7 @@ import pytest
 
 from reformlab.templates.registry import (
     RegistryEntry,
+    RegistryError,
     ScenarioNotFoundError,
     ScenarioRegistry,
     ScenarioVersion,
@@ -344,6 +345,79 @@ class TestErrorHandling:
         with pytest.raises(ScenarioNotFoundError):
             registry.list_versions("nonexistent-scenario")
 
+    def test_save_rejects_path_traversal_scenario_name(
+        self,
+        registry: ScenarioRegistry,
+        sample_baseline: BaselineScenario,
+    ) -> None:
+        """Scenario names cannot include path traversal."""
+        with pytest.raises(RegistryError) as exc_info:
+            registry.save(sample_baseline, "../outside")
+
+        assert exc_info.value.summary == "Invalid scenario name"
+
+    def test_get_rejects_empty_scenario_name(
+        self,
+        registry: ScenarioRegistry,
+    ) -> None:
+        """Empty scenario names are rejected."""
+        with pytest.raises(RegistryError) as exc_info:
+            registry.get("   ")
+
+        assert exc_info.value.summary == "Invalid scenario name"
+
+
+class TestImmutabilityGuards:
+    """Tests that immutable versions detect on-disk tampering."""
+
+    def test_get_detects_tampered_version_file(
+        self,
+        registry: ScenarioRegistry,
+        sample_baseline: BaselineScenario,
+    ) -> None:
+        """A modified version file should fail integrity checks on get()."""
+        import yaml
+
+        version_id = registry.save(sample_baseline, "test-scenario")
+        version_file = (
+            registry.path / "test-scenario" / "versions" / f"{version_id}.yaml"
+        )
+
+        with open(version_file, encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+        data["description"] = "tampered"
+        with open(version_file, "w", encoding="utf-8") as f:
+            yaml.safe_dump(data, f, default_flow_style=False, sort_keys=False)
+
+        with pytest.raises(RegistryError) as exc_info:
+            registry.get("test-scenario", version_id)
+
+        assert "integrity check failed" in exc_info.value.summary.lower()
+
+    def test_save_detects_tampered_existing_version_file(
+        self,
+        registry: ScenarioRegistry,
+        sample_baseline: BaselineScenario,
+    ) -> None:
+        """Idempotent save must fail if existing immutable file was tampered."""
+        import yaml
+
+        version_id = registry.save(sample_baseline, "test-scenario")
+        version_file = (
+            registry.path / "test-scenario" / "versions" / f"{version_id}.yaml"
+        )
+
+        with open(version_file, encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+        data["description"] = "tampered"
+        with open(version_file, "w", encoding="utf-8") as f:
+            yaml.safe_dump(data, f, default_flow_style=False, sort_keys=False)
+
+        with pytest.raises(RegistryError) as exc_info:
+            registry.save(sample_baseline, "test-scenario")
+
+        assert "integrity check failed" in exc_info.value.summary.lower()
+
 
 class TestListingOperations:
     """Tests for list_scenarios and list_versions (AC-4)."""
@@ -400,6 +474,29 @@ class TestListingOperations:
         versions = registry.list_versions("test-scenario")
         assert len(versions) == 3
         assert all(isinstance(v, ScenarioVersion) for v in versions)
+
+    def test_list_versions_orders_by_timestamp(
+        self,
+        registry: ScenarioRegistry,
+        sample_baseline: BaselineScenario,
+    ) -> None:
+        """list_versions returns chronological order even if metadata order drifts."""
+        import yaml
+
+        v1 = registry.save(sample_baseline, "test-scenario", "v1")
+        modified = replace(sample_baseline, description="v2")
+        v2 = registry.save(modified, "test-scenario", "v2")
+
+        metadata_file = registry.path / "test-scenario" / "metadata.yaml"
+        with open(metadata_file, encoding="utf-8") as f:
+            metadata = yaml.safe_load(f)
+
+        metadata["versions"] = list(reversed(metadata["versions"]))
+        with open(metadata_file, "w", encoding="utf-8") as f:
+            yaml.safe_dump(metadata, f, default_flow_style=False, sort_keys=False)
+
+        versions = registry.list_versions("test-scenario")
+        assert [version.version_id for version in versions] == [v1, v2]
 
 
 class TestFilePersistence:
