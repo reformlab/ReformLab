@@ -146,22 +146,22 @@ class SimulationResult:
 
         if indicator_type_lower == "distributional":
             return compute_distributional_indicators(
-                self.panel_output.table,
+                self.panel_output,
                 **kwargs,
             )
         elif indicator_type_lower == "geographic":
             return compute_geographic_indicators(
-                self.panel_output.table,
+                self.panel_output,
                 **kwargs,
             )
         elif indicator_type_lower == "welfare":
             return compute_welfare_indicators(
-                self.panel_output.table,
+                self.panel_output,
                 **kwargs,
             )
         elif indicator_type_lower == "fiscal":
             return compute_fiscal_indicators(
-                self.panel_output.table,
+                self.panel_output,
                 **kwargs,
             )
         else:
