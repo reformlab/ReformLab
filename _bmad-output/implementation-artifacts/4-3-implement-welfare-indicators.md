@@ -25,7 +25,7 @@ Scope note: this story extends the indicator engine from Stories 4-1 and 4-2 by 
    - Given baseline and reform scenario results
    - When welfare indicators are computed
    - Then net change (reform - baseline) is calculated for each household on the target welfare field
-   - And aggregate metrics (total gain, total loss, net aggregate) are computed
+   - And aggregate metrics (`total_gain`, `total_loss`, `net_change`) are computed
 
 3. **AC-3: Winner/loser counts by grouping**
    - Given welfare indicator results
@@ -37,7 +37,8 @@ Scope note: this story extends the indicator engine from Stories 4-1 and 4-2 by 
    - Given grouped welfare results
    - When indicators are computed
    - Then metrics include `winner_count`, `loser_count`, `neutral_count`, `mean_gain`, `mean_loss`, `median_change`, `total_gain`, `total_loss`, `net_change` per group
-   - And all households with valid data are included in aggregations
+   - And `total_gain` is the sum of positive changes, `total_loss` is the absolute sum of negative changes, and `net_change = total_gain - total_loss`
+   - And all matched households with non-null welfare values are included in aggregations
 
 5. **AC-5: Missing household handling**
    - Given baseline and reform panels where some households exist in only one panel
@@ -50,7 +51,8 @@ Scope note: this story extends the indicator engine from Stories 4-1 and 4-2 by 
    - Given multi-year baseline and reform panels
    - When analysis is requested with `by_year=True`
    - Then welfare indicators are computed per year with year-matched household comparisons
-   - And when `aggregate_years=True`, indicators are computed across all years
+   - And when `by_year=False` and `aggregate_years=True`, indicators are computed across all years
+   - And when `by_year=False` and `aggregate_years=False`, year-level detail is preserved
 
 7. **AC-7: Scenario where all households are neutral**
    - Given baseline and reform scenarios with identical welfare field values for all households
@@ -61,14 +63,14 @@ Scope note: this story extends the indicator engine from Stories 4-1 and 4-2 by 
 8. **AC-8: Stable tabular result contract**
    - Given computed welfare indicators
    - When `IndicatorResult.to_table()` is called
-   - Then a PyArrow table is returned with stable columns for group, metric, and value
-   - And the table schema is compatible with distributional and geographic indicators for downstream comparison (Story 4-5)
+   - Then a PyArrow table is returned with stable long-form columns compatible with existing indicator patterns
+   - And schema uses `field_name` + group column (`decile` or `region`) + `year` + `metric` + `value` for downstream comparison (Story 4-5)
 
 ## Tasks / Subtasks
 
 - [ ] Task 0: Confirm prerequisites and input contracts (AC: dependency check)
   - [ ] 0.1 Verify Stories 4-1 and 4-2 are `done` in `_bmad-output/implementation-artifacts/sprint-status.yaml`
-  - [ ] 0.2 Confirm `PanelOutput` contract in `src/reformlab/orchestrator/panel.py` (`table`, `metadata`, `year`, `household_id`)
+  - [ ] 0.2 Confirm `PanelOutput` contract in `src/reformlab/orchestrator/panel.py` (`table`, `metadata`) and required join-key columns (`household_id`, `year`) in panel tables
   - [ ] 0.3 Review existing indicator types (`IndicatorResult`, `DecileIndicators`, `RegionIndicators`) for extension patterns
   - [ ] 0.4 Identify the welfare/income field to use for net change computation (likely `disposable_income` or similar)
 
@@ -90,19 +92,19 @@ Scope note: this story extends the indicator engine from Stories 4-1 and 4-2 by 
   - [ ] 3.2 Create `aggregate_welfare_by_region()` in `src/reformlab/indicators/welfare.py` (optional grouping)
   - [ ] 3.3 Compute `winner_count`, `loser_count`, `neutral_count` per group
   - [ ] 3.4 Compute `mean_gain` (mean of positive changes), `mean_loss` (mean of negative changes)
-  - [ ] 3.5 Compute `median_change`, `total_gain`, `total_loss`, `net_change` per group
+  - [ ] 3.5 Compute `median_change`, `total_gain` (sum of positive changes), `total_loss` (absolute sum of negative changes), `net_change` (`total_gain - total_loss`) per group
   - [ ] 3.6 Use vectorized PyArrow operations only (no row-wise Python loops on hot paths)
 
 - [ ] Task 4: Implement main welfare computation API (AC: #1-#7)
   - [ ] 4.1 Create `compute_welfare_indicators(baseline: PanelOutput, reform: PanelOutput, config: WelfareConfig)` in `src/reformlab/indicators/welfare.py`
   - [ ] 4.2 Support single-year (default), `by_year=True`, and `aggregate_years=True` modes
-  - [ ] 4.3 Support grouping by decile (default), region (optional), or both
+  - [ ] 4.3 Support grouping by decile (default) or region (optional alternate mode)
   - [ ] 4.4 Return `IndicatorResult` containing stable metadata and warning details
   - [ ] 4.5 Include unmatched count in metadata
 
 - [ ] Task 5: Extend IndicatorResult for welfare indicators (AC: #8)
   - [ ] 5.1 Ensure `IndicatorResult.to_table()` produces consistent output for welfare indicators
-  - [ ] 5.2 Output columns: `group_type` (decile/region), `group_value`, `year` (optional), `metric`, `value`
+  - [ ] 5.2 Output columns follow existing contracts: `field_name`, `decile|region`, `year`, `metric`, `value`
   - [ ] 5.3 Verify schema compatibility with distributional and geographic indicators for Story 4-5 comparison
 
 - [ ] Task 6: Add focused tests and quality gates (AC: all)
@@ -112,7 +114,7 @@ Scope note: this story extends the indicator engine from Stories 4-1 and 4-2 by 
   - [ ] 6.4 Test unmatched household exclusion + warning emission + metadata count
   - [ ] 6.5 Test all-neutral scenario (AC-7): zero winners and losers
   - [ ] 6.6 Test welfare metrics correctness: mean_gain, mean_loss, total_gain, total_loss, net_change
-  - [ ] 6.7 Test grouping by decile and by region
+  - [ ] 6.7 Test grouping by decile and by region (separate runs)
   - [ ] 6.8 Test multi-year `by_year` and `aggregate_years` behavior
   - [ ] 6.9 Test `IndicatorResult.to_table()` schema stability for welfare results
   - [ ] 6.10 Run `ruff check src/reformlab/indicators tests/indicators`
@@ -128,7 +130,7 @@ Scope note: this story extends the indicator engine from Stories 4-1 and 4-2 by 
 - **Required prior stories:**
   - Story 4-1 (BKL-401): Distributional indicators by income decile — provides `IndicatorResult`, `DecileIndicators`, `DistributionalConfig`, decile assignment logic
   - Story 4-2 (BKL-402): Geographic aggregation indicators — provides `RegionIndicators`, `GeographicConfig`, region grouping patterns
-  - Story 3-7 (BKL-307): `PanelOutput` available as canonical household-year input
+  - Story 3-7 (BKL-307): `PanelOutput` available as canonical household-year input and `compare_panels()` helper
 - **Current prerequisite status (from `_bmad-output/implementation-artifacts/sprint-status.yaml`):**
   - `4-1-implement-distributional-indicators`: `done`
   - `4-2-implement-geographic-aggregation-indicators`: `done`
@@ -171,7 +173,7 @@ compute_welfare_indicators(baseline: PanelOutput, reform: PanelOutput, config: W
                          ↓
               Winner/Loser/Neutral classification
                          ↓
-              Group aggregation (by decile and/or region)
+              Group aggregation (by decile or region)
                          ↓
          IndicatorResult (with WelfareIndicators per group)
                          ↓
@@ -190,6 +192,7 @@ compute_welfare_indicators(baseline: PanelOutput, reform: PanelOutput, config: W
 1. **Panel Joining Strategy:**
    - Join baseline and reform panels on `household_id` (inner join for matched households)
    - For multi-year panels, join on `(household_id, year)`
+   - Reuse `compare_panels()` patterns from `src/reformlab/orchestrator/panel.py` where appropriate
    - Use PyArrow join operations: `pa.Table.join()` with join_type="inner"
    - Track unmatched households from both sides for warning
 
@@ -214,7 +217,7 @@ compute_welfare_indicators(baseline: PanelOutput, reform: PanelOutput, config: W
 5. **Group Aggregation:**
    - Reuse `assign_deciles()` from `deciles.py` for decile-based grouping
    - Reuse region grouping patterns from `geographic.py` for regional grouping
-   - Support combined grouping: `(decile, region)` if both enabled
+   - Use one grouping dimension per run (decile default, region optional)
 
 6. **Welfare Metrics Per Group:**
    - `winner_count`: count where change > threshold
@@ -224,13 +227,14 @@ compute_welfare_indicators(baseline: PanelOutput, reform: PanelOutput, config: W
    - `mean_loss`: mean of negative changes (losers only)
    - `median_change`: median of all changes in group
    - `total_gain`: sum of positive changes
-   - `total_loss`: sum of negative changes (absolute value or signed)
-   - `net_change`: sum of all changes in group
+   - `total_loss`: absolute sum of negative changes
+   - `net_change`: `total_gain - total_loss`
 
 7. **Multi-Year Handling:**
    - Join on `(household_id, year)` for year-matched comparison
    - `by_year=True`: produce indicators per year
-   - `aggregate_years=True`: aggregate across all years (group by group only)
+   - `by_year=False` and `aggregate_years=True`: aggregate across all years
+   - `by_year=False` and `aggregate_years=False`: keep year detail
 
 ### Code Patterns from Previous Stories to Reuse
 
@@ -239,7 +243,7 @@ From `src/reformlab/indicators/deciles.py`:
 - Aggregation helper patterns for PyArrow group-by operations
 
 From `src/reformlab/indicators/geographic.py`:
-- `group_by_region()` / `validate_regions()` — reuse for regional welfare grouping
+- `assign_regions()` and `aggregate_by_region()` patterns — reuse for regional welfare grouping
 - Warning capture and metadata construction patterns
 
 From `src/reformlab/indicators/types.py`:
@@ -255,10 +259,11 @@ From `src/reformlab/indicators/distributional.py`:
 - **In scope:**
   - Baseline vs reform panel comparison for welfare assessment
   - Winner/loser/neutral classification per household
-  - Welfare metrics aggregated by decile and/or region
+  - Welfare metrics aggregated by decile or region
   - Single-year and multi-year (`by_year` / `aggregate_years`) indicator computation
   - Stable in-memory indicator table contract (`to_table()`)
 - **Out of scope:**
+  - Combined `(decile, region)` grouping in a single run (defer unless required by Story 4-5)
   - CSV/Parquet file export methods on indicator objects (Story 4-5)
   - Scenario side-by-side comparison tables across indicator families (Story 4-5)
   - Governance manifest persistence for indicator outputs (Epic 5)
