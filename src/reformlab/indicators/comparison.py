@@ -26,6 +26,8 @@ import pyarrow.parquet as pq
 
 from reformlab.indicators.types import IndicatorResult
 
+_NULL_STRING_SENTINEL = "__reformlab_null_join_key__"
+
 
 @dataclass
 class ScenarioInput:
@@ -150,6 +152,113 @@ def _resolve_join_keys(schema: str) -> list[str]:
     return ["field_name", "decile", "year", "metric"]
 
 
+def _join_key_sentinel(field_type: pa.DataType) -> pa.Scalar:
+    """Return a type-compatible sentinel used to align null join keys."""
+    if pa.types.is_signed_integer(field_type):
+        min_value = -(1 << (field_type.bit_width - 1))
+        return pa.scalar(min_value, type=field_type)
+    if pa.types.is_unsigned_integer(field_type):
+        max_value = (1 << field_type.bit_width) - 1
+        return pa.scalar(max_value, type=field_type)
+    if pa.types.is_string(field_type) or pa.types.is_large_string(field_type):
+        return pa.scalar(_NULL_STRING_SENTINEL, type=field_type)
+    msg = (
+        "Join keys must be integer or string columns. "
+        f"Unsupported type: {field_type}"
+    )
+    raise ValueError(msg)
+
+
+def _prepare_scenario_table(
+    scenario: ScenarioInput,
+    join_keys: list[str],
+) -> pa.Table:
+    """Convert indicator result to join-ready table with scenario value column."""
+    table = scenario.indicators.to_table()
+    if "value" not in table.column_names:
+        msg = (
+            f"Scenario '{scenario.label}' table is missing required 'value' column. "
+            "Expected IndicatorResult.to_table() contract."
+        )
+        raise ValueError(msg)
+
+    missing_keys = [key for key in join_keys if key not in table.column_names]
+    if missing_keys:
+        msg = (
+            f"Scenario '{scenario.label}' is missing required join key columns: {missing_keys}. "
+            f"Available columns: {table.column_names}"
+        )
+        raise ValueError(msg)
+
+    renamed = table.rename_columns([
+        scenario.label if col == "value" else col for col in table.column_names
+    ])
+    return renamed.select(join_keys + [scenario.label])
+
+
+def _fill_null_join_keys(
+    table: pa.Table,
+    join_keys: list[str],
+) -> pa.Table:
+    """Replace null join key values with deterministic sentinels for joining."""
+    result = table
+    for key in join_keys:
+        field = result.schema.field(key)
+        sentinel = _join_key_sentinel(field.type)
+        # Guard against sentinel collisions with actual values.
+        has_collision = pc.any(pc.equal(result[key], sentinel)).as_py()
+        if bool(has_collision):
+            msg = (
+                f"Join key column '{key}' already contains reserved sentinel value "
+                f"{sentinel.as_py()!r}. Cannot safely align null join keys."
+            )
+            raise ValueError(msg)
+        filled = pc.fill_null(result[key], sentinel)
+        result = result.set_column(
+            result.schema.get_field_index(key),
+            key,
+            filled,
+        )
+    return result
+
+
+def _restore_null_join_keys(
+    table: pa.Table,
+    join_keys: list[str],
+) -> pa.Table:
+    """Restore sentinel values in join keys back to null after joins."""
+    result = table
+    for key in join_keys:
+        field = result.schema.field(key)
+        sentinel = _join_key_sentinel(field.type)
+        is_sentinel = pc.equal(result[key], sentinel)
+        restored = pc.if_else(is_sentinel, pa.scalar(None, type=field.type), result[key])
+        result = result.set_column(
+            result.schema.get_field_index(key),
+            key,
+            restored,
+        )
+    return result
+
+
+def _format_key_samples(
+    table: pa.Table,
+    join_keys: list[str],
+    limit: int = 3,
+) -> str:
+    """Format up to ``limit`` missing key combinations for warning messages."""
+    if table.num_rows == 0:
+        return "none"
+
+    key_table = table.select(join_keys).slice(0, limit)
+    rows = key_table.to_pylist()
+    samples: list[str] = []
+    for row in rows:
+        parts = [f"{key}={row.get(key)!r}" for key in join_keys]
+        samples.append("{" + ", ".join(parts) + "}")
+    return ", ".join(samples)
+
+
 def _align_indicator_tables(
     scenarios: list[ScenarioInput],
     join_keys: list[str],
@@ -172,51 +281,48 @@ def _align_indicator_tables(
         msg = "No scenarios provided for alignment"
         raise ValueError(msg)
 
-    # Convert all indicator results to tables
-    tables = [scenario.indicators.to_table() for scenario in scenarios]
+    tables = [
+        _fill_null_join_keys(_prepare_scenario_table(scenario, join_keys), join_keys)
+        for scenario in scenarios
+    ]
 
-    # Start with the first table and rename its value column
+    # Start with the first table.
     result = tables[0]
-    if "value" in result.column_names:
-        result = result.rename_columns(
-            [scenarios[0].label if col == "value" else col for col in result.column_names]
+
+    # Progressively join remaining tables.
+    for scenario, table in zip(scenarios[1:], tables[1:], strict=True):
+        existing_keys = result.select(join_keys)
+        new_keys = table.select(join_keys)
+
+        missing_in_new = existing_keys.join(
+            new_keys,
+            keys=join_keys,
+            join_type="left anti",
+        )
+        missing_in_existing = new_keys.join(
+            existing_keys,
+            keys=join_keys,
+            join_type="left anti",
         )
 
-    # Progressively join remaining tables
-    for i, (scenario, table) in enumerate(zip(scenarios[1:], tables[1:], strict=True), start=1):
-        # Rename value column to scenario label
-        if "value" in table.column_names:
-            table = table.rename_columns(
-                [scenario.label if col == "value" else col for col in table.column_names]
-            )
-
-        # Check for overlapping keys before join
-        current_keys = set()
-        for col in join_keys:
-            if col in result.column_names:
-                current_keys.update(pc.unique(result[col]).to_pylist())
-
-        new_keys = set()
-        for col in join_keys:
-            if col in table.column_names:
-                new_keys.update(pc.unique(table[col]).to_pylist())
-
-        non_overlapping = (current_keys - new_keys) | (new_keys - current_keys)
-        if non_overlapping:
+        if missing_in_new.num_rows > 0 or missing_in_existing.num_rows > 0:
             warnings.append(
-                f"Non-overlapping dimension values detected for scenario '{scenario.label}': "
-                f"{len(non_overlapping)} unique values have no match across scenarios. "
-                f"These rows will have null values in some scenario columns."
+                f"Scenario '{scenario.label}' has non-overlapping comparison keys: "
+                f"{missing_in_new.num_rows} key(s) missing in '{scenario.label}' "
+                f"(sample: {_format_key_samples(missing_in_new, join_keys)}); "
+                f"{missing_in_existing.num_rows} key(s) only in '{scenario.label}' "
+                f"(sample: {_format_key_samples(missing_in_existing, join_keys)}). "
+                "Rows for these keys will contain null values in scenario columns."
             )
 
-        # Perform outer join on all join keys
+        # Perform outer join on all join keys.
         result = result.join(
             table,
             keys=join_keys,
             join_type="full outer",
         )
 
-    return result
+    return _restore_null_join_keys(result, join_keys)
 
 
 def _compute_deltas(
@@ -325,6 +431,9 @@ def compare_scenarios(
 
     # Validate unique scenario labels
     labels = [s.label for s in scenarios]
+    if any(not label.strip() for label in labels):
+        msg = "Scenario labels must be non-empty strings."
+        raise ValueError(msg)
     if len(labels) != len(set(labels)):
         duplicate_labels = [label for label in set(labels) if labels.count(label) > 1]
         msg = (
@@ -347,33 +456,27 @@ def compare_scenarios(
         raise ValueError(msg)
 
     schema = schemas[0]
+    join_keys = _resolve_join_keys(schema)
 
-    # Check for empty indicator results
-    if all(len(s.indicators.indicators) == 0 for s in scenarios):
-        warnings.append(
-            "All scenarios have empty indicator results. Returning empty comparison table."
+    reserved_labels = set(join_keys) | {"value"}
+    invalid_labels = [label for label in labels if label in reserved_labels]
+    if invalid_labels:
+        msg = (
+            f"Invalid scenario labels: {invalid_labels}. "
+            f"Scenario labels cannot match reserved table columns: {sorted(reserved_labels)}."
         )
-        join_keys = _resolve_join_keys(schema)
-        empty_table = scenarios[0].indicators.to_table()
-        # Add scenario columns
-        for label in labels:
-            empty_table = empty_table.append_column(
-                label, pa.array([], type=pa.float64())
-            )
-        return ComparisonResult(
-            table=empty_table,
-            metadata={
-                "scenario_labels": labels,
-                "indicator_schema": schema,
-                "config": {
-                    "baseline_label": config.baseline_label,
-                    "include_deltas": config.include_deltas,
-                    "include_pct_deltas": config.include_pct_deltas,
-                },
-                "source_metadata": [s.indicators.metadata for s in scenarios],
-            },
-            warnings=warnings,
+        raise ValueError(msg)
+    prefix_conflicts = [
+        label for label in labels
+        if label.startswith("delta_") or label.startswith("pct_delta_")
+    ]
+    if prefix_conflicts:
+        msg = (
+            f"Invalid scenario labels: {prefix_conflicts}. "
+            "Scenario labels cannot start with 'delta_' or 'pct_delta_' because "
+            "these prefixes are reserved for computed columns."
         )
+        raise ValueError(msg)
 
     # Resolve baseline label (first scenario if not specified)
     baseline_label = config.baseline_label or labels[0]
@@ -384,8 +487,10 @@ def compare_scenarios(
         )
         raise ValueError(msg)
 
-    # Resolve join keys from schema
-    join_keys = _resolve_join_keys(schema)
+    if all(len(s.indicators.indicators) == 0 for s in scenarios):
+        warnings.append(
+            "All scenarios have empty indicator results. Returning empty comparison table."
+        )
 
     # Align indicator tables into side-by-side format
     comparison_table = _align_indicator_tables(scenarios, join_keys, warnings)
@@ -398,6 +503,21 @@ def compare_scenarios(
             labels,
             config,
         )
+    if comparison_table.num_rows > 0:
+        comparison_table = comparison_table.sort_by(
+            [(key, "ascending") for key in join_keys]
+        )
+
+    delta_columns = {
+        label: f"delta_{label}"
+        for label in labels
+        if label != baseline_label and config.include_deltas
+    }
+    pct_delta_columns = {
+        label: f"pct_delta_{label}"
+        for label in labels
+        if label != baseline_label and config.include_pct_deltas
+    }
 
     # Build metadata
     metadata = {
@@ -409,6 +529,12 @@ def compare_scenarios(
             "baseline_label": config.baseline_label,
             "include_deltas": config.include_deltas,
             "include_pct_deltas": config.include_pct_deltas,
+        },
+        "field_mappings": {
+            "join_keys": join_keys,
+            "scenario_value_columns": {label: label for label in labels},
+            "delta_columns": delta_columns,
+            "pct_delta_columns": pct_delta_columns,
         },
         "source_metadata": [s.indicators.metadata for s in scenarios],
     }

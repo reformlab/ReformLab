@@ -19,8 +19,9 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
-import pandas as pd
 import pyarrow as pa
+import pyarrow.csv as pa_csv
+import pyarrow.parquet as pq
 import pytest
 
 from reformlab.indicators.comparison import (
@@ -341,6 +342,30 @@ class TestDeltaComputation:
         assert "delta_reform_a" in result.table.column_names
         assert "pct_delta_reform_a" in result.table.column_names
 
+    def test_deltas_align_rows_when_year_is_null(
+        self,
+        baseline_scenario_distributional: IndicatorResult,
+        reform_scenario_distributional: IndicatorResult,
+    ) -> None:
+        """AC-2: Delta values compute on overlapping keys with null years."""
+        scenarios = [
+            ScenarioInput(label="baseline", indicators=baseline_scenario_distributional),
+            ScenarioInput(label="reform_a", indicators=reform_scenario_distributional),
+        ]
+
+        config = ComparisonConfig(include_deltas=True, include_pct_deltas=False)
+        result = compare_scenarios(scenarios, config)
+
+        rows = result.table.to_pylist()
+        rows_with_both_values = [
+            row for row in rows
+            if row["baseline"] is not None and row["reform_a"] is not None
+        ]
+        assert rows_with_both_values, "Expected overlapping rows with both scenario values"
+
+        for row in rows_with_both_values:
+            assert row["delta_reform_a"] == pytest.approx(row["reform_a"] - row["baseline"])
+
 
 class TestInputValidation:
     """Test input contract validation (AC-3)."""
@@ -384,6 +409,20 @@ class TestInputValidation:
         with pytest.raises(ValueError, match="Mixed indicator schemas"):
             compare_scenarios(scenarios)
 
+    def test_reserved_label_error(
+        self,
+        baseline_scenario_distributional: IndicatorResult,
+        reform_scenario_distributional: IndicatorResult,
+    ) -> None:
+        """Labels conflicting with reserved columns should fail fast."""
+        scenarios = [
+            ScenarioInput(label="field_name", indicators=baseline_scenario_distributional),
+            ScenarioInput(label="reform", indicators=reform_scenario_distributional),
+        ]
+
+        with pytest.raises(ValueError, match="cannot match reserved table columns"):
+            compare_scenarios(scenarios)
+
 
 class TestCSVExport:
     """Test CSV export functionality (AC-4)."""
@@ -408,12 +447,12 @@ class TestCSVExport:
             # Check file exists
             assert csv_path.exists()
 
-            # Check file is readable by pandas
-            df = pd.read_csv(csv_path)
-            assert not df.empty
-            assert "field_name" in df.columns
-            assert "baseline" in df.columns
-            assert "reform_a" in df.columns
+            # Check file is readable by PyArrow
+            read_table = pa_csv.read_csv(csv_path)
+            assert read_table.num_rows > 0
+            assert "field_name" in read_table.column_names
+            assert "baseline" in read_table.column_names
+            assert "reform_a" in read_table.column_names
 
     def test_csv_round_trip(
         self,
@@ -433,14 +472,16 @@ class TestCSVExport:
             result.export_csv(csv_path)
 
             # Read back and compare
-            df = pd.read_csv(csv_path)
+            read_table = pa_csv.read_csv(csv_path)
             original_dict = result.table.to_pydict()
 
             # Check row count
-            assert len(df) == len(original_dict["field_name"])
+            assert len(read_table) == len(original_dict["field_name"])
 
             # Check key columns present
-            assert set(df.columns).issuperset({"field_name", "baseline", "reform_a"})
+            assert set(read_table.column_names).issuperset(
+                {"field_name", "baseline", "reform_a"}
+            )
 
 
 class TestParquetExport:
@@ -466,12 +507,12 @@ class TestParquetExport:
             # Check file exists
             assert parquet_path.exists()
 
-            # Check file is readable by pandas
-            df = pd.read_parquet(parquet_path)
-            assert not df.empty
-            assert "field_name" in df.columns
-            assert "baseline" in df.columns
-            assert "reform_a" in df.columns
+            # Check file is readable by PyArrow
+            read_table = pq.read_table(parquet_path)
+            assert read_table.num_rows > 0
+            assert "field_name" in read_table.column_names
+            assert "baseline" in read_table.column_names
+            assert "reform_a" in read_table.column_names
 
     def test_parquet_round_trip_preserves_types(
         self,
@@ -491,8 +532,6 @@ class TestParquetExport:
             result.export_parquet(parquet_path)
 
             # Read back with pyarrow to check schema preservation
-            import pyarrow.parquet as pq
-
             read_table = pq.read_table(parquet_path)
 
             # Check schema matches
@@ -553,6 +592,27 @@ class TestMetadataPreservation:
         assert "source_metadata" in result.metadata
         assert len(result.metadata["source_metadata"]) == 2
 
+    def test_metadata_contains_field_mappings(
+        self,
+        baseline_scenario_distributional: IndicatorResult,
+        reform_scenario_distributional: IndicatorResult,
+    ) -> None:
+        """AC-6: Metadata includes field mappings for governance consumers."""
+        scenarios = [
+            ScenarioInput(label="baseline", indicators=baseline_scenario_distributional),
+            ScenarioInput(label="reform_a", indicators=reform_scenario_distributional),
+        ]
+
+        result = compare_scenarios(scenarios)
+
+        assert "field_mappings" in result.metadata
+        mappings = result.metadata["field_mappings"]
+        assert mappings["scenario_value_columns"] == {
+            "baseline": "baseline",
+            "reform_a": "reform_a",
+        }
+        assert mappings["join_keys"] == ["field_name", "decile", "year", "metric"]
+
 
 class TestMismatchedInputHandling:
     """Test mismatched dimension handling (AC-7)."""
@@ -604,7 +664,43 @@ class TestMismatchedInputHandling:
 
         # Should emit warning about non-overlapping dimensions
         assert len(result.warnings) > 0
-        assert any("Non-overlapping" in w for w in result.warnings)
+        assert any("non-overlapping comparison keys" in w for w in result.warnings)
+        assert any("year" in w for w in result.warnings)
+
+        rows = result.table.to_pylist()
+        assert any(row["baseline"] is None for row in rows)
+        assert any(row["reform"] is None for row in rows)
+
+
+class TestEmptyInputHandling:
+    """Test empty scenario handling."""
+
+    def test_all_empty_scenarios_return_stable_schema(self) -> None:
+        """AC-7/AC-8: Empty comparisons keep stable schema and metadata."""
+        empty_a = IndicatorResult(
+            indicators=[],
+            metadata={"income_field": "income", "group_by_year": True},
+        )
+        empty_b = IndicatorResult(
+            indicators=[],
+            metadata={"income_field": "income", "group_by_year": True},
+        )
+
+        scenarios = [
+            ScenarioInput(label="baseline", indicators=empty_a),
+            ScenarioInput(label="reform_a", indicators=empty_b),
+        ]
+        result = compare_scenarios(scenarios)
+
+        assert result.table.num_rows == 0
+        assert "value" not in result.table.column_names
+        assert "baseline" in result.table.column_names
+        assert "reform_a" in result.table.column_names
+        assert "delta_reform_a" in result.table.column_names
+        assert "pct_delta_reform_a" in result.table.column_names
+        assert result.metadata["baseline_label"] == "baseline"
+        assert result.metadata["join_keys"] == ["field_name", "decile", "year", "metric"]
+        assert any("empty indicator results" in warning for warning in result.warnings)
 
 
 class TestStableTableContract:
