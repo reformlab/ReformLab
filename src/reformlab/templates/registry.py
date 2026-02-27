@@ -22,7 +22,12 @@ from typing import Any
 
 import yaml
 
-from reformlab.templates.loader import _parameters_to_dict
+from reformlab.templates.loader import SCHEMA_VERSION, _parameters_to_dict
+from reformlab.templates.migration import (
+    CompatibilityStatus,
+    MigrationReport,
+    migrate_scenario_dict,
+)
 from reformlab.templates.schema import (
     BaselineScenario,
     CarbonTaxParameters,
@@ -781,6 +786,78 @@ class ScenarioRegistry:
                             reforms.append((scenario_name, version.version_id))
 
         return reforms
+
+    def migrate(
+        self,
+        name: str,
+        version_id: str | None = None,
+        *,
+        dry_run: bool = True,
+    ) -> MigrationReport:
+        """Migrate a scenario to the current schema version.
+
+        Args:
+            name: Scenario name.
+            version_id: Version ID to migrate (None = latest version).
+            dry_run: If True, return report without saving. If False, save
+                migrated scenario as a new version.
+
+        Returns:
+            MigrationReport describing the migration result.
+
+        Raises:
+            ScenarioNotFoundError: If scenario doesn't exist.
+            VersionNotFoundError: If version doesn't exist.
+            RegistryError: If migration fails due to breaking version change.
+        """
+        # Get the scenario
+        scenario = self.get(name, version_id)
+        scenario_name = _validate_scenario_name(name)
+
+        # Convert to dict for migration
+        data = _scenario_to_dict_for_registry(scenario)
+
+        # Perform migration
+        try:
+            migrated_data, report = migrate_scenario_dict(
+                data, target_version=SCHEMA_VERSION
+            )
+        except ValueError as exc:
+            # Convert ValueError from migrate_scenario_dict to RegistryError
+            raise RegistryError(
+                summary="Migration failed",
+                reason=str(exc),
+                fix=(
+                    f"Schema version {scenario.version} cannot be migrated to "
+                    f"{SCHEMA_VERSION}. Manual conversion may be required."
+                ),
+                scenario_name=scenario_name,
+                version_id=version_id or "",
+            ) from exc
+
+        # In dry-run mode, just return the report
+        if dry_run:
+            return report
+
+        # In apply mode, save the migrated scenario if there were changes
+        if report.status == CompatibilityStatus.MIGRATION_AVAILABLE:
+            migrated_scenario = self._dict_to_scenario(migrated_data)
+
+            # Determine source version_id for lineage
+            if version_id is None:
+                entry = self.get_entry(name)
+                source_version_id = entry.latest_version
+            else:
+                source_version_id = version_id
+
+            change_description = (
+                f"Migrated from schema version {report.source_version} to "
+                f"{report.target_version} (source version: {source_version_id})"
+            )
+
+            self.save(migrated_scenario, name, change_description)
+
+        return report
 
     def _ensure_version_integrity(
         self,

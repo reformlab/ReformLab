@@ -7,6 +7,7 @@ This module provides:
 - JSON Schema for IDE validation support
 - Template pack discovery and loading utilities
 - Scenario registry with immutable versioning
+- Schema migration utilities for version compatibility
 """
 
 from reformlab.templates.exceptions import ScenarioError
@@ -16,6 +17,14 @@ from reformlab.templates.loader import (
     get_schema_path,
     load_scenario_template,
     validate_schema_version,
+)
+from reformlab.templates.migration import (
+    CompatibilityStatus,
+    MigrationChange,
+    MigrationReport,
+    SchemaVersion,
+    check_compatibility,
+    migrate_scenario_dict,
 )
 from reformlab.templates.packs import (
     get_carbon_tax_pack_dir,
@@ -54,6 +63,13 @@ from reformlab.templates.schema import (
 )
 
 __all__ = [
+    # Migration types and functions
+    "CompatibilityStatus",
+    "MigrationChange",
+    "MigrationReport",
+    "SchemaVersion",
+    "check_compatibility",
+    "migrate_scenario_dict",
     # Registry types
     "RegistryEntry",
     "RegistryError",
