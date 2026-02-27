@@ -39,6 +39,11 @@ $schema: "./schema/workflow.schema.json"
 
 The schema is located at `src/reformlab/templates/schema/workflow.schema.json`.
 
+## Serialization Notes
+
+- Workflow serialization is deterministic for stable version control diffs.
+- YAML comments are not preserved during load/dump round-trips.
+
 ## Running Workflows
 
 ```python

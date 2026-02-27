@@ -231,6 +231,19 @@ def test_validate_workflow_config_missing_scenarios():
     assert "required" in error_str or "scenarios" in error_str
 
 
+def test_validate_workflow_config_missing_fields_lists_expected_types():
+    """Missing required fields include all fields with expected types."""
+    data = {}
+
+    with pytest.raises(WorkflowError) as exc_info:
+        validate_workflow_config(data)
+
+    message = str(exc_info.value)
+    assert "name (string)" in message
+    assert "version (string)" in message
+    assert "scenarios (array)" in message
+
+
 def test_validate_workflow_config_empty_scenarios():
     """Empty scenarios list raises WorkflowError."""
     data = {"name": "test", "version": "1.0", "scenarios": []}
@@ -253,6 +266,20 @@ def test_validate_workflow_config_invalid_scenario_type():
     # JSON Schema says "oneOf", dataclass validation says "must be a string or mapping"
     error_str = str(exc_info.value).lower()
     assert "string" in error_str or "oneof" in error_str or "valid" in error_str
+
+
+def test_validate_workflow_config_multi_role_scenario_map_without_schema():
+    """Fallback parser rejects scenario maps with more than one role."""
+    data = {
+        "name": "test",
+        "version": "1.0",
+        "scenarios": [{"baseline": "a", "reform": "b"}],
+    }
+
+    with pytest.raises(WorkflowError) as exc_info:
+        validate_workflow_config(data, use_json_schema=False)
+
+    assert "exactly one role mapping" in str(exc_info.value)
 
 
 def test_validate_workflow_config_invalid_data_sources_type():
@@ -377,6 +404,9 @@ def test_validate_with_schema_invalid_type():
 
     # Should have error about projection_years type
     assert len(errors) >= 1
+    assert any("projection_years" in field for e in errors for field in e.invalid_fields)
+    assert any("json-pointer: /run_config/projection_years" in str(e) for e in errors)
+    assert any("instead of 'str'" in str(e) for e in errors)
 
 
 # ============================================================================
@@ -536,6 +566,22 @@ def test_dump_workflow_config_json(valid_workflow_config: WorkflowConfig):
         with open(path, encoding="utf-8") as f:
             data = json.load(f)
         assert data["name"] == "test_workflow"
+    finally:
+        path.unlink()
+
+
+def test_dump_workflow_config_invalid_format(valid_workflow_config: WorkflowConfig):
+    """Unsupported dump format override raises WorkflowError."""
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".yaml", delete=False, encoding="utf-8"
+    ) as f:
+        path = Path(f.name)
+
+    try:
+        with pytest.raises(WorkflowError) as exc_info:
+            dump_workflow_config(valid_workflow_config, path, format="toml")
+
+        assert "unsupported format override" in str(exc_info.value)
     finally:
         path.unlink()
 
@@ -704,7 +750,35 @@ def test_run_workflow_invalid_runner(valid_workflow_config: WorkflowConfig):
     with pytest.raises(WorkflowError) as exc_info:
         run_workflow(valid_workflow_config, runner=InvalidRunner())
 
-    assert "must have a 'run(request)' method" in str(exc_info.value)
+    assert "callable 'run(request)' method" in str(exc_info.value)
+
+
+def test_run_workflow_runner_invalid_response_type(
+    valid_workflow_config: WorkflowConfig,
+):
+    """run_workflow rejects unsupported runner response payload types."""
+
+    class InvalidResponseRunner:
+        def run(self, request: dict) -> int:
+            return 123
+
+    with pytest.raises(WorkflowError) as exc_info:
+        run_workflow(valid_workflow_config, runner=InvalidResponseRunner())
+
+    assert "must return WorkflowResult or dict" in str(exc_info.value)
+
+
+def test_run_workflow_runner_exception_is_wrapped(valid_workflow_config: WorkflowConfig):
+    """Runner exceptions are wrapped as WorkflowError with context."""
+
+    class CrashingRunner:
+        def run(self, request: dict) -> WorkflowResult:
+            raise RuntimeError("backend crashed")
+
+    with pytest.raises(WorkflowError) as exc_info:
+        run_workflow(valid_workflow_config, runner=CrashingRunner())
+
+    assert "runner raised RuntimeError: backend crashed" in str(exc_info.value)
 
 
 def test_run_workflow_validates_empty_reference():

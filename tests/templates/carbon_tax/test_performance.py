@@ -8,9 +8,10 @@ from __future__ import annotations
 
 import time
 
-import numpy as np
 import pyarrow as pa
 import pytest
+
+np = pytest.importorskip("numpy")
 
 from reformlab.data.emission_factors import build_emission_factor_index
 from reformlab.templates import list_carbon_tax_templates, load_carbon_tax_template

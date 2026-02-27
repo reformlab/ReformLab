@@ -10,9 +10,10 @@ import sys
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-import numpy as np
 import pyarrow as pa
 import pytest
+
+np = pytest.importorskip("numpy")
 
 from reformlab.computation.adapter import ComputationAdapter
 from reformlab.computation.exceptions import ApiMappingError, CompatibilityError

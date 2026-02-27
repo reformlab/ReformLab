@@ -182,6 +182,13 @@ class WorkflowConfig:
 
 # Required fields for workflow validation
 _REQUIRED_FIELDS = frozenset({"name", "version", "scenarios"})
+_REQUIRED_FIELD_TYPES = {
+    "name": "string",
+    "version": "string",
+    "scenarios": "array",
+}
+_VALID_OUTPUT_TYPES = frozenset(output_type.value for output_type in OutputType)
+_VALID_OUTPUT_FORMATS = frozenset(output_format.value for output_format in OutputFormat)
 _WORKFLOW_SCHEMA_DIR = Path(__file__).parent / "schema"
 
 
@@ -226,6 +233,37 @@ def _json_path_to_field_path(path: list[str | int]) -> str:
     return "".join(parts)
 
 
+def _json_pointer_escape(segment: str) -> str:
+    """Escape a JSON pointer segment."""
+    return segment.replace("~", "~0").replace("/", "~1")
+
+
+def _json_path_to_pointer(path: list[str | int]) -> str:
+    """Convert JSON Schema path to JSON pointer."""
+    if not path:
+        return "/"
+
+    pointer_parts: list[str] = []
+    for segment in path:
+        pointer_parts.append(_json_pointer_escape(str(segment)))
+    return "/" + "/".join(pointer_parts)
+
+
+def _extract_missing_property(message: str) -> str | None:
+    """Extract missing property name from jsonschema required-field messages."""
+    # Typical format: "'version' is a required property"
+    parts = message.split("'")
+    if len(parts) >= 3 and "required property" in message:
+        return parts[1]
+    return None
+
+
+def _expected_type_for_field(field_path: str) -> str:
+    """Return expected type hints for known required top-level fields."""
+    root_field = field_path.split(".", 1)[0].split("[", 1)[0]
+    return _REQUIRED_FIELD_TYPES.get(root_field, "schema-defined")
+
+
 def validate_workflow_with_schema(
     data: dict[str, Any],
     *,
@@ -247,23 +285,46 @@ def validate_workflow_with_schema(
         return []
 
     errors: list[WorkflowError] = []
-    for error in validator.iter_errors(data):
+    sorted_errors = sorted(
+        validator.iter_errors(data),
+        key=lambda err: (_json_path_to_field_path(list(err.absolute_path)), err.message),
+    )
+
+    for error in sorted_errors:
         # Build field path from JSON Schema path
-        field_path = _json_path_to_field_path(list(error.absolute_path))
+        path_segments = list(error.absolute_path)
+        field_path = _json_path_to_field_path(path_segments)
+        pointer = _json_path_to_pointer(path_segments)
         if not field_path:
             field_path = "(root)"
 
+        reason = error.message
+
         # Generate actionable fix message
         if error.validator == "required":
-            missing = error.validator_value
-            if isinstance(missing, list):
-                missing_str = ", ".join(missing)
+            missing_property = _extract_missing_property(error.message)
+            if missing_property is not None:
+                if field_path == "(root)":
+                    field_path = missing_property
+                else:
+                    field_path = f"{field_path}.{missing_property}"
+
+                if pointer == "/":
+                    pointer = f"/{_json_pointer_escape(missing_property)}"
+                else:
+                    pointer = f"{pointer}/{_json_pointer_escape(missing_property)}"
+
+                expected_type = _expected_type_for_field(field_path)
+                fix = (
+                    f"Add required field '{field_path}' with expected type "
+                    f"'{expected_type}'"
+                )
             else:
-                missing_str = str(missing)
-            fix = f"Add the missing required fields: {missing_str}"
+                fix = "Add the missing required field(s)"
         elif error.validator == "type":
             expected = error.validator_value
-            fix = f"Change the value to type: {expected}"
+            actual = type(error.instance).__name__
+            fix = f"Use type '{expected}' instead of '{actual}'"
         elif error.validator == "enum":
             allowed = ", ".join(str(v) for v in error.validator_value)
             fix = f"Use one of the allowed values: {allowed}"
@@ -276,11 +337,14 @@ def validate_workflow_with_schema(
         else:
             fix = "Check the JSON Schema for valid values"
 
+        if pointer != "/":
+            reason = f"{reason} (json-pointer: {pointer})"
+
         errors.append(
             WorkflowError(
                 file_path=file_path,
                 summary="Workflow schema validation failed",
-                reason=error.message,
+                reason=reason,
                 fix=fix,
                 invalid_fields=(field_path,),
             )
@@ -343,12 +407,14 @@ def _validate_required_fields(
     """Check for required top-level fields."""
     missing = _REQUIRED_FIELDS - set(data.keys())
     if missing:
-        names = ", ".join(sorted(missing))
+        names_with_types = ", ".join(
+            f"{field} ({_REQUIRED_FIELD_TYPES[field]})" for field in sorted(missing)
+        )
         raise WorkflowError(
             file_path=file_path,
             summary="Workflow validation failed",
-            reason=f"missing required fields: {names}",
-            fix=f"Add the following fields to the workflow file: {names}",
+            reason=f"missing required fields: {names_with_types}",
+            fix=f"Add the following fields with expected types: {names_with_types}",
             invalid_fields=tuple(sorted(missing)),
         )
 
@@ -411,18 +477,42 @@ def _parse_scenarios(
     scenarios: list[ScenarioRef] = []
     for i, item in enumerate(raw):
         if isinstance(item, dict):
+            if not item:
+                raise WorkflowError(
+                    file_path=file_path,
+                    summary="Workflow validation failed",
+                    reason=f"scenarios[{i}] mapping cannot be empty",
+                    fix=f"Set scenarios[{i}] to a single role: reference mapping",
+                    invalid_fields=(f"scenarios[{i}]",),
+                )
+            if len(item) != 1:
+                raise WorkflowError(
+                    file_path=file_path,
+                    summary="Workflow validation failed",
+                    reason=f"scenarios[{i}] must have exactly one role mapping",
+                    fix=f"Use a single key in scenarios[{i}], e.g. {{baseline: '...'}}",
+                    invalid_fields=(f"scenarios[{i}]",),
+                )
             # Dict format: {baseline: "name"} or {reform: "name"}
             for role, reference in item.items():
-                if not isinstance(reference, str):
+                if not isinstance(reference, str) or not reference.strip():
                     raise WorkflowError(
                         file_path=file_path,
                         summary="Workflow validation failed",
-                        reason=f"scenarios[{i}].{role} must be a string reference",
+                        reason=f"scenarios[{i}].{role} must be a non-empty string reference",
                         fix=f"Use a string reference for scenarios[{i}].{role}",
                         invalid_fields=(f"scenarios[{i}].{role}",),
                     )
                 scenarios.append(ScenarioRef(role=str(role), reference=str(reference)))
         elif isinstance(item, str):
+            if not item.strip():
+                raise WorkflowError(
+                    file_path=file_path,
+                    summary="Workflow validation failed",
+                    reason=f"scenarios[{i}] must be a non-empty string reference",
+                    fix=f"Set scenarios[{i}] to a valid scenario reference",
+                    invalid_fields=(f"scenarios[{i}]",),
+                )
             # String format: plain scenario reference
             scenarios.append(ScenarioRef(role="scenario", reference=item))
         else:
@@ -466,10 +556,39 @@ def _parse_run_config(
             invalid_fields=("run_config",),
         ) from None
 
+    if projection_years < 1 or projection_years > 100:
+        raise WorkflowError(
+            file_path=file_path,
+            summary="Workflow validation failed",
+            reason="run_config.projection_years must be between 1 and 100",
+            fix="Set run_config.projection_years to an integer in [1, 100]",
+            invalid_fields=("run_config.projection_years",),
+        )
+
+    if start_year < 1900 or start_year > 2200:
+        raise WorkflowError(
+            file_path=file_path,
+            summary="Workflow validation failed",
+            reason="run_config.start_year must be between 1900 and 2200",
+            fix="Set run_config.start_year to an integer in [1900, 2200]",
+            invalid_fields=("run_config.start_year",),
+        )
+
+    output_format = str(raw.get("output_format", "csv"))
+    if output_format and output_format not in _VALID_OUTPUT_FORMATS:
+        allowed = ", ".join(sorted(_VALID_OUTPUT_FORMATS))
+        raise WorkflowError(
+            file_path=file_path,
+            summary="Workflow validation failed",
+            reason=f"run_config.output_format must be one of: {allowed}",
+            fix=f"Set run_config.output_format to one of: {allowed}",
+            invalid_fields=("run_config.output_format",),
+        )
+
     return RunConfig(
         projection_years=projection_years,
         start_year=start_year,
-        output_format=str(raw.get("output_format", "csv")),
+        output_format=output_format,
     )
 
 
@@ -511,17 +630,49 @@ def _parse_outputs(
                 invalid_fields=(f"outputs[{i}].type",),
             )
 
+        output_type_value = str(output_type)
+        if output_type_value not in _VALID_OUTPUT_TYPES:
+            allowed = ", ".join(sorted(_VALID_OUTPUT_TYPES))
+            raise WorkflowError(
+                file_path=file_path,
+                summary="Workflow validation failed",
+                reason=f"outputs[{i}].type must be one of: {allowed}",
+                fix=f"Set outputs[{i}].type to one of: {allowed}",
+                invalid_fields=(f"outputs[{i}].type",),
+            )
+
         by_raw = item.get("by", [])
         if isinstance(by_raw, list):
             by = tuple(str(b) for b in by_raw)
+        elif isinstance(by_raw, str):
+            by = (by_raw,)
+        elif by_raw in ("", None):
+            by = ()
         else:
-            by = (str(by_raw),)
+            raise WorkflowError(
+                file_path=file_path,
+                summary="Workflow validation failed",
+                reason=f"outputs[{i}].by must be a string or list of strings",
+                fix=f"Set outputs[{i}].by to a string or list of strings",
+                invalid_fields=(f"outputs[{i}].by",),
+            )
+
+        output_format = str(item.get("format", ""))
+        if output_format and output_format not in _VALID_OUTPUT_FORMATS:
+            allowed = ", ".join(sorted(_VALID_OUTPUT_FORMATS))
+            raise WorkflowError(
+                file_path=file_path,
+                summary="Workflow validation failed",
+                reason=f"outputs[{i}].format must be one of: {allowed}",
+                fix=f"Set outputs[{i}].format to one of: {allowed}",
+                invalid_fields=(f"outputs[{i}].format",),
+            )
 
         outputs.append(
             OutputConfig(
-                type=str(output_type),
+                type=output_type_value,
                 by=by,
-                format=str(item.get("format", "")),
+                format=output_format,
                 path=str(item.get("path", "")),
             )
         )
@@ -558,14 +709,14 @@ def validate_workflow_config(
             fix="Ensure the file has top-level keys: name, version, scenarios",
         )
 
+    _validate_required_fields(file_path, data)
+
     # Run JSON Schema validation first if available
     if use_json_schema:
         schema_errors = validate_workflow_with_schema(data, file_path=file_path)
         if schema_errors:
             # Raise the first error (most significant)
             raise schema_errors[0]
-
-    _validate_required_fields(file_path, data)
 
     # Validate and extract fields
     name = str(data["name"])
@@ -764,6 +915,18 @@ def dump_workflow_config(
 
     if format is None:
         format = _detect_format(file_path)
+    else:
+        normalized_format = format.lower()
+        if normalized_format == "yml":
+            normalized_format = "yaml"
+        if normalized_format not in {"yaml", "json"}:
+            raise WorkflowError(
+                file_path=file_path,
+                summary="Workflow dump failed",
+                reason=f"unsupported format override: {format}",
+                fix="Use format='yaml' or format='json'",
+            )
+        format = normalized_format
 
     with open(file_path, "w", encoding="utf-8") as f:
         if format == "yaml":
@@ -889,22 +1052,43 @@ def run_workflow(
 
     # If a runner is provided, delegate to it
     if runner is not None:
-        if hasattr(runner, "run"):
-            result = runner.run(request)
-            if isinstance(result, WorkflowResult):
-                return result
-            # If runner returns a dict, wrap it
-            if isinstance(result, dict):
-                return WorkflowResult(
-                    success=result.get("success", True),
-                    outputs=result.get("outputs", {}),
-                    errors=result.get("errors", []),
-                    metadata=result.get("metadata", {}),
-                )
+        run_method = getattr(runner, "run", None)
+        if not callable(run_method):
+            raise WorkflowError(
+                summary="Invalid workflow runner",
+                reason="runner must have a callable 'run(request)' method",
+                fix="Provide a runner with run(request: dict) -> WorkflowResult",
+            )
+
+        try:
+            result = run_method(request)
+        except Exception as exc:
+            raise WorkflowError(
+                summary="Workflow execution failed",
+                reason=f"runner raised {type(exc).__name__}: {exc}",
+                fix="Fix the runner implementation or pass a different runner",
+            ) from exc
+
+        if isinstance(result, WorkflowResult):
+            return result
+        # If runner returns a dict, wrap it
+        if isinstance(result, dict):
+            return WorkflowResult(
+                success=result.get("success", True),
+                outputs=result.get("outputs", {}),
+                errors=result.get("errors", []),
+                metadata=result.get("metadata", {}),
+            )
         raise WorkflowError(
-            summary="Invalid workflow runner",
-            reason="runner must have a 'run(request)' method",
-            fix="Provide a runner with a run(request: dict) -> WorkflowResult method",
+            summary="Invalid workflow runner response",
+            reason=(
+                "runner.run(request) must return WorkflowResult or dict, "
+                f"got {type(result).__name__}"
+            ),
+            fix=(
+                "Update runner.run(request) to return WorkflowResult or a "
+                "dict with keys: success, outputs, errors, metadata"
+            ),
         )
 
     # No runtime backend available
@@ -925,8 +1109,23 @@ def _validate_scenario_references(config: WorkflowConfig) -> None:
     without loading the full scenario data. Registry lookups are
     deferred to runtime execution.
     """
+    if config.data_sources.population and not config.data_sources.population.strip():
+        raise WorkflowError(
+            summary="Workflow validation failed",
+            reason="data_sources.population must not be blank",
+            fix="Set data_sources.population to a non-empty reference when provided",
+            invalid_fields=("data_sources.population",),
+        )
+    if not config.data_sources.emission_factors.strip():
+        raise WorkflowError(
+            summary="Workflow validation failed",
+            reason="data_sources.emission_factors must not be blank",
+            fix="Set data_sources.emission_factors to a non-empty reference",
+            invalid_fields=("data_sources.emission_factors",),
+        )
+
     for i, scenario_ref in enumerate(config.scenarios):
-        if not scenario_ref.reference:
+        if not scenario_ref.reference.strip():
             raise WorkflowError(
                 summary="Workflow validation failed",
                 reason=f"scenarios[{i}] has empty reference",
