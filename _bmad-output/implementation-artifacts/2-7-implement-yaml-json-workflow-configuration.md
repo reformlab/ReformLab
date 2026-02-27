@@ -1,6 +1,6 @@
 # Story 2.7: Implement YAML/JSON Workflow Configuration
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -35,15 +35,15 @@ Scope note: this story delivers workflow configuration contracts (schema, load/v
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Validate prerequisites and boundaries
-  - [ ] 0.1 Confirm Story 2.1 (schema/loader) and Story 2.4 (registry) are `done` or `review` in `_bmad-output/implementation-artifacts/sprint-status.yaml`
-  - [ ] 0.2 Confirm Story 2.6 migration helper APIs are available for schema-version compatibility checks (or document fallback behavior)
-  - [ ] 0.3 Confirm existing YAML/JSON loading patterns in `src/reformlab/templates/loader.py` and error shape patterns in `src/reformlab/templates/exceptions.py`
-  - [ ] 0.4 Define scope boundary: this story owns config contracts + execution handoff only, not orchestrator/indicator implementation
+- [x] Task 0: Validate prerequisites and boundaries
+  - [x] 0.1 Confirm Story 2.1 (schema/loader) and Story 2.4 (registry) are `done` or `review` in `_bmad-output/implementation-artifacts/sprint-status.yaml`
+  - [x] 0.2 Confirm Story 2.6 migration helper APIs are available for schema-version compatibility checks (or document fallback behavior)
+  - [x] 0.3 Confirm existing YAML/JSON loading patterns in `src/reformlab/templates/loader.py` and error shape patterns in `src/reformlab/templates/exceptions.py`
+  - [x] 0.4 Define scope boundary: this story owns config contracts + execution handoff only, not orchestrator/indicator implementation
 
-- [ ] Task 1: Define workflow configuration schema (AC: #1, #2)
-  - [ ] 1.1 Create `src/reformlab/templates/workflow.py` with workflow dataclasses
-  - [ ] 1.2 Define `WorkflowConfig` dataclass with required fields:
+- [x] Task 1: Define workflow configuration schema (AC: #1, #2)
+  - [x] 1.1 Create `src/reformlab/templates/workflow.py` with workflow dataclasses
+  - [x] 1.2 Define `WorkflowConfig` dataclass with required fields:
     - `name`: str - Workflow identifier
     - `version`: str - Schema version for migration compatibility
     - `description`: str (optional) - Human-readable description
@@ -51,64 +51,64 @@ Scope note: this story delivers workflow configuration contracts (schema, load/v
     - `scenarios`: list - Scenario references or inline definitions
     - `run_config`: dict - Orchestrator settings (years, output format)
     - `outputs`: list - Requested output types (indicators, exports)
-  - [ ] 1.3 Define `DataSourceConfig`, `ScenarioRef`, `RunConfig`, `OutputConfig` supporting dataclasses
-  - [ ] 1.4 Add `format` metadata (`yaml`/`json`) and schema-version metadata for deterministic serialization and compatibility checks
-  - [ ] 1.5 Implement validation methods with field-path error reporting
+  - [x] 1.3 Define `DataSourceConfig`, `ScenarioRef`, `RunConfig`, `OutputConfig` supporting dataclasses
+  - [x] 1.4 Add `format` metadata (`yaml`/`json`) and schema-version metadata for deterministic serialization and compatibility checks
+  - [x] 1.5 Implement validation methods with field-path error reporting
 
-- [ ] Task 2: Create JSON Schema for workflow validation (AC: #2, #4)
-  - [ ] 2.1 Create `src/reformlab/templates/schema/workflow.schema.json`
-  - [ ] 2.2 Define schema with:
+- [x] Task 2: Create JSON Schema for workflow validation (AC: #2, #4)
+  - [x] 2.1 Create `src/reformlab/templates/schema/workflow.schema.json`
+  - [x] 2.2 Define schema with:
     - Required fields with types
     - Enum constraints for output formats, scenario references
     - Pattern constraints for version strings
     - Nested object definitions for data_sources, scenarios, run_config
-  - [ ] 2.3 Add `$schema` reference support for IDE validation
-  - [ ] 2.4 Test schema with `jsonschema` library validation
+  - [x] 2.3 Add `$schema` reference support for IDE validation
+  - [x] 2.4 Test schema with `jsonschema` library validation
 
-- [ ] Task 3: Implement workflow loader with validation (AC: #1, #2, #3)
-  - [ ] 3.1 Add `load_workflow_config(path)` function to `workflow.py`
-  - [ ] 3.2 Implement format detection by extension (`.yaml`, `.yml`, `.json`)
-  - [ ] 3.3 Implement YAML parsing with `yaml.safe_load()` and JSON parsing with `json.loads()`
-  - [ ] 3.4 Implement JSON Schema validation with field-path and source-location reporting
-  - [ ] 3.5 Return `WorkflowConfig` dataclass on success, raise `WorkflowError` on failure
-  - [ ] 3.6 Add `validate_workflow_config(data)` for programmatic dict validation
-  - [ ] 3.7 Error messages follow existing `ScenarioError` pattern: summary, reason, fix, invalid_fields
+- [x] Task 3: Implement workflow loader with validation (AC: #1, #2, #3)
+  - [x] 3.1 Add `load_workflow_config(path)` function to `workflow.py`
+  - [x] 3.2 Implement format detection by extension (`.yaml`, `.yml`, `.json`)
+  - [x] 3.3 Implement YAML parsing with `yaml.safe_load()` and JSON parsing with `json.loads()`
+  - [x] 3.4 Implement JSON Schema validation with field-path and source-location reporting
+  - [x] 3.5 Return `WorkflowConfig` dataclass on success, raise `WorkflowError` on failure
+  - [x] 3.6 Add `validate_workflow_config(data)` for programmatic dict validation
+  - [x] 3.7 Error messages follow existing `ScenarioError` pattern: summary, reason, fix, invalid_fields
 
-- [ ] Task 4: Implement workflow serializer with round-trip stability (AC: #3)
-  - [ ] 4.1 Add `dump_workflow_config(config, path, *, format: str | None = None)` function
-  - [ ] 4.2 Use deterministic YAML output (`yaml.safe_dump(..., sort_keys=False, default_flow_style=False)`)
-  - [ ] 4.3 Use deterministic JSON output (`json.dumps(..., indent=2, sort_keys=True)`)
-  - [ ] 4.4 Add round-trip unit tests (YAML: load → dump → load, JSON: load → dump → load)
-  - [ ] 4.5 Document comment preservation limitations (YAML comments are not guaranteed to survive round-trip)
+- [x] Task 4: Implement workflow serializer with round-trip stability (AC: #3)
+  - [x] 4.1 Add `dump_workflow_config(config, path, *, format: str | None = None)` function
+  - [x] 4.2 Use deterministic YAML output (`yaml.safe_dump(..., sort_keys=False, default_flow_style=False)`)
+  - [x] 4.3 Use deterministic JSON output (`json.dumps(..., indent=2, sort_keys=True)`)
+  - [x] 4.4 Add round-trip unit tests (YAML: load → dump → load, JSON: load → dump → load)
+  - [x] 4.5 Document comment preservation limitations (YAML comments are not guaranteed to survive round-trip)
 
-- [ ] Task 5: Implement execution handoff API (AC: #1)
-  - [ ] 5.1 Add `prepare_workflow_request(config)` to normalize config into runtime request payload
-  - [ ] 5.2 Add `run_workflow(config, *, runner=None)` that delegates to an injected runner or existing API entrypoint
-  - [ ] 5.3 Validate scenario/data-source references before handoff using existing template/registry lookup helpers where available
-  - [ ] 5.4 Return structured delegated result on success; if runtime backend is unavailable, raise actionable `WorkflowError` with fix guidance
-  - [ ] 5.5 Keep runtime semantics thin: no orchestrator step logic or indicator computations are implemented in this story
+- [x] Task 5: Implement execution handoff API (AC: #1)
+  - [x] 5.1 Add `prepare_workflow_request(config)` to normalize config into runtime request payload
+  - [x] 5.2 Add `run_workflow(config, *, runner=None)` that delegates to an injected runner or existing API entrypoint
+  - [x] 5.3 Validate scenario/data-source references before handoff using existing template/registry lookup helpers where available
+  - [x] 5.4 Return structured delegated result on success; if runtime backend is unavailable, raise actionable `WorkflowError` with fix guidance
+  - [x] 5.5 Keep runtime semantics thin: no orchestrator step logic or indicator computations are implemented in this story
 
-- [ ] Task 6: Create example workflow configurations (AC: #4)
-  - [ ] 6.1 Create `examples/workflows/` directory
-  - [ ] 6.2 Add `carbon_tax_analysis.yaml` - Single scenario analysis workflow
-  - [ ] 6.3 Add `scenario_comparison.yaml` - Baseline vs reform comparison workflow
-  - [ ] 6.4 Add `batch_sensitivity.json` - Multi-scenario batch analysis workflow
-  - [ ] 6.5 Add `README.md` documenting YAML/JSON example workflows
+- [x] Task 6: Create example workflow configurations (AC: #4)
+  - [x] 6.1 Create `examples/workflows/` directory
+  - [x] 6.2 Add `carbon_tax_analysis.yaml` - Single scenario analysis workflow
+  - [x] 6.3 Add `scenario_comparison.yaml` - Baseline vs reform comparison workflow
+  - [x] 6.4 Add `batch_sensitivity.json` - Multi-scenario batch analysis workflow
+  - [x] 6.5 Add `README.md` documenting YAML/JSON example workflows
 
-- [ ] Task 7: Add tests and CI integration (AC: #2, #4)
-  - [ ] 7.1 Create `tests/templates/test_workflow.py`
-  - [ ] 7.2 Add unit tests for schema validation in YAML and JSON (valid, invalid, edge cases)
-  - [ ] 7.3 Add unit tests for loader error messages (line numbers where available, field paths / JSON pointers)
-  - [ ] 7.4 Add round-trip stability tests for both formats
-  - [ ] 7.5 Add integration tests validating all shipped examples
-  - [ ] 7.6 Add execution-handoff contract tests (runner available vs unavailable backend path)
-  - [ ] 7.7 Ensure CI runs example validation on every push
+- [x] Task 7: Add tests and CI integration (AC: #2, #4)
+  - [x] 7.1 Create `tests/templates/test_workflow.py`
+  - [x] 7.2 Add unit tests for schema validation in YAML and JSON (valid, invalid, edge cases)
+  - [x] 7.3 Add unit tests for loader error messages (line numbers where available, field paths / JSON pointers)
+  - [x] 7.4 Add round-trip stability tests for both formats
+  - [x] 7.5 Add integration tests validating all shipped examples
+  - [x] 7.6 Add execution-handoff contract tests (runner available vs unavailable backend path)
+  - [x] 7.7 Ensure CI runs example validation on every push
 
-- [ ] Task 8: Export APIs and documentation
-  - [ ] 8.1 Export workflow APIs in `src/reformlab/templates/__init__.py`
-  - [ ] 8.2 Add docstrings for all public workflow APIs
-  - [ ] 8.3 Run `ruff check` and `mypy` on workflow module
-  - [ ] 8.4 Run targeted tests (`pytest tests/templates/test_workflow.py`)
+- [x] Task 8: Export APIs and documentation
+  - [x] 8.1 Export workflow APIs in `src/reformlab/templates/__init__.py`
+  - [x] 8.2 Add docstrings for all public workflow APIs
+  - [x] 8.3 Run `ruff check` and `mypy` on workflow module
+  - [x] 8.4 Run targeted tests (`pytest tests/templates/test_workflow.py`)
 
 ## Dev Notes
 
@@ -261,10 +261,45 @@ outputs:
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.5 (claude-opus-4-5-20251101)
 
 ### Debug Log References
 
+- All 44 workflow tests pass
+- All 408 templates tests pass (excluding numpy-dependent test)
+- ruff check passes with no issues
+- mypy passes with no issues
+
 ### Completion Notes List
 
+- Implemented complete workflow configuration schema with frozen dataclasses (WorkflowConfig, DataSourceConfig, ScenarioRef, RunConfig, OutputConfig)
+- Created JSON Schema (workflow.schema.json) with Draft 2020-12 support for IDE validation
+- Implemented YAML/JSON loader with format detection (.yaml, .yml, .json)
+- JSON Schema validation integrated with field-path error reporting
+- Deterministic serialization: YAML with consistent indentation, JSON with sorted keys
+- Round-trip stability verified through tests (load -> dump -> load)
+- Execution handoff API with injected runner support and actionable error messages when backend unavailable
+- Added 3 example workflows: carbon_tax_analysis.yaml, scenario_comparison.yaml, batch_sensitivity.json
+- Added comprehensive test suite (44 tests) covering validation, loading, serialization, round-trip, and execution handoff
+- Exported 20 new APIs in templates/__init__.py
+- Added jsonschema dependency to pyproject.toml
+
 ### File List
+
+**New files:**
+- src/reformlab/templates/workflow.py
+- src/reformlab/templates/schema/workflow.schema.json
+- examples/workflows/carbon_tax_analysis.yaml
+- examples/workflows/scenario_comparison.yaml
+- examples/workflows/batch_sensitivity.json
+- examples/workflows/README.md
+- tests/templates/test_workflow.py
+
+**Modified files:**
+- src/reformlab/templates/__init__.py (added workflow API exports)
+- pyproject.toml (added jsonschema dependency and mypy overrides)
+- _bmad-output/implementation-artifacts/sprint-status.yaml (status: in-progress -> review)
+
+## Change Log
+
+- 2026-02-27: Implemented Story 2.7 - YAML/JSON workflow configuration with schema validation and execution handoff API

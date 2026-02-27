@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://reformlab.io/schemas/workflow.schema.json",
+  "title": "ReformLab Workflow Configuration",
+  "description": "Schema for ReformLab workflow configuration files that define complete policy analysis workflows.",
+  "type": "object",
+  "required": ["name", "version", "scenarios"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference for IDE validation support."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Workflow identifier. Must be unique within the project."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$",
+      "description": "Schema version for migration compatibility (e.g., '1.0')."
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of the workflow purpose."
+    },
+    "data_sources": {
+      "type": "object",
+      "description": "Data source references for population and emission factors.",
+      "properties": {
+        "population": {
+          "type": "string",
+          "description": "Registry reference or path to population data source."
+        },
+        "emission_factors": {
+          "type": "string",
+          "default": "default",
+          "description": "Registry reference or path to emission factors data source."
+        }
+      },
+      "additionalProperties": false
+    },
+    "scenarios": {
+      "type": "array",
+      "minItems": 1,
+      "description": "List of scenario references for the workflow.",
+      "items": {
+        "oneOf": [
+          {
+            "type": "string",
+            "minLength": 1,
+            "description": "Plain scenario reference (registry name or name@version)."
+          },
+          {
+            "type": "object",
+            "minProperties": 1,
+            "maxProperties": 1,
+            "description": "Role-based scenario reference (e.g., {baseline: 'scenario-name'}).",
+            "additionalProperties": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ]
+      }
+    },
+    "run_config": {
+      "type": "object",
+      "description": "Orchestrator run configuration settings.",
+      "properties": {
+        "projection_years": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 10,
+          "description": "Number of years to project the analysis."
+        },
+        "start_year": {
+          "type": "integer",
+          "minimum": 1900,
+          "maximum": 2200,
+          "default": 2025,
+          "description": "Starting year for the projection."
+        },
+        "output_format": {
+          "type": "string",
+          "enum": ["csv", "parquet", "json", "yaml"],
+          "default": "csv",
+          "description": "Default output format for results."
+        }
+      },
+      "additionalProperties": false
+    },
+    "outputs": {
+      "type": "array",
+      "description": "Requested output configurations for the workflow.",
+      "items": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["distributional_indicators", "comparison_table", "panel_export", "summary_report"],
+            "description": "Type of output to generate."
+          },
+          "by": {
+            "oneOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Grouping dimensions for the output."
+              },
+              {
+                "type": "string",
+                "description": "Single grouping dimension."
+              }
+            ]
+          },
+          "format": {
+            "type": "string",
+            "enum": ["csv", "parquet", "json", "yaml"],
+            "description": "Output format for this specific output."
+          },
+          "path": {
+            "type": "string",
+            "description": "Output file path for this output."
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

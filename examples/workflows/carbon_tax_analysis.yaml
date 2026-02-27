@@ -1,0 +1,31 @@
+# Carbon Tax Analysis Workflow
+# Single scenario analysis of a carbon tax policy impact
+#
+# This workflow demonstrates:
+# - Loading a baseline carbon tax scenario from the registry
+# - Running a 10-year projection
+# - Generating distributional indicators by income decile
+
+$schema: "./schema/workflow.schema.json"
+version: "1.0"
+name: "carbon_tax_analysis"
+description: "Analyze distributional impact of a flat carbon tax policy"
+
+data_sources:
+  population: "synthetic_french_2024"
+  emission_factors: "default"
+
+scenarios:
+  - baseline: "carbon_tax_flat_44"
+
+run_config:
+  projection_years: 10
+  start_year: 2025
+  output_format: csv
+
+outputs:
+  - type: "distributional_indicators"
+    by: ["income_decile"]
+  - type: "summary_report"
+    format: "yaml"
+    path: "outputs/carbon_tax_summary.yaml"

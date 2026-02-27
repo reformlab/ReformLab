@@ -1,0 +1,35 @@
+# Scenario Comparison Workflow
+# Compare baseline carbon tax with progressive redistribution reform
+#
+# This workflow demonstrates:
+# - Loading baseline and reform scenarios from the registry
+# - Running a side-by-side comparison
+# - Generating comparison tables and distributional indicators
+
+$schema: "./schema/workflow.schema.json"
+version: "1.0"
+name: "carbon_tax_comparison"
+description: "Compare baseline carbon tax with progressive dividend redistribution"
+
+data_sources:
+  population: "synthetic_french_2024"
+  emission_factors: "default"
+
+scenarios:
+  - baseline: "carbon_tax_flat_44"
+  - reform: "carbon_tax_progressive_dividend"
+
+run_config:
+  projection_years: 10
+  start_year: 2025
+  output_format: csv
+
+outputs:
+  - type: "distributional_indicators"
+    by: ["income_decile"]
+  - type: "comparison_table"
+    format: "csv"
+    path: "outputs/comparison.csv"
+  - type: "summary_report"
+    format: "yaml"
+    path: "outputs/comparison_summary.yaml"

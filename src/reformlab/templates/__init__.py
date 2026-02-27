@@ -8,6 +8,7 @@ This module provides:
 - Template pack discovery and loading utilities
 - Scenario registry with immutable versioning
 - Schema migration utilities for version compatibility
+- Workflow configuration schema and execution handoff
 """
 
 from reformlab.templates.exceptions import ScenarioError
@@ -60,6 +61,27 @@ from reformlab.templates.schema import (
     ScenarioTemplate,
     SubsidyParameters,
     YearSchedule,
+)
+from reformlab.templates.workflow import (
+    WORKFLOW_SCHEMA_VERSION,
+    DataSourceConfig,
+    OutputConfig,
+    OutputFormat,
+    OutputType,
+    RunConfig,
+    ScenarioRef,
+    WorkflowConfig,
+    WorkflowError,
+    WorkflowResult,
+    dump_workflow_config,
+    get_workflow_schema_path,
+    load_workflow_config,
+    prepare_workflow_request,
+    run_workflow,
+    validate_workflow_config,
+    validate_workflow_with_schema,
+    workflow_to_json,
+    workflow_to_yaml,
 )
 
 __all__ = [
@@ -114,4 +136,24 @@ __all__ = [
     "ScenarioError",
     # Constants
     "SCHEMA_VERSION",
+    # Workflow types and functions
+    "DataSourceConfig",
+    "OutputConfig",
+    "OutputFormat",
+    "OutputType",
+    "RunConfig",
+    "ScenarioRef",
+    "WorkflowConfig",
+    "WorkflowError",
+    "WorkflowResult",
+    "WORKFLOW_SCHEMA_VERSION",
+    "dump_workflow_config",
+    "get_workflow_schema_path",
+    "load_workflow_config",
+    "prepare_workflow_request",
+    "run_workflow",
+    "validate_workflow_config",
+    "validate_workflow_with_schema",
+    "workflow_to_json",
+    "workflow_to_yaml",
 ]
