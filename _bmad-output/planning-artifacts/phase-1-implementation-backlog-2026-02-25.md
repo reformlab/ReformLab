@@ -317,9 +317,10 @@ Story-level acceptance criteria:
 | BKL-601 | Story | P0 | 5 | Implement stable Python API for run orchestration | BKL-301, BKL-405, BKL-501 | FR30, NFR16 |
 | BKL-602 | Story | P0 | 5 | Build quickstart notebook (OpenFisca + environmental templates) | BKL-601 | FR34, NFR19 |
 | BKL-603 | Story | P0 | 5 | Build advanced notebook (multi-year + vintage + comparison) | BKL-601 | FR30, FR35 |
-| BKL-604 | Story | P0 | 8 | Implement early no-code GUI: create/clone/run/compare scenarios | BKL-205, BKL-405 | FR32 |
-| BKL-605 | Task | P0 | 3 | Add export actions in API/GUI for CSV/Parquet outputs | BKL-405, BKL-604 | FR33 |
-| BKL-606 | Task | P1 | 3 | Improve operational error UX (mapping and run-state failures) | BKL-604 | FR4, FR27 |
+| BKL-604a | Story | P0 | 3 | Build static GUI prototype: configuration and simulation flows | — | FR32 |
+| BKL-604b | Story | P0 | 5 | Wire GUI prototype to FastAPI backend | BKL-601, BKL-604a | FR32 |
+| BKL-605 | Task | P0 | 3 | Add export actions in API/GUI for CSV/Parquet outputs | BKL-405, BKL-604b | FR33 |
+| BKL-606 | Task | P1 | 3 | Improve operational error UX (mapping and run-state failures) | BKL-604b | FR4, FR27 |
 
 Acceptance criteria:
 
@@ -342,9 +343,14 @@ Story-level acceptance criteria:
 - Given the advanced notebook, when executed, then it demonstrates a multi-year run with vintage tracking and baseline/reform comparison.
 - Given the advanced notebook, when run in CI, then it passes without modification.
 
-**BKL-604: Implement early no-code GUI: create/clone/run/compare scenarios**
-- Given the GUI, when an analyst creates a new scenario from a template, then no code editing is required.
-- Given the GUI, when an analyst clones a baseline and modifies parameters, then a reform scenario is created and linked to the baseline.
+**BKL-604a: Build static GUI prototype: configuration and simulation flows**
+- Given the prototype, when opened in a browser, then the analyst can navigate the full configuration flow (population selection → policy template → parameter editing → assumptions review) and the simulation flow (run → results → comparison) using clickable screens.
+- Given the prototype, when reviewed by the product owner, then screen layout and navigation can be adjusted before backend integration begins.
+- Given the prototype, when inspected, then it uses the target stack (React + Shadcn/ui + Tailwind) so screens are reusable in the final app.
+
+**BKL-604b: Wire GUI prototype to FastAPI backend**
+- Given the wired GUI, when an analyst creates a new scenario from a template, then no code editing is required.
+- Given the wired GUI, when an analyst clones a baseline and modifies parameters, then a reform scenario is created and linked to the baseline.
 - Given two completed runs in the GUI, when comparison is invoked, then side-by-side indicator tables are displayed.
 
 **BKL-605: Add export actions in API/GUI for CSV/Parquet outputs**

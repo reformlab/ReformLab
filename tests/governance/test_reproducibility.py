@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import FrozenInstanceError
 from pathlib import Path
 
 import pyarrow as pa
@@ -10,6 +11,7 @@ import pytest
 
 from reformlab.governance import (
     ReproducibilityResult,
+    ReproducibilityValidationError,
     RunManifest,
     check_reproducibility,
 )
@@ -30,7 +32,7 @@ class TestReproducibilityResult:
             tolerance_used=0.0,
         )
 
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             result.passed = False  # type: ignore[misc]
 
     def test_details_passed(self) -> None:
@@ -132,7 +134,7 @@ class TestCheckReproducibility:
         )
 
         # Create rerun callable that does nothing (outputs already exist)
-        def rerun_callable() -> None:
+        def rerun_callable(**_: object) -> None:
             pass
 
         # Run reproducibility check
@@ -169,7 +171,7 @@ class TestCheckReproducibility:
             child_manifests={2025: "22345678-1234-1234-1234-123456789abc"},
         )
 
-        def rerun_callable() -> None:
+        def rerun_callable(**_: object) -> None:
             pass
 
         result = check_reproducibility(
@@ -197,7 +199,7 @@ class TestCheckReproducibility:
             child_manifests={2025: "22345678-1234-1234-1234-123456789abc"},
         )
 
-        def rerun_callable() -> None:
+        def rerun_callable(**_: object) -> None:
             pass
 
         missing_file = tmp_path / "nonexistent.csv"
@@ -227,10 +229,12 @@ class TestCheckReproducibility:
             child_manifests={2025: "22345678-1234-1234-1234-123456789abc"},
         )
 
-        def rerun_callable() -> None:
+        def rerun_callable(**_: object) -> None:
             pass
 
-        with pytest.raises(ValueError, match="tolerance must be >= 0"):
+        with pytest.raises(
+            ReproducibilityValidationError, match="tolerance must be >= 0"
+        ):
             check_reproducibility(
                 manifest=manifest,
                 input_paths={},
@@ -253,11 +257,12 @@ class TestCheckReproducibility:
             child_manifests={2025: "22345678-1234-1234-1234-123456789abc"},
         )
 
-        def rerun_callable() -> None:
+        def rerun_callable(**_: object) -> None:
             pass
 
         with pytest.raises(
-            ValueError, match="reference_output_paths is required when tolerance > 0"
+            ReproducibilityValidationError,
+            match="reference_output_paths is required when tolerance > 0",
         ):
             check_reproducibility(
                 manifest=manifest,
@@ -265,6 +270,79 @@ class TestCheckReproducibility:
                 output_paths={},
                 rerun_callable=rerun_callable,
                 tolerance=0.01,
+            )
+
+    def test_rerun_callable_receives_manifest_context(self, tmp_path: Path) -> None:
+        """Harness should pass manifest-derived rerun context to callable."""
+        from reformlab.governance.hashing import hash_file
+
+        input_file = tmp_path / "input.csv"
+        input_file.write_text("id,value\n1,10\n")
+        output_file = tmp_path / "output.csv"
+        output_file.write_text("year,value\n2025,100\n")
+
+        manifest = RunManifest(
+            manifest_id="12345678-1234-1234-1234-123456789abc",
+            created_at="2026-02-27T10:00:00Z",
+            engine_version="0.1.0",
+            openfisca_version="40.0.0",
+            adapter_version="1.0.0",
+            scenario_version="scenario-v1",
+            data_hashes={"input.csv": hash_file(input_file)},
+            output_hashes={"output.csv": hash_file(output_file)},
+            seeds={"master": 42, "year_2025": 2047},
+            parameters={"population": 1000},
+            step_pipeline=["prepare", "compute"],
+            child_manifests={2025: "22345678-1234-1234-1234-123456789abc"},
+        )
+
+        captured_context: dict[str, object] = {}
+
+        def rerun_callable(**context: object) -> None:
+            captured_context.update(context)
+
+        result = check_reproducibility(
+            manifest=manifest,
+            input_paths={"input.csv": input_file},
+            output_paths={"output.csv": output_file},
+            rerun_callable=rerun_callable,
+        )
+
+        assert result.passed
+        assert captured_context["seeds"] == {"master": 42, "year_2025": 2047}
+        assert captured_context["parameters"] == {"population": 1000}
+        assert captured_context["scenario_version"] == "scenario-v1"
+        assert captured_context["step_pipeline"] == ["prepare", "compute"]
+        assert captured_context["year_range"] == (2025, 2025)
+        assert captured_context["input_paths"] == {"input.csv": input_file}
+
+    def test_missing_required_input_path_keys_raise(self, tmp_path: Path) -> None:
+        """Missing manifest data_hash keys in input_paths should fail fast."""
+        manifest = RunManifest(
+            manifest_id="12345678-1234-1234-1234-123456789abc",
+            created_at="2026-02-27T10:00:00Z",
+            engine_version="0.1.0",
+            openfisca_version="40.0.0",
+            adapter_version="1.0.0",
+            scenario_version="v1.0",
+            data_hashes={"required-input": "a" * 64},
+            output_hashes={},
+            seeds={"master": 42},
+            child_manifests={2025: "22345678-1234-1234-1234-123456789abc"},
+        )
+
+        def rerun_callable(**_: object) -> None:
+            pytest.fail("rerun_callable should not be invoked when inputs are invalid")
+
+        with pytest.raises(
+            ReproducibilityValidationError,
+            match="Missing input_paths keys required by manifest.data_hashes",
+        ):
+            check_reproducibility(
+                manifest=manifest,
+                input_paths={},
+                output_paths={},
+                rerun_callable=rerun_callable,
             )
 
     def test_tolerance_comparison_parquet(self, tmp_path: Path) -> None:
@@ -310,7 +388,7 @@ class TestCheckReproducibility:
             child_manifests={2025: "22345678-1234-1234-1234-123456789abc"},
         )
 
-        def rerun_callable() -> None:
+        def rerun_callable(**_: object) -> None:
             pass
 
         # Check should pass with tolerance 0.01
@@ -358,7 +436,7 @@ class TestCheckReproducibility:
             child_manifests={2025: "22345678-1234-1234-1234-123456789abc"},
         )
 
-        def rerun_callable() -> None:
+        def rerun_callable(**_: object) -> None:
             pass
 
         # Check should pass with tolerance 0.01
@@ -414,7 +492,7 @@ class TestCheckReproducibility:
             child_manifests={2025: "22345678-1234-1234-1234-123456789abc"},
         )
 
-        def rerun_callable() -> None:
+        def rerun_callable(**_: object) -> None:
             pass
 
         # Check should fail with small tolerance
@@ -429,6 +507,51 @@ class TestCheckReproducibility:
 
         assert not result.passed
         assert "output_2025.parquet" in result.hash_mismatches
+
+    def test_tolerance_incomplete_reference_outputs_are_explicit(
+        self, tmp_path: Path
+    ) -> None:
+        """Missing tolerance reference artifacts should be explicit diagnostics."""
+        from reformlab.governance.hashing import hash_file
+
+        reference_file = tmp_path / "reference_2025.parquet"
+        rerun_file = tmp_path / "rerun_2025.parquet"
+        pq.write_table(
+            pa.table({"year": pa.array([2025]), "value": pa.array([100.0])}),
+            reference_file,
+        )
+        pq.write_table(
+            pa.table({"year": pa.array([2025]), "value": pa.array([100.2])}),
+            rerun_file,
+        )
+
+        manifest = RunManifest(
+            manifest_id="12345678-1234-1234-1234-123456789abc",
+            created_at="2026-02-27T10:00:00Z",
+            engine_version="0.1.0",
+            openfisca_version="40.0.0",
+            adapter_version="1.0.0",
+            scenario_version="v1.0",
+            output_hashes={"output_2025.parquet": hash_file(reference_file)},
+            seeds={"master": 42},
+            child_manifests={2025: "22345678-1234-1234-1234-123456789abc"},
+        )
+
+        def rerun_callable(**_: object) -> None:
+            pass
+
+        result = check_reproducibility(
+            manifest=manifest,
+            input_paths={},
+            output_paths={"output_2025.parquet": rerun_file},
+            rerun_callable=rerun_callable,
+            tolerance=0.5,
+            reference_output_paths={},
+        )
+
+        assert not result.passed
+        assert "output_2025.parquet" in result.hash_mismatches
+        assert "reference:output_2025.parquet" in result.missing_artifacts
 
     def test_tolerance_comparison_requires_exact_non_numeric(
         self, tmp_path: Path
@@ -473,7 +596,7 @@ class TestCheckReproducibility:
             child_manifests={2025: "22345678-1234-1234-1234-123456789abc"},
         )
 
-        def rerun_callable() -> None:
+        def rerun_callable(**_: object) -> None:
             pass
 
         # Check should fail even with tolerance
@@ -507,7 +630,7 @@ class TestCheckReproducibility:
             },
         )
 
-        def rerun_callable() -> None:
+        def rerun_callable(**_: object) -> None:
             pass
 
         result = check_reproducibility(
@@ -533,7 +656,7 @@ class TestCheckReproducibility:
             child_manifests={},
         )
 
-        def rerun_callable() -> None:
+        def rerun_callable(**_: object) -> None:
             pass
 
         result = check_reproducibility(
@@ -630,7 +753,7 @@ class TestReproducibilityIntegration:
         # Create rerun callable that re-executes orchestrator
         rerun_output_paths: dict[str, Path] = {}
 
-        def rerun_callable() -> None:
+        def rerun_callable(**_: object) -> None:
             # Re-run orchestrator with same config
             rerun_orchestrator = Orchestrator(config)
             rerun_result = rerun_orchestrator.run()

@@ -37,3 +37,13 @@ class LineageIntegrityError(Exception):
     """
 
     pass
+
+
+class ReproducibilityValidationError(Exception):
+    """Raised when reproducibility check inputs violate contract requirements.
+
+    Indicates invalid tolerance settings, missing required artifact path mappings,
+    or other reproducibility harness precondition failures.
+    """
+
+    pass

@@ -99,7 +99,8 @@ development_status:
   6-1-implement-stable-python-api: backlog
   6-2-build-quickstart-notebook: backlog
   6-3-build-advanced-notebook: backlog
-  6-4-implement-early-no-code-gui: backlog
+  6-4a-build-static-gui-prototype: backlog
+  6-4b-wire-gui-prototype-to-backend: backlog
   6-5-add-export-actions: backlog
   6-6-improve-operational-error-ux: backlog
   epic-6-retrospective: optional

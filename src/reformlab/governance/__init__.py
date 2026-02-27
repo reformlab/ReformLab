@@ -9,6 +9,7 @@ Public API:
     ManifestIntegrityError: Raised on tampering detection
     ManifestValidationError: Raised on schema validation failures
     LineageIntegrityError: Raised on lineage validation failures
+    ReproducibilityValidationError: Raised on reproducibility input contract errors
     LineageGraph: Lineage graph query model
     get_lineage: Extract lineage graph from manifest
     validate_lineage: Validate bidirectional lineage integrity
@@ -35,6 +36,7 @@ from reformlab.governance.errors import (
     LineageIntegrityError,
     ManifestIntegrityError,
     ManifestValidationError,
+    ReproducibilityValidationError,
 )
 from reformlab.governance.hashing import (
     ArtifactVerificationResult,
@@ -59,6 +61,7 @@ __all__ = [
     "ManifestIntegrityError",
     "ManifestValidationError",
     "LineageIntegrityError",
+    "ReproducibilityValidationError",
     "LineageGraph",
     "get_lineage",
     "validate_lineage",
