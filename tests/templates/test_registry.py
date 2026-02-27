@@ -17,6 +17,7 @@ from pathlib import Path
 
 import pytest
 
+import reformlab.templates.registry as registry_module
 from reformlab.templates.migration import CompatibilityStatus, MigrationReport
 from reformlab.templates.registry import (
     RegistryEntry,
@@ -1283,18 +1284,20 @@ class TestMigrate:
         self,
         registry: ScenarioRegistry,
         sample_baseline: BaselineScenario,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Apply mode migration creates a new version."""
         registry.save(sample_baseline, "test-scenario")
+        monkeypatch.setattr(registry_module, "SCHEMA_VERSION", "1.1")
 
         report = registry.migrate("test-scenario", dry_run=False)
 
         assert isinstance(report, MigrationReport)
-        # Should have two versions (original + migrated)
         versions = registry.list_versions("test-scenario")
-        # If version was identical (same schema version), idempotent save returns same
-        # For current test with version 1.0 -> 1.0, should be compatible (no new version)
-        assert report.status == CompatibilityStatus.COMPATIBLE
+        assert report.status == CompatibilityStatus.MIGRATION_AVAILABLE
+        assert len(versions) == 2
+        migrated = registry.get("test-scenario")
+        assert migrated.version == "1.1"
 
     def test_migrate_specific_version(
         self,
@@ -1354,6 +1357,7 @@ class TestMigrate:
     def test_migrate_apply_uses_lineage_description(
         self,
         registry: ScenarioRegistry,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Apply migration saves with clear lineage change_description."""
         # Create scenario with older minor version to trigger migration
@@ -1365,14 +1369,17 @@ class TestMigrate:
             version="1.0",
         )
         v1 = registry.save(old_scenario, "old-scenario")
+        monkeypatch.setattr(registry_module, "SCHEMA_VERSION", "1.1")
 
-        # Migrate (should be compatible since 1.0 -> 1.0)
         registry.migrate("old-scenario", dry_run=False)
 
-        # Check version history
         versions = registry.list_versions("old-scenario")
-        # With same version (1.0 -> 1.0), should be idempotent
-        assert len(versions) == 1
+        assert len(versions) == 2
+        assert versions[-1].parent_version == v1
+        assert "Migrated from schema version 1.0 to 1.1" in (
+            versions[-1].change_description
+        )
+        assert v1 in versions[-1].change_description
 
     def test_migrate_round_trip_preserves_data(
         self,

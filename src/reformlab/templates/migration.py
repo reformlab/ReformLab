@@ -20,6 +20,8 @@ from typing import Any
 
 from reformlab.templates.loader import SCHEMA_VERSION
 
+_DEFAULT_SCHEMA_REF = "./schema/scenario-template.schema.json"
+
 
 class CompatibilityStatus(Enum):
     """Result of schema version compatibility check.
@@ -77,11 +79,15 @@ class SchemaVersion:
             raise ValueError(f"Invalid version: '{version}'")
 
         parts = version.strip().split(".")
+        if len(parts) not in {1, 2}:
+            raise ValueError(f"Invalid version: '{version}'")
         try:
             major = int(parts[0])
             minor = int(parts[1]) if len(parts) > 1 else 0
         except (ValueError, IndexError) as exc:
             raise ValueError(f"Invalid version: '{version}'") from exc
+        if major < 0 or minor < 0:
+            raise ValueError(f"Invalid version: '{version}'")
 
         return cls(major=major, minor=minor)
 
@@ -216,6 +222,10 @@ def migrate_scenario_dict(
 
     # Apply migrations
     if status == CompatibilityStatus.MIGRATION_AVAILABLE:
+        warnings.append(
+            f"Schema version {source_ver} is older than target {target_ver}; "
+            "deterministic 1.x migration rules were applied."
+        )
         # Update version field
         old_version = result.get("version", "1.0")
         new_version = str(target_ver)
@@ -234,6 +244,11 @@ def migrate_scenario_dict(
         _apply_1x_migrations(result, source_ver, target_ver, changes, warnings)
 
     elif status == CompatibilityStatus.COMPATIBLE:
+        if source_ver.minor > target_ver.minor:
+            warnings.append(
+                f"Source schema version {source_ver} is newer than target "
+                f"{target_ver}; same-major compatibility assumed."
+            )
         # Ensure version field is set even if same version
         if "version" not in result:
             result["version"] = str(target_ver)
@@ -266,8 +281,98 @@ def _apply_1x_migrations(
         changes: List to append MigrationChange records to.
         warnings: List to append warning messages to.
     """
-    # Placeholder for future 1.x migrations
-    # Example migrations that could be added:
-    # - 1.0 -> 1.1: Rename field X to Y
-    # - 1.1 -> 1.2: Add default value for new optional field Z
-    pass
+    # 1.0 -> 1.1+: add default schema reference when absent
+    if source.minor < 1 <= target.minor and "$schema" not in data:
+        data["$schema"] = _DEFAULT_SCHEMA_REF
+        changes.append(
+            MigrationChange(
+                field_path="$schema",
+                old_value=None,
+                new_value=_DEFAULT_SCHEMA_REF,
+                reason="Inserted default schema reference for 1.1+ schema shape",
+            )
+        )
+
+    # 1.0 -> 1.1+: normalize rebate redistribution shape
+    if source.minor < 1 <= target.minor:
+        policy_type = data.get("policy_type")
+        raw_params = data.get("parameters")
+
+        if policy_type != "rebate" or not isinstance(raw_params, dict):
+            return
+
+        redistribution = raw_params.get("redistribution")
+        if not isinstance(redistribution, dict):
+            return
+
+        unknown_legacy_keys = sorted(
+            key for key in redistribution if key not in {"type", "income_weights"}
+        )
+        if unknown_legacy_keys:
+            warnings.append(
+                "Legacy parameters.redistribution contains unrecognized keys "
+                f"{unknown_legacy_keys}; preserving redistribution object."
+            )
+            return
+
+        has_rebate_type = "rebate_type" in raw_params
+        has_income_weights = "income_weights" in raw_params
+
+        if "type" in redistribution:
+            if has_rebate_type:
+                warnings.append(
+                    "Both parameters.rebate_type and legacy "
+                    "parameters.redistribution.type exist; keeping "
+                    "parameters.rebate_type."
+                )
+            else:
+                old_value = redistribution["type"]
+                raw_params["rebate_type"] = old_value
+                changes.append(
+                    MigrationChange(
+                        field_path="parameters.rebate_type",
+                        old_value=None,
+                        new_value=old_value,
+                        reason=(
+                            "Renamed legacy parameters.redistribution.type to "
+                            "parameters.rebate_type"
+                        ),
+                    )
+                )
+
+        if "income_weights" in redistribution:
+            if has_income_weights:
+                warnings.append(
+                    "Both parameters.income_weights and legacy "
+                    "parameters.redistribution.income_weights exist; keeping "
+                    "parameters.income_weights."
+                )
+            else:
+                old_value = copy.deepcopy(redistribution["income_weights"])
+                raw_params["income_weights"] = old_value
+                changes.append(
+                    MigrationChange(
+                        field_path="parameters.income_weights",
+                        old_value=None,
+                        new_value=old_value,
+                        reason=(
+                            "Renamed legacy parameters.redistribution.income_weights "
+                            "to parameters.income_weights"
+                        ),
+                    )
+                )
+
+        if "redistribution" in raw_params:
+            old_value = copy.deepcopy(raw_params["redistribution"])
+            del raw_params["redistribution"]
+            changes.append(
+                MigrationChange(
+                    field_path="parameters.redistribution",
+                    old_value=old_value,
+                    new_value=None,
+                    reason=(
+                        "Removed legacy parameters.redistribution container "
+                        "after normalization"
+                    ),
+                )
+            )

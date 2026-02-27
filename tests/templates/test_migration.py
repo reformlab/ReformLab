@@ -44,6 +44,10 @@ class TestSchemaVersion:
             SchemaVersion.parse("abc")
         with pytest.raises(ValueError, match="Invalid version"):
             SchemaVersion.parse("1.x")
+        with pytest.raises(ValueError, match="Invalid version"):
+            SchemaVersion.parse("1.2.3")
+        with pytest.raises(ValueError, match="Invalid version"):
+            SchemaVersion.parse("-1.0")
 
     def test_str_representation(self) -> None:
         """String representation matches input format."""
@@ -291,3 +295,60 @@ class TestMigrateScenarioDict:
         result, _ = migrate_scenario_dict(data, target_version="1.0")
 
         assert result is not data
+
+    def test_rebate_legacy_shape_is_normalized_for_1x_migration(self) -> None:
+        """Rebate redistribution legacy fields are normalized to current shape."""
+        data = {
+            "name": "rebate-legacy",
+            "version": "1.0",
+            "policy_type": "rebate",
+            "parameters": {
+                "redistribution": {
+                    "type": "progressive_dividend",
+                    "income_weights": {"decile_1": 1.4},
+                }
+            },
+        }
+
+        result, report = migrate_scenario_dict(data, target_version="1.1")
+
+        assert result["version"] == "1.1"
+        assert result["parameters"]["rebate_type"] == "progressive_dividend"
+        assert result["parameters"]["income_weights"] == {"decile_1": 1.4}
+        assert "redistribution" not in result["parameters"]
+        change_paths = {change.field_path for change in report.changes}
+        assert "parameters.rebate_type" in change_paths
+        assert "parameters.income_weights" in change_paths
+        assert "parameters.redistribution" in change_paths
+        assert report.warnings
+
+    def test_migration_inserts_default_schema_ref_when_missing(self) -> None:
+        """Migration inserts default $schema when absent for newer 1.x shapes."""
+        data = {
+            "name": "test-scenario",
+            "version": "1.0",
+            "policy_type": "carbon_tax",
+            "parameters": {},
+        }
+
+        result, report = migrate_scenario_dict(data, target_version="1.1")
+
+        assert result["$schema"] == "./schema/scenario-template.schema.json"
+        schema_changes = [c for c in report.changes if c.field_path == "$schema"]
+        assert len(schema_changes) == 1
+        assert schema_changes[0].old_value is None
+
+    def test_forward_compatible_newer_minor_returns_warning(self) -> None:
+        """Newer source minor stays compatible but warns for analyst review."""
+        data = {
+            "name": "future-scenario",
+            "version": "1.2",
+            "policy_type": "carbon_tax",
+            "parameters": {},
+        }
+
+        result, report = migrate_scenario_dict(data, target_version="1.1")
+
+        assert result["version"] == "1.2"
+        assert report.status == CompatibilityStatus.COMPATIBLE
+        assert report.warnings
