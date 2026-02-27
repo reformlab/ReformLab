@@ -201,3 +201,130 @@ Steps are registered as plugins. Phase 1 ships vintage transitions and state car
 - **Behavioral responses:** New orchestrator step that applies elasticities between yearly computation runs (proven pattern from PolicyEngine).
 - **System dynamics bridge:** Aggregate stock-flow outputs derived from microsimulation vintage tracking results.
 - **Alternative computation backends:** Swap adapter implementations without changing orchestrator or indicator layers.
+
+## Deployment & GUI Architecture (2026-02-27)
+
+### Deployment Decision
+
+The no-code GUI (EPIC-6) will be a web application with a React/TypeScript frontend and a FastAPI Python backend, deployed on Scaleway Serverless infrastructure in Paris. The MVP is deployed from day one to enable sharing with colleagues (2-10 users).
+
+### Rationale
+
+- **Same stack for MVP and future phases** — no throwaway prototype. The MVP GUI uses the same React + Shadcn/ui + Tailwind + FastAPI stack specified in the UX design document. Phase 3 (public web app) extends rather than replaces.
+- **Scaleway** chosen for: French datacenter (Paris), GDPR compliance, European sovereignty (Groupe Iliad), cost (~0-5 EUR/month on Serverless free tier), and ongoing SecNumCloud qualification process with ANSSI.
+- **Git push = auto-deploy** via GitHub Actions. Setup once, then deployment is fully automated on every push to master.
+
+### Monorepo Structure
+
+```
+reformlab/
+  src/                        ← Python backend (FastAPI API + core library)
+  frontend/                   ← React/TypeScript (Vite + Shadcn/ui + Tailwind)
+  tests/
+  Dockerfile                  ← Backend container definition
+  frontend/Dockerfile         ← Frontend container (nginx serving build)
+  .github/workflows/
+    deploy.yml                ← Auto-deploy both services on push
+  pyproject.toml
+```
+
+Both frontend and backend live in the same repository. GitHub Actions builds and deploys each as a separate Scaleway Serverless Container on push to master.
+
+### Deployment Topology
+
+```
+┌─────────────────────────────────────────────────────┐
+│  GitHub Repository (monorepo)                       │
+│  push to master                                     │
+└──────────┬──────────────────────┬───────────────────┘
+           │                      │
+    GitHub Actions          GitHub Actions
+    (build backend)         (build frontend)
+           │                      │
+           ▼                      ▼
+┌──────────────────┐   ┌──────────────────────┐
+│ Scaleway          │   │ Scaleway              │
+│ Serverless        │   │ Serverless            │
+│ Container         │   │ Container             │
+│ (FastAPI, Paris)  │   │ (nginx + React build, │
+│                   │   │  Paris)               │
+│ api.reformlab.fr  │   │ app.reformlab.fr      │
+└──────────────────┘   └──────────────────────┘
+         │
+         ▼
+┌──────────────────┐
+│ Persistent Volume │
+│ (CSV/Parquet/     │
+│  YAML/JSON data)  │
+└──────────────────┘
+```
+
+### Frontend Stack
+
+As specified in the UX design document:
+
+- React 18+ with TypeScript
+- Vite (build tooling)
+- Shadcn/ui + Radix UI (component library)
+- Tailwind CSS v4 (styling with design tokens)
+- Recharts/Nivo (simulation charts)
+- React Flow (lineage DAG visualization)
+- React Hook Form + Zod (form handling)
+
+Served as a static build by an nginx container. Calls the backend API via HTTPS.
+
+### Backend Stack
+
+- FastAPI (REST API)
+- Python 3.13+ (same as core library)
+- uvicorn (ASGI server)
+- The FastAPI layer exposes the existing Python API (orchestrator, scenarios, indicators, governance) as HTTP endpoints
+
+### Data Storage (MVP)
+
+File-based, no database:
+
+- **Scenario configs:** YAML/JSON files on persistent volume
+- **Run outputs:** CSV/Parquet on persistent volume
+- **Run manifests:** JSON on persistent volume
+- **Scenario registry:** File-based (already implemented in EPIC-2)
+
+Persistent volume is attached to the backend container. Sufficient for 2-10 users working with open/public data. If multi-user concurrent writes become an issue in Phase 3, migrate to SQLite or PostgreSQL — the file-based contract layer makes this a contained change.
+
+### Authentication (MVP)
+
+Simple shared-password authentication via FastAPI middleware:
+
+- Single shared password stored as an environment variable on Scaleway
+- FastAPI middleware checks password on every API request
+- Frontend shows a password prompt on first access, stores the token in browser session
+- No user accounts, no OAuth, no database — appropriate for 2-10 trusted colleagues
+
+Phase 3 (public web app with Claire persona) will require proper user authentication (OAuth or similar). This is a separate architectural decision at that point.
+
+### Cost Estimate
+
+| Service | Monthly Cost |
+| --- | --- |
+| Backend Serverless Container | ~0-3 EUR (free tier covers low traffic) |
+| Frontend Serverless Container | ~0-2 EUR (free tier covers low traffic) |
+| Persistent Volume (1-5 GB) | ~0.50 EUR |
+| **Total** | **~0-5 EUR/month** |
+
+### Sovereignty & Compliance Positioning
+
+- Hosted on Scaleway, French cloud provider (Groupe Iliad), Paris datacenter
+- GDPR compliant, data stays in France, no transfer outside EU
+- Not subject to US Cloud Act or other extra-territorial legislation
+- Scaleway SecNumCloud qualification in progress with ANSSI (expected 2026)
+- Application uses exclusively open public data (INSEE, Eurostat, synthetic populations)
+- If SecNumCloud becomes required (e.g., restricted microdata handling), migration path: Scalingo on Outscale `osc-secnum-fr1` region — same code, different deployment target
+
+### Migration Path to Phase 3
+
+When the project grows beyond MVP:
+
+1. **More users:** Scaleway Serverless auto-scales. No architecture change needed.
+2. **User accounts:** Replace shared-password middleware with OAuth/OIDC. Add user table (SQLite or PostgreSQL).
+3. **SecNumCloud required:** Redeploy to Scalingo on `osc-secnum-fr1` or Clever Cloud on Cloud Temple SecNumCloud zone. Application code unchanged.
+4. **Frontend/backend split:** If needed, frontend can move to a CDN (Scaleway Edge Services) while backend stays on Serverless Containers. Same code, different deployment config.
