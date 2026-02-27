@@ -16,43 +16,47 @@ From backlog (BKL-306), aligned with FR17, NFR8, NFR9.
 
 Scope note: this story adds structured logging infrastructure to capture seed information, step execution sequence, and adapter version at each yearly iteration. The log output enables governance (EPIC-5) and debugging workflows. It builds on the orchestrator infrastructure from Stories 3-1 through 3-5.
 
-1. **AC-1: Year seed logged at yearly step start**
-   - Given an orchestrator run, when each year begins execution, then the log entry includes:
-     - Year number
-     - Derived year seed (or "None" if no master seed)
-     - Master seed reference (for traceability)
-   - Log level: INFO for year start, DEBUG for detailed seed derivation.
+1. **AC-1: Year seed is logged at year start with deterministic markers**
+   - Given an orchestrator run, when a year begins, then an INFO log entry includes:
+     - `year=<year>`
+     - `seed=<derived_year_seed_or_None>`
+     - `master_seed=<config.seed_or_None>`
+     - `event=year_start`
+   - Marker format is stable and grep-friendly (`key=value` tokens).
 
-2. **AC-2: Step execution order logged per year**
-   - Given a yearly iteration with N steps, when steps execute, then the log shows:
-     - Step sequence number (1 of N, 2 of N, etc.)
-     - Step name
-     - Year
-   - The logged order matches the actual execution order (topological sort from StepRegistry or explicit pipeline order).
-   - Log level: DEBUG for step execution, INFO for year summary.
+2. **AC-2: Step execution order is logged exactly as executed**
+   - Given a yearly iteration with `N` steps, when steps execute, then DEBUG log entries include:
+     - `year=<year>`
+     - `step_index=<1..N>`
+     - `step_total=<N>`
+     - `step_name=<step_name>`
+     - `event=step_start|step_end`
+   - Logged order matches the actual iteration order of `OrchestratorConfig.step_pipeline` (including pipelines pre-built by `StepRegistry`).
 
-3. **AC-3: Adapter version logged during computation step**
-   - Given a `ComputationStep` in the pipeline, when it executes, then the log includes the adapter version returned by `adapter.version()`.
-   - This extends the existing computation metadata (Story 3-5) to include log output.
-   - Log level: INFO for adapter version, DEBUG for detailed computation context.
+3. **AC-3: Adapter version is logged by ComputationStep**
+   - Given a `ComputationStep` in the pipeline, when it executes, then an INFO log entry includes:
+     - `year=<year>`
+     - `step_name=computation`
+     - `adapter_version=<adapter.version()>` (or `<version-unavailable>` on fallback)
+   - This extends Story 3-5 metadata recording with explicit runtime logs.
 
-4. **AC-4: Year summary logged at yearly step completion**
-   - Given a year completes all steps successfully, when the year ends, then a summary log entry includes:
-     - Year number
-     - Step count executed
-     - Year seed used
-     - Adapter version (if computation step executed)
-   - Log level: INFO.
+4. **AC-4: Year completion summary is logged only on successful year completion**
+   - Given a year completes all steps successfully, when the year ends, then an INFO log entry includes:
+     - `year=<year>`
+     - `steps_executed=<N>`
+     - `seed=<derived_year_seed_or_None>`
+     - `adapter_version=<version_or_n/a>`
+     - `event=year_complete`
 
-5. **AC-5: Logs enable seed difference detection**
-   - Given two runs with different master seeds, when logs are compared, then the seed differences are visible in log entries at every year.
-   - Log format should include searchable markers (e.g., `seed=`, `year=`, `step=`) for grep/filter operations.
+5. **AC-5: Seed differences are observable across runs**
+   - Given two runs with different master seeds and identical non-seed inputs, when logs are compared for the same year, then the `seed=` value differs and is visible in year-level log entries.
+   - Required searchable markers: `year=`, `seed=`, `step_name=`, `adapter_version=`.
 
-6. **AC-6: Structured metadata extends OrchestratorResult**
+6. **AC-6: Minimal structured trace is exposed in `OrchestratorResult.metadata`**
    - `OrchestratorResult.metadata` includes:
-     - `step_execution_log`: List of step execution records per year
-     - `seed_log`: Mapping of year to derived seed
-   - This enables programmatic access to execution trace for governance manifests.
+     - `seed_log`: mapping of executed year to derived seed (`dict[int, int | None]`)
+     - `step_execution_log`: ordered execution records with `year`, `step_index`, `step_total`, `step_name`, `status`
+   - Trace is in-memory run metadata only; manifest persistence remains in Story 5-1.
 
 ## Dependencies
 
@@ -62,8 +66,12 @@ Scope note: this story adds structured logging infrastructure to capture seed in
   - Story 3-3 (BKL-303): Carry-forward step - established step logging patterns
   - Story 3-4 (BKL-304): Vintage transition step - additional step context
   - Story 3-5 (BKL-305): ComputationStep - adapter version capture, `COMPUTATION_METADATA_KEY`
-- **Current prerequisite status (from sprint-status.yaml):**
-  - All stories 3-1 through 3-5: `done`
+- **Current prerequisite status (from `_bmad-output/implementation-artifacts/sprint-status.yaml`, checked 2026-02-27):**
+  - `3-1-implement-yearly-loop-orchestrator`: `done`
+  - `3-2-define-orchestrator-step-interface`: `done`
+  - `3-3-implement-carry-forward-step`: `done`
+  - `3-4-implement-vintage-transition-step`: `done`
+  - `3-5-integrate-computationadapter-calls`: `done`
 - **Follow-on stories:**
   - Story 3-7 (BKL-307): Panel output - consumes orchestrator results
   - Story 5-1 (BKL-501): Immutable run manifest - consumes seed/execution logs
@@ -71,59 +79,46 @@ Scope note: this story adds structured logging infrastructure to capture seed in
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Review existing logging infrastructure (AC: all)
-  - [ ] 0.1 Review `src/reformlab/orchestrator/runner.py` for current logging patterns
-  - [ ] 0.2 Review `src/reformlab/orchestrator/computation_step.py` for adapter metadata capture
-  - [ ] 0.3 Identify log format conventions and logger naming patterns in codebase
-  - [ ] 0.4 Verify Python logging best practices for structured output
+- [ ] Task 0: Confirm prerequisites and logging contract boundaries (AC: dependency check)
+  - [ ] 0.1 Verify Story 3-1 through 3-5 status is `done` in `sprint-status.yaml`
+  - [ ] 0.2 Review `src/reformlab/orchestrator/runner.py` and `src/reformlab/orchestrator/computation_step.py` logging patterns
+  - [ ] 0.3 Record boundary note: manifest file generation remains out of scope (Story 5-1)
 
-- [ ] Task 1: Enhance year-level logging in Orchestrator (AC: #1, #4, #5)
-  - [ ] 1.1 Add year start log entry with seed information:
-    - `logger.info("Year %d started: seed=%s (master=%s)", year, year_seed, master_seed)`
-  - [ ] 1.2 Add year completion summary log entry:
-    - `logger.info("Year %d completed: %d steps, seed=%s", year, step_count, year_seed)`
-  - [ ] 1.3 Ensure log format uses searchable markers (`year=`, `seed=`)
+- [ ] Task 1: Add year and step structured logs in `Orchestrator` (AC: #1, #2, #4, #5)
+  - [ ] 1.1 Emit year-start INFO log in `_run_year()` with stable markers:
+    - `year=... seed=... master_seed=... event=year_start`
+  - [ ] 1.2 Emit step-start and step-end DEBUG logs in `_execute_step()`:
+    - include `step_index`, `step_total`, `step_name`, `event=step_start|step_end`
+  - [ ] 1.3 Emit year-complete INFO summary with:
+    - `year=... steps_executed=... seed=... adapter_version=... event=year_complete`
+  - [ ] 1.4 Ensure marker names are consistent across all runner logs (`key=value` tokens)
 
-- [ ] Task 2: Add step execution logging (AC: #2, #5)
-  - [ ] 2.1 Log step sequence in `_execute_step()`:
-    - `logger.debug("Year %d: step %d/%d '%s' starting", year, step_index+1, total_steps, step_name)`
-    - `logger.debug("Year %d: step %d/%d '%s' completed", year, step_index+1, total_steps, step_name)`
-  - [ ] 2.2 Pass step index and total to `_execute_step()` or track in `_run_year()`
-  - [ ] 2.3 Ensure step names match topological order from pipeline
+- [ ] Task 2: Add adapter version runtime logs in `ComputationStep` (AC: #3, #5)
+  - [ ] 2.1 Add module logger in `src/reformlab/orchestrator/computation_step.py`
+  - [ ] 2.2 Emit INFO log during `execute()`:
+    - `year=... step_name=computation adapter_version=...`
+  - [ ] 2.3 Emit DEBUG computation context log:
+    - `year=... step_name=computation row_count=...`
 
-- [ ] Task 3: Enhance adapter version logging in ComputationStep (AC: #3)
-  - [ ] 3.1 Add logger to `computation_step.py` module
-  - [ ] 3.2 Log adapter version at INFO level during execute():
-    - `logger.info("Year %d: ComputationStep using adapter version %s", year, adapter_version)`
-  - [ ] 3.3 Log computation row count at DEBUG level:
-    - `logger.debug("Year %d: computation produced %d rows", year, row_count)`
-
-- [ ] Task 4: Add structured execution metadata to OrchestratorResult (AC: #6)
-  - [ ] 4.1 Define stable keys for execution log in metadata:
+- [ ] Task 3: Add minimal execution trace metadata on result (AC: #6)
+  - [ ] 3.1 Define stable metadata keys:
     - `STEP_EXECUTION_LOG_KEY = "step_execution_log"`
     - `SEED_LOG_KEY = "seed_log"`
-  - [ ] 4.2 Build step execution log during `_run_year()`:
-    - List of `{"year": int, "step_index": int, "step_name": str, "status": str}`
-  - [ ] 4.3 Build seed log during orchestrator run:
-    - Dict `{year: seed}` for all executed years
-  - [ ] 4.4 Include both in `OrchestratorResult.metadata`
+  - [ ] 3.2 Collect ordered step execution records during `_run_year()`
+  - [ ] 3.3 Collect per-year derived seeds during `run()`
+  - [ ] 3.4 Merge trace fields into `OrchestratorResult.metadata` for success and failure paths
 
-- [ ] Task 5: Add tests for logging behavior (AC: all)
-  - [ ] 5.1 Create `tests/orchestrator/test_logging.py` with:
-    - Test year start/end log messages include seed
-    - Test step execution log includes sequence numbers
-    - Test adapter version appears in logs when ComputationStep runs
-    - Test seed differences are visible in logs for different master seeds
-  - [ ] 5.2 Add integration test validating `OrchestratorResult.metadata` contains execution logs
-  - [ ] 5.3 Test seed_log and step_execution_log structure and content
+- [ ] Task 4: Add focused tests for logging and trace metadata (AC: all)
+  - [ ] 4.1 Create `tests/orchestrator/test_logging.py` with `caplog` assertions for year, step, seed, and adapter markers
+  - [ ] 4.2 Add test comparing two runs with different master seeds to assert visible seed differences in logs
+  - [ ] 4.3 Add tests validating `seed_log` and `step_execution_log` structure/content on `OrchestratorResult.metadata`
 
-- [ ] Task 6: Export API and run quality gates (AC: all)
-  - [ ] 6.1 Export new constants from `src/reformlab/orchestrator/__init__.py`:
-    - `STEP_EXECUTION_LOG_KEY`, `SEED_LOG_KEY`
-  - [ ] 6.2 Update module docstring with new exports
-  - [ ] 6.3 Run `ruff check src/reformlab/orchestrator tests/orchestrator`
-  - [ ] 6.4 Run `mypy src/reformlab/orchestrator`
-  - [ ] 6.5 Run `pytest tests/orchestrator/`
+- [ ] Task 5: Export constants and run quality gates (AC: all)
+  - [ ] 5.1 Export `STEP_EXECUTION_LOG_KEY` and `SEED_LOG_KEY` from `src/reformlab/orchestrator/__init__.py`
+  - [ ] 5.2 Run `ruff check src/reformlab/orchestrator tests/orchestrator`
+  - [ ] 5.3 Run `mypy src/reformlab/orchestrator`
+  - [ ] 5.4 Run targeted tests:
+    - `pytest tests/orchestrator/test_logging.py tests/orchestrator/test_runner.py tests/orchestrator/test_computation_step.py`
 
 ## Dev Notes
 
@@ -182,50 +177,51 @@ def _derive_year_seed(self, year: int) -> int | None:
 
 ### Implementation Strategy
 
-1. **Logging only (Tasks 1-3):** Add structured log output without changing data flow. Use existing `logger` patterns.
+1. **Structured runtime logs first (Tasks 1-2):** Add stable `key=value` markers for year/step/adapter logging without altering pipeline semantics.
 
-2. **Metadata extension (Task 4):** Add execution trace to `OrchestratorResult.metadata` for programmatic access. This enables EPIC-5 governance without changing the logging itself.
+2. **Minimal trace metadata second (Task 3):** Add in-memory execution trace (`seed_log`, `step_execution_log`) to `OrchestratorResult.metadata` for downstream governance stories.
 
-3. **Searchable log format:** Use consistent markers (`year=`, `seed=`, `step=`, `adapter=`) for grep/filter. Example:
+3. **Searchable marker contract:** Use consistent markers (`year=`, `seed=`, `step_name=`, `adapter_version=`). Example:
    ```
-   INFO  reformlab.orchestrator.runner: year=2024 started seed=1234567890 master_seed=42
-   DEBUG reformlab.orchestrator.runner: year=2024 step=1/3 name=computation starting
-   INFO  reformlab.orchestrator.computation_step: year=2024 adapter_version=openfisca-france-167.0.0
-   DEBUG reformlab.orchestrator.runner: year=2024 step=1/3 name=computation completed
-   DEBUG reformlab.orchestrator.runner: year=2024 step=2/3 name=vintage_transition starting
+   INFO  reformlab.orchestrator.runner: year=2024 seed=1234567890 master_seed=42 event=year_start
+   DEBUG reformlab.orchestrator.runner: year=2024 step_index=1 step_total=3 step_name=computation event=step_start
+   INFO  reformlab.orchestrator.computation_step: year=2024 step_name=computation adapter_version=openfisca-france-167.0.0
+   DEBUG reformlab.orchestrator.runner: year=2024 step_index=1 step_total=3 step_name=computation event=step_end
+   DEBUG reformlab.orchestrator.runner: year=2024 step_index=2 step_total=3 step_name=vintage_transition event=step_start
    ...
-   INFO  reformlab.orchestrator.runner: year=2024 completed steps=3 seed=1234567890
+   INFO  reformlab.orchestrator.runner: year=2024 steps_executed=3 seed=1234567890 adapter_version=openfisca-france-167.0.0 event=year_complete
    ```
 
 ### Scope Guardrails
 
 - **In scope:**
   - Structured logging of seed, step order, adapter version
-  - Searchable log markers for debugging
-  - Execution metadata in `OrchestratorResult`
-  - Tests for logging behavior and metadata structure
+  - Stable searchable log markers for debugging and reproducibility checks
+  - Minimal in-memory execution trace in `OrchestratorResult.metadata`
+  - Focused tests for log content and metadata structure
 
 - **Out of scope:**
   - Manifest file generation (Story 5-1)
   - Log file persistence or rotation (infrastructure concern)
   - Log aggregation or analysis tools
+  - Broad observability refactors beyond orchestrator/computation-step logging
   - Panel output formatting (Story 3-7)
 
 ### Testing Notes
 
 - Use `caplog` fixture in pytest to capture and assert log messages
 - Test at both INFO and DEBUG levels
-- Verify searchable markers appear in log output
-- Test metadata structure in `OrchestratorResult`
-- Compare logs from runs with different seeds to verify difference visibility
+- Verify required searchable markers appear in log output (`year=`, `seed=`, `step_name=`, `adapter_version=`)
+- Validate metadata trace schema and ordering in `OrchestratorResult`
+- Compare logs from runs with different seeds to verify visible seed deltas
 
 ### Project Structure Notes
 
 - New code in `src/reformlab/orchestrator/runner.py` (enhanced logging)
 - New code in `src/reformlab/orchestrator/computation_step.py` (adapter version logging)
-- New constants potentially in `src/reformlab/orchestrator/types.py` or `runner.py`
+- New constants in `src/reformlab/orchestrator/runner.py` (exported via `src/reformlab/orchestrator/__init__.py`)
 - New tests in `tests/orchestrator/test_logging.py`
-- No new files needed - this is enhancement of existing modules
+- No production modules added; this is enhancement of existing modules plus one focused test module
 
 ### References
 
