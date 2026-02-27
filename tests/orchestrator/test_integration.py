@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+import uuid
 
 import pyarrow as pa
 import pytest
@@ -317,6 +318,63 @@ class TestOrchestratorRunner:
         assumption_entry = result.metadata["assumptions"][0]
         assert assumption_entry["value"] == {"value": 20}
         assert result.metadata["parameters"]["policy"]["rate"] == 0.15
+
+    def test_runner_captures_lineage_metadata_automatically(
+        self, short_workflow_config: WorkflowConfig
+    ) -> None:
+        """Lineage metadata is captured automatically for completed years."""
+        runner = OrchestratorRunner(step_pipeline=(counting_step,))
+        result = run_workflow(short_workflow_config, runner=runner)
+
+        assert result.success is True
+        parent_manifest_id = result.metadata["parent_manifest_id"]
+        child_manifests = result.metadata["child_manifests"]
+
+        assert isinstance(parent_manifest_id, str)
+        uuid.UUID(parent_manifest_id)
+        assert set(child_manifests) == {2025, 2026, 2027}
+        assert len(child_manifests) == 3
+        assert len(set(child_manifests.values())) == 3
+        for child_id in child_manifests.values():
+            uuid.UUID(child_id)
+
+    def test_runner_lineage_for_ten_year_projection(
+        self, workflow_config: WorkflowConfig
+    ) -> None:
+        """Lineage metadata contains all 10 yearly child links."""
+        runner = OrchestratorRunner()
+        result = run_workflow(workflow_config, runner=runner)
+
+        assert result.success is True
+        child_manifests = result.metadata["child_manifests"]
+        assert len(child_manifests) == 10
+        assert set(child_manifests) == set(range(2025, 2035))
+        for child_id in child_manifests.values():
+            uuid.UUID(child_id)
+
+    def test_runner_lineage_on_failure_tracks_completed_years_only(self) -> None:
+        """Failure path lineage metadata includes only completed years."""
+
+        def failing_step(year: int, state: YearState) -> YearState:
+            if year == 2026:
+                raise RuntimeError("Intentional failure for lineage test")
+            return state
+
+        config = WorkflowConfig(
+            name="lineage_fail_test",
+            version="1.0",
+            data_sources=DataSourceConfig(emission_factors="default"),
+            scenarios=(ScenarioRef(role="scenario", reference="test"),),
+            run_config=RunConfig(projection_years=3, start_year=2025),
+        )
+        runner = OrchestratorRunner(step_pipeline=(failing_step,))
+        result = run_workflow(config, runner=runner)
+
+        assert result.success is False
+        uuid.UUID(result.metadata["parent_manifest_id"])
+        child_manifests = result.metadata["child_manifests"]
+        assert set(child_manifests) == {2025}
+        uuid.UUID(child_manifests[2025])
 
 
 # ============================================================================

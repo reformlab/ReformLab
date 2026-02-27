@@ -46,6 +46,17 @@ class TestLineageGraph:
         assert graph.parent_id == "parent-manifest-001"
         assert graph.child_ids == {}
 
+    def test_child_ids_are_detached_on_construction(self) -> None:
+        """LineageGraph detaches child_ids from caller-owned dictionaries."""
+        child_ids = {2025: "child-2025"}
+        graph = LineageGraph(
+            manifest_id="root-manifest-001",
+            parent_id=None,
+            child_ids=child_ids,
+        )
+        child_ids[2026] = "child-2026"
+        assert graph.child_ids == {2025: "child-2025"}
+
     def test_is_root_property(self) -> None:
         """is_root returns True when parent_id is None."""
         root_graph = LineageGraph(

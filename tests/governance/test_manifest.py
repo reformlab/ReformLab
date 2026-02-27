@@ -877,3 +877,32 @@ class TestLineageFieldValidation:
                 scenario_version="v1.0",
                 child_manifests={2025: ""},
             )
+
+    def test_from_json_rejects_non_dict_child_manifests(self) -> None:
+        """from_json rejects non-dictionary child_manifests payloads."""
+        invalid_json = json.dumps(
+            {
+                "manifest_id": "test-001",
+                "created_at": "2026-02-27T10:00:00Z",
+                "engine_version": "0.1.0",
+                "openfisca_version": "40.0.0",
+                "adapter_version": "1.0.0",
+                "scenario_version": "v1.0",
+                "data_hashes": {},
+                "output_hashes": {},
+                "seeds": {},
+                "parameters": {},
+                "assumptions": [],
+                "mappings": [],
+                "warnings": [],
+                "step_pipeline": [],
+                "parent_manifest_id": "",
+                "child_manifests": [],
+                "integrity_hash": "",
+            }
+        )
+        with pytest.raises(
+            ManifestValidationError,
+            match="Field 'child_manifests' must be a dictionary",
+        ):
+            RunManifest.from_json(invalid_json)

@@ -407,16 +407,19 @@ class RunManifest:
         try:
             # JSON serializes int keys as strings, so convert them back
             child_manifests_raw = data["child_manifests"]
+            if not isinstance(child_manifests_raw, dict):
+                raise ManifestValidationError(
+                    "Field 'child_manifests' must be a dictionary"
+                )
             child_manifests: dict[int, str] = {}
-            if isinstance(child_manifests_raw, dict):
-                for key, value in child_manifests_raw.items():
-                    try:
-                        child_manifests[int(key)] = value
-                    except (ValueError, TypeError) as conv_err:
-                        raise ManifestValidationError(
-                            f"Invalid child_manifests key: cannot convert {key!r} "
-                            f"to int year: {conv_err}"
-                        ) from conv_err
+            for key, value in child_manifests_raw.items():
+                try:
+                    child_manifests[int(key)] = value
+                except (ValueError, TypeError) as conv_err:
+                    raise ManifestValidationError(
+                        f"Invalid child_manifests key: cannot convert {key!r} "
+                        f"to int year: {conv_err}"
+                    ) from conv_err
 
             return cls(
                 manifest_id=data["manifest_id"],

@@ -24,7 +24,7 @@ source_verification: true
 
 France has one of the richest ecosystems of microsimulation models in Europe, with **12+ distinct models** maintained by government agencies, statistical offices, and research institutes. These models span **taxation, social benefits, energy, pensions, elderly care, and housing** policy domains.
 
-For ReformLab, the most immediately relevant and integrable models are **OpenFisca** (already planned), **TAXIPP** (open-source, Python, uses OpenFisca internally), and **Saphir** (open-source on GitHub). Models like **Prometheus** (energy) and **EPEEr** (fuel poverty/housing) cover exactly the environmental policy domains ReformLab targets but are not currently open-source. At the European level, **EUROMOD** is the dominant cross-country tax-benefit model and is fully open-source.
+For ReformLab, the most immediately relevant and integrable models are **OpenFisca** (already planned), **TAXIPP** (open-source, Python, uses OpenFisca internally), and **Res-IRF** (open-source, Python, residential energy/renovation dynamics from CIRED). Models like **Prometheus** (energy bills) and **EPEEr** (fuel poverty/housing) cover exactly the environmental policy domains ReformLab targets but are not currently open-source. The SNBC (National Low-Carbon Strategy) relies on a full suite of sectoral models — including **ThreeME** (open-source macro-economic), **MODEV** (transport), **EnerMED** (industry), and **ClimAgri** (agriculture) — that map the broader ecosystem ReformLab can draw from. At the European level, **EUROMOD** is the dominant cross-country tax-benefit model and is fully open-source.
 
 ---
 
@@ -288,6 +288,158 @@ Sources: [EUROMOD — What is EUROMOD](https://euromod-web.jrc.ec.europa.eu/over
 
 ---
 
+### 1.6 SNBC Sectoral Models (Energy-Climate Scenarios)
+
+The SNBC (Strategie Nationale Bas-Carbone) relies on a full suite of sectoral models orchestrated by the DGEC (Direction Generale de l'Energie et du Climat). These are not microsimulation models per se — they are sectoral techno-economic models — but they compute the physical quantities (energy consumption, emissions, renovation rates, vehicle fleet composition) that feed into or complement microsimulation models like Prometheus.
+
+#### Res-IRF (CIRED)
+
+| Attribute | Detail |
+|-----------|--------|
+| **Full name** | Res-IRF (Residential - Imaclim Renovation Forecast) |
+| **Agency** | CIRED (Centre International de Recherche sur l'Environnement et le Developpement) |
+| **Domain** | Residential energy consumption, renovation dynamics, heating systems |
+| **Type** | Techno-economic simulation (bottom-up, dynamic) |
+| **Language** | **Python** |
+| **Data** | Housing surveys, DPE (energy performance certificates) |
+| **Open source** | **Yes — GitHub** |
+| **Repository** | [github.com/CIRED/Res-IRF4](https://github.com/CIRED/Res-IRF4) (v4) and [github.com/CIRED/Res-IRF](https://github.com/CIRED/Res-IRF) (v3) |
+| **Since** | 2008, funded by CGDD, ADEME, ATEE |
+| **Key use** | Simulates renovation decisions, heating system choices, energy consumption with rebound effects; residential module of IMACLIM-R France |
+
+Res-IRF is **highly relevant for ReformLab**. It's Python, open-source, and models exactly the residential energy dynamics that complement Prometheus's static bill calculations. From exogenous variables (population growth, household income, energy prices), it endogenously simulates construction, renovation, and resulting energy consumption — including the rebound effect. Has a simple web UI at resirf.pythonanywhere.com.
+
+Sources: [CIRED — Res-IRF](https://www.centre-cired.fr/res-irf/) | [GitHub — Res-IRF4](https://github.com/CIRED/Res-IRF4) | [GitHub — Res-IRF v3](https://github.com/CIRED/Res-IRF) | [Documentation](https://cired.github.io/Res-IRF/)
+
+---
+
+#### MENFIS (ADEME)
+
+| Attribute | Detail |
+|-----------|--------|
+| **Full name** | MENFIS |
+| **Agency** | ADEME |
+| **Domain** | Residential heating |
+| **Type** | Sectoral energy model |
+| **Language** | Unknown |
+| **Open source** | **No** (not publicly available) |
+| **Key use** | Residential heating modeling for SNBC scenarios |
+
+MENFIS is ADEME's internal model for residential heating, used in the SNBC3 scenario construction. Limited public documentation. Res-IRF serves a similar role from the academic side with full transparency.
+
+Sources: [Ministry of Ecology — Prospective scenarios](https://www.ecologie.gouv.fr/politiques-publiques/scenarios-prospectifs-energie-climat-air)
+
+---
+
+#### ThreeME (OFCE + ADEME)
+
+| Attribute | Detail |
+|-----------|--------|
+| **Full name** | ThreeME (Multi-sector Macroeconomic Model for the Evaluation of Environmental and Energy policy) |
+| **Agency** | OFCE (Sciences Po) + ADEME + TNO |
+| **Domain** | Macroeconomic assessment of energy/environmental policies |
+| **Type** | Computable General Equilibrium (CGE), neo-Keynesian |
+| **Language** | **Open source on GitHub** |
+| **Data** | National accounts, 37 economic sectors (incl. 13 energy, 5 transport) |
+| **Open source** | **Yes — GitHub** |
+| **Repository** | [github.com/ThreeME-org/ThreeME_V3-open](https://github.com/fosem/ThreeME_V3-open) |
+| **Since** | 2008 |
+| **Key use** | Main macroeconomic model for SNBC3 evaluation; assesses GDP, employment, investment impacts of transition policies |
+
+ThreeME provides the macro-economic "wrapper" around sectoral models. It evaluates impacts of carbon taxes, green investment subsidies, building renovation policies, transport modal shifts on GDP and employment. Used for the France Relance recovery plan evaluation.
+
+Sources: [OFCE — ThreeME](https://www.ofce.sciences-po.fr/recherche/threeme.php) | [ThreeME website](https://www.threeme.org/) | [GitHub](https://github.com/fosem/ThreeME_V3-open)
+
+---
+
+#### IMACLIM-Country (CIRED)
+
+| Attribute | Detail |
+|-----------|--------|
+| **Full name** | IMACLIM-Country |
+| **Agency** | CIRED |
+| **Domain** | General equilibrium model for energy transition (country-level) |
+| **Type** | Hybrid macro-sectoral model |
+| **Language** | Unknown (likely GAMS or similar) |
+| **Open source** | **Yes — CeCILL license, GitHub** |
+| **Repository** | [github.com/GaelleLeTreut/IMACLIM-Country](https://github.com/GaelleLeTreut/IMACLIM-Country) |
+| **Key use** | Assesses climate and energy policies at national level; Res-IRF is its residential module |
+
+The IMACLIM family is the CIRED's flagship modeling architecture. IMACLIM-3ME is a hybrid combining the static IMACLIM framework with ThreeME and a household microsimulation module — the closest existing model to what ReformLab envisions (macro + micro + sectoral).
+
+Sources: [GitHub — IMACLIM-Country](https://github.com/GaelleLeTreut/IMACLIM-Country) | [CIRED — IMACLIM](https://www.centre-cired.fr/en/imaclim-r-monde/)
+
+---
+
+#### EnerMED (Enerdata)
+
+| Attribute | Detail |
+|-----------|--------|
+| **Full name** | EnerMED (latest version of MEDEE models) |
+| **Agency** | Enerdata (private consultancy) |
+| **Domain** | Industry energy demand and GHG emissions |
+| **Type** | Bottom-up sectoral energy model |
+| **Open source** | **No** (proprietary, Enerdata product) |
+| **Key use** | Industrial sector modeling for SNBC; energy system supply/demand balancing |
+
+EnerMED handles industrial energy demand modeling for the DGEC. Used in 60+ countries. Being proprietary, it cannot be integrated, but its public outputs feed into SNBC scenarios.
+
+Sources: [Enerdata — EnerMED](https://www.enerdata.net/solutions/enermed-model.html) | [Enerdata — DGEC scenarios](https://www.enerdata.fr/societe/actualites/realisation-de-scenarios-de-transition-energetique-pour-la-dgec.html)
+
+---
+
+#### MODEV (CGDD)
+
+| Attribute | Detail |
+|-----------|--------|
+| **Full name** | MODEV |
+| **Agency** | CGDD (Bureau of Transport Economics) |
+| **Domain** | Transport demand — multimodal, geographic |
+| **Type** | Static, multimodal traffic model |
+| **Open source** | **No** (government-internal) |
+| **Key use** | Medium/long-term transport demand projections for SNBC |
+
+MODEV is the CGDD's geographic transport demand model. It estimates future transport demand across modes (road, rail, water, air) and feeds into emissions calculations. Not publicly available.
+
+Sources: [Ministry of Ecology — Transport projections for SNBC2](https://www.ecologie.gouv.fr/sites/default/files/publications/document_travail_52_projection_transport_snbc2_oct2021.pdf)
+
+---
+
+#### COPERT / CopCerema (European / Cerema)
+
+| Attribute | Detail |
+|-----------|--------|
+| **Full name** | COPERT 5 (Computer Program to calculate Emissions from Road Transport) |
+| **Agency** | European Environment Agency; French adaptation: CopCerema (Cerema) |
+| **Domain** | Road transport emissions (pollutants + GHG) |
+| **Type** | Emission factor calculator |
+| **Open source** | Partially (methodology is public, COPERT tool requires license; CopCerema is Cerema-internal) |
+| **Key use** | France's national GHG inventory for road transport (used by CITEPA) |
+
+COPERT is the standard European methodology for calculating road transport emissions. CopCerema adds French-specific detail (troncon-by-troncon analysis). The emission factors could be reused in ReformLab for transport-related carbon tax impact calculations.
+
+Sources: [Cerema — CopCerema](https://www.cerema.fr/fr/actualites/copcerema-outil-calculer-emissions-polluantes-consommations) | [Cerema — Road emissions](https://www.cerema.fr/fr/actualites/emissions-routieres-polluants-atmospheriques-courbes)
+
+---
+
+#### ClimAgri (ADEME / Solagro)
+
+| Attribute | Detail |
+|-----------|--------|
+| **Full name** | ClimAgri |
+| **Agency** | ADEME, developed by Solagro |
+| **Domain** | Agricultural GHG emissions, energy consumption, carbon storage |
+| **Type** | Diagnostic and scenario tool (spreadsheet-based) |
+| **Open source** | No (ADEME tool, available to territorial actors) |
+| **Since** | 2009 |
+| **Key use** | Territorial agricultural emission diagnostics for SNBC |
+
+ClimAgri estimates energy consumption and GHG emissions of agriculture at the territorial scale, from upstream to farm gate. Spreadsheet-based, so not directly integrable, but its methodology and emission factors are documented.
+
+Sources: [ADEME — ClimAgri](https://librairie.ademe.fr/changement-climatique-et-energie/3468-quelle-contribution-de-l-agriculture-francaise-a-la-reduction-des-emissions-de-gaz-a-effet-de-serre-.html) | [Solagro — ClimAgri](https://solagro.org/travaux-et-productions/outils/climagri)
+
+---
+
 ## 2. Landscape Summary Matrix
 
 | Model | Agency | Domain | Type | Language | Open Source | Data | ReformLab Relevance |
@@ -304,6 +456,16 @@ Sources: [EUROMOD — What is EUROMOD](https://euromod-web.jrc.ec.europa.eu/over
 | **TRAJECTOiRE** | DREES | Pensions (all regimes) | Dynamic | Unknown | No | EIC | Low |
 | **Autonomix** | DREES | Elderly care | Static | R | Unknown | Admin. data | Low |
 | **EUROMOD** | JRC (EU) | All EU tax-benefit | Static | C# | Yes (EUPL) | EU-SILC | Medium (EU scope) |
+| | | | | | | | |
+| **SNBC Sectoral Models** | | | | | | | |
+| **Res-IRF** | CIRED | Residential energy/renovation | Dynamic | **Python** | **Yes (GitHub)** | Housing surveys | **High — Python, open** |
+| **ThreeME** | OFCE+ADEME | Macroeconomic assessment | CGE | Open | **Yes (GitHub)** | National accounts | Medium (macro layer) |
+| **IMACLIM-Country** | CIRED | Energy transition (national) | Hybrid | Open | **Yes (GitHub, CeCILL)** | National data | Medium (architecture ref) |
+| **MENFIS** | ADEME | Residential heating | Sectoral | Unknown | No | Internal | Low (closed) |
+| **EnerMED** | Enerdata | Industry energy demand | Bottom-up | Proprietary | No | Industry data | Low (proprietary) |
+| **MODEV** | CGDD | Transport demand | Multimodal | Unknown | No | Internal | Low (closed) |
+| **COPERT/CopCerema** | EEA/Cerema | Road transport emissions | Emission factors | Various | Partial | Fleet data | Medium (emission factors) |
+| **ClimAgri** | ADEME/Solagro | Agricultural emissions | Diagnostic | Spreadsheet | No | Territorial | Low (spreadsheet) |
 
 ---
 
@@ -318,6 +480,8 @@ Sources: [EUROMOD — What is EUROMOD](https://euromod-web.jrc.ec.europa.eu/over
 - Import TAXIPP's data preparation scripts
 - Reference TAXIPP's methodology for distributional analysis
 
+**Res-IRF (CIRED)**: Python, open-source, models residential energy dynamics (renovation decisions, heating systems, energy consumption with rebound effects). Could be wrapped as a ReformLab adapter for the housing/energy sector. Already serves as the residential module of IMACLIM-R France.
+
 **LexImpact**: Not a computation model to integrate, but a **UX reference** — it shows how to make OpenFisca-based simulations accessible to non-experts, which directly informs ReformLab's no-code GUI layer.
 
 ### Tier 2 — Methodology Replication (Medium-term)
@@ -329,6 +493,10 @@ Sources: [EUROMOD — What is EUROMOD](https://euromod-web.jrc.ec.europa.eu/over
 
 **EPEEr**: The dynamic fuel poverty / housing renovation model. Its methodology could inform ReformLab's multi-year orchestration for energy retrofit policies.
 
+**ThreeME (OFCE + ADEME)**: Open-source macroeconomic CGE model. Could serve as ReformLab's macro-economic wrapper to assess GDP/employment impacts of policies modeled at the micro level. The IMACLIM-3ME architecture (macro + micro + sectoral) is the closest existing precedent to ReformLab's vision.
+
+**COPERT emission factors**: The European road transport emission methodology. ReformLab could reuse COPERT emission factors for transport-related carbon tax calculations without integrating the full tool.
+
 **Saphir (DG Tresor)**: Open-source on GitHub but written in SAS. Its methodology and policy rule implementations could serve as validation reference for OpenFisca formulas.
 
 ### Tier 3 — Reference / Validation (Long-term or out of scope)
@@ -337,7 +505,11 @@ Sources: [EUROMOD — What is EUROMOD](https://euromod-web.jrc.ec.europa.eu/over
 
 **Destinie 2**: Open-source (C++/R) pension model. If ReformLab ever covers pension policy, this would be the starting point.
 
-**INES, Myriade, TRAJECTOiRE, Autonomix**: Government-internal or domain-specific models that serve as references for methodology validation but aren't directly integrable.
+**IMACLIM-Country**: Open-source general equilibrium framework. Valuable as an architecture reference — especially the IMACLIM-3ME variant that combines macro, sectoral, and household microsimulation.
+
+**MODEV, MENFIS, EnerMED**: Government-internal or proprietary sectoral models. Their outputs are available through SNBC publications, but the models themselves cannot be integrated.
+
+**INES, Myriade, TRAJECTOiRE, Autonomix, ClimAgri**: Government-internal or domain-specific models that serve as references for methodology validation but aren't directly integrable.
 
 ---
 
@@ -346,18 +518,24 @@ Sources: [EUROMOD — What is EUROMOD](https://euromod-web.jrc.ec.europa.eu/over
 ### Immediate Actions
 
 1. **Study TAXIPP's codebase** on GitLab — it demonstrates how to build a complete microsimulation pipeline on top of OpenFisca with real French data
-2. **Study LexImpact's UX patterns** — it's the best existing example of making OpenFisca accessible to non-programmers
+2. **Study Res-IRF's codebase** on GitHub — Python, open-source, models the residential energy dynamics (renovation, heating, rebound effects) that are core to ReformLab's environmental policy mission
 3. **Download and read the Prometheus 2025 working paper** — it contains the methodology needed to implement energy bill microsimulation in ReformLab
+4. **Study LexImpact's UX patterns** — it's the best existing example of making OpenFisca accessible to non-programmers
 
 ### Medium-term Strategy
 
-4. **Implement Prometheus-equivalent energy bill formulas** as custom OpenFisca variables within ReformLab. This is the key differentiator — bringing environmental policy microsimulation into an open, accessible platform
-5. **Explore TAXIPP's data matching pipeline** for connecting administrative data sources to OpenFisca simulations
-6. **Investigate EPEEr's approach** for dynamic multi-year energy poverty tracking — this maps directly to ReformLab's orchestrator
+5. **Implement Prometheus-equivalent energy bill formulas** as custom OpenFisca variables within ReformLab. This is the key differentiator — bringing environmental policy microsimulation into an open, accessible platform
+6. **Wrap Res-IRF as a ReformLab adapter** for residential renovation/heating dynamics — it's already Python and could feed into ReformLab's multi-year orchestrator
+7. **Explore TAXIPP's data matching pipeline** for connecting administrative data sources to OpenFisca simulations
+8. **Investigate EPEEr's approach** for dynamic multi-year energy poverty tracking — this maps directly to ReformLab's orchestrator
+9. **Explore the IMACLIM-3ME architecture** as a reference for combining macro, sectoral, and household-level microsimulation in one framework
+10. **Reuse COPERT emission factors** for transport-related carbon tax impact calculations
 
 ### Key Insight
 
-Most French microsimulation models are either **closed-source SAS tools** (INES, Saphir) or **narrowly domain-specific** (Autonomix, TRAJECTOiRE). The real opportunity for ReformLab is not to "integrate" these models but to **replicate their most valuable methodology** — particularly Prometheus's energy microsimulation — within the open OpenFisca ecosystem, making it accessible and composable for the first time.
+The French modeling ecosystem is **fragmented by design** — each ministry/agency has its own model for its own sector, and the SNBC is essentially a manual orchestration across all these models. Most microsimulation models are **closed-source SAS tools** (INES, Saphir) or **government-internal** (Prometheus, MODEV, MENFIS). The SNBC sectoral models are a mix of open (Res-IRF, ThreeME, IMACLIM) and proprietary (EnerMED, MODEV).
+
+**ReformLab's opportunity is to be the integrating layer** — bringing together Prometheus-like energy microsimulation (replicated as OpenFisca formulas), Res-IRF-like renovation dynamics (already Python/open-source), and OpenFisca's tax-benefit engine into a single, accessible, open platform. No such integrating layer exists today — the SNBC process requires manual coordination across dozens of teams and tools. That fragmentation is exactly the gap ReformLab's dynamic orchestrator is designed to fill.
 
 ---
 
@@ -379,6 +557,23 @@ Most French microsimulation models are either **closed-source SAS tools** (INES,
 - [EUROMOD — Overview](https://euromod-web.jrc.ec.europa.eu/overview/what-is-euromod)
 - [LexImpact](https://leximpact.an.fr/)
 - [GitHub — OpenFisca-France](https://github.com/openfisca/openfisca-france)
+
+### SNBC Sectoral Models
+- [CIRED — Res-IRF](https://www.centre-cired.fr/res-irf/)
+- [GitHub — CIRED/Res-IRF4](https://github.com/CIRED/Res-IRF4)
+- [GitHub — CIRED/Res-IRF v3](https://github.com/CIRED/Res-IRF)
+- [Res-IRF Documentation](https://cired.github.io/Res-IRF/)
+- [OFCE — ThreeME](https://www.ofce.sciences-po.fr/recherche/threeme.php)
+- [ThreeME website](https://www.threeme.org/)
+- [GitHub — ThreeME](https://github.com/fosem/ThreeME_V3-open)
+- [GitHub — IMACLIM-Country](https://github.com/GaelleLeTreut/IMACLIM-Country)
+- [Enerdata — EnerMED](https://www.enerdata.net/solutions/enermed-model.html)
+- [Enerdata — DGEC scenarios](https://www.enerdata.fr/societe/actualites/realisation-de-scenarios-de-transition-energetique-pour-la-dgec.html)
+- [Ministry of Ecology — Prospective scenarios](https://www.ecologie.gouv.fr/politiques-publiques/scenarios-prospectifs-energie-climat-air)
+- [Ministry of Ecology — SNBC3 accompanying report (2025)](https://www.ecologie.gouv.fr/sites/default/files/documents/2025%20-%20Rapport%20accompagnement%20SNBC%203.pdf)
+- [Ministry of Ecology — Transport projections for SNBC2](https://www.ecologie.gouv.fr/sites/default/files/publications/document_travail_52_projection_transport_snbc2_oct2021.pdf)
+- [Cerema — CopCerema](https://www.cerema.fr/fr/actualites/copcerema-outil-calculer-emissions-polluantes-consommations)
+- [Solagro — ClimAgri](https://solagro.org/travaux-et-productions/outils/climagri)
 
 ### Academic References
 - [Cairn — Panorama of microsimulation in France (2004)](https://cairn.info/revue-d-economie-politique-2004-1-page-17.htm)

@@ -36,6 +36,10 @@ class LineageGraph:
     parent_id: str | None
     child_ids: dict[int, str] = field(default_factory=dict)
 
+    def __post_init__(self) -> None:
+        """Copy mutable containers to avoid external aliasing."""
+        object.__setattr__(self, "child_ids", dict(self.child_ids))
+
     @property
     def is_root(self) -> bool:
         """Check if this manifest is a root (no parent)."""
