@@ -11,7 +11,6 @@ from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
 from reformlab.orchestrator.errors import OrchestratorError
-from reformlab.orchestrator.step import OrchestratorStep
 from reformlab.orchestrator.types import (
     OrchestratorConfig,
     OrchestratorResult,
@@ -19,7 +18,7 @@ from reformlab.orchestrator.types import (
 )
 
 if TYPE_CHECKING:
-    from reformlab.orchestrator.types import YearStep
+    from reformlab.orchestrator.types import PipelineStep
     from reformlab.templates.workflow import WorkflowConfig, WorkflowResult
 
 logger = logging.getLogger(__name__)
@@ -166,7 +165,7 @@ class Orchestrator:
 
     def _execute_step(
         self,
-        step: "YearStep | OrchestratorStep",
+        step: "PipelineStep",
         year: int,
         state: YearState,
     ) -> YearState:
@@ -237,7 +236,7 @@ class Orchestrator:
         return self.config.seed ^ year
 
 
-def _extract_step_name(step: "YearStep | OrchestratorStep") -> str:
+def _extract_step_name(step: "PipelineStep") -> str:
     """Extract step name from protocol step or callable.
 
     Prefers step.name for protocol steps, falls back to __name__ or str.
@@ -285,7 +284,7 @@ class OrchestratorRunner:
 
     def __init__(
         self,
-        step_pipeline: tuple["YearStep", ...] = (),
+        step_pipeline: tuple["PipelineStep", ...] = (),
         seed: int | None = None,
         initial_state: dict[str, Any] | None = None,
     ) -> None:
@@ -387,6 +386,6 @@ def _calculate_end_year(*, start_year: int, projection_years: int) -> int:
     return start_year + projection_years - 1
 
 
-def _step_pipeline_names(step_pipeline: tuple["YearStep", ...]) -> list[str]:
+def _step_pipeline_names(step_pipeline: tuple["PipelineStep", ...]) -> list[str]:
     """Return stable step names for logging and metadata."""
     return [_extract_step_name(step) for step in step_pipeline]

@@ -4,13 +4,17 @@ This module defines the data structures used by the orchestrator:
 - YearState: State carried between years
 - OrchestratorConfig: Configuration for orchestrator execution
 - OrchestratorResult: Result of orchestrator execution
-- YearStep: Type alias for step callables
+- YearStep: Type alias for legacy callable steps
+- PipelineStep: Union of callable and protocol-based steps
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, TypeAlias
+
+if TYPE_CHECKING:
+    from reformlab.orchestrator.step import OrchestratorStep
 
 
 @dataclass(frozen=True)
@@ -35,7 +39,8 @@ class YearState:
 
 # Type alias for step callables executed per year.
 # Each step receives the year and current state, returning updated state.
-YearStep = Callable[[int, "YearState"], "YearState"]
+YearStep: TypeAlias = Callable[[int, "YearState"], "YearState"]
+PipelineStep: TypeAlias = YearStep | "OrchestratorStep"
 
 
 @dataclass(frozen=True)
@@ -58,7 +63,7 @@ class OrchestratorConfig:
     end_year: int
     initial_state: dict[str, Any] = field(default_factory=dict)
     seed: int | None = None
-    step_pipeline: tuple[YearStep, ...] = ()
+    step_pipeline: tuple[PipelineStep, ...] = ()
 
     def __post_init__(self) -> None:
         """Validate projection bounds and normalize step pipeline."""

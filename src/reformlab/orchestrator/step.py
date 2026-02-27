@@ -87,34 +87,51 @@ def is_protocol_step(obj: Any) -> bool:
     return isinstance(obj, OrchestratorStep)
 
 
-def _get_step_name(step: Any) -> str:
-    """Extract step name from various step types.
-
-    Args:
-        step: Step object or callable.
-
-    Returns:
-        Step name string.
-    """
-    if hasattr(step, "name"):
-        return str(step.name)
-    return str(getattr(step, "__name__", str(step)))
-
-
-def _get_depends_on(step: Any) -> tuple[str, ...]:
+def _get_depends_on(step_name: str, step: Any) -> tuple[str, ...]:
     """Extract depends_on from step, defaulting to empty tuple.
 
     Args:
+        step_name: Name of the step (for error reporting).
         step: Step object.
 
     Returns:
         Tuple of dependency step names.
+
+    Raises:
+        StepValidationError: If depends_on has an invalid shape.
     """
     depends = getattr(step, "depends_on", ())
-    if callable(depends) and not isinstance(depends, tuple):
-        # Handle property that returns tuple
-        depends = depends
-    return tuple(depends) if depends else ()
+    if depends is None:
+        return ()
+    if isinstance(depends, str):
+        raise StepValidationError(
+            f"Step '{step_name}' has invalid depends_on: expected iterable[str], "
+            "got str"
+        )
+
+    try:
+        deps = tuple(depends)
+    except TypeError as exc:
+        raise StepValidationError(
+            f"Step '{step_name}' has invalid depends_on: expected iterable[str]"
+        ) from exc
+
+    seen: set[str] = set()
+    normalized: list[str] = []
+    for dep in deps:
+        if not isinstance(dep, str) or not dep.strip():
+            raise StepValidationError(
+                f"Step '{step_name}' has invalid dependency {dep!r}: "
+                "dependency names must be non-empty strings"
+            )
+        if dep in seen:
+            raise StepValidationError(
+                f"Step '{step_name}' has duplicate dependency '{dep}' in depends_on"
+            )
+        seen.add(dep)
+        normalized.append(dep)
+
+    return tuple(normalized)
 
 
 # ============================================================================
@@ -258,12 +275,19 @@ class StepRegistry:
             )
 
         name = step.name
+        if not isinstance(name, str) or not name.strip():
+            raise StepValidationError(
+                f"Step '{name}' has invalid name: expected non-empty str"
+            )
 
         # Check for duplicate name
         if name in self._steps:
             raise StepRegistrationError(
                 f"Duplicate step name: '{name}' is already registered"
             )
+
+        # Validate dependency metadata shape at registration time.
+        _get_depends_on(name, step)
 
         self._steps[name] = step
         self._registration_order.append(name)
@@ -310,7 +334,7 @@ class StepRegistry:
         in_degree: dict[str, int] = {name: 0 for name in self._steps}
 
         for name, step in self._steps.items():
-            deps = _get_depends_on(step)
+            deps = _get_depends_on(name, step)
             for dep in deps:
                 if dep not in self._steps:
                     raise StepRegistrationError(

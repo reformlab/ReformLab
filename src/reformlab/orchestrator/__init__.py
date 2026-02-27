@@ -9,6 +9,7 @@ Public API:
 - OrchestratorResult: Result container for orchestrator execution
 - YearState: State carried between years
 - YearStep: Type alias for step callables
+- PipelineStep: Union type for callable and protocol-based steps
 - OrchestratorError: Structured error with execution context
 - OrchestratorRunner: Runner adapter for run_workflow() integration
 - from_workflow_config: Factory to create config from WorkflowConfig
@@ -38,6 +39,7 @@ from reformlab.orchestrator.step import (
 from reformlab.orchestrator.types import (
     OrchestratorConfig,
     OrchestratorResult,
+    PipelineStep,
     YearState,
     YearStep,
 )
@@ -49,6 +51,7 @@ __all__ = [
     "OrchestratorError",
     "OrchestratorResult",
     "OrchestratorRunner",
+    "PipelineStep",
     "YearState",
     "YearStep",
     "from_workflow_config",

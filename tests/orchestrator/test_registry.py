@@ -125,6 +125,55 @@ class TestStepRegistration:
         assert step1 in steps
         assert step2 in steps
 
+    def test_register_step_with_blank_name_raises_validation_error(self):
+        """Step names must be non-empty strings."""
+        from reformlab.orchestrator.step import StepRegistry, StepValidationError
+
+        @dataclass
+        class BlankNameStep:
+            name: str = "   "
+
+            def execute(self, year: int, state: YearState) -> YearState:
+                return state
+
+        registry = StepRegistry()
+        with pytest.raises(StepValidationError) as exc_info:
+            registry.register(BlankNameStep())
+
+        assert "invalid name" in str(exc_info.value)
+
+    def test_register_step_with_string_depends_on_raises_validation_error(self):
+        """depends_on must be an iterable of step names, not a raw string."""
+        from reformlab.orchestrator.step import StepRegistry, StepValidationError
+
+        @dataclass
+        class StringDependsStep:
+            name: str = "string_depends"
+            depends_on: str = "base_step"
+
+            def execute(self, year: int, state: YearState) -> YearState:
+                return state
+
+        registry = StepRegistry()
+        with pytest.raises(StepValidationError) as exc_info:
+            registry.register(StringDependsStep())
+
+        assert "string_depends" in str(exc_info.value)
+        assert "depends_on" in str(exc_info.value)
+
+    def test_register_step_with_duplicate_dependencies_raises_validation_error(self):
+        """Duplicate names in depends_on are rejected to avoid graph corruption."""
+        from reformlab.orchestrator.step import StepRegistry, StepValidationError
+
+        registry = StepRegistry()
+        step = SimpleStep(name="dup_dep_step", _depends_on=("base", "base"))
+
+        with pytest.raises(StepValidationError) as exc_info:
+            registry.register(step)
+
+        assert "dup_dep_step" in str(exc_info.value)
+        assert "duplicate dependency" in str(exc_info.value)
+
 
 # ============================================================================
 # Test: Topological ordering (AC-2)
