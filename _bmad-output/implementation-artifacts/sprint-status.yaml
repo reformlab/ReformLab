@@ -98,7 +98,7 @@ development_status:
   epic-6: in-progress
   6-1-implement-stable-python-api: done
   6-2-build-quickstart-notebook: done
-  6-3-build-advanced-notebook: backlog
+  6-3-build-advanced-notebook: ready-for-dev
   6-4a-build-static-gui-prototype: done
   6-4b-wire-gui-prototype-to-backend: backlog
   6-5-add-export-actions: backlog
