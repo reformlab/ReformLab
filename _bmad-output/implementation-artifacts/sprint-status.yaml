@@ -97,7 +97,7 @@ development_status:
   # EPIC-6: Interfaces (Python API, Notebooks, Early No-Code GUI)
   epic-6: in-progress
   6-1-implement-stable-python-api: done
-  6-2-build-quickstart-notebook: backlog
+  6-2-build-quickstart-notebook: ready-for-dev
   6-3-build-advanced-notebook: backlog
   6-4a-build-static-gui-prototype: review
   6-4b-wire-gui-prototype-to-backend: backlog
