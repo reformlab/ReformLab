@@ -6,6 +6,7 @@ This module provides:
 - Reform-as-delta resolution for reform scenarios
 - JSON Schema for IDE validation support
 - Template pack discovery and loading utilities
+- Scenario registry with immutable versioning
 """
 
 from reformlab.templates.exceptions import ScenarioError
@@ -31,6 +32,14 @@ from reformlab.templates.packs import (
     load_subsidy_template,
 )
 from reformlab.templates.reform import resolve_reform_definition
+from reformlab.templates.registry import (
+    RegistryEntry,
+    RegistryError,
+    ScenarioNotFoundError,
+    ScenarioRegistry,
+    ScenarioVersion,
+    VersionNotFoundError,
+)
 from reformlab.templates.schema import (
     BaselineScenario,
     CarbonTaxParameters,
@@ -45,6 +54,13 @@ from reformlab.templates.schema import (
 )
 
 __all__ = [
+    # Registry types
+    "RegistryEntry",
+    "RegistryError",
+    "ScenarioNotFoundError",
+    "ScenarioRegistry",
+    "ScenarioVersion",
+    "VersionNotFoundError",
     # Schema types
     "BaselineScenario",
     "CarbonTaxParameters",

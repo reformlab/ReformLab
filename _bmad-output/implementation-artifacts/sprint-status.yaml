@@ -57,7 +57,7 @@ development_status:
   2-1-define-scenario-template-schema: done
   2-2-implement-carbon-tax-template-pack: review
   2-3-implement-subsidy-rebate-feebate-template-pack: review
-  2-4-build-scenario-registry: ready-for-dev
+  2-4-build-scenario-registry: review
   2-5-implement-scenario-cloning: backlog
   2-6-add-schema-migration-helper: backlog
   2-7-implement-yaml-json-workflow-configuration: backlog

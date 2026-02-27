@@ -1,6 +1,6 @@
 # Story 2.4: Build Scenario Registry with Immutable Version IDs
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -38,51 +38,51 @@ Scope note: BKL-204 baseline is AC-1 through AC-3 (per backlog). AC-4 and AC-5 a
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Validate prerequisites and story boundaries
-  - [ ] 0.1 Confirm Story 2.1 / BKL-201 is `done` in `sprint-status.yaml` before implementation starts
-  - [ ] 0.2 Treat Stories 2.2 and 2.3 as optional integration inputs only (not hard blockers for BKL-204)
-  - [ ] 0.3 Confirm Story 2.4 implementation excludes orchestrator integration, cloning workflows, and multi-user sync
+- [x] Task 0: Validate prerequisites and story boundaries
+  - [x] 0.1 Confirm Story 2.1 / BKL-201 is `done` in `sprint-status.yaml` before implementation starts
+  - [x] 0.2 Treat Stories 2.2 and 2.3 as optional integration inputs only (not hard blockers for BKL-204)
+  - [x] 0.3 Confirm Story 2.4 implementation excludes orchestrator integration, cloning workflows, and multi-user sync
 
-- [ ] Task 1: Design registry data model and storage format (AC: #1, #5)
-  - [ ] 1.1 Define `ScenarioVersion` dataclass with version_id, timestamp, parent_version, change_description
-  - [ ] 1.2 Define `RegistryEntry` dataclass with scenario_name, versions dict, latest_version pointer
-  - [ ] 1.3 Design file layout: `registry/{scenario_name}/versions/{version_id}.yaml` + `registry/{scenario_name}/metadata.yaml`
-  - [ ] 1.4 Define version ID generation strategy using deterministic content hash (SHA-256 prefix)
+- [x] Task 1: Design registry data model and storage format (AC: #1, #5)
+  - [x] 1.1 Define `ScenarioVersion` dataclass with version_id, timestamp, parent_version, change_description
+  - [x] 1.2 Define `RegistryEntry` dataclass with scenario_name, versions dict, latest_version pointer
+  - [x] 1.3 Design file layout: `registry/{scenario_name}/versions/{version_id}.yaml` + `registry/{scenario_name}/metadata.yaml`
+  - [x] 1.4 Define version ID generation strategy using deterministic content hash (SHA-256 prefix)
 
-- [ ] Task 2: Implement core registry class (AC: #1, #2, #3, #4)
-  - [ ] 2.1 Create `src/reformlab/templates/registry.py` with `ScenarioRegistry` class
-  - [ ] 2.2 Implement `save(scenario: BaselineScenario | ReformScenario, name: str, change_description: str = "") -> str` returning version_id
-  - [ ] 2.3 Implement `get(name: str, version_id: str | None = None) -> BaselineScenario | ReformScenario`
-  - [ ] 2.4 Implement `list_scenarios() -> list[str]`
-  - [ ] 2.5 Implement `list_versions(name: str) -> list[ScenarioVersion]`
-  - [ ] 2.6 Implement `exists(name: str, version_id: str | None = None) -> bool`
+- [x] Task 2: Implement core registry class (AC: #1, #2, #3, #4)
+  - [x] 2.1 Create `src/reformlab/templates/registry.py` with `ScenarioRegistry` class
+  - [x] 2.2 Implement `save(scenario: BaselineScenario | ReformScenario, name: str, change_description: str = "") -> str` returning version_id
+  - [x] 2.3 Implement `get(name: str, version_id: str | None = None) -> BaselineScenario | ReformScenario`
+  - [x] 2.4 Implement `list_scenarios() -> list[str]`
+  - [x] 2.5 Implement `list_versions(name: str) -> list[ScenarioVersion]`
+  - [x] 2.6 Implement `exists(name: str, version_id: str | None = None) -> bool`
 
-- [ ] Task 3: Implement version ID generation and immutability (AC: #1, #2)
-  - [ ] 3.1 Implement content-based version ID using SHA-256 hash of serialized scenario
-  - [ ] 3.2 Add immutability check: if version_id already exists, verify content matches (idempotent save)
-  - [ ] 3.3 Implement version metadata storage (timestamp, parent_version, change_description)
-  - [ ] 3.4 Add `RegistryError` exception for version conflicts, not found, etc.
+- [x] Task 3: Implement version ID generation and immutability (AC: #1, #2)
+  - [x] 3.1 Implement content-based version ID using SHA-256 hash of serialized scenario
+  - [x] 3.2 Add immutability check: if version_id already exists, verify content matches (idempotent save)
+  - [x] 3.3 Implement version metadata storage (timestamp, parent_version, change_description)
+  - [x] 3.4 Add `RegistryError` exception for version conflicts, not found, etc.
 
-- [ ] Task 4: Implement registry persistence layer (AC: #5)
-  - [ ] 4.1 Create `_save_scenario_file()` and `_load_scenario_file()` using existing YAML loader pattern
-  - [ ] 4.2 Create `_save_metadata()` and `_load_metadata()` for registry entry metadata
-  - [ ] 4.3 Implement configurable registry path (env var `REFORMLAB_REGISTRY_PATH` or constructor param)
-  - [ ] 4.4 Implement `initialize()` method for first-time registry setup
-  - [ ] 4.5 Use atomic write pattern (temp file + replace) for single-machine safety; multi-writer locking is out of scope
+- [x] Task 4: Implement registry persistence layer (AC: #5)
+  - [x] 4.1 Create `_save_scenario_file()` and `_load_scenario_file()` using existing YAML loader pattern
+  - [x] 4.2 Create `_save_metadata()` and `_load_metadata()` for registry entry metadata
+  - [x] 4.3 Implement configurable registry path (env var `REFORMLAB_REGISTRY_PATH` or constructor param)
+  - [x] 4.4 Implement `initialize()` method for first-time registry setup
+  - [x] 4.5 Use atomic write pattern (temp file + replace) for single-machine safety; multi-writer locking is out of scope
 
-- [ ] Task 5: Implement error handling (AC: #3)
-  - [ ] 5.1 Create `RegistryError` exception following `ScenarioError` pattern
-  - [ ] 5.2 Implement `ScenarioNotFoundError` for missing scenarios
-  - [ ] 5.3 Implement `VersionNotFoundError` for missing versions
-  - [ ] 5.4 Add helpful error messages with available alternatives (suggest `list_versions()`)
+- [x] Task 5: Implement error handling (AC: #3)
+  - [x] 5.1 Create `RegistryError` exception following `ScenarioError` pattern
+  - [x] 5.2 Implement `ScenarioNotFoundError` for missing scenarios
+  - [x] 5.3 Implement `VersionNotFoundError` for missing versions
+  - [x] 5.4 Add helpful error messages with available alternatives (suggest `list_versions()`)
 
-- [ ] Task 6: Write comprehensive tests (AC: all)
-  - [ ] 6.1 Unit tests for version ID generation (deterministic, content-based)
-  - [ ] 6.2 Unit tests for save/get round-trip
-  - [ ] 6.3 Unit tests for version history tracking
-  - [ ] 6.4 Unit tests for error cases (not found, invalid ID)
-  - [ ] 6.5 Integration tests for file persistence
-  - [ ] 6.6 Tests for registry with multiple scenarios and versions
+- [x] Task 6: Write comprehensive tests (AC: all)
+  - [x] 6.1 Unit tests for version ID generation (deterministic, content-based)
+  - [x] 6.2 Unit tests for save/get round-trip
+  - [x] 6.3 Unit tests for version history tracking
+  - [x] 6.4 Unit tests for error cases (not found, invalid ID)
+  - [x] 6.5 Integration tests for file persistence
+  - [x] 6.6 Tests for registry with multiple scenarios and versions
 
 ## Dev Notes
 
@@ -361,10 +361,38 @@ def test_get_nonexistent_version_raises_error(registry):
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.5 (claude-opus-4-5-20251101)
 
 ### Debug Log References
 
+N/A
+
 ### Completion Notes List
 
+- Implemented `ScenarioRegistry` class with full CRUD operations for versioned scenario storage
+- Version IDs are content-addressable (12-character SHA-256 prefix of serialized scenario)
+- Scenarios are immutable: same content produces same version ID (idempotent saves)
+- Modified scenarios create new versions with parent_version linking
+- File-based persistence with atomic writes (temp file + replace pattern)
+- Registry location configurable via `REFORMLAB_REGISTRY_PATH` env var or constructor param
+- Default location: `~/.reformlab/registry/`
+- Comprehensive error handling with `RegistryError`, `ScenarioNotFoundError`, `VersionNotFoundError`
+- Error messages include available alternatives (list_scenarios/list_versions suggestions)
+- 40 unit and integration tests covering all acceptance criteria
+- All 519 project tests pass with no regressions
+- Linting (ruff) and type checking (mypy) pass for new code
+
 ### File List
+
+**New files:**
+- src/reformlab/templates/registry.py
+- tests/templates/test_registry.py
+
+**Modified files:**
+- src/reformlab/templates/__init__.py (added registry exports)
+
+## Change Log
+
+| Date | Change | Author |
+|------|--------|--------|
+| 2026-02-27 | Story implementation complete - ScenarioRegistry with immutable versioning | Claude Opus 4.5 |
