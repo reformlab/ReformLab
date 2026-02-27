@@ -71,7 +71,7 @@ development_status:
   3-4-implement-vintage-transition-step: done
   3-5-integrate-computationadapter-calls: done
   3-6-log-seed-controls: done
-  3-7-produce-scenario-year-panel-output: review
+  3-7-produce-scenario-year-panel-output: done
   epic-3-retrospective: optional
 
   # EPIC-4: Indicators and Scenario Comparison
