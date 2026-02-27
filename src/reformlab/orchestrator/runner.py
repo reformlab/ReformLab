@@ -11,7 +11,12 @@ from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
 from reformlab.orchestrator.errors import OrchestratorError
-from reformlab.orchestrator.types import OrchestratorConfig, OrchestratorResult, YearState
+from reformlab.orchestrator.step import OrchestratorStep
+from reformlab.orchestrator.types import (
+    OrchestratorConfig,
+    OrchestratorResult,
+    YearState,
+)
 
 if TYPE_CHECKING:
     from reformlab.orchestrator.types import YearStep
@@ -95,7 +100,9 @@ class Orchestrator:
                         "start_year": self.config.start_year,
                         "end_year": self.config.end_year,
                         "seed": self.config.seed,
-                        "step_pipeline": _step_pipeline_names(self.config.step_pipeline),
+                        "step_pipeline": _step_pipeline_names(
+                            self.config.step_pipeline
+                        ),
                         "completed_years": sorted(yearly_states.keys()),
                     },
                 )
@@ -159,14 +166,17 @@ class Orchestrator:
 
     def _execute_step(
         self,
-        step: YearStep,
+        step: "YearStep | OrchestratorStep",
         year: int,
         state: YearState,
     ) -> YearState:
         """Execute a single step with error handling.
 
+        Supports both protocol-based steps (OrchestratorStep) and
+        bare callables (YearStep) for backward compatibility.
+
         Args:
-            step: The step callable to execute.
+            step: The step to execute (protocol step or callable).
             year: Current year.
             state: Current state.
 
@@ -176,11 +186,18 @@ class Orchestrator:
         Raises:
             OrchestratorError: If step raises an exception.
         """
-        step_name = getattr(step, "__name__", str(step))
+        # Extract step name: prefer step.name for protocol steps
+        step_name = _extract_step_name(step)
         logger.debug("Year %d: executing step %s", year, step_name)
 
         try:
-            result = step(year, state)
+            # Dispatch based on step type
+            # Protocol steps have execute(), bare callables are directly callable
+            if hasattr(step, "execute") and callable(getattr(step, "execute")):
+                result = step.execute(year, state)
+            else:
+                result = step(year, state)  # type: ignore[operator]
+
             if not isinstance(result, YearState):
                 raise TypeError(
                     f"step returned {type(result).__name__}; expected YearState"
@@ -198,6 +215,7 @@ class Orchestrator:
                 partial_states={},  # Caller will fill this
                 original_error=e,
             ) from e
+
 
     def _derive_year_seed(self, year: int) -> int | None:
         """Derive a deterministic seed for a specific year.
@@ -217,6 +235,16 @@ class Orchestrator:
         # Simple deterministic derivation: master_seed XOR year
         # This ensures each year gets a unique but reproducible seed
         return self.config.seed ^ year
+
+
+def _extract_step_name(step: "YearStep | OrchestratorStep") -> str:
+    """Extract step name from protocol step or callable.
+
+    Prefers step.name for protocol steps, falls back to __name__ or str.
+    """
+    if hasattr(step, "name"):
+        return step.name
+    return getattr(step, "__name__", str(step))
 
 
 def from_workflow_config(config: "WorkflowConfig") -> OrchestratorConfig:
@@ -361,4 +389,4 @@ def _calculate_end_year(*, start_year: int, projection_years: int) -> int:
 
 def _step_pipeline_names(step_pipeline: tuple["YearStep", ...]) -> list[str]:
     """Return stable step names for logging and metadata."""
-    return [getattr(step, "__name__", str(step)) for step in step_pipeline]
+    return [_extract_step_name(step) for step in step_pipeline]

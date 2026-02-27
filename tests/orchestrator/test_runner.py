@@ -19,7 +19,6 @@ from tests.orchestrator.conftest import (
     increment_population,
 )
 
-
 # ============================================================================
 # Test: Basic orchestrator execution (AC-1)
 # ============================================================================
@@ -531,3 +530,225 @@ class TestOrchestratorError:
         )
 
         assert error.original_error is original
+
+
+# ============================================================================
+# Test: Protocol step execution (AC-1 Story 3-2)
+# ============================================================================
+
+
+class TestProtocolStepExecution:
+    """Tests for OrchestratorStep protocol execution (Story 3-2 AC-1)."""
+
+    def test_protocol_step_executes_in_pipeline(self):
+        """A protocol step with name and execute runs in the orchestrator."""
+        from dataclasses import dataclass
+
+        @dataclass
+        class CountingStep:
+            name: str = "counting_step"
+
+            def execute(self, year: int, state: YearState) -> YearState:
+                new_data = dict(state.data)
+                new_data["count"] = new_data.get("count", 0) + 1
+                return replace(state, data=new_data)
+
+        config = OrchestratorConfig(
+            start_year=2025,
+            end_year=2027,
+            initial_state={"count": 0},
+            seed=None,
+            step_pipeline=(CountingStep(),),
+        )
+
+        orchestrator = Orchestrator(config)
+        result = orchestrator.run()
+
+        assert result.success is True
+        assert result.yearly_states[2025].data["count"] == 1
+        assert result.yearly_states[2026].data["count"] == 2
+        assert result.yearly_states[2027].data["count"] == 3
+
+    def test_protocol_step_name_in_error_context(self):
+        """Protocol step failure includes step.name in error context."""
+        from dataclasses import dataclass
+
+        @dataclass
+        class FailingProtocolStep:
+            name: str = "my_failing_step"
+
+            def execute(self, year: int, state: YearState) -> YearState:
+                raise ValueError("Intentional failure")
+
+        config = OrchestratorConfig(
+            start_year=2025,
+            end_year=2025,
+            initial_state={},
+            seed=None,
+            step_pipeline=(FailingProtocolStep(),),
+        )
+
+        orchestrator = Orchestrator(config)
+        result = orchestrator.run()
+
+        assert result.success is False
+        assert result.failed_step == "my_failing_step"
+
+    def test_decorated_step_executes_in_pipeline(self):
+        """Function decorated with @step runs in the orchestrator."""
+        from reformlab.orchestrator.step import step
+
+        @step(name="decorated_incrementer")
+        def decorated_incrementer(year: int, state: YearState) -> YearState:
+            new_data = dict(state.data)
+            new_data["value"] = new_data.get("value", 0) + 10
+            return replace(state, data=new_data)
+
+        config = OrchestratorConfig(
+            start_year=2025,
+            end_year=2027,
+            initial_state={"value": 100},
+            seed=None,
+            step_pipeline=(decorated_incrementer,),
+        )
+
+        orchestrator = Orchestrator(config)
+        result = orchestrator.run()
+
+        assert result.success is True
+        assert result.yearly_states[2025].data["value"] == 110
+        assert result.yearly_states[2026].data["value"] == 120
+        assert result.yearly_states[2027].data["value"] == 130
+
+
+# ============================================================================
+# Test: Mixed pipeline compatibility (AC-5 Story 3-2)
+# ============================================================================
+
+
+class TestMixedPipelineCompatibility:
+    """Tests for mixed pipelines with protocol steps and bare callables (Story 3-2 AC-5)."""
+
+    def test_mixed_pipeline_executes_successfully(self):
+        """Mixed pipeline with protocol steps and bare callables runs successfully."""
+        from dataclasses import dataclass
+
+        @dataclass
+        class ProtocolStep:
+            name: str = "protocol_add"
+
+            def execute(self, year: int, state: YearState) -> YearState:
+                new_data = dict(state.data)
+                new_data["from_protocol"] = new_data.get("from_protocol", 0) + 1
+                return replace(state, data=new_data)
+
+        def bare_callable(year: int, state: YearState) -> YearState:
+            new_data = dict(state.data)
+            new_data["from_bare"] = new_data.get("from_bare", 0) + 1
+            return replace(state, data=new_data)
+
+        config = OrchestratorConfig(
+            start_year=2025,
+            end_year=2027,
+            initial_state={},
+            seed=None,
+            step_pipeline=(ProtocolStep(), bare_callable),
+        )
+
+        orchestrator = Orchestrator(config)
+        result = orchestrator.run()
+
+        assert result.success is True
+        # Both step types should have executed
+        assert result.yearly_states[2027].data["from_protocol"] == 3
+        assert result.yearly_states[2027].data["from_bare"] == 3
+
+    def test_mixed_pipeline_with_decorated_step(self):
+        """Mixed pipeline with decorated step and bare callable works."""
+        from reformlab.orchestrator.step import step
+
+        @step(name="decorated_step")
+        def decorated_step(year: int, state: YearState) -> YearState:
+            new_data = dict(state.data)
+            new_data["from_decorated"] = True
+            return replace(state, data=new_data)
+
+        def bare_callable(year: int, state: YearState) -> YearState:
+            new_data = dict(state.data)
+            new_data["from_bare"] = True
+            return replace(state, data=new_data)
+
+        config = OrchestratorConfig(
+            start_year=2025,
+            end_year=2025,
+            initial_state={},
+            seed=None,
+            step_pipeline=(decorated_step, bare_callable),
+        )
+
+        orchestrator = Orchestrator(config)
+        result = orchestrator.run()
+
+        assert result.success is True
+        assert result.yearly_states[2025].data["from_decorated"] is True
+        assert result.yearly_states[2025].data["from_bare"] is True
+
+    def test_step_execution_order_preserved_in_mixed_pipeline(self):
+        """Steps execute in order regardless of type (protocol or callable)."""
+        from dataclasses import dataclass
+
+        execution_order: list[str] = []
+
+        @dataclass
+        class FirstProtocolStep:
+            name: str = "first_protocol"
+
+            def execute(self, year: int, state: YearState) -> YearState:
+                execution_order.append("first_protocol")
+                return state
+
+        def second_bare(year: int, state: YearState) -> YearState:
+            execution_order.append("second_bare")
+            return state
+
+        @dataclass
+        class ThirdProtocolStep:
+            name: str = "third_protocol"
+
+            def execute(self, year: int, state: YearState) -> YearState:
+                execution_order.append("third_protocol")
+                return state
+
+        config = OrchestratorConfig(
+            start_year=2025,
+            end_year=2025,
+            initial_state={},
+            seed=None,
+            step_pipeline=(FirstProtocolStep(), second_bare, ThirdProtocolStep()),
+        )
+
+        execution_order.clear()
+        orchestrator = Orchestrator(config)
+        result = orchestrator.run()
+
+        assert result.success is True
+        assert execution_order == ["first_protocol", "second_bare", "third_protocol"]
+
+    def test_bare_callable_from_story_3_1_still_works(self):
+        """Existing bare YearStep callables from Story 3-1 remain compatible."""
+        # Use the existing test fixtures
+        config = OrchestratorConfig(
+            start_year=2025,
+            end_year=2027,
+            initial_state={"population": 1000},
+            seed=None,
+            step_pipeline=(increment_population, add_year_marker),
+        )
+
+        orchestrator = Orchestrator(config)
+        result = orchestrator.run()
+
+        # Verify existing behavior unchanged
+        assert result.success is True
+        assert result.yearly_states[2027].data["population"] == 1300
+        assert "marker_2027" in result.yearly_states[2027].metadata

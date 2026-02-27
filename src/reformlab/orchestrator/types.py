@@ -72,10 +72,17 @@ class OrchestratorConfig:
         object.__setattr__(self, "step_pipeline", tuple(self.step_pipeline))
 
         for index, step in enumerate(self.step_pipeline):
-            if not callable(step):
+            # Accept both bare callables (YearStep) and protocol steps
+            # Protocol steps have an execute() method; bare callables are callable
+            is_callable = callable(step)
+            has_execute = hasattr(step, "execute") and callable(
+                getattr(step, "execute")
+            )
+            if not (is_callable or has_execute):
                 raise TypeError(
                     "Invalid step pipeline - "
-                    f"step_pipeline[{index}] is not callable: {type(step).__name__}"
+                    f"step_pipeline[{index}] not callable, no execute(): "
+                    f"{type(step).__name__}"
                 )
 
 
