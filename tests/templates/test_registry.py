@@ -1191,7 +1191,10 @@ class TestCloneIntegration:
         assert retrieved_variant.description == "Modified variant"
 
         # Verify lineage is captured in change description
-        assert variant_versions[0].change_description == f"Cloned from original@{original_v1}"
+        assert (
+            variant_versions[0].change_description
+            == f"Cloned from original@{original_v1}"
+        )
 
     def test_clone_and_save_under_same_name_creates_version(
         self,
@@ -1200,18 +1203,18 @@ class TestCloneIntegration:
     ) -> None:
         """Clone, modify, and save under existing name creates new version."""
         # Save original
-        original_v1 = registry.save(sample_baseline, "scenario")
+        registry.save(sample_baseline, "scenario")
 
         # Clone (defaults to "scenario-clone")
         clone = registry.clone("scenario")
 
         # Save clone under its auto-generated name
         modified_clone = replace(clone, description="Clone v1")
-        clone_v1 = registry.save(modified_clone, "scenario-clone", "Initial clone")
+        registry.save(modified_clone, "scenario-clone", "Initial clone")
 
         # Modify clone again
         clone_modified = replace(modified_clone, description="Clone v2")
-        clone_v2 = registry.save(clone_modified, "scenario-clone", "Updated clone")
+        registry.save(clone_modified, "scenario-clone", "Updated clone")
 
         # Verify scenario-clone has two versions
         clone_versions = registry.list_versions("scenario-clone")
@@ -1245,7 +1248,9 @@ class TestCloneIntegration:
         registry.save(reform, "progressive-reform")
 
         # Clone the reform
-        cloned_reform = registry.clone("progressive-reform", new_name="progressive-variant")
+        cloned_reform = registry.clone(
+            "progressive-reform", new_name="progressive-variant"
+        )
 
         # Verify cloned reform can still navigate to baseline
         assert cloned_reform.baseline_ref == "carbon-tax"

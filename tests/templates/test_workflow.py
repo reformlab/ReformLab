@@ -10,6 +10,7 @@ import pytest
 import yaml
 
 from reformlab.templates.workflow import (
+    WORKFLOW_SCHEMA_VERSION,
     DataSourceConfig,
     OutputConfig,
     RunConfig,
@@ -17,7 +18,6 @@ from reformlab.templates.workflow import (
     WorkflowConfig,
     WorkflowError,
     WorkflowResult,
-    WORKFLOW_SCHEMA_VERSION,
     dump_workflow_config,
     get_workflow_schema_path,
     load_workflow_config,
@@ -28,7 +28,6 @@ from reformlab.templates.workflow import (
     workflow_to_json,
     workflow_to_yaml,
 )
-
 
 # ============================================================================
 # Fixtures
@@ -386,7 +385,6 @@ def test_validate_with_schema_missing_required():
 
     # Should have at least one error about missing 'version'
     assert len(errors) >= 1
-    error_fields = [e.invalid_fields[0] for e in errors if e.invalid_fields]
     # The error should mention version is missing
     assert any("required" in str(e) or "version" in str(e) for e in errors)
 
@@ -404,7 +402,9 @@ def test_validate_with_schema_invalid_type():
 
     # Should have error about projection_years type
     assert len(errors) >= 1
-    assert any("projection_years" in field for e in errors for field in e.invalid_fields)
+    assert any(
+        "projection_years" in field for e in errors for field in e.invalid_fields
+    )
     assert any("json-pointer: /run_config/projection_years" in str(e) for e in errors)
     assert any("instead of 'str'" in str(e) for e in errors)
 
@@ -768,7 +768,9 @@ def test_run_workflow_runner_invalid_response_type(
     assert "must return WorkflowResult or dict" in str(exc_info.value)
 
 
-def test_run_workflow_runner_exception_is_wrapped(valid_workflow_config: WorkflowConfig):
+def test_run_workflow_runner_exception_is_wrapped(
+    valid_workflow_config: WorkflowConfig,
+):
     """Runner exceptions are wrapped as WorkflowError with context."""
 
     class CrashingRunner:

@@ -109,14 +109,18 @@ def compare_households(
     baseline_welfare_col = f"_baseline_{welfare_field}"
     reform_welfare_col = f"_reform_{welfare_field}"
 
-    baseline_table = baseline_table.rename_columns([
-        baseline_welfare_col if c == welfare_field else c
-        for c in baseline_table.column_names
-    ])
-    reform_table = reform_table.rename_columns([
-        reform_welfare_col if c == welfare_field else c
-        for c in reform_table.column_names
-    ])
+    baseline_table = baseline_table.rename_columns(
+        [
+            baseline_welfare_col if c == welfare_field else c
+            for c in baseline_table.column_names
+        ]
+    )
+    reform_table = reform_table.rename_columns(
+        [
+            reform_welfare_col if c == welfare_field else c
+            for c in reform_table.column_names
+        ]
+    )
 
     # Inner join to match households
     joined = baseline_table.join(
@@ -243,14 +247,16 @@ def aggregate_welfare_by_decile(
     grouped = table_with_deciles.group_by(group_keys)
 
     # Compute aggregations
-    agg_result = grouped.aggregate([
-        ("is_winner", "sum"),
-        ("is_loser", "sum"),
-        ("is_neutral", "sum"),
-        ("net_change", "mean"),
-        ("net_change", "approximate_median"),
-        ("net_change", "sum"),
-    ])
+    agg_result = grouped.aggregate(
+        [
+            ("is_winner", "sum"),
+            ("is_loser", "sum"),
+            ("is_neutral", "sum"),
+            ("net_change", "mean"),
+            ("net_change", "approximate_median"),
+            ("net_change", "sum"),
+        ]
+    )
 
     # Compute mean_gain and mean_loss separately (requires filtering)
     result_rows: list[dict[str, int | float | str | None]] = []
@@ -260,9 +266,7 @@ def aggregate_welfare_by_decile(
         winner_count = agg_result.column("is_winner_sum")[i].as_py()
         loser_count = agg_result.column("is_loser_sum")[i].as_py()
         neutral_count = agg_result.column("is_neutral_sum")[i].as_py()
-        mean_change = agg_result.column("net_change_mean")[i].as_py()
         median_change = agg_result.column("net_change_approximate_median")[i].as_py()
-        total_change = agg_result.column("net_change_sum")[i].as_py()
 
         year = None
         if group_by_year:
@@ -275,7 +279,9 @@ def aggregate_welfare_by_decile(
                 pc.equal(table_with_deciles.column("year"), pa.scalar(year)),
             )
         else:
-            group_mask = pc.equal(table_with_deciles.column("decile"), pa.scalar(decile))
+            group_mask = pc.equal(
+                table_with_deciles.column("decile"), pa.scalar(decile)
+            )
 
         group_table = table_with_deciles.filter(group_mask)
         group_changes = group_table.column("net_change")
@@ -283,7 +289,9 @@ def aggregate_welfare_by_decile(
         # Compute mean_gain (mean of positive changes)
         positive_mask = pc.greater(group_changes, pa.scalar(0.0))
         positive_changes = pc.filter(group_changes, positive_mask)
-        mean_gain = pc.mean(positive_changes).as_py() if positive_changes.length() > 0 else 0.0
+        mean_gain = (
+            pc.mean(positive_changes).as_py() if positive_changes.length() > 0 else 0.0
+        )
 
         # Compute mean_loss (mean of negative changes, absolute value)
         negative_mask = pc.less(group_changes, pa.scalar(0.0))
@@ -295,8 +303,14 @@ def aggregate_welfare_by_decile(
             mean_loss = 0.0
 
         # Compute total_gain and total_loss
-        total_gain = pc.sum(positive_changes).as_py() if positive_changes.length() > 0 else 0.0
-        total_loss = pc.sum(pc.abs(negative_changes)).as_py() if negative_changes.length() > 0 else 0.0
+        total_gain = (
+            pc.sum(positive_changes).as_py() if positive_changes.length() > 0 else 0.0
+        )
+        total_loss = (
+            pc.sum(pc.abs(negative_changes)).as_py()
+            if negative_changes.length() > 0
+            else 0.0
+        )
 
         # Net change
         net_change_val = total_gain - total_loss
@@ -322,7 +336,9 @@ def aggregate_welfare_by_decile(
 
     # Convert to PyArrow table
     if not result_rows:
-        return _empty_welfare_aggregation_table(group_by_year, group_type="decile"), excluded_count
+        return _empty_welfare_aggregation_table(
+            group_by_year, group_type="decile"
+        ), excluded_count
 
     # Build schema
     schema_dict = {
@@ -330,19 +346,41 @@ def aggregate_welfare_by_decile(
         "decile": pa.array([r["decile"] for r in result_rows], type=pa.int64()),
     }
     if group_by_year:
-        schema_dict["year"] = pa.array([r["year"] for r in result_rows], type=pa.int64())
+        schema_dict["year"] = pa.array(
+            [r["year"] for r in result_rows], type=pa.int64()
+        )
 
-    schema_dict.update({
-        "winner_count": pa.array([r["winner_count"] for r in result_rows], type=pa.int64()),
-        "loser_count": pa.array([r["loser_count"] for r in result_rows], type=pa.int64()),
-        "neutral_count": pa.array([r["neutral_count"] for r in result_rows], type=pa.int64()),
-        "mean_gain": pa.array([r["mean_gain"] for r in result_rows], type=pa.float64()),
-        "mean_loss": pa.array([r["mean_loss"] for r in result_rows], type=pa.float64()),
-        "median_change": pa.array([r["median_change"] for r in result_rows], type=pa.float64()),
-        "total_gain": pa.array([r["total_gain"] for r in result_rows], type=pa.float64()),
-        "total_loss": pa.array([r["total_loss"] for r in result_rows], type=pa.float64()),
-        "net_change": pa.array([r["net_change"] for r in result_rows], type=pa.float64()),
-    })
+    schema_dict.update(
+        {
+            "winner_count": pa.array(
+                [r["winner_count"] for r in result_rows], type=pa.int64()
+            ),
+            "loser_count": pa.array(
+                [r["loser_count"] for r in result_rows], type=pa.int64()
+            ),
+            "neutral_count": pa.array(
+                [r["neutral_count"] for r in result_rows], type=pa.int64()
+            ),
+            "mean_gain": pa.array(
+                [r["mean_gain"] for r in result_rows], type=pa.float64()
+            ),
+            "mean_loss": pa.array(
+                [r["mean_loss"] for r in result_rows], type=pa.float64()
+            ),
+            "median_change": pa.array(
+                [r["median_change"] for r in result_rows], type=pa.float64()
+            ),
+            "total_gain": pa.array(
+                [r["total_gain"] for r in result_rows], type=pa.float64()
+            ),
+            "total_loss": pa.array(
+                [r["total_loss"] for r in result_rows], type=pa.float64()
+            ),
+            "net_change": pa.array(
+                [r["net_change"] for r in result_rows], type=pa.float64()
+            ),
+        }
+    )
 
     result_table = pa.table(schema_dict)
 
@@ -409,7 +447,9 @@ def aggregate_welfare_by_region(
         )
 
     if valid_table.num_rows == 0:
-        return _empty_welfare_aggregation_table(group_by_year, group_type="region"), excluded_count
+        return _empty_welfare_aggregation_table(
+            group_by_year, group_type="region"
+        ), excluded_count
 
     # Classify winners/losers/neutral
     net_change = valid_table.column("net_change")
@@ -423,8 +463,7 @@ def aggregate_welfare_by_region(
     # Rename region_field to "region" for consistent aggregation (if needed)
     if region_field != "region":
         col_names = [
-            "region" if c == region_field else c
-            for c in valid_table.column_names
+            "region" if c == region_field else c for c in valid_table.column_names
         ]
         valid_table = valid_table.rename_columns(col_names)
 
@@ -433,14 +472,16 @@ def aggregate_welfare_by_region(
     grouped = valid_table.group_by(group_keys)
 
     # Compute aggregations
-    agg_result = grouped.aggregate([
-        ("is_winner", "sum"),
-        ("is_loser", "sum"),
-        ("is_neutral", "sum"),
-        ("net_change", "mean"),
-        ("net_change", "approximate_median"),
-        ("net_change", "sum"),
-    ])
+    agg_result = grouped.aggregate(
+        [
+            ("is_winner", "sum"),
+            ("is_loser", "sum"),
+            ("is_neutral", "sum"),
+            ("net_change", "mean"),
+            ("net_change", "approximate_median"),
+            ("net_change", "sum"),
+        ]
+    )
 
     # Compute mean_gain and mean_loss separately
     result_rows: list[dict[str, int | float | str | None]] = []
@@ -450,9 +491,7 @@ def aggregate_welfare_by_region(
         winner_count = agg_result.column("is_winner_sum")[i].as_py()
         loser_count = agg_result.column("is_loser_sum")[i].as_py()
         neutral_count = agg_result.column("is_neutral_sum")[i].as_py()
-        mean_change = agg_result.column("net_change_mean")[i].as_py()
         median_change = agg_result.column("net_change_approximate_median")[i].as_py()
-        total_change = agg_result.column("net_change_sum")[i].as_py()
 
         year = None
         if group_by_year:
@@ -473,7 +512,9 @@ def aggregate_welfare_by_region(
         # Compute mean_gain (mean of positive changes)
         positive_mask = pc.greater(group_changes, pa.scalar(0.0))
         positive_changes = pc.filter(group_changes, positive_mask)
-        mean_gain = pc.mean(positive_changes).as_py() if positive_changes.length() > 0 else 0.0
+        mean_gain = (
+            pc.mean(positive_changes).as_py() if positive_changes.length() > 0 else 0.0
+        )
 
         # Compute mean_loss (mean of negative changes, absolute value)
         negative_mask = pc.less(group_changes, pa.scalar(0.0))
@@ -485,8 +526,14 @@ def aggregate_welfare_by_region(
             mean_loss = 0.0
 
         # Compute total_gain and total_loss
-        total_gain = pc.sum(positive_changes).as_py() if positive_changes.length() > 0 else 0.0
-        total_loss = pc.sum(pc.abs(negative_changes)).as_py() if negative_changes.length() > 0 else 0.0
+        total_gain = (
+            pc.sum(positive_changes).as_py() if positive_changes.length() > 0 else 0.0
+        )
+        total_loss = (
+            pc.sum(pc.abs(negative_changes)).as_py()
+            if negative_changes.length() > 0
+            else 0.0
+        )
 
         # Net change
         net_change_val = total_gain - total_loss
@@ -512,7 +559,9 @@ def aggregate_welfare_by_region(
 
     # Convert to PyArrow table
     if not result_rows:
-        return _empty_welfare_aggregation_table(group_by_year, group_type="region"), excluded_count
+        return _empty_welfare_aggregation_table(
+            group_by_year, group_type="region"
+        ), excluded_count
 
     # Build schema
     schema_dict = {
@@ -520,19 +569,41 @@ def aggregate_welfare_by_region(
         "region": pa.array([r["region"] for r in result_rows], type=pa.utf8()),
     }
     if group_by_year:
-        schema_dict["year"] = pa.array([r["year"] for r in result_rows], type=pa.int64())
+        schema_dict["year"] = pa.array(
+            [r["year"] for r in result_rows], type=pa.int64()
+        )
 
-    schema_dict.update({
-        "winner_count": pa.array([r["winner_count"] for r in result_rows], type=pa.int64()),
-        "loser_count": pa.array([r["loser_count"] for r in result_rows], type=pa.int64()),
-        "neutral_count": pa.array([r["neutral_count"] for r in result_rows], type=pa.int64()),
-        "mean_gain": pa.array([r["mean_gain"] for r in result_rows], type=pa.float64()),
-        "mean_loss": pa.array([r["mean_loss"] for r in result_rows], type=pa.float64()),
-        "median_change": pa.array([r["median_change"] for r in result_rows], type=pa.float64()),
-        "total_gain": pa.array([r["total_gain"] for r in result_rows], type=pa.float64()),
-        "total_loss": pa.array([r["total_loss"] for r in result_rows], type=pa.float64()),
-        "net_change": pa.array([r["net_change"] for r in result_rows], type=pa.float64()),
-    })
+    schema_dict.update(
+        {
+            "winner_count": pa.array(
+                [r["winner_count"] for r in result_rows], type=pa.int64()
+            ),
+            "loser_count": pa.array(
+                [r["loser_count"] for r in result_rows], type=pa.int64()
+            ),
+            "neutral_count": pa.array(
+                [r["neutral_count"] for r in result_rows], type=pa.int64()
+            ),
+            "mean_gain": pa.array(
+                [r["mean_gain"] for r in result_rows], type=pa.float64()
+            ),
+            "mean_loss": pa.array(
+                [r["mean_loss"] for r in result_rows], type=pa.float64()
+            ),
+            "median_change": pa.array(
+                [r["median_change"] for r in result_rows], type=pa.float64()
+            ),
+            "total_gain": pa.array(
+                [r["total_gain"] for r in result_rows], type=pa.float64()
+            ),
+            "total_loss": pa.array(
+                [r["total_loss"] for r in result_rows], type=pa.float64()
+            ),
+            "net_change": pa.array(
+                [r["net_change"] for r in result_rows], type=pa.float64()
+            ),
+        }
+    )
 
     result_table = pa.table(schema_dict)
 
@@ -563,17 +634,19 @@ def _empty_welfare_aggregation_table(
     if group_by_year:
         schema_dict["year"] = pa.array([], type=pa.int64())
 
-    schema_dict.update({
-        "winner_count": pa.array([], type=pa.int64()),
-        "loser_count": pa.array([], type=pa.int64()),
-        "neutral_count": pa.array([], type=pa.int64()),
-        "mean_gain": pa.array([], type=pa.float64()),
-        "mean_loss": pa.array([], type=pa.float64()),
-        "median_change": pa.array([], type=pa.float64()),
-        "total_gain": pa.array([], type=pa.float64()),
-        "total_loss": pa.array([], type=pa.float64()),
-        "net_change": pa.array([], type=pa.float64()),
-    })
+    schema_dict.update(
+        {
+            "winner_count": pa.array([], type=pa.int64()),
+            "loser_count": pa.array([], type=pa.int64()),
+            "neutral_count": pa.array([], type=pa.int64()),
+            "mean_gain": pa.array([], type=pa.float64()),
+            "mean_loss": pa.array([], type=pa.float64()),
+            "median_change": pa.array([], type=pa.float64()),
+            "total_gain": pa.array([], type=pa.float64()),
+            "total_loss": pa.array([], type=pa.float64()),
+            "net_change": pa.array([], type=pa.float64()),
+        }
+    )
 
     return pa.table(schema_dict)
 
@@ -632,9 +705,7 @@ def compute_welfare_indicators(
         # Keep join aligned on year even when aggregating across years to
         # avoid cross-year cartesian matches in multi-year panels.
         carry_fields = (
-            [config.income_field]
-            if config.group_by_decile
-            else [config.region_field]
+            [config.income_field] if config.group_by_decile else [config.region_field]
         )
         comparison_table, unmatched_count = compare_households(
             baseline,

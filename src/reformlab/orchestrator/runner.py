@@ -358,7 +358,6 @@ class Orchestrator:
                 original_error=e,
             ) from e
 
-
     def _derive_year_seed(self, year: int) -> int | None:
         """Derive a deterministic seed for a specific year.
 
@@ -607,7 +606,7 @@ class OrchestratorRunner:
         mapping_payload = request.get("mapping_config", self.mapping_config)
         mappings: list[dict[str, Any]] = []
         if mapping_payload is not None and hasattr(mapping_payload, "mappings"):
-            mappings = capture_mappings(mapping_payload)  # type: ignore[arg-type]
+            mappings = capture_mappings(mapping_payload)
         elif isinstance(request.get("mappings"), list):
             mappings = deepcopy(cast(list[dict[str, Any]], request["mappings"]))
 
@@ -657,10 +656,7 @@ class OrchestratorRunner:
 def _calculate_end_year(*, start_year: int, projection_years: int) -> int:
     """Calculate inclusive end year from start year and horizon length."""
     if projection_years < 1:
-        raise ValueError(
-            "projection_years must be >= 1 "
-            f"(received {projection_years})"
-        )
+        raise ValueError(f"projection_years must be >= 1 (received {projection_years})")
     return start_year + projection_years - 1
 
 

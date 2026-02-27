@@ -28,7 +28,7 @@ class _NoFiscalFieldsFoundError(ValueError):
 
 def _is_supported_numeric(field_type: pa.DataType) -> bool:
     """Return True when a field type is valid for fiscal aggregation."""
-    return (
+    return bool(
         pa.types.is_integer(field_type)
         or pa.types.is_floating(field_type)
         or pa.types.is_decimal(field_type)
@@ -40,9 +40,7 @@ def _sum_fiscal_fields(panel: pa.Table, field_names: list[str]) -> pa.Array:
     total = pa.array([0.0] * panel.num_rows, type=pa.float64())
     for field in field_names:
         numeric_column = pc.cast(panel.column(field), pa.float64())
-        filled_column = pc.fill_null(
-            numeric_column, pa.scalar(0.0, type=pa.float64())
-        )
+        filled_column = pc.fill_null(numeric_column, pa.scalar(0.0, type=pa.float64()))
         total = pc.add(total, filled_column)
     return total
 
@@ -126,10 +124,12 @@ def _compute_annual_totals(
     # Group and aggregate
     if group_keys:
         grouped = panel_with_totals.group_by(group_keys)
-        agg_result = grouped.aggregate([
-            ("_revenue", "sum"),
-            ("_cost", "sum"),
-        ])
+        agg_result = grouped.aggregate(
+            [
+                ("_revenue", "sum"),
+                ("_cost", "sum"),
+            ]
+        )
         # Extract results
         years = agg_result.column("year").to_pylist()
         revenues = agg_result.column("_revenue_sum").to_pylist()

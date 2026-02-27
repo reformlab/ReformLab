@@ -408,7 +408,7 @@ def _parse_parameters(
         )
     elif policy_type == PolicyType.REBATE:
         rebate_type = str(raw.get("rebate_type", ""))
-        income_weights: dict[str, float] = {}
+        rebate_income_weights: dict[str, float] = {}
         if "income_weights" in raw:
             raw_weights = raw["income_weights"]
             if not isinstance(raw_weights, dict):
@@ -421,7 +421,7 @@ def _parse_parameters(
                 )
             try:
                 for k, v in raw_weights.items():
-                    income_weights[str(k)] = float(v)
+                    rebate_income_weights[str(k)] = float(v)
             except (TypeError, ValueError):
                 raise ScenarioError(
                     file_path=file_path,
@@ -455,7 +455,7 @@ def _parse_parameters(
                     )
                 try:
                     for k, v in raw_weights.items():
-                        income_weights[str(k)] = float(v)
+                        rebate_income_weights[str(k)] = float(v)
                 except (TypeError, ValueError):
                     raise ScenarioError(
                         file_path=file_path,
@@ -470,7 +470,7 @@ def _parse_parameters(
             thresholds=thresholds,
             covered_categories=covered_categories,
             rebate_type=rebate_type,
-            income_weights=income_weights,
+            income_weights=rebate_income_weights,
         )
     elif policy_type == PolicyType.FEEBATE:
         pivot_point_set = "pivot_point" in raw
