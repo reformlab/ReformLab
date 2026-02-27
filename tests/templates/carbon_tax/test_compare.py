@@ -195,6 +195,30 @@ class TestCompareDecileImpacts:
         comparison = compare_decile_impacts(results)
         assert comparison.comparison_table.num_rows == 10
 
+    def test_comparison_table_includes_required_mean_metrics(
+        self,
+        sample_population: pa.Table,
+        emission_factor_table: pa.Table,
+    ) -> None:
+        """Comparison table exposes mean tax, redistribution, and net impact columns (AC-4)."""
+        emission_index = build_emission_factor_index(emission_factor_table)
+        scenario = load_carbon_tax_template("carbon-tax-flat-no-redistribution")
+        results = run_carbon_tax_batch(
+            population=sample_population,
+            scenarios=[scenario],
+            emission_index=emission_index,
+            year=2026,
+        )
+        comparison = compare_decile_impacts(results)
+
+        prefix = scenario.name.replace(" ", "_").replace("-", "_").replace(",", "")
+        expected = {
+            f"{prefix}_mean_tax_burden",
+            f"{prefix}_mean_redistribution",
+            f"{prefix}_mean_net_impact",
+        }
+        assert expected.issubset(set(comparison.comparison_table.column_names))
+
 
 class TestDecileResultsToTable:
     """Tests for decile_results_to_table function."""

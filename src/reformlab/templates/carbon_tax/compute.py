@@ -64,6 +64,56 @@ _ENERGY_COLUMN_TO_CATEGORY = {
 }
 
 
+def _as_array(values: pa.Array | pa.ChunkedArray) -> pa.Array:
+    """Return a contiguous PyArrow array from array-like column values."""
+    if isinstance(values, pa.ChunkedArray):
+        return values.combine_chunks()
+    return values
+
+
+def _extract_progressive_rate_multipliers(
+    parameters: CarbonTaxParameters,
+) -> dict[str, float]:
+    """Extract decile-based tax-rate multipliers from template parameters.
+
+    Supported encodings:
+    - thresholds entry with name == "progressive_rate_multipliers"
+    - legacy fallback: income_weights when redistribution_type == ""
+    """
+    for threshold in parameters.thresholds:
+        if not isinstance(threshold, dict):
+            continue
+        if str(threshold.get("name", "")) != "progressive_rate_multipliers":
+            continue
+
+        multipliers: dict[str, float] = {}
+        for decile in range(1, 11):
+            key = f"decile_{decile}"
+            if key not in threshold:
+                continue
+            try:
+                multipliers[key] = float(threshold[key])
+            except (TypeError, ValueError):
+                continue
+        if multipliers:
+            return multipliers
+
+    # Backward-compatible encoding used by the progressive-no-redistribution template
+    if parameters.redistribution_type == "" and parameters.income_weights:
+        multipliers = {}
+        for decile in range(1, 11):
+            key = f"decile_{decile}"
+            if key not in parameters.income_weights:
+                continue
+            try:
+                multipliers[key] = float(parameters.income_weights[key])
+            except (TypeError, ValueError):
+                continue
+        return multipliers
+
+    return {}
+
+
 def assign_income_deciles(incomes: pa.Array) -> pa.Array:
     """Assign decile labels 1-10 based on income distribution.
 
@@ -88,12 +138,14 @@ def assign_income_deciles(incomes: pa.Array) -> pa.Array:
     for rank, idx in enumerate(indices.to_pylist()):
         ranks[idx] = rank
 
-    # Convert ranks to deciles (1-10)
-    # decile = floor(rank / n * 10) + 1, capped at 10
+    # Convert ranks to deciles (1-10).
+    # Use n-1 in denominator so min rank maps to decile 1 and max rank maps to 10.
+    if n == 1:
+        return pa.array([1], type=pa.int64())
+
     deciles = []
     for rank in ranks:
-        decile = int(rank / n * 10) + 1
-        decile = min(decile, 10)  # Cap at 10
+        decile = int((rank / (n - 1)) * 9) + 1
         deciles.append(decile)
 
     return pa.array(deciles, type=pa.int64())
@@ -123,6 +175,8 @@ def compute_tax_burden(
     parameters: CarbonTaxParameters,
     emission_index: EmissionFactorIndex,
     year: int,
+    *,
+    income_deciles: pa.Array | None = None,
 ) -> pa.Array:
     """Compute carbon tax burden for each household.
 
@@ -143,10 +197,12 @@ def compute_tax_burden(
     population = fill_missing_energy_columns(population)
 
     # Get the carbon tax rate for this year
-    rate_eur_per_tonne = parameters.rate_schedule.get(year, 0.0)
-
+    rate_eur_per_tonne = float(parameters.rate_schedule.get(year, 0.0))
     num_households = population.num_rows
-    tax_burdens = [0.0] * num_households
+    if num_households == 0:
+        return pa.array([], type=pa.float64())
+
+    tax_burdens = pa.array([0.0] * num_households, type=pa.float64())
 
     # Process each covered category
     for energy_col, category in _ENERGY_COLUMN_TO_CATEGORY.items():
@@ -165,8 +221,8 @@ def compute_tax_burden(
             factor_table = emission_index.by_category_and_year(category, year)
             if factor_table.num_rows == 0:
                 continue
-            emission_factor_kg = factor_table.column("factor_value")[0].as_py()
-        except (ValueError, KeyError):
+            emission_factor_kg = float(factor_table.column("factor_value")[0].as_py())
+        except (ValueError, KeyError, TypeError):
             # No emission factor available for this category/year
             continue
 
@@ -174,17 +230,30 @@ def compute_tax_burden(
         emission_factor_tonne = emission_factor_kg / 1000.0
 
         # Get energy consumption for this category
-        energy_consumption = population.column(energy_col)
+        energy_consumption = _as_array(population.column(energy_col))
+        energy_consumption = pc.cast(energy_consumption, pa.float64())
+        energy_consumption = pc.fill_null(energy_consumption, 0.0)
 
-        # Compute tax for this category
-        for i in range(num_households):
-            consumption = energy_consumption[i].as_py()
-            if consumption is None:
-                consumption = 0.0
-            category_tax = consumption * emission_factor_tonne * effective_rate
-            tax_burdens[i] += category_tax
+        # Vectorized category tax computation
+        category_rate = emission_factor_tonne * effective_rate
+        category_tax = pc.multiply(energy_consumption, category_rate)
+        tax_burdens = pc.add(tax_burdens, category_tax)
 
-    return pa.array(tax_burdens, type=pa.float64())
+    # Apply optional income-decile progressive rate multipliers
+    multipliers = _extract_progressive_rate_multipliers(parameters)
+    if multipliers:
+        if income_deciles is None:
+            income_deciles = assign_income_deciles(_as_array(population.column("income")))
+        multiplier_values = [
+            multipliers.get(f"decile_{decile}", 1.0)
+            for decile in income_deciles.to_pylist()
+        ]
+        if any(value != 1.0 for value in multiplier_values):
+            tax_burdens = pc.multiply(
+                tax_burdens, pa.array(multiplier_values, type=pa.float64())
+            )
+
+    return _as_array(tax_burdens)
 
 
 def compute_lump_sum_redistribution(
@@ -285,16 +354,22 @@ def compute_carbon_tax(
     # Ensure energy columns exist
     population = fill_missing_energy_columns(population)
 
+    # Assign income deciles
+    incomes = _as_array(population.column("income"))
+    income_deciles = assign_income_deciles(incomes)
+
     # Get household IDs
-    household_ids = population.column("household_id")
+    household_ids = _as_array(population.column("household_id"))
 
     # Compute tax burden
-    tax_burden = compute_tax_burden(population, parameters, emission_index, year)
-    total_revenue = float(pc.sum(tax_burden).as_py())
-
-    # Assign income deciles
-    incomes = population.column("income")
-    income_deciles = assign_income_deciles(incomes)
+    tax_burden = compute_tax_burden(
+        population,
+        parameters,
+        emission_index,
+        year,
+        income_deciles=income_deciles,
+    )
+    total_revenue = float(pc.sum(tax_burden).as_py() or 0.0)
 
     # Compute redistribution based on type
     num_households = population.num_rows
@@ -308,7 +383,7 @@ def compute_carbon_tax(
         # No redistribution
         redistribution = pa.array([0.0] * num_households, type=pa.float64())
 
-    total_redistribution = float(pc.sum(redistribution).as_py())
+    total_redistribution = float(pc.sum(redistribution).as_py() or 0.0)
 
     # Compute net impact (redistribution - tax_burden)
     net_impact = pc.subtract(redistribution, tax_burden)

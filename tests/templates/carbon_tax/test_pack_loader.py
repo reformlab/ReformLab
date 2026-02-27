@@ -43,6 +43,8 @@ class TestListCarbonTaxTemplates:
         assert "carbon-tax-flat-no-redistribution" in result
         assert "carbon-tax-flat-lump-sum-dividend" in result
         assert "carbon-tax-flat-progressive-dividend" in result
+        assert "carbon-tax-progressive-no-redistribution" in result
+        assert "carbon-tax-progressive-progressive-dividend" in result
 
 
 class TestLoadCarbonTaxTemplate:
@@ -67,6 +69,13 @@ class TestLoadCarbonTaxTemplate:
         assert isinstance(template, BaselineScenario)
         assert template.parameters.redistribution_type == "progressive_dividend"
         assert len(template.parameters.income_weights) == 10  # All 10 deciles
+
+    def test_load_progressive_rate_no_redistribution(self) -> None:
+        """Progressive rate template carries decile multipliers for tax rates."""
+        template = load_carbon_tax_template("carbon-tax-progressive-no-redistribution")
+        assert isinstance(template, BaselineScenario)
+        assert template.parameters.redistribution_type == ""
+        assert len(template.parameters.income_weights) == 10
 
     def test_year_schedule_at_least_10_years(self) -> None:
         """All templates have year schedules of at least 10 years (AC-1)."""

@@ -4,6 +4,7 @@ import pyarrow as pa
 import pytest
 
 from reformlab.data.emission_factors import build_emission_factor_index
+from reformlab.templates import load_carbon_tax_template
 from reformlab.templates.carbon_tax.compute import (
     CarbonTaxResult,
     DecileResults,
@@ -49,6 +50,8 @@ class TestAssignIncomeDeciles:
         result = deciles.to_pylist()
         # Smallest income should be lower decile, largest should be higher
         assert result[0] < result[2]
+        assert min(result) == 1
+        assert max(result) == 10
 
 
 class TestGetExemptionRate:
@@ -182,6 +185,103 @@ class TestComputeTaxBurden:
 
         for i in range(len(tax_low)):
             assert tax_high[i].as_py() > tax_low[i].as_py()
+
+    def test_missing_energy_columns_default_to_zero(
+        self,
+        emission_factor_table: pa.Table,
+        flat_rate_params: CarbonTaxParameters,
+    ) -> None:
+        """Missing optional energy columns are treated as 0.0 (AC-2)."""
+        population = pa.table(
+            {
+                "household_id": pa.array([1, 2], type=pa.int64()),
+                "income": pa.array([30000.0, 60000.0], type=pa.float64()),
+            }
+        )
+        emission_index = build_emission_factor_index(emission_factor_table)
+        tax_burden = compute_tax_burden(
+            population=population,
+            parameters=flat_rate_params,
+            emission_index=emission_index,
+            year=2026,
+        )
+        assert tax_burden.to_pylist() == [0.0, 0.0]
+
+    def test_progressive_rate_template_changes_household_tax_burden(
+        self,
+        emission_factor_table: pa.Table,
+    ) -> None:
+        """Progressive-rate template applies higher rates to higher-income deciles."""
+        population = pa.table(
+            {
+                "household_id": pa.array([1, 2], type=pa.int64()),
+                "income": pa.array([20000.0, 100000.0], type=pa.float64()),
+                "energy_transport_fuel": pa.array([1000.0, 1000.0], type=pa.float64()),
+                "energy_heating_fuel": pa.array([500.0, 500.0], type=pa.float64()),
+                "energy_natural_gas": pa.array([800.0, 800.0], type=pa.float64()),
+            }
+        )
+        emission_index = build_emission_factor_index(emission_factor_table)
+        flat = load_carbon_tax_template("carbon-tax-flat-no-redistribution")
+        progressive = load_carbon_tax_template("carbon-tax-progressive-no-redistribution")
+
+        flat_tax = compute_tax_burden(
+            population=population,
+            parameters=flat.parameters,
+            emission_index=emission_index,
+            year=2026,
+        ).to_pylist()
+        progressive_tax = compute_tax_burden(
+            population=population,
+            parameters=progressive.parameters,
+            emission_index=emission_index,
+            year=2026,
+        ).to_pylist()
+
+        # Flat variant produces identical burden for identical consumption.
+        assert abs(flat_tax[0] - flat_tax[1]) < 1e-9
+        # Progressive variant lowers burden for lower income and raises for higher income.
+        assert progressive_tax[0] < flat_tax[0]
+        assert progressive_tax[1] > flat_tax[1]
+        assert progressive_tax[0] < progressive_tax[1]
+
+    def test_progressive_rate_thresholds_applied_with_progressive_dividend(
+        self,
+        emission_factor_table: pa.Table,
+    ) -> None:
+        """Threshold multipliers drive tax-rate progressivity when redistribution is active."""
+        population = pa.table(
+            {
+                "household_id": pa.array([1, 2], type=pa.int64()),
+                "income": pa.array([20000.0, 100000.0], type=pa.float64()),
+                "energy_transport_fuel": pa.array([1000.0, 1000.0], type=pa.float64()),
+                "energy_heating_fuel": pa.array([500.0, 500.0], type=pa.float64()),
+                "energy_natural_gas": pa.array([800.0, 800.0], type=pa.float64()),
+            }
+        )
+        emission_index = build_emission_factor_index(emission_factor_table)
+        flat_progressive_dividend = load_carbon_tax_template(
+            "carbon-tax-flat-progressive-dividend"
+        )
+        progressive_progressive = load_carbon_tax_template(
+            "carbon-tax-progressive-progressive-dividend"
+        )
+
+        flat_tax = compute_tax_burden(
+            population=population,
+            parameters=flat_progressive_dividend.parameters,
+            emission_index=emission_index,
+            year=2026,
+        ).to_pylist()
+        progressive_tax = compute_tax_burden(
+            population=population,
+            parameters=progressive_progressive.parameters,
+            emission_index=emission_index,
+            year=2026,
+        ).to_pylist()
+
+        assert abs(flat_tax[0] - flat_tax[1]) < 1e-9
+        assert progressive_tax[0] < progressive_tax[1]
 
 
 class TestComputeLumpSumRedistribution:
