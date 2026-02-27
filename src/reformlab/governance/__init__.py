@@ -21,6 +21,8 @@ Public API:
     hash_output_artifacts: Hash output artifacts
     verify_artifact_hashes: Verify stored hashes against current files
     ArtifactVerificationResult: Hash verification result
+    check_reproducibility: Re-execute a run and verify outputs match
+    ReproducibilityResult: Result of reproducibility check
 """
 
 from reformlab.governance.capture import (
@@ -47,6 +49,10 @@ from reformlab.governance.lineage import (
     validate_lineage,
 )
 from reformlab.governance.manifest import RunManifest
+from reformlab.governance.reproducibility import (
+    ReproducibilityResult,
+    check_reproducibility,
+)
 
 __all__ = [
     "RunManifest",
@@ -65,4 +71,6 @@ __all__ = [
     "hash_output_artifacts",
     "verify_artifact_hashes",
     "ArtifactVerificationResult",
+    "check_reproducibility",
+    "ReproducibilityResult",
 ]
