@@ -81,7 +81,7 @@ development_status:
   4-3-implement-welfare-indicators: done
   4-4-implement-fiscal-indicators: done
   4-5-implement-scenario-comparison-tables: done
-  4-6-implement-custom-derived-indicator-formulas: backlog
+  4-6-implement-custom-derived-indicator-formulas: ready-for-dev
   epic-4-retrospective: optional
 
   # EPIC-5: Governance and Reproducibility
