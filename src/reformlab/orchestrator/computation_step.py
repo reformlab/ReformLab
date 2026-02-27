@@ -128,14 +128,16 @@ class ComputationStep:
         Raises:
             ComputationStepError: If adapter.compute() fails.
         """
-        adapter_version = self._adapter.version()
-
+        adapter_version = "<version-unavailable>"
         try:
+            adapter_version = self._adapter.version()
             result = self._adapter.compute(
                 population=self._population,
                 policy=self._policy,
                 period=year,
             )
+
+            row_count = result.output_fields.num_rows
         except Exception as e:
             raise ComputationStepError(
                 message=(
@@ -151,7 +153,7 @@ class ComputationStep:
         computation_metadata = {
             "adapter_version": adapter_version,
             "computation_period": year,
-            "computation_row_count": result.output_fields.num_rows,
+            "computation_row_count": row_count,
         }
 
         # Create new state with result and metadata

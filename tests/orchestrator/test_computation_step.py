@@ -363,6 +363,82 @@ class TestComputationStepErrorHandling:
         assert "2028" in error_msg
         assert "failing-2.5.0" in error_msg
 
+    def test_version_lookup_failure_is_wrapped_with_year_context(
+        self,
+        sample_population: PopulationData,
+        sample_policy: PolicyConfig,
+        year_state: YearState,
+    ) -> None:
+        """Given version lookup failure, ComputationStepError includes year context."""
+
+        class VersionFailingAdapter:
+            def version(self) -> str:
+                raise RuntimeError("Version lookup failed")
+
+            def compute(
+                self,
+                population: PopulationData,
+                policy: PolicyConfig,
+                period: int,
+            ) -> ComputationResult:
+                return ComputationResult(
+                    output_fields=pa.table({"value": pa.array([1.0])}),
+                    adapter_version="unused",
+                    period=period,
+                )
+
+        step = ComputationStep(
+            adapter=VersionFailingAdapter(),  # type: ignore[arg-type]
+            population=sample_population,
+            policy=sample_policy,
+        )
+
+        with pytest.raises(ComputationStepError) as exc_info:
+            step.execute(2026, year_state)
+
+        error = exc_info.value
+        assert error.year == 2026
+        assert error.adapter_version == "<version-unavailable>"
+        assert "Version lookup failed" in str(error)
+
+    def test_invalid_computation_result_is_wrapped_with_adapter_context(
+        self,
+        sample_population: PopulationData,
+        sample_policy: PolicyConfig,
+        year_state: YearState,
+    ) -> None:
+        """Given malformed adapter result, failure is wrapped with adapter context."""
+
+        class MalformedResultAdapter:
+            def version(self) -> str:
+                return "malformed-1.0.0"
+
+            def compute(
+                self,
+                population: PopulationData,
+                policy: PolicyConfig,
+                period: int,
+            ) -> ComputationResult:
+                return ComputationResult(
+                    output_fields="not-a-table",  # type: ignore[arg-type]
+                    adapter_version=self.version(),
+                    period=period,
+                )
+
+        step = ComputationStep(
+            adapter=MalformedResultAdapter(),  # type: ignore[arg-type]
+            population=sample_population,
+            policy=sample_policy,
+        )
+
+        with pytest.raises(ComputationStepError) as exc_info:
+            step.execute(2027, year_state)
+
+        error = exc_info.value
+        assert error.year == 2027
+        assert error.adapter_version == "malformed-1.0.0"
+        assert "AttributeError" in str(error)
+
 
 class TestComputationStepKeys:
     """Test stable state key constants."""
