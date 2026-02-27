@@ -12,11 +12,11 @@ so that **I can analyze indicator differences, export comparison outputs in mach
 
 From backlog (BKL-405), aligned with FR24 and FR33.
 
-Scope note: this story consumes `IndicatorResult` outputs from Stories 4-1 through 4-4 and produces unified comparison tables. It provides the final indicator-layer integration point before GUI visualization (EPIC-6) and governance manifest persistence (EPIC-5).
+Scope note: this story consumes `IndicatorResult` outputs from Stories 4-1 through 4-4 and produces scenario comparison tables for one indicator schema at a time (distributional OR geographic OR welfare OR fiscal per call). It provides the final indicator-layer integration point before GUI visualization (EPIC-6) and governance manifest persistence (EPIC-5).
 
 1. **AC-1: Side-by-side comparison table generation**
-   - Given two or more completed scenario runs with computed indicators (any combination of distributional, geographic, welfare, or fiscal)
-   - When `compare_scenarios()` is invoked with their `IndicatorResult` objects
+   - Given two or more completed scenario runs with computed indicators of the same table schema (distributional OR geographic OR welfare OR fiscal)
+   - When `compare_scenarios()` is invoked with `ScenarioInput` values wrapping their `IndicatorResult` objects
    - Then a side-by-side comparison table is produced with columns: `field_name`, grouping dimension(s), `year`, `metric`, plus one value column per scenario (e.g., `baseline`, `reform_a`, `reform_b`)
 
 2. **AC-2: Delta computation**
@@ -25,10 +25,10 @@ Scope note: this story consumes `IndicatorResult` outputs from Stories 4-1 throu
    - Then absolute delta columns (`delta_reform_a = reform_a - baseline`) are added for each non-baseline scenario
    - And percentage delta columns (`pct_delta_reform_a = delta / baseline * 100`) are added where baseline != 0
 
-3. **AC-3: Cross-indicator-type comparison**
-   - Given indicator results of different types (e.g., distributional + fiscal from the same scenario)
-   - When comparison is requested for a single scenario with multiple indicator types
-   - Then the comparison table vertically stacks all indicator metrics with an `indicator_type` column
+3. **AC-3: Input contract validation**
+   - Given invalid comparison inputs (fewer than 2 scenarios, duplicate scenario labels, or mixed indicator schemas such as `decile` + `region`)
+   - When `compare_scenarios()` is invoked
+   - Then the function raises a clear `ValueError` describing the violated contract and expected input shape
 
 4. **AC-4: CSV export**
    - Given a comparison table
@@ -45,11 +45,11 @@ Scope note: this story consumes `IndicatorResult` outputs from Stories 4-1 throu
 6. **AC-6: Metadata preservation**
    - Given a comparison operation
    - When the comparison result is created
-   - Then metadata from all source indicator results is preserved in a `comparison_metadata` dict
+   - Then metadata from all source indicator results is preserved in `ComparisonResult.metadata`
    - And scenario labels, indicator types, and field mappings are recorded for downstream governance
 
 7. **AC-7: Empty and mismatched input handling**
-   - Given indicator results with non-overlapping grouping dimensions or years
+   - Given indicator results with non-overlapping grouping key values or years (within the same indicator schema)
    - When comparison is attempted
    - Then rows with missing values in some scenarios use `null`/`None`
    - And a warning lists which scenarios are missing data for specific groups/years
@@ -77,7 +77,7 @@ Scope note: this story consumes `IndicatorResult` outputs from Stories 4-1 throu
   - [ ] 2.2 Implement `_align_indicator_tables()` to join indicator tables on common dimensions
   - [ ] 2.3 Handle dimension alignment: (field_name, decile|region, year, metric) depending on indicator type
   - [ ] 2.4 Rename value columns by scenario label (e.g., `value` -> `baseline`, `value` -> `reform_a`)
-  - [ ] 2.5 Handle mismatched dimensions with outer join and null fill
+  - [ ] 2.5 Handle non-overlapping grouping key values with outer join and null fill
 
 - [ ] Task 3: Implement delta computation (AC: #2)
   - [ ] 3.1 Implement `_compute_deltas()` internal function
@@ -85,15 +85,15 @@ Scope note: this story consumes `IndicatorResult` outputs from Stories 4-1 throu
   - [ ] 3.3 Compute percentage deltas: `pct_delta_{scenario} = delta / baseline * 100` (guard against div-by-zero)
   - [ ] 3.4 Add delta columns conditionally based on `include_deltas` config
 
-- [ ] Task 4: Implement cross-indicator-type stacking (AC: #3)
-  - [ ] 4.1 Implement `_stack_indicator_types()` for single-scenario multi-indicator comparison
-  - [ ] 4.2 Add `indicator_type` column ("distributional", "geographic", "welfare", "fiscal")
-  - [ ] 4.3 Normalize grouping columns: use `group_key` union column or preserve type-specific columns
+- [ ] Task 4: Implement input validation and schema compatibility checks (AC: #3, #7)
+  - [ ] 4.1 Implement `_resolve_join_keys()` based on `IndicatorResult.to_table()` schema
+  - [ ] 4.2 Validate minimum scenario count (>=2) and unique scenario labels
+  - [ ] 4.3 Reject mixed indicator schemas with clear error messages (e.g., decile + region in one comparison call)
 
 - [ ] Task 5: Implement main comparison API (AC: #1-#8)
   - [ ] 5.1 Create `compare_scenarios(scenarios: list[ScenarioInput], config: ComparisonConfig)` main function
-  - [ ] 5.2 Validate inputs: at least one scenario, consistent indicator types across scenarios
-  - [ ] 5.3 Detect comparison mode: multi-scenario (same indicator type) vs single-scenario (multi-indicator)
+  - [ ] 5.2 Validate inputs: at least two scenarios, unique labels, compatible schemas across scenarios
+  - [ ] 5.3 Resolve join keys from indicator schema and align scenario tables on those keys
   - [ ] 5.4 Designate baseline scenario via config (first by default) for delta computation
   - [ ] 5.5 Return `ComparisonResult` with table, metadata, and warnings
 
@@ -110,15 +110,15 @@ Scope note: this story consumes `IndicatorResult` outputs from Stories 4-1 throu
 - [ ] Task 8: Handle edge cases (AC: #7)
   - [ ] 8.1 Handle empty indicator results gracefully (return empty comparison with warning)
   - [ ] 8.2 Handle mismatched years across scenarios (outer join with nulls)
-  - [ ] 8.3 Handle mismatched grouping dimensions (outer join with nulls)
-  - [ ] 8.4 Handle single scenario input (no comparison, just format for export)
+  - [ ] 8.3 Handle non-overlapping grouping key values (outer join with nulls)
+  - [ ] 8.4 Handle single scenario input with explicit validation error (comparison requires >=2 scenarios)
 
 - [ ] Task 9: Add focused tests and quality gates (AC: all)
   - [ ] 9.1 Create `tests/indicators/test_comparison.py`
   - [ ] 9.2 Test side-by-side comparison with 2 scenarios (distributional)
   - [ ] 9.3 Test side-by-side comparison with 3+ scenarios
   - [ ] 9.4 Test delta computation correctness (absolute and percentage)
-  - [ ] 9.5 Test cross-indicator-type stacking (distributional + fiscal)
+  - [ ] 9.5 Test validation errors for mixed schemas and duplicate labels
   - [ ] 9.6 Test mismatched dimension handling (outer join, null fill)
   - [ ] 9.7 Test CSV export and round-trip verification
   - [ ] 9.8 Test Parquet export and round-trip verification
@@ -144,6 +144,7 @@ Scope note: this story consumes `IndicatorResult` outputs from Stories 4-1 throu
   - `4-2-implement-geographic-aggregation-indicators`: `done`
   - `4-3-implement-welfare-indicators`: `done`
   - `4-4-implement-fiscal-indicators`: `done`
+  - Story 4-5 implementation is blocked unless these statuses remain `done`
 
 - **Follow-on stories:**
   - Story 4-6 (BKL-406): Custom derived indicator formulas (P1, depends on 4-5)
@@ -186,7 +187,7 @@ ScenarioInput (label + IndicatorResult)
 compare_scenarios(scenarios: list[ScenarioInput], config: ComparisonConfig)
          |
          v
-Detect comparison mode (multi-scenario vs multi-indicator)
+Validate input contract and resolve join keys from schema
          |
          v
 Align indicator tables on common dimensions
@@ -282,16 +283,6 @@ ComparisonResult (with PyArrow table, metadata, warnings)
    ...
    ```
 
-7. **Table Schema (single-scenario, multi-indicator stacking):**
-   ```
-   indicator_type: utf8  # "distributional", "geographic", "welfare", "fiscal"
-   field_name: utf8
-   group_key: utf8  # Unified grouping (decile as string, region code, or "aggregate")
-   year: int64
-   metric: utf8
-   value: float64
-   ```
-
 ### Dimension Alignment Strategy
 
 The comparison must handle different indicator types with different grouping dimensions:
@@ -307,11 +298,7 @@ The comparison must handle different indicator types with different grouping dim
 **Multi-scenario comparison (same indicator type):**
 - Direct join on all grouping columns
 - Value column renamed per scenario label
-
-**Single-scenario multi-indicator stacking:**
-- Normalize decile/region to `group_key` string column
-- Add `indicator_type` column
-- Vertical concatenation (union)
+- Mixed schemas are rejected with a validation error (handled by AC-3)
 
 ### Delta Computation
 
@@ -377,12 +364,12 @@ From `src/reformlab/orchestrator/panel.py`:
 - **In scope:**
   - Side-by-side comparison tables for 2+ scenarios
   - Delta (absolute and percentage) computation
-  - Cross-indicator-type stacking for single scenario
   - CSV and Parquet export
   - Metadata preservation for governance
   - Stable PyArrow table contract
 
 - **Out of scope:**
+  - Cross-indicator-type stacking within one comparison call
   - GUI visualization (EPIC-6)
   - Governance manifest persistence (EPIC-5)
   - Custom derived indicator formulas (Story 4-6)
@@ -412,10 +399,10 @@ src/reformlab/indicators/
   - Two-scenario comparison (baseline vs single reform)
   - Three+ scenario comparison
   - Delta computation with zero baseline values
+  - Contract validation failures (single scenario, duplicate labels, mixed schemas)
   - Mismatched years across scenarios
-  - Mismatched grouping dimensions
+  - Non-overlapping grouping key values
   - Empty indicator results
-  - Single scenario with multiple indicator types
   - CSV export and round-trip
   - Parquet export and round-trip
 
