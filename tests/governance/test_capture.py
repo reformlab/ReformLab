@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
 
 from reformlab.computation.mapping import FieldMapping, MappingConfig
 from reformlab.governance.capture import (
@@ -167,6 +170,24 @@ class TestCaptureMappings:
         result = capture_mappings(config)
         assert result == []
 
+    def test_capture_mappings_with_transform_identifier(self) -> None:
+        """Capture transform metadata when present on mapping objects."""
+        config = SimpleNamespace(
+            mappings=(
+                SimpleNamespace(
+                    openfisca_name="income",
+                    project_name="household_income",
+                    direction="input",
+                    transform="normalize_income",
+                ),
+            ),
+            source_path=Path("/tmp/mappings.yaml"),
+        )
+
+        result = capture_mappings(config)  # type: ignore[arg-type]
+
+        assert result[0]["transform"] == "normalize_income"
+
 
 class TestCaptureParameters:
     """Tests for capture_parameters()."""
@@ -203,6 +224,11 @@ class TestCaptureParameters:
         """Capture empty parameter dictionary."""
         result = capture_parameters({})
         assert result == {}
+
+    def test_capture_parameters_rejects_non_dict(self) -> None:
+        """Parameter capture enforces dictionary payloads."""
+        with pytest.raises(TypeError, match="parameters must be a dictionary"):
+            capture_parameters([])  # type: ignore[arg-type]
 
 
 class TestCaptureUnvalidatedTemplateWarning:
@@ -287,3 +313,15 @@ class TestCaptureWarnings:
 
         assert len(warnings) == 1
         assert warnings[0] == "Custom warning"
+
+    def test_capture_warning_with_missing_version_metadata(self) -> None:
+        """Missing validation metadata still emits actionable warning."""
+        warnings = capture_warnings(
+            scenario_name="policy-x",
+            scenario_version="",
+            is_validated=None,
+        )
+
+        assert len(warnings) == 1
+        assert "policy-x" in warnings[0]
+        assert "version 'unknown'" in warnings[0]

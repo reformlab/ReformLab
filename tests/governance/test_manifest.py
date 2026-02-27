@@ -662,6 +662,50 @@ class TestMappingsFieldValidation:
                 ],
             )
 
+    def test_mapping_invalid_source_file(self) -> None:
+        """Mapping source_file must be a non-empty string when provided."""
+        with pytest.raises(
+            ManifestValidationError, match="'source_file' must be a non-empty string"
+        ):
+            RunManifest(
+                manifest_id="test-001",
+                created_at="2026-02-27T10:00:00Z",
+                engine_version="0.1.0",
+                openfisca_version="40.0.0",
+                adapter_version="1.0.0",
+                scenario_version="v1.0",
+                mappings=[
+                    {
+                        "openfisca_name": "income",
+                        "project_name": "household_income",
+                        "direction": "input",
+                        "source_file": "",
+                    }
+                ],
+            )
+
+    def test_mapping_invalid_transform(self) -> None:
+        """Mapping transform must be a non-empty string when provided."""
+        with pytest.raises(
+            ManifestValidationError, match="'transform' must be a non-empty string"
+        ):
+            RunManifest(
+                manifest_id="test-001",
+                created_at="2026-02-27T10:00:00Z",
+                engine_version="0.1.0",
+                openfisca_version="40.0.0",
+                adapter_version="1.0.0",
+                scenario_version="v1.0",
+                mappings=[
+                    {
+                        "openfisca_name": "income",
+                        "project_name": "household_income",
+                        "direction": "input",
+                        "transform": "   ",
+                    }
+                ],
+            )
+
 
 class TestWarningsFieldValidation:
     """Test validation for warnings field."""

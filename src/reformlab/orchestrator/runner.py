@@ -9,9 +9,16 @@ Story 3-6: Adds structured logging and execution trace metadata.
 from __future__ import annotations
 
 import logging
+from copy import deepcopy
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any, TypedDict, cast
 
+from reformlab.governance.capture import (
+    capture_assumptions,
+    capture_mappings,
+    capture_parameters,
+    capture_warnings,
+)
 from reformlab.orchestrator.errors import OrchestratorError
 from reformlab.orchestrator.types import (
     OrchestratorConfig,
@@ -20,6 +27,7 @@ from reformlab.orchestrator.types import (
 )
 
 if TYPE_CHECKING:
+    from reformlab.computation.mapping import MappingConfig
     from reformlab.orchestrator.types import PipelineStep
     from reformlab.templates.workflow import WorkflowConfig, WorkflowResult
 
@@ -107,7 +115,9 @@ class Orchestrator:
 
             except OrchestratorError as e:
                 if e.step_records:
-                    step_execution_log.extend(cast(list[StepExecutionRecord], e.step_records))
+                    step_execution_log.extend(
+                        cast(list[StepExecutionRecord], e.step_records)
+                    )
                 if e.year_seed is not None or self.config.seed is None:
                     seed_log[year] = e.year_seed
                 else:
@@ -416,6 +426,14 @@ class OrchestratorRunner:
         step_pipeline: tuple["PipelineStep", ...] = (),
         seed: int | None = None,
         initial_state: dict[str, Any] | None = None,
+        assumption_defaults: dict[str, Any] | None = None,
+        assumption_overrides: dict[str, Any] | None = None,
+        parameters: dict[str, Any] | None = None,
+        mapping_config: MappingConfig | None = None,
+        scenario_name: str = "",
+        scenario_version: str = "",
+        scenario_validated: bool | None = None,
+        additional_warnings: list[str] | None = None,
     ) -> None:
         """Initialize the runner with step configuration.
 
@@ -423,10 +441,26 @@ class OrchestratorRunner:
             step_pipeline: Ordered steps to execute per year.
             seed: Master random seed for determinism.
             initial_state: Starting state for the projection.
+            assumption_defaults: Default assumption values captured in metadata.
+            assumption_overrides: Assumption override values captured in metadata.
+            parameters: Scenario/template parameters captured in metadata.
+            mapping_config: Runtime mapping config captured in metadata.
+            scenario_name: Optional scenario identifier for warning capture.
+            scenario_version: Optional scenario version for warning capture.
+            scenario_validated: Optional validation flag from registry metadata.
+            additional_warnings: Optional additional warnings to append.
         """
         self.step_pipeline = step_pipeline
         self.seed = seed
         self.initial_state = initial_state or {}
+        self.assumption_defaults = assumption_defaults or {}
+        self.assumption_overrides = assumption_overrides or {}
+        self.parameters = parameters or {}
+        self.mapping_config = mapping_config
+        self.scenario_name = scenario_name
+        self.scenario_version = scenario_version
+        self.scenario_validated = scenario_validated
+        self.additional_warnings = list(additional_warnings or [])
 
     def run(self, request: dict[str, Any]) -> "WorkflowResult":
         """Execute a workflow request using the orchestrator.
@@ -479,8 +513,23 @@ class OrchestratorRunner:
         # Execute orchestrator
         orchestrator = Orchestrator(config)
         result = orchestrator.run()
+        manifest_capture = self._capture_manifest_fields(request)
 
         # Convert to WorkflowResult
+        metadata: dict[str, Any] = {
+            "start_year": start_year,
+            "end_year": end_year,
+            "failed_year": result.failed_year,
+            "failed_step": result.failed_step,
+            **result.metadata,
+            "assumptions": manifest_capture["assumptions"],
+            "mappings": manifest_capture["mappings"],
+            "parameters": manifest_capture["parameters"],
+            "warnings": manifest_capture["warnings"],
+        }
+        if manifest_capture["scenario_version"]:
+            metadata["scenario_version"] = manifest_capture["scenario_version"]
+
         return WorkflowResult(
             success=result.success,
             outputs={
@@ -495,14 +544,56 @@ class OrchestratorRunner:
                 },
             },
             errors=result.errors,
-            metadata={
-                "start_year": start_year,
-                "end_year": end_year,
-                "failed_year": result.failed_year,
-                "failed_step": result.failed_step,
-                **result.metadata,
-            },
+            metadata=metadata,
         )
+
+    def _capture_manifest_fields(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Capture governance metadata once at runner boundary."""
+        assumption_defaults = _coerce_dict(
+            request.get("assumption_defaults", self.assumption_defaults)
+        )
+        assumption_overrides = _coerce_dict(
+            request.get("assumption_overrides", self.assumption_overrides)
+        )
+        parameters = capture_parameters(
+            _coerce_dict(request.get("parameters", self.parameters))
+        )
+
+        mapping_payload = request.get("mapping_config", self.mapping_config)
+        mappings: list[dict[str, Any]] = []
+        if mapping_payload is not None and hasattr(mapping_payload, "mappings"):
+            mappings = capture_mappings(mapping_payload)  # type: ignore[arg-type]
+        elif isinstance(request.get("mappings"), list):
+            mappings = deepcopy(cast(list[dict[str, Any]], request["mappings"]))
+
+        scenario_name, scenario_version = _resolve_scenario_identity(
+            request=request,
+            fallback_name=self.scenario_name,
+            fallback_version=self.scenario_version,
+        )
+        scenario_validated = _resolve_validation_flag(
+            request=request,
+            fallback=self.scenario_validated,
+        )
+        additional_warnings = _resolve_additional_warnings(
+            request=request, fallback=self.additional_warnings
+        )
+
+        return {
+            "assumptions": capture_assumptions(
+                defaults=assumption_defaults,
+                overrides=assumption_overrides,
+            ),
+            "mappings": mappings,
+            "parameters": parameters,
+            "warnings": capture_warnings(
+                scenario_name=scenario_name,
+                scenario_version=scenario_version,
+                is_validated=scenario_validated,
+                additional_warnings=additional_warnings,
+            ),
+            "scenario_version": scenario_version,
+        }
 
 
 def _calculate_end_year(*, start_year: int, projection_years: int) -> int:
@@ -518,3 +609,65 @@ def _calculate_end_year(*, start_year: int, projection_years: int) -> int:
 def _step_pipeline_names(step_pipeline: tuple["PipelineStep", ...]) -> list[str]:
     """Return stable step names for logging and metadata."""
     return [_extract_step_name(step) for step in step_pipeline]
+
+
+def _coerce_dict(value: Any) -> dict[str, Any]:
+    """Normalize optional payloads to dictionaries."""
+    if isinstance(value, dict):
+        return value
+    return {}
+
+
+def _resolve_scenario_identity(
+    *,
+    request: dict[str, Any],
+    fallback_name: str,
+    fallback_version: str,
+) -> tuple[str, str]:
+    """Resolve scenario name/version from request scenarios or explicit metadata."""
+    scenario_meta = request.get("scenario_metadata")
+    if isinstance(scenario_meta, dict):
+        name = scenario_meta.get("name")
+        version = scenario_meta.get("version")
+        if isinstance(name, str) and isinstance(version, str):
+            return name, version
+
+    scenarios = request.get("scenarios")
+    if isinstance(scenarios, list):
+        for entry in scenarios:
+            if not isinstance(entry, dict):
+                continue
+            reference = entry.get("reference")
+            if not isinstance(reference, str) or not reference.strip():
+                continue
+            if "@" in reference:
+                name, version = reference.rsplit("@", 1)
+                return name.strip(), version.strip()
+            return reference.strip(), ""
+
+    return fallback_name, fallback_version
+
+
+def _resolve_validation_flag(
+    *, request: dict[str, Any], fallback: bool | None
+) -> bool | None:
+    """Resolve scenario/template validation flag from request metadata."""
+    scenario_meta = request.get("scenario_metadata")
+    if isinstance(scenario_meta, dict):
+        validated = scenario_meta.get("validated")
+        if isinstance(validated, bool):
+            return validated
+    validated = request.get("scenario_validated")
+    if isinstance(validated, bool):
+        return validated
+    return fallback
+
+
+def _resolve_additional_warnings(
+    *, request: dict[str, Any], fallback: list[str]
+) -> list[str]:
+    """Resolve additional warning messages from request metadata."""
+    request_warnings = request.get("additional_warnings")
+    if isinstance(request_warnings, list):
+        return [warning for warning in request_warnings if isinstance(warning, str)]
+    return list(fallback)

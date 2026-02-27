@@ -53,6 +53,7 @@ def capture_assumptions(
     """
     defaults = defaults or {}
     overrides = overrides or {}
+    normalized_source = source_label.strip() or "runtime"
 
     assumptions: list[dict[str, Any]] = []
 
@@ -66,7 +67,7 @@ def capture_assumptions(
                 {
                     "key": key,
                     "value": deepcopy(overrides[key]),
-                    "source": source_label,
+                    "source": normalized_source,
                     "is_default": False,
                 }
             )
@@ -76,7 +77,7 @@ def capture_assumptions(
                 {
                     "key": key,
                     "value": deepcopy(defaults[key]),
-                    "source": source_label,
+                    "source": normalized_source,
                     "is_default": True,
                 }
             )
@@ -118,6 +119,9 @@ def capture_mappings(config: MappingConfig) -> list[dict[str, Any]]:
         # Add source file if available
         if config.source_path is not None:
             entry["source_file"] = str(config.source_path)
+        transform_identifier = getattr(field_mapping, "transform", None)
+        if isinstance(transform_identifier, str) and transform_identifier.strip():
+            entry["transform"] = transform_identifier
 
         mappings.append(entry)
 
@@ -144,14 +148,18 @@ def capture_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
         >>> snapshot["tax_rate"]
         0.15
     """
+    if not isinstance(parameters, dict):
+        raise TypeError(
+            f"parameters must be a dictionary, got {type(parameters).__name__}"
+        )
     return deepcopy(parameters)
 
 
 def capture_unvalidated_template_warning(
     *,
-    scenario_name: str,
-    scenario_version: str,
-    is_validated: bool = False,
+    scenario_name: str = "",
+    scenario_version: str = "",
+    is_validated: bool | None = None,
 ) -> str | None:
     """Generate warning if template/scenario is not validated.
 
@@ -174,11 +182,14 @@ def capture_unvalidated_template_warning(
         validated in registry metadata. Action: Mark this scenario as validated
         before relying on outputs for production decisions.
     """
-    if is_validated:
+    if is_validated is True:
         return None
+    normalized_name = scenario_name.strip() or "unknown"
+    normalized_version = scenario_version.strip() or "unknown"
 
     return (
-        f"WARNING: Scenario '{scenario_name}' (version '{scenario_version}') is not "
+        f"WARNING: Scenario '{normalized_name}' "
+        f"(version '{normalized_version}') is not "
         "marked as validated in registry metadata. Action: Mark this scenario as "
         "validated before relying on outputs for production decisions."
     )
@@ -188,7 +199,7 @@ def capture_warnings(
     *,
     scenario_name: str = "",
     scenario_version: str = "",
-    is_validated: bool = False,
+    is_validated: bool | None = None,
     additional_warnings: list[str] | None = None,
 ) -> list[str]:
     """Capture all warnings for manifest generation.
@@ -217,8 +228,14 @@ def capture_warnings(
     """
     warnings: list[str] = []
 
-    # Add unvalidated template warning if applicable
-    if scenario_name and scenario_version:
+    should_emit_validation_warning = bool(
+        scenario_name.strip() or scenario_version.strip()
+    )
+    if is_validated is False:
+        should_emit_validation_warning = True
+
+    # Add unvalidated template warning if applicable.
+    if should_emit_validation_warning:
         unvalidated_warning = capture_unvalidated_template_warning(
             scenario_name=scenario_name,
             scenario_version=scenario_version,
@@ -229,6 +246,10 @@ def capture_warnings(
 
     # Add any additional warnings
     if additional_warnings:
-        warnings.extend(additional_warnings)
+        warnings.extend(
+            warning.strip()
+            for warning in additional_warnings
+            if isinstance(warning, str) and warning.strip()
+        )
 
     return warnings

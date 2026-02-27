@@ -120,8 +120,8 @@ class RunManifest:
     output_hashes: dict[str, str] = field(default_factory=dict)
     seeds: dict[str, int] = field(default_factory=dict)
     parameters: dict[str, Any] = field(default_factory=dict)
-    assumptions: list[dict[str, Any]] = field(default_factory=list)
-    mappings: list[dict[str, Any]] = field(default_factory=list)
+    assumptions: list[AssumptionEntry] = field(default_factory=list)
+    mappings: list[MappingEntry] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     step_pipeline: list[str] = field(default_factory=list)
     integrity_hash: str = ""
@@ -261,6 +261,23 @@ class RunManifest:
                     f"Invalid mapping at index {i}: "
                     f"field 'direction' must be one of: input, output, both"
                 )
+            if "source_file" in mapping and (
+                not isinstance(mapping["source_file"], str)
+                or not mapping["source_file"].strip()
+            ):
+                raise ManifestValidationError(
+                    f"Invalid mapping at index {i}: "
+                    f"field 'source_file' must be a non-empty string when provided"
+                )
+            if "transform" in mapping and (
+                not isinstance(mapping["transform"], str)
+                or not mapping["transform"].strip()
+            ):
+                raise ManifestValidationError(
+                    f"Invalid mapping at index {i}: "
+                    f"field 'transform' must be a non-empty string when provided"
+                )
+            _validate_json_compatible(mapping, f"mappings[{i}]")
 
         # Validate warnings list.
         if not isinstance(self.warnings, list):

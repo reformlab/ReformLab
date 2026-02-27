@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+import pyarrow as pa
 import pytest
 
+from reformlab.computation.mapping import FieldMapping, MappingConfig
 from reformlab.orchestrator import (
     OrchestratorConfig,
     OrchestratorRunner,
@@ -93,7 +95,11 @@ class TestFromWorkflowConfig:
         config = from_workflow_config(workflow_config)
 
         # 10 years from 2025 = 2025-2034 (inclusive)
-        expected_end = workflow_config.run_config.start_year + workflow_config.run_config.projection_years - 1
+        expected_end = (
+            workflow_config.run_config.start_year
+            + workflow_config.run_config.projection_years
+            - 1
+        )
         assert config.end_year == expected_end
 
     def test_maps_start_year(self, workflow_config: WorkflowConfig):
@@ -213,7 +219,9 @@ class TestOrchestratorRunner:
         yearly_states = result.outputs.get("yearly_states", {})
         assert yearly_states[2025]["data"]["starting_value"] == 100
 
-    def test_runner_returns_workflow_result(self, short_workflow_config: WorkflowConfig):
+    def test_runner_returns_workflow_result(
+        self, short_workflow_config: WorkflowConfig
+    ):
         """OrchestratorRunner returns proper WorkflowResult (AC-5)."""
         runner = OrchestratorRunner()
         result = run_workflow(short_workflow_config, runner=runner)
@@ -253,6 +261,62 @@ class TestOrchestratorRunner:
 
         assert result.success is False
         assert "run_config" in result.errors[0]
+
+    def test_runner_captures_manifest_fields_automatically(
+        self, short_workflow_config: WorkflowConfig
+    ):
+        """Manifest capture fields are auto-populated at orchestrator boundary."""
+        mapping_config = MappingConfig(
+            mappings=(
+                FieldMapping(
+                    openfisca_name="income",
+                    project_name="household_income",
+                    direction="input",
+                    pa_type=pa.float64(),
+                ),
+            ),
+        )
+        runner = OrchestratorRunner(
+            assumption_defaults={"discount_rate": 0.03, "inflation": 0.02},
+            assumption_overrides={"discount_rate": 0.04},
+            parameters={"tax": {"rate": 0.2}},
+            mapping_config=mapping_config,
+        )
+
+        result = run_workflow(short_workflow_config, runner=runner)
+
+        assert result.success is True
+        assert "assumptions" in result.metadata
+        assert "mappings" in result.metadata
+        assert "parameters" in result.metadata
+        assert "warnings" in result.metadata
+        assert len(result.metadata["assumptions"]) == 2
+        assert result.metadata["mappings"][0]["openfisca_name"] == "income"
+        assert result.metadata["parameters"]["tax"]["rate"] == 0.2
+        assert any("not marked as validated" in w for w in result.metadata["warnings"])
+
+    def test_runner_capture_payload_is_detached_from_mutations(
+        self, short_workflow_config: WorkflowConfig
+    ):
+        """Captured metadata snapshots are detached from source payloads."""
+        defaults = {"nested": {"value": 10}}
+        overrides = {"nested": {"value": 20}}
+        parameters = {"policy": {"rate": 0.15}}
+
+        runner = OrchestratorRunner(
+            assumption_defaults=defaults,
+            assumption_overrides=overrides,
+            parameters=parameters,
+        )
+        result = run_workflow(short_workflow_config, runner=runner)
+
+        defaults["nested"]["value"] = 999
+        overrides["nested"]["value"] = 777
+        parameters["policy"]["rate"] = 0.99
+
+        assumption_entry = result.metadata["assumptions"][0]
+        assert assumption_entry["value"] == {"value": 20}
+        assert result.metadata["parameters"]["policy"]["rate"] == 0.15
 
 
 # ============================================================================
