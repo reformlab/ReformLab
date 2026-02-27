@@ -12,7 +12,7 @@ This module provides:
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence
 
 import pyarrow as pa
 import pyarrow.compute as pc
@@ -32,7 +32,8 @@ def compare_households(
     baseline: PanelOutput,
     reform: PanelOutput,
     welfare_field: str,
-    by_year: bool,
+    join_on_year: bool = True,
+    carry_fields: Sequence[str] | None = None,
 ) -> tuple[pa.Table, int]:
     """Join baseline and reform panels and compute household-level net changes.
 
@@ -43,12 +44,14 @@ def compare_households(
         baseline: Baseline scenario panel output.
         reform: Reform scenario panel output.
         welfare_field: Name of the welfare field to compare.
-        by_year: If True, join on (household_id, year). If False, aggregate
-            across years (join on household_id only).
+        join_on_year: If True, join on (household_id, year). If False, join
+            on household_id only.
+        carry_fields: Additional baseline fields to carry into the joined
+            output (for downstream grouping).
 
     Returns:
         Tuple of (comparison_table, unmatched_count):
-        - comparison_table: Table with household_id, year (if by_year), welfare
+        - comparison_table: Table with household_id, year (if join_on_year), welfare
             fields from both scenarios, and net_change column.
         - unmatched_count: Number of households present in only one panel.
 
@@ -70,7 +73,7 @@ def compare_households(
 
     # Validate join keys
     join_keys = ["household_id"]
-    if by_year:
+    if join_on_year:
         join_keys.append("year")
 
     for key in join_keys:
@@ -85,18 +88,18 @@ def compare_households(
                 f"Available columns: {reform.table.column_names}"
             )
 
-    # Track original row counts for unmatched calculation
-    baseline_count = baseline.table.num_rows
-    reform_count = reform.table.num_rows
-
     # Prepare tables for join: select only needed columns
     baseline_select = join_keys + [welfare_field]
     reform_select = join_keys + [welfare_field]
 
-    # Add any additional fields that are needed for downstream grouping
-    # Only take from baseline to avoid duplication
-    for field in ("income", "region_code"):
-        if field in baseline.table.column_names and field not in baseline_select:
+    # Add additional baseline fields needed for downstream grouping.
+    for field in carry_fields or ():
+        if field not in baseline.table.column_names:
+            raise ValueError(
+                f"Field '{field}' not found in baseline panel. "
+                f"Available columns: {baseline.table.column_names}"
+            )
+        if field not in baseline_select:
             baseline_select.append(field)
 
     baseline_table = baseline.table.select(baseline_select)
@@ -122,14 +125,25 @@ def compare_households(
         join_type="inner",
     )
 
-    # Calculate unmatched count (approximate)
-    matched_count = joined.num_rows
-    unmatched_count = (baseline_count + reform_count) - (2 * matched_count)
+    # Calculate exact unmatched count from both sides using anti-joins.
+    baseline_keys = baseline.table.select(join_keys)
+    reform_keys = reform.table.select(join_keys)
+    unmatched_baseline = baseline_keys.join(
+        reform_keys,
+        keys=join_keys,
+        join_type="left anti",
+    ).num_rows
+    unmatched_reform = reform_keys.join(
+        baseline_keys,
+        keys=join_keys,
+        join_type="left anti",
+    ).num_rows
+    unmatched_count = unmatched_baseline + unmatched_reform
 
     if unmatched_count > 0:
+        unit_label = "household-year pair(s)" if join_on_year else "household(s)"
         warnings.warn(
-            f"Excluded {unmatched_count} unmatched household-year pair(s) "
-            "from welfare comparison.",
+            f"Excluded {unmatched_count} unmatched {unit_label} from welfare comparison.",
             stacklevel=2,
         )
 
@@ -571,7 +585,7 @@ def compute_welfare_indicators(
 ) -> IndicatorResult:
     """Compute welfare indicators comparing baseline and reform scenarios.
 
-    Joins baseline and reform panels on household_id (and year if by_year=True),
+    Joins baseline and reform panels on (household_id, year),
     computes net welfare changes, classifies households as winners/losers/neutral,
     and aggregates metrics by income decile or region.
 
@@ -614,12 +628,20 @@ def compute_welfare_indicators(
         # keep annual detail instead of collapsing across years.
         group_by_year = config.by_year or not config.aggregate_years
 
-        # Compare households and compute net changes
+        # Compare households and compute net changes.
+        # Keep join aligned on year even when aggregating across years to
+        # avoid cross-year cartesian matches in multi-year panels.
+        carry_fields = (
+            [config.income_field]
+            if config.group_by_decile
+            else [config.region_field]
+        )
         comparison_table, unmatched_count = compare_households(
             baseline,
             reform,
             config.welfare_field,
-            by_year=group_by_year,
+            join_on_year=True,
+            carry_fields=carry_fields,
         )
 
         # Aggregate by chosen grouping dimension

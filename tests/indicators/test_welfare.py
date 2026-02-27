@@ -307,6 +307,42 @@ def test_welfare_aggregate_years() -> None:
     # All indicators should have year=None (aggregated)
     assert all(ind.year is None for ind in result.indicators)
 
+    # Ensure we matched each household-year pair exactly once (no cross-year cartesian joins)
+    total_count = sum(
+        ind.winner_count + ind.loser_count + ind.neutral_count
+        for ind in result.indicators
+    )
+    assert total_count == 4
+
+
+def test_welfare_preserve_year_detail_without_by_year() -> None:
+    """Test AC-6 branch: by_year=False and aggregate_years=False keeps year detail."""
+    baseline_table = pa.table(
+        {
+            "household_id": pa.array([1, 2, 1, 2], type=pa.int64()),
+            "year": pa.array([2025, 2025, 2026, 2026], type=pa.int64()),
+            "disposable_income": pa.array([10000.0, 20000.0, 11000.0, 21000.0], type=pa.float64()),
+            "income": pa.array([15000.0, 25000.0, 16000.0, 26000.0], type=pa.float64()),
+        }
+    )
+    baseline = PanelOutput(table=baseline_table, metadata={})
+
+    reform_table = pa.table(
+        {
+            "household_id": pa.array([1, 2, 1, 2], type=pa.int64()),
+            "year": pa.array([2025, 2025, 2026, 2026], type=pa.int64()),
+            "disposable_income": pa.array([12000.0, 18000.0, 13000.0, 19000.0], type=pa.float64()),
+            "income": pa.array([15000.0, 25000.0, 16000.0, 26000.0], type=pa.float64()),
+        }
+    )
+    reform = PanelOutput(table=reform_table, metadata={})
+
+    config = WelfareConfig(by_year=False, aggregate_years=False)
+    result = compute_welfare_indicators(baseline, reform, config)
+
+    years = {ind.year for ind in result.indicators}
+    assert years == {2025, 2026}
+
 
 def test_welfare_group_by_region(
     baseline_panel: PanelOutput,
@@ -341,13 +377,12 @@ def test_welfare_to_table_schema(
     table = result.to_table()
 
     # Verify column schema
-    expected_columns = ["field_name", "group_type", "group_value", "year", "metric", "value"]
+    expected_columns = ["field_name", "decile", "year", "metric", "value"]
     assert table.column_names == expected_columns
 
     # Verify column types
     assert table.schema.field("field_name").type == pa.utf8()
-    assert table.schema.field("group_type").type == pa.utf8()
-    assert table.schema.field("group_value").type == pa.utf8()
+    assert table.schema.field("decile").type == pa.int64()
     assert table.schema.field("year").type == pa.int64()
     assert table.schema.field("metric").type == pa.utf8()
     assert table.schema.field("value").type == pa.float64()
@@ -366,6 +401,53 @@ def test_welfare_to_table_schema(
         "net_change",
     }
     assert expected_metrics.issubset(metrics)
+
+
+def test_welfare_to_table_region_schema(
+    baseline_panel: PanelOutput,
+    reform_panel: PanelOutput,
+) -> None:
+    """Test welfare to_table() uses region column when grouped by region."""
+    config = WelfareConfig(group_by_decile=False, group_by_region=True)
+    result = compute_welfare_indicators(baseline_panel, reform_panel, config)
+
+    table = result.to_table()
+    assert table.column_names == ["field_name", "region", "year", "metric", "value"]
+    assert table.schema.field("region").type == pa.utf8()
+
+
+def test_welfare_custom_income_field() -> None:
+    """Test custom income_field is carried through household comparison for deciles."""
+    baseline_table = pa.table(
+        {
+            "household_id": pa.array([1, 2], type=pa.int64()),
+            "year": pa.array([2025, 2025], type=pa.int64()),
+            "disposable_income": pa.array([10000.0, 20000.0], type=pa.float64()),
+            "income_alt": pa.array([15000.0, 25000.0], type=pa.float64()),
+        }
+    )
+    reform_table = pa.table(
+        {
+            "household_id": pa.array([1, 2], type=pa.int64()),
+            "year": pa.array([2025, 2025], type=pa.int64()),
+            "disposable_income": pa.array([12000.0, 18000.0], type=pa.float64()),
+            "income_alt": pa.array([15000.0, 25000.0], type=pa.float64()),
+        }
+    )
+    baseline = PanelOutput(table=baseline_table, metadata={})
+    reform = PanelOutput(table=reform_table, metadata={})
+
+    result = compute_welfare_indicators(
+        baseline,
+        reform,
+        WelfareConfig(income_field="income_alt"),
+    )
+
+    total_count = sum(
+        ind.winner_count + ind.loser_count + ind.neutral_count
+        for ind in result.indicators
+    )
+    assert total_count == 2
 
 
 def test_welfare_empty_result() -> None:

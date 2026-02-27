@@ -133,8 +133,8 @@ class IndicatorResult:
         metadata: Dictionary containing configuration and run information.
         warnings: List of warning messages emitted during computation.
         excluded_count: Number of households excluded due to missing values.
-        unmatched_count: Number of households with unmatched region codes
-            (only for geographic indicators).
+        unmatched_count: Number of unmatched records between compared inputs
+            (used by geographic and welfare indicators).
     """
 
     indicators: Sequence[DecileIndicators | RegionIndicators | WelfareIndicators]
@@ -150,7 +150,7 @@ class IndicatorResult:
 
         For DecileIndicators: field_name, decile, year, metric, value
         For RegionIndicators: field_name, region, year, metric, value
-        For WelfareIndicators: field_name, group_type, group_value, year, metric, value
+        For WelfareIndicators: field_name, decile|region, year, metric, value
 
         This table is suitable for downstream CSV/Parquet export workflows
         and scenario comparison operations.
@@ -162,11 +162,21 @@ class IndicatorResult:
             # Detect indicator type from metadata to determine schema
             if "welfare_field" in self.metadata:
                 # Welfare indicators
+                group_type = str(self.metadata.get("group_type", "decile"))
+                if group_type == "region":
+                    return pa.table(
+                        {
+                            "field_name": pa.array([], type=pa.utf8()),
+                            "region": pa.array([], type=pa.utf8()),
+                            "year": pa.array([], type=pa.int64()),
+                            "metric": pa.array([], type=pa.utf8()),
+                            "value": pa.array([], type=pa.float64()),
+                        }
+                    )
                 return pa.table(
                     {
                         "field_name": pa.array([], type=pa.utf8()),
-                        "group_type": pa.array([], type=pa.utf8()),
-                        "group_value": pa.array([], type=pa.utf8()),
+                        "decile": pa.array([], type=pa.int64()),
                         "year": pa.array([], type=pa.int64()),
                         "metric": pa.array([], type=pa.utf8()),
                         "value": pa.array([], type=pa.float64()),
@@ -202,9 +212,10 @@ class IndicatorResult:
 
         if is_welfare:
             # Welfare indicators have different metrics
+            assert isinstance(first_indicator, WelfareIndicators)
+            welfare_group_type = first_indicator.group_type
             field_names_welfare: list[str] = []
-            group_types: list[str] = []
-            group_values: list[str] = []
+            groups_welfare: list[int | str] = []
             years_welfare: list[int | None] = []
             metrics_welfare: list[str] = []
             values_welfare: list[float] = []
@@ -237,17 +248,31 @@ class IndicatorResult:
                     welfare_metric_names, welfare_metric_values, strict=True
                 ):
                     field_names_welfare.append(ind.field_name)
-                    group_types.append(ind.group_type)
-                    group_values.append(str(ind.group_value))
+                    groups_welfare.append(ind.group_value)
                     years_welfare.append(ind.year)
                     metrics_welfare.append(metric_name)
                     values_welfare.append(metric_value)
 
+            if welfare_group_type == "region":
+                return pa.table(
+                    {
+                        "field_name": pa.array(field_names_welfare, type=pa.utf8()),
+                        "region": pa.array(
+                            [str(group) for group in groups_welfare],
+                            type=pa.utf8(),
+                        ),
+                        "year": pa.array(years_welfare, type=pa.int64()),
+                        "metric": pa.array(metrics_welfare, type=pa.utf8()),
+                        "value": pa.array(values_welfare, type=pa.float64()),
+                    }
+                )
             return pa.table(
                 {
                     "field_name": pa.array(field_names_welfare, type=pa.utf8()),
-                    "group_type": pa.array(group_types, type=pa.utf8()),
-                    "group_value": pa.array(group_values, type=pa.utf8()),
+                    "decile": pa.array(
+                        [int(group) for group in groups_welfare],
+                        type=pa.int64(),
+                    ),
                     "year": pa.array(years_welfare, type=pa.int64()),
                     "metric": pa.array(metrics_welfare, type=pa.utf8()),
                     "value": pa.array(values_welfare, type=pa.float64()),
