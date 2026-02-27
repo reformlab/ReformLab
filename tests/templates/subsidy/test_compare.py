@@ -107,6 +107,39 @@ class TestCompareSubsidyDecileImpacts:
         deciles = table.column("decile").to_pylist()
         assert deciles == list(range(1, 11))
 
+    def test_compare_table_includes_policy_specific_metrics_for_each_scenario(
+        self, sample_population: pa.Table
+    ) -> None:
+        """Comparison exposes subsidy means/totals and eligibility counts by scenario."""
+        scenario_a = BaselineScenario(
+            name="Subsidy A",
+            policy_type=PolicyType.SUBSIDY,
+            year_schedule=YearSchedule(2026, 2036),
+            parameters=SubsidyParameters(
+                rate_schedule={2026: 5000.0},
+                income_caps={2026: 45000.0},
+            ),
+        )
+        scenario_b = BaselineScenario(
+            name="Subsidy B",
+            policy_type=PolicyType.SUBSIDY,
+            year_schedule=YearSchedule(2026, 2036),
+            parameters=SubsidyParameters(
+                rate_schedule={2026: 3000.0},
+                income_caps={2026: 60000.0},
+            ),
+        )
+        results = run_subsidy_batch(sample_population, [scenario_a, scenario_b], 2026)
+        comparison = compare_subsidy_decile_impacts(results)
+        columns = set(comparison.comparison_table.column_names)
+
+        assert "Subsidy_A_mean_subsidy" in columns
+        assert "Subsidy_A_total_subsidy" in columns
+        assert "Subsidy_A_eligible_count" in columns
+        assert "Subsidy_B_mean_subsidy" in columns
+        assert "Subsidy_B_total_subsidy" in columns
+        assert "Subsidy_B_eligible_count" in columns
+
 
 class TestSubsidyDecileResultsToTable:
     """Tests for decile results conversion to table."""

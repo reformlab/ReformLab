@@ -198,6 +198,48 @@ class TestComputeRebate:
         rebates = result.rebate_amount.to_pylist()
         assert all(abs(r - 1000.0) < 0.01 for r in rebates)
 
+    def test_compute_rebate_unsupported_type_raises(
+        self,
+        sample_population: pa.Table,
+    ) -> None:
+        """Unknown rebate_type values fail fast."""
+        params = RebateParameters(
+            rate_schedule={2026: 100.0},
+            rebate_type="flat_dividend",
+        )
+        with pytest.raises(ValueError, match="Unsupported rebate_type"):
+            compute_rebate(
+                population=sample_population,
+                parameters=params,
+                rebate_pool=10000.0,
+                year=2026,
+                template_name="unsupported",
+            )
+
+    def test_compute_rebate_empty_population(
+        self,
+        lump_sum_rebate_params: RebateParameters,
+    ) -> None:
+        """Empty population returns zero totals and empty arrays."""
+        empty_pop = pa.table(
+            {
+                "household_id": pa.array([], type=pa.int64()),
+                "income": pa.array([], type=pa.float64()),
+            }
+        )
+        result = compute_rebate(
+            population=empty_pop,
+            parameters=lump_sum_rebate_params,
+            rebate_pool=10000.0,
+            year=2026,
+            template_name="empty",
+        )
+
+        assert result.total_distributed == 0.0
+        assert len(result.household_ids) == 0
+        assert len(result.rebate_amount) == 0
+        assert len(result.income_decile) == 0
+
 
 class TestRebateResult:
     """Tests for RebateResult dataclass."""

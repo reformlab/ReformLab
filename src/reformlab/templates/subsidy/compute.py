@@ -18,6 +18,12 @@ from reformlab.templates.carbon_tax.compute import assign_income_deciles
 from reformlab.templates.schema import SubsidyParameters
 
 
+def _sum_array(values: pa.Array) -> float:
+    """Return array sum as float, treating empty arrays as 0.0."""
+    total = pc.sum(values).as_py()
+    return 0.0 if total is None else float(total)
+
+
 @dataclass(frozen=True)
 class SubsidyResult:
     """Result of subsidy computation for a single scenario run.
@@ -86,27 +92,23 @@ def compute_subsidy_eligibility(
 
     # Apply category eligibility if specified
     if parameters.eligible_categories:
-        # Check for category columns in population
-        # A household is eligible if they have a truthy value in any eligible category column
+        category_columns = [
+            population.column(category)
+            for category in parameters.eligible_categories
+            if category in population.column_names
+        ]
+        # If template requires categories but none are available in data,
+        # households cannot satisfy category eligibility.
+        if not category_columns:
+            return pa.array([False] * num_households, type=pa.bool_())
+
+        # A household is eligible if they have a truthy value in any eligible category column.
         for i in range(num_households):
             if not eligible[i]:
                 continue  # Already ineligible
 
-            has_category = False
-            for category in parameters.eligible_categories:
-                if category in population.column_names:
-                    col = population.column(category)
-                    val = col[i].as_py()
-                    if val:  # Truthy value means household has this category
-                        has_category = True
-                        break
-
-            # If categories specified but household doesn't match any, ineligible
-            # Only check if the population has any of the eligible category columns
-            category_columns_present = any(
-                cat in population.column_names for cat in parameters.eligible_categories
-            )
-            if category_columns_present and not has_category:
+            has_category = any(bool(category_col[i].as_py()) for category_col in category_columns)
+            if not has_category:
                 eligible[i] = False
 
     return pa.array(eligible, type=pa.bool_())
@@ -135,6 +137,11 @@ def compute_subsidy_amount(
     num_households = population.num_rows
     if num_households == 0:
         return pa.array([], type=pa.float64())
+    if len(eligibility) != num_households:
+        raise ValueError(
+            "eligibility mask length must equal population size "
+            f"({len(eligibility)} != {num_households})"
+        )
 
     # Get subsidy amount for this year (default 0 if not specified)
     subsidy_rate = parameters.rate_schedule.get(year, 0.0)
@@ -187,7 +194,7 @@ def compute_subsidy(
     subsidy_amounts = compute_subsidy_amount(population, parameters, eligibility, year)
 
     # Calculate total cost
-    total_cost = float(pc.sum(subsidy_amounts).as_py())
+    total_cost = _sum_array(subsidy_amounts)
 
     return SubsidyResult(
         household_ids=household_ids,

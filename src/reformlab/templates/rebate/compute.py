@@ -18,6 +18,12 @@ from reformlab.templates.carbon_tax.compute import assign_income_deciles
 from reformlab.templates.schema import RebateParameters
 
 
+def _sum_array(values: pa.Array) -> float:
+    """Return array sum as float, treating empty arrays as 0.0."""
+    total = pc.sum(values).as_py()
+    return 0.0 if total is None else float(total)
+
+
 @dataclass(frozen=True)
 class RebateResult:
     """Result of rebate computation for a single scenario run.
@@ -150,17 +156,20 @@ def compute_rebate(
     income_deciles = assign_income_deciles(incomes)
 
     # Compute rebate based on type
-    if parameters.rebate_type == "lump_sum":
+    if parameters.rebate_type in ("", "lump_sum"):
         rebate_amounts = compute_lump_sum_rebate(rebate_pool, num_households)
     elif parameters.rebate_type == "progressive_dividend":
         rebate_amounts = compute_progressive_rebate(
             rebate_pool, income_deciles, parameters.income_weights
         )
     else:
-        # Default to lump sum if no type specified
-        rebate_amounts = compute_lump_sum_rebate(rebate_pool, num_households)
+        raise ValueError(
+            "Unsupported rebate_type "
+            f"'{parameters.rebate_type}'. Supported values: '', "
+            "'lump_sum', 'progressive_dividend'."
+        )
 
-    total_distributed = float(pc.sum(rebate_amounts).as_py())
+    total_distributed = _sum_array(rebate_amounts)
 
     return RebateResult(
         household_ids=household_ids,

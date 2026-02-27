@@ -19,6 +19,12 @@ from reformlab.templates.carbon_tax.compute import assign_income_deciles
 from reformlab.templates.schema import FeebateParameters
 
 
+def _sum_array(values: pa.Array) -> float:
+    """Return array sum as float, treating empty arrays as 0.0."""
+    total = pc.sum(values).as_py()
+    return 0.0 if total is None else float(total)
+
+
 @dataclass(frozen=True)
 class FeebateResult:
     """Result of feebate computation for a single scenario run.
@@ -136,13 +142,20 @@ def compute_feebate(
     incomes = population.column("income")
     income_deciles = assign_income_deciles(incomes)
 
-    # Get metric values (use 0.0 if column doesn't exist or value is null)
+    # Get metric values.
+    # Missing/invalid values are treated as pivot-point (neutral impact).
     if metric_column in population.column_names:
         metric_col = population.column(metric_column)
-        metric_values = [
-            v.as_py() if v.as_py() is not None else 0.0
-            for v in metric_col
-        ]
+        metric_values = []
+        for value in metric_col:
+            raw_value = value.as_py()
+            if raw_value is None:
+                metric_values.append(parameters.pivot_point)
+                continue
+            try:
+                metric_values.append(float(raw_value))
+            except (TypeError, ValueError):
+                metric_values.append(parameters.pivot_point)
     else:
         # No metric column - treat as everyone at pivot (no fees or rebates)
         metric_values = [parameters.pivot_point] * num_households
@@ -164,8 +177,8 @@ def compute_feebate(
     net_impact_array = pa.array(net_impacts, type=pa.float64())
     metric_array = pa.array(metric_values, type=pa.float64())
 
-    total_fees = float(pc.sum(fee_array).as_py())
-    total_rebates = float(pc.sum(rebate_array).as_py())
+    total_fees = _sum_array(fee_array)
+    total_rebates = _sum_array(rebate_array)
     net_fiscal_balance = total_fees - total_rebates
 
     return FeebateResult(

@@ -113,6 +113,48 @@ class TestCompareFeebateDecileImpacts:
         deciles = table.column("decile").to_pylist()
         assert deciles == list(range(1, 11))
 
+    def test_compare_table_includes_policy_specific_metrics_for_each_scenario(
+        self, sample_population: pa.Table
+    ) -> None:
+        """Comparison exposes fee/rebate/net metrics by scenario."""
+        scenario_low = BaselineScenario(
+            name="Feebate Low Rates",
+            policy_type=PolicyType.FEEBATE,
+            year_schedule=YearSchedule(2026, 2036),
+            parameters=FeebateParameters(
+                rate_schedule={2026: 0.0},
+                pivot_point=120.0,
+                fee_rate=25.0,
+                rebate_rate=25.0,
+            ),
+        )
+        scenario_high = BaselineScenario(
+            name="Feebate High Rates",
+            policy_type=PolicyType.FEEBATE,
+            year_schedule=YearSchedule(2026, 2036),
+            parameters=FeebateParameters(
+                rate_schedule={2026: 0.0},
+                pivot_point=120.0,
+                fee_rate=100.0,
+                rebate_rate=100.0,
+            ),
+        )
+        results = run_feebate_batch(
+            sample_population,
+            [scenario_low, scenario_high],
+            "vehicle_emissions_gkm",
+            2026,
+        )
+        comparison = compare_feebate_decile_impacts(results)
+        columns = set(comparison.comparison_table.column_names)
+
+        assert "Feebate_Low_Rates_mean_fee" in columns
+        assert "Feebate_Low_Rates_mean_rebate" in columns
+        assert "Feebate_Low_Rates_mean_net_impact" in columns
+        assert "Feebate_High_Rates_mean_fee" in columns
+        assert "Feebate_High_Rates_mean_rebate" in columns
+        assert "Feebate_High_Rates_mean_net_impact" in columns
+
 
 class TestFeebateDecileResultsToTable:
     """Tests for decile results conversion to table."""

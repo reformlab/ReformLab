@@ -220,6 +220,57 @@ class TestComputeFeebate:
         assert all(f == 0.0 for f in result.fee_amount.to_pylist())
         assert all(r == 0.0 for r in result.rebate_amount.to_pylist())
 
+    def test_compute_feebate_null_metric_is_neutral(
+        self,
+        symmetric_feebate_params: FeebateParameters,
+    ) -> None:
+        """Null metric values are treated as pivot-point (no fee/rebate)."""
+        population = pa.table(
+            {
+                "household_id": pa.array([1, 2, 3], type=pa.int64()),
+                "income": pa.array([20000.0, 50000.0, 100000.0], type=pa.float64()),
+                "vehicle_emissions_gkm": pa.array([80.0, None, 160.0], type=pa.float64()),
+            }
+        )
+        result = compute_feebate(
+            population=population,
+            parameters=symmetric_feebate_params,
+            metric_column="vehicle_emissions_gkm",
+            year=2026,
+            template_name="null-metric",
+        )
+
+        assert result.fee_amount.to_pylist() == [0.0, 0.0, 2000.0]
+        assert result.rebate_amount.to_pylist() == [2000.0, 0.0, 0.0]
+
+    def test_compute_feebate_empty_population(
+        self,
+        symmetric_feebate_params: FeebateParameters,
+    ) -> None:
+        """Empty population returns zero totals and empty arrays."""
+        empty_pop = pa.table(
+            {
+                "household_id": pa.array([], type=pa.int64()),
+                "income": pa.array([], type=pa.float64()),
+                "vehicle_emissions_gkm": pa.array([], type=pa.float64()),
+            }
+        )
+        result = compute_feebate(
+            population=empty_pop,
+            parameters=symmetric_feebate_params,
+            metric_column="vehicle_emissions_gkm",
+            year=2026,
+            template_name="empty",
+        )
+
+        assert result.total_fees == 0.0
+        assert result.total_rebates == 0.0
+        assert result.net_fiscal_balance == 0.0
+        assert len(result.household_ids) == 0
+        assert len(result.fee_amount) == 0
+        assert len(result.rebate_amount) == 0
+        assert len(result.net_impact) == 0
+
 
 class TestFeebateResult:
     """Tests for FeebateResult dataclass."""

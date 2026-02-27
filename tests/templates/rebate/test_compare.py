@@ -102,6 +102,41 @@ class TestCompareRebateDecileImpacts:
         deciles = table.column("decile").to_pylist()
         assert deciles == list(range(1, 11))
 
+    def test_compare_table_includes_policy_specific_metrics_for_each_scenario(
+        self, sample_population: pa.Table
+    ) -> None:
+        """Comparison exposes rebate means/totals by scenario."""
+        scenario_lump = BaselineScenario(
+            name="Rebate Lump Sum",
+            policy_type=PolicyType.REBATE,
+            year_schedule=YearSchedule(2026, 2036),
+            parameters=RebateParameters(
+                rate_schedule={2026: 100.0},
+                rebate_type="lump_sum",
+            ),
+        )
+        scenario_prog = BaselineScenario(
+            name="Rebate Progressive",
+            policy_type=PolicyType.REBATE,
+            year_schedule=YearSchedule(2026, 2036),
+            parameters=RebateParameters(
+                rate_schedule={2026: 100.0},
+                rebate_type="progressive_dividend",
+                income_weights={"decile_1": 2.0, "decile_10": 0.5},
+            ),
+        )
+        rebate_pools = {"Rebate Lump Sum": 10000.0, "Rebate Progressive": 10000.0}
+        results = run_rebate_batch(
+            sample_population, [scenario_lump, scenario_prog], rebate_pools, 2026
+        )
+        comparison = compare_rebate_decile_impacts(results)
+        columns = set(comparison.comparison_table.column_names)
+
+        assert "Rebate_Lump_Sum_mean_rebate" in columns
+        assert "Rebate_Lump_Sum_total_rebate" in columns
+        assert "Rebate_Progressive_mean_rebate" in columns
+        assert "Rebate_Progressive_total_rebate" in columns
+
 
 class TestRebateDecileResultsToTable:
     """Tests for decile results conversion to table."""

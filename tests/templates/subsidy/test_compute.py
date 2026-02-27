@@ -80,6 +80,17 @@ class TestComputeSubsidyEligibility:
         # All should be eligible when no income cap
         assert all(result)
 
+    def test_eligibility_missing_category_columns(
+        self,
+        small_population: pa.Table,
+        category_subsidy_params: SubsidyParameters,
+    ) -> None:
+        """Required categories missing from data make all households ineligible."""
+        eligibility = compute_subsidy_eligibility(
+            small_population, category_subsidy_params, 2026
+        )
+        assert eligibility.to_pylist() == [False, False, False]
+
     def test_eligibility_empty_population(
         self,
         basic_subsidy_params: SubsidyParameters,
@@ -148,6 +159,18 @@ class TestComputeSubsidyAmount:
         )
         assert all(a == 0.0 for a in amounts.to_pylist())
 
+    def test_subsidy_amount_raises_on_length_mismatch(
+        self,
+        small_population: pa.Table,
+        basic_subsidy_params: SubsidyParameters,
+    ) -> None:
+        """Eligibility mask length must match household count."""
+        eligibility = pa.array([True, False], type=pa.bool_())
+        with pytest.raises(ValueError, match="eligibility mask length"):
+            compute_subsidy_amount(
+                small_population, basic_subsidy_params, eligibility, 2026
+            )
+
 
 class TestComputeSubsidy:
     """Tests for complete subsidy computation."""
@@ -205,6 +228,30 @@ class TestComputeSubsidy:
         eligible_count = sum(result.is_eligible.to_pylist())
         # 5 households below or at 45k cap
         assert eligible_count == 5
+
+    def test_compute_subsidy_empty_population(
+        self,
+        basic_subsidy_params: SubsidyParameters,
+    ) -> None:
+        """Empty population returns zero totals and empty arrays."""
+        empty_pop = pa.table(
+            {
+                "household_id": pa.array([], type=pa.int64()),
+                "income": pa.array([], type=pa.float64()),
+            }
+        )
+        result = compute_subsidy(
+            population=empty_pop,
+            parameters=basic_subsidy_params,
+            year=2026,
+            template_name="empty",
+        )
+
+        assert result.total_cost == 0.0
+        assert len(result.household_ids) == 0
+        assert len(result.subsidy_amount) == 0
+        assert len(result.is_eligible) == 0
+        assert len(result.income_decile) == 0
 
 
 class TestSubsidyResult:

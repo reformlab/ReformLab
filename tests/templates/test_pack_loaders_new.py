@@ -69,6 +69,11 @@ class TestSubsidyPackLoader:
         assert pack_dir.exists()
         assert pack_dir.is_dir()
 
+    def test_subsidy_pack_includes_readme(self) -> None:
+        """Subsidy pack includes documentation README (AC-6)."""
+        readme = get_subsidy_pack_dir() / "README.md"
+        assert readme.exists()
+
 
 class TestRebatePackLoader:
     """Tests for rebate template pack loading (AC-1, AC-6)."""
@@ -110,6 +115,11 @@ class TestRebatePackLoader:
         pack_dir = get_rebate_pack_dir()
         assert pack_dir.exists()
         assert pack_dir.is_dir()
+
+    def test_rebate_pack_includes_readme(self) -> None:
+        """Rebate pack includes documentation README (AC-6)."""
+        readme = get_rebate_pack_dir() / "README.md"
+        assert readme.exists()
 
 
 class TestFeebatePackLoader:
@@ -153,6 +163,11 @@ class TestFeebatePackLoader:
         pack_dir = get_feebate_pack_dir()
         assert pack_dir.exists()
         assert pack_dir.is_dir()
+
+    def test_feebate_pack_includes_readme(self) -> None:
+        """Feebate pack includes documentation README (AC-6)."""
+        readme = get_feebate_pack_dir() / "README.md"
+        assert readme.exists()
 
 
 class TestAllTemplatesPassValidation:
