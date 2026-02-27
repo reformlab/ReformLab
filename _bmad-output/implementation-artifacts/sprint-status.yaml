@@ -60,7 +60,7 @@ development_status:
   2-4-build-scenario-registry: review
   2-5-implement-scenario-cloning: review
   2-6-add-schema-migration-helper: review
-  2-7-implement-yaml-json-workflow-configuration: backlog
+  2-7-implement-yaml-json-workflow-configuration: ready-for-dev
   epic-2-retrospective: optional
 
   # EPIC-3: Step-Pluggable Dynamic Orchestrator and Vintage Tracking
