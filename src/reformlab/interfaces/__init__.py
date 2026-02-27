@@ -15,7 +15,12 @@ from reformlab.interfaces.api import (
     list_scenarios,
     run_scenario,
 )
-from reformlab.interfaces.errors import ConfigurationError, SimulationError
+from reformlab.interfaces.errors import (
+    ConfigurationError,
+    SimulationError,
+    ValidationErrors,
+    ValidationIssue,
+)
 
 __all__ = [
     # Core API functions
@@ -33,4 +38,6 @@ __all__ = [
     # Error types
     "ConfigurationError",
     "SimulationError",
+    "ValidationErrors",
+    "ValidationIssue",
 ]

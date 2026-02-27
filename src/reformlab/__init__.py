@@ -51,6 +51,8 @@ from reformlab.interfaces import (
     ScenarioConfig,
     SimulationError,
     SimulationResult,
+    ValidationErrors,
+    ValidationIssue,
     clone_scenario,
     create_quickstart_adapter,
     create_scenario,
@@ -77,6 +79,8 @@ __all__ = [
     # Error types
     "ConfigurationError",
     "SimulationError",
+    "ValidationErrors",
+    "ValidationIssue",
     # Metadata
     "__version__",
 ]

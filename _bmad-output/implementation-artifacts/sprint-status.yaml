@@ -102,7 +102,7 @@ development_status:
   6-4a-build-static-gui-prototype: done
   6-4b-wire-gui-prototype-to-backend: backlog
   6-5-add-export-actions: done
-  6-6-improve-operational-error-ux: ready-for-dev
+  6-6-improve-operational-error-ux: done
   epic-6-retrospective: optional
 
   # EPIC-7: Trusted Outputs and External Pilot Validation

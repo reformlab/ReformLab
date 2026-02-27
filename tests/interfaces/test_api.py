@@ -205,7 +205,7 @@ class TestSimulationResult:
             ),
         )
 
-        with pytest.raises(SimulationError, match="Welfare indicators require a reform panel"):
+        with pytest.raises(SimulationError, match="Welfare indicator computation failed"):
             result.indicators("welfare")
 
     def test_simulation_result_welfare_accepts_reform_result(self) -> None:
@@ -509,8 +509,9 @@ class TestRunScenario:
 
 
     def test_run_scenario_invalid_year_range(self) -> None:
-        """run_scenario raises ConfigurationError for end_year < start_year."""
-        from reformlab import ConfigurationError, ScenarioConfig, run_scenario
+        """run_scenario raises ValidationErrors for end_year < start_year."""
+        from reformlab.interfaces.errors import ValidationErrors
+        from reformlab import ScenarioConfig, run_scenario
 
         config = ScenarioConfig(
             template_name="test",
@@ -521,16 +522,18 @@ class TestRunScenario:
 
         adapter = MockAdapter()
 
-        with pytest.raises(ConfigurationError) as exc_info:
+        with pytest.raises(ValidationErrors) as exc_info:
             run_scenario(config, adapter=adapter)
 
         error = exc_info.value
-        assert "end_year" in error.field_path
+        assert len(error.issues) >= 1
+        assert any("end_year" in issue.field_path for issue in error.issues)
         assert ">=" in error.message
 
     def test_run_scenario_invalid_year_bounds(self) -> None:
-        """run_scenario raises ConfigurationError for unreasonable years."""
-        from reformlab import ConfigurationError, ScenarioConfig, run_scenario
+        """run_scenario raises ValidationErrors for unreasonable years."""
+        from reformlab.interfaces.errors import ValidationErrors
+        from reformlab import ScenarioConfig, run_scenario
 
         config = ScenarioConfig(
             template_name="test",
@@ -541,16 +544,18 @@ class TestRunScenario:
 
         adapter = MockAdapter()
 
-        with pytest.raises(ConfigurationError) as exc_info:
+        with pytest.raises(ValidationErrors) as exc_info:
             run_scenario(config, adapter=adapter)
 
         error = exc_info.value
-        assert "start_year" in error.field_path
+        assert len(error.issues) >= 1
+        assert any("start_year" in issue.field_path or "end_year" in issue.field_path for issue in error.issues)
         assert "1900" in error.message
 
     def test_run_scenario_missing_population_file(self) -> None:
-        """run_scenario raises ConfigurationError for missing population file."""
-        from reformlab import ConfigurationError, ScenarioConfig, run_scenario
+        """run_scenario raises ValidationErrors for missing population file."""
+        from reformlab.interfaces.errors import ValidationErrors
+        from reformlab import ScenarioConfig, run_scenario
 
         config = ScenarioConfig(
             template_name="test",
@@ -562,12 +567,13 @@ class TestRunScenario:
 
         adapter = MockAdapter()
 
-        with pytest.raises(ConfigurationError) as exc_info:
+        with pytest.raises(ValidationErrors) as exc_info:
             run_scenario(config, adapter=adapter)
 
         error = exc_info.value
-        assert "population_path" in error.field_path
-        assert "not found" in error.message.lower()
+        assert len(error.issues) >= 1
+        assert any("population_path" in issue.field_path for issue in error.issues)
+        assert "file" in error.message.lower()
 
     def test_run_scenario_returns_simulation_result(self) -> None:
         """run_scenario returns SimulationResult with expected structure."""
@@ -958,6 +964,8 @@ class TestPublicAPIImports:
             "ScenarioConfig",
             "ConfigurationError",
             "SimulationError",
+            "ValidationErrors",
+            "ValidationIssue",
             "__version__",
         }
 
@@ -995,10 +1003,11 @@ class TestErrorHandling:
         assert "Simulation failed" in str(error)
 
     def test_no_bare_value_errors_from_api(self) -> None:
-        """API never raises bare ValueError - only ConfigurationError or SimulationError."""
+        """API never raises bare ValueError - only ConfigurationError/ValidationErrors or SimulationError."""
+        from reformlab.interfaces.errors import ValidationErrors
         from reformlab import ConfigurationError, run_scenario
 
-        # Invalid config should raise ConfigurationError, not ValueError
+        # Invalid config should raise ValidationErrors, not ValueError
         config = {
             "scenario": {
                 "template_name": "test",
@@ -1010,5 +1019,6 @@ class TestErrorHandling:
 
         adapter = MockAdapter()
 
-        with pytest.raises(ConfigurationError):  # Not ValueError
+        # Should raise ValidationErrors (which is a structured error type, not bare ValueError)
+        with pytest.raises((ConfigurationError, ValidationErrors)):  # Not ValueError
             run_scenario(config, adapter=adapter)

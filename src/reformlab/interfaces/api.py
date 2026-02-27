@@ -131,8 +131,8 @@ class SimulationResult:
         from reformlab.interfaces.errors import SimulationError
 
         if self.panel_output is None:
-            msg = "No panel output available (simulation may have failed)"
-            raise SimulationError(msg)
+            msg = "Operation failed — No panel output available — Ensure the simulation completed successfully"
+            raise SimulationError(msg, fix="Ensure the simulation completed successfully")
 
         # Delegate to indicator subsystem based on type
         from reformlab.indicators import (
@@ -163,8 +163,8 @@ class SimulationResult:
 
             if reform_panel is None:
                 raise SimulationError(
-                    "Welfare indicators require a reform panel. "
-                    "Pass reform_result=<SimulationResult> or reform_panel=<PanelOutput>."
+                    "Welfare indicator computation failed — No reform panel provided — Pass reform_result=<SimulationResult> or reform_panel=<PanelOutput>",
+                    fix="Pass reform_result=<SimulationResult> or reform_panel=<PanelOutput>",
                 )
 
             return compute_welfare_indicators(
@@ -179,8 +179,8 @@ class SimulationResult:
             )
         else:
             raise SimulationError(
-                f"Unknown indicator type: {indicator_type}. "
-                f"Supported types: distributional, geographic, welfare, fiscal"
+                f"Indicator computation failed — Unknown indicator type '{indicator_type}' — Use one of: distributional, geographic, welfare, fiscal",
+                fix="Use one of the supported indicator types: distributional, geographic, welfare, fiscal",
             )
 
     def export_csv(self, path: str | Path) -> Path:
@@ -202,8 +202,8 @@ class SimulationResult:
         from reformlab.interfaces.errors import SimulationError
 
         if self.panel_output is None:
-            msg = "No panel output available (simulation may have failed)"
-            raise SimulationError(msg)
+            msg = "Operation failed — No panel output available — Ensure the simulation completed successfully"
+            raise SimulationError(msg, fix="Ensure the simulation completed successfully")
 
         return self.panel_output.to_csv(path)
 
@@ -229,8 +229,8 @@ class SimulationResult:
         from reformlab.interfaces.errors import SimulationError
 
         if self.panel_output is None:
-            msg = "No panel output available (simulation may have failed)"
-            raise SimulationError(msg)
+            msg = "Operation failed — No panel output available — Ensure the simulation completed successfully"
+            raise SimulationError(msg, fix="Ensure the simulation completed successfully")
 
         provenance_metadata = {
             "reformlab_manifest_id": self.manifest.manifest_id,
@@ -269,18 +269,21 @@ def create_quickstart_adapter(
             field_path="household_count",
             expected="positive integer",
             actual=household_count,
+            fix="Provide a positive integer for household_count",
         )
     if year < 0:
         raise ConfigurationError(
             field_path="year",
             expected="non-negative integer year",
             actual=year,
+            fix="Provide a valid year (0 or greater)",
         )
     if carbon_tax_rate < 0:
         raise ConfigurationError(
             field_path="carbon_tax_rate",
             expected="non-negative tax rate",
             actual=carbon_tax_rate,
+            fix="Provide a non-negative tax rate value",
         )
 
     baseline_rate = 44.0
@@ -361,8 +364,9 @@ def run_scenario(
         raise
     except Exception as exc:
         raise SimulationError(
-            f"Failed to load scenario: {exc}",
+            f"Scenario loading failed — Could not load scenario configuration — Check scenario file format and content",
             cause=exc,
+            fix="Check scenario file format and content",
         ) from exc
 
     # Step 4: Setup adapter
@@ -375,10 +379,38 @@ def run_scenario(
     except ConfigurationError:
         raise
     except Exception as exc:
-        raise SimulationError(
-            f"Simulation execution failed: {exc}",
-            cause=exc,
-        ) from exc
+        # Extract context from OrchestratorError if available
+        from reformlab.orchestrator.errors import OrchestratorError
+
+        if isinstance(exc, OrchestratorError):
+            # Build message with orchestrator context
+            what = "Simulation execution failed"
+            why = exc.reason
+            if exc.year is not None and exc.step_name:
+                why += f" at year {exc.year}, step '{exc.step_name}'"
+            elif exc.year is not None:
+                why += f" at year {exc.year}"
+
+            completed = sorted(exc.partial_states.keys()) if exc.partial_states else []
+            if completed:
+                why += f" (completed years: {completed})"
+
+            fix = "Check adapter configuration and input data"
+            if exc.year is not None:
+                fix += f" for year {exc.year}"
+
+            raise SimulationError(
+                f"{what} — {why} — {fix}",
+                cause=exc,
+                fix=fix,
+                partial_states=exc.partial_states,
+            ) from exc
+        else:
+            raise SimulationError(
+                f"Simulation execution failed — Error during orchestrator execution — Check adapter configuration and input data",
+                cause=exc,
+                fix="Check adapter configuration and input data",
+            ) from exc
 
     # Step 6: Package and return
     return result
@@ -446,6 +478,7 @@ def _normalize_config(
                 field_path="scenario",
                 expected="ScenarioConfig, Path, str path, or dict",
                 actual=type(scenario_data).__name__,
+                fix="Provide scenario as ScenarioConfig object, file path, or dictionary",
             )
 
         return RunConfig(
@@ -461,6 +494,7 @@ def _normalize_config(
         field_path="config",
         expected="RunConfig, Path, or dict",
         actual=type(config).__name__,
+        fix="Provide config as RunConfig object, YAML file path, or dictionary",
     )
 
 
@@ -473,7 +507,7 @@ def _workflow_config_to_run_config(workflow_config: Any) -> RunConfig:
             field_path="scenarios",
             expected="at least one scenario reference",
             actual=[],
-            message="Workflow config must define at least one scenario entry.",
+            fix="Add at least one scenario entry to the workflow config",
         )
 
     scenario_ref = workflow_config.scenarios[0].reference
@@ -501,6 +535,7 @@ def _coerce_optional_int(value: Any, *, field_path: str) -> int | None:
             field_path=field_path,
             expected="int",
             actual=value,
+            fix="Provide an integer value (not boolean)",
         )
 
     try:
@@ -510,6 +545,7 @@ def _coerce_optional_int(value: Any, *, field_path: str) -> int | None:
             field_path=field_path,
             expected="int",
             actual=value,
+            fix="Provide a valid integer value",
         ) from exc
 
 
@@ -522,6 +558,7 @@ def _coerce_required_int(value: Any, *, field_path: str) -> int:
             field_path=field_path,
             expected="int",
             actual=value,
+            fix="Provide a valid integer value",
         )
 
     try:
@@ -531,6 +568,7 @@ def _coerce_required_int(value: Any, *, field_path: str) -> int:
             field_path=field_path,
             expected="int",
             actual=value,
+            fix="Provide a valid integer value",
         ) from exc
 
 
@@ -549,6 +587,7 @@ def _coerce_optional_path(value: Any, *, field_path: str) -> Path | None:
         field_path=field_path,
         expected="path string or Path",
         actual=value,
+        fix="Provide a valid file path as string or Path object",
     )
 
 
@@ -561,7 +600,7 @@ def _load_yaml_mapping(path: Path, *, field_path: str) -> dict[str, Any]:
             field_path=field_path,
             expected="existing YAML file path",
             actual=str(path),
-            message=f"File not found: {path}",
+            fix=f"Ensure the file exists at {path}",
         )
 
     try:
@@ -572,14 +611,14 @@ def _load_yaml_mapping(path: Path, *, field_path: str) -> dict[str, Any]:
             field_path=field_path,
             expected="valid YAML syntax",
             actual=str(path),
-            message=f"Invalid YAML syntax in {path}: {exc}",
+            fix=f"Fix YAML syntax errors in {path}",
         ) from exc
     except OSError as exc:
         raise ConfigurationError(
             field_path=field_path,
             expected="readable YAML file",
             actual=str(path),
-            message=f"Failed to read YAML file {path}: {exc}",
+            fix=f"Ensure the file at {path} is readable",
         ) from exc
 
     if not isinstance(raw, dict):
@@ -587,6 +626,7 @@ def _load_yaml_mapping(path: Path, *, field_path: str) -> dict[str, Any]:
             field_path=field_path,
             expected="YAML mapping (object)",
             actual=type(raw).__name__,
+            fix="Ensure the YAML file contains a top-level mapping (object)",
         )
 
     return cast(dict[str, Any], raw)
@@ -621,6 +661,7 @@ def _dict_to_scenario_config(data: dict[str, Any]) -> ScenarioConfig:
                 field_path="scenario.year_schedule",
                 expected="mapping with start_year/end_year",
                 actual=year_schedule,
+                fix="Provide year_schedule as a dictionary with start_year and end_year keys",
             )
         start_year = year_schedule.get("start_year")
         end_year = year_schedule.get("end_year")
@@ -636,6 +677,7 @@ def _dict_to_scenario_config(data: dict[str, Any]) -> ScenarioConfig:
             field_path="scenario.template_name",
             expected="non-empty string",
             actual=template_name,
+            fix="Provide a valid template name as a non-empty string",
         )
 
     parameters = data.get("parameters")
@@ -644,6 +686,7 @@ def _dict_to_scenario_config(data: dict[str, Any]) -> ScenarioConfig:
             field_path="scenario.parameters",
             expected="dict of policy parameters",
             actual=parameters,
+            fix="Provide parameters as a dictionary of policy parameters",
         )
 
     population_path = _coerce_optional_path(
@@ -661,6 +704,7 @@ def _dict_to_scenario_config(data: dict[str, Any]) -> ScenarioConfig:
             field_path="scenario.baseline_id",
             expected="non-empty string or null",
             actual=baseline_id,
+            fix="Provide baseline_id as a non-empty string or null",
         )
 
     return ScenarioConfig(
@@ -677,20 +721,30 @@ def _dict_to_scenario_config(data: dict[str, Any]) -> ScenarioConfig:
 def _validate_config(run_config: RunConfig) -> None:
     """Validate configuration before execution.
 
+    Accumulates all validation issues and raises ValidationErrors if any are found.
+
     Args:
         run_config: Configuration to validate.
 
     Raises:
-        ConfigurationError: If configuration is invalid.
+        ConfigurationError: If a single configuration issue is found during file check.
+        ValidationErrors: If multiple configuration issues are found.
     """
-    from reformlab.interfaces.errors import ConfigurationError
+    from reformlab.interfaces.errors import ConfigurationError, ValidationErrors, ValidationIssue
 
+    issues: list[ValidationIssue] = []
+
+    # Check output_dir
     if run_config.output_dir is not None:
         if run_config.output_dir.exists() and not run_config.output_dir.is_dir():
-            raise ConfigurationError(
-                field_path="output_dir",
-                expected="directory path",
-                actual=str(run_config.output_dir),
+            issues.append(
+                ValidationIssue(
+                    field_path="output_dir",
+                    expected="directory path",
+                    actual=str(run_config.output_dir),
+                    fix="Provide a valid directory path or remove the existing file",
+                    message=f"Configuration error at 'output_dir' — Expected directory path, got {run_config.output_dir!r} — Provide a valid directory path or remove the existing file",
+                )
             )
 
     # Extract scenario config
@@ -701,7 +755,7 @@ def _validate_config(run_config: RunConfig) -> None:
                 field_path="scenario",
                 expected="existing file path",
                 actual=str(scenario),
-                message=f"Scenario file not found: {scenario}",
+                fix=f"Ensure the file exists at {scenario}",
             )
         return  # File will be validated when loaded
 
@@ -712,37 +766,55 @@ def _validate_config(run_config: RunConfig) -> None:
     if isinstance(scenario, ScenarioConfig):
         # Validate year bounds
         if scenario.end_year < scenario.start_year:
-            raise ConfigurationError(
-                field_path="scenario.end_year",
-                expected=f">= {scenario.start_year}",
-                actual=scenario.end_year,
-                message="end_year must be >= start_year",
+            issues.append(
+                ValidationIssue(
+                    field_path="scenario.end_year",
+                    expected=f">= {scenario.start_year}",
+                    actual=scenario.end_year,
+                    fix=f"Set end_year to {scenario.start_year} or later",
+                    message=f"Configuration error at 'scenario.end_year' — Expected >= {scenario.start_year}, got {scenario.end_year!r} — Set end_year to {scenario.start_year} or later",
+                )
             )
 
         # Validate year range is reasonable
         if scenario.start_year < 1900 or scenario.start_year > 2200:
-            raise ConfigurationError(
-                field_path="scenario.start_year",
-                expected="year in range [1900, 2200]",
-                actual=scenario.start_year,
+            issues.append(
+                ValidationIssue(
+                    field_path="scenario.start_year",
+                    expected="year in range [1900, 2200]",
+                    actual=scenario.start_year,
+                    fix="Provide a year between 1900 and 2200",
+                    message=f"Configuration error at 'scenario.start_year' — Expected year in range [1900, 2200], got {scenario.start_year!r} — Provide a year between 1900 and 2200",
+                )
             )
 
         if scenario.end_year < 1900 or scenario.end_year > 2200:
-            raise ConfigurationError(
-                field_path="scenario.end_year",
-                expected="year in range [1900, 2200]",
-                actual=scenario.end_year,
+            issues.append(
+                ValidationIssue(
+                    field_path="scenario.end_year",
+                    expected="year in range [1900, 2200]",
+                    actual=scenario.end_year,
+                    fix="Provide a year between 1900 and 2200",
+                    message=f"Configuration error at 'scenario.end_year' — Expected year in range [1900, 2200], got {scenario.end_year!r} — Provide a year between 1900 and 2200",
+                )
             )
 
         # Validate population file if provided
         if scenario.population_path is not None:
             if not scenario.population_path.exists():
-                raise ConfigurationError(
-                    field_path="scenario.population_path",
-                    expected="existing file",
-                    actual=str(scenario.population_path),
-                    message=f"Population file not found: {scenario.population_path}",
+                issues.append(
+                    ValidationIssue(
+                        field_path="scenario.population_path",
+                        expected="existing file",
+                        actual=str(scenario.population_path),
+                        fix=f"Ensure the file exists at {scenario.population_path}",
+                        message=f"Configuration error at 'scenario.population_path' — Expected existing file, got {scenario.population_path!r} — Ensure the file exists at {scenario.population_path}",
+                    )
                 )
+
+    # Raise aggregated errors if any were found
+    if issues:
+        raise ValidationErrors(issues)
 
 
 def _normalize_parameters(params: dict[str, Any]) -> dict[str, Any]:
@@ -799,6 +871,7 @@ def _load_scenario(
         field_path="scenario",
         expected="ScenarioConfig, Path, or dict",
         actual=type(scenario).__name__,
+        fix="Provide scenario as ScenarioConfig object, file path, or dictionary",
     )
 
 
@@ -965,9 +1038,7 @@ def _initialize_default_adapter(run_config: RunConfig) -> ComputationAdapter:
             field_path="adapter",
             expected="initializable OpenFisca adapter",
             actual=str(data_dir),
-            message=(
-                f"Failed to initialize OpenFiscaAdapter with data_dir={data_dir}: {exc}"
-            ),
+            fix=f"Ensure OpenFisca is properly installed and data_dir={data_dir} is valid",
         ) from exc
 
 
@@ -984,10 +1055,7 @@ def _resolve_openfisca_data_dir(run_config: RunConfig) -> Path:
             field_path="adapter.data_dir",
             expected="existing directory path",
             actual=env_data_dir,
-            message=(
-                "REFORMLAB_OPENFISCA_DATA_DIR is set but does not point to an "
-                "existing directory."
-            ),
+            fix=f"Create the directory at {env_data_dir} or update REFORMLAB_OPENFISCA_DATA_DIR",
         )
 
     default_path = Path("data/openfisca")
@@ -1001,10 +1069,7 @@ def _resolve_openfisca_data_dir(run_config: RunConfig) -> Path:
             "data/openfisca"
         ),
         actual=str(run_config.output_dir) if run_config.output_dir is not None else None,
-        message=(
-            "No default adapter data directory found. Set "
-            "REFORMLAB_OPENFISCA_DATA_DIR or pass adapter=... explicitly."
-        ),
+        fix="Set REFORMLAB_OPENFISCA_DATA_DIR environment variable or pass adapter explicitly",
     )
 
 
@@ -1034,6 +1099,7 @@ def _load_population_data(population_path: Path | None) -> Any:
                 field_path="scenario.population_path",
                 expected=".csv, .csv.gz, .parquet, or .pq file",
                 actual=str(population_path),
+                fix="Provide a population file in CSV, CSV.GZ, or Parquet format",
             )
     except ConfigurationError:
         raise
@@ -1042,7 +1108,7 @@ def _load_population_data(population_path: Path | None) -> Any:
             field_path="scenario.population_path",
             expected="readable population dataset",
             actual=str(population_path),
-            message=f"Failed to load population data from {population_path}: {exc}",
+            fix=f"Ensure {population_path} is a valid and readable population dataset file",
         ) from exc
 
     return PopulationData(
@@ -1183,7 +1249,7 @@ def clone_scenario(
             field_path="name",
             expected="existing scenario in registry",
             actual=name,
-            message=str(exc),
+            fix=f"Check that scenario '{name}' exists in the registry using list_scenarios()",
         ) from exc
 
 
@@ -1236,5 +1302,5 @@ def get_scenario(
             field_path="name",
             expected="existing scenario in registry",
             actual=name,
-            message=str(exc),
+            fix=f"Check that scenario '{name}' exists in the registry using list_scenarios()",
         ) from exc
