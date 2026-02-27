@@ -33,8 +33,14 @@ class VintageCohort:
 
     def __post_init__(self) -> None:
         """Validate cohort invariants."""
+        if not isinstance(self.age, int) or isinstance(self.age, bool):
+            raise ValueError(f"Cohort age must be an integer, got {self.age!r}")
         if self.age < 0:
             raise ValueError(f"Cohort age must be non-negative, got {self.age}")
+        if not isinstance(self.count, int) or isinstance(self.count, bool):
+            raise ValueError(
+                f"Cohort count must be an integer, got {self.count!r}"
+            )
         if self.count < 0:
             raise ValueError(f"Cohort count must be non-negative, got {self.count}")
 
@@ -73,7 +79,10 @@ class VintageState:
     @property
     def age_distribution(self) -> dict[int, int]:
         """Mapping of age to count for all cohorts."""
-        return {c.age: c.count for c in self.cohorts}
+        distribution: dict[int, int] = {}
+        for cohort in self.cohorts:
+            distribution[cohort.age] = distribution.get(cohort.age, 0) + cohort.count
+        return distribution
 
     def cohort_by_age(self, age: int) -> VintageCohort | None:
         """Get cohort by age, or None if not found."""

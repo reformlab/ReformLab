@@ -26,10 +26,20 @@ class TestVintageCohort:
         with pytest.raises(ValueError, match="non-negative"):
             VintageCohort(age=-1, count=10)
 
+    def test_non_integer_age_raises(self) -> None:
+        """Non-integer age raises ValueError."""
+        with pytest.raises(ValueError, match="integer"):
+            VintageCohort(age=1.5, count=10)  # type: ignore[arg-type]
+
     def test_negative_count_raises(self) -> None:
         """Negative count raises ValueError."""
         with pytest.raises(ValueError, match="non-negative"):
             VintageCohort(age=0, count=-5)
+
+    def test_non_integer_count_raises(self) -> None:
+        """Non-integer count raises ValueError."""
+        with pytest.raises(ValueError, match="integer"):
+            VintageCohort(age=0, count=10.5)  # type: ignore[arg-type]
 
     def test_zero_age_allowed(self) -> None:
         """Zero age is valid (new cohort)."""
@@ -77,6 +87,15 @@ class TestVintageState:
         )
         state = VintageState(asset_class="vehicle", cohorts=cohorts)
         assert state.age_distribution == {0: 100, 5: 50}
+
+    def test_age_distribution_sums_duplicate_ages(self) -> None:
+        """Age distribution sums counts across cohorts with same age."""
+        cohorts = (
+            VintageCohort(age=5, count=50),
+            VintageCohort(age=5, count=30),
+        )
+        state = VintageState(asset_class="vehicle", cohorts=cohorts)
+        assert state.age_distribution == {5: 80}
 
     def test_cohort_by_age_found(self) -> None:
         """cohort_by_age returns cohort when found."""
@@ -149,6 +168,18 @@ class TestVintageSummary:
         state = VintageState(asset_class="vehicle", cohorts=cohorts)
         summary = VintageSummary.from_state(state)
         assert summary.age_distribution == {0: 100}
+
+    def test_summary_handles_duplicate_ages(self) -> None:
+        """Summary aggregates duplicate age cohorts correctly."""
+        cohorts = (
+            VintageCohort(age=2, count=40),
+            VintageCohort(age=2, count=60),
+        )
+        state = VintageState(asset_class="vehicle", cohorts=cohorts)
+        summary = VintageSummary.from_state(state)
+        assert summary.total_count == 100
+        assert summary.age_distribution == {2: 100}
+        assert summary.mean_age == 2.0
 
     def test_summary_metadata_copied(self) -> None:
         """Summary copies metadata from state."""

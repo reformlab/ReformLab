@@ -64,6 +64,14 @@ class TestVintageTransitionRule:
                 parameters={"count": -10},
             )
 
+    def test_fixed_entry_bool_count_raises(self) -> None:
+        """fixed_entry with bool count raises VintageConfigError."""
+        with pytest.raises(VintageConfigError, match="non-negative integer"):
+            VintageTransitionRule(
+                rule_type="fixed_entry",
+                parameters={"count": True},
+            )
+
     def test_proportional_entry_missing_rate_raises(self) -> None:
         """proportional_entry without rate raises VintageConfigError."""
         with pytest.raises(VintageConfigError, match="'rate' parameter"):
@@ -80,6 +88,14 @@ class TestVintageTransitionRule:
                 parameters={"rate": -0.1},
             )
 
+    def test_proportional_entry_bool_rate_raises(self) -> None:
+        """proportional_entry with bool rate raises VintageConfigError."""
+        with pytest.raises(VintageConfigError, match="non-negative number"):
+            VintageTransitionRule(
+                rule_type="proportional_entry",
+                parameters={"rate": False},
+            )
+
     def test_max_age_retirement_missing_max_age_raises(self) -> None:
         """max_age_retirement without max_age raises VintageConfigError."""
         with pytest.raises(VintageConfigError, match="'max_age' parameter"):
@@ -94,6 +110,14 @@ class TestVintageTransitionRule:
             VintageTransitionRule(
                 rule_type="max_age_retirement",
                 parameters={"max_age": -5},
+            )
+
+    def test_max_age_retirement_bool_max_age_raises(self) -> None:
+        """max_age_retirement with bool max_age raises VintageConfigError."""
+        with pytest.raises(VintageConfigError, match="non-negative integer"):
+            VintageTransitionRule(
+                rule_type="max_age_retirement",
+                parameters={"max_age": True},
             )
 
 
