@@ -1,6 +1,6 @@
 # Story 6.4a: Build Static GUI Prototype — Configuration and Simulation Flows
 
-Status: ready-for-dev
+Status: in-progress
 
 ## Story
 
@@ -98,6 +98,15 @@ From backlog (BKL-604a), aligned with FR32 (no-code GUI for scenario operations)
   - [ ] 5.5 Test `npm run dev` works with hot reload
   - [ ] 5.6 Run TypeScript type check (`npx tsc --noEmit`)
   - [ ] 5.7 Run lint check (ESLint)
+- [ ] Review Follow-ups (AI)
+  - [ ] [AI-Review][HIGH] Implement AC-1 configuration flow screens and non-blocking `ModelConfigStepper` (`population -> template -> parameter editing -> assumptions`) in reusable React components. [Story AC refs: lines 15-18]
+  - [ ] [AI-Review][HIGH] Implement AC-2 simulation flow (`run trigger -> progress -> results -> comparison`) including `RunProgressBar`, Recharts distribution chart, and side-by-side comparison view. [Story AC refs: lines 20-24]
+  - [ ] [AI-Review][HIGH] Implement AC-3 workspace shell with three resizable panels, `<1440px` collapse to 48px rails, and session-persisted panel state. [Story AC refs: lines 26-30]
+  - [ ] [AI-Review][HIGH] Complete AC-4 stack scaffold and component structure (`package.json`, `vite.config.ts`, `src/main.tsx`, `src/App.tsx`, `src/components/ui/`, `src/components/simulation/`). Current `frontend/` has only `Dockerfile`, `nginx.conf`, and `src/data/mock-data.ts`. [Story refs: lines 32-37, 126-160]
+  - [ ] [AI-Review][HIGH] Restore runnable dev workflow for AC-6 by creating npm/Vite project metadata and scripts so `npm run dev` works with hot reload. [Story refs: lines 44-47]
+  - [ ] [AI-Review][MEDIUM] Fix repository hygiene: `.gitignore` `data/` rule currently ignores `frontend/src/data/mock-data.ts`, preventing required mock-data assets from being versioned. [`.gitignore`: line 59]
+  - [ ] [AI-Review][MEDIUM] Update Dev Agent Record with implementation evidence (debug log refs, completion notes, file list) once code work starts; record is currently empty and non-auditable. [Story refs: lines 322-326]
+  - [ ] [AI-Review][MEDIUM] Align story claims with git reality: there are no tracked frontend source changes for this story yet; only unrelated working-tree changes were detected (`_bmad-output/implementation-artifacts/sprint-status.yaml`, `.vite` cache, and untracked story 6-1 draft).
 
 ## Dev Notes
 
@@ -324,3 +333,47 @@ This is the first story in EPIC-6 (Interfaces). No previous story in this epic.
 ### Completion Notes List
 
 ### File List
+
+- `_bmad-output/implementation-artifacts/6-4a-build-static-gui-prototype.md` (updated by code review)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (story status sync target)
+- `frontend/src/data/mock-data.ts` (reviewed; currently git-ignored)
+
+## Senior Developer Review (AI)
+
+### Reviewer
+
+Lucas
+
+### Date
+
+2026-02-27
+
+### Outcome
+
+Changes Requested
+
+### Summary
+
+Story implementation has not started in tracked frontend source. Core acceptance criteria AC-1 through AC-4 and AC-6 are not implemented yet. Story status has been set to `in-progress` and review follow-up action items were added.
+
+### Findings
+
+1. **HIGH** - AC-1 configuration flow is missing (`ModelConfigStepper` and clickable configuration screens are not present in source). [Story AC refs: lines 15-18]
+2. **HIGH** - AC-2 simulation flow is missing (`RunProgressBar`, results chart, and comparison UI are not present in source). [Story AC refs: lines 20-24]
+3. **HIGH** - AC-3 layout requirements are missing (no workspace layout or resizable panel implementation in `frontend/src`). [Story AC refs: lines 26-30]
+4. **HIGH** - AC-4 target stack/reusable component structure is missing (expected React/Vite/Tailwind/Shadcn component tree not present). [Story refs: lines 32-37, 126-160]
+5. **HIGH** - AC-6 dev workflow is currently not runnable (no `package.json`/Vite scripts in `frontend/`, so `npm run dev` cannot be executed). [Story refs: lines 44-47]
+6. **MEDIUM** - `frontend/src/data/mock-data.ts` is git-ignored by the global `data/` ignore rule, so story assets are not tracked. [`.gitignore`: line 59]
+7. **MEDIUM** - Dev Agent Record has no implementation traceability (debug logs, completion notes, and file list were empty before review). [Story refs: lines 322-326]
+8. **MEDIUM** - Git vs story discrepancy: no tracked frontend source changes were found for this story in the working tree.
+
+### Validation Evidence
+
+- `git status --porcelain --untracked-files=all` showed no tracked frontend source work for Story 6.4a.
+- `find frontend/src -type f` found only `frontend/src/data/mock-data.ts`.
+- `ls -la frontend` showed only Docker/runtime artifacts plus `src/`, with no npm/Vite scaffold files.
+- `rg` for required UI components (`ModelConfigStepper`, `RunProgressBar`, `ComparisonView`, `WorkspaceLayout`, `ParameterRow`, `ScenarioCard`) returned no matches in non-generated frontend source.
+
+## Change Log
+
+- 2026-02-27: Senior Developer Review (AI) completed for Story 6.4a; outcome set to Changes Requested, status moved to in-progress, and follow-up action items added.

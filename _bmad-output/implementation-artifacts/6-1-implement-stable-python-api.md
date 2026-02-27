@@ -20,14 +20,14 @@ From backlog (BKL-601), aligned with FR30 (Python API for run orchestration) and
    - Invalid configurations raise clear errors before execution begins.
 
 2. **AC-2: Scenario creation and management via API**
-   - Given the Python API, when a user calls `create_scenario(template, parameters, ...)`, then a scenario configuration is created and optionally registered.
-   - Given a registered scenario, when `clone_scenario(scenario_id, overrides, ...)` is called, then a new scenario is created as a delta from the original.
+   - Given the Python API, when a user calls `create_scenario(..., name=..., register=True)`, then a scenario object is created and optionally saved in the registry.
+   - Given a registered scenario, when `clone_scenario(name, version_id=None, new_name=...)` is called, then a new scenario object is created from the original using registry semantics.
    - Baseline and reform scenarios can be linked for comparison workflows.
 
 3. **AC-3: Result access with notebook-friendly display**
    - Given a completed run, when `SimulationResult` is displayed in Jupyter, then a sensible `__repr__` shows run summary (years, scenarios, key indicators).
    - Result objects provide accessor methods: `.yearly_states`, `.panel_output`, `.manifest`, `.indicators(...)`.
-   - Results can be exported via `.to_csv(path)`, `.to_parquet(path)`.
+   - CSV/Parquet export actions are explicitly deferred to Story 6-5 (BKL-605) to keep this story focused on stable run orchestration API.
 
 4. **AC-4: Clear error messages for invalid configurations**
    - Given an invalid scenario configuration (missing required fields, invalid parameter values), when passed to the API, then a clear `ConfigurationError` is raised identifying the exact issue.
@@ -46,18 +46,17 @@ From backlog (BKL-601), aligned with FR30 (Python API for run orchestration) and
 
 ## Dependencies
 
-- **Hard dependencies (all DONE per sprint-status.yaml checked 2026-02-27):**
-  - EPIC-1 (Computation Adapter): `ComputationAdapter`, `MockAdapter`, ingestion
-  - EPIC-2 (Scenario Templates): `ScenarioTemplate`, registry, cloning, YAML workflow config
-  - EPIC-3 (Dynamic Orchestrator): `Orchestrator`, `OrchestratorRunner`, step pipeline, panel output
-  - EPIC-4 (Indicators): Distributional, welfare, fiscal, comparison
-  - EPIC-5 (Governance): `RunManifest`, lineage, hashing, reproducibility
-
-- **Integration dependencies:**
-  - Story 2-7 (BKL-207): YAML/JSON workflow configuration with schema validation
-  - Story 3-7 (BKL-307): Panel output dataset
+- **Backlog-declared blockers for BKL-601 (all DONE per sprint-status.yaml checked 2026-02-27):**
+  - Story 3-1 (BKL-301): Yearly loop orchestrator foundation
   - Story 4-5 (BKL-405): Scenario comparison tables
   - Story 5-1 (BKL-501): Run manifest schema
+
+- **Additional implementation dependencies (DONE):**
+  - Story 2-7 (BKL-207): YAML/JSON workflow configuration with schema validation
+  - Story 3-7 (BKL-307): Panel output dataset
+
+- **Status note:**
+  - EPIC-5 is currently `in-progress` overall because Story 5-6 is `ready-for-dev`; this is non-blocking for Story 6-1.
 
 - **Follow-on stories:**
   - Story 6-2 (BKL-602): Quickstart notebook using this API
@@ -73,7 +72,7 @@ From backlog (BKL-601), aligned with FR30 (Python API for run orchestration) and
   - [ ] 0.4 Review `orchestrator/panel.py` for `PanelOutput` structure
   - [ ] 0.5 Review `governance/manifest.py` for `RunManifest` structure
   - [ ] 0.6 Review `indicators/__init__.py` for indicator computation patterns
-  - [ ] 0.7 Confirm all EPIC-1 through EPIC-5 stories are DONE in sprint-status.yaml
+  - [ ] 0.7 Confirm blocker dependencies for BKL-601 are DONE and record non-blocking upstream stories still in progress
 
 - [ ] Task 1: Create SimulationResult dataclass (AC: #3)
   - [ ] 1.1 Create `src/reformlab/interfaces/api.py`
@@ -81,7 +80,7 @@ From backlog (BKL-601), aligned with FR30 (Python API for run orchestration) and
         - `success: bool`
         - `scenario_id: str`
         - `yearly_states: dict[int, YearState]`
-        - `panel_output: pa.Table | None`
+        - `panel_output: PanelOutput | None`
         - `manifest: RunManifest`
         - `metadata: dict[str, Any]`
   - [ ] 1.3 Implement `__repr__()` for notebook display showing:
@@ -90,9 +89,7 @@ From backlog (BKL-601), aligned with FR30 (Python API for run orchestration) and
         - Row count in panel output
         - Manifest ID
   - [ ] 1.4 Implement accessor methods:
-        - `.indicators(indicator_type: str, **kwargs) -> pa.Table`
-        - `.to_csv(path: Path) -> None`
-        - `.to_parquet(path: Path) -> None`
+        - `.indicators(indicator_type: str, **kwargs) -> IndicatorResult`
 
 - [ ] Task 2: Create configuration types (AC: #1, #4)
   - [ ] 2.1 Define `ScenarioConfig` frozen dataclass:
@@ -104,9 +101,9 @@ From backlog (BKL-601), aligned with FR30 (Python API for run orchestration) and
         - `seed: int | None`
         - `baseline_id: str | None` (for reform scenarios)
   - [ ] 2.2 Define `RunConfig` frozen dataclass:
-        - `scenario: ScenarioConfig | Path` (YAML path or config object)
+        - `scenario: ScenarioConfig | Path | dict[str, Any]` (YAML path or config object)
         - `output_dir: Path | None`
-        - `adapter: ComputationAdapter | None` (defaults to MockAdapter for testing)
+        - `seed: int | None`
   - [ ] 2.3 Define `ConfigurationError` in `interfaces/errors.py`:
         - `field_path: str`
         - `expected: str`
@@ -119,18 +116,17 @@ From backlog (BKL-601), aligned with FR30 (Python API for run orchestration) and
   - [ ] 3.3 If config is `dict`, convert to `RunConfig`
   - [ ] 3.4 Validate configuration completeness before execution
   - [ ] 3.5 Delegate to existing subsystems:
-        - Load scenario template via `templates/loader.py`
-        - Configure orchestrator via `OrchestratorConfig`
-        - Execute via `Orchestrator.run()` or workflow runner
+        - Load and validate config via `templates/workflow.py` and template utilities
+        - Execute through `run_workflow(..., runner=OrchestratorRunner(...))` or equivalent `OrchestratorRunner.run()` handoff
         - Capture manifest via governance layer
         - Package results as `SimulationResult`
   - [ ] 3.6 Wrap all subsystem errors in user-friendly `ConfigurationError` or `SimulationError`
 
 - [ ] Task 4: Implement scenario management functions (AC: #2)
-  - [ ] 4.1 Implement `create_scenario(template_name: str, parameters: dict, register: bool = False, **kwargs) -> ScenarioConfig`
-  - [ ] 4.2 Implement `clone_scenario(scenario_id: str, overrides: dict, link_baseline: bool = True) -> ScenarioConfig`
+  - [ ] 4.1 Implement `create_scenario(scenario: BaselineScenario | ReformScenario, name: str, register: bool = False) -> str | BaselineScenario | ReformScenario`
+  - [ ] 4.2 Implement `clone_scenario(name: str, version_id: str | None = None, new_name: str | None = None) -> BaselineScenario | ReformScenario`
   - [ ] 4.3 Implement `list_scenarios() -> list[str]` for registered scenarios
-  - [ ] 4.4 Implement `get_scenario(scenario_id: str) -> ScenarioConfig`
+  - [ ] 4.4 Implement `get_scenario(name: str, version_id: str | None = None) -> BaselineScenario | ReformScenario`
   - [ ] 4.5 Delegate to existing `templates/registry.py` for persistence
 
 - [ ] Task 5: Export public API from package root (AC: #6)
@@ -156,7 +152,7 @@ From backlog (BKL-601), aligned with FR30 (Python API for run orchestration) and
   - [ ] 6.5 Test `run_scenario()` with invalid config (ConfigurationError raised)
   - [ ] 6.6 Test `create_scenario()` and `clone_scenario()`
   - [ ] 6.7 Test `SimulationResult.indicators()` integration with indicator subsystem
-  - [ ] 6.8 Test `SimulationResult.to_csv()` and `.to_parquet()` export
+  - [ ] 6.8 Test API error translation (`ConfigurationError`/`SimulationError`) with no bare `ValueError` leaks
   - [ ] 6.9 Test public imports from `reformlab` package root
   - [ ] 6.10 Run `ruff check src/reformlab/interfaces tests/interfaces`
   - [ ] 6.11 Run `mypy src/reformlab/interfaces`
@@ -171,10 +167,10 @@ This story implements **FR30** (Python API for run orchestration) and **NFR16** 
 **Key architectural constraints:**
 
 - **API is a thin facade** - The API layer orchestrates existing subsystems; it does NOT duplicate computation, template, or orchestrator logic. [Source: architecture.md#Layered-Architecture]
-- **Frozen dataclasses are the default** - `SimulationResult`, `ScenarioConfig`, `RunConfig` must all be `@dataclass(frozen=True)`. [Source: project-context.md#Python-Language-Rules]
-- **PyArrow is canonical** - `panel_output` is `pa.Table`, not pandas. Indicator results are `pa.Table`. [Source: project-context.md#Critical-Implementation-Rules]
-- **Subsystem-specific exceptions** - Define `ConfigurationError`, `SimulationError` in `interfaces/errors.py`. Never raise bare `ValueError`. [Source: project-context.md#Python-Language-Rules]
-- **No OpenFisca imports outside adapters** - The API layer must never import OpenFisca directly. Use `ComputationAdapter` protocol. [Source: project-context.md#Critical-Don't-Miss-Rules]
+- **Frozen dataclasses are the default** - `SimulationResult`, `ScenarioConfig`, `RunConfig` must all be `@dataclass(frozen=True)`. [Source: _bmad-output/project-context.md#Python-Language-Rules]
+- **PyArrow is canonical** - `panel_output` wraps PyArrow data (`PanelOutput.table: pa.Table`), not pandas. [Source: _bmad-output/project-context.md#Critical-Implementation-Rules]
+- **Subsystem-specific exceptions** - Define `ConfigurationError`, `SimulationError` in `interfaces/errors.py`. Never raise bare `ValueError`. [Source: _bmad-output/project-context.md#Python-Language-Rules]
+- **No OpenFisca imports outside adapters** - The API layer must never import OpenFisca directly. Use `ComputationAdapter` protocol. [Source: _bmad-output/project-context.md#Critical-Don't-Miss-Rules]
 
 ### Existing Code to Reuse
 
@@ -182,38 +178,57 @@ This story implements **FR30** (Python API for run orchestration) and **NFR16** 
 ```python
 @dataclass(frozen=True)
 class WorkflowConfig:
-    """Configuration for running a complete workflow."""
-    scenario: ScenarioTemplate
-    population_data: PopulationData
-    start_year: int
-    end_year: int
-    seed: int | None = None
-    output_dir: Path | None = None
+    """Complete workflow configuration."""
+    name: str
+    version: str
+    data_sources: DataSourceConfig
+    scenarios: tuple[ScenarioRef, ...]
+    run_config: RunConfig
+
+def run_workflow(
+    config: WorkflowConfig,
+    *,
+    runner: Any | None = None,
+) -> WorkflowResult: ...
 ```
 
 **From `templates/registry.py`:**
 ```python
 class ScenarioRegistry:
     """Versioned scenario storage with immutable IDs."""
-    def save(self, scenario: ScenarioTemplate) -> str: ...
-    def get(self, version_id: str) -> ScenarioTemplate: ...
-    def clone(self, version_id: str, overrides: dict) -> ScenarioTemplate: ...
+    def save(
+        self,
+        scenario: BaselineScenario | ReformScenario,
+        name: str,
+        change_description: str = "",
+    ) -> str: ...
+    def get(
+        self,
+        name: str,
+        version_id: str | None = None,
+    ) -> BaselineScenario | ReformScenario: ...
+    def clone(
+        self,
+        name: str,
+        version_id: str | None = None,
+        new_name: str | None = None,
+    ) -> BaselineScenario | ReformScenario: ...
 ```
 
 **From `orchestrator/runner.py`:**
 ```python
 class OrchestratorRunner:
     """High-level runner coordinating orchestrator with governance."""
-    def run(self, request: RunRequest) -> OrchestratorResult: ...
+    def run(self, request: dict[str, Any]) -> WorkflowResult: ...
 ```
 
 **From `orchestrator/panel.py`:**
 ```python
-@dataclass(frozen=True)
+@dataclass
 class PanelOutput:
     """Stacked yearly panel output."""
     table: pa.Table
-    year_column: str = "year"
+    metadata: dict[str, Any]
 ```
 
 **From `governance/manifest.py`:**
@@ -222,8 +237,10 @@ class PanelOutput:
 class RunManifest:
     """Immutable run manifest with integrity hash."""
     manifest_id: str
-    timestamp: str
+    created_at: str
     engine_version: str
+    openfisca_version: str
+    adapter_version: str
     ...
 ```
 
@@ -236,11 +253,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import pyarrow as pa
-
 if TYPE_CHECKING:
     from reformlab.computation.adapter import ComputationAdapter
     from reformlab.governance.manifest import RunManifest
+    from reformlab.indicators.types import IndicatorResult
+    from reformlab.orchestrator.panel import PanelOutput
     from reformlab.orchestrator.types import YearState
 
 
@@ -251,14 +268,14 @@ class SimulationResult:
     success: bool
     scenario_id: str
     yearly_states: dict[int, YearState]
-    panel_output: pa.Table | None
+    panel_output: PanelOutput | None
     manifest: RunManifest
     metadata: dict[str, Any]
 
     def __repr__(self) -> str:
         years = sorted(self.yearly_states.keys())
         year_range = f"{years[0]}-{years[-1]}" if years else "none"
-        rows = self.panel_output.num_rows if self.panel_output else 0
+        rows = self.panel_output.table.num_rows if self.panel_output else 0
         status = "SUCCESS" if self.success else "FAILED"
         return (
             f"SimulationResult({status}, scenario={self.scenario_id!r}, "
@@ -269,29 +286,13 @@ class SimulationResult:
         self,
         indicator_type: str,
         **kwargs: Any,
-    ) -> pa.Table:
+    ) -> IndicatorResult:
         """Compute indicators from panel output."""
-        from reformlab.indicators import compute_indicators
+        from reformlab.interfaces.errors import SimulationError
         if self.panel_output is None:
             msg = "No panel output available"
-            raise ValueError(msg)
-        return compute_indicators(self.panel_output, indicator_type, **kwargs)
-
-    def to_csv(self, path: Path) -> None:
-        """Export panel output to CSV."""
-        import pyarrow.csv as pcsv
-        if self.panel_output is None:
-            msg = "No panel output to export"
-            raise ValueError(msg)
-        pcsv.write_csv(self.panel_output, path)
-
-    def to_parquet(self, path: Path) -> None:
-        """Export panel output to Parquet."""
-        import pyarrow.parquet as pq
-        if self.panel_output is None:
-            msg = "No panel output to export"
-            raise ValueError(msg)
-        pq.write_table(self.panel_output, path)
+            raise SimulationError(msg)
+        return _compute_indicator(self.panel_output, indicator_type, **kwargs)
 
 
 def run_scenario(
@@ -302,7 +303,7 @@ def run_scenario(
 
     Args:
         config: Scenario configuration as RunConfig, YAML path, or dict.
-        adapter: Optional computation adapter (defaults to MockAdapter).
+        adapter: Optional computation adapter. Tests typically inject MockAdapter.
 
     Returns:
         SimulationResult with yearly states, panel output, and manifest.
@@ -322,8 +323,9 @@ def run_scenario(
 
     # 4. Setup adapter
     if adapter is None:
-        from reformlab.computation.mock_adapter import MockAdapter
-        adapter = MockAdapter()
+        from reformlab.computation.openfisca_adapter import OpenFiscaAdapter
+
+        adapter = OpenFiscaAdapter(...)
 
     # 5. Execute via orchestrator
     result = _execute_orchestration(scenario, run_config, adapter)
@@ -353,7 +355,7 @@ tests/interfaces/
 ### Scope Guardrails
 
 - **In scope:**
-  - `SimulationResult` dataclass with `__repr__`, accessors, export methods
+  - `SimulationResult` dataclass with `__repr__` and indicator accessors
   - `ScenarioConfig`, `RunConfig` dataclasses
   - `run_scenario()` function
   - `create_scenario()`, `clone_scenario()`, `list_scenarios()`, `get_scenario()`
@@ -365,9 +367,10 @@ tests/interfaces/
   - FastAPI HTTP endpoints (Story 6-4b)
   - Notebook examples (Stories 6-2, 6-3)
   - GUI integration (Story 6-4b)
+  - CSV/Parquet export actions and convenience APIs (Story 6-5 / BKL-605)
   - Async/concurrent execution
   - Caching or memoization
-  - Result persistence beyond export
+  - Result persistence infrastructure
 
 ### Testing Standards
 
@@ -399,7 +402,7 @@ This is the first story in EPIC-6, but builds on all previous epics:
 
 **From EPIC-4 (Indicators):**
 - Indicator functions compute from panel output
-- `compute_distributional`, `compute_welfare`, etc.
+- `compute_distributional_indicators`, `compute_welfare_indicators`, etc.
 
 **From EPIC-5 (Governance):**
 - `RunManifest` captures run provenance
@@ -415,7 +418,7 @@ This is the first story in EPIC-6, but builds on all previous epics:
 - [Source: templates/workflow.py] - WorkflowConfig pattern
 - [Source: templates/registry.py] - ScenarioRegistry pattern
 - [Source: orchestrator/runner.py] - OrchestratorRunner.run() contract
-- [Source: project-context.md#Critical-Implementation-Rules] - Frozen dataclasses, PyArrow canonical
+- [Source: _bmad-output/project-context.md#Critical-Implementation-Rules] - Frozen dataclasses, PyArrow canonical
 
 ## Dev Agent Record
 
