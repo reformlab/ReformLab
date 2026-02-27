@@ -7,7 +7,6 @@ managing deterministic state transitions and seed control.
 from __future__ import annotations
 
 import logging
-import traceback
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
@@ -80,6 +79,9 @@ class Orchestrator:
                 logger.debug("Completed year %d", year)
 
             except OrchestratorError as e:
+                if not e.partial_states and yearly_states:
+                    e.partial_states = dict(yearly_states)
+
                 # Error already has context, just return failure result
                 logger.error("Orchestrator failed at year %d: %s", year, e)
                 return OrchestratorResult(
@@ -88,7 +90,14 @@ class Orchestrator:
                     errors=[str(e)],
                     failed_year=e.year,
                     failed_step=e.step_name,
-                    metadata={"partial": True},
+                    metadata={
+                        "partial": True,
+                        "start_year": self.config.start_year,
+                        "end_year": self.config.end_year,
+                        "seed": self.config.seed,
+                        "step_pipeline": _step_pipeline_names(self.config.step_pipeline),
+                        "completed_years": sorted(yearly_states.keys()),
+                    },
                 )
 
         logger.info(
@@ -106,6 +115,7 @@ class Orchestrator:
                 "start_year": self.config.start_year,
                 "end_year": self.config.end_year,
                 "seed": self.config.seed,
+                "step_pipeline": _step_pipeline_names(self.config.step_pipeline),
             },
         )
 
@@ -128,6 +138,12 @@ class Orchestrator:
             year=year,
             seed=self._derive_year_seed(year),
             metadata={"previous_year": state.year},
+        )
+        logger.debug(
+            "Year %d initialized with seed=%s (previous_year=%d)",
+            year,
+            current.seed,
+            state.year,
         )
 
         # Execute empty pipeline gracefully
@@ -165,22 +181,18 @@ class Orchestrator:
 
         try:
             result = step(year, state)
+            if not isinstance(result, YearState):
+                raise TypeError(
+                    f"step returned {type(result).__name__}; expected YearState"
+                )
             return result
 
         except Exception as e:
-            # Capture full context for debugging
-            tb = traceback.format_exc()
-            logger.error(
-                "Step %s failed at year %d: %s\n%s",
-                step_name,
-                year,
-                e,
-                tb,
-            )
+            logger.exception("Step %s failed at year %d", step_name, year)
 
             raise OrchestratorError(
                 summary=f"Step '{step_name}' failed",
-                reason=str(e),
+                reason=f"{type(e).__name__}: {e}",
                 year=year,
                 step_name=step_name,
                 partial_states={},  # Caller will fill this
@@ -222,7 +234,10 @@ def from_workflow_config(config: "WorkflowConfig") -> OrchestratorConfig:
     """
     start_year = config.run_config.start_year
     projection_years = config.run_config.projection_years
-    end_year = start_year + projection_years - 1
+    end_year = _calculate_end_year(
+        start_year=start_year,
+        projection_years=projection_years,
+    )
 
     return OrchestratorConfig(
         start_year=start_year,
@@ -271,10 +286,30 @@ class OrchestratorRunner:
         from reformlab.templates.workflow import WorkflowResult
 
         # Extract run configuration
-        run_config = request.get("run_config", {})
-        start_year = run_config.get("start_year", 2025)
-        projection_years = run_config.get("projection_years", 10)
-        end_year = start_year + projection_years - 1
+        run_config = request.get("run_config")
+        if not isinstance(run_config, dict):
+            return WorkflowResult(
+                success=False,
+                errors=["Invalid request: run_config must be a mapping"],
+            )
+
+        try:
+            start_year = int(run_config["start_year"])
+            projection_years = int(run_config["projection_years"])
+            end_year = _calculate_end_year(
+                start_year=start_year,
+                projection_years=projection_years,
+            )
+        except KeyError as exc:
+            return WorkflowResult(
+                success=False,
+                errors=[f"Invalid request: missing run_config.{exc.args[0]}"],
+            )
+        except (TypeError, ValueError) as exc:
+            return WorkflowResult(
+                success=False,
+                errors=[f"Invalid run_config bounds: {exc}"],
+            )
 
         # Build orchestrator config
         config = OrchestratorConfig(
@@ -312,3 +347,18 @@ class OrchestratorRunner:
                 **result.metadata,
             },
         )
+
+
+def _calculate_end_year(*, start_year: int, projection_years: int) -> int:
+    """Calculate inclusive end year from start year and horizon length."""
+    if projection_years < 1:
+        raise ValueError(
+            "projection_years must be >= 1 "
+            f"(received {projection_years})"
+        )
+    return start_year + projection_years - 1
+
+
+def _step_pipeline_names(step_pipeline: tuple["YearStep", ...]) -> list[str]:
+    """Return stable step names for logging and metadata."""
+    return [getattr(step, "__name__", str(step)) for step in step_pipeline]

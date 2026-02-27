@@ -39,9 +39,12 @@ class OrchestratorError(Exception):
     original_error: Exception | None = None
 
     def __post_init__(self) -> None:
-        """Build the exception message from structured fields."""
-        message_parts = [f"{self.summary} - {self.reason}"]
+        """Build and cache the initial exception message."""
+        super().__init__(self._build_message())
 
+    def _build_message(self) -> str:
+        """Build an exception message from structured fields."""
+        message_parts = [f"{self.summary} - {self.reason}"]
         if self.year is not None:
             message_parts.append(f"(year: {self.year})")
 
@@ -52,7 +55,11 @@ class OrchestratorError(Exception):
             completed_years = sorted(self.partial_states.keys())
             message_parts.append(f"(completed years: {completed_years})")
 
-        super().__init__(" ".join(message_parts))
+        return " ".join(message_parts)
+
+    def __str__(self) -> str:
+        """Render current error details, including dynamically attached context."""
+        return self._build_message()
 
     def to_dict(self) -> dict[str, Any]:
         """Convert error to dictionary for serialization."""

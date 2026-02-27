@@ -104,8 +104,12 @@ class TestEmptyPipeline:
             result = orchestrator.run()
 
         assert result.success is True
-        # Should have logged year starts/completions
-        assert any("year" in record.message.lower() for record in caplog.records)
+        messages = [record.message.lower() for record in caplog.records]
+        for year in range(
+            empty_pipeline_config.start_year,
+            empty_pipeline_config.end_year + 1,
+        ):
+            assert any(f"year {year}" in message for message in messages)
 
     def test_empty_pipeline_preserves_state(
         self, empty_pipeline_config: OrchestratorConfig
@@ -175,6 +179,7 @@ class TestStepFailureHandling:
         assert len(result.errors) >= 1
         error_msg = result.errors[0]
         assert "2028" in error_msg or "fail_at_year_2028" in error_msg
+        assert "completed years: [2025, 2026, 2027]" in error_msg
 
     def test_step_failure_with_immediate_fail(self):
         """Step that fails immediately captures correct context."""
@@ -192,6 +197,28 @@ class TestStepFailureHandling:
         assert result.failed_year == 2025
         assert result.failed_step == "failing_step"
         assert len(result.yearly_states) == 0
+
+    def test_step_return_type_violation_surfaces_as_orchestrator_error(self):
+        """A step returning non-YearState fails with clear context."""
+
+        def bad_return_step(year: int, state: YearState) -> YearState:
+            return {"year": year}  # type: ignore[return-value]
+
+        config = OrchestratorConfig(
+            start_year=2025,
+            end_year=2025,
+            initial_state={},
+            seed=None,
+            step_pipeline=(bad_return_step,),
+        )
+
+        orchestrator = Orchestrator(config)
+        result = orchestrator.run()
+
+        assert result.success is False
+        assert result.failed_year == 2025
+        assert result.failed_step == "bad_return_step"
+        assert "expected YearState" in result.errors[0]
 
 
 # ============================================================================
@@ -438,6 +465,20 @@ class TestOrchestratorConfig:
         assert config.initial_state == {"test": 1}
         assert config.seed == 42
         assert len(config.step_pipeline) == 1
+
+    def test_config_rejects_invalid_year_bounds(self):
+        """OrchestratorConfig rejects end_year < start_year."""
+        with pytest.raises(ValueError, match="end_year"):
+            OrchestratorConfig(start_year=2030, end_year=2029)
+
+    def test_config_rejects_non_callable_steps(self):
+        """OrchestratorConfig rejects non-callable step entries."""
+        with pytest.raises(TypeError, match="not callable"):
+            OrchestratorConfig(
+                start_year=2025,
+                end_year=2025,
+                step_pipeline=(42,),  # type: ignore[arg-type]
+            )
 
 
 # ============================================================================

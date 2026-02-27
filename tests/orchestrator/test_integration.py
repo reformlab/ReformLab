@@ -135,6 +135,23 @@ class TestFromWorkflowConfig:
 
         assert config.seed is None
 
+    def test_rejects_non_positive_projection_years(self):
+        """from_workflow_config rejects projection_years < 1."""
+        wf_config = WorkflowConfig(
+            name="invalid_projection",
+            version="1.0",
+            data_sources=DataSourceConfig(emission_factors="default"),
+            scenarios=(ScenarioRef(role="scenario", reference="test"),),
+            run_config=RunConfig(
+                projection_years=0,
+                start_year=2025,
+                output_format="csv",
+            ),
+        )
+
+        with pytest.raises(ValueError, match="projection_years"):
+            from_workflow_config(wf_config)
+
 
 # ============================================================================
 # Test: OrchestratorRunner integration (AC-5)
@@ -230,6 +247,14 @@ class TestOrchestratorRunner:
         assert result.success is False
         assert result.metadata.get("failed_year") == 2026
         assert len(result.errors) >= 1
+
+    def test_runner_rejects_missing_run_config(self):
+        """OrchestratorRunner rejects malformed requests."""
+        runner = OrchestratorRunner()
+        result = runner.run({})
+
+        assert result.success is False
+        assert "run_config" in result.errors[0]
 
 
 # ============================================================================

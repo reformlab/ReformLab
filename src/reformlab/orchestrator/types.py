@@ -10,10 +10,7 @@ This module defines the data structures used by the orchestrator:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Callable
-
-if TYPE_CHECKING:
-    pass
+from typing import Any, Callable
 
 
 @dataclass(frozen=True)
@@ -62,6 +59,24 @@ class OrchestratorConfig:
     initial_state: dict[str, Any] = field(default_factory=dict)
     seed: int | None = None
     step_pipeline: tuple[YearStep, ...] = ()
+
+    def __post_init__(self) -> None:
+        """Validate projection bounds and normalize step pipeline."""
+        if self.end_year < self.start_year:
+            raise ValueError(
+                "Invalid orchestrator bounds - "
+                f"end_year ({self.end_year}) must be >= start_year ({self.start_year})"
+            )
+
+        # Accept list/iterable inputs but store as an immutable tuple.
+        object.__setattr__(self, "step_pipeline", tuple(self.step_pipeline))
+
+        for index, step in enumerate(self.step_pipeline):
+            if not callable(step):
+                raise TypeError(
+                    "Invalid step pipeline - "
+                    f"step_pipeline[{index}] is not callable: {type(step).__name__}"
+                )
 
 
 @dataclass
