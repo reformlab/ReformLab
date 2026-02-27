@@ -86,7 +86,7 @@ development_status:
 
   # EPIC-5: Governance and Reproducibility
   epic-5: in-progress
-  5-1-define-immutable-run-manifest-schema: ready-for-dev
+  5-1-define-immutable-run-manifest-schema: done
   5-2-capture-assumptions-mappings-parameters: backlog
   5-3-implement-run-lineage-graph: backlog
   5-4-hash-input-output-artifacts: backlog

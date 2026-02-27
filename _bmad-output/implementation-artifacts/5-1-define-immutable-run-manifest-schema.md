@@ -1,6 +1,6 @@
 # Story 5.1: Define Immutable Run Manifest Schema v1
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -228,10 +228,69 @@ def compute_integrity_hash(self) -> str:
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+claude-sonnet-4-5-20250929
 
 ### Debug Log References
 
+None - implementation completed without issues on first pass.
+
 ### Completion Notes List
 
+**Implementation completed successfully on 2026-02-27.**
+
+All acceptance criteria met:
+
+1. **AC-1: Schema completeness** ✅
+   - Implemented frozen `RunManifest` dataclass with all architecture-required fields
+   - All required fields validated on construction (manifest_id, created_at, versions, hashes, seeds, parameters, assumptions, step_pipeline)
+   - Field names and types are stable and documented
+
+2. **AC-2: Immutable schema objects** ✅
+   - `RunManifest` uses `@dataclass(frozen=True)`
+   - Post-construction mutation raises `FrozenInstanceError`
+   - Tested immutability behavior
+
+3. **AC-3: Deterministic canonical serialization** ✅
+   - `to_json()` uses sorted keys, stable separators, UTF-8 encoding
+   - Cross-machine reproducibility verified through tests
+   - `from_json()` recreates equivalent manifest objects
+   - Round-trip equality confirmed
+
+4. **AC-4: Integrity hash and tamper detection** ✅
+   - `compute_integrity_hash()` computes SHA-256 excluding integrity_hash field
+   - `verify_integrity()` detects tampering and raises `ManifestIntegrityError`
+   - `with_integrity_hash()` creates new manifest with computed hash
+   - Tested hash computation determinism and tampering detection
+
+5. **AC-5: Validation and explicit errors** ✅
+   - Missing required fields raise `ManifestValidationError` with actionable messages
+   - Invalid hash formats (SHA-256 hex) validated
+   - Invalid seed types and structural errors detected
+   - Validation runs on construction and deserialization
+
+**Quality gates passed:**
+- `ruff check`: All checks passed
+- `mypy`: No type errors
+- `pytest`: 28/28 tests passed
+
+**Implementation notes:**
+- Followed existing frozen dataclass pattern from orchestrator/types.py
+- Used SHA-256 with regex validation for all hash fields
+- Canonical JSON uses `json.dumps(sort_keys=True, separators=(',', ':'))`
+- Comprehensive test coverage across 5 test classes
+- No external dependencies beyond stdlib (json, hashlib, re, dataclasses)
+
 ### File List
+
+**Source files created:**
+- `src/reformlab/governance/errors.py` - Error classes (ManifestIntegrityError, ManifestValidationError)
+- `src/reformlab/governance/manifest.py` - RunManifest schema with serialization and integrity methods
+- `src/reformlab/governance/__init__.py` - Public API exports
+
+**Test files created:**
+- `tests/governance/conftest.py` - Test fixtures (minimal_manifest, full_manifest)
+- `tests/governance/test_manifest.py` - Comprehensive test suite (28 tests)
+
+**Updated files:**
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` - Story status: ready-for-dev → done
+- `_bmad-output/implementation-artifacts/5-1-define-immutable-run-manifest-schema.md` - This file

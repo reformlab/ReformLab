@@ -1,0 +1,28 @@
+"""Governance-layer errors for manifest integrity and validation.
+
+This module defines explicit error types for manifest operations:
+- ManifestIntegrityError: Detected tampering or hash mismatches
+- ManifestValidationError: Schema validation failures, missing fields, invalid formats
+"""
+
+from __future__ import annotations
+
+
+class ManifestIntegrityError(Exception):
+    """Raised when manifest integrity verification fails.
+
+    Indicates that manifest content has been altered after integrity hash
+    computation, or the integrity hash does not match the manifest content.
+    """
+
+    pass
+
+
+class ManifestValidationError(Exception):
+    """Raised when manifest validation fails.
+
+    Indicates missing required fields, invalid field types, invalid hash
+    formats, or other structural validation issues.
+    """
+
+    pass
