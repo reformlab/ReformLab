@@ -1,6 +1,6 @@
 # Story 3.7: Produce Scenario-Year Panel Output
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -77,54 +77,54 @@ Scope note: this story adds panel dataset generation from orchestrator results. 
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Confirm prerequisites and data contracts (AC: dependency check)
-  - [ ] 0.1 Verify Story 3-5 and 3-6 statuses are `done` in `_bmad-output/implementation-artifacts/sprint-status.yaml`
-  - [ ] 0.2 Review `OrchestratorResult.yearly_states` and confirm `COMPUTATION_RESULT_KEY` contract in `YearState.data`
-  - [ ] 0.3 Confirm canonical tabular source is `ComputationResult.output_fields` (PyArrow table)
-  - [ ] 0.4 Define/confirm household key mapping to output `household_id`
+- [x] Task 0: Confirm prerequisites and data contracts (AC: dependency check)
+  - [x] 0.1 Verify Story 3-5 and 3-6 statuses are `done` in `_bmad-output/implementation-artifacts/sprint-status.yaml`
+  - [x] 0.2 Review `OrchestratorResult.yearly_states` and confirm `COMPUTATION_RESULT_KEY` contract in `YearState.data`
+  - [x] 0.3 Confirm canonical tabular source is `ComputationResult.output_fields` (PyArrow table)
+  - [x] 0.4 Define/confirm household key mapping to output `household_id`
 
-- [ ] Task 1: Implement `PanelOutput` and factory from orchestrator results (AC: #1, #5, #6)
-  - [ ] 1.1 Create `src/reformlab/orchestrator/panel.py` module
-  - [ ] 1.2 Define `PanelOutput` dataclass:
+- [x] Task 1: Implement `PanelOutput` and factory from orchestrator results (AC: #1, #5, #6)
+  - [x] 1.1 Create `src/reformlab/orchestrator/panel.py` module
+  - [x] 1.2 Define `PanelOutput` dataclass:
     - `table`: `pa.Table` (household x year panel)
     - `metadata`: dict with `start_year`, `end_year`, `seed`, `step_pipeline`, `seed_log`, `step_execution_log`, `partial`, `errors`
     - `shape`: tuple[int, int] (rows, columns)
-  - [ ] 1.3 Implement `PanelOutput.from_orchestrator_result(result: OrchestratorResult) -> PanelOutput`:
+  - [x] 1.3 Implement `PanelOutput.from_orchestrator_result(result: OrchestratorResult) -> PanelOutput`:
     - Iterate `result.yearly_states` in year order
     - For each year, extract `YearState.data[COMPUTATION_RESULT_KEY].output_fields`
     - Add/normalize `household_id` and add `year` column
     - Concatenate yearly tables into one panel table
     - Handle partial results (failed_year present)
     - Copy relevant metadata from `result.metadata` and `result.errors`
-  - [ ] 1.4 Handle empty results gracefully (zero completed years -> empty table with key columns when schema known)
+  - [x] 1.4 Handle empty results gracefully (zero completed years -> empty table with key columns when schema known)
 
-- [ ] Task 2: Implement CSV export (AC: #2)
-  - [ ] 2.1 Add `PanelOutput.to_csv(path: str | Path) -> Path` method
-  - [ ] 2.2 Export with stable column names and UTF-8 encoding
-  - [ ] 2.3 Validate round-trip row count and key columns using pandas/polars in tests
+- [x] Task 2: Implement CSV export (AC: #2)
+  - [x] 2.1 Add `PanelOutput.to_csv(path: str | Path) -> Path` method
+  - [x] 2.2 Export with stable column names and UTF-8 encoding
+  - [x] 2.3 Validate round-trip row count and key columns using pandas/polars in tests
 
-- [ ] Task 3: Implement Parquet export (AC: #3)
-  - [ ] 3.1 Add `PanelOutput.to_parquet(path: str | Path) -> Path` method
-  - [ ] 3.2 Write Parquet with Arrow schema/type preservation
-  - [ ] 3.3 Include panel format metadata key (e.g., `reformlab_panel_version`)
+- [x] Task 3: Implement Parquet export (AC: #3)
+  - [x] 3.1 Add `PanelOutput.to_parquet(path: str | Path) -> Path` method
+  - [x] 3.2 Write Parquet with Arrow schema/type preservation
+  - [x] 3.3 Include panel format metadata key (e.g., `reformlab_panel_version`)
 
-- [ ] Task 4: Implement comparison helper for panel alignment/deltas (AC: #4)
-  - [ ] 4.1 Add `compare_panels(baseline: PanelOutput, reform: PanelOutput) -> PanelOutput` helper
-  - [ ] 4.2 Outer-join on (`household_id`, `year`) to retain unmatched rows
-  - [ ] 4.3 Add row origin marker (`both`, `baseline_only`, `reform_only`)
-  - [ ] 4.4 Add delta columns for shared numeric fields only
-  - [ ] 4.5 Preserve baseline/reform provenance in comparison metadata
+- [x] Task 4: Implement comparison helper for panel alignment/deltas (AC: #4)
+  - [x] 4.1 Add `compare_panels(baseline: PanelOutput, reform: PanelOutput) -> PanelOutput` helper
+  - [x] 4.2 Outer-join on (`household_id`, `year`) to retain unmatched rows
+  - [x] 4.3 Add row origin marker (`both`, `baseline_only`, `reform_only`)
+  - [x] 4.4 Add delta columns for shared numeric fields only
+  - [x] 4.5 Preserve baseline/reform provenance in comparison metadata
 
-- [ ] Task 5: Add module exports and focused tests (AC: all)
-  - [ ] 5.1 Export `PanelOutput`, `compare_panels` from `src/reformlab/orchestrator/__init__.py`
-  - [ ] 5.2 Create `tests/orchestrator/test_panel.py` with tests:
+- [x] Task 5: Add module exports and focused tests (AC: all)
+  - [x] 5.1 Export `PanelOutput`, `compare_panels` from `src/reformlab/orchestrator/__init__.py`
+  - [x] 5.2 Create `tests/orchestrator/test_panel.py` with tests:
     - Panel from successful 10-year run (row count, columns, types)
     - Panel from partial run (completed years only)
     - Panel from empty run (zero rows)
     - CSV export and reload (row/column integrity)
     - Parquet export and reload (schema/type preservation)
     - Panel comparison (alignment, origin markers, numeric deltas)
-  - [ ] 5.3 Run quality gates:
+  - [x] 5.3 Run quality gates:
     - `ruff check src/reformlab/orchestrator tests/orchestrator`
     - `mypy src/reformlab/orchestrator`
     - `pytest tests/orchestrator/test_panel.py tests/orchestrator/test_runner.py tests/orchestrator/test_computation_step.py -v`
@@ -284,10 +284,27 @@ SEED_LOG_KEY = "seed_log"
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.5 (claude-opus-4-5-20251101)
 
 ### Debug Log References
 
+N/A - No debugging issues encountered.
+
 ### Completion Notes List
 
+- Implemented `PanelOutput` dataclass with `from_orchestrator_result()` factory method that builds household-by-year panel tables from `OrchestratorResult.yearly_states`
+- Panel assembly iterates years in sorted order, extracts `ComputationResult.output_fields` from each `YearState.data[COMPUTATION_RESULT_KEY]`, adds `year` column, and concatenates into single PyArrow table
+- Implemented `to_csv()` and `to_parquet()` export methods with proper type preservation and panel version metadata
+- Implemented `compare_panels()` helper using pure PyArrow for full outer join on (household_id, year), adding `_origin` markers and `_delta_*` columns for numeric fields
+- All 16 panel-specific tests pass covering: 10-year runs, partial runs, empty runs, CSV/Parquet roundtrips, metadata preservation, and panel comparison scenarios
+- Full test suite regression check: 891 passed, 2 skipped (no regressions)
+- Quality gates passed: ruff (0 errors on new files), mypy (no issues in 8 orchestrator files)
+
 ### File List
+
+**New files:**
+- `src/reformlab/orchestrator/panel.py` - PanelOutput dataclass and compare_panels helper
+- `tests/orchestrator/test_panel.py` - 16 tests for panel generation, export, and comparison
+
+**Modified files:**
+- `src/reformlab/orchestrator/__init__.py` - Added exports for PanelOutput, compare_panels, PANEL_VERSION

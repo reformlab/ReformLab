@@ -29,6 +29,9 @@ Public API:
 - COMPUTATION_METADATA_KEY: Stable key for computation metadata (Story 3-5)
 - SEED_LOG_KEY: Stable key for seed log in metadata (Story 3-6)
 - STEP_EXECUTION_LOG_KEY: Stable key for step execution log in metadata (Story 3-6)
+- PanelOutput: Household-by-year panel dataset from orchestrator run (Story 3-7)
+- compare_panels: Helper to compare baseline and reform panels (Story 3-7)
+- PANEL_VERSION: Panel format version for metadata (Story 3-7)
 """
 
 from reformlab.orchestrator.carry_forward import (
@@ -45,6 +48,7 @@ from reformlab.orchestrator.computation_step import (
     ComputationStepError,
 )
 from reformlab.orchestrator.errors import OrchestratorError
+from reformlab.orchestrator.panel import PANEL_VERSION, PanelOutput, compare_panels
 from reformlab.orchestrator.runner import (
     SEED_LOG_KEY,
     STEP_EXECUTION_LOG_KEY,
@@ -105,4 +109,8 @@ __all__ = [
     # Logging keys (Story 3-6)
     "SEED_LOG_KEY",
     "STEP_EXECUTION_LOG_KEY",
+    # Panel output (Story 3-7)
+    "PanelOutput",
+    "compare_panels",
+    "PANEL_VERSION",
 ]
