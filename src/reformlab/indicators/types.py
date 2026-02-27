@@ -3,15 +3,18 @@
 Story 4.1: Implement Distributional Indicators by Income Decile
 Story 4.2: Implement Geographic Aggregation Indicators
 Story 4.3: Implement Welfare Indicators
+Story 4.4: Implement Fiscal Indicators
 
 This module provides:
 - DecileIndicators: Dataclass for decile-level metric results
 - RegionIndicators: Dataclass for region-level metric results
 - WelfareIndicators: Dataclass for welfare metric results (winner/loser analysis)
+- FiscalIndicators: Dataclass for fiscal metric results (revenue, cost, balance)
 - IndicatorResult: Container for indicator results with metadata and warnings
 - DistributionalConfig: Configuration for distributional indicator computation
 - GeographicConfig: Configuration for geographic indicator computation
 - WelfareConfig: Configuration for welfare indicator computation
+- FiscalConfig: Configuration for fiscal indicator computation
 """
 
 from __future__ import annotations
@@ -121,6 +124,37 @@ class WelfareIndicators:
 
 
 @dataclass
+class FiscalIndicators:
+    """Fiscal indicator metrics for a single scenario panel.
+
+    Contains revenue, cost, and balance metrics computed from fiscal fields
+    in a PanelOutput, with optional cumulative totals.
+
+    Attributes:
+        field_name: Stable label for the fiscal summary (e.g., "fiscal_summary").
+        year: Year of the data, or None for cross-year aggregations.
+        revenue: Total revenue (sum of all revenue_fields).
+        cost: Total cost (sum of all cost_fields).
+        balance: Net fiscal balance (revenue - cost).
+        cumulative_revenue: Running cumulative revenue from start_year
+            through this year.
+        cumulative_cost: Running cumulative cost from start_year
+            through this year.
+        cumulative_balance: Running cumulative balance from start_year
+            through this year.
+    """
+
+    field_name: str
+    year: int | None
+    revenue: float
+    cost: float
+    balance: float
+    cumulative_revenue: float | None = None
+    cumulative_cost: float | None = None
+    cumulative_balance: float | None = None
+
+
+@dataclass
 class IndicatorResult:
     """Container for computed indicator results with metadata and warnings.
 
@@ -137,7 +171,9 @@ class IndicatorResult:
             (used by geographic and welfare indicators).
     """
 
-    indicators: Sequence[DecileIndicators | RegionIndicators | WelfareIndicators]
+    indicators: Sequence[
+        DecileIndicators | RegionIndicators | WelfareIndicators | FiscalIndicators
+    ]
     metadata: dict[str, Any]
     warnings: list[str] = field(default_factory=list)
     excluded_count: int = 0
@@ -160,7 +196,17 @@ class IndicatorResult:
         """
         if not self.indicators:
             # Detect indicator type from metadata to determine schema
-            if "welfare_field" in self.metadata:
+            if "revenue_fields" in self.metadata or "cost_fields" in self.metadata:
+                # Fiscal indicators
+                return pa.table(
+                    {
+                        "field_name": pa.array([], type=pa.utf8()),
+                        "year": pa.array([], type=pa.int64()),
+                        "metric": pa.array([], type=pa.utf8()),
+                        "value": pa.array([], type=pa.float64()),
+                    }
+                )
+            elif "welfare_field" in self.metadata:
                 # Welfare indicators
                 group_type = str(self.metadata.get("group_type", "decile"))
                 if group_type == "region":
@@ -209,6 +255,51 @@ class IndicatorResult:
         first_indicator = self.indicators[0]
         is_geographic = isinstance(first_indicator, RegionIndicators)
         is_welfare = isinstance(first_indicator, WelfareIndicators)
+        is_fiscal = isinstance(first_indicator, FiscalIndicators)
+
+        if is_fiscal:
+            # Fiscal indicators have revenue, cost, balance, and optional
+            # cumulative metrics
+            field_names_fiscal: list[str] = []
+            years_fiscal: list[int | None] = []
+            metrics_fiscal: list[str] = []
+            values_fiscal: list[float] = []
+
+            for ind in self.indicators:
+                assert isinstance(ind, FiscalIndicators)
+                # Annual metrics
+                fiscal_metric_names = ["revenue", "cost", "balance"]
+                fiscal_metric_values = [ind.revenue, ind.cost, ind.balance]
+
+                # Add cumulative metrics if present
+                if ind.cumulative_revenue is not None:
+                    fiscal_metric_names.extend([
+                        "cumulative_revenue",
+                        "cumulative_cost",
+                        "cumulative_balance",
+                    ])
+                    fiscal_metric_values.extend([
+                        ind.cumulative_revenue,
+                        ind.cumulative_cost or 0.0,
+                        ind.cumulative_balance or 0.0,
+                    ])
+
+                for metric_name, metric_value in zip(
+                    fiscal_metric_names, fiscal_metric_values, strict=True
+                ):
+                    field_names_fiscal.append(ind.field_name)
+                    years_fiscal.append(ind.year)
+                    metrics_fiscal.append(metric_name)
+                    values_fiscal.append(metric_value)
+
+            return pa.table(
+                {
+                    "field_name": pa.array(field_names_fiscal, type=pa.utf8()),
+                    "year": pa.array(years_fiscal, type=pa.int64()),
+                    "metric": pa.array(metrics_fiscal, type=pa.utf8()),
+                    "value": pa.array(values_fiscal, type=pa.float64()),
+                }
+            )
 
         if is_welfare:
             # Welfare indicators have different metrics
@@ -289,7 +380,7 @@ class IndicatorResult:
         values_dist: list[float] = []
 
         for ind in self.indicators:
-            if isinstance(ind, WelfareIndicators):
+            if isinstance(ind, (WelfareIndicators, FiscalIndicators)):
                 # This should not happen in this branch, but mypy needs the check
                 continue
 
@@ -426,3 +517,32 @@ class WelfareConfig:
     group_by_region: bool = False
     income_field: str = "income"
     region_field: str = "region_code"
+
+
+@dataclass
+class FiscalConfig:
+    """Configuration for fiscal indicator computation.
+
+    Specifies which fields to aggregate as revenue and cost,
+    and how to handle multi-year panels and cumulative totals.
+
+    Attributes:
+        revenue_fields: List of field names to sum into total revenue.
+            Defaults to empty list.
+        cost_fields: List of field names to sum into total cost.
+            Defaults to empty list.
+        by_year: If True, compute indicators separately for each year.
+            Defaults to True.
+        aggregate_years: If True, aggregate indicators across all years
+            (single total). Only used when by_year=False.
+            Defaults to False.
+        cumulative: If True, compute cumulative totals from start year
+            through each year. Only applies when year detail is present.
+            Defaults to True.
+    """
+
+    revenue_fields: list[str] = field(default_factory=list)
+    cost_fields: list[str] = field(default_factory=list)
+    by_year: bool = True
+    aggregate_years: bool = False
+    cumulative: bool = True
