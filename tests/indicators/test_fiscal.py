@@ -73,6 +73,21 @@ def panel_with_nulls():
 
 
 @pytest.fixture
+def panel_with_integer_nulls():
+    """Create a panel with integer fiscal fields containing null values."""
+    table = pa.table(
+        {
+            "household_id": pa.array([1, 2, 3], type=pa.int64()),
+            "year": pa.array([2020, 2020, 2020], type=pa.int64()),
+            "carbon_tax_collected": pa.array([100, None, 150], type=pa.int64()),
+            "subsidy_paid": pa.array([50, 75, None], type=pa.int64()),
+        }
+    )
+    metadata = {"start_year": 2020, "end_year": 2020}
+    return PanelOutput(table=table, metadata=metadata)
+
+
+@pytest.fixture
 def empty_panel():
     """Create an empty panel."""
     table = pa.table(
@@ -344,6 +359,24 @@ class TestEdgeCases:
         assert len(result.warnings) > 0
         assert any("null" in w.lower() for w in result.warnings)
 
+    def test_integer_fields_with_nulls(self, panel_with_integer_nulls):
+        """Test null-as-zero handling for integer fiscal fields."""
+        config = FiscalConfig(
+            revenue_fields=["carbon_tax_collected"],
+            cost_fields=["subsidy_paid"],
+            by_year=True,
+            cumulative=False,
+        )
+
+        result = compute_fiscal_indicators(panel_with_integer_nulls, config)
+
+        assert len(result.indicators) == 1
+        indicator = result.indicators[0]
+        assert indicator.revenue == pytest.approx(250.0)
+        assert indicator.cost == pytest.approx(125.0)
+        assert indicator.balance == pytest.approx(125.0)
+        assert any("null value(s)" in warning for warning in result.warnings)
+
     def test_no_revenue_or_cost_fields_configured(self, simple_panel):
         """Test error when no fields are configured."""
         config = FiscalConfig(
@@ -370,6 +403,21 @@ class TestEdgeCases:
         assert len(result.indicators) == 1
         # Only carbon_tax_collected should be included
         assert result.indicators[0].revenue == pytest.approx(450.0)
+
+    def test_non_numeric_fiscal_field_raises(self, simple_panel):
+        """Test configured fiscal fields must be numeric."""
+        table_with_text = simple_panel.table.append_column(
+            "policy_label",
+            pa.array(["a", "b", "c"], type=pa.utf8()),
+        )
+        text_panel = PanelOutput(table=table_with_text, metadata=simple_panel.metadata)
+        config = FiscalConfig(
+            revenue_fields=["policy_label"],
+            cost_fields=["subsidy_paid"],
+        )
+
+        with pytest.raises(ValueError, match="Fiscal fields must be numeric"):
+            compute_fiscal_indicators(text_panel, config)
 
 
 class TestResultTableConversion:

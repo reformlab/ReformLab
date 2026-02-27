@@ -22,6 +22,31 @@ if TYPE_CHECKING:
     from reformlab.orchestrator.panel import PanelOutput
 
 
+class _NoFiscalFieldsFoundError(ValueError):
+    """Raised when none of the configured fiscal fields exist in the panel."""
+
+
+def _is_supported_numeric(field_type: pa.DataType) -> bool:
+    """Return True when a field type is valid for fiscal aggregation."""
+    return (
+        pa.types.is_integer(field_type)
+        or pa.types.is_floating(field_type)
+        or pa.types.is_decimal(field_type)
+    )
+
+
+def _sum_fiscal_fields(panel: pa.Table, field_names: list[str]) -> pa.Array:
+    """Sum selected fiscal fields row-wise after numeric normalization."""
+    total = pa.array([0.0] * panel.num_rows, type=pa.float64())
+    for field in field_names:
+        numeric_column = pc.cast(panel.column(field), pa.float64())
+        filled_column = pc.fill_null(
+            numeric_column, pa.scalar(0.0, type=pa.float64())
+        )
+        total = pc.add(total, filled_column)
+    return total
+
+
 def _compute_annual_totals(
     panel: pa.Table,
     revenue_fields: list[str],
@@ -52,16 +77,28 @@ def _compute_annual_totals(
     cost_fields_present = [f for f in cost_fields if f in panel.column_names]
 
     if not revenue_fields_present and not cost_fields_present:
-        raise ValueError(
+        raise _NoFiscalFieldsFoundError(
             "No fiscal fields found in panel. "
             f"Requested revenue fields: {revenue_fields}, cost fields: {cost_fields}. "
             f"Available columns: {panel.column_names}"
         )
 
+    invalid_field_descriptors = [
+        f"{field} ({panel.schema.field(field).type})"
+        for field in revenue_fields_present + cost_fields_present
+        if not _is_supported_numeric(panel.schema.field(field).type)
+    ]
+    if invalid_field_descriptors:
+        invalid_fields = ", ".join(invalid_field_descriptors)
+        raise ValueError(
+            "Fiscal fields must be numeric (integer, float, or decimal). "
+            f"Invalid field(s): {invalid_fields}."
+        )
+
     # Handle null values: fill with 0.0 and emit warnings
     for field in revenue_fields_present + cost_fields_present:
         col = panel.column(field)
-        null_count = pc.sum(pc.is_null(col)).as_py()
+        null_count = int(pc.sum(pc.cast(pc.is_null(col), pa.int64())).as_py() or 0)
         if null_count > 0:
             captured_warnings.append(
                 f"Field '{field}' has {null_count} null value(s). "
@@ -77,26 +114,10 @@ def _compute_annual_totals(
         group_keys = []
 
     # Compute revenue total
-    revenue_total = pa.array([0.0] * panel.num_rows, type=pa.float64())
-    for field in revenue_fields_present:
-        col = panel.column(field)
-        # Fill nulls with 0.0
-        col_filled = pc.fill_null(col, pa.scalar(0.0))
-        # Cast to float64 if needed
-        if not pa.types.is_floating(col_filled.type):
-            col_filled = pc.cast(col_filled, pa.float64())
-        revenue_total = pc.add(revenue_total, col_filled)
+    revenue_total = _sum_fiscal_fields(panel, revenue_fields_present)
 
     # Compute cost total
-    cost_total = pa.array([0.0] * panel.num_rows, type=pa.float64())
-    for field in cost_fields_present:
-        col = panel.column(field)
-        # Fill nulls with 0.0
-        col_filled = pc.fill_null(col, pa.scalar(0.0))
-        # Cast to float64 if needed
-        if not pa.types.is_floating(col_filled.type):
-            col_filled = pc.cast(col_filled, pa.float64())
-        cost_total = pc.add(cost_total, col_filled)
+    cost_total = _sum_fiscal_fields(panel, cost_fields_present)
 
     # Add totals to panel
     panel_with_totals = panel.append_column("_revenue", revenue_total)
@@ -282,7 +303,7 @@ def compute_fiscal_indicators(
                 by_year=group_by_year,
             )
             captured_warnings.extend(null_warnings)
-        except ValueError as e:
+        except _NoFiscalFieldsFoundError as e:
             # No fiscal fields found in panel
             warnings.warn(str(e), stacklevel=2)
             metadata = {
