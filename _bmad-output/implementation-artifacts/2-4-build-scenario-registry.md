@@ -10,11 +10,11 @@ so that **I can reliably retrieve, track, and audit scenario configurations acro
 
 ## Acceptance Criteria
 
-Scope note: BKL-204 baseline is registry storage with immutable versioning. Full baseline/reform linking with bidirectional navigation is handled in Story 2.5 (scenario cloning). Orchestrator integration is handled in Epic 3.
+Scope note: BKL-204 baseline is AC-1 through AC-3 (per backlog). AC-4 and AC-5 are implementation details that support that baseline and must not expand into orchestrator integration, scenario cloning, or multi-user synchronization.
 
 1. **AC-1: Scenario can be saved to registry with immutable version ID**
    - Given a scenario saved to the registry, when retrieved by version ID, then the returned definition is identical to what was saved.
-   - Version IDs are deterministically generated (content-addressable or sequential with timestamp).
+   - Version IDs are deterministically generated from scenario content (content-addressable hash).
    - Saved scenarios are immutable: once saved, the definition cannot be modified.
 
 2. **AC-2: Modified scenario creates new version**
@@ -26,23 +26,28 @@ Scope note: BKL-204 baseline is registry storage with immutable versioning. Full
    - Given an invalid version ID, when queried, then a clear error indicates the version does not exist.
    - Error message includes the requested version ID and suggests listing available versions.
 
-4. **AC-4: Registry supports listing and filtering scenarios**
+4. **AC-4: Registry supports listing and version lookup**
    - Registry provides `list_scenarios()` returning all stored scenario names with latest version.
    - Registry provides `list_versions(scenario_name)` returning version history for a specific scenario.
-   - Registry provides `get_scenario(scenario_name, version_id=None)` where None returns latest version.
+   - Registry provides `get(name, version_id=None)` where None returns latest version.
 
 5. **AC-5: Registry persistence is file-based and portable**
    - Registry stores scenarios in a structured directory format suitable for version control.
    - Registry location is configurable (default: `~/.reformlab/registry/` or project-local).
-   - Registry format is JSON/YAML for human readability and Git diffability.
+   - Registry format is YAML for human readability and Git diffability, using existing template loader/dumper conventions.
 
 ## Tasks / Subtasks
+
+- [ ] Task 0: Validate prerequisites and story boundaries
+  - [ ] 0.1 Confirm Story 2.1 / BKL-201 is `done` in `sprint-status.yaml` before implementation starts
+  - [ ] 0.2 Treat Stories 2.2 and 2.3 as optional integration inputs only (not hard blockers for BKL-204)
+  - [ ] 0.3 Confirm Story 2.4 implementation excludes orchestrator integration, cloning workflows, and multi-user sync
 
 - [ ] Task 1: Design registry data model and storage format (AC: #1, #5)
   - [ ] 1.1 Define `ScenarioVersion` dataclass with version_id, timestamp, parent_version, change_description
   - [ ] 1.2 Define `RegistryEntry` dataclass with scenario_name, versions dict, latest_version pointer
   - [ ] 1.3 Design file layout: `registry/{scenario_name}/versions/{version_id}.yaml` + `registry/{scenario_name}/metadata.yaml`
-  - [ ] 1.4 Define version ID generation strategy (content hash or UUID with timestamp prefix)
+  - [ ] 1.4 Define version ID generation strategy using deterministic content hash (SHA-256 prefix)
 
 - [ ] Task 2: Implement core registry class (AC: #1, #2, #3, #4)
   - [ ] 2.1 Create `src/reformlab/templates/registry.py` with `ScenarioRegistry` class
@@ -63,7 +68,7 @@ Scope note: BKL-204 baseline is registry storage with immutable versioning. Full
   - [ ] 4.2 Create `_save_metadata()` and `_load_metadata()` for registry entry metadata
   - [ ] 4.3 Implement configurable registry path (env var `REFORMLAB_REGISTRY_PATH` or constructor param)
   - [ ] 4.4 Implement `initialize()` method for first-time registry setup
-  - [ ] 4.5 Add file locking for concurrent access safety (optional, simple approach)
+  - [ ] 4.5 Use atomic write pattern (temp file + replace) for single-machine safety; multi-writer locking is out of scope
 
 - [ ] Task 5: Implement error handling (AC: #3)
   - [ ] 5.1 Create `RegistryError` exception following `ScenarioError` pattern
@@ -183,7 +188,8 @@ versions:
 
 ### Cross-Story Dependencies
 
-- **Depends on Story 2.1 / BKL-201 (done):** Schema types, YAML loader/dumper
+- **Hard gate (must be done first):** Story 2.1 / BKL-201 (schema types, YAML loader/dumper)
+- **Soft dependency (helpful but not blocking):** Stories 2.2 / BKL-202 and 2.3 / BKL-203 provide additional real templates for integration fixtures
 - **Related downstream:**
   - Story 2.5 / BKL-205: Scenario cloning and baseline/reform linking (consumes registry)
   - Story 5.1 / BKL-501: Run manifest schema references scenario version IDs from registry
@@ -191,7 +197,7 @@ versions:
 
 ### Version ID Generation Strategy
 
-**Content-addressable hashing (recommended):**
+**Content-addressable hashing (required for AC-1):**
 ```python
 import hashlib
 from reformlab.templates.loader import dump_scenario_template
@@ -288,7 +294,7 @@ class ScenarioRegistry:
 - Use `tmp_path` fixture for registry directory
 - Test both success and failure paths
 - Error messages must include: summary, reason, fix guidance
-- Test concurrent access scenarios (optional)
+- Test atomic-write behavior and repeated single-writer saves; multi-writer concurrency is out of scope for this story
 
 **Key test scenarios:**
 ```python
