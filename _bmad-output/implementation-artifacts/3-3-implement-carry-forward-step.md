@@ -1,6 +1,6 @@
 # Story 3.3: Implement Carry-Forward Step
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -48,74 +48,74 @@ From backlog (BKL-303), aligned with FR14, FR17, NFR10.
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Confirm prerequisites and baseline (AC: dependency check)
-  - [ ] 0.1 Verify Story 3-1 and 3-2 status is `done` or `review`
-  - [ ] 0.2 Confirm `OrchestratorStep` protocol and `StepRegistry` are available in `src/reformlab/orchestrator/step.py`
-  - [ ] 0.3 Review `YearState` dataclass to understand state data structure
-  - [ ] 0.4 Record dependency verification evidence in Dev Agent Record before starting implementation
+- [x] Task 0: Confirm prerequisites and baseline (AC: dependency check)
+  - [x] 0.1 Verify Story 3-1 and 3-2 status is `done` or `review`
+  - [x] 0.2 Confirm `OrchestratorStep` protocol and `StepRegistry` are available in `src/reformlab/orchestrator/step.py`
+  - [x] 0.3 Review `YearState` dataclass to understand state data structure
+  - [x] 0.4 Record dependency verification evidence in Dev Agent Record before starting implementation
 
-- [ ] Task 1: Define carry-forward configuration schema (AC: #3, #5)
-  - [ ] 1.1 Create `src/reformlab/orchestrator/carry_forward.py`
-  - [ ] 1.2 Define `CarryForwardRule` dataclass with:
+- [x] Task 1: Define carry-forward configuration schema (AC: #3, #5)
+  - [x] 1.1 Create `src/reformlab/orchestrator/carry_forward.py`
+  - [x] 1.2 Define `CarryForwardRule` dataclass with:
     - `variable: str` - name of state variable to update
     - `rule_type: Literal["static", "scale", "increment", "custom"]`
     - `period_semantics: str` - explicit period specification (NFR10 compliance)
     - `value: float | None` - for scale/increment rules
     - `custom_fn: Callable | None` - for custom rules
-  - [ ] 1.3 Define `CarryForwardConfig` dataclass with:
+  - [x] 1.3 Define `CarryForwardConfig` dataclass with:
     - `rules: tuple[CarryForwardRule, ...]`
     - `strict_period: bool = True` - enforce period semantics
-  - [ ] 1.4 Add config validation to reject missing period semantics
+  - [x] 1.4 Add config validation to reject missing period semantics
 
-- [ ] Task 2: Implement CarryForwardStep class (AC: #1, #2, #4)
-  - [ ] 2.1 Implement `CarryForwardStep` satisfying `OrchestratorStep` protocol:
+- [x] Task 2: Implement CarryForwardStep class (AC: #1, #2, #4)
+  - [x] 2.1 Implement `CarryForwardStep` satisfying `OrchestratorStep` protocol:
     - `name: str = "carry_forward"`
     - `depends_on: tuple[str, ...] = ()` (default: no dependencies)
     - `description: str | None`
     - `execute(year: int, state: YearState) -> YearState`
-  - [ ] 2.2 Implement deterministic rule application logic:
+  - [x] 2.2 Implement deterministic rule application logic:
     - `static`: return value unchanged
     - `scale`: multiply by factor
     - `increment`: add value
     - `custom`: call custom_fn(year, value, state)
-  - [ ] 2.3 Ensure state updates create new `YearState` (immutability via `replace()`)
-  - [ ] 2.4 Use deterministic ordering of rule application (sorted by variable name)
+  - [x] 2.3 Ensure state updates create new `YearState` (immutability via `replace()`)
+  - [x] 2.4 Use deterministic ordering of rule application (sorted by variable name)
 
-- [ ] Task 3: Add carry-forward specific errors (AC: #3)
-  - [ ] 3.1 Define `CarryForwardConfigError` for invalid configuration
-  - [ ] 3.2 Define `CarryForwardExecutionError` for runtime failures
-  - [ ] 3.3 Ensure errors include actionable messages with variable names
+- [x] Task 3: Add carry-forward specific errors (AC: #3)
+  - [x] 3.1 Define `CarryForwardConfigError` for invalid configuration
+  - [x] 3.2 Define `CarryForwardExecutionError` for runtime failures
+  - [x] 3.3 Ensure errors include actionable messages with variable names
 
-- [ ] Task 4: Add determinism and reproducibility guarantees (AC: #2)
-  - [ ] 4.1 Document seed usage (carry-forward is deterministic without randomness by default)
-  - [ ] 4.2 If custom rules use randomness, require explicit seed from `state.seed`
-  - [ ] 4.3 Add determinism test: same input state produces identical output across runs
+- [x] Task 4: Add determinism and reproducibility guarantees (AC: #2)
+  - [x] 4.1 Document seed usage (carry-forward is deterministic without randomness by default)
+  - [x] 4.2 If custom rules use randomness, require explicit seed from `state.seed`
+  - [x] 4.3 Add determinism test: same input state produces identical output across runs
 
-- [ ] Task 5: Add tests for carry-forward step (AC: all)
-  - [ ] 5.1 Create `tests/orchestrator/test_carry_forward.py`
-  - [ ] 5.2 Test configuration validation:
+- [x] Task 5: Add tests for carry-forward step (AC: all)
+  - [x] 5.1 Create `tests/orchestrator/test_carry_forward.py`
+  - [x] 5.2 Test configuration validation:
     - Valid configurations pass
     - Missing period semantics rejected (NFR10)
     - Invalid rule types rejected
-  - [ ] 5.3 Test rule execution:
+  - [x] 5.3 Test rule execution:
     - Static rule preserves value
     - Scale rule multiplies correctly
     - Increment rule adds correctly
     - Custom rule executes callable
-  - [ ] 5.4 Test determinism:
+  - [x] 5.4 Test determinism:
     - Same inputs produce identical outputs
     - Order-independent variable updates (sorted)
-  - [ ] 5.5 Test orchestrator integration:
+  - [x] 5.5 Test orchestrator integration:
     - CarryForwardStep works with StepRegistry
     - `depends_on` ordering is honored when carry-forward is combined with other registered steps
     - Step executes in pipeline with other steps
 
-- [ ] Task 6: Export APIs and run quality gates (AC: all)
-  - [ ] 6.1 Update `src/reformlab/orchestrator/__init__.py` exports (`CarryForwardStep`, `CarryForwardConfig`, `CarryForwardRule`)
-  - [ ] 6.2 Add concise docstrings for public APIs
-  - [ ] 6.3 Run `ruff check src/reformlab/orchestrator tests/orchestrator`
-  - [ ] 6.4 Run `mypy src/reformlab/orchestrator`
-  - [ ] 6.5 Run `pytest tests/orchestrator/test_carry_forward.py tests/orchestrator/test_runner.py`
+- [x] Task 6: Export APIs and run quality gates (AC: all)
+  - [x] 6.1 Update `src/reformlab/orchestrator/__init__.py` exports (`CarryForwardStep`, `CarryForwardConfig`, `CarryForwardRule`)
+  - [x] 6.2 Add concise docstrings for public APIs
+  - [x] 6.3 Run `ruff check src/reformlab/orchestrator tests/orchestrator`
+  - [x] 6.4 Run `mypy src/reformlab/orchestrator`
+  - [x] 6.5 Run `pytest tests/orchestrator/test_carry_forward.py tests/orchestrator/test_runner.py`
 
 ## Dev Notes
 
@@ -322,10 +322,45 @@ class CarryForwardExecutionError(Exception):
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.5 (claude-opus-4-5-20251101)
 
 ### Debug Log References
 
 ### Completion Notes List
 
+- **Task 0 Prerequisites Verified (2026-02-27):**
+  - Story 3-1 `implement-yearly-loop-orchestrator`: `done`
+  - Story 3-2 `define-orchestrator-step-interface`: `done`
+  - `OrchestratorStep` protocol confirmed in `src/reformlab/orchestrator/step.py:43-70`
+  - `StepRegistry` confirmed in `src/reformlab/orchestrator/step.py:242-378`
+  - `YearState` dataclass confirmed in `src/reformlab/orchestrator/types.py:20-37` (frozen, with year, data, seed, metadata)
+  - `@step` decorator and `adapt_callable` available for function-based steps
+  - Step errors available: `StepValidationError`, `StepRegistrationError`, `CircularDependencyError`
+
+- **Task 1-6 Completed (2026-02-27):**
+  - Created `src/reformlab/orchestrator/carry_forward.py` with:
+    - `CarryForwardRule`: frozen dataclass for rule configuration
+    - `CarryForwardConfig`: frozen dataclass grouping rules
+    - `CarryForwardStep`: OrchestratorStep implementation with deterministic rule application
+    - `CarryForwardConfigError`: raised for invalid config (e.g., missing period_semantics)
+    - `CarryForwardExecutionError`: raised for runtime failures
+  - Rule types implemented: `static`, `scale`, `increment`, `custom`
+  - NFR10 compliance: `period_semantics` required on all rules, validated in `__post_init__`
+  - Determinism: rules sorted by variable name before application
+  - Immutability: uses `replace()` to create new `YearState`
+  - Created 38 tests in `tests/orchestrator/test_carry_forward.py`
+  - All 144 orchestrator tests pass (103 existing + 38 new + 3 integration)
+  - ruff check passed, mypy passed with no issues
+
 ### File List
+
+**New Files:**
+- `src/reformlab/orchestrator/carry_forward.py`
+- `tests/orchestrator/test_carry_forward.py`
+
+**Modified Files:**
+- `src/reformlab/orchestrator/__init__.py`
+
+## Change Log
+
+- **2026-02-27**: Implemented CarryForwardStep with all rule types (static, scale, increment, custom). Added NFR10-compliant period semantics validation. Added 38 unit and integration tests. All 144 orchestrator tests pass.

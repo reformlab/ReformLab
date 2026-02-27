@@ -18,8 +18,20 @@ Public API:
 - step: Decorator for function-based steps (Story 3-2)
 - adapt_callable: Adapter for bare YearStep callables (Story 3-2)
 - Step errors: StepValidationError, StepRegistrationError, CircularDependencyError
+- CarryForwardStep: Deterministic state carry-forward step (Story 3-3)
+- CarryForwardConfig: Configuration for carry-forward rules (Story 3-3)
+- CarryForwardRule: Single variable update rule (Story 3-3)
+- CarryForwardConfigError: Invalid carry-forward configuration (Story 3-3)
+- CarryForwardExecutionError: Error during carry-forward execution (Story 3-3)
 """
 
+from reformlab.orchestrator.carry_forward import (
+    CarryForwardConfig,
+    CarryForwardConfigError,
+    CarryForwardExecutionError,
+    CarryForwardRule,
+    CarryForwardStep,
+)
 from reformlab.orchestrator.errors import OrchestratorError
 from reformlab.orchestrator.runner import (
     Orchestrator,
@@ -65,4 +77,10 @@ __all__ = [
     "StepValidationError",
     "StepRegistrationError",
     "CircularDependencyError",
+    # Carry-forward step (Story 3-3)
+    "CarryForwardStep",
+    "CarryForwardConfig",
+    "CarryForwardRule",
+    "CarryForwardConfigError",
+    "CarryForwardExecutionError",
 ]
