@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import replace
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict, cast
 
 from reformlab.orchestrator.errors import OrchestratorError
 from reformlab.orchestrator.types import (
@@ -106,6 +106,13 @@ class Orchestrator:
                 logger.debug("Completed year %d", year)
 
             except OrchestratorError as e:
+                if e.step_records:
+                    step_execution_log.extend(cast(list[StepExecutionRecord], e.step_records))
+                if e.year_seed is not None or self.config.seed is None:
+                    seed_log[year] = e.year_seed
+                else:
+                    seed_log[year] = self._derive_year_seed(year)
+
                 if not e.partial_states and yearly_states:
                     e.partial_states = dict(yearly_states)
 
@@ -212,9 +219,24 @@ class Orchestrator:
         adapter_version: str | None = None
         for step_index, step in enumerate(self.config.step_pipeline, start=1):
             step_name = _extract_step_name(step)
-            current, step_adapter_version = self._execute_step(
-                step, year, current, step_index, step_total
-            )
+            try:
+                current, step_adapter_version = self._execute_step(
+                    step, year, current, step_index, step_total
+                )
+            except OrchestratorError as e:
+                step_records.append(
+                    StepExecutionRecord(
+                        year=year,
+                        step_index=step_index,
+                        step_total=step_total,
+                        step_name=step_name,
+                        status="failed",
+                    )
+                )
+                e.year_seed = year_seed
+                e.step_records = [dict(record) for record in step_records]
+                raise
+
             # Capture adapter version from computation step if present
             if step_adapter_version is not None:
                 adapter_version = step_adapter_version

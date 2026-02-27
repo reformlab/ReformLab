@@ -11,6 +11,7 @@ Tests cover:
 
 from __future__ import annotations
 
+import logging
 from dataclasses import replace
 
 import pyarrow as pa
@@ -363,13 +364,14 @@ class TestComputationStepErrorHandling:
         assert "2028" in error_msg
         assert "failing-2.5.0" in error_msg
 
-    def test_version_lookup_failure_is_wrapped_with_year_context(
+    def test_version_lookup_failure_falls_back_to_version_unavailable(
         self,
         sample_population: PopulationData,
         sample_policy: PolicyConfig,
         year_state: YearState,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """Given version lookup failure, ComputationStepError includes year context."""
+        """Given version lookup failure, computation still succeeds with fallback."""
 
         class VersionFailingAdapter:
             def version(self) -> str:
@@ -393,13 +395,37 @@ class TestComputationStepErrorHandling:
             policy=sample_policy,
         )
 
-        with pytest.raises(ComputationStepError) as exc_info:
-            step.execute(2026, year_state)
+        with caplog.at_level(
+            logging.INFO, logger="reformlab.orchestrator.computation_step"
+        ):
+            result = step.execute(2026, year_state)
 
-        error = exc_info.value
-        assert error.year == 2026
-        assert error.adapter_version == "<version-unavailable>"
-        assert "Version lookup failed" in str(error)
+        meta = result.metadata[COMPUTATION_METADATA_KEY]
+        assert meta["adapter_version"] == "<version-unavailable>"
+        assert any(
+            "adapter_version=<version-unavailable>" in record.message
+            for record in caplog.records
+        )
+
+    def test_logs_adapter_version_at_info_level(
+        self,
+        computation_step: ComputationStep,
+        year_state: YearState,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Given successful execution, INFO log includes adapter version marker."""
+        with caplog.at_level(
+            logging.INFO, logger="reformlab.orchestrator.computation_step"
+        ):
+            computation_step.execute(2025, year_state)
+
+        version_logs = [
+            r for r in caplog.records if "adapter_version=" in r.message
+        ]
+        assert len(version_logs) >= 1
+        assert "year=2025" in version_logs[0].message
+        assert "step_name=computation" in version_logs[0].message
+        assert "adapter_version=mock-2.0.0" in version_logs[0].message
 
     def test_invalid_computation_result_is_wrapped_with_adapter_context(
         self,

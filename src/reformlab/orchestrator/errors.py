@@ -29,6 +29,8 @@ class OrchestratorError(Exception):
         step_name: Name of the step that caused the failure.
         partial_states: Yearly states completed before failure.
         original_error: The underlying exception that was caught.
+        year_seed: Derived seed for the failing year when available.
+        step_records: Per-step execution records collected before failure.
     """
 
     summary: str
@@ -37,6 +39,8 @@ class OrchestratorError(Exception):
     step_name: str | None = None
     partial_states: dict[int, "YearState"] = field(default_factory=dict)
     original_error: Exception | None = None
+    year_seed: int | None = None
+    step_records: list[dict[str, Any]] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         """Build and cache the initial exception message."""

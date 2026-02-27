@@ -372,6 +372,7 @@ class TestSeedDifferenceObservability:
         assert "year=" in all_messages
         assert "seed=" in all_messages
         assert "step_name=" in all_messages
+        assert "adapter_version=" in all_messages
 
 
 # ============================================================================
@@ -513,15 +514,18 @@ class TestExecutionTraceMetadata:
         assert SEED_LOG_KEY in result.metadata
         assert STEP_EXECUTION_LOG_KEY in result.metadata
 
-        # Only 2025 completed before failure
+        # Both started years should be represented in seed trace
         seed_log = result.metadata[SEED_LOG_KEY]
         assert 2025 in seed_log
-        assert 2026 not in seed_log  # Failed year not in seed_log
+        assert 2026 in seed_log
 
-        # Only 2025's step should be in the log
+        # 2025 completes and 2026 records a failed step execution
         step_log = result.metadata[STEP_EXECUTION_LOG_KEY]
-        assert len(step_log) == 1
+        assert len(step_log) == 2
         assert step_log[0]["year"] == 2025
+        assert step_log[0]["status"] == "completed"
+        assert step_log[1]["year"] == 2026
+        assert step_log[1]["status"] == "failed"
 
     def test_seed_log_and_step_log_keys_are_stable(self):
         """The metadata keys for seed_log and step_execution_log are stable strings."""

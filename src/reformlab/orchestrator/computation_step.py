@@ -135,6 +135,16 @@ class ComputationStep:
         adapter_version = "<version-unavailable>"
         try:
             adapter_version = self._adapter.version()
+        except Exception:
+            # Version lookup is non-blocking: keep fallback marker for logs/metadata.
+            logger.debug(
+                "year=%d step_name=%s adapter_version=%s event=adapter_version_fallback",
+                year,
+                self._name,
+                adapter_version,
+            )
+
+        try:
             result = self._adapter.compute(
                 population=self._population,
                 policy=self._policy,
