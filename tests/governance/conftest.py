@@ -49,9 +49,41 @@ def full_manifest() -> RunManifest:
             "simulation_years": [2025, 2026, 2027],
         },
         assumptions=[
-            "constant_population",
-            "linear_price_projection",
-            "no_behavioral_response",
+            {
+                "key": "constant_population",
+                "value": True,
+                "source": "scenario",
+                "is_default": True,
+            },
+            {
+                "key": "linear_price_projection",
+                "value": True,
+                "source": "scenario",
+                "is_default": True,
+            },
+            {
+                "key": "no_behavioral_response",
+                "value": True,
+                "source": "user",
+                "is_default": False,
+            },
+        ],
+        mappings=[
+            {
+                "openfisca_name": "household_income",
+                "project_name": "income",
+                "direction": "input",
+                "source_file": "/path/to/mappings.yaml",
+            },
+            {
+                "openfisca_name": "carbon_tax_paid",
+                "project_name": "tax_paid",
+                "direction": "output",
+            },
+        ],
+        warnings=[
+            "WARNING: Scenario 'test-scenario' (version 'v1.0') is not marked as "
+            "validated in registry metadata."
         ],
         step_pipeline=[
             "compute_baseline",

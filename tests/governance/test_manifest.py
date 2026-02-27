@@ -61,11 +61,12 @@ class TestRunManifestCreation:
             "year_2026": 1002,
         }
         assert full_manifest.parameters["carbon_tax_rate"] == 44.6
-        assert full_manifest.assumptions == [
-            "constant_population",
-            "linear_price_projection",
-            "no_behavioral_response",
-        ]
+        assert len(full_manifest.assumptions) == 3
+        assert full_manifest.assumptions[0]["key"] == "constant_population"
+        assert full_manifest.assumptions[0]["is_default"] is True
+        assert len(full_manifest.mappings) == 2
+        assert full_manifest.mappings[0]["openfisca_name"] == "household_income"
+        assert len(full_manifest.warnings) == 1
         assert full_manifest.step_pipeline == [
             "compute_baseline",
             "apply_carbon_tax",
@@ -263,6 +264,8 @@ class TestManifestSerialization:
                 "seeds": {},
                 "parameters": {},
                 "assumptions": [],
+                "mappings": [],
+                "warnings": [],
                 "step_pipeline": [],
                 "integrity_hash": "",
                 "unexpected_field": "oops",
@@ -428,6 +431,8 @@ class TestManifestValidation:
             "seeds": {},
             "parameters": {},
             "assumptions": [],
+            "mappings": [],
+            "warnings": [],
             "step_pipeline": [],
             "integrity_hash": "",
         })
@@ -492,3 +497,214 @@ class TestCrossmachineReproducibility:
         manifest2 = RunManifest(**data)
 
         assert manifest1.compute_integrity_hash() == manifest2.compute_integrity_hash()
+
+
+class TestAssumptionsFieldValidation:
+    """Test validation for structured assumptions field."""
+
+    def test_valid_structured_assumptions(self) -> None:
+        """Structured assumptions with all required fields are valid."""
+        manifest = RunManifest(
+            manifest_id="test-001",
+            created_at="2026-02-27T10:00:00Z",
+            engine_version="0.1.0",
+            openfisca_version="40.0.0",
+            adapter_version="1.0.0",
+            scenario_version="v1.0",
+            assumptions=[
+                {
+                    "key": "discount_rate",
+                    "value": 0.03,
+                    "source": "scenario",
+                    "is_default": True,
+                },
+                {
+                    "key": "custom_param",
+                    "value": {"nested": "value"},
+                    "source": "user",
+                    "is_default": False,
+                },
+            ],
+        )
+        assert len(manifest.assumptions) == 2
+
+    def test_assumption_missing_required_field(self) -> None:
+        """Assumption entry missing required field raises error."""
+        with pytest.raises(
+            ManifestValidationError, match="missing required field 'key'"
+        ):
+            RunManifest(
+                manifest_id="test-001",
+                created_at="2026-02-27T10:00:00Z",
+                engine_version="0.1.0",
+                openfisca_version="40.0.0",
+                adapter_version="1.0.0",
+                scenario_version="v1.0",
+                assumptions=[
+                    {
+                        "value": 0.03,
+                        "source": "scenario",
+                        "is_default": True,
+                    }
+                ],
+            )
+
+    def test_assumption_empty_key(self) -> None:
+        """Assumption with empty key raises error."""
+        with pytest.raises(ManifestValidationError, match="must be a non-empty string"):
+            RunManifest(
+                manifest_id="test-001",
+                created_at="2026-02-27T10:00:00Z",
+                engine_version="0.1.0",
+                openfisca_version="40.0.0",
+                adapter_version="1.0.0",
+                scenario_version="v1.0",
+                assumptions=[
+                    {
+                        "key": "",
+                        "value": 0.03,
+                        "source": "scenario",
+                        "is_default": True,
+                    }
+                ],
+            )
+
+    def test_assumption_non_boolean_is_default(self) -> None:
+        """Assumption with non-boolean is_default raises error."""
+        with pytest.raises(
+            ManifestValidationError, match="'is_default' must be a boolean"
+        ):
+            RunManifest(
+                manifest_id="test-001",
+                created_at="2026-02-27T10:00:00Z",
+                engine_version="0.1.0",
+                openfisca_version="40.0.0",
+                adapter_version="1.0.0",
+                scenario_version="v1.0",
+                assumptions=[
+                    {
+                        "key": "test",
+                        "value": 0.03,
+                        "source": "scenario",
+                        "is_default": "yes",
+                    }
+                ],
+            )
+
+
+class TestMappingsFieldValidation:
+    """Test validation for mappings field."""
+
+    def test_valid_mappings(self) -> None:
+        """Valid mapping entries are accepted."""
+        manifest = RunManifest(
+            manifest_id="test-001",
+            created_at="2026-02-27T10:00:00Z",
+            engine_version="0.1.0",
+            openfisca_version="40.0.0",
+            adapter_version="1.0.0",
+            scenario_version="v1.0",
+            mappings=[
+                {
+                    "openfisca_name": "income",
+                    "project_name": "household_income",
+                    "direction": "input",
+                },
+                {
+                    "openfisca_name": "tax",
+                    "project_name": "tax_paid",
+                    "direction": "output",
+                    "source_file": "/path/to/mapping.yaml",
+                },
+            ],
+        )
+        assert len(manifest.mappings) == 2
+
+    def test_mapping_missing_required_field(self) -> None:
+        """Mapping entry missing required field raises error."""
+        with pytest.raises(
+            ManifestValidationError, match="missing required field 'direction'"
+        ):
+            RunManifest(
+                manifest_id="test-001",
+                created_at="2026-02-27T10:00:00Z",
+                engine_version="0.1.0",
+                openfisca_version="40.0.0",
+                adapter_version="1.0.0",
+                scenario_version="v1.0",
+                mappings=[
+                    {
+                        "openfisca_name": "income",
+                        "project_name": "household_income",
+                    }
+                ],
+            )
+
+    def test_mapping_invalid_direction(self) -> None:
+        """Mapping with invalid direction raises error."""
+        with pytest.raises(
+            ManifestValidationError,
+            match="'direction' must be one of: input, output, both",
+        ):
+            RunManifest(
+                manifest_id="test-001",
+                created_at="2026-02-27T10:00:00Z",
+                engine_version="0.1.0",
+                openfisca_version="40.0.0",
+                adapter_version="1.0.0",
+                scenario_version="v1.0",
+                mappings=[
+                    {
+                        "openfisca_name": "income",
+                        "project_name": "household_income",
+                        "direction": "invalid",
+                    }
+                ],
+            )
+
+
+class TestWarningsFieldValidation:
+    """Test validation for warnings field."""
+
+    def test_valid_warnings(self) -> None:
+        """Valid warning strings are accepted."""
+        manifest = RunManifest(
+            manifest_id="test-001",
+            created_at="2026-02-27T10:00:00Z",
+            engine_version="0.1.0",
+            openfisca_version="40.0.0",
+            adapter_version="1.0.0",
+            scenario_version="v1.0",
+            warnings=["Warning 1", "Warning 2"],
+        )
+        assert len(manifest.warnings) == 2
+
+    def test_warning_empty_string(self) -> None:
+        """Empty warning string raises error."""
+        with pytest.raises(
+            ManifestValidationError, match="expected non-empty str"
+        ):
+            RunManifest(
+                manifest_id="test-001",
+                created_at="2026-02-27T10:00:00Z",
+                engine_version="0.1.0",
+                openfisca_version="40.0.0",
+                adapter_version="1.0.0",
+                scenario_version="v1.0",
+                warnings=["Valid warning", ""],
+            )
+
+    def test_warning_non_string(self) -> None:
+        """Non-string warning raises error."""
+        with pytest.raises(
+            ManifestValidationError, match="expected non-empty str"
+        ):
+            RunManifest(
+                manifest_id="test-001",
+                created_at="2026-02-27T10:00:00Z",
+                engine_version="0.1.0",
+                openfisca_version="40.0.0",
+                adapter_version="1.0.0",
+                scenario_version="v1.0",
+                warnings=[42],  # type: ignore[list-item]
+            )

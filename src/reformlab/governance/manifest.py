@@ -20,7 +20,7 @@ import math
 import re
 from copy import deepcopy
 from dataclasses import asdict, dataclass, field
-from typing import Any
+from typing import Any, TypedDict
 
 from reformlab.governance.errors import (
     ManifestIntegrityError,
@@ -44,9 +44,45 @@ REQUIRED_JSON_FIELDS = (
     "seeds",
     "parameters",
     "assumptions",
+    "mappings",
+    "warnings",
     "step_pipeline",
     "integrity_hash",
 )
+
+
+class AssumptionEntry(TypedDict):
+    """Structured assumption entry for manifest capture.
+
+    Attributes:
+        key: The assumption key/identifier.
+        value: The assumption value (JSON-compatible type).
+        source: Source of the assumption (e.g., "default", "user", "scenario").
+        is_default: Whether this is a default value or user override.
+    """
+
+    key: str
+    value: Any
+    source: str
+    is_default: bool
+
+
+class MappingEntry(TypedDict, total=False):
+    """Structured mapping entry for manifest capture.
+
+    Attributes:
+        openfisca_name: OpenFisca variable name.
+        project_name: Project schema field name.
+        direction: Mapping direction ("input", "output", or "both").
+        source_file: Optional path to mapping file.
+        transform: Optional transform identifier if configured.
+    """
+
+    openfisca_name: str
+    project_name: str
+    direction: str
+    source_file: str  # optional
+    transform: str  # optional
 
 
 @dataclass(frozen=True)
@@ -67,7 +103,9 @@ class RunManifest:
         output_hashes: SHA-256 hashes of output artifacts, keyed by artifact key/path.
         seeds: All random seeds used (master seed + per-year seeds).
         parameters: Complete parameter snapshot.
-        assumptions: Explicit assumption keys used in this run.
+        assumptions: Structured assumption entries (key/value/source/is_default).
+        mappings: Variable mapping configuration used at runtime.
+        warnings: List of warning messages from execution.
         step_pipeline: Ordered step names executed.
         integrity_hash: SHA-256 hash of entire manifest content (excluding this field).
     """
@@ -82,7 +120,9 @@ class RunManifest:
     output_hashes: dict[str, str] = field(default_factory=dict)
     seeds: dict[str, int] = field(default_factory=dict)
     parameters: dict[str, Any] = field(default_factory=dict)
-    assumptions: list[str] = field(default_factory=list)
+    assumptions: list[dict[str, Any]] = field(default_factory=list)
+    mappings: list[dict[str, Any]] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
     step_pipeline: list[str] = field(default_factory=list)
     integrity_hash: str = ""
 
@@ -152,10 +192,84 @@ class RunManifest:
         if not isinstance(self.assumptions, list):
             raise ManifestValidationError("Field 'assumptions' must be a list")
         for i, assumption in enumerate(self.assumptions):
-            if not isinstance(assumption, str) or not assumption.strip():
+            if not isinstance(assumption, dict):
                 raise ManifestValidationError(
                     f"Invalid assumption at index {i}: "
-                    f"expected str, got {type(assumption).__name__}"
+                    f"expected dict, got {type(assumption).__name__}"
+                )
+            # Validate required assumption entry fields
+            for required_key in ("key", "value", "source", "is_default"):
+                if required_key not in assumption:
+                    raise ManifestValidationError(
+                        f"Invalid assumption at index {i}: "
+                        f"missing required field '{required_key}'"
+                    )
+            if not isinstance(assumption["key"], str) or not assumption["key"].strip():
+                raise ManifestValidationError(
+                    f"Invalid assumption at index {i}: "
+                    f"field 'key' must be a non-empty string"
+                )
+            if not isinstance(assumption["source"], str) or not assumption[
+                "source"
+            ].strip():
+                raise ManifestValidationError(
+                    f"Invalid assumption at index {i}: "
+                    f"field 'source' must be a non-empty string"
+                )
+            if not isinstance(assumption["is_default"], bool):
+                raise ManifestValidationError(
+                    f"Invalid assumption at index {i}: "
+                    f"field 'is_default' must be a boolean"
+                )
+            # Validate value is JSON-compatible
+            _validate_json_compatible(assumption["value"], f"assumptions[{i}].value")
+
+        # Validate mappings list.
+        if not isinstance(self.mappings, list):
+            raise ManifestValidationError("Field 'mappings' must be a list")
+        for i, mapping in enumerate(self.mappings):
+            if not isinstance(mapping, dict):
+                raise ManifestValidationError(
+                    f"Invalid mapping at index {i}: "
+                    f"expected dict, got {type(mapping).__name__}"
+                )
+            # Validate required mapping entry fields
+            for required_key in ("openfisca_name", "project_name", "direction"):
+                if required_key not in mapping:
+                    raise ManifestValidationError(
+                        f"Invalid mapping at index {i}: "
+                        f"missing required field '{required_key}'"
+                    )
+            if not isinstance(mapping["openfisca_name"], str) or not mapping[
+                "openfisca_name"
+            ].strip():
+                raise ManifestValidationError(
+                    f"Invalid mapping at index {i}: "
+                    f"field 'openfisca_name' must be a non-empty string"
+                )
+            if not isinstance(mapping["project_name"], str) or not mapping[
+                "project_name"
+            ].strip():
+                raise ManifestValidationError(
+                    f"Invalid mapping at index {i}: "
+                    f"field 'project_name' must be a non-empty string"
+                )
+            if not isinstance(mapping["direction"], str) or mapping[
+                "direction"
+            ] not in ("input", "output", "both"):
+                raise ManifestValidationError(
+                    f"Invalid mapping at index {i}: "
+                    f"field 'direction' must be one of: input, output, both"
+                )
+
+        # Validate warnings list.
+        if not isinstance(self.warnings, list):
+            raise ManifestValidationError("Field 'warnings' must be a list")
+        for i, warning in enumerate(self.warnings):
+            if not isinstance(warning, str) or not warning.strip():
+                raise ManifestValidationError(
+                    f"Invalid warning at index {i}: "
+                    f"expected non-empty str, got {type(warning).__name__}"
                 )
 
         # Validate step_pipeline list.
@@ -174,7 +288,9 @@ class RunManifest:
         object.__setattr__(self, "output_hashes", dict(self.output_hashes))
         object.__setattr__(self, "seeds", dict(self.seeds))
         object.__setattr__(self, "parameters", deepcopy(self.parameters))
-        object.__setattr__(self, "assumptions", list(self.assumptions))
+        object.__setattr__(self, "assumptions", deepcopy(self.assumptions))
+        object.__setattr__(self, "mappings", deepcopy(self.mappings))
+        object.__setattr__(self, "warnings", list(self.warnings))
         object.__setattr__(self, "step_pipeline", list(self.step_pipeline))
 
     def to_json(self) -> str:
@@ -244,6 +360,8 @@ class RunManifest:
                 seeds=data["seeds"],
                 parameters=data["parameters"],
                 assumptions=data["assumptions"],
+                mappings=data["mappings"],
+                warnings=data["warnings"],
                 step_pipeline=data["step_pipeline"],
                 integrity_hash=data["integrity_hash"],
             )
@@ -316,6 +434,8 @@ class RunManifest:
             seeds=self.seeds,
             parameters=self.parameters,
             assumptions=self.assumptions,
+            mappings=self.mappings,
+            warnings=self.warnings,
             step_pipeline=self.step_pipeline,
             integrity_hash=computed_hash,
         )
