@@ -1,6 +1,6 @@
 # Story 3.1: Implement Yearly Loop Orchestrator
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -40,26 +40,26 @@ From backlog (BKL-301), aligned with FR13, FR18.
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Validate prerequisites and environment
-  - [ ] 0.1 Confirm upstream dependencies are `done` or `review`: BKL-202, BKL-203, and BKL-207 (Story 2.7 workflow config)
-  - [ ] 0.2 Review existing `orchestrator/__init__.py` placeholder
-  - [ ] 0.3 Review `templates/workflow.py` for `WorkflowConfig`, `RunConfig`, and `run_workflow()` handoff patterns
+- [x] Task 0: Validate prerequisites and environment
+  - [x] 0.1 Confirm upstream dependencies are `done` or `review`: BKL-202, BKL-203, and BKL-207 (Story 2.7 workflow config)
+  - [x] 0.2 Review existing `orchestrator/__init__.py` placeholder
+  - [x] 0.3 Review `templates/workflow.py` for `WorkflowConfig`, `RunConfig`, and `run_workflow()` handoff patterns
 
-- [ ] Task 1: Define orchestrator core types (AC: #1, #4, #5)
-  - [ ] 1.1 Create `src/reformlab/orchestrator/types.py` with core dataclasses
-  - [ ] 1.2 Define `YearState` dataclass:
+- [x] Task 1: Define orchestrator core types (AC: #1, #4, #5)
+  - [x] 1.1 Create `src/reformlab/orchestrator/types.py` with core dataclasses
+  - [x] 1.2 Define `YearState` dataclass:
     - `year`: int - The simulation year
     - `data`: dict[str, Any] - State data carried forward between years
     - `seed`: int | None - Random seed for this year (explicit, logged)
     - `metadata`: dict[str, Any] - Additional year-level metadata
-  - [ ] 1.3 Define lightweight step callable alias for this story (for example `YearStep = Callable[[int, YearState], YearState]`)
-  - [ ] 1.4 Define `OrchestratorConfig` dataclass:
+  - [x] 1.3 Define lightweight step callable alias for this story (for example `YearStep = Callable[[int, YearState], YearState]`)
+  - [x] 1.4 Define `OrchestratorConfig` dataclass:
     - `start_year`: int - First year of projection
     - `end_year`: int - Last year of projection (inclusive)
     - `initial_state`: dict[str, Any] - Starting state for year 0
     - `seed`: int | None - Master random seed for determinism
     - `step_pipeline`: list[YearStep] - Ordered step callables executed per year
-  - [ ] 1.5 Define `OrchestratorResult` dataclass:
+  - [x] 1.5 Define `OrchestratorResult` dataclass:
     - `success`: bool - Whether orchestration completed
     - `yearly_states`: dict[int, YearState] - State at end of each year
     - `errors`: list[str] - Error messages if execution failed
@@ -67,48 +67,48 @@ From backlog (BKL-301), aligned with FR13, FR18.
     - `failed_step`: str | None - Step that caused failure
     - `metadata`: dict[str, Any] - Orchestration-level metadata
 
-- [ ] Task 2: Implement yearly loop orchestrator core (AC: #1, #2, #4)
-  - [ ] 2.1 Create `src/reformlab/orchestrator/runner.py`
-  - [ ] 2.2 Implement `Orchestrator` class:
+- [x] Task 2: Implement yearly loop orchestrator core (AC: #1, #2, #4)
+  - [x] 2.1 Create `src/reformlab/orchestrator/runner.py`
+  - [x] 2.2 Implement `Orchestrator` class:
     - `__init__(config: OrchestratorConfig)`
     - `run() -> OrchestratorResult` - Main execution method
     - `_run_year(year: int, state: YearState) -> YearState` - Single year execution
     - `_execute_step(step: YearStep, year: int, state: YearState) -> YearState`
-  - [ ] 2.3 Implement deterministic year iteration: `range(start_year, end_year + 1)`
-  - [ ] 2.4 Implement ordered step execution from `config.step_pipeline`
-  - [ ] 2.5 Implement state carry-forward: each year starts with previous year's end state
-  - [ ] 2.6 Add logging for each year start/end and step execution
+  - [x] 2.3 Implement deterministic year iteration: `range(start_year, end_year + 1)`
+  - [x] 2.4 Implement ordered step execution from `config.step_pipeline`
+  - [x] 2.5 Implement state carry-forward: each year starts with previous year's end state
+  - [x] 2.6 Add logging for each year start/end and step execution
 
-- [ ] Task 3: Implement error handling and deterministic seed controls (AC: #3, #4)
-  - [ ] 3.1 Create `src/reformlab/orchestrator/errors.py` with `OrchestratorError`
-  - [ ] 3.2 Wrap step execution in try/except with context preservation
-  - [ ] 3.3 On step failure, capture: step identity, year, original exception, traceback
-  - [ ] 3.4 Store partial results (completed years) in `OrchestratorResult`
-  - [ ] 3.5 Implement seed propagation: derive year-level seeds from master seed if provided
+- [x] Task 3: Implement error handling and deterministic seed controls (AC: #3, #4)
+  - [x] 3.1 Create `src/reformlab/orchestrator/errors.py` with `OrchestratorError`
+  - [x] 3.2 Wrap step execution in try/except with context preservation
+  - [x] 3.3 On step failure, capture: step identity, year, original exception, traceback
+  - [x] 3.4 Store partial results (completed years) in `OrchestratorResult`
+  - [x] 3.5 Implement seed propagation: derive year-level seeds from master seed if provided
 
-- [ ] Task 4: Implement WorkflowConfig integration (AC: #5)
-  - [ ] 4.1 Add `from_workflow_config(config: WorkflowConfig) -> OrchestratorConfig` factory
-  - [ ] 4.2 Map `run_config.projection_years` + `run_config.start_year` to orchestrator bounds
-  - [ ] 4.3 Create `OrchestratorRunner` class implementing runner interface for `run_workflow()`
-  - [ ] 4.4 Implement `OrchestratorRunner.run(request: dict) -> WorkflowResult`
+- [x] Task 4: Implement WorkflowConfig integration (AC: #5)
+  - [x] 4.1 Add `from_workflow_config(config: WorkflowConfig) -> OrchestratorConfig` factory
+  - [x] 4.2 Map `run_config.projection_years` + `run_config.start_year` to orchestrator bounds
+  - [x] 4.3 Create `OrchestratorRunner` class implementing runner interface for `run_workflow()`
+  - [x] 4.4 Implement `OrchestratorRunner.run(request: dict) -> WorkflowResult`
 
-- [ ] Task 5: Add tests (AC: all)
-  - [ ] 5.1 Create `tests/orchestrator/test_runner.py` - Core orchestrator tests:
+- [x] Task 5: Add tests (AC: all)
+  - [x] 5.1 Create `tests/orchestrator/test_runner.py` - Core orchestrator tests:
     - Test 10-year loop completes successfully
     - Test empty pipeline completes without error
     - Test step failure halts with correct error context
     - Test deterministic execution (same inputs = same outputs)
     - Test state carry-forward between years
     - Test seed propagation for reproducibility
-  - [ ] 5.2 Create `tests/orchestrator/test_integration.py` - WorkflowConfig integration tests
-  - [ ] 5.3 Add fixture for mock step implementations
+  - [x] 5.2 Create `tests/orchestrator/test_integration.py` - WorkflowConfig integration tests
+  - [x] 5.3 Add fixture for mock step implementations
 
-- [ ] Task 6: Export APIs and finalize (AC: all)
-  - [ ] 6.1 Update `src/reformlab/orchestrator/__init__.py` with public exports
-  - [ ] 6.2 Add docstrings for all public APIs
-  - [ ] 6.3 Run `ruff check` and `mypy` on orchestrator module
-  - [ ] 6.4 Run full test suite: `pytest tests/orchestrator/`
-  - [ ] 6.5 Verify all tests pass
+- [x] Task 6: Export APIs and finalize (AC: all)
+  - [x] 6.1 Update `src/reformlab/orchestrator/__init__.py` with public exports
+  - [x] 6.2 Add docstrings for all public APIs
+  - [x] 6.3 Run `ruff check` and `mypy` on orchestrator module
+  - [x] 6.4 Run full test suite: `pytest tests/orchestrator/`
+  - [x] 6.5 Verify all tests pass
 
 ## Dev Notes
 
@@ -313,10 +313,39 @@ class OrchestratorError(Exception):
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.5 (claude-opus-4-5-20251101)
 
 ### Debug Log References
 
+None - implementation completed without errors.
+
 ### Completion Notes List
 
+- Implemented the yearly loop orchestrator with step-pluggable pipeline execution
+- Created `YearState`, `OrchestratorConfig`, `OrchestratorResult` dataclasses in `types.py`
+- Created `OrchestratorError` structured exception in `errors.py`
+- Implemented `Orchestrator` class with `run()`, `_run_year()`, `_execute_step()` methods
+- Implemented deterministic seed propagation (master seed XOR year)
+- Implemented `from_workflow_config()` factory for WorkflowConfig integration
+- Implemented `OrchestratorRunner` class for `run_workflow()` integration
+- Created comprehensive test suite (48 tests covering all ACs)
+- All 683 project tests pass with no regressions
+- Updated `tests/test_scaffold.py` to remove orchestrator from placeholder list
+
 ### File List
+
+**New files:**
+- src/reformlab/orchestrator/types.py
+- src/reformlab/orchestrator/errors.py
+- src/reformlab/orchestrator/runner.py
+- tests/orchestrator/conftest.py
+- tests/orchestrator/test_runner.py
+- tests/orchestrator/test_integration.py
+
+**Modified files:**
+- src/reformlab/orchestrator/__init__.py (added public exports)
+- tests/test_scaffold.py (removed orchestrator from _SCAFFOLD_ONLY)
+
+## Change Log
+
+- 2026-02-27: Initial implementation of Story 3-1 - Yearly Loop Orchestrator complete. All tasks implemented, 48 new tests pass, 683 total tests pass.
