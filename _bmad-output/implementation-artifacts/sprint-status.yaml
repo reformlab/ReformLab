@@ -91,7 +91,7 @@ development_status:
   5-3-implement-run-lineage-graph: done
   5-4-hash-input-output-artifacts: done
   5-5-add-reproducibility-check-harness: done
-  5-6-add-warning-system-for-unvalidated-templates: backlog
+  5-6-add-warning-system-for-unvalidated-templates: ready-for-dev
   epic-5-retrospective: optional
 
   # EPIC-6: Interfaces (Python API, Notebooks, Early No-Code GUI)
