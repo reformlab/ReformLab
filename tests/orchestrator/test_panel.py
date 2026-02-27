@@ -28,11 +28,14 @@ def make_computation_result(
     year: int,
     num_households: int = 5,
     include_household_id: bool = True,
+    include_person_id: bool = False,
 ) -> ComputationResult:
     """Create a test ComputationResult with output_fields table."""
     arrays: dict[str, pa.Array] = {}
     if include_household_id:
         arrays["household_id"] = pa.array(range(num_households))
+    if include_person_id:
+        arrays["person_id"] = pa.array(range(1000, 1000 + num_households))
     arrays["income"] = pa.array([50000.0 + i * 1000 for i in range(num_households)])
     arrays["tax"] = pa.array([5000.0 + i * 100 for i in range(num_households)])
 
@@ -49,12 +52,16 @@ def make_orchestrator_result(
     failed_year: int | None = None,
     seed: int | None = 42,
     include_household_id: bool = True,
+    include_person_id: bool = False,
 ) -> OrchestratorResult:
     """Create a test OrchestratorResult with computation results for each year."""
     yearly_states: dict[int, YearState] = {}
     for year in years:
         comp_result = make_computation_result(
-            year, num_households, include_household_id
+            year,
+            num_households,
+            include_household_id,
+            include_person_id,
         )
         yearly_states[year] = YearState(
             year=year,
@@ -187,6 +194,34 @@ class TestPanelOutputFromOrchestratorResult:
 
         assert panel.shape == (10, panel.table.num_columns)
 
+    def test_panel_maps_person_id_to_household_id_when_missing(self) -> None:
+        """AC-1: person_id can be normalized to household_id when needed."""
+        result = make_orchestrator_result(
+            [2020],
+            num_households=3,
+            include_household_id=False,
+            include_person_id=True,
+        )
+
+        panel = PanelOutput.from_orchestrator_result(result)
+
+        assert "household_id" in panel.table.column_names
+        assert panel.table.column("household_id").to_pylist() == [1000, 1001, 1002]
+
+    def test_panel_builds_fallback_household_id_when_no_id_columns(self) -> None:
+        """AC-1: household_id is synthesized when no ID columns are provided."""
+        result = make_orchestrator_result(
+            [2020],
+            num_households=3,
+            include_household_id=False,
+            include_person_id=False,
+        )
+
+        panel = PanelOutput.from_orchestrator_result(result)
+
+        assert "household_id" in panel.table.column_names
+        assert panel.table.column("household_id").to_pylist() == [0, 1, 2]
+
 
 class TestPanelOutputCsvExport:
     """Test CSV export functionality (AC-2)."""
@@ -237,6 +272,27 @@ class TestPanelOutputCsvExport:
         original_income = panel.table.column("income").to_pylist()
         imported_income = imported_table.column("income").to_pylist()
         assert imported_income == original_income
+
+    def test_csv_string_values_roundtrip(self, tmp_path: Path) -> None:
+        """AC-2: UTF-8 strings round-trip without corruption."""
+        panel = PanelOutput(
+            table=pa.table(
+                {
+                    "household_id": pa.array([1, 2], type=pa.int64()),
+                    "year": pa.array([2020, 2020], type=pa.int64()),
+                    "segment": pa.array(["ménage_1", "ménage_2"]),
+                }
+            ),
+            metadata={},
+        )
+
+        csv_path = tmp_path / "panel.csv"
+        panel.to_csv(csv_path)
+
+        import pyarrow.csv as pa_csv
+
+        imported_table = pa_csv.read_csv(csv_path)
+        assert imported_table.column("segment").to_pylist() == ["ménage_1", "ménage_2"]
 
 
 class TestPanelOutputParquetExport:
@@ -367,3 +423,57 @@ class TestComparePanels:
         assert "reform_metadata" in comparison.metadata
         assert comparison.metadata["baseline_metadata"]["seed"] == 100
         assert comparison.metadata["reform_metadata"]["seed"] == 200
+
+    def test_compare_handles_key_only_tables(self) -> None:
+        """AC-4: Missing household-years are flagged even with key-only tables."""
+        baseline = PanelOutput(
+            table=pa.table(
+                {
+                    "household_id": pa.array([1], type=pa.int64()),
+                    "year": pa.array([2020], type=pa.int64()),
+                }
+            ),
+            metadata={},
+        )
+        reform = PanelOutput(
+            table=pa.table(
+                {
+                    "household_id": pa.array([1], type=pa.int64()),
+                    "year": pa.array([2021], type=pa.int64()),
+                }
+            ),
+            metadata={},
+        )
+
+        comparison = compare_panels(baseline, reform)
+        origins = sorted(comparison.table.column("_origin").to_pylist())
+
+        assert origins == ["baseline_only", "reform_only"]
+
+    def test_compare_origin_is_not_derived_from_null_data_values(self) -> None:
+        """AC-4: Null values in compared fields do not alter origin markers."""
+        baseline = PanelOutput(
+            table=pa.table(
+                {
+                    "household_id": pa.array([1], type=pa.int64()),
+                    "year": pa.array([2020], type=pa.int64()),
+                    "income": pa.array([None], type=pa.float64()),
+                }
+            ),
+            metadata={},
+        )
+        reform = PanelOutput(
+            table=pa.table(
+                {
+                    "household_id": pa.array([1], type=pa.int64()),
+                    "year": pa.array([2020], type=pa.int64()),
+                    "income": pa.array([100.0], type=pa.float64()),
+                }
+            ),
+            metadata={},
+        )
+
+        comparison = compare_panels(baseline, reform)
+        origins = comparison.table.column("_origin").to_pylist()
+
+        assert origins == ["both"]

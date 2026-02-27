@@ -69,7 +69,9 @@ class PanelOutput:
             PanelOutput with concatenated yearly data and run metadata.
         """
         yearly_tables: list[pa.Table] = []
-        schema: pa.Schema | None = None
+        configured_household_id_field = _household_id_field_from_metadata(
+            result.metadata
+        )
 
         # Process years in sorted order for deterministic output
         for year in sorted(result.yearly_states.keys()):
@@ -81,15 +83,11 @@ class PanelOutput:
                 continue
 
             output_table = comp_result.output_fields
-
-            # Capture schema from first table for empty result case
-            if schema is None:
-                schema = output_table.schema
-
-            # Add year column if not present
-            if "year" not in output_table.column_names:
-                year_array = pa.array([year] * output_table.num_rows, type=pa.int64())
-                output_table = output_table.append_column("year", year_array)
+            output_table = _ensure_household_id_column(
+                output_table,
+                configured_household_id_field,
+            )
+            output_table = _set_year_column(output_table, year)
 
             yearly_tables.append(output_table)
 
@@ -187,6 +185,73 @@ def _build_panel_metadata(result: OrchestratorResult) -> dict[str, Any]:
     return metadata
 
 
+def _household_id_field_from_metadata(metadata: dict[str, Any]) -> str | None:
+    """Read optional configured household id field from run metadata."""
+    field_name = metadata.get("household_id_field")
+    if field_name is None:
+        return None
+    if not isinstance(field_name, str) or not field_name:
+        raise TypeError(
+            "metadata['household_id_field'] must be a non-empty string when provided"
+        )
+    return field_name
+
+
+def _ensure_household_id_column(
+    table: pa.Table, configured_field: str | None
+) -> pa.Table:
+    """Ensure table has a stable household_id column for panel joins."""
+    if "household_id" in table.column_names:
+        return table
+
+    if configured_field is not None:
+        if configured_field not in table.column_names:
+            raise ValueError(
+                "Configured household id field was not found in output_fields: "
+                f"{configured_field!r}"
+            )
+        return table.append_column("household_id", table.column(configured_field))
+
+    if "person_id" in table.column_names:
+        return table.append_column("household_id", table.column("person_id"))
+
+    # Fallback: create deterministic row index for downstream panel shape guarantees.
+    fallback_ids = pa.array(range(table.num_rows), type=pa.int64())
+    return table.append_column("household_id", fallback_ids)
+
+
+def _set_year_column(table: pa.Table, year: int) -> pa.Table:
+    """Set the panel year column to the orchestrator year."""
+    year_array = pa.array([year] * table.num_rows, type=pa.int64())
+    if "year" in table.column_names:
+        year_idx = table.schema.get_field_index("year")
+        return table.set_column(year_idx, "year", year_array)
+    return table.append_column("year", year_array)
+
+
+def _ensure_join_keys_present(
+    table: pa.Table, table_name: str, join_keys: list[str]
+) -> None:
+    """Validate required join keys exist in the panel table."""
+    missing = [key for key in join_keys if key not in table.column_names]
+    if missing:
+        missing_str = ", ".join(missing)
+        raise ValueError(
+            f"{table_name} panel missing required join key columns: {missing_str}"
+        )
+
+
+def _resolve_unique_marker(base_name: str, existing_columns: set[str]) -> str:
+    """Return a marker column name that does not collide with real data columns."""
+    marker = base_name
+    suffix = 1
+    while marker in existing_columns:
+        marker = f"{base_name}_{suffix}"
+        suffix += 1
+    existing_columns.add(marker)
+    return marker
+
+
 def compare_panels(baseline: PanelOutput, reform: PanelOutput) -> PanelOutput:
     """Compare baseline and reform panels with alignment and deltas.
 
@@ -203,6 +268,8 @@ def compare_panels(baseline: PanelOutput, reform: PanelOutput) -> PanelOutput:
     import pyarrow.compute as pc
 
     join_keys = ["household_id", "year"]
+    _ensure_join_keys_present(baseline.table, "baseline", join_keys)
+    _ensure_join_keys_present(reform.table, "reform", join_keys)
 
     # Rename non-key columns to avoid collision
     baseline_table = baseline.table
@@ -236,6 +303,18 @@ def compare_panels(baseline: PanelOutput, reform: PanelOutput) -> PanelOutput:
         ]
         reform_table = reform_table.rename_columns(new_names)
 
+    marker_pool = set(baseline_table.column_names) | set(reform_table.column_names)
+    baseline_marker = _resolve_unique_marker("_baseline_present", marker_pool)
+    reform_marker = _resolve_unique_marker("_reform_present", marker_pool)
+    baseline_table = baseline_table.append_column(
+        baseline_marker,
+        pa.array([True] * baseline_table.num_rows, type=pa.bool_()),
+    )
+    reform_table = reform_table.append_column(
+        reform_marker,
+        pa.array([True] * reform_table.num_rows, type=pa.bool_()),
+    )
+
     # Use PyArrow's join with full outer join
     # PyArrow join doesn't have an indicator column, so we compute origin manually
     merged = baseline_table.join(
@@ -246,39 +325,21 @@ def compare_panels(baseline: PanelOutput, reform: PanelOutput) -> PanelOutput:
         right_suffix="_r",
     )
 
-    # Determine origin by checking which values are null
-    # If baseline-specific column is null -> reform_only
-    # If reform-specific column is null -> baseline_only
-    # If neither -> both
-    baseline_indicator_col = next(
-        (c for c in merged.column_names if c.startswith("_baseline_")), None
+    # Determine origin from explicit side markers (robust to null data values).
+    baseline_missing = pc.is_null(merged.column(baseline_marker))
+    reform_missing = pc.is_null(merged.column(reform_marker))
+    origin_array = pc.if_else(
+        pc.and_(baseline_missing, pc.invert(reform_missing)),
+        pa.scalar("reform_only"),
+        pc.if_else(
+            pc.and_(reform_missing, pc.invert(baseline_missing)),
+            pa.scalar("baseline_only"),
+            pa.scalar("both"),
+        ),
     )
-    reform_indicator_col = next(
-        (c for c in merged.column_names if c.startswith("_reform_")), None
-    )
-
-    if baseline_indicator_col and reform_indicator_col:
-        baseline_nulls = pc.is_null(merged.column(baseline_indicator_col))
-        reform_nulls = pc.is_null(merged.column(reform_indicator_col))
-
-        # Build origin array
-        origins = []
-        for b_null, r_null in zip(
-            baseline_nulls.to_pylist(), reform_nulls.to_pylist()
-        ):
-            if b_null and not r_null:
-                origins.append("reform_only")
-            elif r_null and not b_null:
-                origins.append("baseline_only")
-            else:
-                origins.append("both")
-
-        origin_array = pa.array(origins, type=pa.string())
-    else:
-        # Fallback: all rows are "both" if no indicator columns
-        origin_array = pa.array(["both"] * merged.num_rows, type=pa.string())
 
     merged = merged.append_column("_origin", origin_array)
+    merged = merged.drop_columns([baseline_marker, reform_marker])
 
     # Calculate numeric deltas for shared numeric fields
     numeric_fields = []
