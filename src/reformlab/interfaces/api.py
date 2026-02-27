@@ -155,8 +155,21 @@ class SimulationResult:
                 **kwargs,
             )
         elif indicator_type_lower == "welfare":
+            reform_panel = kwargs.pop("reform_panel", None)
+            reform_result = kwargs.pop("reform_result", None)
+
+            if reform_panel is None and reform_result is not None:
+                reform_panel = getattr(reform_result, "panel_output", None)
+
+            if reform_panel is None:
+                raise SimulationError(
+                    "Welfare indicators require a reform panel. "
+                    "Pass reform_result=<SimulationResult> or reform_panel=<PanelOutput>."
+                )
+
             return compute_welfare_indicators(
                 self.panel_output,
+                reform_panel,
                 **kwargs,
             )
         elif indicator_type_lower == "fiscal":
@@ -169,6 +182,68 @@ class SimulationResult:
                 f"Unknown indicator type: {indicator_type}. "
                 f"Supported types: distributional, geographic, welfare, fiscal"
             )
+
+
+def create_quickstart_adapter(
+    *,
+    carbon_tax_rate: float,
+    year: int = 2025,
+    household_count: int = 100,
+    version_string: str = "quickstart-demo-v1",
+) -> ComputationAdapter:
+    """Create a synthetic adapter for quickstart notebook demos.
+
+    This helper keeps quickstart notebooks on the public API surface while
+    using synthetic, offline data suitable for first-run onboarding.
+    """
+    from reformlab.computation.mock_adapter import MockAdapter
+    from reformlab.interfaces.errors import ConfigurationError
+
+    import pyarrow as pa
+
+    if household_count <= 0:
+        raise ConfigurationError(
+            field_path="household_count",
+            expected="positive integer",
+            actual=household_count,
+        )
+    if year < 0:
+        raise ConfigurationError(
+            field_path="year",
+            expected="non-negative integer year",
+            actual=year,
+        )
+    if carbon_tax_rate < 0:
+        raise ConfigurationError(
+            field_path="carbon_tax_rate",
+            expected="non-negative tax rate",
+            actual=carbon_tax_rate,
+        )
+
+    baseline_rate = 44.0
+    rate_multiplier = carbon_tax_rate / baseline_rate if baseline_rate else 1.0
+
+    income_base = [15000.0 + (i * 800.0) for i in range(household_count)]
+    carbon_tax_base = [150.0 + (i * 0.5) for i in range(household_count)]
+    scaled_carbon_tax = [max(0.0, tax * rate_multiplier) for tax in carbon_tax_base]
+
+    synthetic_output = pa.table(
+        {
+            "household_id": pa.array(range(household_count), type=pa.int64()),
+            "year": pa.array([year] * household_count, type=pa.int64()),
+            "income": pa.array(income_base, type=pa.float64()),
+            "carbon_tax": pa.array(scaled_carbon_tax, type=pa.float64()),
+            "disposable_income": pa.array(
+                [income_base[i] - scaled_carbon_tax[i] for i in range(household_count)],
+                type=pa.float64(),
+            ),
+        }
+    )
+
+    return MockAdapter(
+        default_output=synthetic_output,
+        version_string=version_string,
+    )
 
 
 def run_scenario(

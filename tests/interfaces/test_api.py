@@ -175,6 +175,107 @@ class TestSimulationResult:
         with pytest.raises(SimulationError, match="Unknown indicator type"):
             result.indicators("invalid_type")
 
+    def test_simulation_result_welfare_requires_reform_input(self) -> None:
+        """welfare indicators require a reform panel/result argument."""
+        from datetime import datetime, timezone
+
+        from reformlab import SimulationError, SimulationResult
+
+        panel_table = pa.table(
+            {
+                "household_id": pa.array([1, 2], type=pa.int64()),
+                "year": pa.array([2025, 2025], type=pa.int64()),
+                "income": pa.array([20000.0, 30000.0], type=pa.float64()),
+                "disposable_income": pa.array([19800.0, 29650.0], type=pa.float64()),
+            }
+        )
+
+        result = SimulationResult(
+            success=True,
+            scenario_id="baseline",
+            yearly_states={},
+            panel_output=PanelOutput(table=panel_table, metadata={}),
+            manifest=RunManifest(
+                manifest_id="test-id",
+                created_at=datetime.now(timezone.utc).isoformat(),
+                engine_version="1.0",
+                openfisca_version="1.0",
+                adapter_version="1.0",
+                scenario_version="1.0",
+            ),
+        )
+
+        with pytest.raises(SimulationError, match="Welfare indicators require a reform panel"):
+            result.indicators("welfare")
+
+    def test_simulation_result_welfare_accepts_reform_result(self) -> None:
+        """welfare indicators compute successfully with reform_result input."""
+        from datetime import datetime, timezone
+
+        from reformlab import SimulationResult
+
+        household_ids = list(range(1, 11))
+        income = [20000.0 + (i * 2000.0) for i in range(10)]
+        baseline_disposable_income = [v - 150.0 for v in income]
+        reform_disposable_income = [v - 300.0 for v in income]
+
+        baseline_table = pa.table(
+            {
+                "household_id": pa.array(household_ids, type=pa.int64()),
+                "year": pa.array([2025] * 10, type=pa.int64()),
+                "income": pa.array(income, type=pa.float64()),
+                "disposable_income": pa.array(
+                    baseline_disposable_income,
+                    type=pa.float64(),
+                ),
+            }
+        )
+        reform_table = pa.table(
+            {
+                "household_id": pa.array(household_ids, type=pa.int64()),
+                "year": pa.array([2025] * 10, type=pa.int64()),
+                "income": pa.array(income, type=pa.float64()),
+                "disposable_income": pa.array(
+                    reform_disposable_income,
+                    type=pa.float64(),
+                ),
+            }
+        )
+
+        baseline_result = SimulationResult(
+            success=True,
+            scenario_id="baseline",
+            yearly_states={},
+            panel_output=PanelOutput(table=baseline_table, metadata={}),
+            manifest=RunManifest(
+                manifest_id="baseline-id",
+                created_at=datetime.now(timezone.utc).isoformat(),
+                engine_version="1.0",
+                openfisca_version="1.0",
+                adapter_version="1.0",
+                scenario_version="1.0",
+            ),
+        )
+        reform_result = SimulationResult(
+            success=True,
+            scenario_id="reform",
+            yearly_states={},
+            panel_output=PanelOutput(table=reform_table, metadata={}),
+            manifest=RunManifest(
+                manifest_id="reform-id",
+                created_at=datetime.now(timezone.utc).isoformat(),
+                engine_version="1.0",
+                openfisca_version="1.0",
+                adapter_version="1.0",
+                scenario_version="1.0",
+            ),
+        )
+
+        indicators = baseline_result.indicators("welfare", reform_result=reform_result)
+
+        assert indicators.indicators
+        assert indicators.metadata["group_type"] == "decile"
+
 
 class TestConfigurationTypes:
     """Test configuration dataclasses."""
@@ -275,6 +376,7 @@ class TestRunScenario:
         error = exc_info.value
         assert error.field_path == "scenario.start_year"
         assert "expected" in error.message.lower()
+
 
     def test_run_scenario_invalid_year_range(self) -> None:
         """run_scenario raises ConfigurationError for end_year < start_year."""
@@ -427,6 +529,25 @@ class TestRunScenario:
             )
 
         assert exc_info.value.field_path == "seed"
+
+
+class TestQuickstartAdapter:
+    """Test public quickstart adapter helper."""
+
+    def test_create_quickstart_adapter_returns_callable_adapter(self) -> None:
+        """create_quickstart_adapter builds a compatible adapter object."""
+        from reformlab import create_quickstart_adapter
+        from reformlab.computation.types import PolicyConfig, PopulationData
+
+        adapter = create_quickstart_adapter(carbon_tax_rate=44.0, year=2025)
+        result = adapter.compute(
+            population=PopulationData(tables={}, metadata={}),
+            policy=PolicyConfig(name="carbon-tax", parameters={}),
+            period=2025,
+        )
+
+        assert result.output_fields.num_rows == 100
+        assert "carbon_tax" in result.output_fields.column_names
 
 
 class TestScenarioManagement:
@@ -631,6 +752,12 @@ class TestPublicAPIImports:
 
         assert callable(run_scenario)
 
+    def test_import_create_quickstart_adapter(self) -> None:
+        """create_quickstart_adapter is importable from reformlab package root."""
+        from reformlab import create_quickstart_adapter
+
+        assert callable(create_quickstart_adapter)
+
     def test_import_create_scenario(self) -> None:
         """create_scenario is importable from reformlab package root."""
         from reformlab import create_scenario
@@ -691,6 +818,7 @@ class TestPublicAPIImports:
 
         expected_exports = {
             "run_scenario",
+            "create_quickstart_adapter",
             "create_scenario",
             "clone_scenario",
             "list_scenarios",

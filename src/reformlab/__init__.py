@@ -52,6 +52,7 @@ from reformlab.interfaces import (
     SimulationError,
     SimulationResult,
     clone_scenario,
+    create_quickstart_adapter,
     create_scenario,
     get_scenario,
     list_scenarios,
@@ -63,6 +64,7 @@ __version__ = "0.1.0"
 __all__ = [
     # Core API functions
     "run_scenario",
+    "create_quickstart_adapter",
     "create_scenario",
     "clone_scenario",
     "list_scenarios",
