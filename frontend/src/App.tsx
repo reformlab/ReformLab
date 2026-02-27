@@ -161,7 +161,15 @@ export default function App() {
   const selectTemplate = (templateId: string) => {
     setSelectedTemplateId(templateId);
     const defaults = TEMPLATE_FAST_PATHS[templateId] ?? {};
-    setParameterValues((current) => ({ ...current, ...defaults }));
+    setParameterValues((current) => {
+      const next = { ...current };
+      for (const [key, value] of Object.entries(defaults)) {
+        if (typeof value === "number") {
+          next[key] = value;
+        }
+      }
+      return next;
+    });
   };
 
   const startRun = () => {

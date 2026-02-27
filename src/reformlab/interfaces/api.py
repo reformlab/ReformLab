@@ -18,9 +18,12 @@ Key architectural principles:
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
+
+import yaml
 
 if TYPE_CHECKING:
     from reformlab.computation.adapter import ComputationAdapter
@@ -169,7 +172,7 @@ class SimulationResult:
 
 
 def run_scenario(
-    config: RunConfig | Path | dict[str, Any],
+    config: RunConfig | ScenarioConfig | Path | dict[str, Any],
     adapter: ComputationAdapter | None = None,
 ) -> SimulationResult:
     """Run a complete simulation scenario.
@@ -216,6 +219,8 @@ def run_scenario(
     # Step 3: Load scenario template
     try:
         scenario = _load_scenario(run_config.scenario)
+    except ConfigurationError:
+        raise
     except Exception as exc:
         raise SimulationError(
             f"Failed to load scenario: {exc}",
@@ -224,24 +229,13 @@ def run_scenario(
 
     # Step 4: Setup adapter
     if adapter is None:
-        try:
-            from reformlab.computation.openfisca_adapter import OpenFiscaAdapter
-
-            adapter = OpenFiscaAdapter()
-        except Exception as exc:
-            raise ConfigurationError(
-                field_path="adapter",
-                expected="valid OpenFisca installation",
-                actual="OpenFisca not available or misconfigured",
-                message=(
-                    f"Failed to initialize OpenFiscaAdapter: {exc}. "
-                    "Ensure OpenFisca is installed or provide a custom adapter."
-                ),
-            ) from exc
+        adapter = _initialize_default_adapter(run_config)
 
     # Step 5: Execute via orchestrator
     try:
         result = _execute_orchestration(scenario, run_config, adapter)
+    except ConfigurationError:
+        raise
     except Exception as exc:
         raise SimulationError(
             f"Simulation execution failed: {exc}",
@@ -276,68 +270,53 @@ def _normalize_config(
         return RunConfig(scenario=config)
 
     if isinstance(config, Path):
-        # Load YAML configuration
         from reformlab.templates.workflow import WorkflowError, load_workflow_config
 
         try:
-            _ = load_workflow_config(config)
-        except WorkflowError as exc:
-            raise ConfigurationError(
-                field_path="config",
-                expected="valid workflow YAML file",
-                actual=str(config),
-                message=f"Failed to load workflow config: {exc}",
-            ) from exc
-
-        # Convert WorkflowConfig to RunConfig
-        # For now, raise error as full workflow->RunConfig conversion
-        # requires more context
-        raise ConfigurationError(
-            field_path="config",
-            expected="RunConfig or dict",
-            actual="workflow YAML path",
-            message=(
-                "Direct workflow YAML loading not yet implemented. "
-                "Use RunConfig or dict instead."
-            ),
-        )
+            workflow_config = load_workflow_config(config)
+        except WorkflowError:
+            # Not a workflow config (or invalid workflow) - treat as API YAML.
+            data = _load_yaml_mapping(config, field_path="config")
+            if "scenario" in data:
+                return _normalize_config(data)
+            return RunConfig(
+                scenario=_dict_to_scenario_config(data),
+                output_dir=_coerce_optional_path(
+                    data.get("output_dir"),
+                    field_path="output_dir",
+                ),
+                seed=_coerce_optional_int(data.get("seed"), field_path="seed"),
+            )
+        else:
+            return _workflow_config_to_run_config(workflow_config)
 
     if isinstance(config, dict):
-        # Convert dict to RunConfig
-        scenario = config.get("scenario")
-        if scenario is None:
+        # Accept either {"scenario": {...}} run config or direct scenario mapping.
+        scenario_data = config["scenario"] if "scenario" in config else config
+
+        scenario: ScenarioConfig | Path | dict[str, Any]
+        if isinstance(scenario_data, dict):
+            scenario = _dict_to_scenario_config(scenario_data)
+        elif isinstance(scenario_data, Path):
+            scenario = scenario_data
+        elif isinstance(scenario_data, str):
+            scenario = Path(scenario_data)
+        elif isinstance(scenario_data, ScenarioConfig):
+            scenario = scenario_data
+        else:
             raise ConfigurationError(
                 field_path="scenario",
-                expected="scenario configuration",
-                actual=None,
-                message="Missing required field 'scenario'",
+                expected="ScenarioConfig, Path, str path, or dict",
+                actual=type(scenario_data).__name__,
             )
-
-        # Convert scenario to ScenarioConfig if needed
-        if isinstance(scenario, dict):
-            scenario = _dict_to_scenario_config(scenario)
-        elif isinstance(scenario, Path):
-            # Keep as Path for later loading
-            pass
-        elif not isinstance(scenario, ScenarioConfig):
-            raise ConfigurationError(
-                field_path="scenario",
-                expected="ScenarioConfig, Path, or dict",
-                actual=type(scenario).__name__,
-            )
-
-        output_dir = config.get("output_dir")
-        if output_dir is not None:
-            output_dir = Path(output_dir)
-
-        seed = config.get("seed")
-        if seed is not None:
-            seed = int(seed)
 
         return RunConfig(
             scenario=scenario,
-            output_dir=output_dir,
-            seed=seed,
+            output_dir=_coerce_optional_path(
+                config.get("output_dir"),
+                field_path="output_dir",
+            ),
+            seed=_coerce_optional_int(config.get("seed"), field_path="seed"),
         )
 
     raise ConfigurationError(
@@ -345,6 +324,134 @@ def _normalize_config(
         expected="RunConfig, Path, or dict",
         actual=type(config).__name__,
     )
+
+
+def _workflow_config_to_run_config(workflow_config: Any) -> RunConfig:
+    """Convert templates.workflow.WorkflowConfig into API RunConfig."""
+    from reformlab.interfaces.errors import ConfigurationError
+
+    if not workflow_config.scenarios:
+        raise ConfigurationError(
+            field_path="scenarios",
+            expected="at least one scenario reference",
+            actual=[],
+            message="Workflow config must define at least one scenario entry.",
+        )
+
+    scenario_ref = workflow_config.scenarios[0].reference
+    start_year = workflow_config.run_config.start_year
+    end_year = start_year + workflow_config.run_config.projection_years - 1
+
+    return RunConfig(
+        scenario=ScenarioConfig(
+            template_name=scenario_ref,
+            parameters={},
+            start_year=start_year,
+            end_year=end_year,
+        ),
+    )
+
+
+def _coerce_optional_int(value: Any, *, field_path: str) -> int | None:
+    """Coerce optional integer values with user-facing error context."""
+    from reformlab.interfaces.errors import ConfigurationError
+
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        raise ConfigurationError(
+            field_path=field_path,
+            expected="int",
+            actual=value,
+        )
+
+    try:
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise ConfigurationError(
+            field_path=field_path,
+            expected="int",
+            actual=value,
+        ) from exc
+
+
+def _coerce_required_int(value: Any, *, field_path: str) -> int:
+    """Coerce required integer values with user-facing error context."""
+    from reformlab.interfaces.errors import ConfigurationError
+
+    if value is None or isinstance(value, bool):
+        raise ConfigurationError(
+            field_path=field_path,
+            expected="int",
+            actual=value,
+        )
+
+    try:
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise ConfigurationError(
+            field_path=field_path,
+            expected="int",
+            actual=value,
+        ) from exc
+
+
+def _coerce_optional_path(value: Any, *, field_path: str) -> Path | None:
+    """Coerce optional path values with user-facing error context."""
+    from reformlab.interfaces.errors import ConfigurationError
+
+    if value is None:
+        return None
+    if isinstance(value, Path):
+        return value
+    if isinstance(value, str) and value.strip():
+        return Path(value)
+
+    raise ConfigurationError(
+        field_path=field_path,
+        expected="path string or Path",
+        actual=value,
+    )
+
+
+def _load_yaml_mapping(path: Path, *, field_path: str) -> dict[str, Any]:
+    """Load a YAML file and ensure the top-level value is a mapping."""
+    from reformlab.interfaces.errors import ConfigurationError
+
+    if not path.exists():
+        raise ConfigurationError(
+            field_path=field_path,
+            expected="existing YAML file path",
+            actual=str(path),
+            message=f"File not found: {path}",
+        )
+
+    try:
+        with open(path, encoding="utf-8") as handle:
+            raw = yaml.safe_load(handle)
+    except yaml.YAMLError as exc:
+        raise ConfigurationError(
+            field_path=field_path,
+            expected="valid YAML syntax",
+            actual=str(path),
+            message=f"Invalid YAML syntax in {path}: {exc}",
+        ) from exc
+    except OSError as exc:
+        raise ConfigurationError(
+            field_path=field_path,
+            expected="readable YAML file",
+            actual=str(path),
+            message=f"Failed to read YAML file {path}: {exc}",
+        ) from exc
+
+    if not isinstance(raw, dict):
+        raise ConfigurationError(
+            field_path=field_path,
+            expected="YAML mapping (object)",
+            actual=type(raw).__name__,
+        )
+
+    return cast(dict[str, Any], raw)
 
 
 def _dict_to_scenario_config(data: dict[str, Any]) -> ScenarioConfig:
@@ -361,9 +468,32 @@ def _dict_to_scenario_config(data: dict[str, Any]) -> ScenarioConfig:
     """
     from reformlab.interfaces.errors import ConfigurationError
 
-    # Required fields
-    template_name = data.get("template_name")
-    if not template_name:
+    # API-native schema: template_name + start/end years
+    if "template_name" in data:
+        template_name = data.get("template_name")
+        start_year = data.get("start_year")
+        end_year = data.get("end_year")
+        baseline_id = data.get("baseline_id")
+    # Template schema: name + year_schedule
+    elif "name" in data and "year_schedule" in data:
+        template_name = data.get("name")
+        year_schedule = data.get("year_schedule")
+        if not isinstance(year_schedule, dict):
+            raise ConfigurationError(
+                field_path="scenario.year_schedule",
+                expected="mapping with start_year/end_year",
+                actual=year_schedule,
+            )
+        start_year = year_schedule.get("start_year")
+        end_year = year_schedule.get("end_year")
+        baseline_id = data.get("baseline_ref")
+    else:
+        template_name = data.get("template_name")
+        start_year = data.get("start_year")
+        end_year = data.get("end_year")
+        baseline_id = data.get("baseline_id")
+
+    if not isinstance(template_name, str) or not template_name.strip():
         raise ConfigurationError(
             field_path="scenario.template_name",
             expected="non-empty string",
@@ -371,54 +501,39 @@ def _dict_to_scenario_config(data: dict[str, Any]) -> ScenarioConfig:
         )
 
     parameters = data.get("parameters")
-    if parameters is None:
+    if not isinstance(parameters, dict):
         raise ConfigurationError(
             field_path="scenario.parameters",
             expected="dict of policy parameters",
-            actual=None,
+            actual=parameters,
         )
 
-    start_year = data.get("start_year")
-    if start_year is None:
+    population_path = _coerce_optional_path(
+        data.get("population_path"),
+        field_path="scenario.population_path",
+    )
+
+    baseline_id_value: str | None
+    if baseline_id is None:
+        baseline_id_value = None
+    elif isinstance(baseline_id, str) and baseline_id.strip():
+        baseline_id_value = baseline_id
+    else:
         raise ConfigurationError(
-            field_path="scenario.start_year",
-            expected="int year",
-            actual=None,
+            field_path="scenario.baseline_id",
+            expected="non-empty string or null",
+            actual=baseline_id,
         )
 
-    end_year = data.get("end_year")
-    if end_year is None:
-        raise ConfigurationError(
-            field_path="scenario.end_year",
-            expected="int year",
-            actual=None,
-        )
-
-    # Optional fields
-    population_path = data.get("population_path")
-    if population_path is not None:
-        population_path = Path(population_path)
-
-    seed = data.get("seed")
-    baseline_id = data.get("baseline_id")
-
-    try:
-        return ScenarioConfig(
-            template_name=str(template_name),
-            parameters=dict(parameters),
-            start_year=int(start_year),
-            end_year=int(end_year),
-            population_path=population_path,
-            seed=int(seed) if seed is not None else None,
-            baseline_id=str(baseline_id) if baseline_id else None,
-        )
-    except (TypeError, ValueError) as exc:
-        raise ConfigurationError(
-            field_path="scenario",
-            expected="valid scenario configuration",
-            actual=data,
-            message=f"Failed to create ScenarioConfig: {exc}",
-        ) from exc
+    return ScenarioConfig(
+        template_name=template_name,
+        parameters=dict(parameters),
+        start_year=_coerce_required_int(start_year, field_path="scenario.start_year"),
+        end_year=_coerce_required_int(end_year, field_path="scenario.end_year"),
+        population_path=population_path,
+        seed=_coerce_optional_int(data.get("seed"), field_path="scenario.seed"),
+        baseline_id=baseline_id_value,
+    )
 
 
 def _validate_config(run_config: RunConfig) -> None:
@@ -431,6 +546,14 @@ def _validate_config(run_config: RunConfig) -> None:
         ConfigurationError: If configuration is invalid.
     """
     from reformlab.interfaces.errors import ConfigurationError
+
+    if run_config.output_dir is not None:
+        if run_config.output_dir.exists() and not run_config.output_dir.is_dir():
+            raise ConfigurationError(
+                field_path="output_dir",
+                expected="directory path",
+                actual=str(run_config.output_dir),
+            )
 
     # Extract scenario config
     scenario = run_config.scenario
@@ -526,14 +649,8 @@ def _load_scenario(
         return scenario
 
     if isinstance(scenario, Path):
-        from reformlab.interfaces.errors import ConfigurationError
-
-        raise ConfigurationError(
-            field_path="scenario",
-            expected="ScenarioConfig or dict",
-            actual="Path",
-            message="Direct scenario file loading not yet implemented",
-        )
+        data = _load_yaml_mapping(scenario, field_path="scenario")
+        return _dict_to_scenario_config(data)
 
     if isinstance(scenario, dict):
         return _dict_to_scenario_config(scenario)
@@ -567,20 +684,26 @@ def _execute_orchestration(
     """
     from datetime import datetime, timezone
 
-    import pyarrow as pa
-
+    from reformlab import __version__
+    from reformlab.computation.types import PolicyConfig
     from reformlab.governance.manifest import RunManifest
+    from reformlab.orchestrator.computation_step import ComputationStep
     from reformlab.orchestrator.panel import PanelOutput
     from reformlab.orchestrator.runner import OrchestratorRunner
-    from reformlab.orchestrator.types import YearState
+    from reformlab.orchestrator.types import OrchestratorResult, YearState
     from reformlab.templates.workflow import WorkflowResult
 
     # Normalize parameters to ensure manifest compatibility
     # Convert any numeric keys to strings for JSON serialization
     normalized_params = _normalize_parameters(scenario.parameters)
 
+    population = _load_population_data(scenario.population_path)
+    policy = PolicyConfig(
+        parameters=normalized_params,
+        name=scenario.template_name,
+    )
+
     # Build workflow request
-    # For MVP, we create a minimal workflow-compatible request
     request = {
         "name": scenario.template_name,
         "version": "1.0",
@@ -597,9 +720,14 @@ def _execute_orchestration(
     seed = run_config.seed if run_config.seed is not None else scenario.seed
 
     # Create orchestrator runner
-    # For MVP, we use empty step pipeline - full implementation will come later
     runner = OrchestratorRunner(
-        step_pipeline=(),
+        step_pipeline=(
+            ComputationStep(
+                adapter=adapter,
+                population=population,
+                policy=policy,
+            ),
+        ),
         seed=seed,
         initial_state={},
         parameters=normalized_params,
@@ -610,54 +738,68 @@ def _execute_orchestration(
     # Execute
     workflow_result: WorkflowResult = runner.run(request)
 
-    # Extract yearly states from workflow result
+    # Extract yearly states from workflow result.
     yearly_states_raw = workflow_result.outputs.get("yearly_states", {})
     yearly_states: dict[int, YearState] = {}
-    for year_int, state_dict in yearly_states_raw.items():
-        yearly_states[int(year_int)] = YearState(
-            year=int(state_dict["year"]),
-            data=dict(state_dict.get("data", {})),
-            seed=state_dict.get("seed"),
-            metadata=dict(state_dict.get("metadata", {})),
-        )
+    if isinstance(yearly_states_raw, dict):
+        for year_key, state_raw in yearly_states_raw.items():
+            if not isinstance(state_raw, dict):
+                continue
 
-    # Build panel output
-    # For MVP, create empty panel if no yearly states
-    if not yearly_states:
-        panel_output = PanelOutput(
-            table=pa.table(
-                {
-                    "household_id": pa.array([], type=pa.int64()),
-                    "year": pa.array([], type=pa.int64()),
-                }
-            ),
-            metadata=workflow_result.metadata,
-        )
-    else:
-        # Build panel from yearly states
-        # This is simplified for MVP - full implementation will use orchestrator panel builder
-        panel_output = PanelOutput(
-            table=pa.table(
-                {
-                    "household_id": pa.array([], type=pa.int64()),
-                    "year": pa.array([], type=pa.int64()),
-                }
-            ),
-            metadata=workflow_result.metadata,
-        )
+            year_value = state_raw.get("year", year_key)
+            year_int = _coerce_required_int(year_value, field_path="outputs.year")
 
-    # Build manifest
-    # For MVP, create minimal manifest
+            yearly_states[year_int] = YearState(
+                year=year_int,
+                data=dict(state_raw.get("data", {})),
+                seed=_coerce_optional_int(state_raw.get("seed"), field_path="outputs.seed"),
+                metadata=dict(state_raw.get("metadata", {})),
+            )
+
+    orchestrator_result = OrchestratorResult(
+        success=workflow_result.success,
+        yearly_states=yearly_states,
+        errors=list(workflow_result.errors),
+        failed_year=_coerce_optional_int(
+            workflow_result.metadata.get("failed_year"),
+            field_path="metadata.failed_year",
+        ),
+        failed_step=(
+            workflow_result.metadata.get("failed_step")
+            if isinstance(workflow_result.metadata.get("failed_step"), str)
+            else None
+        ),
+        metadata=dict(workflow_result.metadata),
+    )
+    panel_output = PanelOutput.from_orchestrator_result(orchestrator_result)
+
+    parent_manifest_id = workflow_result.metadata.get("parent_manifest_id", "")
+    if not isinstance(parent_manifest_id, str):
+        parent_manifest_id = ""
+
+    child_manifests = _coerce_child_manifest_map(
+        workflow_result.metadata.get("child_manifests"),
+    )
+
+    adapter_version = _safe_adapter_version(adapter)
+
     manifest = RunManifest(
-        manifest_id=workflow_result.metadata.get("parent_manifest_id", "api-run-id"),
+        manifest_id=parent_manifest_id or "api-run",
         created_at=datetime.now(timezone.utc).isoformat(),
-        engine_version="0.1.0",
-        openfisca_version="39.0.0",
-        adapter_version=adapter.version() if hasattr(adapter, "version") else "mock-1.0.0",
+        engine_version=__version__,
+        openfisca_version=adapter_version,
+        adapter_version=adapter_version,
         scenario_version="1.0.0",
         parameters=normalized_params,
         seeds={"master": seed} if seed is not None else {},
-        warnings=workflow_result.metadata.get("warnings", []),
+        assumptions=_coerce_dict_list(workflow_result.metadata.get("assumptions")),
+        mappings=_coerce_dict_list(workflow_result.metadata.get("mappings")),
+        warnings=_coerce_string_list(workflow_result.metadata.get("warnings")),
+        step_pipeline=_coerce_string_list(workflow_result.metadata.get("step_pipeline")),
+        parent_manifest_id=parent_manifest_id,
+        child_manifests=child_manifests,
+        data_hashes=_coerce_hash_map(workflow_result.metadata.get("data_hashes")),
+        output_hashes=_coerce_hash_map(workflow_result.metadata.get("output_hashes")),
     )
 
     # Package result
@@ -669,6 +811,165 @@ def _execute_orchestration(
         manifest=manifest,
         metadata=workflow_result.metadata,
     )
+
+
+def _initialize_default_adapter(run_config: RunConfig) -> ComputationAdapter:
+    """Create the default OpenFisca adapter when one is not provided."""
+    from reformlab.interfaces.errors import ConfigurationError
+
+    data_dir = _resolve_openfisca_data_dir(run_config)
+    try:
+        from reformlab.computation.openfisca_adapter import OpenFiscaAdapter
+
+        return OpenFiscaAdapter(data_dir=data_dir)
+    except Exception as exc:
+        raise ConfigurationError(
+            field_path="adapter",
+            expected="initializable OpenFisca adapter",
+            actual=str(data_dir),
+            message=(
+                f"Failed to initialize OpenFiscaAdapter with data_dir={data_dir}: {exc}"
+            ),
+        ) from exc
+
+
+def _resolve_openfisca_data_dir(run_config: RunConfig) -> Path:
+    """Resolve OpenFiscaAdapter data directory from config/env/defaults."""
+    from reformlab.interfaces.errors import ConfigurationError
+
+    env_data_dir = os.environ.get("REFORMLAB_OPENFISCA_DATA_DIR")
+    if env_data_dir:
+        env_path = Path(env_data_dir)
+        if env_path.is_dir():
+            return env_path
+        raise ConfigurationError(
+            field_path="adapter.data_dir",
+            expected="existing directory path",
+            actual=env_data_dir,
+            message=(
+                "REFORMLAB_OPENFISCA_DATA_DIR is set but does not point to an "
+                "existing directory."
+            ),
+        )
+
+    default_path = Path("data/openfisca")
+    if default_path.is_dir():
+        return default_path
+
+    raise ConfigurationError(
+        field_path="adapter.data_dir",
+        expected=(
+            "existing directory via REFORMLAB_OPENFISCA_DATA_DIR or default "
+            "data/openfisca"
+        ),
+        actual=str(run_config.output_dir) if run_config.output_dir is not None else None,
+        message=(
+            "No default adapter data directory found. Set "
+            "REFORMLAB_OPENFISCA_DATA_DIR or pass adapter=... explicitly."
+        ),
+    )
+
+
+def _load_population_data(population_path: Path | None) -> Any:
+    """Load population input as PopulationData for the computation step."""
+    import pyarrow as pa
+    import pyarrow.csv as pa_csv
+    import pyarrow.parquet as pq
+
+    from reformlab.computation.types import PopulationData
+    from reformlab.interfaces.errors import ConfigurationError
+
+    if population_path is None:
+        return PopulationData(
+            tables={"default": pa.table({"household_id": pa.array([], type=pa.int64())})},
+            metadata={"source": "empty"},
+        )
+
+    suffixes = tuple(part.lower() for part in population_path.suffixes)
+    try:
+        if suffixes[-2:] == (".csv", ".gz") or suffixes[-1:] == (".csv",):
+            table = pa_csv.read_csv(population_path)
+        elif suffixes[-1:] in ((".parquet",), (".pq",)):
+            table = pq.read_table(population_path)
+        else:
+            raise ConfigurationError(
+                field_path="scenario.population_path",
+                expected=".csv, .csv.gz, .parquet, or .pq file",
+                actual=str(population_path),
+            )
+    except ConfigurationError:
+        raise
+    except Exception as exc:
+        raise ConfigurationError(
+            field_path="scenario.population_path",
+            expected="readable population dataset",
+            actual=str(population_path),
+            message=f"Failed to load population data from {population_path}: {exc}",
+        ) from exc
+
+    return PopulationData(
+        tables={"default": table},
+        metadata={"source": str(population_path)},
+    )
+
+
+def _safe_adapter_version(adapter: ComputationAdapter) -> str:
+    """Return adapter version defensively for manifest packaging."""
+    version_method = getattr(adapter, "version", None)
+    if not callable(version_method):
+        return "unknown"
+    try:
+        version = version_method()
+    except Exception:
+        return "unknown"
+    return str(version) if version else "unknown"
+
+
+def _coerce_string_list(value: Any) -> list[str]:
+    """Normalize arbitrary values to a list[str] (dropping empty entries)."""
+    if not isinstance(value, list):
+        return []
+    normalized: list[str] = []
+    for item in value:
+        text = str(item).strip()
+        if text:
+            normalized.append(text)
+    return normalized
+
+
+def _coerce_dict_list(value: Any) -> list[dict[str, Any]]:
+    """Normalize arbitrary values to list[dict[str, Any]]."""
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, dict)]
+
+
+def _coerce_hash_map(value: Any) -> dict[str, str]:
+    """Normalize hash metadata payloads to a string map."""
+    if not isinstance(value, dict):
+        return {}
+    normalized: dict[str, str] = {}
+    for key, hash_value in value.items():
+        if isinstance(key, str) and isinstance(hash_value, str):
+            normalized[key] = hash_value
+    return normalized
+
+
+def _coerce_child_manifest_map(value: Any) -> dict[int, str]:
+    """Normalize child manifest metadata payloads to year->id mapping."""
+    if not isinstance(value, dict):
+        return {}
+
+    normalized: dict[int, str] = {}
+    for year_raw, manifest_id in value.items():
+        if not isinstance(manifest_id, str):
+            continue
+        try:
+            year_int = int(year_raw)
+        except (TypeError, ValueError):
+            continue
+        normalized[year_int] = manifest_id
+    return normalized
 
 
 # Scenario management functions

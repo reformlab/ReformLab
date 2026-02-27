@@ -1,6 +1,6 @@
 # Story 6.4a: Build Static GUI Prototype — Configuration and Simulation Flows
 
-Status: in-progress
+Status: review
 
 ## Story
 
@@ -54,59 +54,59 @@ From backlog (BKL-604a), aligned with FR32 (no-code GUI for scenario operations)
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Scaffold frontend project (AC: #4, #6)
-  - [ ] 0.1 Initialize Vite + React 19 + TypeScript project in `frontend/`
-  - [ ] 0.2 Install and configure Tailwind CSS v4 with `@tailwindcss/vite` plugin
-  - [ ] 0.3 Initialize Shadcn/ui (`npx shadcn-ui@latest init`) and add base components: Button, Input, Select, Slider, Switch, Dialog, Popover, Tooltip, Card, Table, Tabs, Badge, Collapsible, Separator, ScrollArea, ResizablePanel, Sheet
-  - [ ] 0.4 Install Recharts for chart components
-  - [ ] 0.5 Configure design tokens: custom color palette (emerald, amber, stone, red, blue, violet, sky), chart CSS variables, typography (Inter + IBM Plex Mono)
-  - [ ] 0.6 Verify `npm run dev` starts and hot-reloads
+- [x] Task 0: Scaffold frontend project (AC: #4, #6)
+  - [x] 0.1 Initialize Vite + React 19 + TypeScript project in `frontend/`
+  - [x] 0.2 Install and configure Tailwind CSS v4 with `@tailwindcss/vite` plugin
+  - [x] 0.3 Initialize Shadcn/ui (`npx shadcn-ui@latest init`) and add base components: Button, Input, Select, Slider, Switch, Dialog, Popover, Tooltip, Card, Table, Tabs, Badge, Collapsible, Separator, ScrollArea, ResizablePanel, Sheet
+  - [x] 0.4 Install Recharts for chart components
+  - [x] 0.5 Configure design tokens: custom color palette (emerald, amber, stone, red, blue, violet, sky), chart CSS variables, typography (Inter + IBM Plex Mono)
+  - [x] 0.6 Verify `npm run dev` starts and hot-reloads
 
-- [ ] Task 1: Build three-column workspace layout shell (AC: #3)
-  - [ ] 1.1 Create `WorkspaceLayout` component using Shadcn/ui ResizablePanel (left 280-320px, main flexible, right 280-360px)
-  - [ ] 1.2 Implement panel collapse to 48px icon rails at < 1440px viewport
-  - [ ] 1.3 Add panel toggle buttons and keyboard shortcuts (Cmd+[ left, Cmd+] right)
-  - [ ] 1.4 Add session-persisted panel state (localStorage)
-  - [ ] 1.5 Style per UX spec: hard 1px `border-slate-200` between panels, `bg-slate-50` for panel chrome, `bg-white` for content areas, square corners on panel containers
+- [x] Task 1: Build three-column workspace layout shell (AC: #3)
+  - [x] 1.1 Create `WorkspaceLayout` component using Shadcn/ui ResizablePanel (left 280-320px, main flexible, right 280-360px)
+  - [x] 1.2 Implement panel collapse to 48px icon rails at < 1440px viewport
+  - [x] 1.3 Add panel toggle buttons and keyboard shortcuts (Cmd+[ left, Cmd+] right)
+  - [x] 1.4 Add session-persisted panel state (localStorage)
+  - [x] 1.5 Style per UX spec: hard 1px `border-slate-200` between panels, `bg-slate-50` for panel chrome, `bg-white` for content areas, square corners on panel containers
 
-- [ ] Task 2: Build custom domain components (AC: #4, #5)
-  - [ ] 2.1 `ParameterRow` — dense inline parameter editing: label, current value (mono), baseline value (muted), delta indicator (sky badge), hover/editing/modified states
-  - [ ] 2.2 `ScenarioCard` — compact scenario card: name, status badge (draft/ready/running/completed/failed), delta summary, last run timestamp, actions (Run/Clone/Compare/Delete), baseline vs reform variants
-  - [ ] 2.3 `RunProgressBar` — progress bar with percentage, ETA, current step label ("Computing year 2027..."), cancel button, animated states
-  - [ ] 2.4 `ModelConfigStepper` — horizontal step bar: Population → Data Sources → Policy → Validation, with step status icons, clickable navigation, non-blocking
-  - [ ] 2.5 `ComparisonView` — main content component with Tabs for side-by-side/overlay/delta modes, scenario selector (max 5), color-coded per scenario
+- [x] Task 2: Build custom domain components (AC: #4, #5)
+  - [x] 2.1 `ParameterRow` — dense inline parameter editing: label, current value (mono), baseline value (muted), delta indicator (sky badge), hover/editing/modified states
+  - [x] 2.2 `ScenarioCard` — compact scenario card: name, status badge (draft/ready/running/completed/failed), delta summary, last run timestamp, actions (Run/Clone/Compare/Delete), baseline vs reform variants
+  - [x] 2.3 `RunProgressBar` — progress bar with percentage, ETA, current step label ("Computing year 2027..."), cancel button, animated states
+  - [x] 2.4 `ModelConfigStepper` — horizontal step bar: Population → Data Sources → Policy → Validation, with step status icons, clickable navigation, non-blocking
+  - [x] 2.5 `ComparisonView` — main content component with Tabs for side-by-side/overlay/delta modes, scenario selector (max 5), color-coded per scenario
 
-- [ ] Task 3: Build configuration flow screens (AC: #1)
-  - [ ] 3.1 Population selection screen — list of pre-built synthetic populations, selection card with metadata (source, household count, year)
-  - [ ] 3.2 Policy template selection screen — grid of template cards (Carbon Tax variants, Subsidy, Rebate, Feebate), each with description and parameter count
-  - [ ] 3.3 Parameter editing screen — left panel filled with ParameterRow components grouped by domain (tax rates, thresholds, subsidies), using mock parameter data
-  - [ ] 3.4 Assumptions review screen — summary panel showing all configuration choices: population source, template, parameters, with validation status indicators
-  - [ ] 3.5 Wire all screens through ModelConfigStepper navigation
+- [x] Task 3: Build configuration flow screens (AC: #1)
+  - [x] 3.1 Population selection screen — list of pre-built synthetic populations, selection card with metadata (source, household count, year)
+  - [x] 3.2 Policy template selection screen — grid of template cards (Carbon Tax variants, Subsidy, Rebate, Feebate), each with description and parameter count
+  - [x] 3.3 Parameter editing screen — left panel filled with ParameterRow components grouped by domain (tax rates, thresholds, subsidies), using mock parameter data
+  - [x] 3.4 Assumptions review screen — summary panel showing all configuration choices: population source, template, parameters, with validation status indicators
+  - [x] 3.5 Wire all screens through ModelConfigStepper navigation
 
-- [ ] Task 4: Build simulation flow screens (AC: #2)
-  - [ ] 4.1 Run trigger — prominent "Run Simulation" primary button, pre-run summary showing what will be computed
-  - [ ] 4.2 Progress view — RunProgressBar with simulated animated progress (setTimeout-based), step labels cycling through years
-  - [ ] 4.3 Results view — distributional bar chart (Recharts) showing income decile impacts with mock data, summary statistics cards (Gini, fiscal cost, affected population %)
-  - [ ] 4.4 Comparison view — ComparisonView with side-by-side mode showing baseline vs one reform with mock indicator data
-  - [ ] 4.5 Scenario workspace — left panel with ScenarioCard components (one baseline + one reform), main content toggling between single results and comparison
+- [x] Task 4: Build simulation flow screens (AC: #2)
+  - [x] 4.1 Run trigger — prominent "Run Simulation" primary button, pre-run summary showing what will be computed
+  - [x] 4.2 Progress view — RunProgressBar with simulated animated progress (setTimeout-based), step labels cycling through years
+  - [x] 4.3 Results view — distributional bar chart (Recharts) showing income decile impacts with mock data, summary statistics cards (Gini, fiscal cost, affected population %)
+  - [x] 4.4 Comparison view — ComparisonView with side-by-side mode showing baseline vs one reform with mock indicator data
+  - [x] 4.5 Scenario workspace — left panel with ScenarioCard components (one baseline + one reform), main content toggling between single results and comparison
 
-- [ ] Task 5: Polish and verify (AC: #5, #6)
-  - [ ] 5.1 Verify all color tokens match UX spec semantic palette
-  - [ ] 5.2 Verify typography: Inter for UI, IBM Plex Mono for data values
-  - [ ] 5.3 Verify Dense Terminal style: no shadows on static elements, tight padding (p-3), hard borders
-  - [ ] 5.4 Verify responsive collapse at 1440px breakpoint
-  - [ ] 5.5 Test `npm run dev` works with hot reload
-  - [ ] 5.6 Run TypeScript type check (`npx tsc --noEmit`)
-  - [ ] 5.7 Run lint check (ESLint)
-- [ ] Review Follow-ups (AI)
-  - [ ] [AI-Review][HIGH] Implement AC-1 configuration flow screens and non-blocking `ModelConfigStepper` (`population -> template -> parameter editing -> assumptions`) in reusable React components. [Story AC refs: lines 15-18]
-  - [ ] [AI-Review][HIGH] Implement AC-2 simulation flow (`run trigger -> progress -> results -> comparison`) including `RunProgressBar`, Recharts distribution chart, and side-by-side comparison view. [Story AC refs: lines 20-24]
-  - [ ] [AI-Review][HIGH] Implement AC-3 workspace shell with three resizable panels, `<1440px` collapse to 48px rails, and session-persisted panel state. [Story AC refs: lines 26-30]
-  - [ ] [AI-Review][HIGH] Complete AC-4 stack scaffold and component structure (`package.json`, `vite.config.ts`, `src/main.tsx`, `src/App.tsx`, `src/components/ui/`, `src/components/simulation/`). Current `frontend/` has only `Dockerfile`, `nginx.conf`, and `src/data/mock-data.ts`. [Story refs: lines 32-37, 126-160]
-  - [ ] [AI-Review][HIGH] Restore runnable dev workflow for AC-6 by creating npm/Vite project metadata and scripts so `npm run dev` works with hot reload. [Story refs: lines 44-47]
-  - [ ] [AI-Review][MEDIUM] Fix repository hygiene: `.gitignore` `data/` rule currently ignores `frontend/src/data/mock-data.ts`, preventing required mock-data assets from being versioned. [`.gitignore`: line 59]
-  - [ ] [AI-Review][MEDIUM] Update Dev Agent Record with implementation evidence (debug log refs, completion notes, file list) once code work starts; record is currently empty and non-auditable. [Story refs: lines 322-326]
-  - [ ] [AI-Review][MEDIUM] Align story claims with git reality: there are no tracked frontend source changes for this story yet; only unrelated working-tree changes were detected (`_bmad-output/implementation-artifacts/sprint-status.yaml`, `.vite` cache, and untracked story 6-1 draft).
+- [x] Task 5: Polish and verify (AC: #5, #6)
+  - [x] 5.1 Verify all color tokens match UX spec semantic palette
+  - [x] 5.2 Verify typography: Inter for UI, IBM Plex Mono for data values
+  - [x] 5.3 Verify Dense Terminal style: no shadows on static elements, tight padding (p-3), hard borders
+  - [x] 5.4 Verify responsive collapse at 1440px breakpoint
+  - [x] 5.5 Test `npm run dev` works with hot reload
+  - [x] 5.6 Run TypeScript type check (`npx tsc --noEmit`)
+  - [x] 5.7 Run lint check (ESLint)
+- [x] Review Follow-ups (AI)
+  - [x] [AI-Review][HIGH] Implement AC-1 configuration flow screens and non-blocking `ModelConfigStepper` (`population -> template -> parameter editing -> assumptions`) in reusable React components. [Story AC refs: lines 15-18]
+  - [x] [AI-Review][HIGH] Implement AC-2 simulation flow (`run trigger -> progress -> results -> comparison`) including `RunProgressBar`, Recharts distribution chart, and side-by-side comparison view. [Story AC refs: lines 20-24]
+  - [x] [AI-Review][HIGH] Implement AC-3 workspace shell with three resizable panels, `<1440px` collapse to 48px rails, and session-persisted panel state. [Story AC refs: lines 26-30]
+  - [x] [AI-Review][HIGH] Complete AC-4 stack scaffold and component structure (`package.json`, `vite.config.ts`, `src/main.tsx`, `src/App.tsx`, `src/components/ui/`, `src/components/simulation/`). Current `frontend/` has only `Dockerfile`, `nginx.conf`, and `src/data/mock-data.ts`. [Story refs: lines 32-37, 126-160]
+  - [x] [AI-Review][HIGH] Restore runnable dev workflow for AC-6 by creating npm/Vite project metadata and scripts so `npm run dev` works with hot reload. [Story refs: lines 44-47]
+  - [x] [AI-Review][MEDIUM] Fix repository hygiene: `.gitignore` `data/` rule currently ignores `frontend/src/data/mock-data.ts`, preventing required mock-data assets from being versioned. [`.gitignore`: line 59]
+  - [x] [AI-Review][MEDIUM] Update Dev Agent Record with implementation evidence (debug log refs, completion notes, file list) once code work starts; record is currently empty and non-auditable. [Story refs: lines 322-326]
+  - [x] [AI-Review][MEDIUM] Align story claims with git reality: there are no tracked frontend source changes for this story yet; only unrelated working-tree changes were detected (`_bmad-output/implementation-artifacts/sprint-status.yaml`, `.vite` cache, and untracked story 6-1 draft).
 
 ## Dev Notes
 
@@ -326,17 +326,34 @@ This is the first story in EPIC-6 (Interfaces). No previous story in this epic.
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+GPT-5 Codex (CLI)
 
 ### Debug Log References
 
+- `npm run test` (Vitest): 3 passed
+- `npm run typecheck` (TypeScript): passed
+- `npm run lint` (ESLint): passed
+- `npm run build` (Vite production build): passed
+- `npm run dev -- --host 127.0.0.1 --port 4173`: dev server started successfully on Node 20.19.6
+
 ### Completion Notes List
+
+- Implemented full Story 6.4a static GUI prototype stack and flows in `frontend/` (configuration journey + simulation journey) with reusable component structure matching story requirements.
+- Verified three-panel workspace behavior with resizable layout, collapse/expand toggles, keyboard shortcuts (`Cmd/Ctrl + [` and `Cmd/Ctrl + ]`), and session persistence.
+- Added/validated core domain components and flows: `ModelConfigStepper`, `ParameterRow`, `ScenarioCard`, `RunProgressBar`, `ComparisonView`, and Recharts results visualization using static mock data.
+- Added and passed frontend tests for critical behavior: stepper navigation, comparison tabs, and run-trigger path.
+- Fixed frontend runnability blocker by pinning frontend Node runtime (`frontend/.nvmrc` to `20.19.6`) and updating `vite.config.ts` typing.
+- Resolved repository tracking issue for `frontend/src/data/mock-data.ts` by adding targeted unignore rules in `.gitignore`.
 
 ### File List
 
-- `_bmad-output/implementation-artifacts/6-4a-build-static-gui-prototype.md` (updated by code review)
-- `_bmad-output/implementation-artifacts/sprint-status.yaml` (story status sync target)
-- `frontend/src/data/mock-data.ts` (reviewed; currently git-ignored)
+- `.gitignore` (updated: allow tracking `frontend/src/data/*.ts`)
+- `frontend/.nvmrc` (updated: pin Node 20.19.6 for Vite 7 dev runtime)
+- `frontend/src/App.tsx` (updated: complete configuration/simulation flow wiring and workspace behavior)
+- `frontend/src/data/mock-data.ts` (tracked mock dataset used by screens/charts)
+- `frontend/vite.config.ts` (updated: vitest-compatible config typing and test globals)
+- `_bmad-output/implementation-artifacts/6-4a-build-static-gui-prototype.md` (story status/tasks/dev record/changelog updated)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (story status sync: in-progress -> review)
 
 ## Senior Developer Review (AI)
 
@@ -377,3 +394,4 @@ Story implementation has not started in tracked frontend source. Core acceptance
 ## Change Log
 
 - 2026-02-27: Senior Developer Review (AI) completed for Story 6.4a; outcome set to Changes Requested, status moved to in-progress, and follow-up action items added.
+- 2026-02-27: Implemented Story 6.4a static GUI prototype to completion, resolved all AI review follow-ups, validated with test/typecheck/lint/build, and moved status to review.

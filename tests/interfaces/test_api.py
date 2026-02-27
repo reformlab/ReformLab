@@ -15,6 +15,7 @@ from pathlib import Path
 
 import pyarrow as pa
 import pytest
+import yaml
 
 from reformlab.computation.mock_adapter import MockAdapter
 from reformlab.governance.manifest import RunManifest
@@ -359,6 +360,73 @@ class TestRunScenario:
         assert result.scenario_id == "test-scenario"
         assert isinstance(result.yearly_states, dict)
         assert result.manifest.manifest_id
+
+    def test_run_scenario_with_yaml_run_config_path(self, tmp_path: Path) -> None:
+        """run_scenario accepts a YAML run-config path."""
+        from reformlab import run_scenario
+
+        config_path = tmp_path / "run-config.yaml"
+        config_path.write_text(
+            yaml.safe_dump(
+                {
+                    "scenario": {
+                        "template_name": "yaml-run-config",
+                        "parameters": {"rate_schedule": {2025: 50.0}},
+                        "start_year": 2025,
+                        "end_year": 2026,
+                    },
+                    "seed": 123,
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        result = run_scenario(config_path, adapter=MockAdapter())
+
+        assert result.success
+        assert result.scenario_id == "yaml-run-config"
+
+    def test_run_scenario_with_scenario_yaml_path_in_dict(self, tmp_path: Path) -> None:
+        """run_scenario accepts scenario path values inside dict config."""
+        from reformlab import run_scenario
+
+        scenario_path = tmp_path / "scenario.yaml"
+        scenario_path.write_text(
+            yaml.safe_dump(
+                {
+                    "template_name": "yaml-scenario",
+                    "parameters": {"rate_schedule": {2025: 60.0}},
+                    "start_year": 2025,
+                    "end_year": 2027,
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        result = run_scenario({"scenario": str(scenario_path)}, adapter=MockAdapter())
+
+        assert result.success
+        assert result.scenario_id == "yaml-scenario"
+
+    def test_run_scenario_with_invalid_seed_type(self) -> None:
+        """Invalid seed values raise ConfigurationError with field context."""
+        from reformlab import ConfigurationError, run_scenario
+
+        with pytest.raises(ConfigurationError) as exc_info:
+            run_scenario(
+                {
+                    "scenario": {
+                        "template_name": "seed-check",
+                        "parameters": {},
+                        "start_year": 2025,
+                        "end_year": 2026,
+                    },
+                    "seed": "not-an-int",
+                },
+                adapter=MockAdapter(),
+            )
+
+        assert exc_info.value.field_path == "seed"
 
 
 class TestScenarioManagement:

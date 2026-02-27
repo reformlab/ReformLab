@@ -39,7 +39,7 @@ def test_scaffold_directory_structure_exists() -> None:
         assert (package_dir / "__init__.py").is_file()
 
 
-_SCAFFOLD_ONLY = ("interfaces",)
+_SCAFFOLD_ONLY: tuple[str, ...] = ()
 
 
 def test_scaffold_packages_are_empty_placeholders() -> None:
