@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from pathlib import Path
 import uuid
 
 import pyarrow as pa
 import pytest
 
 from reformlab.computation.mapping import FieldMapping, MappingConfig
+from reformlab.governance import hash_file
 from reformlab.orchestrator import (
     OrchestratorConfig,
     OrchestratorRunner,
@@ -295,6 +297,45 @@ class TestOrchestratorRunner:
         assert result.metadata["mappings"][0]["openfisca_name"] == "income"
         assert result.metadata["parameters"]["tax"]["rate"] == 0.2
         assert any("not marked as validated" in w for w in result.metadata["warnings"])
+
+    def test_runner_captures_artifact_hashes_when_paths_provided(
+        self,
+        short_workflow_config: WorkflowConfig,
+        tmp_path: Path,
+    ) -> None:
+        """Runner captures data/output hashes when artifact paths are provided."""
+        input_file = tmp_path / "population.csv"
+        output_file = tmp_path / "results.csv"
+        input_file.write_text("id,income\n1,50000\n")
+        output_file.write_text("id,tax\n1,5000\n")
+
+        request = prepare_workflow_request(short_workflow_config)
+        request["input_paths"] = {"population": str(input_file)}
+        request["output_paths"] = {"results": str(output_file)}
+
+        runner = OrchestratorRunner()
+        result = runner.run(request)
+
+        assert result.success is True
+        assert result.metadata["data_hashes"] == {
+            "population": hash_file(input_file)
+        }
+        assert result.metadata["output_hashes"] == {
+            "results": hash_file(output_file)
+        }
+
+    def test_runner_rejects_invalid_artifact_paths_payload(self) -> None:
+        """Runner rejects malformed input/output artifact path maps."""
+        runner = OrchestratorRunner()
+        result = runner.run(
+            {
+                "run_config": {"start_year": 2025, "projection_years": 1},
+                "input_paths": ["not", "a", "mapping"],
+            }
+        )
+
+        assert result.success is False
+        assert "Invalid artifact paths" in result.errors[0]
 
     def test_runner_capture_payload_is_detached_from_mutations(
         self, short_workflow_config: WorkflowConfig

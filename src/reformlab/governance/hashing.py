@@ -12,6 +12,10 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from reformlab.governance.manifest import RunManifest
 
 # 64KB chunks for memory-efficient hashing of large CSV/Parquet files
 CHUNK_SIZE = 65536
@@ -113,7 +117,7 @@ class ArtifactVerificationResult:
 
 
 def verify_artifact_hashes(
-    manifest_hashes: dict[str, str],
+    manifest: dict[str, str] | RunManifest,
     artifact_paths: dict[str, Path],
 ) -> ArtifactVerificationResult:
     """Verify stored hashes against current file contents.
@@ -122,12 +126,13 @@ def verify_artifact_hashes(
     Does not raise exceptions on mismatch - returns structured result.
 
     Args:
-        manifest_hashes: Hashes stored in manifest (data_hashes or output_hashes).
+        manifest: Either a hash dictionary or a RunManifest.
         artifact_paths: Dictionary mapping keys to current file paths.
 
     Returns:
         ArtifactVerificationResult with verification status and diagnostics.
     """
+    manifest_hashes = _extract_manifest_hashes(manifest)
     mismatches: list[str] = []
     missing: list[str] = []
 
@@ -161,3 +166,27 @@ def verify_artifact_hashes(
         mismatches=mismatches,
         missing=missing,
     )
+
+
+def _extract_manifest_hashes(manifest: dict[str, str] | RunManifest) -> dict[str, str]:
+    """Extract hash map from a dict payload or RunManifest instance."""
+    if isinstance(manifest, dict):
+        return manifest
+
+    data_hashes = getattr(manifest, "data_hashes", None)
+    output_hashes = getattr(manifest, "output_hashes", None)
+    if not isinstance(data_hashes, dict) or not isinstance(output_hashes, dict):
+        raise TypeError(
+            "manifest must be a hash mapping or RunManifest-like object with "
+            "data_hashes/output_hashes dictionaries"
+        )
+
+    combined = dict(data_hashes)
+    for key, output_hash in output_hashes.items():
+        if key in combined and combined[key] != output_hash:
+            raise ValueError(
+                "Conflicting hash entries for key "
+                f"'{key}' across data_hashes/output_hashes"
+            )
+        combined[key] = output_hash
+    return combined

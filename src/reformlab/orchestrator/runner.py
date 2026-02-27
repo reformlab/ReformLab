@@ -471,7 +471,8 @@ class OrchestratorRunner:
 
         Args:
             request: Workflow request dictionary from prepare_workflow_request().
-                Expected keys: run_config.start_year, run_config.projection_years
+                Expected keys: run_config.start_year, run_config.projection_years.
+                Optional keys: input_paths/output_paths for artifact hashing.
 
         Returns:
             WorkflowResult with execution outcomes.
@@ -527,8 +528,21 @@ class OrchestratorRunner:
             # Each yearly child gets its own unique manifest ID
             child_manifests[year] = str(uuid.uuid4())
 
+        try:
+            input_paths = _coerce_path_map(request.get("input_paths"))
+            output_paths = _coerce_path_map(request.get("output_paths"))
+        except ValueError as exc:
+            return WorkflowResult(
+                success=False,
+                errors=[f"Invalid artifact paths: {exc}"],
+            )
+
         manifest_capture = self._capture_manifest_fields(
-            request, parent_manifest_id, child_manifests
+            request,
+            parent_manifest_id,
+            child_manifests,
+            input_paths=input_paths,
+            output_paths=output_paths,
         )
 
         # Convert to WorkflowResult
@@ -544,6 +558,8 @@ class OrchestratorRunner:
             "warnings": manifest_capture["warnings"],
             "parent_manifest_id": manifest_capture["parent_manifest_id"],
             "child_manifests": manifest_capture["child_manifests"],
+            "data_hashes": manifest_capture["data_hashes"],
+            "output_hashes": manifest_capture["output_hashes"],
         }
         if manifest_capture["scenario_version"]:
             metadata["scenario_version"] = manifest_capture["scenario_version"]
@@ -658,6 +674,29 @@ def _coerce_dict(value: Any) -> dict[str, Any]:
     if isinstance(value, dict):
         return value
     return {}
+
+
+def _coerce_path_map(value: Any) -> dict[str, Path]:
+    """Normalize optional key->path mappings from workflow requests."""
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise ValueError("expected a mapping of artifact keys to path values")
+
+    normalized: dict[str, Path] = {}
+    for key, path_value in value.items():
+        if not isinstance(key, str) or not key.strip():
+            raise ValueError("artifact path map keys must be non-empty strings")
+        if isinstance(path_value, Path):
+            normalized[key] = path_value
+            continue
+        if isinstance(path_value, str) and path_value.strip():
+            normalized[key] = Path(path_value)
+            continue
+        raise ValueError(
+            f"artifact path for key '{key}' must be a non-empty string or Path"
+        )
+    return normalized
 
 
 def _resolve_scenario_identity(

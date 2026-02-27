@@ -16,6 +16,7 @@ import pytest
 
 from reformlab.governance import (
     ArtifactVerificationResult,
+    RunManifest,
     hash_file,
     hash_input_artifacts,
     hash_output_artifacts,
@@ -308,6 +309,49 @@ class TestVerifyArtifactHashes:
 
         assert result.passed is False
         assert "data" in result.missing
+
+    def test_verify_accepts_run_manifest(self, tmp_path: Path) -> None:
+        """Verification accepts RunManifest directly (AC-3 contract)."""
+        input_file = tmp_path / "population.csv"
+        output_file = tmp_path / "results.csv"
+        input_file.write_text("id,income\n1,50000\n")
+        output_file.write_text("id,tax\n1,5000\n")
+
+        manifest = RunManifest(
+            manifest_id="manifest-verify-001",
+            created_at="2026-02-27T10:00:00Z",
+            engine_version="0.1.0",
+            openfisca_version="40.0.0",
+            adapter_version="1.0.0",
+            scenario_version="v1.0",
+            data_hashes={"population": hash_file(input_file)},
+            output_hashes={"results": hash_file(output_file)},
+        )
+
+        result = verify_artifact_hashes(
+            manifest,
+            {"population": input_file, "results": output_file},
+        )
+
+        assert result.passed is True
+        assert result.mismatches == []
+        assert result.missing == []
+
+    def test_verify_manifest_with_conflicting_keys_raises(self) -> None:
+        """Conflicting data/output hash keys raise a clear error."""
+        manifest = RunManifest(
+            manifest_id="manifest-conflict-001",
+            created_at="2026-02-27T10:00:00Z",
+            engine_version="0.1.0",
+            openfisca_version="40.0.0",
+            adapter_version="1.0.0",
+            scenario_version="v1.0",
+            data_hashes={"shared": "a" * 64},
+            output_hashes={"shared": "b" * 64},
+        )
+
+        with pytest.raises(ValueError, match="Conflicting hash entries"):
+            verify_artifact_hashes(manifest, {})
 
 
 class TestArtifactVerificationResult:
