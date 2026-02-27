@@ -12,39 +12,30 @@ so that **I can quickly understand what went wrong and how to fix it without nee
 
 From backlog (BKL-606), aligned with FR4 (field-level error validation) and FR27 (warnings for unvalidated templates/configs).
 
-1. **AC-1: Consistent error message format across all public API exceptions**
-   - Given any error raised by the public Python API (ConfigurationError, SimulationError), when the user sees the error message, then it follows the format: **"[What failed]** — [Why] — [How to fix]".
-   - No raw stack traces, internal paths, or technical codes are exposed in user-facing messages.
-   - Exception types preserve structured attributes (field_path, expected, actual, cause) for programmatic access.
+1. **AC-1: Public API exceptions follow one user-facing format**
+   - Given an error raised through the Python API (`ConfigurationError`, `SimulationError`), when the message is shown to the user, then it follows: **"[What failed] — [Why] — [How to fix]"**.
+   - User-facing text does not expose stack traces, internal paths, or raw exception class names.
+   - Structured attributes remain programmatically accessible (`field_path`, `expected`, `actual`, `cause`).
 
-2. **AC-2: Mapping errors provide field-level context and suggestions**
-   - Given a mapping configuration error (invalid OpenFisca variable, schema mismatch), when the error is raised, then the message identifies the exact field name and suggests corrections.
-   - Given close-match candidates exist, when a mapping error occurs, then suggestions are included (e.g., "Did you mean 'income_tax' instead of 'income_taxes'?").
+2. **AC-2: Mapping errors include precise context and suggestions**
+   - Given mapping failures (unknown OpenFisca variable, schema mismatch), when raised to API users, then messages identify the failing field/name and include actionable correction guidance.
+   - Given close matches exist, when mapping fails, then suggestions are included (for example, "Did you mean ...?").
 
-3. **AC-3: Run-state errors preserve partial results and context**
-   - Given an orchestrator failure at year t+k, when the error is raised, then the message indicates the failing year, step, and completed years are preserved for debugging.
-   - Given partial yearly states exist, when querying the error, then completed states are accessible via the error object's `partial_states` attribute.
+3. **AC-3: Run-state failures preserve execution context**
+   - Given orchestrator failure at year `t+k`, when surfaced through API errors, then the message includes failing year, failing step, and completed years.
+   - Given partial yearly states exist, when inspecting the raised error context (directly or via `SimulationError.cause`), completed states are available via `partial_states`.
 
-4. **AC-4: Configuration validation errors are aggregated**
-   - Given multiple validation issues in a configuration, when validated before execution, then all errors are reported together (not one at a time).
-   - Each error entry includes field path, expected value description, and actual value.
+4. **AC-4: Configuration validation reports multiple issues at once**
+   - Given multiple invalid configuration fields, when validation runs before execution, then all issues are returned in a single raised error (aggregate), not fail-fast one-by-one.
+   - Each issue includes field path, expected value/type, actual value, and fix guidance.
 
-5. **AC-5: Warnings system for unvalidated configurations**
-   - Given a scenario using an unvalidated template or non-standard configuration, when the run is initiated, then a warning is emitted (not a blocking error).
-   - Warnings are logged and optionally surfaced in `SimulationResult.metadata["warnings"]`.
-   - Given a run manifest, when inspected, then warning flags for unvalidated templates are visible.
-
-6. **AC-6: Error recovery guidance**
-   - Given any operational error, when raised, then the exception message includes an actionable "fix" clause describing what the user should do.
-   - Fix guidance is specific to the error type (e.g., "Check your mapping file at line X" or "Ensure population file exists at path Y").
+5. **AC-5: Existing warning signals are surfaced clearly to API users**
+   - Given warning entries are present in orchestrator/manifest metadata (from Story 5-6 warning capture), when a run completes, then warnings are visible in `SimulationResult.metadata["warnings"]` and `RunManifest.warnings`.
+   - Warnings remain non-blocking and are not converted into hard errors.
 
 ## Dependencies
 
 Dependency gate: if any hard dependency below is not `done`, set this story to `blocked`.
-
-- **Soft dependency: Story 6-4b (BKL-604b) — BACKLOG**
-  - GUI wiring may consume improved error presentation.
-  - Not a blocker — Python API error improvements are standalone.
 
 - **Hard dependency: Story 6-1 (BKL-601) — DONE**
   - Provides `ConfigurationError` and `SimulationError` base types.
@@ -55,59 +46,52 @@ Dependency gate: if any hard dependency below is not `done`, set this story to `
 - **Hard dependency: Story 1-5 (BKL-105) — DONE**
   - Provides data-quality checks and `DataQualityError`.
 
-- **Hard dependency: Story 5-6 (BKL-506) — READY-FOR-DEV**
-  - Provides warning system for unvalidated templates.
-  - Coordinate implementation — this story improves UX presentation of those warnings.
+- **Integration dependency: Story 5-6 (BKL-506) — READY-FOR-DEV**
+  - Owns warning generation/capture infrastructure for unvalidated templates/configs.
+  - Not a blocker for AC-1..AC-4 implementation.
+  - Required for full end-to-end validation of AC-5.
+
+- **Soft dependency: Story 6-4b (BKL-604b) — BACKLOG**
+  - GUI/FastAPI presentation layers consume improved API error and warning UX.
+  - Not a blocker for Python API implementation.
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Audit existing error patterns and establish format standard (AC: #1, #6)
-  - [ ] 0.1 Review all exception classes in `interfaces/errors.py`, `orchestrator/errors.py`, `computation/exceptions.py`, `governance/errors.py`
-  - [ ] 0.2 Document current format inconsistencies
-  - [ ] 0.3 Define canonical "[What failed] — [Why] — [How to fix]" format as a code guideline
+- [ ] Task 0: Baseline and dependency check (AC: #1-#5)
+  - [ ] 0.1 Confirm dependency status from `sprint-status.yaml` (6-1/1-3/1-5 done; 5-6 integration pending)
+  - [ ] 0.2 Capture current behavior for API error rendering and warning propagation in tests
 
-- [ ] Task 1: Enhance ConfigurationError with consistent format (AC: #1, #4, #6)
-  - [ ] 1.1 Update `ConfigurationError.__str__()` in `interfaces/errors.py` to emit "[What failed] — [Why] — [How to fix]" format
-  - [ ] 1.2 Add optional `fix` attribute to `ConfigurationError` for explicit fix guidance
-  - [ ] 1.3 Ensure field_path, expected, actual attributes remain accessible
-  - [ ] 1.4 Add tests verifying message format and structured attribute access
+- [ ] Task 1: Standardize public API exception format (AC: #1)
+  - [ ] 1.1 Update `ConfigurationError` and `SimulationError` in `interfaces/errors.py` to support explicit `fix` guidance and canonical message formatting
+  - [ ] 1.2 Ensure structured fields remain accessible and stable for callers
+  - [ ] 1.3 Ensure low-level exception details remain available via `cause` without leaking raw internals in user-facing text
+  - [ ] 1.4 Add/extend tests in `tests/interfaces/test_api.py`
 
-- [ ] Task 2: Enhance SimulationError with cause chain and recovery guidance (AC: #1, #3, #6)
-  - [ ] 2.1 Update `SimulationError.__str__()` to include recovery guidance
-  - [ ] 2.2 Add optional `fix` attribute to `SimulationError`
-  - [ ] 2.3 Ensure `cause` exception is not exposed in user-facing message but remains accessible programmatically
-  - [ ] 2.4 Add tests for error chaining and message format
+- [ ] Task 2: Mapping error UX alignment (AC: #2)
+  - [ ] 2.1 Reuse existing close-match suggestion logic in `computation/mapping.py` / adapter flows
+  - [ ] 2.2 Ensure raised API-level error text consistently includes field context + actionable fix + optional suggestions
+  - [ ] 2.3 Add/extend tests in `tests/computation/test_mapping.py` and API-path tests
 
-- [ ] Task 3: Implement mapping error suggestions (AC: #2)
-  - [ ] 3.1 Extend `ApiMappingError` with close-match suggestion logic (Levenshtein or similar)
-  - [ ] 3.2 Update error messages to include "Did you mean..." suggestions when candidates exist
-  - [ ] 3.3 Integrate suggestion logic in mapping validation path (`computation/mapping.py`)
-  - [ ] 3.4 Add tests for suggestion accuracy and message format
+- [ ] Task 3: Preserve run-state failure context through API boundary (AC: #3)
+  - [ ] 3.1 Ensure orchestrator failure context (`year`, `step_name`, `partial_states`) is preserved when surfaced as `SimulationError`
+  - [ ] 3.2 Ensure user-facing message includes failure location and recovery guidance
+  - [ ] 3.3 Add integration coverage in `tests/orchestrator/test_integration.py` and/or `tests/interfaces/test_api.py`
 
-- [ ] Task 4: Implement aggregated validation errors (AC: #4)
-  - [ ] 4.1 Create `ValidationErrors` aggregate exception type in `interfaces/errors.py`
-  - [ ] 4.2 Update `_validate_config()` in `interfaces/api.py` to collect all errors before raising
-  - [ ] 4.3 Format aggregated errors as numbered list with individual "[What] — [Why] — [Fix]" entries
-  - [ ] 4.4 Add tests verifying multiple errors are aggregated and formatted correctly
+- [ ] Task 4: Add aggregated configuration validation error type (AC: #4)
+  - [ ] 4.1 Add `ValidationErrors` aggregate exception in `interfaces/errors.py`
+  - [ ] 4.2 Update `_validate_config()` in `interfaces/api.py` to accumulate all config issues before raising
+  - [ ] 4.3 Ensure aggregate message entries follow canonical format and preserve per-field structure
+  - [ ] 4.4 Add tests for multi-error validation behavior in `tests/interfaces/test_api.py`
 
-- [ ] Task 5: Integrate warning system for unvalidated configs (AC: #5)
-  - [ ] 5.1 Coordinate with Story 5-6 warning infrastructure
-  - [ ] 5.2 Capture warnings in `SimulationResult.metadata["warnings"]` list
-  - [ ] 5.3 Ensure warnings are non-blocking and logged (not raised as exceptions)
-  - [ ] 5.4 Update `RunManifest` documentation to note warning fields
-  - [ ] 5.5 Add tests for warning capture and manifest presence
+- [ ] Task 5: Warning surfacing integration (AC: #5)
+  - [ ] 5.1 Preserve and expose warning metadata in `SimulationResult.metadata["warnings"]` and `RunManifest.warnings`
+  - [ ] 5.2 Ensure warnings stay non-blocking
+  - [ ] 5.3 Add tests that validate warning passthrough behavior, using Story 5-6 outputs when available
 
-- [ ] Task 6: Verify run-state error context preservation (AC: #3)
-  - [ ] 6.1 Confirm `OrchestratorError` preserves `partial_states`, `year`, `step_name`
-  - [ ] 6.2 Update `OrchestratorError.__str__()` to follow "[What] — [Why] — [Fix]" format
-  - [ ] 6.3 Ensure `SimulationResult` captures partial states when run fails mid-execution
-  - [ ] 6.4 Add integration tests verifying partial state recovery
-
-- [ ] Task 7: Final validation and documentation (AC: #1-#6)
-  - [ ] 7.1 Run full test suite focused on error paths
-  - [ ] 7.2 Verify no raw tracebacks appear in user-facing messages
-  - [ ] 7.3 Update API docstrings with error behavior documentation
-  - [ ] 7.4 Add error handling examples to notebooks if appropriate
+- [ ] Task 6: Final verification (AC: #1-#5)
+  - [ ] 6.1 Run targeted lint/type/test checks for touched modules
+  - [ ] 6.2 Verify no raw traceback text leaks to API users
+  - [ ] 6.3 Update API docstrings for revised error and warning behavior
 
 ## Dev Notes
 
@@ -115,9 +99,10 @@ Dependency gate: if any hard dependency below is not `done`, set this story to `
 
 This story implements FR4 and FR27 within the architecture's layered model:
 
-- **Interfaces layer**: `ConfigurationError` and `SimulationError` are the public-facing exception types. All subsystem exceptions should be wrapped in these before reaching user code.
-- **Exception wrapping pattern**: Lower-layer exceptions (`OrchestratorError`, `DataQualityError`, `ApiMappingError`) are caught and re-raised as `SimulationError` or `ConfigurationError` with the original as `cause`.
-- **UX design compliance**: Error format follows UX spec requirement: "[What failed] — [Why] — [How to fix]" with no raw exceptions exposed.
+- **Interfaces layer boundary**: User-facing error contracts are enforced in `interfaces/errors.py` and `interfaces/api.py`.
+- **Layer-preserving propagation**: Lower-layer exceptions (`OrchestratorError`, `DataQualityError`, `ApiMappingError`) keep structured context and are surfaced through the API boundary without leaking raw internals.
+- **Governance integration (no duplication)**: Warning generation remains owned by governance/orchestrator (Story 5-6); this story only standardizes API-facing presentation/surfacing.
+- **UX design compliance**: API-visible messages follow "[What failed] — [Why] — [How to fix]".
 
 ### Existing Error Patterns
 
@@ -146,14 +131,14 @@ governance/errors.py
 ```
 
 **Good patterns to preserve:**
-- `ApiMappingError` already uses "[summary] — [reason] — [fix]" format
+- `ApiMappingError` already carries structured suggestion metadata (`suggestions`, `invalid_names`, `valid_names`)
 - `OrchestratorError` has rich structured context (year, step, partial_states)
 - `DataQualityError` aggregates multiple issues
 
 **Patterns to improve:**
 - `ConfigurationError` message format inconsistent (sometimes auto-generated, sometimes custom)
 - `SimulationError` lacks structured fix guidance
-- Governance errors lack actionable fix suggestions
+- API boundary sometimes leaks low-level exception text directly
 
 ### Error Format Standard
 
@@ -172,37 +157,35 @@ Examples:
 
 In scope:
 - Python API exception message formatting improvements
-- Mapping error suggestion system
+- Mapping error context/suggestion presentation at API boundary
 - Aggregated validation errors
-- Warning integration for unvalidated templates
+- Warning surfacing from existing warning infrastructure
 - Partial state preservation in failure scenarios
 
 Out of scope (deferred):
 - GUI error display components (Story 6-4b)
 - FastAPI error response formatting (Story 6-4b)
 - Internationalization of error messages
-- Error logging infrastructure changes
+- New warning-generation infrastructure (Story 5-6 scope)
+- Broad governance exception redesign
 
 ### File Locations
 
 ```text
 src/reformlab/
 ├── interfaces/
-│   ├── errors.py           ← Enhance ConfigurationError, SimulationError; add ValidationErrors
-│   └── api.py              ← Update _validate_config() for aggregation
+│   ├── errors.py           ← Standardize `ConfigurationError`/`SimulationError`; add `ValidationErrors`
+│   └── api.py              ← Update validation aggregation and API-boundary error wrapping
 ├── computation/
-│   ├── exceptions.py       ← Enhance ApiMappingError suggestions
-│   ├── mapping.py          ← Integrate suggestion logic
-│   └── quality.py          ← Already compliant; minor format updates if needed
+│   ├── exceptions.py       ← Ensure mapping error payload supports API UX requirements
+│   └── mapping.py          ← Reuse/verify close-match suggestion behavior
 ├── orchestrator/
-│   └── errors.py           ← Update OrchestratorError format
-└── governance/
-    └── errors.py           ← Add fix guidance to manifest errors
+│   └── errors.py           ← Preserve run-state context for API wrapping
 
 tests/
-├── interfaces/test_errors.py  ← Add/extend error format tests
-├── computation/test_mapping_errors.py  ← Suggestion tests
-└── orchestrator/test_errors.py ← Partial state recovery tests
+├── interfaces/test_api.py      ← Error formatting, aggregation, and warning surfacing tests
+├── computation/test_mapping.py ← Mapping suggestion and context tests
+└── orchestrator/test_integration.py ← Partial-state propagation tests
 ```
 
 ### Project Structure Notes
