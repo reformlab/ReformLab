@@ -12,7 +12,7 @@ so that **I can assess the budgetary implications of environmental policies over
 
 From backlog (BKL-404), aligned with FR22 and NFR5.
 
-Scope note: this story extends the indicator engine from Stories 4-1, 4-2, and 4-3 by adding fiscal metrics computed from a single `PanelOutput`. Unlike welfare indicators which compare two panels, fiscal indicators aggregate revenue/cost fields within a single scenario run. The story reuses the existing `IndicatorResult` contract and `to_table()` pattern for downstream compatibility with Story 4-5.
+Scope note: this story extends the indicator engine primarily from Story 4-1 by adding fiscal metrics computed from a single `PanelOutput`. Unlike welfare indicators which compare two panels, fiscal indicators aggregate revenue/cost fields within a single scenario run. The story reuses the existing `IndicatorResult` contract and `to_table()` pattern for downstream compatibility with Story 4-5.
 
 1. **AC-1: Annual fiscal metrics computation**
    - Given a `PanelOutput` containing revenue and cost fields (e.g., `carbon_tax_collected`, `subsidy_paid`)
@@ -32,31 +32,25 @@ Scope note: this story extends the indicator engine from Stories 4-1, 4-2, and 4
    - Then all specified fields are summed into `revenue` and `cost` respectively
    - And unmapped numeric fields are not included in fiscal calculations
 
-4. **AC-4: Per-household fiscal detail (optional)**
-   - Given `per_household=True` in config
-   - When fiscal indicators are computed
-   - Then per-household mean and median fiscal impact are included
-   - And `mean_revenue_per_hh`, `mean_cost_per_hh`, `mean_balance_per_hh` metrics are available
-
-5. **AC-5: Multi-year support**
+4. **AC-4: Multi-year support**
    - Given a multi-year panel
-   - When analysis is requested with `by_year=True` (default)
+   - When analysis is requested with `by_year=True`
    - Then fiscal indicators are computed per year
    - And when `by_year=False` and `aggregate_years=True`, indicators are summed across all years
 
-6. **AC-6: Missing/null field handling**
+5. **AC-5: Missing/null field handling**
    - Given a panel with missing values in fiscal fields
    - When fiscal computation runs
    - Then null values are treated as zero for aggregation
    - And a warning is emitted with count of null values per field
 
-7. **AC-7: Empty panel handling**
+6. **AC-6: Empty panel handling**
    - Given an empty panel (no rows or no matching fiscal fields)
    - When fiscal indicators are computed
    - Then an empty `IndicatorResult` is returned with zero indicators
    - And a warning indicates no fiscal data was available
 
-8. **AC-8: Stable tabular result contract**
+7. **AC-7: Stable tabular result contract**
    - Given computed fiscal indicators
    - When `IndicatorResult.to_table()` is called
    - Then a PyArrow table is returned with stable long-form columns: `field_name`, `year`, `metric`, `value`
@@ -65,18 +59,18 @@ Scope note: this story extends the indicator engine from Stories 4-1, 4-2, and 4
 ## Tasks / Subtasks
 
 - [ ] Task 0: Confirm prerequisites and input contracts (AC: dependency check)
-  - [ ] 0.1 Verify Stories 4-1, 4-2, and 4-3 are `done` in `sprint-status.yaml`
+  - [ ] 0.1 Verify Story 4-1 is `done` in `_bmad-output/implementation-artifacts/sprint-status.yaml`
   - [ ] 0.2 Confirm `PanelOutput` contract in `src/reformlab/orchestrator/panel.py`
-  - [ ] 0.3 Review existing indicator types (`IndicatorResult`, `DecileIndicators`, `RegionIndicators`, `WelfareIndicators`) in `src/reformlab/indicators/types.py`
-  - [ ] 0.4 Identify fiscal-relevant output fields from `ComputationResult` pattern (likely `carbon_tax`, `subsidy`, etc.)
+  - [ ] 0.3 Review existing indicator types (`IndicatorResult`, `DecileIndicators`, `RegionIndicators`, `WelfareIndicators`) in `src/reformlab/indicators/types.py` for contract consistency
+  - [ ] 0.4 Identify fiscal-relevant output fields from `ComputationResult` outputs via configurable mapping (no hardcoded field names)
 
-- [ ] Task 1: Create fiscal indicator types and configuration models (AC: #1, #3, #8)
+- [ ] Task 1: Create fiscal indicator types and configuration models (AC: #1, #3, #7)
   - [ ] 1.1 Define `FiscalIndicators` dataclass for fiscal metric payloads in `src/reformlab/indicators/types.py`
-  - [ ] 1.2 Define `FiscalConfig` dataclass with `revenue_fields`, `cost_fields`, `by_year`, `aggregate_years`, `cumulative`, `per_household`
+  - [ ] 1.2 Define `FiscalConfig` dataclass with `revenue_fields`, `cost_fields`, `by_year`, `aggregate_years`, `cumulative`
   - [ ] 1.3 Ensure `IndicatorResult` can hold `FiscalIndicators` (extend union type in `indicators` field)
   - [ ] 1.4 Extend `IndicatorResult.to_table()` to support fiscal indicator output schema
 
-- [ ] Task 2: Implement annual fiscal computation (AC: #1, #5, #6)
+- [ ] Task 2: Implement annual fiscal computation (AC: #1, #4, #5)
   - [ ] 2.1 Create `src/reformlab/indicators/fiscal.py` module
   - [ ] 2.2 Implement `_compute_annual_totals()` internal function
   - [ ] 2.3 Sum `revenue_fields` columns into `revenue` total per year
@@ -89,58 +83,50 @@ Scope note: this story extends the indicator engine from Stories 4-1, 4-2, and 4
   - [ ] 3.2 Compute running cumulative sums from start year through each subsequent year
   - [ ] 3.3 Add `cumulative_revenue`, `cumulative_cost`, `cumulative_balance` metrics
 
-- [ ] Task 4: Implement per-household fiscal metrics (AC: #4)
-  - [ ] 4.1 Implement `_compute_per_household_metrics()` internal function
-  - [ ] 4.2 Compute `mean_revenue_per_hh`, `median_revenue_per_hh` per year
-  - [ ] 4.3 Compute `mean_cost_per_hh`, `median_cost_per_hh` per year
-  - [ ] 4.4 Compute `mean_balance_per_hh`, `median_balance_per_hh` per year
+- [ ] Task 4: Implement main fiscal computation API (AC: #1-#7)
+  - [ ] 4.1 Create `compute_fiscal_indicators(panel: PanelOutput, config: FiscalConfig)` main function
+  - [ ] 4.2 Validate config: ensure revenue_fields or cost_fields are provided
+  - [ ] 4.3 Validate panel: ensure at least one configured fiscal field exists
+  - [ ] 4.4 Support `by_year=True`, `by_year=False` with `aggregate_years=True`, and preserve annual detail when `by_year=False` and `aggregate_years=False`
+  - [ ] 4.5 Include cumulative metrics when `config.cumulative=True` and year detail is present
+  - [ ] 4.6 Return `IndicatorResult` with metadata and warnings
 
-- [ ] Task 5: Implement main fiscal computation API (AC: #1-#8)
-  - [ ] 5.1 Create `compute_fiscal_indicators(panel: PanelOutput, config: FiscalConfig)` main function
-  - [ ] 5.2 Validate config: ensure revenue_fields or cost_fields are provided
-  - [ ] 5.3 Validate panel: ensure at least one fiscal field exists
-  - [ ] 5.4 Support `by_year=True` (default), `by_year=False` with `aggregate_years=True`
-  - [ ] 5.5 Include cumulative metrics when `config.cumulative=True`
-  - [ ] 5.6 Include per-household metrics when `config.per_household=True`
-  - [ ] 5.7 Return `IndicatorResult` with metadata and warnings
+- [ ] Task 5: Handle edge cases (AC: #5, #6)
+  - [ ] 5.1 Handle empty panels gracefully (return empty IndicatorResult with warning)
+  - [ ] 5.2 Handle panels with no matching fiscal fields (return empty with warning)
+  - [ ] 5.3 Handle null values in fiscal fields (treat as zero, emit warning with count)
+  - [ ] 5.4 Handle single-year panels (cumulative values equal annual values when enabled)
 
-- [ ] Task 6: Handle edge cases (AC: #6, #7)
-  - [ ] 6.1 Handle empty panels gracefully (return empty IndicatorResult with warning)
-  - [ ] 6.2 Handle panels with no matching fiscal fields (return empty with warning)
-  - [ ] 6.3 Handle null values in fiscal fields (treat as zero, emit warning with count)
-  - [ ] 6.4 Handle single-year panels (skip cumulative computation or return identity)
+- [ ] Task 6: Add focused tests and quality gates (AC: all)
+  - [ ] 6.1 Create `tests/indicators/test_fiscal.py`
+  - [ ] 6.2 Test annual fiscal computation correctness
+  - [ ] 6.3 Test cumulative computation correctness
+  - [ ] 6.4 Test configurable field mapping
+  - [ ] 6.5 Test null value handling with warning
+  - [ ] 6.6 Test empty panel handling (AC-6)
+  - [ ] 6.7 Test single-year vs multi-year behavior
+  - [ ] 6.8 Test `IndicatorResult.to_table()` schema for fiscal indicators
+  - [ ] 6.9 Run `ruff check src/reformlab/indicators tests/indicators`
+  - [ ] 6.10 Run `mypy src/reformlab/indicators`
+  - [ ] 6.11 Run `pytest tests/indicators/test_fiscal.py -v`
 
-- [ ] Task 7: Add focused tests and quality gates (AC: all)
-  - [ ] 7.1 Create `tests/indicators/test_fiscal.py`
-  - [ ] 7.2 Test annual fiscal computation correctness
-  - [ ] 7.3 Test cumulative computation correctness
-  - [ ] 7.4 Test per-household metrics correctness
-  - [ ] 7.5 Test configurable field mapping
-  - [ ] 7.6 Test null value handling with warning
-  - [ ] 7.7 Test empty panel handling (AC-7)
-  - [ ] 7.8 Test single-year vs multi-year behavior
-  - [ ] 7.9 Test `IndicatorResult.to_table()` schema for fiscal indicators
-  - [ ] 7.10 Run `ruff check src/reformlab/indicators tests/indicators`
-  - [ ] 7.11 Run `mypy src/reformlab/indicators`
-  - [ ] 7.12 Run `pytest tests/indicators/test_fiscal.py -v`
-
-- [ ] Task 8: Module exports and API surface (AC: #8)
-  - [ ] 8.1 Export `compute_fiscal_indicators`, `FiscalConfig`, `FiscalIndicators` from `src/reformlab/indicators/__init__.py`
-  - [ ] 8.2 Add concise docstrings for public fiscal indicator functions/classes
+- [ ] Task 7: Module exports and API surface (AC: #7)
+  - [ ] 7.1 Export `compute_fiscal_indicators`, `FiscalConfig`, `FiscalIndicators` from `src/reformlab/indicators/__init__.py`
+  - [ ] 7.2 Add concise docstrings for public fiscal indicator functions/classes
 
 ## Dependencies
 
 - **Required prior stories:**
   - Story 4-1 (BKL-401): Distributional indicators — provides `IndicatorResult`, `DecileIndicators`, base patterns
-  - Story 4-2 (BKL-402): Geographic aggregation — provides `RegionIndicators`, warning patterns
-  - Story 4-3 (BKL-403): Welfare indicators — provides `WelfareIndicators`, multi-field aggregation patterns
   - Story 3-7 (BKL-307): `PanelOutput` as canonical input
 
-- **Current prerequisite status (from sprint-status.yaml):**
+- **Current prerequisite status (from `_bmad-output/implementation-artifacts/sprint-status.yaml`):**
   - `4-1-implement-distributional-indicators`: `done`
-  - `4-2-implement-geographic-aggregation-indicators`: `done`
-  - `4-3-implement-welfare-indicators`: `done`
   - `3-7-produce-scenario-year-panel-output`: `done`
+
+- **Helpful prior implementations (not hard dependencies):**
+  - Story 4-2 (BKL-402): Geographic aggregation — warning and aggregation patterns
+  - Story 4-3 (BKL-403): Welfare indicators — multi-metric table shaping patterns
 
 - **Follow-on stories:**
   - Story 4-5 (BKL-405): Scenario comparison tables across indicator families (depends on 4-2, 4-3, 4-4)
@@ -185,9 +171,6 @@ Compute annual totals (revenue, cost, balance) per year
 [if cumulative=True] Compute cumulative totals
          |
          v
-[if per_household=True] Compute mean/median per household
-         |
-         v
 IndicatorResult (with FiscalIndicators per year)
          |
          v
@@ -207,6 +190,7 @@ IndicatorResult.to_table() for downstream export/comparison
    ```python
    @dataclass
    class FiscalIndicators:
+       field_name: str  # stable label, e.g. "fiscal_summary"
        year: int | None
        revenue: float
        cost: float
@@ -214,13 +198,6 @@ IndicatorResult.to_table() for downstream export/comparison
        cumulative_revenue: float | None = None
        cumulative_cost: float | None = None
        cumulative_balance: float | None = None
-       mean_revenue_per_hh: float | None = None
-       mean_cost_per_hh: float | None = None
-       mean_balance_per_hh: float | None = None
-       median_revenue_per_hh: float | None = None
-       median_cost_per_hh: float | None = None
-       median_balance_per_hh: float | None = None
-       household_count: int = 0
    ```
 
 2. **FiscalConfig Dataclass:**
@@ -232,7 +209,6 @@ IndicatorResult.to_table() for downstream export/comparison
        by_year: bool = True
        aggregate_years: bool = False  # Only used when by_year=False
        cumulative: bool = True        # Compute cumulative totals
-       per_household: bool = False    # Include per-household metrics
    ```
 
 3. **Annual Aggregation:**
@@ -253,9 +229,10 @@ IndicatorResult.to_table() for downstream export/comparison
    - Emit warning with null counts per field
 
 6. **Multi-Year Modes:**
-   - `by_year=True` (default): One `FiscalIndicators` per year
+   - `by_year=True`: One `FiscalIndicators` per year
    - `by_year=False, aggregate_years=True`: Single `FiscalIndicators` summed across all years
-   - Cumulative metrics only make sense with `by_year=True`
+   - `by_year=False, aggregate_years=False`: Preserve annual detail for parity with existing indicator APIs
+   - Cumulative metrics only apply when year detail is present
 
 ### Code Patterns from Previous Stories to Reuse
 
@@ -278,7 +255,6 @@ From `src/reformlab/indicators/welfare.py`:
 - **In scope:**
   - Single-panel fiscal aggregation (revenue, cost, balance)
   - Annual and cumulative metrics
-  - Optional per-household breakdown
   - Configurable field mapping
   - Stable in-memory indicator table contract (`to_table()`)
 
@@ -286,6 +262,7 @@ From `src/reformlab/indicators/welfare.py`:
   - Baseline vs reform fiscal comparison (use Story 4-5 comparison tables)
   - Fiscal breakdown by income decile (combine with Story 4-1 distributional if needed)
   - Fiscal breakdown by region (combine with Story 4-2 geographic if needed)
+  - Per-household fiscal statistics (defer to follow-up story if needed)
   - CSV/Parquet file export methods on indicator objects (Story 4-5)
   - Governance manifest persistence for indicator outputs (Epic 5)
   - Net present value (NPV) or discounting calculations (Phase 2)
@@ -329,7 +306,6 @@ src/reformlab/indicators/
 Fiscal indicators feed into the GUI's comparison view:
 - Side-by-side scenario comparison shows fiscal balance trajectories
 - Annual and cumulative charts visualize budgetary implications
-- Per-household metrics help analysts understand individual impact
 
 The `to_table()` output format enables:
 - Chart rendering via Recharts/Nivo
