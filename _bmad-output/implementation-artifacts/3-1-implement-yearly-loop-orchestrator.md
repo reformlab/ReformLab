@@ -13,12 +13,12 @@ so that **I can analyze how environmental policies and their effects evolve over
 From backlog (BKL-301), aligned with FR13, FR18.
 
 1. **AC-1: Execute step pipeline for each year in projection horizon**
-   - Given a scenario with a 10-year horizon (e.g., 2025-2034), when the orchestrator runs, then it executes the step pipeline for each year from t to t+9 in order.
+   - Given a scenario with a 10-year horizon (e.g., 2025-2034), when the orchestrator runs, then it executes the configured ordered step pipeline for each year from t to t+9.
    - Each year receives the output state from the previous year as input.
    - Year execution order is strict: year t must complete before year t+1 begins.
 
 2. **AC-2: Handle empty step pipeline gracefully**
-   - Given an empty step pipeline (no registered steps), when the orchestrator runs, then it completes without error (no-op per year).
+   - Given an empty step pipeline (no configured steps), when the orchestrator runs, then it completes without error (no-op per year).
    - The orchestrator logs each year iteration even when no steps execute.
 
 3. **AC-3: Halt on step failure with clear error context**
@@ -33,13 +33,17 @@ From backlog (BKL-301), aligned with FR13, FR18.
    - Given a `WorkflowConfig` with `run_config.projection_years` and `run_config.start_year`, when the orchestrator runs, then it uses those values for the yearly loop bounds.
    - The orchestrator can be invoked through the `run_workflow()` handoff API when a runner is provided.
 
+## Dependencies
+
+- **Required prior stories:** BKL-202, BKL-203, BKL-207 (Story 2.7) must be `done` or `review` before implementation starts.
+- **Follow-on stories (not in scope):** BKL-302, BKL-303, BKL-304, BKL-305, BKL-306, BKL-307 consume and extend this foundation.
+
 ## Tasks / Subtasks
 
 - [ ] Task 0: Validate prerequisites and environment
-  - [ ] 0.1 Confirm Epic 2 stories are `done` or `review` in sprint-status.yaml (especially 2-7 workflow config)
+  - [ ] 0.1 Confirm upstream dependencies are `done` or `review`: BKL-202, BKL-203, and BKL-207 (Story 2.7 workflow config)
   - [ ] 0.2 Review existing `orchestrator/__init__.py` placeholder
-  - [ ] 0.3 Review `computation/adapter.py` interface for integration patterns
-  - [ ] 0.4 Review `templates/workflow.py` for `WorkflowConfig` and `RunConfig` structures
+  - [ ] 0.3 Review `templates/workflow.py` for `WorkflowConfig`, `RunConfig`, and `run_workflow()` handoff patterns
 
 - [ ] Task 1: Define orchestrator core types (AC: #1, #4, #5)
   - [ ] 1.1 Create `src/reformlab/orchestrator/types.py` with core dataclasses
@@ -48,17 +52,13 @@ From backlog (BKL-301), aligned with FR13, FR18.
     - `data`: dict[str, Any] - State data carried forward between years
     - `seed`: int | None - Random seed for this year (explicit, logged)
     - `metadata`: dict[str, Any] - Additional year-level metadata
-  - [ ] 1.3 Define `StepResult` dataclass:
-    - `step_name`: str - Name of the step that produced this result
-    - `year`: int - Year this result applies to
-    - `output_state`: dict[str, Any] - State updates from this step
-    - `metadata`: dict[str, Any] - Step execution metadata (timing, etc.)
+  - [ ] 1.3 Define lightweight step callable alias for this story (for example `YearStep = Callable[[int, YearState], YearState]`)
   - [ ] 1.4 Define `OrchestratorConfig` dataclass:
     - `start_year`: int - First year of projection
     - `end_year`: int - Last year of projection (inclusive)
     - `initial_state`: dict[str, Any] - Starting state for year 0
     - `seed`: int | None - Master random seed for determinism
-    - `step_pipeline`: list[str] - Ordered list of registered step names
+    - `step_pipeline`: list[YearStep] - Ordered step callables executed per year
   - [ ] 1.5 Define `OrchestratorResult` dataclass:
     - `success`: bool - Whether orchestration completed
     - `yearly_states`: dict[int, YearState] - State at end of each year
@@ -67,70 +67,48 @@ From backlog (BKL-301), aligned with FR13, FR18.
     - `failed_step`: str | None - Step that caused failure
     - `metadata`: dict[str, Any] - Orchestration-level metadata
 
-- [ ] Task 2: Define step interface (AC: #1, #2, #3)
-  - [ ] 2.1 Create `src/reformlab/orchestrator/steps.py` with step protocol
-  - [ ] 2.2 Define `OrchestratorStep` Protocol:
-    - `name: str` property - Unique step identifier
-    - `execute(year: int, state: YearState) -> StepResult` method
-  - [ ] 2.3 Document step contract: steps must be pure functions of (year, state) for determinism
-  - [ ] 2.4 Add `StepError` exception for step-level failures with context fields
-
-- [ ] Task 3: Implement step registry (AC: #1, #2)
-  - [ ] 3.1 Add `StepRegistry` class in `steps.py`
-  - [ ] 3.2 Implement `register(step: OrchestratorStep)` method
-  - [ ] 3.3 Implement `get(name: str) -> OrchestratorStep` method
-  - [ ] 3.4 Implement `list_steps() -> list[str]` method
-  - [ ] 3.5 Handle duplicate registration with clear error
-  - [ ] 3.6 Create module-level default registry: `default_registry`
-
-- [ ] Task 4: Implement yearly loop orchestrator core (AC: #1, #2, #3, #4)
-  - [ ] 4.1 Create `src/reformlab/orchestrator/runner.py`
-  - [ ] 4.2 Implement `Orchestrator` class:
-    - `__init__(config: OrchestratorConfig, registry: StepRegistry | None)`
+- [ ] Task 2: Implement yearly loop orchestrator core (AC: #1, #2, #4)
+  - [ ] 2.1 Create `src/reformlab/orchestrator/runner.py`
+  - [ ] 2.2 Implement `Orchestrator` class:
+    - `__init__(config: OrchestratorConfig)`
     - `run() -> OrchestratorResult` - Main execution method
     - `_run_year(year: int, state: YearState) -> YearState` - Single year execution
-    - `_execute_step(step: OrchestratorStep, year: int, state: YearState) -> StepResult`
-  - [ ] 4.3 Implement deterministic year iteration: `range(start_year, end_year + 1)`
-  - [ ] 4.4 Implement state carry-forward: each year starts with previous year's end state
-  - [ ] 4.5 Implement seed propagation: derive year-level seeds from master seed if provided
-  - [ ] 4.6 Add logging for each year start/end and step execution
+    - `_execute_step(step: YearStep, year: int, state: YearState) -> YearState`
+  - [ ] 2.3 Implement deterministic year iteration: `range(start_year, end_year + 1)`
+  - [ ] 2.4 Implement ordered step execution from `config.step_pipeline`
+  - [ ] 2.5 Implement state carry-forward: each year starts with previous year's end state
+  - [ ] 2.6 Add logging for each year start/end and step execution
 
-- [ ] Task 5: Implement error handling and partial results (AC: #3)
-  - [ ] 5.1 Wrap step execution in try/except with context preservation
-  - [ ] 5.2 On step failure, capture: step name, year, original exception, traceback
-  - [ ] 5.3 Store partial results (completed years) in `OrchestratorResult`
-  - [ ] 5.4 Define `OrchestratorError` exception with structured fields:
-    - `year`: int
-    - `step_name`: str
-    - `original_error`: Exception
-    - `partial_states`: dict[int, YearState]
+- [ ] Task 3: Implement error handling and deterministic seed controls (AC: #3, #4)
+  - [ ] 3.1 Create `src/reformlab/orchestrator/errors.py` with `OrchestratorError`
+  - [ ] 3.2 Wrap step execution in try/except with context preservation
+  - [ ] 3.3 On step failure, capture: step identity, year, original exception, traceback
+  - [ ] 3.4 Store partial results (completed years) in `OrchestratorResult`
+  - [ ] 3.5 Implement seed propagation: derive year-level seeds from master seed if provided
 
-- [ ] Task 6: Implement WorkflowConfig integration (AC: #5)
-  - [ ] 6.1 Add `from_workflow_config(config: WorkflowConfig) -> OrchestratorConfig` factory
-  - [ ] 6.2 Map `run_config.projection_years` + `run_config.start_year` to orchestrator bounds
-  - [ ] 6.3 Create `OrchestratorRunner` class implementing the runner interface for `run_workflow()`
-  - [ ] 6.4 Implement `OrchestratorRunner.run(request: dict) -> WorkflowResult`
-  - [ ] 6.5 Register default runner in orchestrator module for workflow handoff
+- [ ] Task 4: Implement WorkflowConfig integration (AC: #5)
+  - [ ] 4.1 Add `from_workflow_config(config: WorkflowConfig) -> OrchestratorConfig` factory
+  - [ ] 4.2 Map `run_config.projection_years` + `run_config.start_year` to orchestrator bounds
+  - [ ] 4.3 Create `OrchestratorRunner` class implementing runner interface for `run_workflow()`
+  - [ ] 4.4 Implement `OrchestratorRunner.run(request: dict) -> WorkflowResult`
 
-- [ ] Task 7: Add tests (AC: all)
-  - [ ] 7.1 Create `tests/orchestrator/test_types.py` - Type validation tests
-  - [ ] 7.2 Create `tests/orchestrator/test_steps.py` - Step registry tests
-  - [ ] 7.3 Create `tests/orchestrator/test_runner.py` - Core orchestrator tests:
+- [ ] Task 5: Add tests (AC: all)
+  - [ ] 5.1 Create `tests/orchestrator/test_runner.py` - Core orchestrator tests:
     - Test 10-year loop completes successfully
     - Test empty pipeline completes without error
     - Test step failure halts with correct error context
     - Test deterministic execution (same inputs = same outputs)
     - Test state carry-forward between years
     - Test seed propagation for reproducibility
-  - [ ] 7.4 Create `tests/orchestrator/test_integration.py` - WorkflowConfig integration tests
-  - [ ] 7.5 Add fixture for mock step implementations
+  - [ ] 5.2 Create `tests/orchestrator/test_integration.py` - WorkflowConfig integration tests
+  - [ ] 5.3 Add fixture for mock step implementations
 
-- [ ] Task 8: Export APIs and finalize (AC: all)
-  - [ ] 8.1 Update `src/reformlab/orchestrator/__init__.py` with public exports
-  - [ ] 8.2 Add docstrings for all public APIs
-  - [ ] 8.3 Run `ruff check` and `mypy` on orchestrator module
-  - [ ] 8.4 Run full test suite: `pytest tests/orchestrator/`
-  - [ ] 8.5 Verify all tests pass
+- [ ] Task 6: Export APIs and finalize (AC: all)
+  - [ ] 6.1 Update `src/reformlab/orchestrator/__init__.py` with public exports
+  - [ ] 6.2 Add docstrings for all public APIs
+  - [ ] 6.3 Run `ruff check` and `mypy` on orchestrator module
+  - [ ] 6.4 Run full test suite: `pytest tests/orchestrator/`
+  - [ ] 6.5 Verify all tests pass
 
 ## Dev Notes
 
@@ -175,9 +153,9 @@ This story implements the outer yearly loop and step pipeline execution infrastr
   - `WorkflowError` for structured error reporting
   - `run_workflow()` runner injection pattern
 
-- **`src/reformlab/templates/registry.py`:**
-  - Registry pattern with `register()`, `get()`, `list()`
-  - Error handling for missing/duplicate entries
+- **`src/reformlab/orchestrator/__init__.py`:**
+  - Public export pattern used by subsystem packages
+  - Keep exports narrow in this story; expand in follow-on stories
 
 ### Previous Story Intelligence (Story 2.7)
 
@@ -201,11 +179,8 @@ Recent commits show consistent patterns:
 
 **New files:**
 - `src/reformlab/orchestrator/types.py` - Core dataclasses
-- `src/reformlab/orchestrator/steps.py` - Step protocol and registry
 - `src/reformlab/orchestrator/runner.py` - Orchestrator implementation
 - `src/reformlab/orchestrator/errors.py` - Error classes
-- `tests/orchestrator/test_types.py`
-- `tests/orchestrator/test_steps.py`
 - `tests/orchestrator/test_runner.py`
 - `tests/orchestrator/test_integration.py`
 - `tests/orchestrator/conftest.py` - Test fixtures
@@ -215,6 +190,7 @@ Recent commits show consistent patterns:
 
 ### Key Dependencies
 
+- **Stories BKL-202 and BKL-203:** Template packs available so the orchestrator can run realistic ordered pipelines (prerequisite from backlog)
 - **Story 2.7 / BKL-207:** WorkflowConfig and run_workflow() for configuration binding (prerequisite)
 - **Standard library:** `dataclasses`, `typing`, `logging`
 - **Internal modules:**
@@ -222,7 +198,7 @@ Recent commits show consistent patterns:
 
 ### Cross-Story Dependencies in Epic 3
 
-- **Story 3-2 (BKL-302):** Defines the full step interface and registration mechanism - will refine/extend what we create here
+- **Story 3-2 (BKL-302):** Defines the formal step interface and step registration mechanism; this story only consumes an ordered callable pipeline
 - **Story 3-3 (BKL-303):** Carry-forward step - first step implementation, plugs into this infrastructure
 - **Story 3-4 (BKL-304):** Vintage transition step - plugs into this infrastructure
 - **Story 3-5 (BKL-305):** ComputationAdapter integration - integrates adapter calls into yearly loop
@@ -238,6 +214,7 @@ This story creates the foundation that all other Epic 3 stories build upon.
 - No carry-forward step implementation (Story 3-3)
 - No panel output generation (Story 3-7)
 - No manifest/lineage generation (Epic 5)
+- No formal step protocol/registry implementation (Story 3-2)
 - No parallel step execution (single-threaded for determinism)
 
 ### Implementation Guidelines
@@ -250,10 +227,8 @@ class Orchestrator:
     def __init__(
         self,
         config: OrchestratorConfig,
-        registry: StepRegistry | None = None,
     ) -> None:
         self.config = config
-        self.registry = registry or default_registry
 
     def run(self) -> OrchestratorResult:
         """Execute the full projection from start_year to end_year."""
@@ -268,7 +243,7 @@ class Orchestrator:
             try:
                 current_state = self._run_year(year, current_state)
                 yearly_states[year] = current_state
-            except StepError as e:
+            except OrchestratorError as e:
                 return OrchestratorResult(
                     success=False,
                     yearly_states=yearly_states,
@@ -280,20 +255,15 @@ class Orchestrator:
         return OrchestratorResult(success=True, yearly_states=yearly_states)
 ```
 
-**Step Protocol:**
+**Pipeline Shape for This Story (pre-BKL-302):**
 ```python
-@runtime_checkable
-class OrchestratorStep(Protocol):
-    """Interface for orchestrator pipeline steps."""
+YearStep = Callable[[int, YearState], YearState]
 
-    @property
-    def name(self) -> str:
-        """Unique step identifier."""
-        ...
-
-    def execute(self, year: int, state: YearState) -> StepResult:
-        """Execute step for given year and state."""
-        ...
+def _run_year(self, year: int, state: YearState) -> YearState:
+    current = state
+    for step in self.config.step_pipeline:
+        current = step(year, current)
+    return current
 ```
 
 **Error Pattern (follow WorkflowError style):**
