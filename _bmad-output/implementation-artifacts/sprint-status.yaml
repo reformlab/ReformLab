@@ -95,8 +95,8 @@ development_status:
   epic-5-retrospective: optional
 
   # EPIC-6: Interfaces (Python API, Notebooks, Early No-Code GUI)
-  epic-6: backlog
-  6-1-implement-stable-python-api: backlog
+  epic-6: in-progress
+  6-1-implement-stable-python-api: ready-for-dev
   6-2-build-quickstart-notebook: backlog
   6-3-build-advanced-notebook: backlog
   6-4a-build-static-gui-prototype: backlog
