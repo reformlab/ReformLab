@@ -53,11 +53,7 @@ Scope note: this story extends the indicator engine from Story 4-1 by adding geo
    - Then a PyArrow table is returned with stable columns for region, metric, field name, and value
    - And the table schema is compatible with Story 4-1's distributional indicators for downstream comparison
 
-7. **AC-7: Region hierarchy support (optional enhancement)**
-   - Given a reference table mapping region codes to higher-level aggregations (e.g., department → region)
-   - When geographic aggregation is invoked with `aggregate_level="region"`
-   - Then results are grouped at the specified hierarchy level
-   - Note: This is a stretch goal; basic single-level region grouping is the MVP requirement
+Deferred enhancement (not part of this story's acceptance criteria): region hierarchy rollups (for example, department → region) should be handled in a dedicated follow-up story to keep MVP scope focused.
 
 ## Tasks / Subtasks
 
@@ -69,7 +65,7 @@ Scope note: this story extends the indicator engine from Story 4-1 by adding geo
 
 - [ ] Task 1: Create geographic indicator types and configuration models (AC: #1, #4, #6)
   - [ ] 1.1 Define `RegionIndicators` dataclass for region-level metric payloads (parallel to `DecileIndicators`)
-  - [ ] 1.2 Define `GeographicConfig` dataclass (`region_field`, `by_year`, `aggregate_years`, optional `reference_table`, optional `aggregate_level`)
+  - [ ] 1.2 Define `GeographicConfig` dataclass (`region_field`, `by_year`, `aggregate_years`, optional `reference_table`)
   - [ ] 1.3 Add definitions to `src/reformlab/indicators/types.py`
   - [ ] 1.4 Ensure `IndicatorResult` can hold both `DecileIndicators` and `RegionIndicators` (consider union type or base class)
 
@@ -198,6 +194,11 @@ IndicatorResult.to_table() for downstream export/comparison workflows
    - Column names: `field_name`, `region` (instead of `decile`), `year`, `metric`, `value`
    - This enables Story 4-5 to compare across indicator types
 
+7. **Hierarchy Rollups Are Deferred:**
+   - Do not implement region hierarchy/level rollups in this story
+   - Keep `GeographicConfig` scoped to base region grouping plus optional reference-table validation
+   - Capture hierarchy rollups as a follow-up backlog item to protect Story 4-2 delivery size
+
 ### Code Patterns from Story 4-1 to Reuse
 
 From `src/reformlab/indicators/deciles.py`:
@@ -226,7 +227,7 @@ From `src/reformlab/indicators/distributional.py`:
   - CSV/Parquet file export methods on indicator objects
   - Scenario side-by-side comparison tables across indicator families (Story 4-5)
   - Governance manifest persistence for indicator outputs (Epic 5)
-  - Complex region hierarchy rollups (optional enhancement, not MVP required)
+  - Region hierarchy rollups (deferred to a dedicated follow-up story)
 
 ### File Structure
 
