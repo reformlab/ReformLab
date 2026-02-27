@@ -23,7 +23,7 @@ Scope note: this story adds a `ComputationStep` that invokes the adapter at each
 2. **AC-2: Step satisfies orchestrator plugin contract**
    - `ComputationStep` implements the `OrchestratorStep` protocol from Story 3-2 (`name`, `execute`).
    - Given registration in `StepRegistry`, when a pipeline is built and executed, then the step runs in the correct position according to declared dependencies.
-   - Default pipeline order: `computation` runs before `vintage_transition` and `carry_forward` (adapter computes first, then state transitions apply).
+   - Default MVP pipeline order: `computation` runs before `vintage_transition` and `carry_forward` (adapter computes first, then state transitions apply), enforced by deterministic registration order and/or explicit `depends_on=("computation",)` edges on transition steps.
 
 3. **AC-3: Mock adapter enables full pipeline testing**
    - Given a `MockAdapter` configured with test outputs, when the orchestrator runs the full yearly loop, then the pipeline completes using mock results without requiring OpenFisca installed.
@@ -40,10 +40,11 @@ Scope note: this story adds a `ComputationStep` that invokes the adapter at each
 
 ## Dependencies
 
-- **Required prior stories:**
+- **Required prior stories (core implementation):**
   - Story 1-1 (BKL-101): ComputationAdapter interface and OpenFiscaAdapter - provides `ComputationAdapter` protocol, `MockAdapter`, `ComputationResult`, `PopulationData`, `PolicyConfig`
   - Story 3-1 (BKL-301): Yearly loop orchestrator - provides `Orchestrator`, `YearState`, `OrchestratorConfig`
   - Story 3-2 (BKL-302): Step interface - provides `OrchestratorStep` Protocol, `StepRegistry`, `@step` decorator
+- **Required for full-pipeline integration coverage:**
   - Story 3-3 (BKL-303): Carry-forward step - established transition-step implementation pattern
   - Story 3-4 (BKL-304): Vintage transition step - completed, provides additional pipeline step context
 - **Current prerequisite status (from `_bmad-output/implementation-artifacts/sprint-status.yaml`, checked 2026-02-27):**
@@ -68,19 +69,19 @@ Scope note: this story adds a `ComputationStep` that invokes the adapter at each
 - [ ] Task 1: Define computation step types and errors (AC: #1, #4)
   - [ ] 1.1 Create `src/reformlab/orchestrator/computation_step.py` with:
     - `ComputationStepError` for adapter-related failures with context
-  - [ ] 1.2 Define stable state keys for computation results:
-    - `COMPUTATION_RESULT_KEY = "computation_result"`
-    - `COMPUTATION_METADATA_KEY = "computation_metadata"`
+  - [ ] 1.2 Define stable keys for yearly computation payloads:
+    - `COMPUTATION_RESULT_KEY = "computation_result"` (stored in `YearState.data`)
+    - `COMPUTATION_METADATA_KEY = "computation_metadata"` (stored in `YearState.metadata`)
 
 - [ ] Task 2: Implement `ComputationStep` (AC: #1, #2, #5)
   - [ ] 2.1 Implement `ComputationStep` class implementing `OrchestratorStep` protocol:
     - Constructor accepts: `adapter: ComputationAdapter`, `population: PopulationData`, `policy: PolicyConfig`
     - `name` property returns `"computation"`
-    - Optional `depends_on` defaults to empty tuple (computation runs first)
+    - Optional `depends_on` defaults to empty tuple (computation is independent; order is then controlled by deterministic registration order unless explicit dependency edges are configured)
   - [ ] 2.2 Implement `execute(year, state)` method:
     - Call `adapter.compute(population, policy, year)`
     - Store `ComputationResult` in `YearState.data[COMPUTATION_RESULT_KEY]`
-    - Store execution metadata (adapter version, period, row count) in `YearState.metadata`
+    - Store execution metadata (adapter version, period, row count) in `YearState.metadata[COMPUTATION_METADATA_KEY]`
     - Return new immutable state via `replace(state, data=..., metadata=...)`
   - [ ] 2.3 Implement error handling:
     - Catch adapter exceptions and wrap with `ComputationStepError`
@@ -92,7 +93,7 @@ Scope note: this story adds a `ComputationStep` that invokes the adapter at each
     - Step protocol conformance (name, execute signature)
     - Correct adapter invocation per year
     - Result storage in `YearState.data`
-    - Metadata recording (adapter version, period)
+    - Metadata recording in `YearState.metadata[COMPUTATION_METADATA_KEY]`
   - [ ] 3.2 Add error handling tests:
     - Adapter failure produces `ComputationStepError` with context
     - Error includes adapter version and year
@@ -101,7 +102,7 @@ Scope note: this story adds a `ComputationStep` that invokes the adapter at each
     - Full pipeline with MockAdapter + VintageTransitionStep + CarryForwardStep
     - Multi-year execution produces computation results for each year
     - Pipeline ordering: computation -> vintage -> carry_forward
-    - Partial results preserved on mid-pipeline failure
+    - Partial results (completed years) preserved on year `t+2` adapter failure
 
 - [ ] Task 4: Export API and run quality gates (AC: all)
   - [ ] 4.1 Update `src/reformlab/orchestrator/__init__.py` exports:
@@ -110,7 +111,7 @@ Scope note: this story adds a `ComputationStep` that invokes the adapter at each
   - [ ] 4.2 Add concise docstrings for public APIs
   - [ ] 4.3 Run `ruff check src/reformlab/orchestrator tests/orchestrator`
   - [ ] 4.4 Run `mypy src/reformlab/orchestrator`
-  - [ ] 4.5 Run targeted tests: `pytest tests/orchestrator tests/computation`
+  - [ ] 4.5 Run targeted tests: `pytest tests/orchestrator/test_computation_step.py tests/orchestrator/test_computation_integration.py tests/orchestrator/test_runner.py tests/computation/test_mock_adapter.py`
 
 ## Dev Notes
 
@@ -156,7 +157,9 @@ The step pipeline should execute in this order per year:
 2. **vintage_transition** - Age cohorts and apply fleet turnover rules
 3. **carry_forward** - Update demographic and income state variables
 
-This ordering matches the architecture document sequence. The `ComputationStep` should declare no dependencies (runs first), while vintage and carry-forward steps can optionally depend on computation if their logic needs adapter results.
+This ordering matches the currently implemented step sequence in the architecture (computation before transition steps). The `ComputationStep` should declare no dependencies (runs first), while vintage and carry-forward steps can optionally depend on computation if their logic needs adapter results.
+
+Architecture also includes environmental template application between computation and transition steps. That template-layer integration is out of scope for this story and remains covered by EPIC-2 + later orchestration wiring stories.
 
 For MVP, computation results are stored in state but not yet consumed by transition steps. Story 3-7 (panel output) will aggregate these results. Future stories in EPIC-4 (indicators) will consume the computation results.
 
@@ -166,7 +169,9 @@ For MVP, computation results are stored in state but not yet consumed by transit
 # Stable keys for computation data in YearState.data
 COMPUTATION_RESULT_KEY = "computation_result"  # Full ComputationResult object
 
-# Metadata stored in YearState.metadata
+# Stable key for computation metadata payload in YearState.metadata
+COMPUTATION_METADATA_KEY = "computation_metadata"
+# Computation metadata payload fields:
 # - "adapter_version": str - version of adapter used
 # - "computation_period": int - period passed to compute()
 # - "computation_row_count": int - rows in output table
@@ -211,7 +216,7 @@ The orchestrator's existing error handling will wrap this in `OrchestratorError`
 - Use `MockAdapter` for all unit and integration tests - no OpenFisca dependency
 - Verify call_log on `MockAdapter` to confirm correct invocation parameters
 - Test multi-year pipelines with computation + vintage + carry_forward steps
-- Verify partial state preservation on mid-execution failures
+- Verify partial state preservation when adapter failure occurs at year `t+2`
 - Assert determinism by running the same configuration twice and comparing results
 
 ### References
