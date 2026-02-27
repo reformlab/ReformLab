@@ -1,6 +1,6 @@
 # Story 3.4: Implement Vintage Transition Step
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -53,60 +53,60 @@ Scope note: this story implements one MVP asset class (`vehicle`) in the `vintag
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Confirm prerequisites and implementation boundaries (AC: dependency check)
-  - [ ] 0.1 Verify Story 3-1, 3-2, and 3-3 status is `done` in `sprint-status.yaml`
-  - [ ] 0.2 Review `OrchestratorStep` and `StepRegistry` contracts in `src/reformlab/orchestrator/step.py`
-  - [ ] 0.3 Review `YearState` data contract in `src/reformlab/orchestrator/types.py`
-  - [ ] 0.4 Record boundary note: no panel-output generation in this story
+- [x] Task 0: Confirm prerequisites and implementation boundaries (AC: dependency check)
+  - [x] 0.1 Verify Story 3-1, 3-2, and 3-3 status is `done` in `sprint-status.yaml`
+  - [x] 0.2 Review `OrchestratorStep` and `StepRegistry` contracts in `src/reformlab/orchestrator/step.py`
+  - [x] 0.3 Review `YearState` data contract in `src/reformlab/orchestrator/types.py`
+  - [x] 0.4 Record boundary note: no panel-output generation in this story
 
-- [ ] Task 1: Define vintage domain types and errors (AC: #1, #5)
-  - [ ] 1.1 Create `src/reformlab/vintage/types.py` with immutable dataclasses:
+- [x] Task 1: Define vintage domain types and errors (AC: #1, #5)
+  - [x] 1.1 Create `src/reformlab/vintage/types.py` with immutable dataclasses:
     - `VintageCohort` (age, count, attributes)
     - `VintageState` (asset_class, cohorts, optional metadata)
     - `VintageSummary` (derived metrics used by downstream consumers)
-  - [ ] 1.2 Create `src/reformlab/vintage/errors.py`:
+  - [x] 1.2 Create `src/reformlab/vintage/errors.py`:
     - `VintageConfigError`
     - `VintageTransitionError`
-  - [ ] 1.3 Keep MVP scope to one implemented asset class (`vehicle`) while leaving extension points for future classes
+  - [x] 1.3 Keep MVP scope to one implemented asset class (`vehicle`) while leaving extension points for future classes
 
-- [ ] Task 2: Define and validate vintage configuration (AC: #2)
-  - [ ] 2.1 Create `src/reformlab/vintage/config.py` with:
+- [x] Task 2: Define and validate vintage configuration (AC: #2)
+  - [x] 2.1 Create `src/reformlab/vintage/config.py` with:
     - `VintageTransitionRule` (rule type + parameters)
     - `VintageConfig` (asset class, transition rules, retirement settings, optional initial state)
-  - [ ] 2.2 Validate config invariants with explicit errors:
+  - [x] 2.2 Validate config invariants with explicit errors:
     - required rule coverage for aging/entry/retirement behavior
     - non-negative counts/rates and valid age bounds
     - required `asset_class == "vehicle"` for MVP implementation path
-  - [ ] 2.3 Ensure validation messages include actionable fix context
+  - [x] 2.3 Ensure validation messages include actionable fix context
 
-- [ ] Task 3: Implement `VintageTransitionStep` (AC: #1, #3, #4, #5)
-  - [ ] 3.1 Create `src/reformlab/vintage/transition.py` with `VintageTransitionStep` implementing `OrchestratorStep`
-  - [ ] 3.2 Implement deterministic transition sequence in `execute(year, state)`:
+- [x] Task 3: Implement `VintageTransitionStep` (AC: #1, #3, #4, #5)
+  - [x] 3.1 Create `src/reformlab/vintage/transition.py` with `VintageTransitionStep` implementing `OrchestratorStep`
+  - [x] 3.2 Implement deterministic transition sequence in `execute(year, state)`:
     - age existing cohorts
     - apply retirement/removal by configured max age
     - add entry cohorts (`age = 0`) from config/state inputs
-  - [ ] 3.3 Read/write vintage state via stable `YearState.data["vintage_vehicle"]` contract
-  - [ ] 3.4 Return new immutable state via `replace(state, data=...)`
-  - [ ] 3.5 Do not hard-code dependency on carry-forward; rely on pipeline build order/declared dependencies from orchestrator composition
+  - [x] 3.3 Read/write vintage state via stable `YearState.data["vintage_vehicle"]` contract
+  - [x] 3.4 Return new immutable state via `replace(state, data=...)`
+  - [x] 3.5 Do not hard-code dependency on carry-forward; rely on pipeline build order/declared dependencies from orchestrator composition
 
-- [ ] Task 4: Add tests for behavior, determinism, and integration (AC: all)
-  - [ ] 4.1 Create `tests/vintage/test_config.py` for config validation and error paths
-  - [ ] 4.2 Create `tests/vintage/test_transition.py` covering:
+- [x] Task 4: Add tests for behavior, determinism, and integration (AC: all)
+  - [x] 4.1 Create `tests/vintage/test_config.py` for config validation and error paths
+  - [x] 4.2 Create `tests/vintage/test_transition.py` covering:
     - cohort aging
     - entry cohort creation
     - retirement/removal behavior
     - deterministic outputs for identical inputs/seeds
-  - [ ] 4.3 Create `tests/vintage/test_integration.py` covering:
+  - [x] 4.3 Create `tests/vintage/test_integration.py` covering:
     - `StepRegistry` registration and orchestrator execution
     - pipeline order scenario where vintage is registered before carry-forward
     - yearly state key visibility for downstream consumption
 
-- [ ] Task 5: Export API and run quality gates (AC: all)
-  - [ ] 5.1 Update `src/reformlab/vintage/__init__.py` exports (`VintageCohort`, `VintageState`, `VintageSummary`, `VintageConfig`, `VintageTransitionRule`, `VintageTransitionStep`, error classes)
-  - [ ] 5.2 Add concise docstrings for public APIs
-  - [ ] 5.3 Run `ruff check src/reformlab/vintage tests/vintage`
-  - [ ] 5.4 Run `mypy src/reformlab/vintage`
-  - [ ] 5.5 Run targeted tests: `pytest tests/vintage tests/orchestrator`
+- [x] Task 5: Export API and run quality gates (AC: all)
+  - [x] 5.1 Update `src/reformlab/vintage/__init__.py` exports (`VintageCohort`, `VintageState`, `VintageSummary`, `VintageConfig`, `VintageTransitionRule`, `VintageTransitionStep`, error classes)
+  - [x] 5.2 Add concise docstrings for public APIs
+  - [x] 5.3 Run `ruff check src/reformlab/vintage tests/vintage`
+  - [x] 5.4 Run `mypy src/reformlab/vintage`
+  - [x] 5.5 Run targeted tests: `pytest tests/vintage tests/orchestrator`
 
 ## Dev Notes
 
@@ -172,10 +172,39 @@ Scope note: this story implements one MVP asset class (`vehicle`) in the `vintag
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.5 (claude-opus-4-5-20251101)
 
 ### Debug Log References
 
 ### Completion Notes List
 
+- Implemented full vintage subsystem for vehicle asset class (MVP scope)
+- Created immutable domain types: `VintageCohort`, `VintageState`, `VintageSummary`
+- Implemented configuration-driven transitions with validation: `VintageConfig`, `VintageTransitionRule`
+- Created `VintageTransitionStep` implementing `OrchestratorStep` protocol
+- Transition behavior: aging (+1), max-age retirement, fixed/proportional entry
+- State stored at stable key `vintage_vehicle` in `YearState.data`
+- All operations deterministic (sorted cohort processing, immutable state updates)
+- 65 comprehensive tests covering config validation, transition behavior, and orchestrator integration
+- Quality gates passed: ruff (0 issues), mypy (0 issues), pytest (817 passed, 2 skipped)
+- Updated scaffold test to reflect vintage package implementation
+
 ### File List
+
+**New files:**
+- src/reformlab/vintage/errors.py
+- src/reformlab/vintage/types.py
+- src/reformlab/vintage/config.py
+- src/reformlab/vintage/transition.py
+- tests/vintage/test_types.py
+- tests/vintage/test_config.py
+- tests/vintage/test_transition.py
+- tests/vintage/test_integration.py
+
+**Modified files:**
+- src/reformlab/vintage/__init__.py (was empty, now exports public API)
+- tests/test_scaffold.py (removed vintage from scaffold-only list)
+
+## Change Log
+
+- 2026-02-27: Implemented Story 3-4 vintage transition step with full test coverage

@@ -68,7 +68,7 @@ development_status:
   3-1-implement-yearly-loop-orchestrator: done
   3-2-define-orchestrator-step-interface: done
   3-3-implement-carry-forward-step: done
-  3-4-implement-vintage-transition-step: ready-for-dev
+  3-4-implement-vintage-transition-step: review
   3-5-integrate-computationadapter-calls: backlog
   3-6-log-seed-controls: backlog
   3-7-produce-scenario-year-panel-output: backlog
