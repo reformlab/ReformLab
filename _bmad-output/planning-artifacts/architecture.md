@@ -206,13 +206,15 @@ Steps are registered as plugins. Phase 1 ships vintage transitions and state car
 
 ### Deployment Decision
 
-The no-code GUI (EPIC-6) will be a web application with a React/TypeScript frontend and a FastAPI Python backend, deployed on Scaleway Serverless infrastructure in Paris. The MVP is deployed from day one to enable sharing with colleagues (2-10 users).
+The no-code GUI (EPIC-6) will be a web application with a React/TypeScript frontend and a FastAPI Python backend, deployed on a Hetzner VPS using Kamal 2 (Docker-based deployment tool). The MVP is deployed from day one to enable sharing with colleagues (2-10 users).
 
 ### Rationale
 
 - **Same stack for MVP and future phases** — no throwaway prototype. The MVP GUI uses the same React + Shadcn/ui + Tailwind + FastAPI stack specified in the UX design document. Phase 3 (public web app) extends rather than replaces.
-- **Scaleway** chosen for: French datacenter (Paris), GDPR compliance, European sovereignty (Groupe Iliad), cost (~0-5 EUR/month on Serverless free tier), and ongoing SecNumCloud qualification process with ANSSI.
-- **Git push = auto-deploy** via GitHub Actions. Setup once, then deployment is fully automated on every push to master.
+- **Hetzner** chosen for: best price/performance in Europe (~3.29 EUR/month for CX22), EU datacenter (Germany), GDPR compliance, not subject to US Cloud Act.
+- **Kamal 2** chosen for: zero-downtime Docker deployments via SSH, built-in Traefik reverse proxy with automatic HTTPS, single YAML config file, language-agnostic (works with Python, Node, any Docker image), rollback in one command. Created by DHH (Rails creator), standard in Rails 8, but fully framework-agnostic.
+- **Provider-agnostic** — Kamal deploys to any Linux server via SSH. Migrating to a different host (Scaleway, OVH, or a SecNumCloud provider) means changing one IP address in the config.
+- **File-based storage works natively** — real persistent disk on the VPS, no need to adapt code for S3/object storage. Standard `open()` / `pd.read_parquet()` calls work as-is.
 
 ### Monorepo Structure
 
@@ -223,12 +225,16 @@ reformlab/
   tests/
   Dockerfile                  ← Backend container definition
   frontend/Dockerfile         ← Frontend container (nginx serving build)
+  config/
+    deploy.yml                ← Kamal deployment configuration
   .github/workflows/
-    deploy.yml                ← Auto-deploy both services on push
+    deploy.yml                ← GitHub Actions auto-deploy on push
+  .kamal/
+    secrets                   ← Encrypted secrets for Kamal
   pyproject.toml
 ```
 
-Both frontend and backend live in the same repository. GitHub Actions builds and deploys each as a separate Scaleway Serverless Container on push to master.
+Both frontend and backend live in the same repository. Kamal manages both as separate services on the same Hetzner server.
 
 ### Deployment Topology
 
@@ -236,27 +242,37 @@ Both frontend and backend live in the same repository. GitHub Actions builds and
 ┌─────────────────────────────────────────────────────┐
 │  GitHub Repository (monorepo)                       │
 │  push to master                                     │
-└──────────┬──────────────────────┬───────────────────┘
-           │                      │
-    GitHub Actions          GitHub Actions
-    (build backend)         (build frontend)
-           │                      │
-           ▼                      ▼
-┌──────────────────┐   ┌──────────────────────┐
-│ Scaleway          │   │ Scaleway              │
-│ Serverless        │   │ Serverless            │
-│ Container         │   │ Container             │
-│ (FastAPI, Paris)  │   │ (nginx + React build, │
-│                   │   │  Paris)               │
-│ api.reformlab.fr  │   │ app.reformlab.fr      │
-└──────────────────┘   └──────────────────────┘
-         │
-         ▼
-┌──────────────────┐
-│ Persistent Volume │
-│ (CSV/Parquet/     │
-│  YAML/JSON data)  │
-└──────────────────┘
+└──────────────────────┬──────────────────────────────┘
+                       │
+                GitHub Actions
+                runs: kamal deploy
+                       │
+                    SSH + Docker
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────┐
+│  Hetzner CX22 (Germany)                             │
+│  2 vCPU, 4 GB RAM, 40 GB SSD                       │
+│                                                     │
+│  ┌───────────────────────────────────────────┐      │
+│  │  Traefik (reverse proxy, auto HTTPS)      │      │
+│  │  api.reformlab.fr → backend:8000          │      │
+│  │  app.reformlab.fr → frontend:8080         │      │
+│  └───────────────────────────────────────────┘      │
+│                                                     │
+│  ┌─────────────────┐   ┌──────────────────┐         │
+│  │  FastAPI         │   │  nginx + React   │         │
+│  │  (backend)       │   │  (frontend)      │         │
+│  │  :8000           │   │  :8080           │         │
+│  └────────┬────────┘   └──────────────────┘         │
+│           │                                         │
+│           ▼                                         │
+│  ┌──────────────────┐                               │
+│  │  /data/reformlab  │                               │
+│  │  (CSV/Parquet/    │                               │
+│  │   YAML/JSON)      │                               │
+│  └──────────────────┘                               │
+└─────────────────────────────────────────────────────┘
 ```
 
 ### Frontend Stack
@@ -280,22 +296,30 @@ Served as a static build by an nginx container. Calls the backend API via HTTPS.
 - uvicorn (ASGI server)
 - The FastAPI layer exposes the existing Python API (orchestrator, scenarios, indicators, governance) as HTTP endpoints
 
+### Deployment Stack
+
+- **Kamal 2** — Docker-based deployment tool (SSH + Docker, no Kubernetes)
+- **Traefik** — reverse proxy with automatic Let's Encrypt HTTPS certificates (managed by Kamal)
+- **Docker** — containerization for both frontend and backend
+- **GitHub Actions** — CI/CD trigger on push to master, calls `kamal deploy`
+- **GitHub Container Registry (ghcr.io)** — Docker image storage
+
 ### Data Storage (MVP)
 
 File-based, no database:
 
-- **Scenario configs:** YAML/JSON files on persistent volume
-- **Run outputs:** CSV/Parquet on persistent volume
-- **Run manifests:** JSON on persistent volume
+- **Scenario configs:** YAML/JSON files on server disk (`/data/reformlab/`)
+- **Run outputs:** CSV/Parquet on server disk
+- **Run manifests:** JSON on server disk
 - **Scenario registry:** File-based (already implemented in EPIC-2)
 
-Persistent volume is attached to the backend container. Sufficient for 2-10 users working with open/public data. If multi-user concurrent writes become an issue in Phase 3, migrate to SQLite or PostgreSQL — the file-based contract layer makes this a contained change.
+Docker volume mount maps `/data/reformlab` on the host to `/app/data` in the backend container. Data persists across deployments and container restarts. Sufficient for 2-10 users working with open/public data. If multi-user concurrent writes become an issue in Phase 3, migrate to SQLite or PostgreSQL — the file-based contract layer makes this a contained change.
 
 ### Authentication (MVP)
 
 Simple shared-password authentication via FastAPI middleware:
 
-- Single shared password stored as an environment variable on Scaleway
+- Single shared password stored as a Kamal secret (encrypted in `.kamal/secrets`, injected as environment variable)
 - FastAPI middleware checks password on every API request
 - Frontend shows a password prompt on first access, stores the token in browser session
 - No user accounts, no OAuth, no database — appropriate for 2-10 trusted colleagues
@@ -306,25 +330,25 @@ Phase 3 (public web app with Claire persona) will require proper user authentica
 
 | Service | Monthly Cost |
 | --- | --- |
-| Backend Serverless Container | ~0-3 EUR (free tier covers low traffic) |
-| Frontend Serverless Container | ~0-2 EUR (free tier covers low traffic) |
-| Persistent Volume (1-5 GB) | ~0.50 EUR |
-| **Total** | **~0-5 EUR/month** |
+| Hetzner CX22 (2 vCPU, 4 GB RAM, 40 GB SSD) | 3.29 EUR |
+| Domain name (annual, amortized) | ~1 EUR |
+| **Total** | **~4.29 EUR/month** |
 
 ### Sovereignty & Compliance Positioning
 
-- Hosted on Scaleway, French cloud provider (Groupe Iliad), Paris datacenter
-- GDPR compliant, data stays in France, no transfer outside EU
+- Hosted on Hetzner, European provider (Germany), EU datacenter
+- GDPR compliant, data stays in EU, no transfer outside EU
 - Not subject to US Cloud Act or other extra-territorial legislation
-- Scaleway SecNumCloud qualification in progress with ANSSI (expected 2026)
 - Application uses exclusively open public data (INSEE, Eurostat, synthetic populations)
-- If SecNumCloud becomes required (e.g., restricted microdata handling), migration path: Scalingo on Outscale `osc-secnum-fr1` region — same code, different deployment target
+- SecNumCloud is not required for open public data under the French "Cloud au Centre" doctrine
+- If SecNumCloud becomes required (e.g., restricted microdata handling), Kamal deploys to any Linux server via SSH — migrate by changing the target IP to a SecNumCloud-qualified provider (Scalingo on Outscale `osc-secnum-fr1`, or Clever Cloud on Cloud Temple SecNumCloud zone). Application code unchanged.
 
 ### Migration Path to Phase 3
 
-When the project grows beyond MVP:
+Kamal is provider-agnostic. All migrations below require zero application code changes:
 
-1. **More users:** Scaleway Serverless auto-scales. No architecture change needed.
-2. **User accounts:** Replace shared-password middleware with OAuth/OIDC. Add user table (SQLite or PostgreSQL).
-3. **SecNumCloud required:** Redeploy to Scalingo on `osc-secnum-fr1` or Clever Cloud on Cloud Temple SecNumCloud zone. Application code unchanged.
-4. **Frontend/backend split:** If needed, frontend can move to a CDN (Scaleway Edge Services) while backend stays on Serverless Containers. Same code, different deployment config.
+1. **More users / more power:** Upgrade Hetzner server (CX32 at 5.39 EUR, CX42 at 17.49 EUR). Change server spec in Hetzner console, redeploy.
+2. **French sovereignty required:** Move to Scaleway or OVH VPS in Paris. Change one IP in `config/deploy.yml`, run `kamal setup && kamal deploy`.
+3. **SecNumCloud required:** Deploy to a server on Scalingo/Outscale `osc-secnum-fr1` or Clever Cloud on Cloud Temple SecNumCloud zone. Same Kamal config, different target.
+4. **User accounts:** Replace shared-password middleware with OAuth/OIDC. Add user table (SQLite or PostgreSQL).
+5. **Horizontal scaling:** Kamal supports multi-server deployment. Add server IPs to `config/deploy.yml` and Kamal load-balances across them via Traefik.
