@@ -1767,13 +1767,13 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "jsonschema" },
+    { name = "matplotlib" },
     { name = "pyarrow" },
     { name = "pyyaml" },
 ]
 
 [package.optional-dependencies]
 dev = [
-    { name = "matplotlib" },
     { name = "mypy" },
     { name = "nbmake" },
     { name = "pytest" },
@@ -1792,7 +1792,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "jsonschema", specifier = ">=4.23.0" },
-    { name = "matplotlib", marker = "extra == 'dev'", specifier = ">=3.8.0" },
+    { name = "matplotlib", specifier = ">=3.8.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.19.0" },
     { name = "nbmake", marker = "extra == 'dev'", specifier = ">=1.4" },
     { name = "openfisca-core", marker = "extra == 'openfisca'", specifier = ">=44.0.0" },
