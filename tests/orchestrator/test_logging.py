@@ -50,9 +50,7 @@ class TestYearStartLogging:
             orchestrator.run()
 
         # Find year_start log entry
-        year_start_logs = [
-            r for r in caplog.records if "event=year_start" in r.message
-        ]
+        year_start_logs = [r for r in caplog.records if "event=year_start" in r.message]
         assert len(year_start_logs) == 1
 
         log = year_start_logs[0]
@@ -75,9 +73,7 @@ class TestYearStartLogging:
             orchestrator = Orchestrator(config)
             orchestrator.run()
 
-        year_start_logs = [
-            r for r in caplog.records if "event=year_start" in r.message
-        ]
+        year_start_logs = [r for r in caplog.records if "event=year_start" in r.message]
         assert len(year_start_logs) == 1
         assert "seed=None" in year_start_logs[0].message
         assert "master_seed=None" in year_start_logs[0].message
@@ -96,9 +92,7 @@ class TestYearStartLogging:
             orchestrator = Orchestrator(config)
             orchestrator.run()
 
-        year_start_logs = [
-            r for r in caplog.records if "event=year_start" in r.message
-        ]
+        year_start_logs = [r for r in caplog.records if "event=year_start" in r.message]
         assert len(year_start_logs) == 3
         assert "year=2025" in year_start_logs[0].message
         assert "year=2026" in year_start_logs[1].message
@@ -128,9 +122,7 @@ class TestStepExecutionLogging:
             orchestrator.run()
 
         # Find step_start logs
-        step_start_logs = [
-            r for r in caplog.records if "event=step_start" in r.message
-        ]
+        step_start_logs = [r for r in caplog.records if "event=step_start" in r.message]
         assert len(step_start_logs) == 2
 
         # First step
@@ -157,12 +149,8 @@ class TestStepExecutionLogging:
             orchestrator = Orchestrator(config)
             orchestrator.run()
 
-        step_start_logs = [
-            r for r in caplog.records if "event=step_start" in r.message
-        ]
-        step_end_logs = [
-            r for r in caplog.records if "event=step_end" in r.message
-        ]
+        step_start_logs = [r for r in caplog.records if "event=step_start" in r.message]
+        step_end_logs = [r for r in caplog.records if "event=step_end" in r.message]
 
         assert len(step_start_logs) == 1
         assert len(step_end_logs) == 1

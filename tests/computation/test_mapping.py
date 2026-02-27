@@ -292,9 +292,7 @@ class TestLoadMapping:
             load_mapping(p)
         assert "mappings" in str(exc_info.value)
 
-    def test_load_missing_required_entry_keys(
-        self, tmp_path: Path
-    ) -> None:
+    def test_load_missing_required_entry_keys(self, tmp_path: Path) -> None:
         """Missing entry keys reported in error."""
         content = textwrap.dedent("""\
             version: "1"
@@ -324,9 +322,7 @@ class TestLoadMapping:
             load_mapping(p)
         assert "not_a_real_type" in str(exc_info.value)
 
-    def test_load_duplicate_openfisca_names(
-        self, tmp_path: Path
-    ) -> None:
+    def test_load_duplicate_openfisca_names(self, tmp_path: Path) -> None:
         """Duplicate openfisca_name raises MappingError."""
         content = textwrap.dedent("""\
             version: "1"
@@ -344,9 +340,7 @@ class TestLoadMapping:
             load_mapping(p)
         assert "duplicate" in str(exc_info.value).lower()
 
-    def test_load_duplicate_project_names(
-        self, tmp_path: Path
-    ) -> None:
+    def test_load_duplicate_project_names(self, tmp_path: Path) -> None:
         """Duplicate project_name raises MappingError."""
         content = textwrap.dedent("""\
             version: "1"
@@ -480,9 +474,7 @@ class TestApplyOutputMapping:
         assert result.schema.metadata is not None
         assert result.schema.metadata[b"source"] == b"test"
 
-    def test_coerces_mapped_column_to_configured_type(
-        self, sample_yaml: Path
-    ) -> None:
+    def test_coerces_mapped_column_to_configured_type(self, sample_yaml: Path) -> None:
         """Mapped output columns are cast to configured pa_type."""
         table = pa.table(
             {
@@ -548,9 +540,7 @@ class TestValidateMapping:
         result = validate_mapping(config, cols)
         assert len(result.errors) == 0
 
-    def test_unknown_variable_with_suggestion(
-        self, sample_yaml: Path
-    ) -> None:
+    def test_unknown_variable_with_suggestion(self, sample_yaml: Path) -> None:
         """Unknown column produces error with closest match."""
         config = load_mapping(sample_yaml)
         cols = ("impot_revenu_net", "menage_idx")
@@ -662,9 +652,7 @@ class TestEmptyMapping:
 class TestAdapterIntegration:
     """Integration with ComputationResult (AC-7)."""
 
-    def test_mapping_on_computation_result(
-        self, sample_yaml: Path
-    ) -> None:
+    def test_mapping_on_computation_result(self, sample_yaml: Path) -> None:
         """Mapping renames output without breaking metadata."""
         from reformlab.computation.types import ComputationResult
 

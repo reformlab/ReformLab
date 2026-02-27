@@ -102,9 +102,7 @@ class TestComputeSubsidyEligibility:
                 "income": pa.array([], type=pa.float64()),
             }
         )
-        eligibility = compute_subsidy_eligibility(
-            empty_pop, basic_subsidy_params, 2026
-        )
+        eligibility = compute_subsidy_eligibility(empty_pop, basic_subsidy_params, 2026)
         assert len(eligibility) == 0
 
 
@@ -117,7 +115,9 @@ class TestComputeSubsidyAmount:
         basic_subsidy_params: SubsidyParameters,
     ) -> None:
         """Eligible households receive full subsidy amount."""
-        eligibility = pa.array([True, True, False, True, False] + [False] * 5, type=pa.bool_())
+        eligibility = pa.array(
+            [True, True, False, True, False] + [False] * 5, type=pa.bool_()
+        )
         amounts = compute_subsidy_amount(
             sample_population, basic_subsidy_params, eligibility, 2026
         )
@@ -335,8 +335,30 @@ class TestSubsidyDecileResults:
             decile=(1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
             household_count=(10, 10, 10, 10, 10, 10, 10, 10, 10, 10),
             eligible_count=(10, 10, 8, 5, 3, 2, 1, 0, 0, 0),
-            mean_subsidy=(5000.0, 5000.0, 4000.0, 2500.0, 1500.0, 1000.0, 500.0, 0.0, 0.0, 0.0),
-            total_subsidy=(50000.0, 50000.0, 40000.0, 25000.0, 15000.0, 10000.0, 5000.0, 0.0, 0.0, 0.0),
+            mean_subsidy=(
+                5000.0,
+                5000.0,
+                4000.0,
+                2500.0,
+                1500.0,
+                1000.0,
+                500.0,
+                0.0,
+                0.0,
+                0.0,
+            ),
+            total_subsidy=(
+                50000.0,
+                50000.0,
+                40000.0,
+                25000.0,
+                15000.0,
+                10000.0,
+                5000.0,
+                0.0,
+                0.0,
+                0.0,
+            ),
         )
         assert len(result.decile) == 10
         assert result.mean_subsidy[0] == 5000.0

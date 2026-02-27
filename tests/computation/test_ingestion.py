@@ -300,7 +300,6 @@ class TestIngestionValidation:
         assert gzip_result.format == "csv"
         assert plain_result.table.equals(gzip_result.table)
 
-
     def test_corrupt_gzip_raises_structured_error(
         self, tmp_path: Path, ingestion_schema: DataSchema
     ) -> None:

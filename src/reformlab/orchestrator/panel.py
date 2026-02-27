@@ -298,8 +298,7 @@ def compare_panels(baseline: PanelOutput, reform: PanelOutput) -> PanelOutput:
     for old_name, new_name in reform_renames.items():
         idx = reform_table.schema.get_field_index(old_name)
         new_names = [
-            new_name if i == idx else c
-            for i, c in enumerate(reform_table.column_names)
+            new_name if i == idx else c for i, c in enumerate(reform_table.column_names)
         ]
         reform_table = reform_table.rename_columns(new_names)
 

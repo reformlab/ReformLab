@@ -130,9 +130,7 @@ class VintageTransitionStep:
 
         return replace(state, data=new_data)
 
-    def _load_or_init_state(
-        self, state: "YearState", key: str
-    ) -> VintageState:
+    def _load_or_init_state(self, state: "YearState", key: str) -> VintageState:
         """Load existing vintage state or initialize from config.
 
         Args:
@@ -207,9 +205,7 @@ class VintageTransitionStep:
         max_age = self._config.max_age
 
         surviving_cohorts = tuple(
-            cohort
-            for cohort in vintage_state.cohorts
-            if cohort.age <= max_age
+            cohort for cohort in vintage_state.cohorts if cohort.age <= max_age
         )
 
         return VintageState(

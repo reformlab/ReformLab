@@ -419,9 +419,7 @@ class TestComputationStepErrorHandling:
         ):
             computation_step.execute(2025, year_state)
 
-        version_logs = [
-            r for r in caplog.records if "adapter_version=" in r.message
-        ]
+        version_logs = [r for r in caplog.records if "adapter_version=" in r.message]
         assert len(version_logs) >= 1
         assert "year=2025" in version_logs[0].message
         assert "step_name=computation" in version_logs[0].message

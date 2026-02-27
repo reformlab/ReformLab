@@ -7,7 +7,6 @@ import pyarrow as pa
 
 OutputFields: TypeAlias = pa.Table
 
-
 @dataclass(frozen=True)
 class PopulationData:
     tables: dict[str, pa.Table]
@@ -16,13 +15,11 @@ class PopulationData:
     @property
     def row_count(self) -> int: ...
 
-
 @dataclass(frozen=True)
 class PolicyConfig:
     parameters: dict[str, Any]
     name: str = ...
     description: str = ...
-
 
 @dataclass(frozen=True)
 class ComputationResult:

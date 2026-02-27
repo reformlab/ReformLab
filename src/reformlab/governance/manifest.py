@@ -248,9 +248,10 @@ class RunManifest:
                     f"Invalid assumption at index {i}: "
                     f"field 'key' must be a non-empty string"
                 )
-            if not isinstance(assumption["source"], str) or not assumption[
-                "source"
-            ].strip():
+            if (
+                not isinstance(assumption["source"], str)
+                or not assumption["source"].strip()
+            ):
                 raise ManifestValidationError(
                     f"Invalid assumption at index {i}: "
                     f"field 'source' must be a non-empty string"
@@ -279,16 +280,18 @@ class RunManifest:
                         f"Invalid mapping at index {i}: "
                         f"missing required field '{required_key}'"
                     )
-            if not isinstance(mapping["openfisca_name"], str) or not mapping[
-                "openfisca_name"
-            ].strip():
+            if (
+                not isinstance(mapping["openfisca_name"], str)
+                or not mapping["openfisca_name"].strip()
+            ):
                 raise ManifestValidationError(
                     f"Invalid mapping at index {i}: "
                     f"field 'openfisca_name' must be a non-empty string"
                 )
-            if not isinstance(mapping["project_name"], str) or not mapping[
-                "project_name"
-            ].strip():
+            if (
+                not isinstance(mapping["project_name"], str)
+                or not mapping["project_name"].strip()
+            ):
                 raise ManifestValidationError(
                     f"Invalid mapping at index {i}: "
                     f"field 'project_name' must be a non-empty string"
@@ -394,8 +397,7 @@ class RunManifest:
         missing_fields = [key for key in REQUIRED_JSON_FIELDS if key not in data]
         if missing_fields:
             raise ManifestValidationError(
-                "Missing required manifest fields: "
-                + ", ".join(sorted(missing_fields))
+                "Missing required manifest fields: " + ", ".join(sorted(missing_fields))
             )
 
         unknown_fields = sorted(set(data) - set(REQUIRED_JSON_FIELDS))

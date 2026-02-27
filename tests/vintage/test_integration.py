@@ -40,9 +40,7 @@ class TestVintageStepRegistration:
         """VintageTransitionStep satisfies OrchestratorStep protocol."""
         assert is_protocol_step(vintage_step)
 
-    def test_registry_registration(
-        self, vintage_step: VintageTransitionStep
-    ) -> None:
+    def test_registry_registration(self, vintage_step: VintageTransitionStep) -> None:
         """Step can be registered in StepRegistry."""
         registry = StepRegistry()
         registry.register(vintage_step)
@@ -50,9 +48,7 @@ class TestVintageStepRegistration:
         assert len(registry) == 1
         assert registry.get("vintage_transition") is vintage_step
 
-    def test_registry_build_pipeline(
-        self, vintage_step: VintageTransitionStep
-    ) -> None:
+    def test_registry_build_pipeline(self, vintage_step: VintageTransitionStep) -> None:
         """Step can be built into pipeline."""
         registry = StepRegistry()
         registry.register(vintage_step)

@@ -114,8 +114,7 @@ class VersionNotFoundError(RegistryError):
         super().__init__(
             summary="Version not found",
             reason=(
-                f"Version '{version_id}' does not exist "
-                f"for scenario '{scenario_name}'"
+                f"Version '{version_id}' does not exist for scenario '{scenario_name}'"
             ),
             fix=(
                 f"Use list_versions('{scenario_name}') to see "
@@ -906,8 +905,7 @@ class ScenarioRegistry:
                     summary="Corrupted registry metadata",
                     reason="Version entries must be mapping objects",
                     fix=(
-                        "Repair metadata.yaml to ensure each version entry "
-                        "is a mapping"
+                        "Repair metadata.yaml to ensure each version entry is a mapping"
                     ),
                     scenario_name=scenario_name,
                 )

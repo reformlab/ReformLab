@@ -273,16 +273,20 @@ class IndicatorResult:
 
                 # Add cumulative metrics if present
                 if ind.cumulative_revenue is not None:
-                    fiscal_metric_names.extend([
-                        "cumulative_revenue",
-                        "cumulative_cost",
-                        "cumulative_balance",
-                    ])
-                    fiscal_metric_values.extend([
-                        ind.cumulative_revenue,
-                        ind.cumulative_cost or 0.0,
-                        ind.cumulative_balance or 0.0,
-                    ])
+                    fiscal_metric_names.extend(
+                        [
+                            "cumulative_revenue",
+                            "cumulative_cost",
+                            "cumulative_balance",
+                        ]
+                    )
+                    fiscal_metric_values.extend(
+                        [
+                            ind.cumulative_revenue,
+                            ind.cumulative_cost or 0.0,
+                            ind.cumulative_balance or 0.0,
+                        ]
+                    )
 
                 for metric_name, metric_value in zip(
                     fiscal_metric_names, fiscal_metric_values, strict=True

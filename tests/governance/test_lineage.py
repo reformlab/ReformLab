@@ -408,10 +408,7 @@ class TestValidateLineage:
         """validate_lineage() handles 10-year projection shape (AC-1)."""
         years = list(range(2024, 2034))  # 2024-2033 (10 years)
         # Generate valid UUID for each year
-        child_uuids = {
-            year: f"00000000-0000-0000-0000-{year:012d}"
-            for year in years
-        }
+        child_uuids = {year: f"00000000-0000-0000-0000-{year:012d}" for year in years}
         parent = RunManifest(
             manifest_id="00000000-0000-0000-0000-000000000010",
             created_at="2026-02-27T10:00:00Z",

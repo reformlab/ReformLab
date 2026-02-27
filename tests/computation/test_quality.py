@@ -19,6 +19,7 @@ from reformlab.computation.types import ComputationResult
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture()
 def output_schema() -> DataSchema:
     """Schema with required and optional columns for quality-check tests."""
@@ -55,6 +56,7 @@ def valid_result() -> ComputationResult:
 # ---------------------------------------------------------------------------
 # AC-1: Null detection in required fields
 # ---------------------------------------------------------------------------
+
 
 class TestNullDetection:
     def test_null_in_required_field_raises_blocking_error(
@@ -104,9 +106,7 @@ class TestNullDetection:
         qr = validate_output(result, output_schema)
         assert qr.passed
 
-    def test_null_row_indices_capped_at_ten(
-        self, output_schema: DataSchema
-    ) -> None:
+    def test_null_row_indices_capped_at_ten(self, output_schema: DataSchema) -> None:
         """Given >10 null rows, row_indices is capped at 10 entries."""
         n = 20
         income = [None] * n
@@ -135,6 +135,7 @@ class TestNullDetection:
 # AC-2: Type mismatch detection
 # ---------------------------------------------------------------------------
 
+
 class TestTypeMismatch:
     def test_type_mismatch_detected(self, output_schema: DataSchema) -> None:
         """Given a column with wrong type, then blocking error reports
@@ -156,9 +157,7 @@ class TestTypeMismatch:
             validate_output(result, output_schema)
 
         qr = exc_info.value.result
-        type_issue = next(
-            i for i in qr.errors if i.issue_type == "type_mismatch"
-        )
+        type_issue = next(i for i in qr.errors if i.issue_type == "type_mismatch")
         assert type_issue.field == "income_tax"
         assert type_issue.expected == "double"
         assert type_issue.actual == "string"
@@ -168,10 +167,9 @@ class TestTypeMismatch:
 # AC-3: Missing required column detection
 # ---------------------------------------------------------------------------
 
+
 class TestMissingColumns:
-    def test_missing_required_columns_detected(
-        self, output_schema: DataSchema
-    ) -> None:
+    def test_missing_required_columns_detected(self, output_schema: DataSchema) -> None:
         """Given missing required columns, then blocking error identifies all."""
         table = pa.table(
             {
@@ -187,9 +185,7 @@ class TestMissingColumns:
             validate_output(result, output_schema)
 
         qr = exc_info.value.result
-        missing_issues = [
-            i for i in qr.errors if i.issue_type == "missing_column"
-        ]
+        missing_issues = [i for i in qr.errors if i.issue_type == "missing_column"]
         missing_fields = sorted(i.field for i in missing_issues)
         assert missing_fields == ["carbon_tax", "income_tax"]
 
@@ -197,6 +193,7 @@ class TestMissingColumns:
 # ---------------------------------------------------------------------------
 # AC-4: Silent pass for valid output
 # ---------------------------------------------------------------------------
+
 
 class TestValidOutput:
     def test_valid_output_passes_silently(
@@ -215,6 +212,7 @@ class TestValidOutput:
 # ---------------------------------------------------------------------------
 # AC-5: Multi-error aggregation
 # ---------------------------------------------------------------------------
+
 
 class TestMultiErrorAggregation:
     def test_multiple_issues_aggregated(self, output_schema: DataSchema) -> None:
@@ -274,10 +272,9 @@ class TestMultiErrorAggregation:
 # AC-6: Value range warnings (non-blocking)
 # ---------------------------------------------------------------------------
 
+
 class TestRangeWarnings:
-    def test_range_violations_produce_warnings(
-        self, output_schema: DataSchema
-    ) -> None:
+    def test_range_violations_produce_warnings(self, output_schema: DataSchema) -> None:
         """Given anomalous values with range rules, warnings are emitted
         without blocking execution.
         """
@@ -453,9 +450,7 @@ class TestRangeWarnings:
         result = ComputationResult(
             output_fields=table, adapter_version="test-1.0", period=2025
         )
-        rules = (
-            RangeRule(field="unknown_field", min_value=0.0, max_value=1.0),
-        )
+        rules = (RangeRule(field="unknown_field", min_value=0.0, max_value=1.0),)
 
         qr = validate_output(result, output_schema, range_rules=rules)
         assert qr.passed
@@ -480,9 +475,7 @@ class TestRangeWarnings:
         result = ComputationResult(
             output_fields=table, adapter_version="test-1.0", period=2025
         )
-        rules = (
-            RangeRule(field="income_tax", min_value=None, max_value=None),
-        )
+        rules = (RangeRule(field="income_tax", min_value=None, max_value=None),)
 
         qr = validate_output(result, output_schema, range_rules=rules)
         assert qr.passed
@@ -507,9 +500,7 @@ class TestRangeWarnings:
         result = ComputationResult(
             output_fields=table, adapter_version="test-1.0", period=2025
         )
-        rules = (
-            RangeRule(field="income_tax", min_value=500.0, max_value=100.0),
-        )
+        rules = (RangeRule(field="income_tax", min_value=500.0, max_value=100.0),)
 
         qr = validate_output(result, output_schema, range_rules=rules)
         assert qr.passed
@@ -524,10 +515,9 @@ class TestRangeWarnings:
 # Empty table behavior
 # ---------------------------------------------------------------------------
 
+
 class TestEmptyTable:
-    def test_empty_table_passes_validation(
-        self, output_schema: DataSchema
-    ) -> None:
+    def test_empty_table_passes_validation(self, output_schema: DataSchema) -> None:
         """Given empty table with correct schema, validation passes."""
         table = pa.table(
             {
@@ -549,6 +539,7 @@ class TestEmptyTable:
 # ---------------------------------------------------------------------------
 # DataQualityError formatting
 # ---------------------------------------------------------------------------
+
 
 class TestDataQualityErrorFormat:
     def test_error_message_is_multi_line_summary(

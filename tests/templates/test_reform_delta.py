@@ -18,7 +18,6 @@ from reformlab.templates.schema import (
     YearSchedule,
 )
 
-
 # ---------------------------------------------------------------------------
 # Task 3 tests: Reform-as-delta mechanics (AC #2)
 # ---------------------------------------------------------------------------
@@ -89,10 +88,17 @@ class TestResolveReformDefinition:
             year_schedule=YearSchedule(start_year=2026, end_year=2036),
             parameters=CarbonTaxParameters(
                 rate_schedule={
-                    2026: 44.60, 2027: 50.00, 2028: 55.00,
-                    2029: 60.00, 2030: 65.00, 2031: 70.00,
-                    2032: 75.00, 2033: 80.00, 2034: 85.00,
-                    2035: 90.00, 2036: 100.00,
+                    2026: 44.60,
+                    2027: 50.00,
+                    2028: 55.00,
+                    2029: 60.00,
+                    2030: 65.00,
+                    2031: 70.00,
+                    2032: 75.00,
+                    2033: 80.00,
+                    2034: 85.00,
+                    2035: 90.00,
+                    2036: 100.00,
                 },
                 exemptions=(
                     {"category": "heating_oil_essential", "rate_reduction": 0.5},
@@ -125,8 +131,13 @@ class TestResolveReformDefinition:
     ) -> None:
         """Reform inherits year_schedule from baseline when not overridden."""
         resolved = resolve_reform_definition(reform_scenario, baseline_scenario)
-        assert resolved.year_schedule.start_year == baseline_scenario.year_schedule.start_year
-        assert resolved.year_schedule.end_year == baseline_scenario.year_schedule.end_year
+        assert (
+            resolved.year_schedule.start_year
+            == baseline_scenario.year_schedule.start_year
+        )
+        assert (
+            resolved.year_schedule.end_year == baseline_scenario.year_schedule.end_year
+        )
 
     def test_resolve_reform_inherits_rate_schedule(
         self, baseline_scenario: BaselineScenario, reform_scenario: ReformScenario

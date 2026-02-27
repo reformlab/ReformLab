@@ -161,9 +161,7 @@ class TestMalformedMatrix:
             "matrix_url: 'https://example.test/compat'\n"
             "min_supported: '44.0.0'\n"
         )
-        with patch(
-            "reformlab.computation.compat_matrix._MATRIX_PATH", bad_yaml
-        ):
+        with patch("reformlab.computation.compat_matrix._MATRIX_PATH", bad_yaml):
             with pytest.raises(ValueError, match="versions"):
                 load_matrix()
 
@@ -176,9 +174,7 @@ class TestMalformedMatrix:
             "  '44.0.0':\n"
             "    status: supported\n"
         )
-        with patch(
-            "reformlab.computation.compat_matrix._MATRIX_PATH", bad_yaml
-        ):
+        with patch("reformlab.computation.compat_matrix._MATRIX_PATH", bad_yaml):
             with pytest.raises(ValueError, match="min_supported"):
                 load_matrix()
 
@@ -187,9 +183,7 @@ class TestMalformedMatrix:
         bad_yaml.write_text(
             "min_supported: '44.0.0'\nversions:\n  '44.0.0':\n    status: supported\n"
         )
-        with patch(
-            "reformlab.computation.compat_matrix._MATRIX_PATH", bad_yaml
-        ):
+        with patch("reformlab.computation.compat_matrix._MATRIX_PATH", bad_yaml):
             with pytest.raises(ValueError, match="schema_version"):
                 load_matrix()
 
@@ -202,9 +196,7 @@ class TestMalformedMatrix:
             "  '44.0.0':\n"
             "    status: supported\n"
         )
-        with patch(
-            "reformlab.computation.compat_matrix._MATRIX_PATH", bad_yaml
-        ):
+        with patch("reformlab.computation.compat_matrix._MATRIX_PATH", bad_yaml):
             with pytest.raises(ValueError, match="matrix_url"):
                 load_matrix()
 
@@ -218,9 +210,7 @@ class TestMalformedMatrix:
             "  '44.0.0':\n"
             "    status: supported\n"
         )
-        with patch(
-            "reformlab.computation.compat_matrix._MATRIX_PATH", bad_yaml
-        ):
+        with patch("reformlab.computation.compat_matrix._MATRIX_PATH", bad_yaml):
             with pytest.raises(ValueError, match="non-empty"):
                 load_matrix()
 

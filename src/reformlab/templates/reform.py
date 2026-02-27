@@ -106,24 +106,36 @@ def _merge_parameters(
     is_subsidy = is_subsidy or isinstance(baseline_params, SubsidyParameters)
     if is_subsidy:
         return _merge_subsidy_params(
-            reform_params, baseline_params,
-            merged_rate_schedule, exemptions, thresholds, covered_categories,
+            reform_params,
+            baseline_params,
+            merged_rate_schedule,
+            exemptions,
+            thresholds,
+            covered_categories,
         )
 
     is_rebate = isinstance(reform_params, RebateParameters)
     is_rebate = is_rebate or isinstance(baseline_params, RebateParameters)
     if is_rebate:
         return _merge_rebate_params(
-            reform_params, baseline_params,
-            merged_rate_schedule, exemptions, thresholds, covered_categories,
+            reform_params,
+            baseline_params,
+            merged_rate_schedule,
+            exemptions,
+            thresholds,
+            covered_categories,
         )
 
     is_feebate = isinstance(reform_params, FeebateParameters)
     is_feebate = is_feebate or isinstance(baseline_params, FeebateParameters)
     if is_feebate:
         return _merge_feebate_params(
-            reform_params, baseline_params,
-            merged_rate_schedule, exemptions, thresholds, covered_categories,
+            reform_params,
+            baseline_params,
+            merged_rate_schedule,
+            exemptions,
+            thresholds,
+            covered_categories,
         )
 
     # Generic parameters
@@ -234,9 +246,7 @@ def _merge_rebate_params(
     else:
         rebate_type = ""
 
-    income_weights: dict[str, float] = dict(
-        base_reb.income_weights if base_reb else {}
-    )
+    income_weights: dict[str, float] = dict(base_reb.income_weights if base_reb else {})
     if reform_reb and reform_reb.income_weights:
         income_weights.update(reform_reb.income_weights)
 

@@ -126,9 +126,7 @@ class TestCheckReproducibility:
             openfisca_version="40.0.0",
             adapter_version="1.0.0",
             scenario_version="v1.0",
-            output_hashes={
-                "output_2025.csv": actual_hash
-            },
+            output_hashes={"output_2025.csv": actual_hash},
             seeds={"master": 42},
             child_manifests={2025: "22345678-1234-1234-1234-123456789abc"},
         )
@@ -672,9 +670,7 @@ class TestCheckReproducibility:
 class TestReproducibilityIntegration:
     """Integration tests for full reproducibility cycle."""
 
-    def test_full_reproducibility_cycle_with_orchestrator(
-        self, tmp_path: Path
-    ) -> None:
+    def test_full_reproducibility_cycle_with_orchestrator(self, tmp_path: Path) -> None:
         """Demonstrate complete reproducibility cycle with orchestrator.
 
         This test shows:

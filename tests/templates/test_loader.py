@@ -18,7 +18,6 @@ from reformlab.templates.schema import (
     YearSchedule,
 )
 
-
 # ---------------------------------------------------------------------------
 # Task 2 tests: YAML schema loader with validation (AC #1, #3)
 # ---------------------------------------------------------------------------
@@ -200,7 +199,10 @@ class TestYearScheduleValidation:
         """Year schedule < 10 years raises error in strict mode."""
         with pytest.raises(ScenarioError) as exc_info:
             load_scenario_template(short_year_schedule_yaml, strict=True)
-        assert "10 years" in str(exc_info.value) or "year schedule" in str(exc_info.value).lower()
+        assert (
+            "10 years" in str(exc_info.value)
+            or "year schedule" in str(exc_info.value).lower()
+        )
 
 
 class TestInvalidPolicyType:
@@ -265,10 +267,19 @@ class TestDumpScenarioTemplate:
             policy_type=PolicyType.CARBON_TAX,
             year_schedule=YearSchedule(2026, 2036),
             parameters=CarbonTaxParameters(
-                rate_schedule={2026: 44.60, 2027: 50.00, 2028: 55.00,
-                               2029: 60.00, 2030: 65.00, 2031: 70.00,
-                               2032: 75.00, 2033: 80.00, 2034: 85.00,
-                               2035: 90.00, 2036: 100.00},
+                rate_schedule={
+                    2026: 44.60,
+                    2027: 50.00,
+                    2028: 55.00,
+                    2029: 60.00,
+                    2030: 65.00,
+                    2031: 70.00,
+                    2032: 75.00,
+                    2033: 80.00,
+                    2034: 85.00,
+                    2035: 90.00,
+                    2036: 100.00,
+                },
                 exemptions=({"category": "test", "rate_reduction": 0.5},),
                 covered_categories=("transport_fuel", "heating_fuel"),
             ),
@@ -285,7 +296,10 @@ class TestDumpScenarioTemplate:
         assert loaded.year_schedule.start_year == scenario.year_schedule.start_year
         assert loaded.parameters.rate_schedule == scenario.parameters.rate_schedule
         assert loaded.parameters.exemptions == scenario.parameters.exemptions
-        assert loaded.parameters.covered_categories == scenario.parameters.covered_categories
+        assert (
+            loaded.parameters.covered_categories
+            == scenario.parameters.covered_categories
+        )
 
     def test_round_trip_reform(self, tmp_path: Path) -> None:
         """Load → save → load preserves reform scenario data (AC-5)."""
@@ -404,7 +418,9 @@ class TestCarbonTaxRedistributionLoading:
         assert scenario.parameters.income_weights["decile_1"] == 1.5
         assert scenario.parameters.income_weights["decile_10"] == 0.2
 
-    def test_load_carbon_tax_no_redistribution(self, valid_carbon_tax_yaml: Path) -> None:
+    def test_load_carbon_tax_no_redistribution(
+        self, valid_carbon_tax_yaml: Path
+    ) -> None:
         """Carbon tax template without redistribution defaults to empty values."""
         scenario = load_scenario_template(valid_carbon_tax_yaml)
         assert isinstance(scenario, BaselineScenario)
@@ -419,10 +435,19 @@ class TestCarbonTaxRedistributionLoading:
             policy_type=PolicyType.CARBON_TAX,
             year_schedule=YearSchedule(2026, 2036),
             parameters=CarbonTaxParameters(
-                rate_schedule={2026: 44.60, 2027: 50.00, 2028: 55.00,
-                               2029: 60.00, 2030: 65.00, 2031: 70.00,
-                               2032: 75.00, 2033: 80.00, 2034: 85.00,
-                               2035: 90.00, 2036: 100.00},
+                rate_schedule={
+                    2026: 44.60,
+                    2027: 50.00,
+                    2028: 55.00,
+                    2029: 60.00,
+                    2030: 65.00,
+                    2031: 70.00,
+                    2032: 75.00,
+                    2033: 80.00,
+                    2034: 85.00,
+                    2035: 90.00,
+                    2036: 100.00,
+                },
                 covered_categories=("transport_fuel", "heating_fuel"),
                 redistribution_type="progressive_dividend",
                 income_weights={"decile_1": 1.5, "decile_10": 0.2},
@@ -492,7 +517,10 @@ class TestSubsidyParameterLoading:
         scenario = load_scenario_template(p)
         assert isinstance(scenario, BaselineScenario)
         assert isinstance(scenario.parameters, SubsidyParameters)
-        assert scenario.parameters.eligible_categories == ("owner_occupier", "low_efficiency_home")
+        assert scenario.parameters.eligible_categories == (
+            "owner_occupier",
+            "low_efficiency_home",
+        )
         assert scenario.parameters.income_caps[2026] == 45000.0
         assert scenario.parameters.income_caps[2027] == 42000.0
         assert scenario.parameters.rate_schedule[2026] == 5000.0

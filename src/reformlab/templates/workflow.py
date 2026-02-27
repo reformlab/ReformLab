@@ -287,7 +287,10 @@ def validate_workflow_with_schema(
     errors: list[WorkflowError] = []
     sorted_errors = sorted(
         validator.iter_errors(data),
-        key=lambda err: (_json_path_to_field_path(list(err.absolute_path)), err.message),
+        key=lambda err: (
+            _json_path_to_field_path(list(err.absolute_path)),
+            err.message,
+        ),
     )
 
     for error in sorted_errors:

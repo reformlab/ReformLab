@@ -29,12 +29,12 @@ def sample_population() -> pa.Table:
             ),
             "vehicle_emissions_gkm": pa.array(
                 [
-                    80.0,   # Below pivot - gets rebate
+                    80.0,  # Below pivot - gets rebate
                     100.0,  # Below pivot - gets rebate
                     120.0,  # At pivot - no fee/rebate
                     140.0,  # Above pivot - pays fee
                     160.0,  # Above pivot - pays fee
-                    90.0,   # Below pivot - gets rebate
+                    90.0,  # Below pivot - gets rebate
                     130.0,  # Above pivot - pays fee
                     150.0,  # Above pivot - pays fee
                     200.0,  # Well above pivot - pays large fee
@@ -64,8 +64,8 @@ def symmetric_feebate_params() -> FeebateParameters:
     return FeebateParameters(
         rate_schedule={2026: 0.0},  # Base class required field
         pivot_point=120.0,  # g CO2/km
-        fee_rate=50.0,      # EUR per g/km above pivot
-        rebate_rate=50.0,   # EUR per g/km below pivot
+        fee_rate=50.0,  # EUR per g/km above pivot
+        rebate_rate=50.0,  # EUR per g/km below pivot
         covered_categories=("passenger_vehicle",),
     )
 
@@ -76,8 +76,8 @@ def asymmetric_feebate_params() -> FeebateParameters:
     return FeebateParameters(
         rate_schedule={2026: 0.0},
         pivot_point=120.0,
-        fee_rate=75.0,      # Higher fee rate
-        rebate_rate=25.0,   # Lower rebate rate
+        fee_rate=75.0,  # Higher fee rate
+        rebate_rate=25.0,  # Lower rebate rate
     )
 
 

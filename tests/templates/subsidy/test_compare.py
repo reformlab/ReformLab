@@ -6,7 +6,12 @@ import pyarrow as pa
 import pytest
 
 from reformlab.templates.packs import load_subsidy_template
-from reformlab.templates.schema import SubsidyParameters, YearSchedule, BaselineScenario, PolicyType
+from reformlab.templates.schema import (
+    BaselineScenario,
+    PolicyType,
+    SubsidyParameters,
+    YearSchedule,
+)
 from reformlab.templates.subsidy.compare import (
     ComparisonResult,
     compare_subsidy_decile_impacts,
@@ -16,7 +21,6 @@ from reformlab.templates.subsidy.compare import (
 from reformlab.templates.subsidy.compute import (
     SubsidyDecileResults,
     SubsidyResult,
-    compute_subsidy,
 )
 
 
@@ -27,7 +31,18 @@ def sample_population() -> pa.Table:
         {
             "household_id": pa.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], type=pa.int64()),
             "income": pa.array(
-                [15000.0, 25000.0, 35000.0, 45000.0, 55000.0, 65000.0, 75000.0, 90000.0, 120000.0, 40000.0],
+                [
+                    15000.0,
+                    25000.0,
+                    35000.0,
+                    45000.0,
+                    55000.0,
+                    65000.0,
+                    75000.0,
+                    90000.0,
+                    120000.0,
+                    40000.0,
+                ],
                 type=pa.float64(),
             ),
             "owner_occupier": pa.array(
@@ -54,7 +69,9 @@ class TestRunSubsidyBatch:
         assert scenario.name in results
         assert isinstance(results[scenario.name], SubsidyResult)
 
-    def test_run_batch_with_multiple_scenarios(self, sample_population: pa.Table) -> None:
+    def test_run_batch_with_multiple_scenarios(
+        self, sample_population: pa.Table
+    ) -> None:
         """Batch run with multiple scenarios returns dict with all results."""
         # Create two variants with different parameters
         scenario1 = BaselineScenario(
@@ -86,7 +103,9 @@ class TestRunSubsidyBatch:
 class TestCompareSubsidyDecileImpacts:
     """Tests for subsidy comparison by decile."""
 
-    def test_compare_produces_comparison_result(self, sample_population: pa.Table) -> None:
+    def test_compare_produces_comparison_result(
+        self, sample_population: pa.Table
+    ) -> None:
         """Comparison returns ComparisonResult with all components."""
         scenario = load_subsidy_template("subsidy-energy-retrofit")
         results = run_subsidy_batch(sample_population, [scenario], 2026)

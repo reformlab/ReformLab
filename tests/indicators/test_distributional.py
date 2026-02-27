@@ -168,9 +168,7 @@ class TestMultiYearSupport:
 
         # Each year should have all 10 deciles
         for year in years:
-            year_deciles = {
-                ind.decile for ind in result.indicators if ind.year == year
-            }
+            year_deciles = {ind.decile for ind in result.indicators if ind.year == year}
             assert year_deciles == set(range(1, 11))
 
     def test_aggregate_years(self, multi_year_panel: PanelOutput) -> None:

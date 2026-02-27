@@ -79,7 +79,10 @@ class TestStepRegistration:
         with pytest.raises(StepValidationError) as exc_info:
             registry.register(InvalidStep())  # type: ignore[arg-type]
 
-        assert "InvalidStep" in str(exc_info.value) or "invalid" in str(exc_info.value).lower()
+        assert (
+            "InvalidStep" in str(exc_info.value)
+            or "invalid" in str(exc_info.value).lower()
+        )
 
     def test_register_duplicate_name_raises_registration_error(self):
         """Registering step with duplicate name raises StepRegistrationError."""

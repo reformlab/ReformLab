@@ -200,9 +200,7 @@ def aggregate_by_region(
         ValueError: If group_by_year=True but table does not have "year" column.
     """
     if region_field not in table.column_names:
-        raise ValueError(
-            f"Table must have '{region_field}' column for aggregation."
-        )
+        raise ValueError(f"Table must have '{region_field}' column for aggregation.")
 
     if group_by_year and "year" not in table.column_names:
         raise ValueError("Table must have 'year' column when group_by_year=True.")
@@ -222,14 +220,16 @@ def aggregate_by_region(
             continue
 
         # Compute aggregations (including grouped approximate median) in one pass.
-        agg_result = grouped.aggregate([
-            (field_name, "count"),
-            (field_name, "sum"),
-            (field_name, "mean"),
-            (field_name, "approximate_median"),
-            (field_name, "min"),
-            (field_name, "max"),
-        ])
+        agg_result = grouped.aggregate(
+            [
+                (field_name, "count"),
+                (field_name, "sum"),
+                (field_name, "mean"),
+                (field_name, "approximate_median"),
+                (field_name, "min"),
+                (field_name, "max"),
+            ]
+        )
 
         # Build one normalized result table per field.
         column_dict: dict[str, pa.Array] = {
@@ -275,14 +275,16 @@ def _empty_aggregation_table(group_by_year: bool) -> pa.Table:
     }
     if group_by_year:
         schema_dict["year"] = pa.array([], type=pa.int64())
-    schema_dict.update({
-        "count": pa.array([], type=pa.int64()),
-        "mean": pa.array([], type=pa.float64()),
-        "median": pa.array([], type=pa.float64()),
-        "sum": pa.array([], type=pa.float64()),
-        "min": pa.array([], type=pa.float64()),
-        "max": pa.array([], type=pa.float64()),
-    })
+    schema_dict.update(
+        {
+            "count": pa.array([], type=pa.int64()),
+            "mean": pa.array([], type=pa.float64()),
+            "median": pa.array([], type=pa.float64()),
+            "sum": pa.array([], type=pa.float64()),
+            "min": pa.array([], type=pa.float64()),
+            "max": pa.array([], type=pa.float64()),
+        }
+    )
     return pa.table(schema_dict)
 
 

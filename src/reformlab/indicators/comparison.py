@@ -162,10 +162,7 @@ def _join_key_sentinel(field_type: pa.DataType) -> pa.Scalar:
         return pa.scalar(max_value, type=field_type)
     if pa.types.is_string(field_type) or pa.types.is_large_string(field_type):
         return pa.scalar(_NULL_STRING_SENTINEL, type=field_type)
-    msg = (
-        "Join keys must be integer or string columns. "
-        f"Unsupported type: {field_type}"
-    )
+    msg = f"Join keys must be integer or string columns. Unsupported type: {field_type}"
     raise ValueError(msg)
 
 
@@ -190,9 +187,9 @@ def _prepare_scenario_table(
         )
         raise ValueError(msg)
 
-    renamed = table.rename_columns([
-        scenario.label if col == "value" else col for col in table.column_names
-    ])
+    renamed = table.rename_columns(
+        [scenario.label if col == "value" else col for col in table.column_names]
+    )
     return renamed.select(join_keys + [scenario.label])
 
 
@@ -232,7 +229,9 @@ def _restore_null_join_keys(
         field = result.schema.field(key)
         sentinel = _join_key_sentinel(field.type)
         is_sentinel = pc.equal(result[key], sentinel)
-        restored = pc.if_else(is_sentinel, pa.scalar(None, type=field.type), result[key])
+        restored = pc.if_else(
+            is_sentinel, pa.scalar(None, type=field.type), result[key]
+        )
         result = result.set_column(
             result.schema.get_field_index(key),
             key,
@@ -374,16 +373,15 @@ def _compute_deltas(
     # Reconstruct table with new columns in logical order:
     # join_keys, scenario values, delta columns, pct_delta columns
     join_key_cols = [
-        name for name in table.column_names
+        name
+        for name in table.column_names
         if name not in [baseline_label] + scenario_labels
     ]
     scenario_value_cols = [baseline_label] + [
         label for label in scenario_labels if label in table.column_names
     ]
     delta_cols = [
-        f"delta_{label}"
-        for label in scenario_labels
-        if f"delta_{label}" in new_columns
+        f"delta_{label}" for label in scenario_labels if f"delta_{label}" in new_columns
     ]
     pct_delta_cols = [
         f"pct_delta_{label}"
@@ -447,7 +445,9 @@ def compare_scenarios(
 
     # Validate compatible schemas (all must be the same)
     if len(set(schemas)) > 1:
-        schema_map = {s.label: schema for s, schema in zip(scenarios, schemas, strict=True)}
+        schema_map = {
+            s.label: schema for s, schema in zip(scenarios, schemas, strict=True)
+        }
         msg = (
             f"Mixed indicator schemas detected across scenarios: {schema_map}. "
             f"All scenarios must use the same indicator schema (all decile, all region, or all fiscal). "
@@ -467,7 +467,8 @@ def compare_scenarios(
         )
         raise ValueError(msg)
     prefix_conflicts = [
-        label for label in labels
+        label
+        for label in labels
         if label.startswith("delta_") or label.startswith("pct_delta_")
     ]
     if prefix_conflicts:

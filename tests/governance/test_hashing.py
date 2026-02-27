@@ -359,9 +359,7 @@ class TestArtifactVerificationResult:
 
     def test_result_immutable(self) -> None:
         """Test that ArtifactVerificationResult is immutable."""
-        result = ArtifactVerificationResult(
-            passed=True, mismatches=[], missing=[]
-        )
+        result = ArtifactVerificationResult(passed=True, mismatches=[], missing=[])
 
         with pytest.raises(AttributeError):
             result.passed = False  # type: ignore[misc]

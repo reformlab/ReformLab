@@ -107,7 +107,9 @@ def compute_subsidy_eligibility(
             if not eligible[i]:
                 continue  # Already ineligible
 
-            has_category = any(bool(category_col[i].as_py()) for category_col in category_columns)
+            has_category = any(
+                bool(category_col[i].as_py()) for category_col in category_columns
+            )
             if not has_category:
                 eligible[i] = False
 

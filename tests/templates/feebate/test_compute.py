@@ -3,15 +3,15 @@ from __future__ import annotations
 import pyarrow as pa
 import pytest
 
-from reformlab.templates.schema import FeebateParameters
 from reformlab.templates.feebate.compute import (
     FeebateDecileResults,
     FeebateResult,
     aggregate_feebate_by_decile,
-    compute_feebate,
     compute_fee_amount,
+    compute_feebate,
     compute_rebate_amount,
 )
+from reformlab.templates.schema import FeebateParameters
 
 
 class TestComputeFeeAmount:
@@ -229,7 +229,9 @@ class TestComputeFeebate:
             {
                 "household_id": pa.array([1, 2, 3], type=pa.int64()),
                 "income": pa.array([20000.0, 50000.0, 100000.0], type=pa.float64()),
-                "vehicle_emissions_gkm": pa.array([80.0, None, 160.0], type=pa.float64()),
+                "vehicle_emissions_gkm": pa.array(
+                    [80.0, None, 160.0], type=pa.float64()
+                ),
             }
         )
         result = compute_feebate(
@@ -366,11 +368,66 @@ class TestFeebateDecileResults:
             decile=(1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
             household_count=(10, 10, 10, 10, 10, 10, 10, 10, 10, 10),
             mean_fee=(0.0, 0.0, 100.0, 200.0, 300.0, 400.0, 500.0, 600.0, 700.0, 800.0),
-            mean_rebate=(800.0, 700.0, 600.0, 500.0, 400.0, 300.0, 200.0, 100.0, 0.0, 0.0),
-            mean_net_impact=(800.0, 700.0, 500.0, 300.0, 100.0, -100.0, -300.0, -500.0, -700.0, -800.0),
-            total_fee=(0.0, 0.0, 1000.0, 2000.0, 3000.0, 4000.0, 5000.0, 6000.0, 7000.0, 8000.0),
-            total_rebate=(8000.0, 7000.0, 6000.0, 5000.0, 4000.0, 3000.0, 2000.0, 1000.0, 0.0, 0.0),
-            total_net_impact=(8000.0, 7000.0, 5000.0, 3000.0, 1000.0, -1000.0, -3000.0, -5000.0, -7000.0, -8000.0),
+            mean_rebate=(
+                800.0,
+                700.0,
+                600.0,
+                500.0,
+                400.0,
+                300.0,
+                200.0,
+                100.0,
+                0.0,
+                0.0,
+            ),
+            mean_net_impact=(
+                800.0,
+                700.0,
+                500.0,
+                300.0,
+                100.0,
+                -100.0,
+                -300.0,
+                -500.0,
+                -700.0,
+                -800.0,
+            ),
+            total_fee=(
+                0.0,
+                0.0,
+                1000.0,
+                2000.0,
+                3000.0,
+                4000.0,
+                5000.0,
+                6000.0,
+                7000.0,
+                8000.0,
+            ),
+            total_rebate=(
+                8000.0,
+                7000.0,
+                6000.0,
+                5000.0,
+                4000.0,
+                3000.0,
+                2000.0,
+                1000.0,
+                0.0,
+                0.0,
+            ),
+            total_net_impact=(
+                8000.0,
+                7000.0,
+                5000.0,
+                3000.0,
+                1000.0,
+                -1000.0,
+                -3000.0,
+                -5000.0,
+                -7000.0,
+                -8000.0,
+            ),
         )
         assert len(result.decile) == 10
         assert result.mean_fee[0] == 0.0

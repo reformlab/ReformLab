@@ -19,8 +19,8 @@ from reformlab.templates.feebate.compute import (
     FeebateDecileResults,
     FeebateResult,
     aggregate_feebate_by_decile,
-    compute_feebate,
     compute_fee_amount,
+    compute_feebate,
     compute_rebate_amount,
 )
 

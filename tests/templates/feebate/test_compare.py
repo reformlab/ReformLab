@@ -5,8 +5,6 @@ from __future__ import annotations
 import pyarrow as pa
 import pytest
 
-from reformlab.templates.packs import load_feebate_template
-from reformlab.templates.schema import FeebateParameters, YearSchedule, BaselineScenario, PolicyType
 from reformlab.templates.feebate.compare import (
     ComparisonResult,
     compare_feebate_decile_impacts,
@@ -17,6 +15,13 @@ from reformlab.templates.feebate.compute import (
     FeebateDecileResults,
     FeebateResult,
 )
+from reformlab.templates.packs import load_feebate_template
+from reformlab.templates.schema import (
+    BaselineScenario,
+    FeebateParameters,
+    PolicyType,
+    YearSchedule,
+)
 
 
 @pytest.fixture()
@@ -26,7 +31,18 @@ def sample_population() -> pa.Table:
         {
             "household_id": pa.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], type=pa.int64()),
             "income": pa.array(
-                [15000.0, 25000.0, 35000.0, 45000.0, 55000.0, 65000.0, 75000.0, 90000.0, 120000.0, 40000.0],
+                [
+                    15000.0,
+                    25000.0,
+                    35000.0,
+                    45000.0,
+                    55000.0,
+                    65000.0,
+                    75000.0,
+                    90000.0,
+                    120000.0,
+                    40000.0,
+                ],
                 type=pa.float64(),
             ),
             "vehicle_emissions_gkm": pa.array(
@@ -51,7 +67,9 @@ class TestRunFeebateBatch:
         assert scenario.name in results
         assert isinstance(results[scenario.name], FeebateResult)
 
-    def test_run_batch_with_multiple_scenarios(self, sample_population: pa.Table) -> None:
+    def test_run_batch_with_multiple_scenarios(
+        self, sample_population: pa.Table
+    ) -> None:
         """Batch run with multiple scenarios returns dict with all results."""
         scenario1 = BaselineScenario(
             name="Feebate Low Rates",
@@ -88,7 +106,9 @@ class TestRunFeebateBatch:
 class TestCompareFeebateDecileImpacts:
     """Tests for feebate comparison by decile."""
 
-    def test_compare_produces_comparison_result(self, sample_population: pa.Table) -> None:
+    def test_compare_produces_comparison_result(
+        self, sample_population: pa.Table
+    ) -> None:
         """Comparison returns ComparisonResult with all components."""
         scenario = load_feebate_template("feebate-vehicle-emissions")
         results = run_feebate_batch(

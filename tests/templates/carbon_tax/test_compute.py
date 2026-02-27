@@ -22,7 +22,9 @@ class TestAssignIncomeDeciles:
 
     def test_assign_deciles_basic(self) -> None:
         """Deciles are assigned 1-10 based on income percentiles."""
-        incomes = pa.array([10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0])
+        incomes = pa.array(
+            [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0]
+        )
         deciles = assign_income_deciles(incomes)
         result = deciles.to_pylist()
         # Each income should be in a different decile
@@ -123,9 +125,9 @@ class TestComputeTaxBurden:
         # gas: 800 m3 * 2.0 kg/m3 / 1000 * 44.60 EUR/t = 71.36 EUR
         # Total: ~234.16 EUR
         expected_household_1 = (
-            1000.0 * 2.31 / 1000 * 44.60 +
-            500.0 * 2.68 / 1000 * 44.60 +
-            800.0 * 2.0 / 1000 * 44.60
+            1000.0 * 2.31 / 1000 * 44.60
+            + 500.0 * 2.68 / 1000 * 44.60
+            + 800.0 * 2.0 / 1000 * 44.60
         )
         assert abs(tax_burden[0].as_py() - expected_household_1) < 0.01
 
@@ -180,8 +182,12 @@ class TestComputeTaxBurden:
             covered_categories=("transport_fuel", "heating_fuel", "natural_gas"),
         )
 
-        tax_low = compute_tax_burden(small_population, low_rate_params, emission_index, 2026)
-        tax_high = compute_tax_burden(small_population, high_rate_params, emission_index, 2026)
+        tax_low = compute_tax_burden(
+            small_population, low_rate_params, emission_index, 2026
+        )
+        tax_high = compute_tax_burden(
+            small_population, high_rate_params, emission_index, 2026
+        )
 
         for i in range(len(tax_low)):
             assert tax_high[i].as_py() > tax_low[i].as_py()
@@ -223,7 +229,9 @@ class TestComputeTaxBurden:
         )
         emission_index = build_emission_factor_index(emission_factor_table)
         flat = load_carbon_tax_template("carbon-tax-flat-no-redistribution")
-        progressive = load_carbon_tax_template("carbon-tax-progressive-no-redistribution")
+        progressive = load_carbon_tax_template(
+            "carbon-tax-progressive-no-redistribution"
+        )
 
         flat_tax = compute_tax_burden(
             population=population,
@@ -388,12 +396,78 @@ class TestDecileResults:
         result = DecileResults(
             decile=(1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
             household_count=(10, 10, 10, 10, 10, 10, 10, 10, 10, 10),
-            mean_tax_burden=(100.0, 120.0, 140.0, 160.0, 180.0, 200.0, 220.0, 240.0, 260.0, 280.0),
-            mean_redistribution=(200.0, 180.0, 160.0, 140.0, 120.0, 100.0, 80.0, 60.0, 40.0, 20.0),
-            mean_net_impact=(100.0, 60.0, 20.0, -20.0, -60.0, -100.0, -140.0, -180.0, -220.0, -260.0),
-            total_tax_burden=(1000.0, 1200.0, 1400.0, 1600.0, 1800.0, 2000.0, 2200.0, 2400.0, 2600.0, 2800.0),
-            total_redistribution=(2000.0, 1800.0, 1600.0, 1400.0, 1200.0, 1000.0, 800.0, 600.0, 400.0, 200.0),
-            total_net_impact=(1000.0, 600.0, 200.0, -200.0, -600.0, -1000.0, -1400.0, -1800.0, -2200.0, -2600.0),
+            mean_tax_burden=(
+                100.0,
+                120.0,
+                140.0,
+                160.0,
+                180.0,
+                200.0,
+                220.0,
+                240.0,
+                260.0,
+                280.0,
+            ),
+            mean_redistribution=(
+                200.0,
+                180.0,
+                160.0,
+                140.0,
+                120.0,
+                100.0,
+                80.0,
+                60.0,
+                40.0,
+                20.0,
+            ),
+            mean_net_impact=(
+                100.0,
+                60.0,
+                20.0,
+                -20.0,
+                -60.0,
+                -100.0,
+                -140.0,
+                -180.0,
+                -220.0,
+                -260.0,
+            ),
+            total_tax_burden=(
+                1000.0,
+                1200.0,
+                1400.0,
+                1600.0,
+                1800.0,
+                2000.0,
+                2200.0,
+                2400.0,
+                2600.0,
+                2800.0,
+            ),
+            total_redistribution=(
+                2000.0,
+                1800.0,
+                1600.0,
+                1400.0,
+                1200.0,
+                1000.0,
+                800.0,
+                600.0,
+                400.0,
+                200.0,
+            ),
+            total_net_impact=(
+                1000.0,
+                600.0,
+                200.0,
+                -200.0,
+                -600.0,
+                -1000.0,
+                -1400.0,
+                -1800.0,
+                -2200.0,
+                -2600.0,
+            ),
         )
         assert len(result.decile) == 10
         assert result.mean_tax_burden[0] == 100.0

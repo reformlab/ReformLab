@@ -255,7 +255,9 @@ class TestDeterministicExecution:
         result = orchestrator.run()
 
         # Each year should have a unique but deterministic seed
-        seeds = [result.yearly_states[year].seed for year in sorted(result.yearly_states)]
+        seeds = [
+            result.yearly_states[year].seed for year in sorted(result.yearly_states)
+        ]
         assert all(seed is not None for seed in seeds)
         # Seeds should all be different (derived from master seed XOR year)
         assert len(set(seeds)) == len(seeds)

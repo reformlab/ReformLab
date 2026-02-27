@@ -222,9 +222,7 @@ def test_assign_regions_basic(simple_regional_panel: PanelOutput) -> None:
 
 def test_assign_regions_with_missing(panel_with_missing_regions: PanelOutput) -> None:
     """Test region assignment with missing region codes."""
-    with pytest.warns(
-        UserWarning, match="Excluded 10 household.*missing/blank region"
-    ):
+    with pytest.warns(UserWarning, match="Excluded 10 household.*missing/blank region"):
         table, excluded_count, unmatched_count = assign_regions(
             panel_with_missing_regions.table,
             "region_code",

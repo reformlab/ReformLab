@@ -494,9 +494,7 @@ def _extract_metric_arrays(
         value = filtered["value"][row_idx].as_py()
 
         # Build grouping key tuple
-        grouping_key = tuple(
-            filtered[col][row_idx].as_py() for col in grouping_cols
-        )
+        grouping_key = tuple(filtered[col][row_idx].as_py() for col in grouping_cols)
 
         if metric not in result_lists:
             result_lists[metric] = {}

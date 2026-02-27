@@ -38,9 +38,7 @@ class VintageCohort:
         if self.age < 0:
             raise ValueError(f"Cohort age must be non-negative, got {self.age}")
         if not isinstance(self.count, int) or isinstance(self.count, bool):
-            raise ValueError(
-                f"Cohort count must be an integer, got {self.count!r}"
-            )
+            raise ValueError(f"Cohort count must be an integer, got {self.count!r}")
         if self.count < 0:
             raise ValueError(f"Cohort count must be non-negative, got {self.count}")
 

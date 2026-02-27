@@ -16,9 +16,7 @@ class MockAdapter:
         default_output: pa.Table | None = None,
         default_metadata: dict[str, Any] | None = None,
     ) -> None: ...
-
     def version(self) -> str: ...
-
     def compute(
         self,
         population: PopulationData,

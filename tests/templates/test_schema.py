@@ -17,7 +17,6 @@ from reformlab.templates.schema import (
     YearSchedule,
 )
 
-
 # ---------------------------------------------------------------------------
 # Task 1 tests: Core schema dataclasses (AC #1, #5)
 # ---------------------------------------------------------------------------
@@ -97,7 +96,9 @@ class TestCarbonTaxParameters:
         params = CarbonTaxParameters(
             rate_schedule=sample_carbon_tax_params_dict["rate_schedule"],
             exemptions=tuple(sample_carbon_tax_params_dict["exemptions"]),
-            covered_categories=tuple(sample_carbon_tax_params_dict["covered_categories"]),
+            covered_categories=tuple(
+                sample_carbon_tax_params_dict["covered_categories"]
+            ),
         )
         assert params.rate_schedule[2026] == 44.60
         assert len(params.exemptions) == 2

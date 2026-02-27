@@ -176,9 +176,7 @@ class OpenFiscaApiAdapter:
             suggestions=suggestions,
         )
 
-    def _validate_policy_parameters(
-        self, policy: PolicyConfig, tbs: Any
-    ) -> None:
+    def _validate_policy_parameters(self, policy: PolicyConfig, tbs: Any) -> None:
         """Check that all policy parameter keys are valid input variables."""
         if not policy.parameters:
             return

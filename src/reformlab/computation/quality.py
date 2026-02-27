@@ -293,9 +293,7 @@ def _check_ranges(
                         f"Failed to evaluate bounds for '{rule.field}' - "
                         "Use bounds compatible with the column data type"
                     ),
-                    expected=(
-                        f"[min={rule.min_value}, max={rule.max_value}]"
-                    ),
+                    expected=(f"[min={rule.min_value}, max={rule.max_value}]"),
                     actual=str(err),
                 )
             )

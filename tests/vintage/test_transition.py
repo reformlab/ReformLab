@@ -60,9 +60,7 @@ class TestVintageTransitionStep:
 
     def test_depends_on(self, basic_config: VintageConfig) -> None:
         """Step accepts depends_on parameter."""
-        step = VintageTransitionStep(
-            basic_config, depends_on=("step_a", "step_b")
-        )
+        step = VintageTransitionStep(basic_config, depends_on=("step_a", "step_b"))
         assert step.depends_on == ("step_a", "step_b")
 
     def test_execute_empty_state_creates_entry(
@@ -104,9 +102,7 @@ class TestVintageTransitionStep:
         assert vintage.cohort_by_age(2) is not None
         assert vintage.cohort_by_age(2).count == 40  # type: ignore[union-attr]  # was age=1
 
-    def test_execute_retires_old_cohorts(
-        self, basic_config: VintageConfig
-    ) -> None:
+    def test_execute_retires_old_cohorts(self, basic_config: VintageConfig) -> None:
         """Execute removes cohorts above max age."""
         step = VintageTransitionStep(basic_config)  # max_age=3
         initial_vintage = VintageState(
@@ -291,9 +287,7 @@ class TestVintageTransitionStep:
         # (age=4 retired)
         assert vintage.total_count == 400  # Steady state
 
-    def test_cohort_ordering_deterministic(
-        self, basic_config: VintageConfig
-    ) -> None:
+    def test_cohort_ordering_deterministic(self, basic_config: VintageConfig) -> None:
         """Cohorts are always ordered by age after transition."""
         step = VintageTransitionStep(basic_config)
         # Start with unordered cohorts

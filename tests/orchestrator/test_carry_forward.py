@@ -616,9 +616,7 @@ class TestCarryForwardStepProtocol:
 
         assert step.name == "my_carry_forward"
 
-    def test_step_has_depends_on_property(
-        self, static_rule: CarryForwardRule
-    ) -> None:
+    def test_step_has_depends_on_property(self, static_rule: CarryForwardRule) -> None:
         """Step should have depends_on property defaulting to empty."""
         config = CarryForwardConfig(rules=(static_rule,))
         step = CarryForwardStep(config)
@@ -656,9 +654,7 @@ class TestCarryForwardStepProtocol:
 
         assert isinstance(result, YearState)
 
-    def test_step_is_runtime_checkable(
-        self, static_rule: CarryForwardRule
-    ) -> None:
+    def test_step_is_runtime_checkable(self, static_rule: CarryForwardRule) -> None:
         """Step should pass OrchestratorStep isinstance check."""
         from reformlab.orchestrator.step import OrchestratorStep, is_protocol_step
 

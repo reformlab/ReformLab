@@ -13,7 +13,6 @@ from reformlab.templates.loader import (
     validate_schema_version,
 )
 
-
 # ---------------------------------------------------------------------------
 # Task 4 tests: JSON Schema for YAML validation (AC #4)
 # ---------------------------------------------------------------------------
@@ -73,7 +72,12 @@ class TestJSONSchemaFile:
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
         policy_type_prop = schema["properties"]["policy_type"]
         assert "enum" in policy_type_prop
-        assert set(policy_type_prop["enum"]) == {"carbon_tax", "subsidy", "rebate", "feebate"}
+        assert set(policy_type_prop["enum"]) == {
+            "carbon_tax",
+            "subsidy",
+            "rebate",
+            "feebate",
+        }
 
 
 class TestSchemaVersionInTemplates:

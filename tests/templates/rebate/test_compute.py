@@ -3,7 +3,6 @@ from __future__ import annotations
 import pyarrow as pa
 import pytest
 
-from reformlab.templates.schema import RebateParameters
 from reformlab.templates.rebate.compute import (
     RebateDecileResults,
     RebateResult,
@@ -12,6 +11,7 @@ from reformlab.templates.rebate.compute import (
     compute_progressive_rebate,
     compute_rebate,
 )
+from reformlab.templates.schema import RebateParameters
 
 
 class TestComputeLumpSumRebate:
@@ -322,8 +322,30 @@ class TestRebateDecileResults:
         result = RebateDecileResults(
             decile=(1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
             household_count=(10, 10, 10, 10, 10, 10, 10, 10, 10, 10),
-            mean_rebate=(2000.0, 1800.0, 1500.0, 1300.0, 1100.0, 900.0, 700.0, 500.0, 300.0, 200.0),
-            total_rebate=(20000.0, 18000.0, 15000.0, 13000.0, 11000.0, 9000.0, 7000.0, 5000.0, 3000.0, 2000.0),
+            mean_rebate=(
+                2000.0,
+                1800.0,
+                1500.0,
+                1300.0,
+                1100.0,
+                900.0,
+                700.0,
+                500.0,
+                300.0,
+                200.0,
+            ),
+            total_rebate=(
+                20000.0,
+                18000.0,
+                15000.0,
+                13000.0,
+                11000.0,
+                9000.0,
+                7000.0,
+                5000.0,
+                3000.0,
+                2000.0,
+            ),
         )
         assert len(result.decile) == 10
         assert result.mean_rebate[0] == 2000.0

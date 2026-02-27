@@ -165,8 +165,7 @@ class CarryForwardStep:
         self._name = name
         self._depends_on = depends_on
         self._description = (
-            description
-            or "Carry-forward step for deterministic state variable updates"
+            description or "Carry-forward step for deterministic state variable updates"
         )
 
     @property
@@ -289,8 +288,7 @@ class CarryForwardStep:
         elif rule.rule_type == "custom":
             if rule.custom_fn is None:
                 raise CarryForwardExecutionError(
-                    f"Cannot apply custom rule for '{rule.variable}': "
-                    f"custom_fn is None"
+                    f"Cannot apply custom rule for '{rule.variable}': custom_fn is None"
                 )
             try:
                 return rule.custom_fn(year, current_value, state)

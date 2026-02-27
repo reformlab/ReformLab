@@ -64,15 +64,9 @@ class VintageTransitionRule:
         """Validate rule-specific parameters."""
         if self.rule_type == "fixed_entry":
             if "count" not in self.parameters:
-                raise VintageConfigError(
-                    "fixed_entry rule requires 'count' parameter"
-                )
+                raise VintageConfigError("fixed_entry rule requires 'count' parameter")
             count = self.parameters["count"]
-            if (
-                not isinstance(count, int)
-                or isinstance(count, bool)
-                or count < 0
-            ):
+            if not isinstance(count, int) or isinstance(count, bool) or count < 0:
                 raise VintageConfigError(
                     f"fixed_entry 'count' must be non-negative integer, got {count}"
                 )
@@ -83,11 +77,7 @@ class VintageTransitionRule:
                     "proportional_entry rule requires 'rate' parameter"
                 )
             rate = self.parameters["rate"]
-            if (
-                not isinstance(rate, (int, float))
-                or isinstance(rate, bool)
-                or rate < 0
-            ):
+            if not isinstance(rate, (int, float)) or isinstance(rate, bool) or rate < 0:
                 raise VintageConfigError(
                     f"proportional_entry 'rate' must be non-negative number, got {rate}"
                 )
@@ -98,11 +88,7 @@ class VintageTransitionRule:
                     "max_age_retirement rule requires 'max_age' parameter"
                 )
             max_age = self.parameters["max_age"]
-            if (
-                not isinstance(max_age, int)
-                or isinstance(max_age, bool)
-                or max_age < 0
-            ):
+            if not isinstance(max_age, int) or isinstance(max_age, bool) or max_age < 0:
                 raise VintageConfigError(
                     f"max_age_retirement 'max_age' must be non-negative integer, "
                     f"got {max_age}"

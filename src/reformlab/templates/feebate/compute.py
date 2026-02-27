@@ -166,8 +166,12 @@ def compute_feebate(
     net_impacts = []
 
     for metric_val in metric_values:
-        fee = compute_fee_amount(metric_val, parameters.pivot_point, parameters.fee_rate)
-        rebate = compute_rebate_amount(metric_val, parameters.pivot_point, parameters.rebate_rate)
+        fee = compute_fee_amount(
+            metric_val, parameters.pivot_point, parameters.fee_rate
+        )
+        rebate = compute_rebate_amount(
+            metric_val, parameters.pivot_point, parameters.rebate_rate
+        )
         fees.append(fee)
         rebates.append(rebate)
         net_impacts.append(rebate - fee)

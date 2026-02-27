@@ -421,25 +421,27 @@ class TestManifestValidation:
 
     def test_validation_on_deserialization(self) -> None:
         """Validation runs when deserializing from JSON."""
-        invalid_json = json.dumps({
-            "manifest_id": "",  # Invalid
-            "created_at": "2026-02-27T10:00:00Z",
-            "engine_version": "0.1.0",
-            "openfisca_version": "40.0.0",
-            "adapter_version": "1.0.0",
-            "scenario_version": "v1.0",
-            "data_hashes": {},
-            "output_hashes": {},
-            "seeds": {},
-            "parameters": {},
-            "assumptions": [],
-            "mappings": [],
-            "warnings": [],
-            "step_pipeline": [],
-            "parent_manifest_id": "",
-            "child_manifests": {},
-            "integrity_hash": "",
-        })
+        invalid_json = json.dumps(
+            {
+                "manifest_id": "",  # Invalid
+                "created_at": "2026-02-27T10:00:00Z",
+                "engine_version": "0.1.0",
+                "openfisca_version": "40.0.0",
+                "adapter_version": "1.0.0",
+                "scenario_version": "v1.0",
+                "data_hashes": {},
+                "output_hashes": {},
+                "seeds": {},
+                "parameters": {},
+                "assumptions": [],
+                "mappings": [],
+                "warnings": [],
+                "step_pipeline": [],
+                "parent_manifest_id": "",
+                "child_manifests": {},
+                "integrity_hash": "",
+            }
+        )
         with pytest.raises(ManifestValidationError, match="Required field"):
             RunManifest.from_json(invalid_json)
 
@@ -729,9 +731,7 @@ class TestWarningsFieldValidation:
 
     def test_warning_empty_string(self) -> None:
         """Empty warning string raises error."""
-        with pytest.raises(
-            ManifestValidationError, match="expected non-empty str"
-        ):
+        with pytest.raises(ManifestValidationError, match="expected non-empty str"):
             RunManifest(
                 manifest_id="test-001",
                 created_at="2026-02-27T10:00:00Z",
@@ -744,9 +744,7 @@ class TestWarningsFieldValidation:
 
     def test_warning_non_string(self) -> None:
         """Non-string warning raises error."""
-        with pytest.raises(
-            ManifestValidationError, match="expected non-empty str"
-        ):
+        with pytest.raises(ManifestValidationError, match="expected non-empty str"):
             RunManifest(
                 manifest_id="test-001",
                 created_at="2026-02-27T10:00:00Z",

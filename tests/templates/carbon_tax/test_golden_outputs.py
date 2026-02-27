@@ -88,15 +88,15 @@ class TestGoldenTaxBurden:
         # Gas: 800 m3 * 2.0 kg/m3 / 1000 * 44.60 EUR/t = 71.36 EUR
         # Total: 234.16 EUR per household
         expected_per_household = (
-            1000.0 * 2.31 / 1000 * 44.60 +
-            500.0 * 2.68 / 1000 * 44.60 +
-            800.0 * 2.0 / 1000 * 44.60
+            1000.0 * 2.31 / 1000 * 44.60
+            + 500.0 * 2.68 / 1000 * 44.60
+            + 800.0 * 2.0 / 1000 * 44.60
         )
 
         for i in range(5):
             actual = result.tax_burden[i].as_py()
             assert abs(actual - expected_per_household) < 0.01, (
-                f"Household {i+1}: expected {expected_per_household:.2f}, got {actual:.2f}"
+                f"Household {i + 1}: expected {expected_per_household:.2f}, got {actual:.2f}"
             )
 
         # Total revenue should be 5 * expected_per_household
@@ -126,14 +126,14 @@ class TestGoldenTaxBurden:
 
         for i, redist in enumerate(redistributions):
             assert abs(redist - expected_redist) < 0.01, (
-                f"Household {i+1}: expected {expected_redist:.2f}, got {redist:.2f}"
+                f"Household {i + 1}: expected {expected_redist:.2f}, got {redist:.2f}"
             )
 
         # Net impact should be 0 for uniform consumption
         # (everyone pays same, everyone gets same back)
         for i in range(5):
             net = result.net_impact[i].as_py()
-            assert abs(net) < 0.01, f"Household {i+1}: expected 0, got {net:.2f}"
+            assert abs(net) < 0.01, f"Household {i + 1}: expected 0, got {net:.2f}"
 
     def test_golden_progressive_redistribution(
         self,
@@ -177,24 +177,64 @@ class TestGoldenDecileAggregation:
                 "household_id": pa.array(list(range(1, 11)), type=pa.int64()),
                 # Incomes from 10k to 100k, 10k increments
                 "income": pa.array(
-                    [10000.0, 20000.0, 30000.0, 40000.0, 50000.0,
-                     60000.0, 70000.0, 80000.0, 90000.0, 100000.0],
+                    [
+                        10000.0,
+                        20000.0,
+                        30000.0,
+                        40000.0,
+                        50000.0,
+                        60000.0,
+                        70000.0,
+                        80000.0,
+                        90000.0,
+                        100000.0,
+                    ],
                     type=pa.float64(),
                 ),
                 # Energy increases with income (realistic pattern)
                 "energy_transport_fuel": pa.array(
-                    [500.0, 750.0, 1000.0, 1250.0, 1500.0,
-                     1750.0, 2000.0, 2250.0, 2500.0, 3000.0],
+                    [
+                        500.0,
+                        750.0,
+                        1000.0,
+                        1250.0,
+                        1500.0,
+                        1750.0,
+                        2000.0,
+                        2250.0,
+                        2500.0,
+                        3000.0,
+                    ],
                     type=pa.float64(),
                 ),
                 "energy_heating_fuel": pa.array(
-                    [400.0, 450.0, 500.0, 550.0, 600.0,
-                     650.0, 700.0, 750.0, 800.0, 900.0],
+                    [
+                        400.0,
+                        450.0,
+                        500.0,
+                        550.0,
+                        600.0,
+                        650.0,
+                        700.0,
+                        750.0,
+                        800.0,
+                        900.0,
+                    ],
                     type=pa.float64(),
                 ),
                 "energy_natural_gas": pa.array(
-                    [500.0, 600.0, 700.0, 800.0, 900.0,
-                     1000.0, 1100.0, 1200.0, 1300.0, 1500.0],
+                    [
+                        500.0,
+                        600.0,
+                        700.0,
+                        800.0,
+                        900.0,
+                        1000.0,
+                        1100.0,
+                        1200.0,
+                        1300.0,
+                        1500.0,
+                    ],
                     type=pa.float64(),
                 ),
             }
@@ -239,10 +279,11 @@ class TestGoldenDecileAggregation:
 
         # Find first and last non-empty deciles
         non_empty = [
-            (d, m) for d, m, c in zip(
+            (d, m)
+            for d, m, c in zip(
                 decile_results.decile,
                 decile_results.mean_tax_burden,
-                decile_results.household_count
+                decile_results.household_count,
             )
             if c > 0
         ]

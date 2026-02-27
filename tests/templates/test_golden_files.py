@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from reformlab.templates.loader import load_scenario_template, dump_scenario_template
+from reformlab.templates.loader import dump_scenario_template, load_scenario_template
 from reformlab.templates.reform import resolve_reform_definition
 from reformlab.templates.schema import (
     BaselineScenario,
@@ -13,7 +13,6 @@ from reformlab.templates.schema import (
     RebateParameters,
     ReformScenario,
 )
-
 
 # ---------------------------------------------------------------------------
 # Task 5 tests: Golden file tests for schema validation (Subtask 5.5)
@@ -214,7 +213,6 @@ class TestEdgeCases:
 
         scenario = load_scenario_template(p)
         assert scenario.policy_type == PolicyType.REBATE
-        from reformlab.templates.schema import RebateParameters
 
         assert isinstance(scenario.parameters, RebateParameters)
         assert scenario.parameters.rebate_type == "flat_dividend"

@@ -35,11 +35,33 @@ def baseline_panel() -> PanelOutput:
             "household_id": pa.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], type=pa.int64()),
             "year": pa.array([2025] * 10, type=pa.int64()),
             "disposable_income": pa.array(
-                [10000.0, 20000.0, 30000.0, 40000.0, 50000.0, 60000.0, 70000.0, 80000.0, 90000.0, 100000.0],
+                [
+                    10000.0,
+                    20000.0,
+                    30000.0,
+                    40000.0,
+                    50000.0,
+                    60000.0,
+                    70000.0,
+                    80000.0,
+                    90000.0,
+                    100000.0,
+                ],
                 type=pa.float64(),
             ),
             "income": pa.array(
-                [15000.0, 25000.0, 35000.0, 45000.0, 55000.0, 65000.0, 75000.0, 85000.0, 95000.0, 105000.0],
+                [
+                    15000.0,
+                    25000.0,
+                    35000.0,
+                    45000.0,
+                    55000.0,
+                    65000.0,
+                    75000.0,
+                    85000.0,
+                    95000.0,
+                    105000.0,
+                ],
                 type=pa.float64(),
             ),
             "region_code": pa.array(
@@ -59,11 +81,33 @@ def reform_panel() -> PanelOutput:
             "household_id": pa.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], type=pa.int64()),
             "year": pa.array([2025] * 10, type=pa.int64()),
             "disposable_income": pa.array(
-                [12000.0, 18000.0, 30000.0, 42000.0, 50000.0, 65000.0, 75000.0, 85000.0, 95000.0, 105000.0],
+                [
+                    12000.0,
+                    18000.0,
+                    30000.0,
+                    42000.0,
+                    50000.0,
+                    65000.0,
+                    75000.0,
+                    85000.0,
+                    95000.0,
+                    105000.0,
+                ],
                 type=pa.float64(),
             ),
             "income": pa.array(
-                [15000.0, 25000.0, 35000.0, 45000.0, 55000.0, 65000.0, 75000.0, 85000.0, 95000.0, 105000.0],
+                [
+                    15000.0,
+                    25000.0,
+                    35000.0,
+                    45000.0,
+                    55000.0,
+                    65000.0,
+                    75000.0,
+                    85000.0,
+                    95000.0,
+                    105000.0,
+                ],
                 type=pa.float64(),
             ),
             "region_code": pa.array(
@@ -204,8 +248,12 @@ def test_unmatched_households_handling() -> None:
         {
             "household_id": pa.array([1, 2, 3, 4, 5], type=pa.int64()),
             "year": pa.array([2025] * 5, type=pa.int64()),
-            "disposable_income": pa.array([10000.0, 20000.0, 30000.0, 40000.0, 50000.0], type=pa.float64()),
-            "income": pa.array([15000.0, 25000.0, 35000.0, 45000.0, 55000.0], type=pa.float64()),
+            "disposable_income": pa.array(
+                [10000.0, 20000.0, 30000.0, 40000.0, 50000.0], type=pa.float64()
+            ),
+            "income": pa.array(
+                [15000.0, 25000.0, 35000.0, 45000.0, 55000.0], type=pa.float64()
+            ),
         }
     )
     baseline = PanelOutput(table=baseline_table, metadata={})
@@ -215,8 +263,12 @@ def test_unmatched_households_handling() -> None:
         {
             "household_id": pa.array([3, 4, 5, 6, 7], type=pa.int64()),
             "year": pa.array([2025] * 5, type=pa.int64()),
-            "disposable_income": pa.array([32000.0, 42000.0, 52000.0, 62000.0, 72000.0], type=pa.float64()),
-            "income": pa.array([35000.0, 45000.0, 55000.0, 65000.0, 75000.0], type=pa.float64()),
+            "disposable_income": pa.array(
+                [32000.0, 42000.0, 52000.0, 62000.0, 72000.0], type=pa.float64()
+            ),
+            "income": pa.array(
+                [35000.0, 45000.0, 55000.0, 65000.0, 75000.0], type=pa.float64()
+            ),
         }
     )
     reform = PanelOutput(table=reform_table, metadata={})
@@ -244,7 +296,9 @@ def test_welfare_by_year() -> None:
         {
             "household_id": pa.array([1, 2, 1, 2], type=pa.int64()),
             "year": pa.array([2025, 2025, 2026, 2026], type=pa.int64()),
-            "disposable_income": pa.array([10000.0, 20000.0, 11000.0, 21000.0], type=pa.float64()),
+            "disposable_income": pa.array(
+                [10000.0, 20000.0, 11000.0, 21000.0], type=pa.float64()
+            ),
             "income": pa.array([15000.0, 25000.0, 16000.0, 26000.0], type=pa.float64()),
         }
     )
@@ -255,7 +309,9 @@ def test_welfare_by_year() -> None:
         {
             "household_id": pa.array([1, 2, 1, 2], type=pa.int64()),
             "year": pa.array([2025, 2025, 2026, 2026], type=pa.int64()),
-            "disposable_income": pa.array([12000.0, 18000.0, 13000.0, 19000.0], type=pa.float64()),
+            "disposable_income": pa.array(
+                [12000.0, 18000.0, 13000.0, 19000.0], type=pa.float64()
+            ),
             "income": pa.array([15000.0, 25000.0, 16000.0, 26000.0], type=pa.float64()),
         }
     )
@@ -284,7 +340,9 @@ def test_welfare_aggregate_years() -> None:
         {
             "household_id": pa.array([1, 2, 1, 2], type=pa.int64()),
             "year": pa.array([2025, 2025, 2026, 2026], type=pa.int64()),
-            "disposable_income": pa.array([10000.0, 20000.0, 11000.0, 21000.0], type=pa.float64()),
+            "disposable_income": pa.array(
+                [10000.0, 20000.0, 11000.0, 21000.0], type=pa.float64()
+            ),
             "income": pa.array([15000.0, 25000.0, 16000.0, 26000.0], type=pa.float64()),
         }
     )
@@ -295,7 +353,9 @@ def test_welfare_aggregate_years() -> None:
         {
             "household_id": pa.array([1, 2, 1, 2], type=pa.int64()),
             "year": pa.array([2025, 2025, 2026, 2026], type=pa.int64()),
-            "disposable_income": pa.array([12000.0, 18000.0, 13000.0, 19000.0], type=pa.float64()),
+            "disposable_income": pa.array(
+                [12000.0, 18000.0, 13000.0, 19000.0], type=pa.float64()
+            ),
             "income": pa.array([15000.0, 25000.0, 16000.0, 26000.0], type=pa.float64()),
         }
     )
@@ -321,7 +381,9 @@ def test_welfare_preserve_year_detail_without_by_year() -> None:
         {
             "household_id": pa.array([1, 2, 1, 2], type=pa.int64()),
             "year": pa.array([2025, 2025, 2026, 2026], type=pa.int64()),
-            "disposable_income": pa.array([10000.0, 20000.0, 11000.0, 21000.0], type=pa.float64()),
+            "disposable_income": pa.array(
+                [10000.0, 20000.0, 11000.0, 21000.0], type=pa.float64()
+            ),
             "income": pa.array([15000.0, 25000.0, 16000.0, 26000.0], type=pa.float64()),
         }
     )
@@ -331,7 +393,9 @@ def test_welfare_preserve_year_detail_without_by_year() -> None:
         {
             "household_id": pa.array([1, 2, 1, 2], type=pa.int64()),
             "year": pa.array([2025, 2025, 2026, 2026], type=pa.int64()),
-            "disposable_income": pa.array([12000.0, 18000.0, 13000.0, 19000.0], type=pa.float64()),
+            "disposable_income": pa.array(
+                [12000.0, 18000.0, 13000.0, 19000.0], type=pa.float64()
+            ),
             "income": pa.array([15000.0, 25000.0, 16000.0, 26000.0], type=pa.float64()),
         }
     )
@@ -484,7 +548,9 @@ def test_welfare_missing_field_error(baseline_panel: PanelOutput) -> None:
 
     config = WelfareConfig(welfare_field="disposable_income")
 
-    with pytest.raises(ValueError, match="Welfare field 'disposable_income' not found in reform panel"):
+    with pytest.raises(
+        ValueError, match="Welfare field 'disposable_income' not found in reform panel"
+    ):
         compute_welfare_indicators(baseline_panel, reform, config)
 
 
@@ -502,7 +568,10 @@ def test_welfare_invalid_grouping_config() -> None:
 
     config = WelfareConfig(group_by_decile=False, group_by_region=False)
 
-    with pytest.raises(ValueError, match="At least one of group_by_decile or group_by_region must be True"):
+    with pytest.raises(
+        ValueError,
+        match="At least one of group_by_decile or group_by_region must be True",
+    ):
         compute_welfare_indicators(baseline, reform, config)
 
 
@@ -527,7 +596,9 @@ def test_welfare_mean_gain_losers_only() -> None:
         {
             "household_id": pa.array([1, 2, 3], type=pa.int64()),
             "year": pa.array([2025] * 3, type=pa.int64()),
-            "disposable_income": pa.array([10000.0, 20000.0, 30000.0], type=pa.float64()),
+            "disposable_income": pa.array(
+                [10000.0, 20000.0, 30000.0], type=pa.float64()
+            ),
             "income": pa.array([15000.0, 25000.0, 35000.0], type=pa.float64()),
         }
     )
@@ -537,7 +608,9 @@ def test_welfare_mean_gain_losers_only() -> None:
         {
             "household_id": pa.array([1, 2, 3], type=pa.int64()),
             "year": pa.array([2025] * 3, type=pa.int64()),
-            "disposable_income": pa.array([12000.0, 22000.0, 32000.0], type=pa.float64()),
+            "disposable_income": pa.array(
+                [12000.0, 22000.0, 32000.0], type=pa.float64()
+            ),
             "income": pa.array([15000.0, 25000.0, 35000.0], type=pa.float64()),
         }
     )

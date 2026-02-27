@@ -243,7 +243,9 @@ def compute_tax_burden(
     multipliers = _extract_progressive_rate_multipliers(parameters)
     if multipliers:
         if income_deciles is None:
-            income_deciles = assign_income_deciles(_as_array(population.column("income")))
+            income_deciles = assign_income_deciles(
+                _as_array(population.column("income"))
+            )
         multiplier_values = [
             multipliers.get(f"decile_{decile}", 1.0)
             for decile in income_deciles.to_pylist()

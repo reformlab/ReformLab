@@ -31,12 +31,8 @@ from reformlab.computation.types import ComputationResult, PolicyConfig, Populat
 # the SimulationBuilder attribute.
 
 _mock_sim_builder_module = MagicMock()
-sys.modules.setdefault(
-    "openfisca_core", MagicMock()
-)
-sys.modules.setdefault(
-    "openfisca_core.simulation_builder", _mock_sim_builder_module
-)
+sys.modules.setdefault("openfisca_core", MagicMock())
+sys.modules.setdefault("openfisca_core.simulation_builder", _mock_sim_builder_module)
 
 
 def _make_mock_tbs(
@@ -541,9 +537,7 @@ class TestCoexistence:
     def test_both_adapters_instantiate(self, tmp_path: object) -> None:
         from reformlab.computation.openfisca_adapter import OpenFiscaAdapter
 
-        pre_computed = OpenFiscaAdapter(
-            data_dir=str(tmp_path), skip_version_check=True
-        )
+        pre_computed = OpenFiscaAdapter(data_dir=str(tmp_path), skip_version_check=True)
         api_adapter = OpenFiscaApiAdapter(
             output_variables=("income_tax",),
             skip_version_check=True,
@@ -556,9 +550,7 @@ class TestCoexistence:
     def test_adapters_do_not_share_state(self, tmp_path: object) -> None:
         from reformlab.computation.openfisca_adapter import OpenFiscaAdapter
 
-        pre_computed = OpenFiscaAdapter(
-            data_dir=str(tmp_path), skip_version_check=True
-        )
+        pre_computed = OpenFiscaAdapter(data_dir=str(tmp_path), skip_version_check=True)
         api_adapter = OpenFiscaApiAdapter(
             output_variables=("income_tax",),
             skip_version_check=True,

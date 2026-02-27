@@ -28,15 +28,48 @@ def sample_population() -> pa.Table:
                 type=pa.float64(),
             ),
             "energy_transport_fuel": pa.array(
-                [800.0, 1000.0, 1200.0, 1400.0, 1600.0, 1800.0, 2000.0, 2200.0, 2500.0, 2100.0],
+                [
+                    800.0,
+                    1000.0,
+                    1200.0,
+                    1400.0,
+                    1600.0,
+                    1800.0,
+                    2000.0,
+                    2200.0,
+                    2500.0,
+                    2100.0,
+                ],
                 type=pa.float64(),
             ),
             "energy_heating_fuel": pa.array(
-                [400.0, 500.0, 600.0, 700.0, 800.0, 900.0, 1000.0, 1100.0, 1200.0, 1050.0],
+                [
+                    400.0,
+                    500.0,
+                    600.0,
+                    700.0,
+                    800.0,
+                    900.0,
+                    1000.0,
+                    1100.0,
+                    1200.0,
+                    1050.0,
+                ],
                 type=pa.float64(),
             ),
             "energy_natural_gas": pa.array(
-                [600.0, 750.0, 900.0, 1050.0, 1200.0, 1350.0, 1500.0, 1650.0, 1800.0, 1575.0],
+                [
+                    600.0,
+                    750.0,
+                    900.0,
+                    1050.0,
+                    1200.0,
+                    1350.0,
+                    1500.0,
+                    1650.0,
+                    1800.0,
+                    1575.0,
+                ],
                 type=pa.float64(),
             ),
         }
@@ -50,7 +83,9 @@ def small_population() -> pa.Table:
         {
             "household_id": pa.array([1, 2, 3], type=pa.int64()),
             "income": pa.array([20000.0, 50000.0, 100000.0], type=pa.float64()),
-            "energy_transport_fuel": pa.array([1000.0, 1500.0, 2000.0], type=pa.float64()),
+            "energy_transport_fuel": pa.array(
+                [1000.0, 1500.0, 2000.0], type=pa.float64()
+            ),
             "energy_heating_fuel": pa.array([500.0, 750.0, 1000.0], type=pa.float64()),
             "energy_natural_gas": pa.array([800.0, 1200.0, 1600.0], type=pa.float64()),
         }
@@ -85,8 +120,14 @@ def emission_factor_table() -> pa.Table:
                 type=pa.float64(),
             ),
             "unit": pa.array(
-                ["kg_co2_per_liter", "kg_co2_per_liter", "kg_co2_per_liter",
-                 "kg_co2_per_liter", "kg_co2_per_m3", "kg_co2_per_m3"],
+                [
+                    "kg_co2_per_liter",
+                    "kg_co2_per_liter",
+                    "kg_co2_per_liter",
+                    "kg_co2_per_liter",
+                    "kg_co2_per_m3",
+                    "kg_co2_per_m3",
+                ],
                 type=pa.utf8(),
             ),
             "year": pa.array([2026, 2027, 2026, 2027, 2026, 2027], type=pa.int64()),

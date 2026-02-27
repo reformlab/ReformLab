@@ -138,9 +138,7 @@ class TestVintageConfig:
             ),
         )
 
-    def test_valid_config(
-        self, valid_rules: tuple[VintageTransitionRule, ...]
-    ) -> None:
+    def test_valid_config(self, valid_rules: tuple[VintageTransitionRule, ...]) -> None:
         """Valid configuration for vehicle asset class."""
         config = VintageConfig(
             asset_class="vehicle",

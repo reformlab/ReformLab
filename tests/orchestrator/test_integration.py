@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import uuid
 from dataclasses import replace
 from pathlib import Path
-import uuid
 
 import pyarrow as pa
 import pytest
@@ -317,12 +317,8 @@ class TestOrchestratorRunner:
         result = runner.run(request)
 
         assert result.success is True
-        assert result.metadata["data_hashes"] == {
-            "population": hash_file(input_file)
-        }
-        assert result.metadata["output_hashes"] == {
-            "results": hash_file(output_file)
-        }
+        assert result.metadata["data_hashes"] == {"population": hash_file(input_file)}
+        assert result.metadata["output_hashes"] == {"results": hash_file(output_file)}
 
     def test_runner_rejects_invalid_artifact_paths_payload(self) -> None:
         """Runner rejects malformed input/output artifact path maps."""

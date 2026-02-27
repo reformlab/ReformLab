@@ -31,19 +31,18 @@ from reformlab.indicators.comparison import (
 )
 from reformlab.indicators.distributional import compute_distributional_indicators
 from reformlab.indicators.fiscal import compute_fiscal_indicators
-from reformlab.indicators.geographic import compute_geographic_indicators
 from reformlab.indicators.types import (
     DistributionalConfig,
     FiscalConfig,
-    GeographicConfig,
     IndicatorResult,
 )
-from reformlab.indicators.welfare import compute_welfare_indicators
 from reformlab.orchestrator.panel import PanelOutput
 
 
 @pytest.fixture
-def baseline_scenario_distributional(simple_income_distribution_panel: PanelOutput) -> IndicatorResult:
+def baseline_scenario_distributional(
+    simple_income_distribution_panel: PanelOutput,
+) -> IndicatorResult:
     """Baseline scenario with distributional indicators."""
     return compute_distributional_indicators(simple_income_distribution_panel)
 
@@ -196,7 +195,9 @@ class TestSideBySideComparison:
     ) -> None:
         """AC-1: Two-scenario comparison produces side-by-side table."""
         scenarios = [
-            ScenarioInput(label="baseline", indicators=baseline_scenario_distributional),
+            ScenarioInput(
+                label="baseline", indicators=baseline_scenario_distributional
+            ),
             ScenarioInput(label="reform_a", indicators=reform_scenario_distributional),
         ]
 
@@ -223,9 +224,13 @@ class TestSideBySideComparison:
     ) -> None:
         """AC-1: Three-scenario comparison includes all scenario columns."""
         scenarios = [
-            ScenarioInput(label="baseline", indicators=baseline_scenario_distributional),
+            ScenarioInput(
+                label="baseline", indicators=baseline_scenario_distributional
+            ),
             ScenarioInput(label="reform_a", indicators=reform_scenario_distributional),
-            ScenarioInput(label="reform_b", indicators=reform_b_scenario_distributional),
+            ScenarioInput(
+                label="reform_b", indicators=reform_b_scenario_distributional
+            ),
         ]
 
         result = compare_scenarios(scenarios)
@@ -236,7 +241,11 @@ class TestSideBySideComparison:
         assert "reform_b" in result.table.column_names
 
         # Check metadata
-        assert result.metadata["scenario_labels"] == ["baseline", "reform_a", "reform_b"]
+        assert result.metadata["scenario_labels"] == [
+            "baseline",
+            "reform_a",
+            "reform_b",
+        ]
 
     def test_fiscal_comparison(
         self,
@@ -271,7 +280,9 @@ class TestDeltaComputation:
     ) -> None:
         """AC-2: Absolute delta columns are computed correctly."""
         scenarios = [
-            ScenarioInput(label="baseline", indicators=baseline_scenario_distributional),
+            ScenarioInput(
+                label="baseline", indicators=baseline_scenario_distributional
+            ),
             ScenarioInput(label="reform_a", indicators=reform_scenario_distributional),
         ]
 
@@ -299,7 +310,9 @@ class TestDeltaComputation:
     ) -> None:
         """AC-2: Percentage delta columns are computed correctly."""
         scenarios = [
-            ScenarioInput(label="baseline", indicators=baseline_scenario_distributional),
+            ScenarioInput(
+                label="baseline", indicators=baseline_scenario_distributional
+            ),
             ScenarioInput(label="reform_a", indicators=reform_scenario_distributional),
         ]
 
@@ -321,7 +334,9 @@ class TestDeltaComputation:
                     # Division by zero should result in null
                     assert pct_delta_val is None
                 else:
-                    expected_pct_delta = (reform_val - baseline_val) / baseline_val * 100.0
+                    expected_pct_delta = (
+                        (reform_val - baseline_val) / baseline_val * 100.0
+                    )
                     assert abs(pct_delta_val - expected_pct_delta) < 1e-6
 
     def test_both_delta_types(
@@ -331,7 +346,9 @@ class TestDeltaComputation:
     ) -> None:
         """AC-2: Both absolute and percentage deltas can be computed together."""
         scenarios = [
-            ScenarioInput(label="baseline", indicators=baseline_scenario_distributional),
+            ScenarioInput(
+                label="baseline", indicators=baseline_scenario_distributional
+            ),
             ScenarioInput(label="reform_a", indicators=reform_scenario_distributional),
         ]
 
@@ -349,7 +366,9 @@ class TestDeltaComputation:
     ) -> None:
         """AC-2: Delta values compute on overlapping keys with null years."""
         scenarios = [
-            ScenarioInput(label="baseline", indicators=baseline_scenario_distributional),
+            ScenarioInput(
+                label="baseline", indicators=baseline_scenario_distributional
+            ),
             ScenarioInput(label="reform_a", indicators=reform_scenario_distributional),
         ]
 
@@ -358,13 +377,18 @@ class TestDeltaComputation:
 
         rows = result.table.to_pylist()
         rows_with_both_values = [
-            row for row in rows
+            row
+            for row in rows
             if row["baseline"] is not None and row["reform_a"] is not None
         ]
-        assert rows_with_both_values, "Expected overlapping rows with both scenario values"
+        assert rows_with_both_values, (
+            "Expected overlapping rows with both scenario values"
+        )
 
         for row in rows_with_both_values:
-            assert row["delta_reform_a"] == pytest.approx(row["reform_a"] - row["baseline"])
+            assert row["delta_reform_a"] == pytest.approx(
+                row["reform_a"] - row["baseline"]
+            )
 
 
 class TestInputValidation:
@@ -375,7 +399,9 @@ class TestInputValidation:
     ) -> None:
         """AC-3: Single scenario input raises clear validation error."""
         scenarios = [
-            ScenarioInput(label="baseline", indicators=baseline_scenario_distributional),
+            ScenarioInput(
+                label="baseline", indicators=baseline_scenario_distributional
+            ),
         ]
 
         with pytest.raises(ValueError, match="at least 2 scenarios"):
@@ -388,7 +414,9 @@ class TestInputValidation:
     ) -> None:
         """AC-3: Duplicate scenario labels raise clear validation error."""
         scenarios = [
-            ScenarioInput(label="baseline", indicators=baseline_scenario_distributional),
+            ScenarioInput(
+                label="baseline", indicators=baseline_scenario_distributional
+            ),
             ScenarioInput(label="baseline", indicators=reform_scenario_distributional),
         ]
 
@@ -402,7 +430,9 @@ class TestInputValidation:
     ) -> None:
         """AC-3: Mixed indicator schemas raise clear validation error."""
         scenarios = [
-            ScenarioInput(label="baseline", indicators=baseline_scenario_distributional),
+            ScenarioInput(
+                label="baseline", indicators=baseline_scenario_distributional
+            ),
             ScenarioInput(label="reform", indicators=baseline_scenario_fiscal),
         ]
 
@@ -416,7 +446,9 @@ class TestInputValidation:
     ) -> None:
         """Labels conflicting with reserved columns should fail fast."""
         scenarios = [
-            ScenarioInput(label="field_name", indicators=baseline_scenario_distributional),
+            ScenarioInput(
+                label="field_name", indicators=baseline_scenario_distributional
+            ),
             ScenarioInput(label="reform", indicators=reform_scenario_distributional),
         ]
 
@@ -434,7 +466,9 @@ class TestCSVExport:
     ) -> None:
         """AC-4: CSV export creates a valid file."""
         scenarios = [
-            ScenarioInput(label="baseline", indicators=baseline_scenario_distributional),
+            ScenarioInput(
+                label="baseline", indicators=baseline_scenario_distributional
+            ),
             ScenarioInput(label="reform_a", indicators=reform_scenario_distributional),
         ]
 
@@ -461,7 +495,9 @@ class TestCSVExport:
     ) -> None:
         """AC-4: CSV export preserves data through round-trip."""
         scenarios = [
-            ScenarioInput(label="baseline", indicators=baseline_scenario_distributional),
+            ScenarioInput(
+                label="baseline", indicators=baseline_scenario_distributional
+            ),
             ScenarioInput(label="reform_a", indicators=reform_scenario_distributional),
         ]
 
@@ -494,7 +530,9 @@ class TestParquetExport:
     ) -> None:
         """AC-5: Parquet export creates a valid file."""
         scenarios = [
-            ScenarioInput(label="baseline", indicators=baseline_scenario_distributional),
+            ScenarioInput(
+                label="baseline", indicators=baseline_scenario_distributional
+            ),
             ScenarioInput(label="reform_a", indicators=reform_scenario_distributional),
         ]
 
@@ -521,7 +559,9 @@ class TestParquetExport:
     ) -> None:
         """AC-5: Parquet export preserves column types through round-trip."""
         scenarios = [
-            ScenarioInput(label="baseline", indicators=baseline_scenario_distributional),
+            ScenarioInput(
+                label="baseline", indicators=baseline_scenario_distributional
+            ),
             ScenarioInput(label="reform_a", indicators=reform_scenario_distributional),
         ]
 
@@ -551,7 +591,9 @@ class TestMetadataPreservation:
     ) -> None:
         """AC-6: Metadata contains scenario labels."""
         scenarios = [
-            ScenarioInput(label="baseline", indicators=baseline_scenario_distributional),
+            ScenarioInput(
+                label="baseline", indicators=baseline_scenario_distributional
+            ),
             ScenarioInput(label="reform_a", indicators=reform_scenario_distributional),
         ]
 
@@ -567,7 +609,9 @@ class TestMetadataPreservation:
     ) -> None:
         """AC-6: Metadata contains indicator schema type."""
         scenarios = [
-            ScenarioInput(label="baseline", indicators=baseline_scenario_distributional),
+            ScenarioInput(
+                label="baseline", indicators=baseline_scenario_distributional
+            ),
             ScenarioInput(label="reform_a", indicators=reform_scenario_distributional),
         ]
 
@@ -583,7 +627,9 @@ class TestMetadataPreservation:
     ) -> None:
         """AC-6: Metadata preserves source indicator metadata."""
         scenarios = [
-            ScenarioInput(label="baseline", indicators=baseline_scenario_distributional),
+            ScenarioInput(
+                label="baseline", indicators=baseline_scenario_distributional
+            ),
             ScenarioInput(label="reform_a", indicators=reform_scenario_distributional),
         ]
 
@@ -599,7 +645,9 @@ class TestMetadataPreservation:
     ) -> None:
         """AC-6: Metadata includes field mappings for governance consumers."""
         scenarios = [
-            ScenarioInput(label="baseline", indicators=baseline_scenario_distributional),
+            ScenarioInput(
+                label="baseline", indicators=baseline_scenario_distributional
+            ),
             ScenarioInput(label="reform_a", indicators=reform_scenario_distributional),
         ]
 
@@ -622,10 +670,38 @@ class TestMismatchedInputHandling:
         # Create baseline with year 2020
         baseline_table = pa.table(
             {
-                "household_id": pa.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19], type=pa.int64()),
+                "household_id": pa.array(
+                    [
+                        0,
+                        1,
+                        2,
+                        3,
+                        4,
+                        5,
+                        6,
+                        7,
+                        8,
+                        9,
+                        10,
+                        11,
+                        12,
+                        13,
+                        14,
+                        15,
+                        16,
+                        17,
+                        18,
+                        19,
+                    ],
+                    type=pa.int64(),
+                ),
                 "year": pa.array([2020] * 20, type=pa.int64()),
-                "income": pa.array([10000.0 + i * 1000.0 for i in range(20)], type=pa.float64()),
-                "tax": pa.array([1000.0 + i * 100.0 for i in range(20)], type=pa.float64()),
+                "income": pa.array(
+                    [10000.0 + i * 1000.0 for i in range(20)], type=pa.float64()
+                ),
+                "tax": pa.array(
+                    [1000.0 + i * 100.0 for i in range(20)], type=pa.float64()
+                ),
             }
         )
         baseline_panel = PanelOutput(
@@ -633,17 +709,44 @@ class TestMismatchedInputHandling:
             metadata={"start_year": 2020, "end_year": 2020, "seed": 42},
         )
         baseline_indicators = compute_distributional_indicators(
-            baseline_panel,
-            config=DistributionalConfig(by_year=True)
+            baseline_panel, config=DistributionalConfig(by_year=True)
         )
 
         # Create reform with year 2021 (non-overlapping)
         reform_table = pa.table(
             {
-                "household_id": pa.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19], type=pa.int64()),
+                "household_id": pa.array(
+                    [
+                        0,
+                        1,
+                        2,
+                        3,
+                        4,
+                        5,
+                        6,
+                        7,
+                        8,
+                        9,
+                        10,
+                        11,
+                        12,
+                        13,
+                        14,
+                        15,
+                        16,
+                        17,
+                        18,
+                        19,
+                    ],
+                    type=pa.int64(),
+                ),
                 "year": pa.array([2021] * 20, type=pa.int64()),
-                "income": pa.array([10000.0 + i * 1000.0 for i in range(20)], type=pa.float64()),
-                "tax": pa.array([1500.0 + i * 120.0 for i in range(20)], type=pa.float64()),
+                "income": pa.array(
+                    [10000.0 + i * 1000.0 for i in range(20)], type=pa.float64()
+                ),
+                "tax": pa.array(
+                    [1500.0 + i * 120.0 for i in range(20)], type=pa.float64()
+                ),
             }
         )
         reform_panel = PanelOutput(
@@ -651,8 +754,7 @@ class TestMismatchedInputHandling:
             metadata={"start_year": 2021, "end_year": 2021, "seed": 43},
         )
         reform_indicators = compute_distributional_indicators(
-            reform_panel,
-            config=DistributionalConfig(by_year=True)
+            reform_panel, config=DistributionalConfig(by_year=True)
         )
 
         scenarios = [
@@ -699,7 +801,12 @@ class TestEmptyInputHandling:
         assert "delta_reform_a" in result.table.column_names
         assert "pct_delta_reform_a" in result.table.column_names
         assert result.metadata["baseline_label"] == "baseline"
-        assert result.metadata["join_keys"] == ["field_name", "decile", "year", "metric"]
+        assert result.metadata["join_keys"] == [
+            "field_name",
+            "decile",
+            "year",
+            "metric",
+        ]
         assert any("empty indicator results" in warning for warning in result.warnings)
 
 
@@ -713,7 +820,9 @@ class TestStableTableContract:
     ) -> None:
         """AC-8: to_table() returns a PyArrow Table."""
         scenarios = [
-            ScenarioInput(label="baseline", indicators=baseline_scenario_distributional),
+            ScenarioInput(
+                label="baseline", indicators=baseline_scenario_distributional
+            ),
             ScenarioInput(label="reform_a", indicators=reform_scenario_distributional),
         ]
 
@@ -729,7 +838,9 @@ class TestStableTableContract:
     ) -> None:
         """AC-8: Table schema is stable and predictable."""
         scenarios = [
-            ScenarioInput(label="baseline", indicators=baseline_scenario_distributional),
+            ScenarioInput(
+                label="baseline", indicators=baseline_scenario_distributional
+            ),
             ScenarioInput(label="reform_a", indicators=reform_scenario_distributional),
         ]
 
@@ -737,7 +848,14 @@ class TestStableTableContract:
         table = result.to_table()
 
         # Check schema has expected columns
-        expected_base_cols = {"field_name", "decile", "year", "metric", "baseline", "reform_a"}
+        expected_base_cols = {
+            "field_name",
+            "decile",
+            "year",
+            "metric",
+            "baseline",
+            "reform_a",
+        }
         assert expected_base_cols.issubset(set(table.column_names))
 
         # Check column types
