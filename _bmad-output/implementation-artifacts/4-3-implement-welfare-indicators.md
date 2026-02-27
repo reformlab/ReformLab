@@ -322,10 +322,28 @@ src/reformlab/indicators/
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+claude-sonnet-4-5-20250929
 
 ### Debug Log References
 
+N/A - no significant debugging required.
+
 ### Completion Notes List
 
+- Implemented `WelfareIndicators` dataclass with all welfare metrics (winner/loser counts, mean_gain, mean_loss, median_change, total_gain, total_loss, net_change)
+- Implemented `WelfareConfig` with configurable welfare field, threshold, grouping dimensions (decile/region), and multi-year options
+- Created `compare_households()` to join baseline/reform panels and compute net changes
+- Created `aggregate_welfare_by_decile()` and `aggregate_welfare_by_region()` for group-level welfare metrics
+- Implemented `compute_welfare_indicators()` main API following existing indicator patterns
+- Extended `IndicatorResult.to_table()` to support welfare indicators with stable schema (field_name, group_type, group_value, year, metric, value)
+- All 16 tests pass, covering all acceptance criteria including winner/loser classification, unmatched household handling, all-neutral scenario (AC-7), welfare metrics correctness, multi-year support, and to_table() schema stability
+- mypy type checking passes (only pre-existing error in unrelated file)
+- Updated module exports in `__init__.py`
+- Updated sprint status to mark story as done
+
 ### File List
+
+- src/reformlab/indicators/types.py — added WelfareIndicators and WelfareConfig
+- src/reformlab/indicators/welfare.py — NEW: all welfare computation logic
+- src/reformlab/indicators/__init__.py — added welfare exports
+- tests/indicators/test_welfare.py — NEW: comprehensive test coverage (16 tests)

@@ -2,13 +2,16 @@
 
 Story 4.1: Implement Distributional Indicators by Income Decile
 Story 4.2: Implement Geographic Aggregation Indicators
+Story 4.3: Implement Welfare Indicators
 
 This module provides:
 - DecileIndicators: Dataclass for decile-level metric results
 - RegionIndicators: Dataclass for region-level metric results
+- WelfareIndicators: Dataclass for welfare metric results (winner/loser analysis)
 - IndicatorResult: Container for indicator results with metadata and warnings
 - DistributionalConfig: Configuration for distributional indicator computation
 - GeographicConfig: Configuration for geographic indicator computation
+- WelfareConfig: Configuration for welfare indicator computation
 """
 
 from __future__ import annotations
@@ -81,6 +84,43 @@ class RegionIndicators:
 
 
 @dataclass
+class WelfareIndicators:
+    """Welfare indicator metrics for baseline vs reform comparison.
+
+    Contains winner/loser counts and welfare metrics for a single field and group.
+
+    Attributes:
+        field_name: Name of the welfare field being analyzed (e.g., "disposable_income").
+        group_type: Type of grouping ("decile" or "region").
+        group_value: Value of the grouping dimension (decile number 1-10 or region code).
+        year: Year of the data, or None for cross-year aggregations.
+        winner_count: Number of households with positive net change (change > threshold).
+        loser_count: Number of households with negative net change (change < -threshold).
+        neutral_count: Number of households with negligible change (-threshold <= change <= threshold).
+        mean_gain: Mean value of positive changes (winners only).
+        mean_loss: Mean absolute value of negative changes (losers only).
+        median_change: Median net change across all households in group.
+        total_gain: Sum of all positive changes.
+        total_loss: Absolute sum of all negative changes.
+        net_change: Net welfare change (total_gain - total_loss).
+    """
+
+    field_name: str
+    group_type: str  # "decile" or "region"
+    group_value: int | str  # decile number or region code
+    year: int | None
+    winner_count: int
+    loser_count: int
+    neutral_count: int
+    mean_gain: float
+    mean_loss: float
+    median_change: float
+    total_gain: float
+    total_loss: float
+    net_change: float
+
+
+@dataclass
 class IndicatorResult:
     """Container for computed indicator results with metadata and warnings.
 
@@ -97,7 +137,7 @@ class IndicatorResult:
             (only for geographic indicators).
     """
 
-    indicators: Sequence[DecileIndicators | RegionIndicators]
+    indicators: Sequence[DecileIndicators | RegionIndicators | WelfareIndicators]
     metadata: dict[str, Any]
     warnings: list[str] = field(default_factory=list)
     excluded_count: int = 0
@@ -110,6 +150,7 @@ class IndicatorResult:
 
         For DecileIndicators: field_name, decile, year, metric, value
         For RegionIndicators: field_name, region, year, metric, value
+        For WelfareIndicators: field_name, group_type, group_value, year, metric, value
 
         This table is suitable for downstream CSV/Parquet export workflows
         and scenario comparison operations.
@@ -119,7 +160,19 @@ class IndicatorResult:
         """
         if not self.indicators:
             # Detect indicator type from metadata to determine schema
-            if "region_field" in self.metadata:
+            if "welfare_field" in self.metadata:
+                # Welfare indicators
+                return pa.table(
+                    {
+                        "field_name": pa.array([], type=pa.utf8()),
+                        "group_type": pa.array([], type=pa.utf8()),
+                        "group_value": pa.array([], type=pa.utf8()),
+                        "year": pa.array([], type=pa.int64()),
+                        "metric": pa.array([], type=pa.utf8()),
+                        "value": pa.array([], type=pa.float64()),
+                    }
+                )
+            elif "region_field" in self.metadata:
                 # Geographic indicators
                 return pa.table(
                     {
@@ -145,16 +198,76 @@ class IndicatorResult:
         # Detect indicator type from first indicator
         first_indicator = self.indicators[0]
         is_geographic = isinstance(first_indicator, RegionIndicators)
+        is_welfare = isinstance(first_indicator, WelfareIndicators)
+
+        if is_welfare:
+            # Welfare indicators have different metrics
+            field_names_welfare: list[str] = []
+            group_types: list[str] = []
+            group_values: list[str] = []
+            years_welfare: list[int | None] = []
+            metrics_welfare: list[str] = []
+            values_welfare: list[float] = []
+
+            for ind in self.indicators:
+                assert isinstance(ind, WelfareIndicators)
+                welfare_metric_names = [
+                    "winner_count",
+                    "loser_count",
+                    "neutral_count",
+                    "mean_gain",
+                    "mean_loss",
+                    "median_change",
+                    "total_gain",
+                    "total_loss",
+                    "net_change",
+                ]
+                welfare_metric_values = [
+                    float(ind.winner_count),
+                    float(ind.loser_count),
+                    float(ind.neutral_count),
+                    ind.mean_gain,
+                    ind.mean_loss,
+                    ind.median_change,
+                    ind.total_gain,
+                    ind.total_loss,
+                    ind.net_change,
+                ]
+                for metric_name, metric_value in zip(
+                    welfare_metric_names, welfare_metric_values, strict=True
+                ):
+                    field_names_welfare.append(ind.field_name)
+                    group_types.append(ind.group_type)
+                    group_values.append(str(ind.group_value))
+                    years_welfare.append(ind.year)
+                    metrics_welfare.append(metric_name)
+                    values_welfare.append(metric_value)
+
+            return pa.table(
+                {
+                    "field_name": pa.array(field_names_welfare, type=pa.utf8()),
+                    "group_type": pa.array(group_types, type=pa.utf8()),
+                    "group_value": pa.array(group_values, type=pa.utf8()),
+                    "year": pa.array(years_welfare, type=pa.int64()),
+                    "metric": pa.array(metrics_welfare, type=pa.utf8()),
+                    "value": pa.array(values_welfare, type=pa.float64()),
+                }
+            )
 
         # Build arrays in long format: one row per metric.
+        # This branch handles DecileIndicators and RegionIndicators only
         metric_names = ("count", "mean", "median", "sum", "min", "max")
-        field_names: list[str] = []
+        field_names_dist: list[str] = []
         groups: list[str | int | None] = []  # region or decile
-        years: list[int | None] = []
-        metrics: list[str] = []
-        values: list[float] = []
+        years_dist: list[int | None] = []
+        metrics_dist: list[str] = []
+        values_dist: list[float] = []
 
         for ind in self.indicators:
+            if isinstance(ind, WelfareIndicators):
+                # This should not happen in this branch, but mypy needs the check
+                continue
+
             metric_values = (
                 float(ind.count),
                 ind.mean,
@@ -166,35 +279,35 @@ class IndicatorResult:
             for metric_name, metric_value in zip(
                 metric_names, metric_values, strict=True
             ):
-                field_names.append(ind.field_name)
+                field_names_dist.append(ind.field_name)
                 if is_geographic:
                     assert isinstance(ind, RegionIndicators)
                     groups.append(ind.region)
                 else:
                     assert isinstance(ind, DecileIndicators)
                     groups.append(ind.decile)
-                years.append(ind.year)
-                metrics.append(metric_name)
-                values.append(metric_value)
+                years_dist.append(ind.year)
+                metrics_dist.append(metric_name)
+                values_dist.append(metric_value)
 
         if is_geographic:
             return pa.table(
                 {
-                    "field_name": pa.array(field_names, type=pa.utf8()),
+                    "field_name": pa.array(field_names_dist, type=pa.utf8()),
                     "region": pa.array(groups, type=pa.utf8()),
-                    "year": pa.array(years, type=pa.int64()),
-                    "metric": pa.array(metrics, type=pa.utf8()),
-                    "value": pa.array(values, type=pa.float64()),
+                    "year": pa.array(years_dist, type=pa.int64()),
+                    "metric": pa.array(metrics_dist, type=pa.utf8()),
+                    "value": pa.array(values_dist, type=pa.float64()),
                 }
             )
         else:
             return pa.table(
                 {
-                    "field_name": pa.array(field_names, type=pa.utf8()),
+                    "field_name": pa.array(field_names_dist, type=pa.utf8()),
                     "decile": pa.array(groups, type=pa.int64()),
-                    "year": pa.array(years, type=pa.int64()),
-                    "metric": pa.array(metrics, type=pa.utf8()),
-                    "value": pa.array(values, type=pa.float64()),
+                    "year": pa.array(years_dist, type=pa.int64()),
+                    "metric": pa.array(metrics_dist, type=pa.utf8()),
+                    "value": pa.array(values_dist, type=pa.float64()),
                 }
             )
 
@@ -249,3 +362,42 @@ class GeographicConfig:
     by_year: bool = False
     aggregate_years: bool = True
     reference_table: pa.Table | None = None
+
+
+@dataclass
+class WelfareConfig:
+    """Configuration for welfare indicator computation.
+
+    Specifies which field to use for welfare comparison, classification threshold,
+    grouping dimension, and multi-year handling.
+
+    Attributes:
+        welfare_field: Name of the welfare field for net change computation.
+            Defaults to "disposable_income".
+        threshold: Classification threshold for winner/loser determination.
+            Households with change > threshold are winners, change < -threshold are losers.
+            Defaults to 0.0 (any positive change is a winner).
+        by_year: If True, compute indicators separately for each year.
+            Defaults to False (aggregate across all years).
+        aggregate_years: If True, aggregate indicators across all years
+            (group by dimension only). Only used when by_year=False.
+            Defaults to True.
+        group_by_decile: If True, group welfare indicators by income decile.
+            Defaults to True.
+        group_by_region: If True, group welfare indicators by region.
+            Mutually exclusive with group_by_decile. If both are True, decile takes precedence.
+            Defaults to False.
+        income_field: Name of income column for decile assignment (when group_by_decile=True).
+            Defaults to "income".
+        region_field: Name of region column for region grouping (when group_by_region=True).
+            Defaults to "region_code".
+    """
+
+    welfare_field: str = "disposable_income"
+    threshold: float = 0.0
+    by_year: bool = False
+    aggregate_years: bool = True
+    group_by_decile: bool = True
+    group_by_region: bool = False
+    income_field: str = "income"
+    region_field: str = "region_code"
