@@ -28,7 +28,7 @@ From backlog (BKL-303), aligned with FR14, FR17, NFR10.
 
 4. **AC-4: Step integrates with orchestrator pipeline from Stories 3-1 and 3-2**
    - Given a configured CarryForwardStep, when registered with StepRegistry and executed via Orchestrator, then it executes correctly in the yearly pipeline.
-   - The step can be ordered via `depends_on` relative to other steps.
+   - Given multiple registered steps with dependencies, when `depends_on` is declared, then pipeline order honors dependency constraints deterministically.
 
 5. **AC-5: Carry-forward rules are configurable per state variable**
    - Given a configuration with multiple state variables (income, household_size, etc.), when carry-forward runs, then each variable is updated according to its specific rule.
@@ -39,6 +39,9 @@ From backlog (BKL-303), aligned with FR14, FR17, NFR10.
 - **Required prior stories:**
   - Story 3-1 (BKL-301): Yearly loop orchestrator - provides `Orchestrator`, `YearState`, `OrchestratorConfig`
   - Story 3-2 (BKL-302): Step interface - provides `OrchestratorStep` Protocol, `StepRegistry`, `@step` decorator
+- **Current prerequisite status (from `_bmad-output/implementation-artifacts/sprint-status.yaml`, checked 2026-02-27):**
+  - `3-1-implement-yearly-loop-orchestrator`: `done`
+  - `3-2-define-orchestrator-step-interface`: `done`
 - **Follow-on stories:**
   - Story 3-4 (BKL-304): Vintage transition step - will use carry-forward as dependency
   - Story 3-5 (BKL-305): ComputationAdapter integration - orchestrates adapter calls alongside carry-forward
@@ -49,6 +52,7 @@ From backlog (BKL-303), aligned with FR14, FR17, NFR10.
   - [ ] 0.1 Verify Story 3-1 and 3-2 status is `done` or `review`
   - [ ] 0.2 Confirm `OrchestratorStep` protocol and `StepRegistry` are available in `src/reformlab/orchestrator/step.py`
   - [ ] 0.3 Review `YearState` dataclass to understand state data structure
+  - [ ] 0.4 Record dependency verification evidence in Dev Agent Record before starting implementation
 
 - [ ] Task 1: Define carry-forward configuration schema (AC: #3, #5)
   - [ ] 1.1 Create `src/reformlab/orchestrator/carry_forward.py`
@@ -103,6 +107,7 @@ From backlog (BKL-303), aligned with FR14, FR17, NFR10.
     - Order-independent variable updates (sorted)
   - [ ] 5.5 Test orchestrator integration:
     - CarryForwardStep works with StepRegistry
+    - `depends_on` ordering is honored when carry-forward is combined with other registered steps
     - Step executes in pipeline with other steps
 
 - [ ] Task 6: Export APIs and run quality gates (AC: all)
