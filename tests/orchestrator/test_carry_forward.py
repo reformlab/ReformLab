@@ -133,6 +133,17 @@ class TestCarryForwardRuleValidation:
         assert "period_semantics" in str(exc_info.value).lower()
         assert "income" in str(exc_info.value)
 
+    def test_invalid_rule_type_rejected(self) -> None:
+        """Unknown rule_type should be rejected at configuration time."""
+        with pytest.raises(CarryForwardConfigError) as exc_info:
+            CarryForwardRule(
+                variable="income",
+                rule_type="unknown",  # type: ignore[arg-type]
+                period_semantics="annual_growth",
+            )
+        assert "rule_type" in str(exc_info.value).lower()
+        assert "income" in str(exc_info.value)
+
     def test_scale_rule_requires_value(self) -> None:
         """Scale rule without value should raise error during execution."""
         rule = CarryForwardRule(
@@ -193,6 +204,27 @@ class TestCarryForwardConfig:
         """Config strict_period can be explicitly set to False."""
         config = CarryForwardConfig(rules=(static_rule,), strict_period=False)
         assert config.strict_period is False
+
+    def test_config_rejects_duplicate_rule_variables(self) -> None:
+        """Config should reject duplicate rules for the same variable."""
+        rule1 = CarryForwardRule(
+            variable="income",
+            rule_type="scale",
+            period_semantics="annual_growth",
+            value=1.02,
+        )
+        rule2 = CarryForwardRule(
+            variable="income",
+            rule_type="increment",
+            period_semantics="annual_bonus",
+            value=1000.0,
+        )
+
+        with pytest.raises(CarryForwardConfigError) as exc_info:
+            CarryForwardConfig(rules=(rule1, rule2))
+
+        assert "duplicate" in str(exc_info.value).lower()
+        assert "income" in str(exc_info.value)
 
 
 # ============================================================================
@@ -454,6 +486,25 @@ class TestCarryForwardStepErrors:
 
         assert "income" in str(exc_info.value)
         assert "Custom rule failed" in str(exc_info.value)
+
+    def test_scale_rule_non_numeric_value_raises_execution_error(
+        self,
+    ) -> None:
+        """Scale rule should wrap non-numeric operations in execution errors."""
+        state = YearState(year=2024, data={"income": "50000"})
+        rule = CarryForwardRule(
+            variable="income",
+            rule_type="scale",
+            period_semantics="annual_growth",
+            value=1.02,
+        )
+        step = CarryForwardStep(CarryForwardConfig(rules=(rule,)))
+
+        with pytest.raises(CarryForwardExecutionError) as exc_info:
+            step.execute(2025, state)
+
+        assert "income" in str(exc_info.value)
+        assert "scale" in str(exc_info.value).lower()
 
 
 # ============================================================================

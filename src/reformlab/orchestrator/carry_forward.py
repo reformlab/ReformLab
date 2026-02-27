@@ -44,6 +44,7 @@ class CarryForwardExecutionError(Exception):
 
 
 RuleType = Literal["static", "scale", "increment", "custom"]
+_SUPPORTED_RULE_TYPES: tuple[str, ...] = ("static", "scale", "increment", "custom")
 
 
 @dataclass(frozen=True)
@@ -75,6 +76,16 @@ class CarryForwardRule:
 
     def __post_init__(self) -> None:
         """Validate rule configuration."""
+        if not self.variable or not self.variable.strip():
+            raise CarryForwardConfigError(
+                "Carry-forward rule variable name must be a non-empty string"
+            )
+        if self.rule_type not in _SUPPORTED_RULE_TYPES:
+            supported = ", ".join(_SUPPORTED_RULE_TYPES)
+            raise CarryForwardConfigError(
+                f"Rule for '{self.variable}' has invalid rule_type "
+                f"'{self.rule_type}'. Supported: {supported}"
+            )
         if not self.period_semantics or not self.period_semantics.strip():
             raise CarryForwardConfigError(
                 f"Rule for '{self.variable}' missing period_semantics (NFR10): "
@@ -101,6 +112,18 @@ class CarryForwardConfig:
 
     rules: tuple[CarryForwardRule, ...]
     strict_period: bool = True
+
+    def __post_init__(self) -> None:
+        """Normalize and validate carry-forward rules."""
+        object.__setattr__(self, "rules", tuple(self.rules))
+
+        seen: set[str] = set()
+        for rule in self.rules:
+            if rule.variable in seen:
+                raise CarryForwardConfigError(
+                    f"Duplicate carry-forward rule for variable '{rule.variable}'"
+                )
+            seen.add(rule.variable)
 
 
 # ============================================================================
@@ -211,36 +234,57 @@ class CarryForwardStep:
         Raises:
             CarryForwardExecutionError: If rule execution fails.
         """
+        variable_exists = rule.variable in state.data
         current_value = state.data.get(rule.variable)
 
         if rule.rule_type == "static":
             return current_value
 
         elif rule.rule_type == "scale":
-            if current_value is None:
+            if not variable_exists:
                 raise CarryForwardExecutionError(
                     f"Cannot apply scale rule for '{rule.variable}': "
                     f"variable not found in state data"
+                )
+            if current_value is None:
+                raise CarryForwardExecutionError(
+                    f"Cannot apply scale rule for '{rule.variable}': "
+                    f"current value is None"
                 )
             if rule.value is None:
                 raise CarryForwardExecutionError(
                     f"Cannot apply scale rule for '{rule.variable}': "
                     f"scale factor (value) is None"
                 )
-            return current_value * rule.value
+            try:
+                return current_value * rule.value
+            except Exception as e:
+                raise CarryForwardExecutionError(
+                    f"Cannot apply scale rule for '{rule.variable}': {e}"
+                ) from e
 
         elif rule.rule_type == "increment":
-            if current_value is None:
+            if not variable_exists:
                 raise CarryForwardExecutionError(
                     f"Cannot apply increment rule for '{rule.variable}': "
                     f"variable not found in state data"
+                )
+            if current_value is None:
+                raise CarryForwardExecutionError(
+                    f"Cannot apply increment rule for '{rule.variable}': "
+                    f"current value is None"
                 )
             if rule.value is None:
                 raise CarryForwardExecutionError(
                     f"Cannot apply increment rule for '{rule.variable}': "
                     f"increment value is None"
                 )
-            return current_value + rule.value
+            try:
+                return current_value + rule.value
+            except Exception as e:
+                raise CarryForwardExecutionError(
+                    f"Cannot apply increment rule for '{rule.variable}': {e}"
+                ) from e
 
         elif rule.rule_type == "custom":
             if rule.custom_fn is None:
