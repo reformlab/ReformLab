@@ -12,6 +12,7 @@ from reformlab.templates.schema import (
     PolicyType,
     RebateParameters,
     ReformScenario,
+    ScenarioTemplate,
     SubsidyParameters,
     YearSchedule,
 )
@@ -247,6 +248,16 @@ class TestBaselineScenario:
         )
         assert scenario.description == ""
         assert scenario.version == "1.0"
+
+    def test_baseline_is_scenario_template(self) -> None:
+        """BaselineScenario subclasses ScenarioTemplate."""
+        scenario = BaselineScenario(
+            name="test",
+            policy_type=PolicyType.CARBON_TAX,
+            year_schedule=YearSchedule(2026, 2036),
+            parameters=CarbonTaxParameters(rate_schedule={}),
+        )
+        assert isinstance(scenario, ScenarioTemplate)
 
 
 class TestReformScenario:

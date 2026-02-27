@@ -11,6 +11,7 @@ from reformlab.templates.reform import resolve_reform_definition
 from reformlab.templates.schema import (
     BaselineScenario,
     CarbonTaxParameters,
+    FeebateParameters,
     PolicyType,
     RebateParameters,
     ReformScenario,
@@ -236,3 +237,116 @@ class TestResolveReformDefinition:
         assert resolved.parameters.rate_schedule[2031] == 90.00
         # Later years from baseline
         assert resolved.parameters.rate_schedule[2036] == 100.00
+
+    def test_resolve_reform_preserves_carbon_redistribution_overrides(
+        self, baseline_scenario: BaselineScenario
+    ) -> None:
+        """Carbon-tax redistribution overrides survive resolution merge."""
+        baseline_with_redist = BaselineScenario(
+            name=baseline_scenario.name,
+            policy_type=baseline_scenario.policy_type,
+            year_schedule=baseline_scenario.year_schedule,
+            parameters=CarbonTaxParameters(
+                rate_schedule=baseline_scenario.parameters.rate_schedule,
+                exemptions=baseline_scenario.parameters.exemptions,
+                covered_categories=baseline_scenario.parameters.covered_categories,
+                redistribution_type="lump_sum",
+                income_weights={},
+            ),
+            description=baseline_scenario.description,
+            version=baseline_scenario.version,
+        )
+        reform = ReformScenario(
+            name="Progressive Override",
+            policy_type=PolicyType.CARBON_TAX,
+            baseline_ref="french-carbon-tax-2026",
+            parameters=CarbonTaxParameters(
+                rate_schedule={},
+                redistribution_type="progressive_dividend",
+                income_weights={"decile_1": 1.5, "decile_10": 0.2},
+            ),
+            version="1.0",
+        )
+        resolved = resolve_reform_definition(reform, baseline_with_redist)
+        assert isinstance(resolved.parameters, CarbonTaxParameters)
+        assert resolved.parameters.redistribution_type == "progressive_dividend"
+        assert resolved.parameters.income_weights["decile_1"] == 1.5
+        assert resolved.parameters.income_weights["decile_10"] == 0.2
+
+    def test_resolve_feebate_reform_can_override_to_zero(self) -> None:
+        """Explicit feebate zero values in reform override baseline values."""
+        baseline = BaselineScenario(
+            name="Baseline Feebate",
+            policy_type=PolicyType.FEEBATE,
+            year_schedule=YearSchedule(start_year=2026, end_year=2036),
+            parameters=FeebateParameters(
+                rate_schedule={2026: 1.0},
+                pivot_point=120.0,
+                fee_rate=50.0,
+                rebate_rate=50.0,
+                _pivot_point_set=True,
+                _fee_rate_set=True,
+                _rebate_rate_set=True,
+            ),
+            version="1.0",
+        )
+        reform = ReformScenario(
+            name="Zeroed Feebate Reform",
+            policy_type=PolicyType.FEEBATE,
+            baseline_ref="baseline-feebate",
+            parameters=FeebateParameters(
+                rate_schedule={},
+                pivot_point=0.0,
+                fee_rate=0.0,
+                rebate_rate=0.0,
+                _pivot_point_set=True,
+                _fee_rate_set=True,
+                _rebate_rate_set=True,
+            ),
+            version="1.0",
+        )
+        resolved = resolve_reform_definition(reform, baseline)
+        assert isinstance(resolved.parameters, FeebateParameters)
+        assert resolved.parameters.pivot_point == 0.0
+        assert resolved.parameters.fee_rate == 0.0
+        assert resolved.parameters.rebate_rate == 0.0
+
+    def test_resolve_feebate_zero_override_from_yaml(self, tmp_path: Path) -> None:
+        """Loader preserves explicit zero feebate overrides from YAML."""
+        baseline_yaml = textwrap.dedent("""\
+            version: "1.0"
+            name: "Baseline Feebate"
+            policy_type: feebate
+            year_schedule:
+              start_year: 2026
+              end_year: 2036
+            parameters:
+              pivot_point: 120.0
+              fee_rate: 50.0
+              rebate_rate: 50.0
+        """)
+        reform_yaml = textwrap.dedent("""\
+            version: "1.0"
+            name: "Zero Override Reform"
+            policy_type: feebate
+            baseline_ref: "baseline-feebate"
+            parameters:
+              pivot_point: 0.0
+              fee_rate: 0.0
+              rebate_rate: 0.0
+        """)
+        baseline_path = tmp_path / "baseline-feebate.yaml"
+        reform_path = tmp_path / "reform-feebate.yaml"
+        baseline_path.write_text(baseline_yaml, encoding="utf-8")
+        reform_path.write_text(reform_yaml, encoding="utf-8")
+
+        baseline = load_scenario_template(baseline_path)
+        reform = load_scenario_template(reform_path)
+        assert isinstance(baseline, BaselineScenario)
+        assert isinstance(reform, ReformScenario)
+
+        resolved = resolve_reform_definition(reform, baseline)
+        assert isinstance(resolved.parameters, FeebateParameters)
+        assert resolved.parameters.pivot_point == 0.0
+        assert resolved.parameters.fee_rate == 0.0
+        assert resolved.parameters.rebate_rate == 0.0

@@ -93,11 +93,13 @@ def _merge_parameters(
     is_carbon = isinstance(reform_params, CarbonTaxParameters)
     is_carbon = is_carbon or isinstance(baseline_params, CarbonTaxParameters)
     if is_carbon:
-        return CarbonTaxParameters(
-            rate_schedule=merged_rate_schedule,
-            exemptions=exemptions,
-            thresholds=thresholds,
-            covered_categories=covered_categories,
+        return _merge_carbon_params(
+            reform_params,
+            baseline_params,
+            merged_rate_schedule,
+            exemptions,
+            thresholds,
+            covered_categories,
         )
 
     is_subsidy = isinstance(reform_params, SubsidyParameters)
@@ -130,6 +132,45 @@ def _merge_parameters(
         exemptions=exemptions,
         thresholds=thresholds,
         covered_categories=covered_categories,
+    )
+
+
+def _merge_carbon_params(
+    reform_params: PolicyParameters,
+    baseline_params: PolicyParameters,
+    rate_schedule: dict[int, float],
+    exemptions: tuple[dict[str, Any], ...],
+    thresholds: tuple[dict[str, Any], ...],
+    covered_categories: tuple[str, ...],
+) -> CarbonTaxParameters:
+    """Merge carbon-tax-specific fields, including redistribution overrides."""
+    reform_carbon: CarbonTaxParameters | None = None
+    base_carbon: CarbonTaxParameters | None = None
+    if isinstance(reform_params, CarbonTaxParameters):
+        reform_carbon = reform_params
+    if isinstance(baseline_params, CarbonTaxParameters):
+        base_carbon = baseline_params
+
+    if reform_carbon and reform_carbon.redistribution_type:
+        redistribution_type = reform_carbon.redistribution_type
+    elif base_carbon:
+        redistribution_type = base_carbon.redistribution_type
+    else:
+        redistribution_type = ""
+
+    income_weights: dict[str, float] = dict(
+        base_carbon.income_weights if base_carbon else {}
+    )
+    if reform_carbon and reform_carbon.income_weights:
+        income_weights.update(reform_carbon.income_weights)
+
+    return CarbonTaxParameters(
+        rate_schedule=rate_schedule,
+        exemptions=exemptions,
+        thresholds=thresholds,
+        covered_categories=covered_categories,
+        redistribution_type=redistribution_type,
+        income_weights=income_weights,
     )
 
 
@@ -225,21 +266,21 @@ def _merge_feebate_params(
     if isinstance(baseline_params, FeebateParameters):
         base_fee = baseline_params
 
-    if reform_fee and reform_fee.pivot_point:
+    if reform_fee and (reform_fee._pivot_point_set or reform_fee.pivot_point != 0.0):
         pivot_point = reform_fee.pivot_point
     elif base_fee:
         pivot_point = base_fee.pivot_point
     else:
         pivot_point = 0.0
 
-    if reform_fee and reform_fee.fee_rate:
+    if reform_fee and (reform_fee._fee_rate_set or reform_fee.fee_rate != 0.0):
         fee_rate = reform_fee.fee_rate
     elif base_fee:
         fee_rate = base_fee.fee_rate
     else:
         fee_rate = 0.0
 
-    if reform_fee and reform_fee.rebate_rate:
+    if reform_fee and (reform_fee._rebate_rate_set or reform_fee.rebate_rate != 0.0):
         rebate_rate = reform_fee.rebate_rate
     elif base_fee:
         rebate_rate = base_fee.rebate_rate
@@ -254,4 +295,7 @@ def _merge_feebate_params(
         pivot_point=pivot_point,
         fee_rate=fee_rate,
         rebate_rate=rebate_rate,
+        _pivot_point_set=(reform_fee._pivot_point_set if reform_fee else False),
+        _fee_rate_set=(reform_fee._fee_rate_set if reform_fee else False),
+        _rebate_rate_set=(reform_fee._rebate_rate_set if reform_fee else False),
     )

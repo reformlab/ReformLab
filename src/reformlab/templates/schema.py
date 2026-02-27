@@ -114,15 +114,16 @@ class FeebateParameters(PolicyParameters):
     pivot_point: float = 0.0
     fee_rate: float = 0.0
     rebate_rate: float = 0.0
+    # Track whether numeric fields were explicitly provided in source config.
+    # This allows reform merges to distinguish "unset" from explicit zero values.
+    _pivot_point_set: bool = field(default=False, repr=False, compare=False)
+    _fee_rate_set: bool = field(default=False, repr=False, compare=False)
+    _rebate_rate_set: bool = field(default=False, repr=False, compare=False)
 
 
 @dataclass(frozen=True)
-class BaselineScenario:
-    """A baseline scenario template configuration.
-
-    Immutable dataclass representing a complete baseline policy scenario
-    with all parameters specified.
-    """
+class ScenarioTemplate:
+    """Base scenario template shape shared by baseline and reform variants."""
 
     name: str
     policy_type: PolicyType
@@ -131,6 +132,15 @@ class BaselineScenario:
     description: str = ""
     version: str = "1.0"
     schema_ref: str = ""
+
+
+@dataclass(frozen=True)
+class BaselineScenario(ScenarioTemplate):
+    """A baseline scenario template configuration.
+
+    Immutable dataclass representing a complete baseline policy scenario
+    with all parameters specified.
+    """
 
 
 @dataclass(frozen=True)

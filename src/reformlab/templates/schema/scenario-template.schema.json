@@ -4,7 +4,7 @@
   "title": "ReformLab Scenario Template",
   "description": "Schema for defining environmental policy scenarios (baseline + reform overrides) in ReformLab",
   "type": "object",
-  "required": ["version", "name", "policy_type"],
+  "required": ["version", "name", "policy_type", "parameters"],
   "properties": {
     "$schema": {
       "type": "string",
@@ -57,6 +57,7 @@
     "parameters": {
       "type": "object",
       "description": "Policy-specific parameters that vary by policy_type",
+      "minProperties": 1,
       "properties": {
         "rate_schedule": {
           "type": "object",

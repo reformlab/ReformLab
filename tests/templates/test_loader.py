@@ -123,6 +123,39 @@ class TestRequiredFieldValidation:
             load_scenario_template(p)
         assert "version" in str(exc_info.value)
 
+    def test_empty_parameters_raises(self, tmp_path: Path) -> None:
+        """Empty parameters mapping raises ScenarioError."""
+        content = textwrap.dedent("""\
+            version: "1.0"
+            name: "Empty Params"
+            policy_type: carbon_tax
+            year_schedule:
+              start_year: 2026
+              end_year: 2036
+            parameters: {}
+        """)
+        p = tmp_path / "empty-params.yaml"
+        p.write_text(content, encoding="utf-8")
+        with pytest.raises(ScenarioError, match="parameters"):
+            load_scenario_template(p)
+
+    def test_parameters_must_be_mapping(self, tmp_path: Path) -> None:
+        """Non-mapping parameters raises ScenarioError."""
+        content = textwrap.dedent("""\
+            version: "1.0"
+            name: "Bad Params"
+            policy_type: carbon_tax
+            year_schedule:
+              start_year: 2026
+              end_year: 2036
+            parameters:
+              - nope
+        """)
+        p = tmp_path / "bad-params.yaml"
+        p.write_text(content, encoding="utf-8")
+        with pytest.raises(ScenarioError, match="parameters"):
+            load_scenario_template(p)
+
 
 class TestTypeCoercion:
     """Tests for type coercion (Subtask 2.4)."""
@@ -181,6 +214,25 @@ class TestInvalidPolicyType:
         assert "unknown_policy" in err_msg
         assert "carbon_tax" in err_msg
         assert "subsidy" in err_msg
+
+    def test_schema_version_major_mismatch_strict(self, tmp_path: Path) -> None:
+        """Major schema version mismatch raises in strict mode."""
+        content = textwrap.dedent("""\
+            $schema: "./schema/scenario-template.schema.json"
+            version: "2.0"
+            name: "Wrong Version"
+            policy_type: carbon_tax
+            year_schedule:
+              start_year: 2026
+              end_year: 2036
+            parameters:
+              rate_schedule:
+                2026: 44.6
+        """)
+        p = tmp_path / "wrong-version.yaml"
+        p.write_text(content, encoding="utf-8")
+        with pytest.raises(ScenarioError, match="version"):
+            load_scenario_template(p, strict=True)
 
 
 class TestDumpScenarioTemplate:
@@ -600,10 +652,8 @@ class TestFeebateParameterLoading:
         assert scenario.parameters.rebate_rate == 50.0
         assert scenario.parameters.covered_categories == ("passenger_vehicle",)
 
-    def test_load_feebate_minimal(self, tmp_path: Path) -> None:
-        """Feebate template with minimal fields loads with defaults."""
-        from reformlab.templates.schema import FeebateParameters
-
+    def test_load_feebate_minimal_empty_parameters_raises(self, tmp_path: Path) -> None:
+        """Feebate template with empty parameters is invalid."""
         content = textwrap.dedent("""\
             $schema: "./schema/scenario-template.schema.json"
             version: "1.0"
@@ -617,11 +667,8 @@ class TestFeebateParameterLoading:
         p = tmp_path / "feebate-minimal.yaml"
         p.write_text(content, encoding="utf-8")
 
-        scenario = load_scenario_template(p)
-        assert isinstance(scenario.parameters, FeebateParameters)
-        assert scenario.parameters.pivot_point == 0.0
-        assert scenario.parameters.fee_rate == 0.0
-        assert scenario.parameters.rebate_rate == 0.0
+        with pytest.raises(ScenarioError, match="parameters"):
+            load_scenario_template(p)
 
     def test_load_feebate_asymmetric_rates(self, tmp_path: Path) -> None:
         """Feebate template with different fee and rebate rates loads correctly."""

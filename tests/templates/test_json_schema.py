@@ -42,6 +42,14 @@ class TestJSONSchemaFile:
         assert "$schema" in schema
         assert "properties" in schema
         assert "required" in schema
+        assert "parameters" in schema["required"]
+
+    def test_json_schema_requires_non_empty_parameters(self) -> None:
+        """Schema enforces at least one parameter key."""
+        schema_path = get_schema_path()
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        params = schema["properties"]["parameters"]
+        assert params.get("minProperties") == 1
 
     def test_json_schema_has_field_descriptions(self) -> None:
         """JSON Schema includes descriptions for IDE autocompletion (AC-4)."""

@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 SCHEMA_VERSION = "1.0"
 _SCHEMA_MAJOR_VERSION = 1
 
-_REQUIRED_FIELDS = frozenset({"name", "policy_type", "version"})
+_REQUIRED_FIELDS = frozenset({"name", "policy_type", "version", "parameters"})
 _VALID_POLICY_TYPES = frozenset(pt.value for pt in PolicyType)
 _MIN_YEAR_SCHEDULE_DURATION = 10
 _SCHEMA_DIR = Path(__file__).parent / "schema"
@@ -136,6 +136,7 @@ def load_scenario_template(
     policy_type = PolicyType(data["policy_type"])
     name = str(data["name"])
     version = str(data["version"])
+    validate_schema_version(version, strict=strict, file_path=file_path)
     description = str(data.get("description", ""))
     schema_ref = str(data.get("$schema", ""))
     baseline_ref = data.get("baseline_ref")
@@ -146,7 +147,31 @@ def load_scenario_template(
         year_schedule = _parse_year_schedule(file_path, data["year_schedule"], strict)
 
     # Parse parameters
-    raw_params = data.get("parameters", {})
+    raw_params = data.get("parameters")
+    if raw_params is None:
+        raise ScenarioError(
+            file_path=file_path,
+            summary="Scenario validation failed",
+            reason="missing required field: parameters",
+            fix="Add a non-empty parameters mapping with policy parameter values",
+            invalid_fields=("parameters",),
+        )
+    if not isinstance(raw_params, dict):
+        raise ScenarioError(
+            file_path=file_path,
+            summary="Scenario validation failed",
+            reason="parameters must be a mapping (dict)",
+            fix="Define parameters as a YAML object with policy fields",
+            invalid_fields=("parameters",),
+        )
+    if not raw_params:
+        raise ScenarioError(
+            file_path=file_path,
+            summary="Scenario validation failed",
+            reason="parameters must include at least one policy value",
+            fix="Add one or more parameter fields under parameters",
+            invalid_fields=("parameters",),
+        )
     parameters = _parse_parameters(file_path, policy_type, raw_params)
 
     if baseline_ref:
@@ -274,11 +299,29 @@ def _parse_parameters(
     raw: dict[str, Any],
 ) -> PolicyParameters:
     """Parse policy parameters based on policy type."""
-    # Convert string year keys to int in rate_schedule
+    # Convert string year keys to int in rate_schedule.
     rate_schedule: dict[int, float] = {}
     if "rate_schedule" in raw:
-        for k, v in raw["rate_schedule"].items():
-            rate_schedule[int(k)] = float(v)
+        raw_rate_schedule = raw["rate_schedule"]
+        if not isinstance(raw_rate_schedule, dict):
+            raise ScenarioError(
+                file_path=file_path,
+                summary="Scenario validation failed",
+                reason="parameters.rate_schedule must be a mapping of year -> number",
+                fix="Set rate_schedule as a YAML object with numeric values",
+                invalid_fields=("parameters.rate_schedule",),
+            )
+        try:
+            for k, v in raw_rate_schedule.items():
+                rate_schedule[int(k)] = float(v)
+        except (TypeError, ValueError):
+            raise ScenarioError(
+                file_path=file_path,
+                summary="Scenario validation failed",
+                reason="parameters.rate_schedule contains non-numeric year or value",
+                fix="Use integer-like years and numeric rate values in rate_schedule",
+                invalid_fields=("parameters.rate_schedule",),
+            ) from None
 
     # Parse common fields
     exemptions = tuple(raw.get("exemptions", []))
@@ -292,11 +335,37 @@ def _parse_parameters(
         income_weights: dict[str, float] = {}
         if "redistribution" in raw:
             redist = raw["redistribution"]
+            if not isinstance(redist, dict):
+                raise ScenarioError(
+                    file_path=file_path,
+                    summary="Scenario validation failed",
+                    reason="parameters.redistribution must be a mapping",
+                    fix="Set redistribution as a YAML object with type/income_weights",
+                    invalid_fields=("parameters.redistribution",),
+                )
             if "type" in redist:
                 redistribution_type = str(redist["type"])
             if "income_weights" in redist:
-                for k, v in redist["income_weights"].items():
-                    income_weights[str(k)] = float(v)
+                raw_weights = redist["income_weights"]
+                if not isinstance(raw_weights, dict):
+                    raise ScenarioError(
+                        file_path=file_path,
+                        summary="Scenario validation failed",
+                        reason="parameters.redistribution.income_weights must be a mapping",
+                        fix="Set income_weights as decile -> numeric weight pairs",
+                        invalid_fields=("parameters.redistribution.income_weights",),
+                    )
+                try:
+                    for k, v in raw_weights.items():
+                        income_weights[str(k)] = float(v)
+                except (TypeError, ValueError):
+                    raise ScenarioError(
+                        file_path=file_path,
+                        summary="Scenario validation failed",
+                        reason="parameters.redistribution.income_weights has non-numeric values",
+                        fix="Use numeric values for all redistribution income_weights",
+                        invalid_fields=("parameters.redistribution.income_weights",),
+                    ) from None
         return CarbonTaxParameters(
             rate_schedule=rate_schedule,
             exemptions=exemptions,
@@ -309,8 +378,26 @@ def _parse_parameters(
         eligible_categories = tuple(raw.get("eligible_categories", []))
         income_caps: dict[int, float] = {}
         if "income_caps" in raw:
-            for k, v in raw["income_caps"].items():
-                income_caps[int(k)] = float(v)
+            raw_income_caps = raw["income_caps"]
+            if not isinstance(raw_income_caps, dict):
+                raise ScenarioError(
+                    file_path=file_path,
+                    summary="Scenario validation failed",
+                    reason="parameters.income_caps must be a mapping of year -> number",
+                    fix="Set income_caps as a YAML object with numeric values",
+                    invalid_fields=("parameters.income_caps",),
+                )
+            try:
+                for k, v in raw_income_caps.items():
+                    income_caps[int(k)] = float(v)
+            except (TypeError, ValueError):
+                raise ScenarioError(
+                    file_path=file_path,
+                    summary="Scenario validation failed",
+                    reason="parameters.income_caps contains non-numeric year or value",
+                    fix="Use integer-like years and numeric values in income_caps",
+                    invalid_fields=("parameters.income_caps",),
+                ) from None
         return SubsidyParameters(
             rate_schedule=rate_schedule,
             exemptions=exemptions,
@@ -323,16 +410,60 @@ def _parse_parameters(
         rebate_type = str(raw.get("rebate_type", ""))
         income_weights: dict[str, float] = {}
         if "income_weights" in raw:
-            for k, v in raw["income_weights"].items():
-                income_weights[str(k)] = float(v)
+            raw_weights = raw["income_weights"]
+            if not isinstance(raw_weights, dict):
+                raise ScenarioError(
+                    file_path=file_path,
+                    summary="Scenario validation failed",
+                    reason="parameters.income_weights must be a mapping",
+                    fix="Set income_weights as decile -> numeric weight pairs",
+                    invalid_fields=("parameters.income_weights",),
+                )
+            try:
+                for k, v in raw_weights.items():
+                    income_weights[str(k)] = float(v)
+            except (TypeError, ValueError):
+                raise ScenarioError(
+                    file_path=file_path,
+                    summary="Scenario validation failed",
+                    reason="parameters.income_weights has non-numeric values",
+                    fix="Use numeric values for all income_weights",
+                    invalid_fields=("parameters.income_weights",),
+                ) from None
         # Check in redistribution sub-dict too
         if "redistribution" in raw:
             redist = raw["redistribution"]
+            if not isinstance(redist, dict):
+                raise ScenarioError(
+                    file_path=file_path,
+                    summary="Scenario validation failed",
+                    reason="parameters.redistribution must be a mapping",
+                    fix="Set redistribution as a YAML object with type/income_weights",
+                    invalid_fields=("parameters.redistribution",),
+                )
             if "type" in redist:
                 rebate_type = str(redist["type"])
             if "income_weights" in redist:
-                for k, v in redist["income_weights"].items():
-                    income_weights[str(k)] = float(v)
+                raw_weights = redist["income_weights"]
+                if not isinstance(raw_weights, dict):
+                    raise ScenarioError(
+                        file_path=file_path,
+                        summary="Scenario validation failed",
+                        reason="parameters.redistribution.income_weights must be a mapping",
+                        fix="Set income_weights as decile -> numeric weight pairs",
+                        invalid_fields=("parameters.redistribution.income_weights",),
+                    )
+                try:
+                    for k, v in raw_weights.items():
+                        income_weights[str(k)] = float(v)
+                except (TypeError, ValueError):
+                    raise ScenarioError(
+                        file_path=file_path,
+                        summary="Scenario validation failed",
+                        reason="parameters.redistribution.income_weights has non-numeric values",
+                        fix="Use numeric values for all redistribution income_weights",
+                        invalid_fields=("parameters.redistribution.income_weights",),
+                    ) from None
         return RebateParameters(
             rate_schedule=rate_schedule,
             exemptions=exemptions,
@@ -342,9 +473,24 @@ def _parse_parameters(
             income_weights=income_weights,
         )
     elif policy_type == PolicyType.FEEBATE:
-        pivot_point = float(raw.get("pivot_point", 0.0))
-        fee_rate = float(raw.get("fee_rate", 0.0))
-        rebate_rate = float(raw.get("rebate_rate", 0.0))
+        pivot_point_set = "pivot_point" in raw
+        fee_rate_set = "fee_rate" in raw
+        rebate_rate_set = "rebate_rate" in raw
+        try:
+            pivot_point = float(raw.get("pivot_point", 0.0))
+            fee_rate = float(raw.get("fee_rate", 0.0))
+            rebate_rate = float(raw.get("rebate_rate", 0.0))
+        except (TypeError, ValueError):
+            raise ScenarioError(
+                file_path=file_path,
+                summary="Scenario validation failed",
+                reason=(
+                    "feebate numeric fields must be numbers: "
+                    "pivot_point, fee_rate, rebate_rate"
+                ),
+                fix="Use numeric values for pivot_point, fee_rate, and rebate_rate",
+                invalid_fields=("parameters",),
+            ) from None
         return FeebateParameters(
             rate_schedule=rate_schedule,
             exemptions=exemptions,
@@ -353,6 +499,9 @@ def _parse_parameters(
             pivot_point=pivot_point,
             fee_rate=fee_rate,
             rebate_rate=rebate_rate,
+            _pivot_point_set=pivot_point_set,
+            _fee_rate_set=fee_rate_set,
+            _rebate_rate_set=rebate_rate_set,
         )
     else:
         # Generic parameters for unknown types
@@ -437,11 +586,11 @@ def _parameters_to_dict(params: PolicyParameters) -> dict[str, Any]:
         if params.income_weights:
             result["income_weights"] = params.income_weights
     elif isinstance(params, FeebateParameters):
-        if params.pivot_point:
+        if params._pivot_point_set or params.pivot_point != 0.0:
             result["pivot_point"] = params.pivot_point
-        if params.fee_rate:
+        if params._fee_rate_set or params.fee_rate != 0.0:
             result["fee_rate"] = params.fee_rate
-        if params.rebate_rate:
+        if params._rebate_rate_set or params.rebate_rate != 0.0:
             result["rebate_rate"] = params.rebate_rate
 
     return result

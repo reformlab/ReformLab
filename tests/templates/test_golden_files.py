@@ -91,17 +91,11 @@ class TestGoldenReform:
         assert scenario.baseline_ref == "french-carbon-tax-2026"
 
     def test_golden_reform_parameters(self, golden_reform_path: Path) -> None:
-        """Golden reform has carbon tax parameters (inherits policy_type from baseline).
-
-        Note: The redistribution parameters are parsed but stored in a
-        CarbonTaxParameters since the policy_type is carbon_tax. The
-        redistribution data would be merged with baseline during resolution.
-        """
+        """Golden reform has carbon-tax redistribution overrides loaded."""
         scenario = load_scenario_template(golden_reform_path)
-        # Reform scenarios use the same parameter type as their baseline
         assert isinstance(scenario.parameters, CarbonTaxParameters)
-        # The redistribution section is loaded but won't be in base CarbonTaxParameters
-        # This is by design - reform overrides are applied during resolution
+        assert scenario.parameters.redistribution_type == "progressive_dividend"
+        assert scenario.parameters.income_weights["decile_1"] == 1.5
 
     def test_golden_reform_resolution(
         self, golden_baseline_path: Path, golden_reform_path: Path
@@ -121,6 +115,10 @@ class TestGoldenReform:
         assert resolved.year_schedule.end_year == 2036
         # Inherits rate_schedule from baseline
         assert resolved.parameters.rate_schedule[2026] == 44.60
+        # Keeps reform redistribution overrides
+        assert isinstance(resolved.parameters, CarbonTaxParameters)
+        assert resolved.parameters.redistribution_type == "progressive_dividend"
+        assert resolved.parameters.income_weights["decile_10"] == 0.2
 
 
 class TestEdgeCases:
@@ -223,8 +221,10 @@ class TestEdgeCases:
         assert scenario.parameters.income_weights["decile_1"] == 1.0
 
     def test_empty_parameters(self, tmp_path: Path) -> None:
-        """Scenario with empty parameters section."""
+        """Scenario with empty parameters section is rejected."""
         import textwrap
+
+        from reformlab.templates.exceptions import ScenarioError
 
         content = textwrap.dedent("""\
             $schema: "./schema/scenario-template.schema.json"
@@ -239,14 +239,14 @@ class TestEdgeCases:
         p = tmp_path / "empty-params.yaml"
         p.write_text(content, encoding="utf-8")
 
-        scenario = load_scenario_template(p)
-        assert scenario.parameters.rate_schedule == {}
-        assert scenario.parameters.exemptions == ()
-        assert scenario.parameters.covered_categories == ()
+        with pytest.raises(ScenarioError, match="parameters"):
+            load_scenario_template(p)
 
     def test_minimal_valid_scenario(self, tmp_path: Path) -> None:
-        """Minimal scenario with only required fields."""
+        """Minimal scenario with empty parameters is invalid."""
         import textwrap
+
+        from reformlab.templates.exceptions import ScenarioError
 
         content = textwrap.dedent("""\
             version: "1.0"
@@ -260,7 +260,5 @@ class TestEdgeCases:
         p = tmp_path / "minimal.yaml"
         p.write_text(content, encoding="utf-8")
 
-        scenario = load_scenario_template(p)
-        assert scenario.name == "Minimal"
-        assert scenario.description == ""
-        assert scenario.version == "1.0"
+        with pytest.raises(ScenarioError, match="parameters"):
+            load_scenario_template(p)

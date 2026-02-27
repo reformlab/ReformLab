@@ -39,6 +39,7 @@ from reformlab.templates.schema import (
     PolicyType,
     RebateParameters,
     ReformScenario,
+    ScenarioTemplate,
     SubsidyParameters,
     YearSchedule,
 )
@@ -52,6 +53,7 @@ __all__ = [
     "PolicyType",
     "RebateParameters",
     "ReformScenario",
+    "ScenarioTemplate",
     "SubsidyParameters",
     "YearSchedule",
     # Loader functions
