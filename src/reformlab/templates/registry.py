@@ -15,7 +15,7 @@ from __future__ import annotations
 import hashlib
 import os
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -565,6 +565,155 @@ class ScenarioRegistry:
             latest_version=metadata["latest_version"],
             versions=tuple(versions),
         )
+
+    def clone(
+        self,
+        name: str,
+        version_id: str | None = None,
+        new_name: str | None = None,
+    ) -> BaselineScenario | ReformScenario:
+        """Clone a scenario with a new identity.
+
+        Creates an in-memory copy of a scenario with a new name. The clone
+        is independent of the original and can be modified and saved as a
+        new scenario.
+
+        Args:
+            name: Source scenario name.
+            version_id: Source version ID (None = latest version).
+            new_name: Name for the clone (None = auto-generate as "{name}-clone").
+
+        Returns:
+            A new scenario instance with identical parameters but new identity.
+
+        Raises:
+            ScenarioNotFoundError: If the source scenario doesn't exist.
+            VersionNotFoundError: If the specified version doesn't exist.
+
+        Example:
+            >>> registry.save(my_scenario, "carbon-tax-2026")
+            >>> clone = registry.clone("carbon-tax-2026", new_name="variant")
+            >>> modified = replace(clone, description="New variant")
+            >>> registry.save(modified, "variant", "Cloned from carbon-tax-2026")
+        """
+        original = self.get(name, version_id)
+        clone_name = new_name or f"{name}-clone"
+
+        # Use dataclasses.replace for frozen dataclass copy with new name
+        return replace(original, name=clone_name)
+
+    def _parse_baseline_ref(self, baseline_ref: str) -> tuple[str, str | None]:
+        """Parse baseline_ref into (name, version_id).
+
+        Supports formats:
+        - "scenario-name" -> ("scenario-name", None) - latest version
+        - "scenario-name@abc123def" -> ("scenario-name", "abc123def") - specific version
+
+        Args:
+            baseline_ref: The baseline reference string.
+
+        Returns:
+            Tuple of (scenario_name, version_id or None).
+        """
+        if "@" in baseline_ref:
+            name, version = baseline_ref.rsplit("@", 1)
+            return (name, version if version else None)
+        return (baseline_ref, None)
+
+    def get_baseline(
+        self,
+        reform_name: str,
+        version_id: str | None = None,
+    ) -> BaselineScenario:
+        """Get the baseline scenario linked from a reform.
+
+        Navigates from a reform scenario to its linked baseline using
+        the reform's baseline_ref field.
+
+        Args:
+            reform_name: Name of the reform scenario.
+            version_id: Reform version ID (None = latest version).
+
+        Returns:
+            The linked baseline scenario.
+
+        Raises:
+            ScenarioNotFoundError: If reform or baseline not found.
+            VersionNotFoundError: If specified version not found.
+            RegistryError: If the scenario is not a reform (no baseline_ref).
+
+        Example:
+            >>> registry.save(baseline, "carbon-tax-2026")
+            >>> registry.save(reform, "progressive")  # baseline_ref="carbon-tax-2026"
+            >>> baseline = registry.get_baseline("progressive")
+        """
+        reform = self.get(reform_name, version_id)
+
+        if not isinstance(reform, ReformScenario):
+            raise RegistryError(
+                summary="Not a reform scenario",
+                reason=f"'{reform_name}' is a baseline, not a reform",
+                fix="Use get_baseline() only on reform scenarios with baseline_ref",
+                scenario_name=reform_name,
+            )
+
+        # Parse baseline_ref (supports "name" or "name@version")
+        baseline_name, baseline_version = self._parse_baseline_ref(reform.baseline_ref)
+        result = self.get(baseline_name, baseline_version)
+
+        # Type narrowing: baseline should be BaselineScenario
+        if not isinstance(result, BaselineScenario):
+            raise RegistryError(
+                summary="Invalid baseline reference",
+                reason=(
+                    f"baseline_ref '{reform.baseline_ref}' points to "
+                    "another reform, not a baseline"
+                ),
+                fix="Update baseline_ref to point to a baseline scenario",
+                scenario_name=reform_name,
+            )
+
+        return result
+
+    def list_reforms(
+        self,
+        baseline_name: str,
+        version_id: str | None = None,
+    ) -> list[tuple[str, str]]:
+        """List all reforms that reference a baseline.
+
+        Scans the registry to find all reform scenarios that link to
+        the specified baseline (optionally filtered by baseline version).
+
+        Args:
+            baseline_name: Name of the baseline scenario.
+            version_id: Baseline version ID to match (None = any version referencing
+                this baseline name, regardless of pinned version).
+
+        Returns:
+            List of (reform_name, reform_version_id) tuples for reforms
+            that reference the specified baseline.
+
+        Example:
+            >>> reforms = registry.list_reforms("carbon-tax-2026")
+            >>> # Returns: [("progressive-dividend", "abc123"), ("lump-sum", "def456")]
+        """
+        reforms: list[tuple[str, str]] = []
+
+        for scenario_name in self.list_scenarios():
+            for version in self.list_versions(scenario_name):
+                scenario = self.get(scenario_name, version.version_id)
+
+                if isinstance(scenario, ReformScenario):
+                    baseline_ref = scenario.baseline_ref
+                    ref_name, ref_version = self._parse_baseline_ref(baseline_ref)
+
+                    if ref_name == baseline_name:
+                        # If version_id filter is provided, check if it matches
+                        if version_id is None or ref_version == version_id:
+                            reforms.append((scenario_name, version.version_id))
+
+        return reforms
 
     def _ensure_version_integrity(
         self,

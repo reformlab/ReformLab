@@ -747,3 +747,460 @@ class TestRegistryInitialize:
         registry.initialize()
         registry.initialize()  # Should not raise
         assert registry_path.exists()
+
+
+class TestClone:
+    """Tests for scenario cloning (Story 2.5, AC-1, AC-3)."""
+
+    def test_clone_baseline_creates_new_identity(
+        self,
+        registry: ScenarioRegistry,
+        sample_baseline: BaselineScenario,
+    ) -> None:
+        """Cloned baseline has new name but identical parameters."""
+        registry.save(sample_baseline, "original")
+        clone = registry.clone("original", new_name="clone-1")
+
+        assert clone.name == "clone-1"
+        assert clone.parameters == sample_baseline.parameters
+        assert clone.year_schedule == sample_baseline.year_schedule
+        assert clone.policy_type == sample_baseline.policy_type
+        assert clone.description == sample_baseline.description
+
+    def test_clone_reform_creates_new_identity(
+        self,
+        registry: ScenarioRegistry,
+        sample_reform: ReformScenario,
+    ) -> None:
+        """Cloned reform has new name but identical parameters."""
+        registry.save(sample_reform, "original-reform")
+        clone = registry.clone("original-reform", new_name="clone-reform")
+
+        assert clone.name == "clone-reform"
+        assert clone.parameters == sample_reform.parameters
+        assert clone.baseline_ref == sample_reform.baseline_ref
+        assert clone.policy_type == sample_reform.policy_type
+
+    def test_clone_auto_generates_name(
+        self,
+        registry: ScenarioRegistry,
+        sample_baseline: BaselineScenario,
+    ) -> None:
+        """Clone generates default name when new_name not provided."""
+        registry.save(sample_baseline, "my-scenario")
+        clone = registry.clone("my-scenario")
+
+        assert clone.name == "my-scenario-clone"
+
+    def test_clone_specific_version(
+        self,
+        registry: ScenarioRegistry,
+        sample_baseline: BaselineScenario,
+    ) -> None:
+        """Clone can target a specific version."""
+        v1 = registry.save(sample_baseline, "test-scenario")
+
+        modified = replace(sample_baseline, description="Modified version")
+        registry.save(modified, "test-scenario", "Update")
+
+        # Clone the original version
+        clone = registry.clone("test-scenario", version_id=v1, new_name="clone-v1")
+
+        assert clone.description == sample_baseline.description
+        assert clone.name == "clone-v1"
+
+    def test_clone_is_independent_in_memory(
+        self,
+        registry: ScenarioRegistry,
+        sample_baseline: BaselineScenario,
+    ) -> None:
+        """Cloned scenario is independent in memory (no shared references)."""
+        registry.save(sample_baseline, "original")
+        clone = registry.clone("original", new_name="clone-1")
+
+        # Since scenarios are frozen dataclasses, they're already immutable
+        # Verify they are different objects
+        assert clone is not sample_baseline
+        assert clone.name != sample_baseline.name
+
+    def test_clone_modify_save_does_not_affect_original(
+        self,
+        registry: ScenarioRegistry,
+        sample_baseline: BaselineScenario,
+    ) -> None:
+        """Modifying and saving clone does not affect original history."""
+        v1 = registry.save(sample_baseline, "original")
+        clone = registry.clone("original", new_name="clone-1")
+
+        # Modify and save the clone
+        modified_clone = replace(clone, description="Modified clone")
+        registry.save(modified_clone, "clone-1", "Cloned from original")
+
+        # Original should remain unchanged
+        original = registry.get("original", v1)
+        assert original.description == sample_baseline.description
+        assert len(registry.list_versions("original")) == 1
+
+    def test_clone_nonexistent_scenario_raises_error(
+        self,
+        registry: ScenarioRegistry,
+    ) -> None:
+        """Cloning nonexistent scenario raises ScenarioNotFoundError."""
+        with pytest.raises(ScenarioNotFoundError):
+            registry.clone("nonexistent")
+
+    def test_clone_nonexistent_version_raises_error(
+        self,
+        registry: ScenarioRegistry,
+        sample_baseline: BaselineScenario,
+    ) -> None:
+        """Cloning nonexistent version raises VersionNotFoundError."""
+        registry.save(sample_baseline, "test-scenario")
+
+        with pytest.raises(VersionNotFoundError):
+            registry.clone("test-scenario", version_id="nonexistent123")
+
+
+class TestBaselineReformNavigation:
+    """Tests for baseline/reform link navigation (Story 2.5, AC-2)."""
+
+    def test_get_baseline_from_reform(
+        self,
+        registry: ScenarioRegistry,
+        sample_baseline: BaselineScenario,
+    ) -> None:
+        """Can navigate from reform to its linked baseline."""
+        registry.save(sample_baseline, "french-carbon-tax-2026")
+
+        reform = ReformScenario(
+            name="Progressive Dividend",
+            policy_type=PolicyType.CARBON_TAX,
+            baseline_ref="french-carbon-tax-2026",
+            parameters=CarbonTaxParameters(
+                rate_schedule={},
+                redistribution_type="progressive_dividend",
+            ),
+        )
+        registry.save(reform, "reform-1")
+
+        baseline = registry.get_baseline("reform-1")
+        assert baseline.name == sample_baseline.name
+        assert baseline.parameters == sample_baseline.parameters
+
+    def test_get_baseline_from_specific_reform_version(
+        self,
+        registry: ScenarioRegistry,
+        sample_baseline: BaselineScenario,
+    ) -> None:
+        """Can get baseline from specific reform version."""
+        registry.save(sample_baseline, "baseline")
+
+        reform = ReformScenario(
+            name="Reform v1",
+            policy_type=PolicyType.CARBON_TAX,
+            baseline_ref="baseline",
+            parameters=CarbonTaxParameters(rate_schedule={}),
+        )
+        v1 = registry.save(reform, "reform")
+
+        # Create modified reform with same baseline
+        reform_v2 = replace(reform, description="Updated reform")
+        registry.save(reform_v2, "reform", "Update")
+
+        # Get baseline from v1
+        baseline = registry.get_baseline("reform", v1)
+        assert baseline.name == sample_baseline.name
+
+    def test_get_baseline_with_pinned_version(
+        self,
+        registry: ScenarioRegistry,
+        sample_baseline: BaselineScenario,
+    ) -> None:
+        """baseline_ref with @version_id pins to specific baseline version."""
+        v1 = registry.save(sample_baseline, "baseline")
+
+        # Create new baseline version
+        baseline_v2 = replace(sample_baseline, description="Baseline v2")
+        registry.save(baseline_v2, "baseline", "Update")
+
+        # Reform pinned to v1
+        reform = ReformScenario(
+            name="Reform pinned",
+            policy_type=PolicyType.CARBON_TAX,
+            baseline_ref=f"baseline@{v1}",
+            parameters=CarbonTaxParameters(rate_schedule={}),
+        )
+        registry.save(reform, "reform-pinned")
+
+        baseline = registry.get_baseline("reform-pinned")
+        assert baseline.description == sample_baseline.description  # v1 description
+
+    def test_get_baseline_from_non_reform_raises_error(
+        self,
+        registry: ScenarioRegistry,
+        sample_baseline: BaselineScenario,
+    ) -> None:
+        """get_baseline on a baseline scenario raises RegistryError."""
+        registry.save(sample_baseline, "baseline")
+
+        with pytest.raises(RegistryError) as exc_info:
+            registry.get_baseline("baseline")
+
+        assert "not a reform" in exc_info.value.summary.lower()
+
+    def test_get_baseline_missing_baseline_raises_error(
+        self,
+        registry: ScenarioRegistry,
+    ) -> None:
+        """get_baseline raises error when linked baseline doesn't exist."""
+        reform = ReformScenario(
+            name="Orphan Reform",
+            policy_type=PolicyType.CARBON_TAX,
+            baseline_ref="nonexistent-baseline",
+            parameters=CarbonTaxParameters(rate_schedule={}),
+        )
+        registry.save(reform, "orphan-reform")
+
+        with pytest.raises(ScenarioNotFoundError):
+            registry.get_baseline("orphan-reform")
+
+    def test_list_reforms_for_baseline(
+        self,
+        registry: ScenarioRegistry,
+        sample_baseline: BaselineScenario,
+    ) -> None:
+        """List all reforms referencing a baseline."""
+        registry.save(sample_baseline, "baseline")
+
+        # Create multiple reforms
+        for i in range(3):
+            reform = ReformScenario(
+                name=f"Reform {i}",
+                policy_type=PolicyType.CARBON_TAX,
+                baseline_ref="baseline",
+                parameters=CarbonTaxParameters(rate_schedule={}),
+            )
+            registry.save(reform, f"reform-{i}")
+
+        reforms = registry.list_reforms("baseline")
+        assert len(reforms) == 3
+        reform_names = [r[0] for r in reforms]
+        assert sorted(reform_names) == ["reform-0", "reform-1", "reform-2"]
+
+    def test_list_reforms_with_pinned_version(
+        self,
+        registry: ScenarioRegistry,
+        sample_baseline: BaselineScenario,
+    ) -> None:
+        """List reforms can filter by baseline version."""
+        v1 = registry.save(sample_baseline, "baseline")
+
+        baseline_v2 = replace(sample_baseline, description="v2")
+        v2 = registry.save(baseline_v2, "baseline", "Update")
+
+        # Reform referencing v1
+        reform_v1 = ReformScenario(
+            name="Reform for v1",
+            policy_type=PolicyType.CARBON_TAX,
+            baseline_ref=f"baseline@{v1}",
+            parameters=CarbonTaxParameters(rate_schedule={}),
+        )
+        registry.save(reform_v1, "reform-v1")
+
+        # Reform referencing v2
+        reform_v2 = ReformScenario(
+            name="Reform for v2",
+            policy_type=PolicyType.CARBON_TAX,
+            baseline_ref=f"baseline@{v2}",
+            parameters=CarbonTaxParameters(rate_schedule={}),
+        )
+        registry.save(reform_v2, "reform-v2")
+
+        # List reforms for v1 only
+        reforms = registry.list_reforms("baseline", version_id=v1)
+        assert len(reforms) == 1
+        assert reforms[0][0] == "reform-v1"
+
+    def test_list_reforms_returns_empty_when_no_reforms(
+        self,
+        registry: ScenarioRegistry,
+        sample_baseline: BaselineScenario,
+    ) -> None:
+        """list_reforms returns empty list when no reforms exist."""
+        registry.save(sample_baseline, "lonely-baseline")
+
+        reforms = registry.list_reforms("lonely-baseline")
+        assert reforms == []
+
+    def test_list_reforms_includes_version_ids(
+        self,
+        registry: ScenarioRegistry,
+        sample_baseline: BaselineScenario,
+    ) -> None:
+        """list_reforms returns (name, version_id) tuples."""
+        registry.save(sample_baseline, "baseline")
+
+        reform = ReformScenario(
+            name="Reform",
+            policy_type=PolicyType.CARBON_TAX,
+            baseline_ref="baseline",
+            parameters=CarbonTaxParameters(rate_schedule={}),
+        )
+        version_id = registry.save(reform, "my-reform")
+
+        reforms = registry.list_reforms("baseline")
+        assert len(reforms) == 1
+        assert reforms[0] == ("my-reform", version_id)
+
+
+class TestBaselineRefParsing:
+    """Tests for baseline_ref format parsing (Story 2.5, AC-2)."""
+
+    def test_parse_baseline_ref_name_only(
+        self,
+        registry: ScenarioRegistry,
+    ) -> None:
+        """Parse baseline_ref with name only returns (name, None)."""
+        name, version = registry._parse_baseline_ref("my-baseline")
+        assert name == "my-baseline"
+        assert version is None
+
+    def test_parse_baseline_ref_with_version(
+        self,
+        registry: ScenarioRegistry,
+    ) -> None:
+        """Parse baseline_ref with @version returns (name, version)."""
+        name, version = registry._parse_baseline_ref("my-baseline@abc123def")
+        assert name == "my-baseline"
+        assert version == "abc123def"
+
+    def test_parse_baseline_ref_multiple_at_signs(
+        self,
+        registry: ScenarioRegistry,
+    ) -> None:
+        """Parse baseline_ref with multiple @ uses last one for version."""
+        # Edge case: scenario name contains @
+        name, version = registry._parse_baseline_ref("weird@name@version123")
+        assert name == "weird@name"
+        assert version == "version123"
+
+    def test_parse_baseline_ref_empty_version(
+        self,
+        registry: ScenarioRegistry,
+    ) -> None:
+        """Parse baseline_ref with trailing @ treats empty as None (latest)."""
+        name, version = registry._parse_baseline_ref("baseline@")
+        assert name == "baseline"
+        assert version is None  # Empty string is normalized to None
+
+
+class TestCloneIntegration:
+    """Integration tests for clone -> modify -> save flow (Story 2.5, AC-1, AC-3)."""
+
+    def test_clone_modify_save_creates_new_scenario_history(
+        self,
+        registry: ScenarioRegistry,
+        sample_baseline: BaselineScenario,
+    ) -> None:
+        """Clone, modify, and save creates independent scenario history."""
+        # Save original
+        original_v1 = registry.save(sample_baseline, "original", "Initial version")
+
+        # Clone to new name
+        clone = registry.clone("original", new_name="variant")
+
+        # Modify the clone
+        modified_clone = replace(clone, description="Modified variant")
+
+        # Save with lineage description
+        clone_v1 = registry.save(
+            modified_clone,
+            "variant",
+            f"Cloned from original@{original_v1}",
+        )
+
+        # Verify independent histories
+        original_versions = registry.list_versions("original")
+        variant_versions = registry.list_versions("variant")
+
+        assert len(original_versions) == 1
+        assert len(variant_versions) == 1
+
+        # Verify original is unchanged
+        retrieved_original = registry.get("original", original_v1)
+        assert retrieved_original.description == sample_baseline.description
+
+        # Verify variant has new description
+        retrieved_variant = registry.get("variant", clone_v1)
+        assert retrieved_variant.description == "Modified variant"
+
+        # Verify lineage is captured in change description
+        assert variant_versions[0].change_description == f"Cloned from original@{original_v1}"
+
+    def test_clone_and_save_under_same_name_creates_version(
+        self,
+        registry: ScenarioRegistry,
+        sample_baseline: BaselineScenario,
+    ) -> None:
+        """Clone, modify, and save under existing name creates new version."""
+        # Save original
+        original_v1 = registry.save(sample_baseline, "scenario")
+
+        # Clone (defaults to "scenario-clone")
+        clone = registry.clone("scenario")
+
+        # Save clone under its auto-generated name
+        modified_clone = replace(clone, description="Clone v1")
+        clone_v1 = registry.save(modified_clone, "scenario-clone", "Initial clone")
+
+        # Modify clone again
+        clone_modified = replace(modified_clone, description="Clone v2")
+        clone_v2 = registry.save(clone_modified, "scenario-clone", "Updated clone")
+
+        # Verify scenario-clone has two versions
+        clone_versions = registry.list_versions("scenario-clone")
+        assert len(clone_versions) == 2
+        assert clone_versions[0].change_description == "Initial clone"
+        assert clone_versions[1].change_description == "Updated clone"
+
+        # Original still has one version
+        original_versions = registry.list_versions("scenario")
+        assert len(original_versions) == 1
+
+    def test_clone_reform_and_navigate_to_baseline(
+        self,
+        registry: ScenarioRegistry,
+        sample_baseline: BaselineScenario,
+    ) -> None:
+        """Cloned reform maintains baseline_ref link."""
+        # Save baseline
+        registry.save(sample_baseline, "carbon-tax")
+
+        # Create and save reform
+        reform = ReformScenario(
+            name="Progressive",
+            policy_type=PolicyType.CARBON_TAX,
+            baseline_ref="carbon-tax",
+            parameters=CarbonTaxParameters(
+                rate_schedule={},
+                redistribution_type="progressive_dividend",
+            ),
+        )
+        registry.save(reform, "progressive-reform")
+
+        # Clone the reform
+        cloned_reform = registry.clone("progressive-reform", new_name="progressive-variant")
+
+        # Verify cloned reform can still navigate to baseline
+        assert cloned_reform.baseline_ref == "carbon-tax"
+
+        # Save cloned reform and navigate
+        registry.save(cloned_reform, "progressive-variant")
+        baseline = registry.get_baseline("progressive-variant")
+        assert baseline.name == sample_baseline.name
+
+        # Both reforms should appear in list_reforms
+        reforms = registry.list_reforms("carbon-tax")
+        reform_names = [r[0] for r in reforms]
+        assert "progressive-reform" in reform_names
+        assert "progressive-variant" in reform_names

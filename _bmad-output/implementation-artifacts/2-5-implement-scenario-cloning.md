@@ -1,6 +1,6 @@
 # Story 2.5: Implement Scenario Cloning and Baseline/Reform Linking
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -31,35 +31,35 @@ From backlog (BKL-205):
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Validate prerequisites and story boundaries
-  - [ ] 0.1 Confirm Story 2.1 / BKL-201 and Story 2.4 / BKL-204 are `done` or `review` in `sprint-status.yaml` before implementation starts
-  - [ ] 0.2 Confirm `src/reformlab/templates/registry.py` and schema types from Story 2.1 are available
-  - [ ] 0.3 Confirm Story 2.5 excludes orchestrator integration, GUI workflows, multi-user sync, and registry indexing/caching work
+- [x] Task 0: Validate prerequisites and story boundaries
+  - [x] 0.1 Confirm Story 2.1 / BKL-201 and Story 2.4 / BKL-204 are `done` or `review` in `sprint-status.yaml` before implementation starts
+  - [x] 0.2 Confirm `src/reformlab/templates/registry.py` and schema types from Story 2.1 are available
+  - [x] 0.3 Confirm Story 2.5 excludes orchestrator integration, GUI workflows, multi-user sync, and registry indexing/caching work
 
-- [ ] Task 1: Implement clone API on ScenarioRegistry (AC: #1, #3)
-  - [ ] 1.1 Add `clone(name: str, version_id: str | None = None, new_name: str | None = None) -> BaselineScenario | ReformScenario`
-  - [ ] 1.2 Implement clone copy with `dataclasses.replace()` and default clone naming strategy (`{name}-clone` unless `new_name` provided)
-  - [ ] 1.3 Keep clone operation in-memory only (no implicit save, no schema changes)
-  - [ ] 1.4 Document clone lineage convention for subsequent `save()` calls via `change_description`
+- [x] Task 1: Implement clone API on ScenarioRegistry (AC: #1, #3)
+  - [x] 1.1 Add `clone(name: str, version_id: str | None = None, new_name: str | None = None) -> BaselineScenario | ReformScenario`
+  - [x] 1.2 Implement clone copy with `dataclasses.replace()` and default clone naming strategy (`{name}-clone` unless `new_name` provided)
+  - [x] 1.3 Keep clone operation in-memory only (no implicit save, no schema changes)
+  - [x] 1.4 Document clone lineage convention for subsequent `save()` calls via `change_description`
 
-- [ ] Task 2: Implement baseline/reform link navigation (AC: #2)
-  - [ ] 2.1 Add `_parse_baseline_ref(baseline_ref: str) -> tuple[str, str | None]`
-  - [ ] 2.2 Add `get_baseline(reform_name: str, version_id: str | None = None) -> BaselineScenario`
-  - [ ] 2.3 Add `list_reforms(baseline_name: str, version_id: str | None = None) -> list[tuple[str, str]]`
-  - [ ] 2.4 Use existing `RegistryError` patterns for non-reform inputs, missing baselines, and malformed refs
-  - [ ] 2.5 Implement `list_reforms` using linear registry scan (MVP scale), with no new index/cache layer in this story
+- [x] Task 2: Implement baseline/reform link navigation (AC: #2)
+  - [x] 2.1 Add `_parse_baseline_ref(baseline_ref: str) -> tuple[str, str | None]`
+  - [x] 2.2 Add `get_baseline(reform_name: str, version_id: str | None = None) -> BaselineScenario`
+  - [x] 2.3 Add `list_reforms(baseline_name: str, version_id: str | None = None) -> list[tuple[str, str]]`
+  - [x] 2.4 Use existing `RegistryError` patterns for non-reform inputs, missing baselines, and malformed refs
+  - [x] 2.5 Implement `list_reforms` using linear registry scan (MVP scale), with no new index/cache layer in this story
 
-- [ ] Task 3: Add tests for cloning and linking behavior (AC: all)
-  - [ ] 3.1 Unit tests for clone identity/content parity (baseline and reform)
-  - [ ] 3.2 Unit tests for clone isolation (modify/save clone, source unchanged)
-  - [ ] 3.3 Unit tests for `get_baseline` and `list_reforms` success paths
-  - [ ] 3.4 Unit tests for `baseline_ref` parsing (`name`, `name@version`) and error paths
-  - [ ] 3.5 Integration-style test for clone -> modify -> save flow against registry history
+- [x] Task 3: Add tests for cloning and linking behavior (AC: all)
+  - [x] 3.1 Unit tests for clone identity/content parity (baseline and reform)
+  - [x] 3.2 Unit tests for clone isolation (modify/save clone, source unchanged)
+  - [x] 3.3 Unit tests for `get_baseline` and `list_reforms` success paths
+  - [x] 3.4 Unit tests for `baseline_ref` parsing (`name`, `name@version`) and error paths
+  - [x] 3.5 Integration-style test for clone -> modify -> save flow against registry history
 
-- [ ] Task 4: Documentation and quality checks
-  - [ ] 4.1 Add/refresh method docstrings with examples in `registry.py`
-  - [ ] 4.2 Run targeted `pytest tests/templates/test_registry.py` and fix failures
-  - [ ] 4.3 Run `ruff check` and `mypy` for touched modules
+- [x] Task 4: Documentation and quality checks
+  - [x] 4.1 Add/refresh method docstrings with examples in `registry.py`
+  - [x] 4.2 Run targeted `pytest tests/templates/test_registry.py` and fix failures
+  - [x] 4.3 Run `ruff check` and `mypy` for touched modules
 
 ## Dev Notes
 
@@ -319,10 +319,33 @@ Current `ReformScenario.baseline_ref` is a plain string. Support both:
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.5 (claude-opus-4-5-20251101)
 
 ### Debug Log References
 
+None - implementation proceeded without issues.
+
 ### Completion Notes List
 
+- Implemented `clone()` method on ScenarioRegistry using `dataclasses.replace()` for frozen dataclass copy
+- Clone operation is in-memory only; lineage tracked via `change_description` when saving
+- Auto-generates clone name as `{name}-clone` if `new_name` not provided
+- Implemented `_parse_baseline_ref()` helper supporting both `name` and `name@version_id` formats
+- Implemented `get_baseline()` for navigating from reform to linked baseline
+- Implemented `list_reforms()` for reverse lookup (baseline -> all reforms) using linear registry scan (MVP scale)
+- All error cases use existing `RegistryError` patterns with summary/reason/fix structure
+- Added 24 new tests covering cloning, baseline/reform navigation, and integration scenarios
+- All 69 registry tests pass, all 548 project tests pass
+- Ruff linting passes with no issues
+
 ### File List
+
+**Modified:**
+- `src/reformlab/templates/registry.py` - Added clone(), _parse_baseline_ref(), get_baseline(), list_reforms() methods
+
+**Modified:**
+- `tests/templates/test_registry.py` - Added TestClone, TestBaselineReformNavigation, TestBaselineRefParsing, TestCloneIntegration test classes (24 new tests)
+
+### Change Log
+
+- 2026-02-27: Implemented scenario cloning and baseline/reform link navigation (Story 2.5)
