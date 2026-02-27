@@ -1,0 +1,348 @@
+# Story 2.5: Implement Scenario Cloning and Baseline/Reform Linking
+
+Status: ready-for-dev
+
+## Story
+
+As a **policy analyst**,
+I want **to clone scenarios and navigate bidirectionally between linked baseline/reform scenarios**,
+so that **I can efficiently create scenario variants, explore policy alternatives, and understand relationships between my analysis configurations**.
+
+## Acceptance Criteria
+
+From backlog (BKL-205):
+
+1. **AC-1: Clone a baseline scenario with new ID and identical parameters**
+   - Given a baseline scenario, when cloned, then the clone has a new ID and identical parameters.
+   - Clone operation creates an independent copy: modifying the clone does not affect the original.
+   - Clone metadata tracks the source scenario (name, version_id) for lineage.
+
+2. **AC-2: Navigate baseline/reform links bidirectionally**
+   - Given a reform scenario linked to a baseline, when the baseline is retrieved, then the link is navigable in both directions.
+   - From a reform: get the linked baseline scenario.
+   - From a baseline: list all reforms that reference it.
+   - Links are resolved through the registry (using baseline_ref field).
+
+3. **AC-3: Modifications to clone do not affect original**
+   - Given a clone with modifications, when saved, then it does not alter the original scenario.
+   - Original scenario remains unchanged and retrievable by its version ID.
+   - Clone can be saved with a new name or as a new version of an existing scenario.
+
+## Tasks / Subtasks
+
+- [ ] Task 0: Validate prerequisites and story boundaries
+  - [ ] 0.1 Confirm Story 2.4 / BKL-204 is `done` or `review` in `sprint-status.yaml` before implementation starts
+  - [ ] 0.2 Confirm registry.py exists with ScenarioRegistry class
+  - [ ] 0.3 Confirm Story 2.5 implementation excludes orchestrator integration, GUI workflows, and multi-user sync
+
+- [ ] Task 1: Design cloning API and data model (AC: #1, #3)
+  - [ ] 1.1 Define `clone(name: str, version_id: str | None = None, new_name: str | None = None) -> BaselineScenario | ReformScenario` method signature
+  - [ ] 1.2 Design clone metadata: `cloned_from` field with (source_name, source_version_id) tuple
+  - [ ] 1.3 Decide on clone naming strategy: `{original_name}-clone` suffix or user-provided name
+  - [ ] 1.4 Determine if clones should be auto-saved or returned in-memory only
+
+- [ ] Task 2: Implement clone functionality (AC: #1, #3)
+  - [ ] 2.1 Add `clone()` method to `ScenarioRegistry` class
+  - [ ] 2.2 Implement deep copy of scenario using `dataclasses.replace()` with new name
+  - [ ] 2.3 Add `cloned_from` tracking to clone metadata (store in change_description or new field)
+  - [ ] 2.4 Ensure clone is independent: modifications to clone don't affect original
+  - [ ] 2.5 Add optional `save_clone` parameter to auto-save the clone to registry
+
+- [ ] Task 3: Implement baseline/reform linking (AC: #2)
+  - [ ] 3.1 Add `get_baseline(reform_name: str, version_id: str | None = None) -> BaselineScenario` method
+  - [ ] 3.2 Add `list_reforms(baseline_name: str, version_id: str | None = None) -> list[tuple[str, str]]` method
+  - [ ] 3.3 Implement baseline_ref resolution: parse baseline_ref format and load from registry
+  - [ ] 3.4 Handle missing baseline gracefully: clear error if referenced baseline not in registry
+  - [ ] 3.5 Support multiple baseline_ref formats: `scenario_name` (latest) or `scenario_name@version_id`
+
+- [ ] Task 4: Implement link discovery/indexing (AC: #2)
+  - [ ] 4.1 Design reverse index: baseline -> list of reforms (lazy or cached)
+  - [ ] 4.2 Implement `_build_reform_index()` that scans all scenarios for baseline_ref links
+  - [ ] 4.3 Cache index in memory with invalidation on save()
+  - [ ] 4.4 Handle orphaned reforms gracefully (baseline deleted or not found)
+
+- [ ] Task 5: Write comprehensive tests (AC: all)
+  - [ ] 5.1 Unit tests for clone operation (identical parameters, new ID)
+  - [ ] 5.2 Unit tests for clone independence (modify clone, original unchanged)
+  - [ ] 5.3 Unit tests for bidirectional navigation (get_baseline, list_reforms)
+  - [ ] 5.4 Unit tests for baseline_ref parsing (name only, name@version)
+  - [ ] 5.5 Unit tests for error cases (missing baseline, orphaned reforms)
+  - [ ] 5.6 Integration tests for clone-modify-save workflow
+  - [ ] 5.7 Integration tests for reform chain navigation
+
+- [ ] Task 6: Update exports and documentation
+  - [ ] 6.1 Add new methods to `__init__.py` exports
+  - [ ] 6.2 Add docstrings with usage examples
+  - [ ] 6.3 Run ruff/mypy and fix any issues
+
+## Dev Notes
+
+### Architecture Patterns to Follow
+
+**From architecture.md:**
+- `templates/` subsystem: Environmental policy templates and **scenario registry with versioned definitions**
+- Scenario/template versioning for auditability and collaboration (Cross-Cutting Concern #5)
+- FR9: System stores versioned scenario definitions in a scenario registry
+- FR8: Analyst can define reforms as parameter overrides to a baseline scenario
+
+**From PRD:**
+- FR8: Analyst can define reforms as parameter overrides to a baseline scenario.
+- FR9: System stores versioned scenario definitions in a scenario registry.
+- Scenario comparison workflows require navigating between related scenarios.
+
+### Existing Code Patterns to Follow
+
+**From Story 2.4 (`src/reformlab/templates/registry.py`):**
+- `ScenarioRegistry` class with content-addressable versioning
+- `_generate_version_id()` for deterministic version IDs
+- `RegistryError` exception pattern with summary/reason/fix structure
+- Atomic file operations with temp file + replace pattern
+
+**ReformScenario baseline_ref field (from `schema.py`):**
+```python
+@dataclass(frozen=True)
+class ReformScenario:
+    name: str
+    policy_type: PolicyType
+    baseline_ref: str  # Links to baseline scenario
+    parameters: PolicyParameters
+    # ...
+```
+
+**Clone implementation pattern:**
+```python
+from dataclasses import replace
+
+def clone(self, name: str, version_id: str | None = None, new_name: str | None = None) -> BaselineScenario | ReformScenario:
+    """Clone a scenario with a new identity.
+
+    Args:
+        name: Source scenario name.
+        version_id: Source version ID (None = latest).
+        new_name: Name for the clone (None = auto-generate).
+
+    Returns:
+        A new scenario instance with identical parameters but new identity.
+    """
+    original = self.get(name, version_id)
+    clone_name = new_name or f"{name}-clone"
+
+    # Use dataclasses.replace for frozen dataclass copy
+    if isinstance(original, BaselineScenario):
+        return replace(original, name=clone_name)
+    else:
+        return replace(original, name=clone_name)
+```
+
+**Bidirectional linking pattern:**
+```python
+def get_baseline(self, reform_name: str, version_id: str | None = None) -> BaselineScenario:
+    """Get the baseline scenario linked from a reform.
+
+    Args:
+        reform_name: Name of the reform scenario.
+        version_id: Reform version ID (None = latest).
+
+    Returns:
+        The linked baseline scenario.
+
+    Raises:
+        RegistryError: If reform has no baseline_ref or baseline not found.
+    """
+    reform = self.get(reform_name, version_id)
+    if not isinstance(reform, ReformScenario):
+        raise RegistryError(
+            summary="Not a reform scenario",
+            reason=f"'{reform_name}' is a baseline, not a reform",
+            fix="Use this method only on reform scenarios",
+            scenario_name=reform_name,
+        )
+
+    # Parse baseline_ref (supports "name" or "name@version")
+    baseline_name, baseline_version = self._parse_baseline_ref(reform.baseline_ref)
+    return self.get(baseline_name, baseline_version)
+
+def list_reforms(self, baseline_name: str, version_id: str | None = None) -> list[tuple[str, str]]:
+    """List all reforms that reference a baseline.
+
+    Args:
+        baseline_name: Name of the baseline scenario.
+        version_id: Baseline version ID to match (None = any version).
+
+    Returns:
+        List of (reform_name, reform_version_id) tuples.
+    """
+    reforms = []
+    for scenario_name in self.list_scenarios():
+        for version in self.list_versions(scenario_name):
+            scenario = self.get(scenario_name, version.version_id)
+            if isinstance(scenario, ReformScenario):
+                ref_name, ref_version = self._parse_baseline_ref(scenario.baseline_ref)
+                if ref_name == baseline_name:
+                    if version_id is None or ref_version == version_id:
+                        reforms.append((scenario_name, version.version_id))
+    return reforms
+```
+
+**baseline_ref format parsing:**
+```python
+def _parse_baseline_ref(self, baseline_ref: str) -> tuple[str, str | None]:
+    """Parse baseline_ref into (name, version_id).
+
+    Supports formats:
+    - "scenario-name" -> ("scenario-name", None) - latest version
+    - "scenario-name@abc123def" -> ("scenario-name", "abc123def") - specific version
+    """
+    if "@" in baseline_ref:
+        name, version = baseline_ref.rsplit("@", 1)
+        return (name, version)
+    return (baseline_ref, None)
+```
+
+### Project Structure Notes
+
+**Target module location:** `src/reformlab/templates/registry.py` (extend existing)
+
+**Files to modify:**
+```
+src/reformlab/templates/
+├── registry.py              # Add clone(), get_baseline(), list_reforms()
+└── __init__.py              # Add new method exports
+
+tests/templates/
+├── test_registry.py         # Add cloning and linking tests
+```
+
+### Key Dependencies
+
+- `dataclasses.replace` - Standard library for frozen dataclass copy
+- Story 2.4 - `ScenarioRegistry` class, `_generate_version_id()`
+- Story 2.1 - `BaselineScenario`, `ReformScenario`, `PolicyParameters`
+
+### Cross-Story Dependencies
+
+- **Hard gate (must be done/review):** Story 2.4 / BKL-204 (ScenarioRegistry with versioning)
+- **Soft dependency:** Stories 2.2 / BKL-202 and 2.3 / BKL-203 provide real templates for integration fixtures
+- **Related downstream:**
+  - Story 3.1 / BKL-301: Orchestrator may clone scenarios for simulation variants
+  - Story 5.2 / BKL-502: Run manifests reference scenario version IDs
+  - Story 6.4 / BKL-604: GUI scenario operations (clone, compare)
+
+### Testing Standards
+
+**From existing test patterns:**
+- Use `pytest` with fixtures in `conftest.py`
+- Use `tmp_path` fixture for registry directory
+- Test both success and failure paths
+- Error messages must include: summary, reason, fix guidance
+
+**Key test scenarios:**
+```python
+def test_clone_baseline_creates_new_identity(registry, sample_baseline):
+    """Cloned baseline has new name but identical parameters."""
+    registry.save(sample_baseline, "original")
+    clone = registry.clone("original", new_name="clone-1")
+
+    assert clone.name == "clone-1"
+    assert clone.parameters == sample_baseline.parameters
+    assert clone.year_schedule == sample_baseline.year_schedule
+
+def test_clone_is_independent(registry, sample_baseline):
+    """Modifying clone does not affect original."""
+    v1 = registry.save(sample_baseline, "original")
+    clone = registry.clone("original", new_name="clone-1")
+
+    # Save modified clone
+    from dataclasses import replace
+    modified = replace(clone, description="Modified clone")
+    registry.save(modified, "clone-1")
+
+    # Original unchanged
+    original = registry.get("original", v1)
+    assert original.description == sample_baseline.description
+
+def test_get_baseline_from_reform(registry, sample_baseline, sample_reform):
+    """Can navigate from reform to its baseline."""
+    registry.save(sample_baseline, "baseline")
+    registry.save(sample_reform, "reform")  # baseline_ref = "baseline"
+
+    baseline = registry.get_baseline("reform")
+    assert baseline.name == sample_baseline.name
+
+def test_list_reforms_for_baseline(registry, sample_baseline, sample_reform):
+    """Can find all reforms referencing a baseline."""
+    registry.save(sample_baseline, "baseline")
+    registry.save(sample_reform, "reform-1")
+
+    reforms = registry.list_reforms("baseline")
+    assert len(reforms) == 1
+    assert reforms[0][0] == "reform-1"
+```
+
+### Out of Scope Guardrails
+
+- No GUI implementation (Story 6.4 / EPIC-6)
+- No orchestrator integration or run execution (EPIC-3)
+- No multi-user synchronization or conflict resolution
+- No remote/cloud registry storage
+- No automatic reform chain resolution (baseline -> reform -> reform-of-reform)
+
+### Previous Story Learnings
+
+**From Story 2.4:**
+- Content-addressable version IDs work well for immutability guarantees
+- Atomic file operations prevent corruption
+- Error messages with suggestions (list_scenarios, list_versions) are helpful
+- Idempotent save operations reduce edge cases
+- Version metadata (parent_version) enables lineage tracking
+
+**From git history (recent commits):**
+```
+be08f4a overnight-build: 2-4-build-scenario-registry — code review
+c3527f5 overnight-build: 2-4-build-scenario-registry — dev story
+```
+- Story 2-4 established the registry foundation
+- ScenarioRegistry is comprehensive: 852 lines with full CRUD, versioning, and error handling
+
+### Implementation Notes
+
+**Clone lineage tracking:**
+The clone operation should track its origin for transparency. Options:
+1. Store in `change_description`: "Cloned from original@abc123def"
+2. Add `cloned_from` field to scenario metadata (not in schema, just registry)
+
+Recommend option 1 for simplicity - uses existing infrastructure.
+
+**Reverse index performance:**
+For MVP with small registry (<100 scenarios), linear scan is acceptable.
+For production scale, consider:
+- Lazy index building on first list_reforms() call
+- Cache invalidation on save()
+- Optional index persistence in registry metadata
+
+**baseline_ref format:**
+Current `ReformScenario.baseline_ref` is a plain string. Support both:
+- `"baseline-name"` - resolves to latest version
+- `"baseline-name@abc123def"` - resolves to specific version
+
+### References
+
+- [Source: _bmad-output/planning-artifacts/architecture.md#templates/ subsystem]
+- [Source: _bmad-output/planning-artifacts/prd.md#FR8, FR9]
+- [Source: _bmad-output/planning-artifacts/phase-1-implementation-backlog-2026-02-25.md#BKL-205]
+- [Source: src/reformlab/templates/registry.py - ScenarioRegistry class]
+- [Source: src/reformlab/templates/schema.py - ReformScenario.baseline_ref]
+- [Source: _bmad-output/implementation-artifacts/2-4-build-scenario-registry.md - Story 2.4 patterns]
+
+## Dev Agent Record
+
+### Agent Model Used
+
+{{agent_model_name_version}}
+
+### Debug Log References
+
+### Completion Notes List
+
+### File List
+
