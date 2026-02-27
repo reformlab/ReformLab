@@ -64,8 +64,8 @@ development_status:
   epic-2-retrospective: optional
 
   # EPIC-3: Step-Pluggable Dynamic Orchestrator and Vintage Tracking
-  epic-3: backlog
-  3-1-implement-yearly-loop-orchestrator: backlog
+  epic-3: in-progress
+  3-1-implement-yearly-loop-orchestrator: ready-for-dev
   3-2-define-orchestrator-step-interface: backlog
   3-3-implement-carry-forward-step: backlog
   3-4-implement-vintage-transition-step: backlog
