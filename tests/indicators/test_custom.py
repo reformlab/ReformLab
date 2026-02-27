@@ -5,8 +5,8 @@ Story 4.6: Implement Custom Derived Indicator Formulas
 
 from __future__ import annotations
 
-import pytest
 import pyarrow as pa
+import pytest
 
 from reformlab.indicators.custom import (
     CustomFormulaConfig,
@@ -16,11 +16,10 @@ from reformlab.indicators.custom import (
 )
 from reformlab.indicators.types import (
     DecileIndicators,
+    FiscalIndicators,
     IndicatorResult,
     RegionIndicators,
-    FiscalIndicators,
 )
-
 
 # Fixtures
 
@@ -431,12 +430,10 @@ def test_float_constant(simple_decile_indicators):
 
 def test_negative_constant(simple_decile_indicators):
     """Test negative constants in formulas."""
-    # Note: negative constants are parsed as subtraction with positive constant
-    # or as MINUS followed by NUMBER token
     formula = CustomFormulaConfig(
         source_field="income",
         output_metric="offset",
-        expression="mean + (0 - 500)",
+        expression="mean + -500",
     )
     result = apply_custom_formula(simple_decile_indicators, formula)
     table = result.to_table()
@@ -533,6 +530,22 @@ def test_formula_metadata_tracking(simple_decile_indicators):
     assert tracked["description"] == "Test formula for governance"
 
 
+def test_apply_formula_does_not_mutate_input_metadata(simple_decile_indicators):
+    """Test input metadata remains unchanged after applying custom formula."""
+    original_metadata = dict(simple_decile_indicators.metadata)
+    formula = CustomFormulaConfig(
+        source_field="income",
+        output_metric="test_metric",
+        expression="mean + sum",
+    )
+
+    result = apply_custom_formula(simple_decile_indicators, formula)
+
+    assert "custom_formulas" not in simple_decile_indicators.metadata
+    assert simple_decile_indicators.metadata == original_metadata
+    assert "custom_formulas" in result.metadata
+
+
 # Test AC-8: Custom formula in comparison context
 
 
@@ -576,7 +589,10 @@ def test_derived_metrics_in_comparison(simple_decile_indicators):
             max=2600.0,
         ),
     ]
-    result2_base = IndicatorResult(indicators=indicators2, metadata={"income_field": "income"})
+    result2_base = IndicatorResult(
+        indicators=indicators2,
+        metadata={"income_field": "income"},
+    )
     result2 = apply_custom_formula(result2_base, formula)
 
     scenarios = [
@@ -731,6 +747,47 @@ def test_formula_on_region_indicators(region_indicators):
     region_11 = derived.filter(region_11_mask)
     # 5500 / 1000 = 5.5
     assert region_11["value"][0].as_py() == pytest.approx(5.5)
+
+
+def test_duplicate_metric_rows_raise_validation_error():
+    """Test duplicate metric rows for same key raise FormulaValidationError."""
+    result = IndicatorResult(
+        indicators=[
+            DecileIndicators(
+                field_name="income",
+                decile=1,
+                year=2020,
+                count=100,
+                mean=1000.0,
+                median=950.0,
+                sum=100000.0,
+                min=500.0,
+                max=1500.0,
+            ),
+            DecileIndicators(
+                field_name="income",
+                decile=1,
+                year=2020,
+                count=120,
+                mean=1200.0,
+                median=1100.0,
+                sum=144000.0,
+                min=600.0,
+                max=1800.0,
+            ),
+        ],
+        metadata={"income_field": "income"},
+    )
+    formula = CustomFormulaConfig(
+        source_field="income",
+        output_metric="test",
+        expression="mean",
+    )
+
+    with pytest.raises(FormulaValidationError) as excinfo:
+        apply_custom_formula(result, formula)
+
+    assert "Duplicate metric rows detected" in str(excinfo.value)
 
 
 def test_empty_indicator_result():

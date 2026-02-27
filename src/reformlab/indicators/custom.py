@@ -11,7 +11,6 @@ This module provides:
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
@@ -225,7 +224,7 @@ class _Parser:
     Grammar:
         expression: term ((PLUS | MINUS) term)*
         term: factor ((MULTIPLY | DIVIDE) factor)*
-        factor: NUMBER | IDENTIFIER | LPAREN expression RPAREN
+        factor: (PLUS | MINUS) factor | NUMBER | IDENTIFIER | LPAREN expression RPAREN
     """
 
     def __init__(self, tokens: list[_Token]):
@@ -311,8 +310,20 @@ class _Parser:
         return left
 
     def _parse_factor(self) -> _ASTNode:
-        """Parse factor: NUMBER | IDENTIFIER | LPAREN expression RPAREN."""
+        """Parse factor with optional unary +/- operators."""
         token = self.current_token
+
+        if token.type == _TokenType.PLUS:
+            self._advance()
+            return self._parse_factor()
+
+        if token.type == _TokenType.MINUS:
+            self._advance()
+            return _BinaryOpNode(
+                _TokenType.MINUS,
+                _NumberNode(0.0),
+                self._parse_factor(),
+            )
 
         if token.type == _TokenType.NUMBER:
             self._advance()
@@ -367,9 +378,14 @@ def _safe_divide(numerator: pa.Array, denominator: pa.Array) -> pa.Array:
     Returns:
         Result array with nulls for zero denominators.
     """
-    is_zero = pc.equal(denominator, 0.0)
-    result = pc.divide(numerator, denominator)
-    return pc.if_else(is_zero, pa.scalar(None, type=pa.float64()), result)
+    is_zero_or_null = pc.or_kleene(pc.equal(denominator, 0.0), pc.is_null(denominator))
+    safe_denominator = pc.if_else(
+        is_zero_or_null,
+        pa.scalar(1.0, type=pa.float64()),
+        denominator,
+    )
+    result = pc.divide(numerator, safe_denominator)
+    return pc.if_else(is_zero_or_null, pa.scalar(None, type=pa.float64()), result)
 
 
 def _evaluate_ast(
@@ -470,8 +486,8 @@ def _extract_metric_arrays(
     if "year" in filtered.column_names:
         grouping_cols.append("year")
 
-    # Build nested dictionary: {metric: {grouping_key: array}}
-    result: dict[str, dict[tuple[Any, ...], pa.Array]] = {}
+    # Build nested dictionary: {metric: {grouping_key: [single_value]}}
+    result_lists: dict[str, dict[tuple[Any, ...], list[float | None]]] = {}
 
     for row_idx in range(filtered.num_rows):
         metric = filtered["metric"][row_idx].as_py()
@@ -482,20 +498,51 @@ def _extract_metric_arrays(
             filtered[col][row_idx].as_py() for col in grouping_cols
         )
 
-        if metric not in result:
-            result[metric] = {}
-        if grouping_key not in result[metric]:
-            result[metric][grouping_key] = []
+        if metric not in result_lists:
+            result_lists[metric] = {}
 
-        result[metric][grouping_key].append(value)
+        if grouping_key in result_lists[metric]:
+            msg = (
+                f"Duplicate metric rows detected for source_field={source_field!r}, "
+                f"metric={metric!r}, grouping_key={grouping_key}. "
+                "Expected exactly one row per metric and grouping key."
+            )
+            raise FormulaValidationError(msg)
+
+        result_lists[metric][grouping_key] = [value]
 
     # Convert lists to PyArrow arrays
-    for metric in result:
-        for grouping_key in result[metric]:
+    result: dict[str, dict[tuple[Any, ...], pa.Array]] = {}
+    for metric, by_group in result_lists.items():
+        result[metric] = {}
+        for grouping_key, values in by_group.items():
             result[metric][grouping_key] = pa.array(
-                result[metric][grouping_key], type=pa.float64()
+                values,
+                type=pa.float64(),
             )
 
+    return result
+
+
+def _formula_metadata_entry(formula: CustomFormulaConfig) -> dict[str, str]:
+    """Build metadata entry for a custom formula."""
+    return {
+        "source_field": formula.source_field,
+        "output_metric": formula.output_metric,
+        "expression": formula.expression,
+        "description": formula.description,
+    }
+
+
+def _metadata_with_formula(
+    metadata: dict[str, Any],
+    formula: CustomFormulaConfig,
+) -> dict[str, Any]:
+    """Return a metadata copy with formula entry appended."""
+    result = dict(metadata)
+    custom_formulas = list(result.get("custom_formulas", []))
+    custom_formulas.append(_formula_metadata_entry(formula))
+    result["custom_formulas"] = custom_formulas
     return result
 
 
@@ -520,7 +567,7 @@ class _DerivedIndicatorResult(IndicatorResult):
         super().__init__(
             indicators=base_result.indicators,
             metadata=base_result.metadata,
-            warnings=base_result.warnings,
+            warnings=list(base_result.warnings),
             excluded_count=base_result.excluded_count,
             unmatched_count=base_result.unmatched_count,
         )
@@ -568,19 +615,11 @@ def apply_custom_formula(
 
     if table.num_rows == 0:
         # Empty result, return as-is with formula metadata
-        metadata = dict(result.metadata)
-        if "custom_formulas" not in metadata:
-            metadata["custom_formulas"] = []
-        metadata["custom_formulas"].append({
-            "source_field": formula.source_field,
-            "output_metric": formula.output_metric,
-            "expression": formula.expression,
-            "description": formula.description,
-        })
+        metadata = _metadata_with_formula(result.metadata, formula)
         return IndicatorResult(
             indicators=result.indicators,
             metadata=metadata,
-            warnings=result.warnings,
+            warnings=list(result.warnings),
             excluded_count=result.excluded_count,
             unmatched_count=result.unmatched_count,
         )
@@ -589,14 +628,15 @@ def apply_custom_formula(
     metric_data = _extract_metric_arrays(table, formula.source_field)
 
     # Validate that all metrics have the same grouping keys
-    all_grouping_keys: set[tuple[Any, ...]] = set()
+    all_grouping_keys: dict[tuple[Any, ...], None] = {}
     for metric in metric_data.values():
-        all_grouping_keys.update(metric.keys())
+        for key in metric:
+            all_grouping_keys[key] = None
 
     # Determine table schema for derived rows
     derived_rows: dict[str, list[Any]] = {col: [] for col in table.column_names}
 
-    for grouping_key in sorted(all_grouping_keys):
+    for grouping_key in all_grouping_keys:
         # Build metric_arrays for this grouping key
         metric_arrays: dict[str, pa.Array] = {}
         for metric_name, keys_dict in metric_data.items():
@@ -619,13 +659,13 @@ def apply_custom_formula(
             )
             raise FormulaValidationError(msg) from e
 
-        # Aggregate result (typically should be single value per grouping key)
-        if len(result_array) == 1:
-            derived_value = result_array[0].as_py()
-        else:
-            # Should not happen in typical indicator scenarios,
-            # but handle gracefully by taking mean
-            derived_value = pc.mean(result_array).as_py()
+        if len(result_array) != 1:
+            msg = (
+                f"Formula '{formula.expression}' produced {len(result_array)} values "
+                f"for grouping key {grouping_key}; expected exactly 1."
+            )
+            raise FormulaValidationError(msg)
+        derived_value = result_array[0].as_py()
 
         # Add row to derived_rows
         derived_rows["field_name"].append(formula.source_field)
@@ -674,18 +714,13 @@ def apply_custom_formula(
         derived_table = None
 
     # Update metadata
-    metadata = dict(result.metadata)
-    if "custom_formulas" not in metadata:
-        metadata["custom_formulas"] = []
-    metadata["custom_formulas"].append({
-        "source_field": formula.source_field,
-        "output_metric": formula.output_metric,
-        "expression": formula.expression,
-        "description": formula.description,
-    })
+    metadata = _metadata_with_formula(result.metadata, formula)
 
     # Extract existing derived table if result is already a _DerivedIndicatorResult
-    if isinstance(result, _DerivedIndicatorResult) and result._derived_table is not None:
+    if (
+        isinstance(result, _DerivedIndicatorResult)
+        and result._derived_table is not None
+    ):
         if derived_table is not None:
             combined_derived = pa.concat_tables([result._derived_table, derived_table])
         else:
@@ -699,7 +734,7 @@ def apply_custom_formula(
     base_with_metadata = IndicatorResult(
         indicators=base_result.indicators,
         metadata=metadata,
-        warnings=result.warnings,
+        warnings=list(result.warnings),
         excluded_count=result.excluded_count,
         unmatched_count=result.unmatched_count,
     )
