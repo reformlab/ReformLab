@@ -267,6 +267,8 @@ class TestManifestSerialization:
                 "mappings": [],
                 "warnings": [],
                 "step_pipeline": [],
+                "parent_manifest_id": "",
+                "child_manifests": {},
                 "integrity_hash": "",
                 "unexpected_field": "oops",
             }
@@ -434,6 +436,8 @@ class TestManifestValidation:
             "mappings": [],
             "warnings": [],
             "step_pipeline": [],
+            "parent_manifest_id": "",
+            "child_manifests": {},
             "integrity_hash": "",
         })
         with pytest.raises(ManifestValidationError, match="Required field"):
@@ -751,4 +755,125 @@ class TestWarningsFieldValidation:
                 adapter_version="1.0.0",
                 scenario_version="v1.0",
                 warnings=[42],  # type: ignore[list-item]
+            )
+
+
+class TestLineageFieldValidation:
+    """Test validation for lineage fields (parent_manifest_id, child_manifests)."""
+
+    def test_valid_parent_manifest_id(self) -> None:
+        """Valid UUID parent_manifest_id is accepted."""
+        manifest = RunManifest(
+            manifest_id="test-001",
+            created_at="2026-02-27T10:00:00Z",
+            engine_version="0.1.0",
+            openfisca_version="40.0.0",
+            adapter_version="1.0.0",
+            scenario_version="v1.0",
+            parent_manifest_id="12345678-1234-1234-1234-123456789abc",
+        )
+        assert manifest.parent_manifest_id == "12345678-1234-1234-1234-123456789abc"
+
+    def test_empty_parent_manifest_id_is_valid(self) -> None:
+        """Empty string parent_manifest_id is valid (root manifest)."""
+        manifest = RunManifest(
+            manifest_id="test-001",
+            created_at="2026-02-27T10:00:00Z",
+            engine_version="0.1.0",
+            openfisca_version="40.0.0",
+            adapter_version="1.0.0",
+            scenario_version="v1.0",
+            parent_manifest_id="",
+        )
+        assert manifest.parent_manifest_id == ""
+
+    def test_invalid_parent_manifest_id_format(self) -> None:
+        """Invalid UUID format for parent_manifest_id raises error."""
+        with pytest.raises(
+            ManifestValidationError, match="Invalid parent_manifest_id.*expected UUID"
+        ):
+            RunManifest(
+                manifest_id="test-001",
+                created_at="2026-02-27T10:00:00Z",
+                engine_version="0.1.0",
+                openfisca_version="40.0.0",
+                adapter_version="1.0.0",
+                scenario_version="v1.0",
+                parent_manifest_id="not-a-uuid",
+            )
+
+    def test_valid_child_manifests(self) -> None:
+        """Valid child_manifests dictionary is accepted."""
+        manifest = RunManifest(
+            manifest_id="test-001",
+            created_at="2026-02-27T10:00:00Z",
+            engine_version="0.1.0",
+            openfisca_version="40.0.0",
+            adapter_version="1.0.0",
+            scenario_version="v1.0",
+            child_manifests={
+                2025: "22345678-1234-1234-1234-123456789abc",
+                2026: "32345678-1234-1234-1234-123456789abc",
+            },
+        )
+        assert len(manifest.child_manifests) == 2
+
+    def test_empty_child_manifests_is_valid(self) -> None:
+        """Empty child_manifests dictionary is valid (leaf manifest)."""
+        manifest = RunManifest(
+            manifest_id="test-001",
+            created_at="2026-02-27T10:00:00Z",
+            engine_version="0.1.0",
+            openfisca_version="40.0.0",
+            adapter_version="1.0.0",
+            scenario_version="v1.0",
+            child_manifests={},
+        )
+        assert manifest.child_manifests == {}
+
+    def test_child_manifests_invalid_key_type(self) -> None:
+        """Non-integer key in child_manifests raises error."""
+        with pytest.raises(
+            ManifestValidationError, match="Invalid child_manifests key.*expected int"
+        ):
+            RunManifest(
+                manifest_id="test-001",
+                created_at="2026-02-27T10:00:00Z",
+                engine_version="0.1.0",
+                openfisca_version="40.0.0",
+                adapter_version="1.0.0",
+                scenario_version="v1.0",
+                child_manifests={"2025": "uuid"},  # type: ignore[dict-item]
+            )
+
+    def test_child_manifests_invalid_value_format(self) -> None:
+        """Invalid UUID value in child_manifests raises error."""
+        with pytest.raises(
+            ManifestValidationError,
+            match="Invalid child_manifests value.*expected UUID format",
+        ):
+            RunManifest(
+                manifest_id="test-001",
+                created_at="2026-02-27T10:00:00Z",
+                engine_version="0.1.0",
+                openfisca_version="40.0.0",
+                adapter_version="1.0.0",
+                scenario_version="v1.0",
+                child_manifests={2025: "not-a-uuid"},
+            )
+
+    def test_child_manifests_empty_string_value(self) -> None:
+        """Empty string value in child_manifests raises error."""
+        with pytest.raises(
+            ManifestValidationError,
+            match="Invalid child_manifests value.*expected non-empty string",
+        ):
+            RunManifest(
+                manifest_id="test-001",
+                created_at="2026-02-27T10:00:00Z",
+                engine_version="0.1.0",
+                openfisca_version="40.0.0",
+                adapter_version="1.0.0",
+                scenario_version="v1.0",
+                child_manifests={2025: ""},
             )

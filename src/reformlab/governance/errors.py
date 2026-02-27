@@ -26,3 +26,14 @@ class ManifestValidationError(Exception):
     """
 
     pass
+
+
+class LineageIntegrityError(Exception):
+    """Raised when lineage integrity validation fails.
+
+    Indicates that parent-child manifest relationships are broken or
+    inconsistent, such as mismatched lineage IDs between parent and child
+    manifests.
+    """
+
+    pass

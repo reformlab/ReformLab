@@ -8,6 +8,10 @@ Public API:
     RunManifest: Immutable manifest schema with integrity hashing
     ManifestIntegrityError: Raised on tampering detection
     ManifestValidationError: Raised on schema validation failures
+    LineageIntegrityError: Raised on lineage validation failures
+    LineageGraph: Lineage graph query model
+    get_lineage: Extract lineage graph from manifest
+    validate_lineage: Validate bidirectional lineage integrity
     capture_assumptions: Capture structured assumption entries
     capture_mappings: Capture mapping configuration
     capture_parameters: Capture parameter snapshot
@@ -21,8 +25,14 @@ from reformlab.governance.capture import (
     capture_warnings,
 )
 from reformlab.governance.errors import (
+    LineageIntegrityError,
     ManifestIntegrityError,
     ManifestValidationError,
+)
+from reformlab.governance.lineage import (
+    LineageGraph,
+    get_lineage,
+    validate_lineage,
 )
 from reformlab.governance.manifest import RunManifest
 
@@ -30,6 +40,10 @@ __all__ = [
     "RunManifest",
     "ManifestIntegrityError",
     "ManifestValidationError",
+    "LineageIntegrityError",
+    "LineageGraph",
+    "get_lineage",
+    "validate_lineage",
     "capture_assumptions",
     "capture_mappings",
     "capture_parameters",

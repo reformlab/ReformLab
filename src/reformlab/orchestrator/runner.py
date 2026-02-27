@@ -4,11 +4,13 @@ Executes a step pipeline for each year in a projection horizon,
 managing deterministic state transitions and seed control.
 
 Story 3-6: Adds structured logging and execution trace metadata.
+Story 5-3: Adds automatic lineage capture for parent-child relationships.
 """
 
 from __future__ import annotations
 
 import logging
+import uuid
 from copy import deepcopy
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any, TypedDict, cast
@@ -501,6 +503,9 @@ class OrchestratorRunner:
                 errors=[f"Invalid run_config bounds: {exc}"],
             )
 
+        # Story 5-3 AC-5: Generate parent manifest ID once at run start
+        parent_manifest_id = str(uuid.uuid4())
+
         # Build orchestrator config
         config = OrchestratorConfig(
             start_year=start_year,
@@ -513,7 +518,16 @@ class OrchestratorRunner:
         # Execute orchestrator
         orchestrator = Orchestrator(config)
         result = orchestrator.run()
-        manifest_capture = self._capture_manifest_fields(request)
+
+        # Story 5-3 AC-5: Build child lineage map from completed years
+        child_manifests: dict[int, str] = {}
+        for year in result.yearly_states.keys():
+            # Each yearly child gets its own unique manifest ID
+            child_manifests[year] = str(uuid.uuid4())
+
+        manifest_capture = self._capture_manifest_fields(
+            request, parent_manifest_id, child_manifests
+        )
 
         # Convert to WorkflowResult
         metadata: dict[str, Any] = {
@@ -526,6 +540,8 @@ class OrchestratorRunner:
             "mappings": manifest_capture["mappings"],
             "parameters": manifest_capture["parameters"],
             "warnings": manifest_capture["warnings"],
+            "parent_manifest_id": manifest_capture["parent_manifest_id"],
+            "child_manifests": manifest_capture["child_manifests"],
         }
         if manifest_capture["scenario_version"]:
             metadata["scenario_version"] = manifest_capture["scenario_version"]
@@ -547,8 +563,16 @@ class OrchestratorRunner:
             metadata=metadata,
         )
 
-    def _capture_manifest_fields(self, request: dict[str, Any]) -> dict[str, Any]:
-        """Capture governance metadata once at runner boundary."""
+    def _capture_manifest_fields(
+        self,
+        request: dict[str, Any],
+        parent_manifest_id: str,
+        child_manifests: dict[int, str],
+    ) -> dict[str, Any]:
+        """Capture governance metadata once at runner boundary.
+
+        Story 5-3 AC-5: Includes lineage metadata (parent_manifest_id, child_manifests).
+        """
         assumption_defaults = _coerce_dict(
             request.get("assumption_defaults", self.assumption_defaults)
         )
@@ -593,6 +617,8 @@ class OrchestratorRunner:
                 additional_warnings=additional_warnings,
             ),
             "scenario_version": scenario_version,
+            "parent_manifest_id": parent_manifest_id,
+            "child_manifests": child_manifests,
         }
 
 

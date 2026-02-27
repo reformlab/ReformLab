@@ -21,6 +21,39 @@ def minimal_manifest() -> RunManifest:
 
 
 @pytest.fixture
+def parent_manifest() -> RunManifest:
+    """Parent manifest with child references for lineage testing."""
+    return RunManifest(
+        manifest_id="12345678-1234-1234-1234-123456789abc",
+        created_at="2026-02-27T10:00:00Z",
+        engine_version="0.1.0",
+        openfisca_version="40.0.0",
+        adapter_version="1.0.0",
+        scenario_version="v1.0",
+        parent_manifest_id="",
+        child_manifests={
+            2025: "22345678-1234-1234-1234-123456789abc",
+            2026: "32345678-1234-1234-1234-123456789abc",
+        },
+    )
+
+
+@pytest.fixture
+def child_manifest() -> RunManifest:
+    """Child manifest with parent reference for lineage testing."""
+    return RunManifest(
+        manifest_id="22345678-1234-1234-1234-123456789abc",
+        created_at="2026-02-27T10:00:00Z",
+        engine_version="0.1.0",
+        openfisca_version="40.0.0",
+        adapter_version="1.0.0",
+        scenario_version="v1.0",
+        parent_manifest_id="12345678-1234-1234-1234-123456789abc",
+        child_manifests={},
+    )
+
+
+@pytest.fixture
 def full_manifest() -> RunManifest:
     """Complete manifest with all fields populated."""
     return RunManifest(

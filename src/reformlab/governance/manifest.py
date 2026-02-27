@@ -29,6 +29,10 @@ from reformlab.governance.errors import (
 
 # SHA-256 hex digest pattern (64 hex characters)
 SHA256_PATTERN = re.compile(r"^[a-fA-F0-9]{64}$")
+# UUID pattern (standard 8-4-4-4-12 format)
+UUID_PATTERN = re.compile(
+    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+)
 REQUIRED_STRING_FIELDS = (
     "manifest_id",
     "created_at",
@@ -47,6 +51,8 @@ REQUIRED_JSON_FIELDS = (
     "mappings",
     "warnings",
     "step_pipeline",
+    "parent_manifest_id",
+    "child_manifests",
     "integrity_hash",
 )
 
@@ -107,6 +113,8 @@ class RunManifest:
         mappings: Variable mapping configuration used at runtime.
         warnings: List of warning messages from execution.
         step_pipeline: Ordered step names executed.
+        parent_manifest_id: Parent manifest UUID for lineage (empty string for root).
+        child_manifests: Mapping of year to child manifest UUID for lineage.
         integrity_hash: SHA-256 hash of entire manifest content (excluding this field).
     """
 
@@ -124,6 +132,8 @@ class RunManifest:
     mappings: list[MappingEntry] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     step_pipeline: list[str] = field(default_factory=list)
+    parent_manifest_id: str = ""
+    child_manifests: dict[int, str] = field(default_factory=dict)
     integrity_hash: str = ""
 
     def __post_init__(self) -> None:
@@ -168,6 +178,35 @@ class RunManifest:
                 f"Invalid integrity_hash: expected 64 hex characters, "
                 f"got {self.integrity_hash!r}"
             )
+
+        # Validate parent_manifest_id format if present (AC-2)
+        if self.parent_manifest_id and not UUID_PATTERN.match(self.parent_manifest_id):
+            raise ManifestValidationError(
+                f"Invalid parent_manifest_id: expected UUID format, "
+                f"got {self.parent_manifest_id!r}"
+            )
+
+        # Validate child_manifests dictionary (AC-1)
+        if not isinstance(self.child_manifests, dict):
+            raise ManifestValidationError(
+                "Field 'child_manifests' must be a dictionary"
+            )
+        for year, child_id in self.child_manifests.items():
+            if not isinstance(year, int) or isinstance(year, bool):
+                raise ManifestValidationError(
+                    f"Invalid child_manifests key: expected int year, "
+                    f"got {type(year).__name__}"
+                )
+            if not isinstance(child_id, str) or not child_id.strip():
+                raise ManifestValidationError(
+                    f"Invalid child_manifests value for year {year}: "
+                    f"expected non-empty string UUID, got {child_id!r}"
+                )
+            if not UUID_PATTERN.match(child_id):
+                raise ManifestValidationError(
+                    f"Invalid child_manifests value for year {year}: "
+                    f"expected UUID format, got {child_id!r}"
+                )
 
         # Validate seeds dictionary.
         if not isinstance(self.seeds, dict):
@@ -309,6 +348,7 @@ class RunManifest:
         object.__setattr__(self, "mappings", deepcopy(self.mappings))
         object.__setattr__(self, "warnings", list(self.warnings))
         object.__setattr__(self, "step_pipeline", list(self.step_pipeline))
+        object.__setattr__(self, "child_manifests", dict(self.child_manifests))
 
     def to_json(self) -> str:
         """Serialize manifest to canonical JSON.
@@ -365,6 +405,19 @@ class RunManifest:
             )
 
         try:
+            # JSON serializes int keys as strings, so convert them back
+            child_manifests_raw = data["child_manifests"]
+            child_manifests: dict[int, str] = {}
+            if isinstance(child_manifests_raw, dict):
+                for key, value in child_manifests_raw.items():
+                    try:
+                        child_manifests[int(key)] = value
+                    except (ValueError, TypeError) as conv_err:
+                        raise ManifestValidationError(
+                            f"Invalid child_manifests key: cannot convert {key!r} "
+                            f"to int year: {conv_err}"
+                        ) from conv_err
+
             return cls(
                 manifest_id=data["manifest_id"],
                 created_at=data["created_at"],
@@ -380,6 +433,8 @@ class RunManifest:
                 mappings=data["mappings"],
                 warnings=data["warnings"],
                 step_pipeline=data["step_pipeline"],
+                parent_manifest_id=data["parent_manifest_id"],
+                child_manifests=child_manifests,
                 integrity_hash=data["integrity_hash"],
             )
         except (TypeError, KeyError) as e:
@@ -454,6 +509,8 @@ class RunManifest:
             mappings=self.mappings,
             warnings=self.warnings,
             step_pipeline=self.step_pipeline,
+            parent_manifest_id=self.parent_manifest_id,
+            child_manifests=self.child_manifests,
             integrity_hash=computed_hash,
         )
 
