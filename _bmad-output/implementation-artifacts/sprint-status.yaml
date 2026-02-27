@@ -54,7 +54,7 @@ development_status:
 
   # EPIC-2: Scenario Templates and Registry
   epic-2: in-progress
-  2-1-define-scenario-template-schema: review
+  2-1-define-scenario-template-schema: done
   2-2-implement-carbon-tax-template-pack: review
   2-3-implement-subsidy-rebate-feebate-template-pack: review
   2-4-build-scenario-registry: backlog
