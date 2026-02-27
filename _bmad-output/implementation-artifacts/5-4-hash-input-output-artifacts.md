@@ -12,11 +12,12 @@ so that **I can verify data integrity and detect any changes to inputs or output
 
 From backlog (BKL-504), aligned with FR25 (immutable run manifests) and NFR12 (input paths referenced not embedded).
 
-1. **AC-1: Hash input CSV/Parquet files and store in manifest**
+1. **AC-1: Hash input artifacts and store in manifest**
    - Given input CSV/Parquet files used in a simulation run, when hashing is invoked, then SHA-256 hashes are computed and stored in `data_hashes` without embedding raw data.
    - Input files are identified by path reference (relative or absolute).
    - Each hash entry has format: `{path_key: sha256_hex_digest}`.
    - Hash computation uses streaming/chunked reading for large files.
+   - Missing or unreadable input files raise explicit errors (no silent/partial input hashing).
 
 2. **AC-2: Hash output artifacts and store in manifest**
    - Given output artifacts produced by a simulation run, when hashing is invoked, then SHA-256 hashes are stored in `output_hashes`.
@@ -45,6 +46,7 @@ From backlog (BKL-504), aligned with FR25 (immutable run manifests) and NFR12 (i
 - **Integration dependencies:**
   - Story 5-2 (BKL-502): orchestrator-boundary governance capture (`_capture_manifest_fields`) ✅ DONE
   - Story 5-3 (BKL-503): lineage graph for artifact tracking context ✅ DONE
+  - Story 3-7 (BKL-307): yearly panel output artifact surfaces to hash ✅ DONE
 - **Status source (checked 2026-02-27):**
   - `_bmad-output/implementation-artifacts/sprint-status.yaml`
 
@@ -55,7 +57,7 @@ From backlog (BKL-504), aligned with FR25 (immutable run manifests) and NFR12 (i
 ## Tasks / Subtasks
 
 - [ ] Task 0: Review prerequisite contracts and boundaries (AC: dependency check)
-  - [ ] 0.1 Verify dependency statuses remain `done` in `sprint-status.yaml` for 5-1, 5-2, 5-3
+  - [ ] 0.1 Verify dependency statuses remain `done` in `sprint-status.yaml` for 5-1, 5-2, 5-3, 3-7
   - [ ] 0.2 Review `RunManifest` schema fields `data_hashes` and `output_hashes` from Story 5-1
   - [ ] 0.3 Review orchestrator capture boundary from Story 5-2 (`OrchestratorRunner._capture_manifest_fields()`)
   - [ ] 0.4 Confirm SHA-256 validation already exists in manifest.py (`SHA256_PATTERN`)
@@ -71,7 +73,7 @@ From backlog (BKL-504), aligned with FR25 (immutable run manifests) and NFR12 (i
   - [ ] 2.1 Implement `hash_input_artifacts(paths: dict[str, Path]) -> dict[str, str]`
   - [ ] 2.2 Accept dictionary of path_key -> Path mapping
   - [ ] 2.3 Return dictionary of path_key -> SHA-256 hex digest
-  - [ ] 2.4 Skip missing files with warning logged (don't fail entire run)
+  - [ ] 2.4 Raise `FileNotFoundError` (or `OSError`) with explicit path context for missing/unreadable files
 
 - [ ] Task 3: Implement output artifact hashing (AC: #2)
   - [ ] 3.1 Implement `hash_output_artifacts(paths: dict[str, Path]) -> dict[str, str]`
@@ -119,6 +121,7 @@ This story implements **FR25** (immutable run manifests with data hashes) and **
 - **No raw data in manifests** - Only SHA-256 hashes are stored, not file contents. Paths are reference keys. [Source: prd.md#Non-Functional-Requirements NFR12]
 - **Deterministic hashing** - Standard SHA-256 without platform-specific behavior ensures cross-machine reproducibility. [Source: prd.md#Non-Functional-Requirements NFR6-7]
 - **Zero manual effort** - Hash computation is automatic at orchestrator boundary. [Source: prd.md#Non-Functional-Requirements NFR9]
+- **Contract failures are explicit and blocking** - Missing/unreadable required artifacts must fail with clear errors, not silent partial capture. [Source: architecture.md#Data-Contracts]
 - **Memory-efficient** - Chunked/streaming hashing for large CSV/Parquet files (up to 500k households). [Source: prd.md#Non-Functional-Requirements NFR3]
 
 ### Previous Story Intelligence
@@ -172,12 +175,8 @@ def hash_file(path: Path) -> str:
 class ArtifactVerificationResult:
     """Result of artifact hash verification."""
     passed: bool
-    mismatches: tuple[str, ...]  # path keys with hash mismatch
-    missing: tuple[str, ...]  # path keys where file not found
-
-    @property
-    def failed(self) -> bool:
-        return not self.passed
+    mismatches: list[str]  # path keys with hash mismatch
+    missing: list[str]  # path keys where file not found
 ```
 
 **Capture integration pattern** (extending existing boundary):
