@@ -80,7 +80,7 @@ development_status:
   4-2-implement-geographic-aggregation-indicators: done
   4-3-implement-welfare-indicators: done
   4-4-implement-fiscal-indicators: done
-  4-5-implement-scenario-comparison-tables: backlog
+  4-5-implement-scenario-comparison-tables: ready-for-dev
   4-6-implement-custom-derived-indicator-formulas: backlog
   epic-4-retrospective: optional
 
