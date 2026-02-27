@@ -14,87 +14,84 @@ so that **new step implementations (carry-forward, vintage transitions, computat
 
 From backlog (BKL-302), aligned with FR14, FR16.
 
-1. **AC-1: Custom step implementing the step interface integrates correctly**
-   - Given a custom step class implementing the step interface (Protocol), when registered with the orchestrator, then it is called at the correct position in the pipeline for each year.
-   - The step receives the current year and state, and returns updated state.
+1. **AC-1: Protocol-based steps execute correctly in the yearly pipeline**
+   - Given a class implementing `OrchestratorStep` (`name`, `execute(year, state)`), when registered and included in the pipeline, then it executes once per year in the expected order.
+   - The step receives the current `year` and `YearState`, and returns a `YearState`.
 
-2. **AC-2: Steps execute in dependency order**
-   - Given a step registered with dependencies on another step, when the pipeline is built, then steps execute in dependency order.
-   - Dependency declaration is optional; steps without dependencies execute in registration order.
+2. **AC-2: Registry builds deterministic dependency order**
+   - Given registered steps with `depends_on` declarations, when `build_pipeline()` is called, then the returned pipeline is topologically sorted.
+   - For steps at the same dependency level, registration order is preserved.
 
-3. **AC-3: Invalid step interface produces clear error**
-   - Given a step with an invalid interface (missing method or signature mismatch), when registered, then a clear error identifies the missing method or signature mismatch.
-   - Registration fails fast with actionable error message before orchestrator execution begins.
+3. **AC-3: Invalid registrations fail fast with actionable errors**
+   - Given a step missing required protocol members, duplicate step name, unknown dependency, or cycle, when registered or pipeline-built, then a typed error is raised before orchestrator execution starts.
+   - Error messages include the step name and the specific validation failure.
 
-4. **AC-4: Step registration mechanism is ergonomic**
-   - Given the step registration API, when a developer registers a new step, then the API is intuitive and follows Python conventions (Protocol pattern, type hints).
-   - Both class-based and function-based steps are supported.
+4. **AC-4: Both class-based and function-based steps are supported**
+   - Given a function decorated with `@step(...)`, when registered, then it behaves as an `OrchestratorStep` with correct `name` and `depends_on` metadata.
+   - Decorator defaults are explicit: `name=function.__name__`, `depends_on=()`.
 
-5. **AC-5: Integration with existing Orchestrator from Story 3-1**
-   - Given the new step interface, when the orchestrator runs, then it uses the formal step interface instead of the current `YearStep` callable alias.
-   - Backward compatibility: existing callable steps continue to work during migration.
+5. **AC-5: Story 3-1 callable pipeline remains compatible during migration**
+   - Given existing bare `YearStep` callables from Story 3-1, when orchestrator runs, then behavior remains unchanged.
+   - Mixed pipelines (protocol steps + bare callables) execute successfully.
 
 ## Dependencies
 
-- **Required prior stories:** BKL-301 (Story 3-1) must be `done` or `review` - provides the base orchestrator implementation.
+- **Required prior stories:** BKL-301 (Story 3-1) must be `done` or `review` before implementation starts; this story extends that runner and type system.
 - **Follow-on stories:** BKL-303, BKL-304, BKL-305 will implement concrete steps using this interface.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Define Step Protocol interface (AC: #1, #3, #4)
-  - [ ] 1.1 Create `src/reformlab/orchestrator/step.py` with core step protocol
-  - [ ] 1.2 Define `OrchestratorStep` Protocol with required methods:
-    - `name` property: str - Unique identifier for the step
-    - `execute(year: int, state: YearState) -> YearState` - Core execution method
-  - [ ] 1.3 Add optional methods/properties to Protocol:
-    - `depends_on` property: tuple[str, ...] - Step dependencies (default empty)
-    - `description` property: str | None - Human-readable description
-  - [ ] 1.4 Add `@runtime_checkable` decorator for duck typing validation
+- [ ] Task 0: Confirm prerequisites and baseline (Dependency)
+  - [ ] 0.1 Verify Story 3-1 (BKL-301) status is `done` or `review`
+  - [ ] 0.2 Confirm current orchestrator API baseline in `types.py` and `runner.py` before changes
 
-- [ ] Task 2: Implement step registration mechanism (AC: #2, #3, #4)
-  - [ ] 2.1 Create `StepRegistry` class for step management:
-    - `register(step: OrchestratorStep) -> None` - Register a step
-    - `get(name: str) -> OrchestratorStep` - Retrieve step by name
-    - `build_pipeline() -> tuple[OrchestratorStep, ...]` - Build ordered pipeline
-  - [ ] 2.2 Implement dependency-aware pipeline ordering using topological sort
-  - [ ] 2.3 Detect and report circular dependencies with clear error message
-  - [ ] 2.4 Validate step interface on registration (fail-fast)
+- [ ] Task 1: Define formal step interface module (AC: #1, #3, #4)
+  - [ ] 1.1 Create `src/reformlab/orchestrator/step.py`
+  - [ ] 1.2 Define `@runtime_checkable` `OrchestratorStep` Protocol:
+    - `name: str`
+    - `execute(year: int, state: YearState) -> YearState`
+    - optional metadata: `depends_on: tuple[str, ...]`, `description: str | None`
+  - [ ] 1.3 Add step-specific typed errors (`StepValidationError`, `StepRegistrationError`, `CircularDependencyError`)
 
-- [ ] Task 3: Create function-based step adapter (AC: #4, #5)
-  - [ ] 3.1 Implement `@step` decorator to convert functions to OrchestratorStep
-  - [ ] 3.2 Support decorator parameters: `name`, `depends_on`, `description`
-  - [ ] 3.3 Maintain backward compatibility with existing `YearStep` callable alias
+- [ ] Task 2: Implement `StepRegistry` for plugin registration and ordering (AC: #2, #3)
+  - [ ] 2.1 Implement `register(step)`, `get(name)`, and `build_pipeline()` in `StepRegistry`
+  - [ ] 2.2 Enforce unique step names and validate protocol conformance at registration time
+  - [ ] 2.3 Implement topological sort for dependency ordering
+  - [ ] 2.4 Preserve registration order for dependency ties (deterministic output)
+  - [ ] 2.5 Raise clear errors for unknown dependencies and circular dependency graphs
 
-- [ ] Task 4: Integrate with Orchestrator (AC: #1, #5)
-  - [ ] 4.1 Update `OrchestratorConfig` to accept `StepRegistry` or step pipeline
-  - [ ] 4.2 Modify `Orchestrator._execute_step()` to use `OrchestratorStep.execute()`
-  - [ ] 4.3 Update step name extraction to use `OrchestratorStep.name`
-  - [ ] 4.4 Preserve backward compatibility: wrap bare callables in adapter
+- [ ] Task 3: Add function-step ergonomics and migration adapter (AC: #4, #5)
+  - [ ] 3.1 Implement `@step` decorator for function-based steps with `name`, `depends_on`, `description`
+  - [ ] 3.2 Provide default metadata behavior (`name=function.__name__`, `depends_on=()`)
+  - [ ] 3.3 Add adapter utility so bare `YearStep` callables can be used in mixed pipelines
 
-- [ ] Task 5: Add comprehensive tests (AC: all)
-  - [ ] 5.1 Create `tests/orchestrator/test_step.py`:
-    - Test Protocol validation (valid/invalid implementations)
-    - Test class-based step registration and execution
-    - Test function-based step via `@step` decorator
-    - Test step name uniqueness enforcement
-  - [ ] 5.2 Create `tests/orchestrator/test_registry.py`:
-    - Test dependency ordering (topological sort)
-    - Test circular dependency detection
-    - Test registration validation (fail-fast)
-    - Test pipeline building
-  - [ ] 5.3 Update `tests/orchestrator/test_runner.py`:
-    - Test new OrchestratorStep interface integration
-    - Test backward compatibility with bare callables
+- [ ] Task 4: Integrate interface with orchestrator execution (AC: #1, #5)
+  - [ ] 4.1 Keep `OrchestratorConfig.step_pipeline` contract compatible while allowing protocol-based steps
+  - [ ] 4.2 Update `Orchestrator._execute_step()` dispatch:
+    - If protocol step: call `step.execute(year, state)`
+    - If bare callable: call existing callable path
+  - [ ] 4.3 Update step-name extraction to prefer `step.name` when available
+  - [ ] 4.4 Ensure no behavioral regression in yearly loop semantics from Story 3-1
 
-- [ ] Task 6: Export APIs and finalize (AC: all)
-  - [ ] 6.1 Update `src/reformlab/orchestrator/__init__.py` with exports:
-    - `OrchestratorStep` Protocol
-    - `StepRegistry` class
-    - `step` decorator
-  - [ ] 6.2 Add docstrings for all public APIs
-  - [ ] 6.3 Run `ruff check` and `mypy` on orchestrator module
-  - [ ] 6.4 Run full test suite: `pytest tests/orchestrator/`
-  - [ ] 6.5 Verify all tests pass and no regressions
+- [ ] Task 5: Add focused tests for new interface behavior (AC: all)
+  - [ ] 5.1 Create `tests/orchestrator/test_step.py`
+    - Protocol validation success/failure
+    - Function-step decorator defaults and overrides
+    - Callable adapter behavior
+  - [ ] 5.2 Create `tests/orchestrator/test_registry.py`
+    - Topological ordering with stable tie handling
+    - Duplicate name / unknown dependency / cycle detection
+    - Pipeline build determinism
+  - [ ] 5.3 Update `tests/orchestrator/test_runner.py`
+    - Protocol step execution
+    - Mixed pipeline compatibility with legacy callables
+
+- [ ] Task 6: Export APIs and run quality gates (AC: all)
+  - [ ] 6.1 Update `src/reformlab/orchestrator/__init__.py` exports (`OrchestratorStep`, `StepRegistry`, `step`)
+  - [ ] 6.2 Add concise docstrings for new public APIs
+  - [ ] 6.3 Run `ruff check src/reformlab/orchestrator tests/orchestrator`
+  - [ ] 6.4 Run `mypy src/reformlab/orchestrator`
+  - [ ] 6.5 Run `pytest tests/orchestrator/test_step.py tests/orchestrator/test_registry.py tests/orchestrator/test_runner.py`
 
 ## Dev Notes
 
@@ -237,7 +234,7 @@ Use Kahn's algorithm for topological sort:
 - Test topological sort with various dependency graphs
 - Test circular dependency detection with clear error messages
 - Test backward compatibility with existing bare callables
-- Ensure all 683+ existing tests continue to pass
+- Ensure orchestrator test suite passes with no regressions
 
 ### Out-of-Scope Guardrails
 
@@ -283,4 +280,3 @@ class CircularDependencyError(Exception):
 ### Completion Notes List
 
 ### File List
-
