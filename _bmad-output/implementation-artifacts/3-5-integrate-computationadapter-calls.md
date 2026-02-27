@@ -1,6 +1,6 @@
 # Story 3.5: Integrate ComputationAdapter Calls
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -59,59 +59,59 @@ Scope note: this story adds a `ComputationStep` that invokes the adapter at each
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Confirm prerequisites and review existing patterns (AC: dependency check)
-  - [ ] 0.1 Verify all prerequisite stories are `done` in `sprint-status.yaml`
-  - [ ] 0.2 Review `ComputationAdapter` protocol and `MockAdapter` in `src/reformlab/computation/`
-  - [ ] 0.3 Review `OrchestratorStep` and `StepRegistry` contracts in `src/reformlab/orchestrator/step.py`
-  - [ ] 0.4 Review `YearState` data contract in `src/reformlab/orchestrator/types.py`
-  - [ ] 0.5 Review carry-forward and vintage transition step patterns for consistency
+- [x] Task 0: Confirm prerequisites and review existing patterns (AC: dependency check)
+  - [x] 0.1 Verify all prerequisite stories are `done` in `sprint-status.yaml`
+  - [x] 0.2 Review `ComputationAdapter` protocol and `MockAdapter` in `src/reformlab/computation/`
+  - [x] 0.3 Review `OrchestratorStep` and `StepRegistry` contracts in `src/reformlab/orchestrator/step.py`
+  - [x] 0.4 Review `YearState` data contract in `src/reformlab/orchestrator/types.py`
+  - [x] 0.5 Review carry-forward and vintage transition step patterns for consistency
 
-- [ ] Task 1: Define computation step types and errors (AC: #1, #4)
-  - [ ] 1.1 Create `src/reformlab/orchestrator/computation_step.py` with:
+- [x] Task 1: Define computation step types and errors (AC: #1, #4)
+  - [x] 1.1 Create `src/reformlab/orchestrator/computation_step.py` with:
     - `ComputationStepError` for adapter-related failures with context
-  - [ ] 1.2 Define stable keys for yearly computation payloads:
+  - [x] 1.2 Define stable keys for yearly computation payloads:
     - `COMPUTATION_RESULT_KEY = "computation_result"` (stored in `YearState.data`)
     - `COMPUTATION_METADATA_KEY = "computation_metadata"` (stored in `YearState.metadata`)
 
-- [ ] Task 2: Implement `ComputationStep` (AC: #1, #2, #5)
-  - [ ] 2.1 Implement `ComputationStep` class implementing `OrchestratorStep` protocol:
+- [x] Task 2: Implement `ComputationStep` (AC: #1, #2, #5)
+  - [x] 2.1 Implement `ComputationStep` class implementing `OrchestratorStep` protocol:
     - Constructor accepts: `adapter: ComputationAdapter`, `population: PopulationData`, `policy: PolicyConfig`
     - `name` property returns `"computation"`
     - Optional `depends_on` defaults to empty tuple (computation is independent; order is then controlled by deterministic registration order unless explicit dependency edges are configured)
-  - [ ] 2.2 Implement `execute(year, state)` method:
+  - [x] 2.2 Implement `execute(year, state)` method:
     - Call `adapter.compute(population, policy, year)`
     - Store `ComputationResult` in `YearState.data[COMPUTATION_RESULT_KEY]`
     - Store execution metadata (adapter version, period, row count) in `YearState.metadata[COMPUTATION_METADATA_KEY]`
     - Return new immutable state via `replace(state, data=..., metadata=...)`
-  - [ ] 2.3 Implement error handling:
+  - [x] 2.3 Implement error handling:
     - Catch adapter exceptions and wrap with `ComputationStepError`
     - Include adapter version, year, and original error details in error message
     - Preserve exception chain with `from e`
 
-- [ ] Task 3: Add tests for behavior, errors, and integration (AC: all)
-  - [ ] 3.1 Create `tests/orchestrator/test_computation_step.py` covering:
+- [x] Task 3: Add tests for behavior, errors, and integration (AC: all)
+  - [x] 3.1 Create `tests/orchestrator/test_computation_step.py` covering:
     - Step protocol conformance (name, execute signature)
     - Correct adapter invocation per year
     - Result storage in `YearState.data`
     - Metadata recording in `YearState.metadata[COMPUTATION_METADATA_KEY]`
-  - [ ] 3.2 Add error handling tests:
+  - [x] 3.2 Add error handling tests:
     - Adapter failure produces `ComputationStepError` with context
     - Error includes adapter version and year
     - Original error preserved in chain
-  - [ ] 3.3 Create `tests/orchestrator/test_computation_integration.py` covering:
+  - [x] 3.3 Create `tests/orchestrator/test_computation_integration.py` covering:
     - Full pipeline with MockAdapter + VintageTransitionStep + CarryForwardStep
     - Multi-year execution produces computation results for each year
     - Pipeline ordering: computation -> vintage -> carry_forward
     - Partial results (completed years) preserved on year `t+2` adapter failure
 
-- [ ] Task 4: Export API and run quality gates (AC: all)
-  - [ ] 4.1 Update `src/reformlab/orchestrator/__init__.py` exports:
+- [x] Task 4: Export API and run quality gates (AC: all)
+  - [x] 4.1 Update `src/reformlab/orchestrator/__init__.py` exports:
     - Add `ComputationStep`, `ComputationStepError`
     - Add `COMPUTATION_RESULT_KEY`, `COMPUTATION_METADATA_KEY` constants
-  - [ ] 4.2 Add concise docstrings for public APIs
-  - [ ] 4.3 Run `ruff check src/reformlab/orchestrator tests/orchestrator`
-  - [ ] 4.4 Run `mypy src/reformlab/orchestrator`
-  - [ ] 4.5 Run targeted tests: `pytest tests/orchestrator/test_computation_step.py tests/orchestrator/test_computation_integration.py tests/orchestrator/test_runner.py tests/computation/test_mock_adapter.py`
+  - [x] 4.2 Add concise docstrings for public APIs
+  - [x] 4.3 Run `ruff check src/reformlab/orchestrator tests/orchestrator`
+  - [x] 4.4 Run `mypy src/reformlab/orchestrator`
+  - [x] 4.5 Run targeted tests: `pytest tests/orchestrator/test_computation_step.py tests/orchestrator/test_computation_integration.py tests/orchestrator/test_runner.py tests/computation/test_mock_adapter.py`
 
 ## Dev Notes
 
@@ -241,10 +241,33 @@ The orchestrator's existing error handling will wrap this in `OrchestratorError`
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.5 (claude-opus-4-5-20251101)
 
 ### Debug Log References
 
+No debug issues encountered.
+
 ### Completion Notes List
 
+- Implemented `ComputationStep` class in `src/reformlab/orchestrator/computation_step.py` following the established step pattern from `CarryForwardStep` and `VintageTransitionStep`
+- Added `ComputationStepError` with year, adapter_version, and original_error context for debugging and governance
+- Defined stable state keys `COMPUTATION_RESULT_KEY` and `COMPUTATION_METADATA_KEY` for deterministic data access
+- Created 19 unit tests in `test_computation_step.py` covering protocol compliance, execution, determinism, and error handling
+- Created 9 integration tests in `test_computation_integration.py` validating full pipeline with MockAdapter + VintageTransitionStep + CarryForwardStep
+- All 852 tests pass (no regressions)
+- ruff linting passes for all new files
+- mypy type checking passes with no issues
+
+### Change Log
+
+- 2026-02-27: Story implementation complete - ComputationStep integrated into orchestrator pipeline
+
 ### File List
+
+New files:
+- src/reformlab/orchestrator/computation_step.py
+- tests/orchestrator/test_computation_step.py
+- tests/orchestrator/test_computation_integration.py
+
+Modified files:
+- src/reformlab/orchestrator/__init__.py (added exports for ComputationStep, ComputationStepError, COMPUTATION_RESULT_KEY, COMPUTATION_METADATA_KEY)

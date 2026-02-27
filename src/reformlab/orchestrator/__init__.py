@@ -23,6 +23,10 @@ Public API:
 - CarryForwardRule: Single variable update rule (Story 3-3)
 - CarryForwardConfigError: Invalid carry-forward configuration (Story 3-3)
 - CarryForwardExecutionError: Error during carry-forward execution (Story 3-3)
+- ComputationStep: Adapter invocation step for tax-benefit computation (Story 3-5)
+- ComputationStepError: Error during computation step execution (Story 3-5)
+- COMPUTATION_RESULT_KEY: Stable key for ComputationResult in YearState.data (Story 3-5)
+- COMPUTATION_METADATA_KEY: Stable key for computation metadata (Story 3-5)
 """
 
 from reformlab.orchestrator.carry_forward import (
@@ -31,6 +35,12 @@ from reformlab.orchestrator.carry_forward import (
     CarryForwardExecutionError,
     CarryForwardRule,
     CarryForwardStep,
+)
+from reformlab.orchestrator.computation_step import (
+    COMPUTATION_METADATA_KEY,
+    COMPUTATION_RESULT_KEY,
+    ComputationStep,
+    ComputationStepError,
 )
 from reformlab.orchestrator.errors import OrchestratorError
 from reformlab.orchestrator.runner import (
@@ -83,4 +93,9 @@ __all__ = [
     "CarryForwardRule",
     "CarryForwardConfigError",
     "CarryForwardExecutionError",
+    # Computation step (Story 3-5)
+    "ComputationStep",
+    "ComputationStepError",
+    "COMPUTATION_RESULT_KEY",
+    "COMPUTATION_METADATA_KEY",
 ]
