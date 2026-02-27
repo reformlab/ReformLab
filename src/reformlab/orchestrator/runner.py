@@ -13,6 +13,7 @@ import logging
 import uuid
 from copy import deepcopy
 from dataclasses import replace
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, TypedDict, cast
 
 from reformlab.governance.capture import (
@@ -21,6 +22,7 @@ from reformlab.governance.capture import (
     capture_parameters,
     capture_warnings,
 )
+from reformlab.governance.hashing import hash_input_artifacts, hash_output_artifacts
 from reformlab.orchestrator.errors import OrchestratorError
 from reformlab.orchestrator.types import (
     OrchestratorConfig,
@@ -568,10 +570,13 @@ class OrchestratorRunner:
         request: dict[str, Any],
         parent_manifest_id: str,
         child_manifests: dict[int, str],
+        input_paths: dict[str, Path] | None = None,
+        output_paths: dict[str, Path] | None = None,
     ) -> dict[str, Any]:
         """Capture governance metadata once at runner boundary.
 
         Story 5-3 AC-5: Includes lineage metadata (parent_manifest_id, child_manifests).
+        Story 5-4 AC-5: Hash input/output artifacts when paths provided.
         """
         assumption_defaults = _coerce_dict(
             request.get("assumption_defaults", self.assumption_defaults)
@@ -603,6 +608,15 @@ class OrchestratorRunner:
             request=request, fallback=self.additional_warnings
         )
 
+        # Story 5-4 AC-5: Hash artifacts if paths provided
+        data_hashes: dict[str, str] = {}
+        if input_paths:
+            data_hashes = hash_input_artifacts(input_paths)
+
+        output_hashes: dict[str, str] = {}
+        if output_paths:
+            output_hashes = hash_output_artifacts(output_paths)
+
         return {
             "assumptions": capture_assumptions(
                 defaults=assumption_defaults,
@@ -619,6 +633,8 @@ class OrchestratorRunner:
             "scenario_version": scenario_version,
             "parent_manifest_id": parent_manifest_id,
             "child_manifests": child_manifests,
+            "data_hashes": data_hashes,
+            "output_hashes": output_hashes,
         }
 
 

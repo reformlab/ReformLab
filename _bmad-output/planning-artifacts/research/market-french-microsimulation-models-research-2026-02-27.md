@@ -22,7 +22,7 @@ source_verification: true
 
 ## Executive Summary
 
-France has one of the richest ecosystems of microsimulation models in Europe, with **12+ distinct models** maintained by government agencies, statistical offices, and research institutes. These models span **taxation, social benefits, energy, pensions, elderly care, and housing** policy domains.
+France has one of the richest ecosystems of microsimulation models in Europe, with **20+ distinct models** maintained by government agencies, statistical offices, and research institutes. These models span **taxation, social benefits, energy, pensions, elderly care, housing, transport, agriculture, and macroeconomics** policy domains. International organizations (OECD, World Bank, IEA, IMF) add another layer of frameworks — notably the **CEQ fiscal incidence methodology** (already implemented on OpenFisca) and the **SUBSIM energy subsidy reform** approach.
 
 For ReformLab, the most immediately relevant and integrable models are **OpenFisca** (already planned), **TAXIPP** (open-source, Python, uses OpenFisca internally), and **Res-IRF** (open-source, Python, residential energy/renovation dynamics from CIRED). Models like **Prometheus** (energy bills) and **EPEEr** (fuel poverty/housing) cover exactly the environmental policy domains ReformLab targets but are not currently open-source. The SNBC (National Low-Carbon Strategy) relies on a full suite of sectoral models — including **ThreeME** (open-source macro-economic), **MODEV** (transport), **EnerMED** (industry), and **ClimAgri** (agriculture) — that map the broader ecosystem ReformLab can draw from. At the European level, **EUROMOD** is the dominant cross-country tax-benefit model and is fully open-source.
 
@@ -440,6 +440,133 @@ Sources: [ADEME — ClimAgri](https://librairie.ademe.fr/changement-climatique-e
 
 ---
 
+### 1.7 International Organizations (IEA, World Bank, OECD, IMF)
+
+International organizations have developed their own modeling frameworks, some of which directly intersect with ReformLab's goals — particularly around carbon tax distributional analysis and fiscal incidence.
+
+#### OECD TaxBEN
+
+| Attribute | Detail |
+|-----------|--------|
+| **Full name** | TaxBEN (Tax-Benefit simulation model) |
+| **Agency** | OECD |
+| **Domain** | Tax and benefit policies across OECD countries |
+| **Type** | Cross-country tax-benefit microsimulation |
+| **Open source** | **No** — access via application to OECD |
+| **Coverage** | All EU countries + OECD members, back to early 2000s |
+| **Key use** | Comparing tax-benefit systems across countries; analyzing work incentives and income support |
+
+TaxBEN covers personal income taxes, social contributions, unemployment benefits, minimum-income benefits, housing benefits, and in-work benefits. It's the OECD's equivalent of EUROMOD but with a different methodology (typical-case simulation rather than microdata-based). Not directly integrable due to access restrictions.
+
+Sources: [OECD — TaxBEN overview](https://www.oecd.org/content/dam/oecd/en/topics/policy-sub-issues/income-support-redistribution-and-work-incentives/oecd-tax-benefit-model-overview.pdf) | [OECD — TaxBEN methodology](https://www.oecd.org/content/dam/oecd/en/topics/policy-sub-issues/income-support-redistribution-and-work-incentives/oecd-taxben-methodology-and-manual.pdf)
+
+---
+
+#### OECD ENV-Linkages
+
+| Attribute | Detail |
+|-----------|--------|
+| **Full name** | ENV-Linkages |
+| **Agency** | OECD |
+| **Domain** | Economy-environment interlinkages, GHG emissions, carbon pricing |
+| **Type** | Recursive dynamic CGE model |
+| **Open source** | **No** (OECD internal) |
+| **Key use** | Macro-economic assessment of climate policies; feeds into microsimulation via mSPIN |
+
+ENV-Linkages is interesting because it has been **coupled with microsimulation models** (mSPIN) to assess distributional impacts of carbon pricing — using EUROMOD household data for calibration. This macro-micro coupling approach is architecturally similar to what ReformLab aims to do.
+
+Sources: [OECD — ENV-Linkages overview](https://www.oecd.org/en/publications/an-overview-of-the-oecd-env-linkages-model_5jz2qck2b2vd-en.html) | [OECD — Distributional effects of environmental policy](https://one.oecd.org/document/ENV/WKP(2021)20/en/pdf)
+
+---
+
+#### World Bank — Equity Policy Lab / devCEQ
+
+| Attribute | Detail |
+|-----------|--------|
+| **Full name** | devCEQ (Commitment to Equity microsimulation framework) |
+| **Agency** | World Bank Equity Policy Lab + CEQ Institute (Tulane University) |
+| **Domain** | Fiscal incidence analysis — who benefits from taxes, transfers, and subsidies |
+| **Type** | Fiscal microsimulation with interactive Shiny apps |
+| **Language** | **R** |
+| **Open source** | **Yes — GitHub** |
+| **Repository** | [github.com/wbEPL/devCEQ](https://github.com/wbEPL/devCEQ) |
+| **Countries** | Senegal, Cote d'Ivoire, Benin, Indonesia, Armenia, El Salvador, Turkey, Romania |
+| **Key use** | Distributional analysis of fiscal policies for policymakers |
+
+devCEQ is the World Bank's standardized R/Shiny infrastructure for building country-specific fiscal microsimulation apps. **There is also an OpenFisca-CEQ package** ([github.com/openfisca/openfisca-ceq](https://github.com/openfisca/openfisca-ceq)) that implements CEQ concepts on top of OpenFisca for Cote d'Ivoire, Mali, and Senegal — demonstrating that OpenFisca and CEQ methodologies are already compatible.
+
+Sources: [GitHub — wbEPL/devCEQ](https://github.com/wbEPL/devCEQ) | [GitHub — openfisca/openfisca-ceq](https://github.com/openfisca/openfisca-ceq) | [CEQ Institute](https://commitmentoequity.org/)
+
+---
+
+#### World Bank — SUBSIM
+
+| Attribute | Detail |
+|-----------|--------|
+| **Full name** | SUBSIM (Subsidy Simulation) |
+| **Agency** | World Bank |
+| **Domain** | Energy and food subsidy reform — distributional impacts |
+| **Type** | Partial equilibrium microsimulation |
+| **Open source** | Unknown (World Bank internal tool with published methodology) |
+| **Key use** | Analyzing who benefits from energy/food subsidies and simulating reform scenarios |
+
+SUBSIM is particularly relevant for ReformLab's environmental policy focus — it models how energy subsidy reforms affect household welfare, poverty, and inequality. Applied extensively in MENA countries. The methodology (partial equilibrium, household-level welfare analysis of price changes) maps closely to what Prometheus does for French energy bills.
+
+Sources: [World Bank — SUBSIM methodology](https://documents1.worldbank.org/curated/en/502201612977843211/pdf/A-Customizable-Microsimulation-Tool-to-Analyze-Distributional-Effects-of-Country-Fiscal-Policies.pdf) | [SpringerLink — SUBSIM book](https://link.springer.com/book/10.1007/978-3-319-52926-4)
+
+---
+
+#### World Bank — ADePT
+
+| Attribute | Detail |
+|-----------|--------|
+| **Full name** | ADePT (Automated DEcomposition Platform for analysis of Tax and benefit policies) |
+| **Agency** | World Bank |
+| **Domain** | Automated economic analysis from household survey data |
+| **Type** | Software platform with multiple modules (labor, poverty, social protection, health, gender) |
+| **Open source** | Partially (platform is free, some modules have open documentation) |
+| **Key use** | Standardized production of distributional analysis from household surveys |
+
+ADePT automates the production of analytical reports from household surveys, covering poverty, inequality, labor markets, and social protection programs. Its modular approach (specialized modules for different analysis types) is architecturally interesting for ReformLab.
+
+Sources: [ADePT homepage](https://adeptanalytics.github.io/homepage/) | [World Bank — ADePT documentation](https://openknowledge.worldbank.org/collections/7cc1e1fe-44c0-5dd2-9cf0-2b7426da6a13)
+
+---
+
+#### IEA — Global Energy and Climate Model (GEC) / TIMES
+
+| Attribute | Detail |
+|-----------|--------|
+| **Full name** | GEC Model (successor to WEM); TIMES/MARKAL via ETSAP |
+| **Agency** | IEA; ETSAP consortium (70+ countries) |
+| **Domain** | Energy system modeling, long-term energy scenarios |
+| **Type** | Bottom-up optimization / simulation |
+| **Language** | GAMS (TIMES); proprietary (GEC) |
+| **Open source** | **TIMES: Yes (GPL v3, GitHub)**; GEC: No |
+| **Repository** | [github.com/etsap-TIMES/TIMES_model](https://github.com/etsap-TIMES/TIMES_model) |
+| **Key use** | Long-term energy pathways, technology assessment, policy analysis for 70+ countries |
+
+The IEA's own GEC Model is proprietary, but the ETSAP TIMES model generator is open-source and used by 70+ countries for energy system optimization. TIMES is not a microsimulation model — it's a supply-side optimization model — but its energy system outputs (prices, demand projections) are exactly the kind of inputs that Prometheus and Res-IRF consume.
+
+Sources: [IEA — GEC Model](https://www.iea.org/reports/global-energy-and-climate-model) | [IEA-ETSAP](https://iea-etsap.org/) | [GitHub — TIMES model](https://github.com/etsap-TIMES/TIMES_model)
+
+---
+
+#### IMF — Carbon Tax Distributional Analysis
+
+The IMF does not maintain a named microsimulation model, but has published extensive methodology for analyzing the **distributional impacts of carbon pricing** using microsimulation techniques. Key findings from IMF research:
+
+- In high-income countries, carbon pricing effects on real household incomes tend to be **slightly regressive or distribution neutral**
+- In middle/low-income countries, effects are usually **neutral or slightly progressive**
+- Revenue recycling design (targeted transfers vs. tax cuts) is decisive for distributional outcomes
+- What matters is how the **reform package as a whole** performs, not individual components
+
+This methodology is directly relevant to ReformLab's carbon tax scenario modeling.
+
+Sources: [IMF — Poverty and distributional impacts of carbon pricing (WP/21/172)](https://www.imf.org/-/media/Files/Publications/WP/2021/English/wpiea2021172-print-pdf.ashx) | [IMF — Climate mitigation](https://www.imf.org/en/topics/climate-change/climate-mitigation)
+
+---
+
 ## 2. Landscape Summary Matrix
 
 | Model | Agency | Domain | Type | Language | Open Source | Data | ReformLab Relevance |
@@ -466,6 +593,15 @@ Sources: [ADEME — ClimAgri](https://librairie.ademe.fr/changement-climatique-e
 | **MODEV** | CGDD | Transport demand | Multimodal | Unknown | No | Internal | Low (closed) |
 | **COPERT/CopCerema** | EEA/Cerema | Road transport emissions | Emission factors | Various | Partial | Fleet data | Medium (emission factors) |
 | **ClimAgri** | ADEME/Solagro | Agricultural emissions | Diagnostic | Spreadsheet | No | Territorial | Low (spreadsheet) |
+| | | | | | | | |
+| **International Organizations** | | | | | | | |
+| **OECD TaxBEN** | OECD | Cross-country tax-benefit | Typical-case sim. | Unknown | No (application) | OECD data | Low (closed access) |
+| **OECD ENV-Linkages** | OECD | Economy-environment CGE | Recursive CGE | Unknown | No | OECD data | Medium (methodology ref) |
+| **WB devCEQ** | World Bank EPL | Fiscal incidence analysis | Fiscal microsim. | **R** | **Yes (GitHub)** | Household surveys | Medium (CEQ+OpenFisca) |
+| **WB SUBSIM** | World Bank | Energy/food subsidy reform | Partial eq. microsim. | Unknown | Partial | Household surveys | Medium (methodology) |
+| **WB ADePT** | World Bank | Automated distributional analysis | Platform | Various | Partial | Household surveys | Low (platform approach) |
+| **OpenFisca-CEQ** | OpenFisca/WB | CEQ on OpenFisca | Fiscal incidence | **Python** | **Yes (GitHub)** | Survey data | **High — proves concept** |
+| **IEA TIMES** | IEA-ETSAP | Energy system optimization | Bottom-up LP | GAMS | **Yes (GPL v3)** | Energy data | Low (supply-side) |
 
 ---
 
@@ -481,6 +617,8 @@ Sources: [ADEME — ClimAgri](https://librairie.ademe.fr/changement-climatique-e
 - Reference TAXIPP's methodology for distributional analysis
 
 **Res-IRF (CIRED)**: Python, open-source, models residential energy dynamics (renovation decisions, heating systems, energy consumption with rebound effects). Could be wrapped as a ReformLab adapter for the housing/energy sector. Already serves as the residential module of IMACLIM-R France.
+
+**OpenFisca-CEQ (World Bank + OpenFisca)**: Proves that the CEQ fiscal incidence methodology can run on OpenFisca. Already implemented for Cote d'Ivoire, Mali, Senegal. ReformLab could adopt the same CEQ framework for France — enabling direct comparability with World Bank fiscal incidence analyses worldwide.
 
 **LexImpact**: Not a computation model to integrate, but a **UX reference** — it shows how to make OpenFisca-based simulations accessible to non-experts, which directly informs ReformLab's no-code GUI layer.
 
@@ -510,6 +648,12 @@ Sources: [ADEME — ClimAgri](https://librairie.ademe.fr/changement-climatique-e
 **MODEV, MENFIS, EnerMED**: Government-internal or proprietary sectoral models. Their outputs are available through SNBC publications, but the models themselves cannot be integrated.
 
 **INES, Myriade, TRAJECTOiRE, Autonomix, ClimAgri**: Government-internal or domain-specific models that serve as references for methodology validation but aren't directly integrable.
+
+**OECD TaxBEN, ENV-Linkages**: Closed-access OECD tools. ENV-Linkages' macro-micro coupling with mSPIN microsimulation is an interesting architecture reference.
+
+**World Bank ADePT, SUBSIM**: Useful methodology references for energy subsidy reform analysis and automated distributional reporting. SUBSIM's partial-equilibrium approach to energy price changes is closely related to Prometheus.
+
+**IEA TIMES**: Open-source energy system optimization — supply-side, not household-level — but its outputs (energy prices, demand) could feed into ReformLab scenarios.
 
 ---
 
@@ -574,6 +718,21 @@ The French modeling ecosystem is **fragmented by design** — each ministry/agen
 - [Ministry of Ecology — Transport projections for SNBC2](https://www.ecologie.gouv.fr/sites/default/files/publications/document_travail_52_projection_transport_snbc2_oct2021.pdf)
 - [Cerema — CopCerema](https://www.cerema.fr/fr/actualites/copcerema-outil-calculer-emissions-polluantes-consommations)
 - [Solagro — ClimAgri](https://solagro.org/travaux-et-productions/outils/climagri)
+
+### International Organizations
+- [OECD — TaxBEN overview](https://www.oecd.org/content/dam/oecd/en/topics/policy-sub-issues/income-support-redistribution-and-work-incentives/oecd-tax-benefit-model-overview.pdf)
+- [OECD — ENV-Linkages overview](https://www.oecd.org/en/publications/an-overview-of-the-oecd-env-linkages-model_5jz2qck2b2vd-en.html)
+- [OECD — Distributional effects of environmental policy](https://one.oecd.org/document/ENV/WKP(2021)20/en/pdf)
+- [OECD — EPIC household survey](https://www.oecd.org/environment/consumption-innovation/households.htm)
+- [GitHub — wbEPL/devCEQ](https://github.com/wbEPL/devCEQ)
+- [GitHub — openfisca/openfisca-ceq](https://github.com/openfisca/openfisca-ceq)
+- [CEQ Institute — Tulane University](https://commitmentoequity.org/)
+- [World Bank — SUBSIM methodology](https://documents1.worldbank.org/curated/en/502201612977843211/pdf/A-Customizable-Microsimulation-Tool-to-Analyze-Distributional-Effects-of-Country-Fiscal-Policies.pdf)
+- [ADePT homepage](https://adeptanalytics.github.io/homepage/)
+- [IEA — GEC Model](https://www.iea.org/reports/global-energy-and-climate-model)
+- [IEA-ETSAP — TIMES](https://iea-etsap.org/)
+- [GitHub — TIMES model](https://github.com/etsap-TIMES/TIMES_model)
+- [IMF — Poverty and distributional impacts of carbon pricing](https://www.imf.org/-/media/Files/Publications/WP/2021/English/wpiea2021172-print-pdf.ashx)
 
 ### Academic References
 - [Cairn — Panorama of microsimulation in France (2004)](https://cairn.info/revue-d-economie-politique-2004-1-page-17.htm)

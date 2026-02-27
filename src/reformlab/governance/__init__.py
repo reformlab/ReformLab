@@ -16,6 +16,11 @@ Public API:
     capture_mappings: Capture mapping configuration
     capture_parameters: Capture parameter snapshot
     capture_warnings: Capture warnings for manifest
+    hash_file: Compute SHA-256 hash of a file
+    hash_input_artifacts: Hash input data files
+    hash_output_artifacts: Hash output artifacts
+    verify_artifact_hashes: Verify stored hashes against current files
+    ArtifactVerificationResult: Hash verification result
 """
 
 from reformlab.governance.capture import (
@@ -28,6 +33,13 @@ from reformlab.governance.errors import (
     LineageIntegrityError,
     ManifestIntegrityError,
     ManifestValidationError,
+)
+from reformlab.governance.hashing import (
+    ArtifactVerificationResult,
+    hash_file,
+    hash_input_artifacts,
+    hash_output_artifacts,
+    verify_artifact_hashes,
 )
 from reformlab.governance.lineage import (
     LineageGraph,
@@ -48,4 +60,9 @@ __all__ = [
     "capture_mappings",
     "capture_parameters",
     "capture_warnings",
+    "hash_file",
+    "hash_input_artifacts",
+    "hash_output_artifacts",
+    "verify_artifact_hashes",
+    "ArtifactVerificationResult",
 ]
