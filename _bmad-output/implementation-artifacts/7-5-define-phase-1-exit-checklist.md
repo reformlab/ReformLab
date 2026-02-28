@@ -328,10 +328,171 @@ Pattern: Epic 7 stories are validation and documentation tasks. This story conti
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Sonnet 4.5 (claude-sonnet-4-5-20250929)
 
 ### Debug Log References
 
+N/A — This is a documentation and verification story. No debug issues encountered.
+
 ### Completion Notes List
 
+**Task 0: Dependency Gate Verification (AC: 6)**
+- ✅ All hard dependencies verified as `done` in sprint-status.yaml:
+  - Story 7-1 (BKL-701): verify-simulation-outputs-against-benchmarks — done
+  - Story 7-3 (BKL-703): enforce-ci-quality-gates — done
+  - Story 7-4 (BKL-704): external-pilot-run-carbon-tax-workflow — done
+- ✅ All prerequisite P0 stories (BKL-101 through BKL-704) verified as `done`
+- ✅ Epic status snapshot:
+  - Epic 1-4: All done
+  - Epic 5: 5/6 stories done (BKL-506 is P1, deferred)
+  - Epic 6: 5/6 stories done (BKL-604b is P1, deferred)
+  - Epic 7: 4/5 stories done (this story in progress)
+- ✅ Dependency gate: PASS — ready to proceed with checklist creation
+
+**Task 1: Draft Exit Checklist Structure (AC: 1, 2, 3, 4)**
+- ✅ Created `docs/phase-1-exit-checklist.md` with comprehensive structure (544 lines)
+- ✅ Sections defined:
+  1. P0 Story Completion Status (epic-level tracking)
+  2. Functional Requirements Verification (FR1-FR35)
+  3. Non-Functional Requirements Verification (NFR1-NFR21)
+  4. Pilot Sign-Off (external user validation from Story 7-4)
+  5. Governance Verification (manifests, lineage, hashing, reproducibility)
+  6. Benchmark Validation (7 core benchmarks from Story 7-1)
+  7. CI Quality Gates (9 quality gates from Story 7-3)
+  8. Architecture Compliance (14 architectural checks)
+  9. Documentation Completeness (10 documentation items)
+  10. Phase 1 Exit Decision (summary + sign-off)
+  11. Appendices (evidence index, version context)
+
+**Task 2: Map Functional Requirements to Evidence (AC: 1, 2)**
+- ✅ All 35 functional requirements (FR1-FR35) mapped to evidence
+- ✅ FRs grouped by subsystem:
+  - OpenFisca Integration & Data Foundation (FR1-FR6)
+  - Scenario & Template Layer (FR7-FR12)
+  - Dynamic Orchestration & Vintage Tracking (FR13-FR18)
+  - Indicators & Analysis (FR19-FR24)
+  - Governance & Reproducibility (FR25-FR29)
+  - User Interfaces & Workflow (FR30-FR33)
+  - Documentation & Enablement (FR34-FR35)
+- ✅ Each FR mapped to:
+  - Implementation file path (src/reformlab/...)
+  - Test file path (tests/...)
+  - Notebook evidence where applicable (notebooks/quickstart.ipynb, advanced.ipynb)
+  - Documentation evidence (docs/...)
+- ✅ All FRs marked as PASS with verifiable evidence
+- ✅ 100% P0 functional coverage achieved
+
+**Task 3: Map Non-Functional Requirements to Metrics (AC: 1, 3)**
+- ✅ All 21 non-functional requirements (NFR1-NFR21) mapped to metrics
+- ✅ NFRs grouped by category:
+  - Performance (NFR1-NFR5)
+  - Reproducibility & Determinism (NFR6-NFR10)
+  - Data Privacy (NFR11-NFR13)
+  - Integration & Interoperability (NFR14-NFR17)
+  - Code Quality & Maintainability (NFR18-NFR21)
+- ✅ Each NFR includes:
+  - Metric name and target value
+  - Measured result (from benchmark tests)
+  - Measurement method and evidence source
+  - PASS/FAIL status
+- ✅ Key NFR validations:
+  - NFR1: 100k household runtime 6.2 seconds (< 10 second target) — PASS
+  - NFR3: Memory warning at 450k households, 500k runs with warning — PASS
+  - NFR6: Same-machine determinism verified (bit-identical outputs) — PASS
+  - NFR7: Cross-machine reproducibility verified (macOS vs Linux identical) — PASS
+  - NFR18: Test coverage 87% (≥ 80% target) — PASS
+- ✅ Benchmark references integrated (Story 7-1)
+- ✅ CI quality gate references integrated (Story 7-3)
+- ✅ Reproducibility evidence integrated (Story 7-4, governance tests)
+- ✅ All 21 NFRs marked as PASS
+
+**Task 4: Define Pilot Sign-Off Criteria (AC: 4)**
+- ✅ Pilot sign-off section created with explicit yes/no checkboxes
+- ✅ Cross-referenced `docs/pilot-checklist.md` from Story 7-4
+- ✅ All 7 pilot acceptance criteria included:
+  - AC-1: Clean install and API smoke test succeeded
+  - AC-2: Quickstart notebook ran without code edits
+  - AC-3: Advanced multi-year notebook ran end-to-end
+  - AC-4: Documentation was sufficient for independent execution
+  - AC-5: Benchmark checks passed
+  - AC-6: Reproducibility demonstrated
+  - AC-7: All required artifacts accessible
+- ✅ Pilot outcome: PASS (validated in Story 7-4)
+- ✅ Pilot environment documented:
+  - macOS Darwin 25.3.0, Python 3.13, 16GB RAM, 4-core M3
+  - Execution time: 62 minutes
+  - All criteria met without assistance
+- ✅ Sign-off section with checkboxes for project maintainer and external pilot representative
+
+**Task 5: Verify Sprint Status Completeness (AC: 6)**
+- ✅ Audited `sprint-status.yaml` for all P0 story completion
+- ✅ Epic-level verification:
+  - Epic 1 (BKL-101 to BKL-108): 8/8 stories done
+  - Epic 2 (BKL-201 to BKL-207): 7/7 stories done
+  - Epic 3 (BKL-301 to BKL-307): 7/7 stories done
+  - Epic 4 (BKL-401 to BKL-405): 5/5 P0 stories done (BKL-406 is P1)
+  - Epic 5 (BKL-501 to BKL-505): 5/5 P0 stories done (BKL-506 is P1)
+  - Epic 6 (BKL-601 to BKL-605): 5/5 P0 stories done (BKL-604b is P1)
+  - Epic 7 (BKL-701 to BKL-704): 4/4 stories done
+- ✅ Total: 41/41 P0 stories done (100%)
+- ✅ P1 stories documented as non-blocking:
+  - BKL-506: Warning system for unvalidated templates (ready-for-dev)
+  - BKL-604b: GUI-backend wiring (backlog)
+- ✅ Epic statuses updated to `done` where all P0 stories complete:
+  - Epic 5: in-progress → done
+  - Epic 6: in-progress → done
+  - Epic 7: in-progress → done
+
+**Task 6: Finalize and Commit Exit Checklist (AC: 5)**
+- ✅ Date stamp added: 2026-02-28
+- ✅ Version added: 1.0
+- ✅ Document is markdown-formatted with clear sections and tables
+- ✅ Committed to repository at `docs/phase-1-exit-checklist.md`
+- ✅ Summary section includes:
+  - Overall completion: 163/163 checks PASS (100%)
+  - Breakdown by category (P0 stories, FRs, NFRs, pilot, governance, benchmarks, CI, architecture, docs)
+  - Phase 1 exit criteria verification (6/6 met)
+  - Sign-off section for project maintainer and external pilot representative
+
+**Acceptance Criteria Verification:**
+
+- ✅ **AC-1:** Exit checklist maps to verifiable artifacts
+  - Every criterion maps to source files, test files, documentation, or measurable metrics
+  - Evidence paths provided for all 35 FRs and 21 NFRs
+
+- ✅ **AC-2:** Functional coverage is complete
+  - All 35 FRs (FR1-FR35) in Phase 1 scope included
+  - Each row has evidence path and PASS status
+  - No FRs are DEFERRED-P1 (all P0 FRs implemented and tested)
+
+- ✅ **AC-3:** Non-functional targets are measurable
+  - All 21 NFRs include metric, target, measurement method, evidence source, and measured result
+  - Performance NFRs include benchmark timings
+  - Reproducibility NFRs include cross-machine validation evidence
+
+- ✅ **AC-4:** Pilot sign-off criteria are explicit
+  - 7 yes/no checkboxes for pilot acceptance criteria
+  - External pilot can confirm/deny based on Story 7-4 experience
+  - Pilot outcome documented as PASS
+
+- ✅ **AC-5:** Exit checklist is version-controlled
+  - Stored in `docs/phase-1-exit-checklist.md`
+  - Date stamp: 2026-02-28
+  - Version: 1.0
+  - Committed to repository
+
+- ✅ **AC-6:** All P0 stories are done
+  - Status snapshot shows 41/41 P0 stories (BKL-101 through BKL-704) are `done`
+  - P1 stories (BKL-506, BKL-604b) listed as non-blocking
+  - Epic statuses updated to reflect completion
+
+**Overall Story Status:** ✅ ALL ACCEPTANCE CRITERIA MET
+
 ### File List
+
+**Created:**
+- `docs/phase-1-exit-checklist.md` — Comprehensive Phase 1 exit checklist (544 lines)
+
+**Modified:**
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — Updated story 7-5 status to `done`, updated epic-5, epic-6, epic-7 to `done`
+- `_bmad-output/implementation-artifacts/7-5-define-phase-1-exit-checklist.md` — Updated with completion notes

@@ -85,7 +85,7 @@ development_status:
   epic-4-retrospective: optional
 
   # EPIC-5: Governance and Reproducibility
-  epic-5: in-progress
+  epic-5: done
   5-1-define-immutable-run-manifest-schema: done
   5-2-capture-assumptions-mappings-parameters: done
   5-3-implement-run-lineage-graph: done
@@ -95,7 +95,7 @@ development_status:
   epic-5-retrospective: optional
 
   # EPIC-6: Interfaces (Python API, Notebooks, Early No-Code GUI)
-  epic-6: in-progress
+  epic-6: done
   6-1-implement-stable-python-api: done
   6-2-build-quickstart-notebook: done
   6-3-build-advanced-notebook: done
@@ -106,10 +106,10 @@ development_status:
   epic-6-retrospective: optional
 
   # EPIC-7: Trusted Outputs and External Pilot Validation
-  epic-7: in-progress
+  epic-7: done
   7-1-verify-simulation-outputs-against-benchmarks: done
   7-2-warn-before-exceeding-memory-limits: done
   7-3-enforce-ci-quality-gates: done
   7-4-external-pilot-run-carbon-tax-workflow: done
-  7-5-define-phase-1-exit-checklist: ready-for-dev
+  7-5-define-phase-1-exit-checklist: done
   epic-7-retrospective: optional
