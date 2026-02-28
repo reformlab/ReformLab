@@ -125,7 +125,7 @@ def run_benchmark_suite(
 
     # Load reference values
     if reference_path is None:
-        reference_path = Path("tests/benchmarks/references/carbon_tax_benchmarks.yaml")
+        reference_path = _default_reference_path()
 
     if not reference_path.exists():
         raise FileNotFoundError(
@@ -143,36 +143,53 @@ def run_benchmark_suite(
 
     # Run fiscal aggregate benchmarks
     fiscal_benchmarks = references.get("fiscal_aggregates", {})
+    if not isinstance(fiscal_benchmarks, dict):
+        raise ValueError(
+            "Invalid benchmark reference format: 'fiscal_aggregates' must be a mapping"
+        )
+
     for metric_name, ref_data in fiscal_benchmarks.items():
         result = _check_fiscal_aggregate(
             panel=panel,
             metric_name=metric_name,
-            reference=ref_data,
+            reference=_validate_reference(metric_name, ref_data),
             carbon_tax_field=carbon_tax_field,
         )
         results.append(result)
 
     # Run distributional benchmarks
     distributional_benchmarks = references.get("distributional_shares", {})
+    if not isinstance(distributional_benchmarks, dict):
+        raise ValueError(
+            "Invalid benchmark reference format: 'distributional_shares' must be a mapping"
+        )
+
+    if not fiscal_benchmarks and not distributional_benchmarks:
+        raise ValueError(
+            "Benchmark reference file contains no benchmarks. "
+            "Expected at least one metric under 'fiscal_aggregates' or "
+            "'distributional_shares'."
+        )
+
     if distributional_benchmarks:
         from reformlab.indicators import compute_distributional_indicators
-        from reformlab.indicators.types import DistributionalConfig
+        from reformlab.indicators.types import (
+            DecileIndicators as DecileIndicatorsType,
+            DistributionalConfig,
+        )
 
         # Compute distributional indicators
         config = DistributionalConfig(income_field=income_field, by_year=False)
         dist_result = compute_distributional_indicators(panel, config)
+        decile_indicators = [
+            ind for ind in dist_result.indicators if isinstance(ind, DecileIndicatorsType)
+        ]
 
         for metric_name, ref_data in distributional_benchmarks.items():
-            # Type narrowing: filter to DecileIndicators only
-            from reformlab.indicators.types import DecileIndicators as DecileIndicatorsType
-
-            decile_indicators = [
-                ind for ind in dist_result.indicators if isinstance(ind, DecileIndicatorsType)
-            ]
             result = _check_distributional_share(
                 indicators=decile_indicators,
                 metric_name=metric_name,
-                reference=ref_data,
+                reference=_validate_reference(metric_name, ref_data),
                 carbon_tax_field=carbon_tax_field,
             )
             results.append(result)
@@ -187,6 +204,36 @@ def run_benchmark_suite(
         results=results,
         total_time_seconds=elapsed,
     )
+
+
+def _default_reference_path() -> Path:
+    """Return default benchmark reference file path relative to repository root."""
+    return (
+        Path(__file__).resolve().parents[3]
+        / "tests"
+        / "benchmarks"
+        / "references"
+        / "carbon_tax_benchmarks.yaml"
+    )
+
+
+def _validate_reference(metric_name: str, reference: Any) -> dict[str, Any]:
+    """Validate benchmark reference entry has required fields."""
+    if not isinstance(reference, dict):
+        raise ValueError(
+            f"Invalid reference for '{metric_name}': expected mapping, got "
+            f"{type(reference).__name__}"
+        )
+
+    required_fields = ("value", "tolerance", "source")
+    missing = [field for field in required_fields if field not in reference]
+    if missing:
+        raise ValueError(
+            f"Invalid reference for '{metric_name}': missing required field(s): "
+            + ", ".join(missing)
+        )
+
+    return reference
 
 
 def _check_fiscal_aggregate(

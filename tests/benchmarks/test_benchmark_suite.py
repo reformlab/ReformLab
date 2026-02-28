@@ -16,11 +16,32 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.compute as pc
 import pytest
+import yaml
 
 from reformlab.governance.benchmarking import run_benchmark_suite
 from reformlab.orchestrator.panel import PanelOutput
 
 pytestmark = pytest.mark.benchmark
+
+
+def _build_panel_with_carbon_tax(
+    benchmark_population: pa.Table,
+    *,
+    carbon_tax_rate: float,
+) -> PanelOutput:
+    """Build single-year benchmark panel with computed carbon tax field."""
+    carbon_tax = pc.multiply(
+        benchmark_population.column("carbon_emissions"),
+        pa.scalar(carbon_tax_rate, type=pa.float64()),
+    )
+    panel_table = benchmark_population.append_column("carbon_tax", carbon_tax)
+    panel_table = panel_table.append_column(
+        "year", pa.array([2025] * panel_table.num_rows, type=pa.int64())
+    )
+    return PanelOutput(
+        table=panel_table,
+        metadata={"start_year": 2025, "end_year": 2025},
+    )
 
 
 def test_fiscal_aggregate_benchmark(benchmark_population: pa.Table) -> None:
@@ -34,25 +55,7 @@ def test_fiscal_aggregate_benchmark(benchmark_population: pa.Table) -> None:
     Then:
         - Total carbon tax revenue matches reference within tolerance
     """
-    # Simulate carbon tax computation
-    carbon_tax_rate = 44.0
-
-    # Compute carbon tax: emissions × rate
-    carbon_tax = pc.multiply(
-        benchmark_population.column("carbon_emissions"),
-        pa.scalar(carbon_tax_rate, type=pa.float64()),
-    )
-
-    # Build panel output
-    panel_table = benchmark_population.append_column("carbon_tax", carbon_tax)
-    panel_table = panel_table.append_column(
-        "year", pa.array([2025] * panel_table.num_rows, type=pa.int64())
-    )
-
-    panel = PanelOutput(
-        table=panel_table,
-        metadata={"start_year": 2025, "end_year": 2025},
-    )
+    panel = _build_panel_with_carbon_tax(benchmark_population, carbon_tax_rate=44.0)
 
     # Run benchmark suite
     result = run_benchmark_suite(panel)
@@ -83,39 +86,19 @@ def test_distributional_benchmark(benchmark_population: pa.Table) -> None:
     Then:
         - Decile burden shares match reference values within tolerance
     """
-    # Simulate carbon tax computation
-    carbon_tax_rate = 44.0
-
-    carbon_tax = pc.multiply(
-        benchmark_population.column("carbon_emissions"),
-        pa.scalar(carbon_tax_rate, type=pa.float64()),
-    )
-
-    # Build panel output
-    panel_table = benchmark_population.append_column("carbon_tax", carbon_tax)
-    panel_table = panel_table.append_column(
-        "year", pa.array([2025] * panel_table.num_rows, type=pa.int64())
-    )
-
-    panel = PanelOutput(
-        table=panel_table,
-        metadata={"start_year": 2025, "end_year": 2025},
-    )
+    panel = _build_panel_with_carbon_tax(benchmark_population, carbon_tax_rate=44.0)
 
     # Run benchmark suite
     result = run_benchmark_suite(panel)
 
     # Find distributional benchmarks
     dist_results = [r for r in result.results if "decile" in r.metric_name]
-    assert len(dist_results) > 0, "No distributional benchmarks found"
+    assert len(dist_results) == 10, "Expected decile_1_share through decile_10_share"
 
-    # Check that at least one decile benchmark passed
-    passed_count = sum(1 for r in dist_results if r.passed)
-    if passed_count == 0:
-        # Print details of failures
-        for r in dist_results:
-            print(r.details())
-        pytest.fail("No distributional benchmarks passed")
+    failed = [r for r in dist_results if not r.passed]
+    if failed:
+        diagnostics = "\n\n".join(r.details() for r in failed)
+        pytest.fail(f"Distributional benchmark failures:\n{diagnostics}")
 
 
 def test_performance_benchmark(benchmark_population: pa.Table) -> None:
@@ -128,24 +111,7 @@ def test_performance_benchmark(benchmark_population: pa.Table) -> None:
     Then:
         - Total wall time is under 10 seconds (NFR1 requirement)
     """
-    # Simulate carbon tax computation
-    carbon_tax_rate = 44.0
-
-    carbon_tax = pc.multiply(
-        benchmark_population.column("carbon_emissions"),
-        pa.scalar(carbon_tax_rate, type=pa.float64()),
-    )
-
-    # Build panel output
-    panel_table = benchmark_population.append_column("carbon_tax", carbon_tax)
-    panel_table = panel_table.append_column(
-        "year", pa.array([2025] * panel_table.num_rows, type=pa.int64())
-    )
-
-    panel = PanelOutput(
-        table=panel_table,
-        metadata={"start_year": 2025, "end_year": 2025},
-    )
+    panel = _build_panel_with_carbon_tax(benchmark_population, carbon_tax_rate=44.0)
 
     # Measure benchmark suite execution time
     start = time.perf_counter()
@@ -178,24 +144,7 @@ def test_benchmark_suite_integration(benchmark_population: pa.Table) -> None:
         - Results are properly structured
         - Performance target is met
     """
-    # Simulate carbon tax computation
-    carbon_tax_rate = 44.0
-
-    carbon_tax = pc.multiply(
-        benchmark_population.column("carbon_emissions"),
-        pa.scalar(carbon_tax_rate, type=pa.float64()),
-    )
-
-    # Build panel output
-    panel_table = benchmark_population.append_column("carbon_tax", carbon_tax)
-    panel_table = panel_table.append_column(
-        "year", pa.array([2025] * panel_table.num_rows, type=pa.int64())
-    )
-
-    panel = PanelOutput(
-        table=panel_table,
-        metadata={"start_year": 2025, "end_year": 2025},
-    )
+    panel = _build_panel_with_carbon_tax(benchmark_population, carbon_tax_rate=44.0)
 
     # Run benchmark suite
     result = run_benchmark_suite(panel)
@@ -204,6 +153,7 @@ def test_benchmark_suite_integration(benchmark_population: pa.Table) -> None:
     assert isinstance(result.results, list), "Results should be a list"
     assert len(result.results) > 0, "Suite should contain benchmark results"
     assert result.total_time_seconds > 0, "Suite should report timing"
+    assert result.passed, "All benchmark checks should pass for benchmark fixture"
 
     # Verify all results have required fields
     for benchmark_result in result.results:
@@ -225,7 +175,7 @@ def test_benchmark_suite_integration(benchmark_population: pa.Table) -> None:
     passed_count = sum(1 for r in result.results if r.passed)
     print(f"Passed: {passed_count}/{len(result.results)}")
     for r in result.results:
-        status = "✓" if r.passed else "✗"
+        status = "PASS" if r.passed else "FAIL"
         print(f"  {status} {r.metric_name}: {r.actual:.2f} (expected {r.expected:.2f})")
 
 
@@ -241,23 +191,7 @@ def test_benchmark_failure_diagnostics(benchmark_population: pa.Table) -> None:
         - Diagnostic output includes: metric name, expected, actual, deviation, tolerance
     """
     # Simulate INCORRECT carbon tax (too low by 50%)
-    carbon_tax_rate = 22.0  # Should be 44.0
-
-    carbon_tax = pc.multiply(
-        benchmark_population.column("carbon_emissions"),
-        pa.scalar(carbon_tax_rate, type=pa.float64()),
-    )
-
-    # Build panel output
-    panel_table = benchmark_population.append_column("carbon_tax", carbon_tax)
-    panel_table = panel_table.append_column(
-        "year", pa.array([2025] * panel_table.num_rows, type=pa.int64())
-    )
-
-    panel = PanelOutput(
-        table=panel_table,
-        metadata={"start_year": 2025, "end_year": 2025},
-    )
+    panel = _build_panel_with_carbon_tax(benchmark_population, carbon_tax_rate=22.0)
 
     # Run benchmark suite
     result = run_benchmark_suite(panel)
@@ -298,3 +232,24 @@ def test_benchmark_reference_file_required() -> None:
     # Try to run with non-existent reference file
     with pytest.raises(FileNotFoundError, match="Benchmark reference file not found"):
         run_benchmark_suite(panel, reference_path=Path("/nonexistent/path.yaml"))
+
+
+def test_benchmark_reference_values_documented() -> None:
+    """Reference file includes required documentation fields for each metric."""
+    reference_path = (
+        Path(__file__).parent / "references" / "carbon_tax_benchmarks.yaml"
+    )
+    with open(reference_path, encoding="utf-8") as handle:
+        references = yaml.safe_load(handle)
+
+    assert isinstance(references, dict)
+    metric_groups = ("fiscal_aggregates", "distributional_shares")
+    for group_name in metric_groups:
+        group = references.get(group_name)
+        assert isinstance(group, dict), f"Expected mapping for {group_name}"
+        for metric_name, value in group.items():
+            assert isinstance(value, dict), f"{metric_name} should map to a dictionary"
+            for required_field in ("value", "tolerance", "source", "notes"):
+                assert required_field in value, (
+                    f"{metric_name} missing required field: {required_field}"
+                )

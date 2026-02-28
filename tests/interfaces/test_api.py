@@ -792,6 +792,53 @@ class TestRunScenario:
         assert exc_info.value.field_path == "seed"
 
 
+class TestRunBenchmarks:
+    """Test run_benchmarks API facade."""
+
+    def test_run_benchmarks_with_panel(self) -> None:
+        """run_benchmarks delegates to governance benchmark runner."""
+        from reformlab import run_benchmarks
+
+        panel_table = pa.table(
+            {
+                "household_id": pa.array(list(range(1, 11)), type=pa.int64()),
+                "year": pa.array([2025] * 10, type=pa.int64()),
+                "income": pa.array(
+                    [20000.0 + (i * 5000.0) for i in range(10)],
+                    type=pa.float64(),
+                ),
+                "carbon_tax": pa.array(
+                    [
+                        109.33,
+                        153.41,
+                        197.36,
+                        241.02,
+                        285.02,
+                        328.49,
+                        372.56,
+                        416.86,
+                        461.06,
+                        514.62,
+                    ],
+                    type=pa.float64(),
+                ),
+            }
+        )
+        panel = PanelOutput(table=panel_table, metadata={})
+
+        result = run_benchmarks(panel=panel)
+
+        assert result.results
+        assert result.total_time_seconds >= 0
+
+    def test_run_benchmarks_requires_panel_or_result(self) -> None:
+        """run_benchmarks raises SimulationError with no panel/result."""
+        from reformlab import SimulationError, run_benchmarks
+
+        with pytest.raises(SimulationError, match="No panel or result provided"):
+            run_benchmarks()
+
+
 class TestQuickstartAdapter:
     """Test public quickstart adapter helper."""
 
@@ -1043,6 +1090,12 @@ class TestPublicAPIImports:
 
         assert callable(get_scenario)
 
+    def test_import_run_benchmarks(self) -> None:
+        """run_benchmarks is importable from reformlab package root."""
+        from reformlab import run_benchmarks
+
+        assert callable(run_benchmarks)
+
     def test_import_simulation_result(self) -> None:
         """SimulationResult is importable from reformlab package root."""
         from reformlab import SimulationResult
@@ -1079,6 +1132,7 @@ class TestPublicAPIImports:
 
         expected_exports = {
             "run_scenario",
+            "run_benchmarks",
             "create_quickstart_adapter",
             "create_scenario",
             "clone_scenario",

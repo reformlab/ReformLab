@@ -28,6 +28,7 @@ import yaml
 
 if TYPE_CHECKING:
     from reformlab.computation.adapter import ComputationAdapter
+    from reformlab.governance.benchmarking import BenchmarkSuiteResult
     from reformlab.governance.manifest import RunManifest
     from reformlab.indicators.types import IndicatorResult
     from reformlab.orchestrator.panel import PanelOutput
@@ -1369,7 +1370,7 @@ def run_benchmarks(
     panel: PanelOutput | None = None,
     result: SimulationResult | None = None,
     reference_path: Path | None = None,
-) -> Any:  # BenchmarkSuiteResult
+) -> BenchmarkSuiteResult:
     """Run benchmark validation suite against simulation outputs.
 
     This is a thin facade over the governance benchmarking subsystem,
