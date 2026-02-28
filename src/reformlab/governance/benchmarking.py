@@ -175,6 +175,8 @@ def run_benchmark_suite(
         from reformlab.indicators import compute_distributional_indicators
         from reformlab.indicators.types import (
             DecileIndicators as DecileIndicatorsType,
+        )
+        from reformlab.indicators.types import (
             DistributionalConfig,
         )
 

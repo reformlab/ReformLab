@@ -18,6 +18,7 @@ openfisca = [
 ]
 dev = [
     "pytest>=8.3.3",
+    "pytest-cov>=4.1.0",
     "ruff>=0.15.0",
     "mypy>=1.19.0",
     "nbmake>=1.4",
@@ -48,6 +49,8 @@ select = ["E", "F", "I", "W"]
 [tool.ruff.lint.per-file-ignores]
 "tests/computation/test_openfisca_api_adapter.py" = ["E402"]
 "tests/templates/carbon_tax/test_performance.py" = ["E402"]
+"src/reformlab/interfaces/api.py" = ["E501"]
+"tests/interfaces/test_api.py" = ["E501"]
 
 [tool.mypy]
 python_version = "3.13"
@@ -69,6 +72,21 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = ["yaml", "yaml.*"]
 ignore_missing_imports = true
+
+[tool.coverage.run]
+source = ["src/reformlab"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 80
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@overload",
+    "\\.\\.\\.",
+]
+show_missing = true
 
 [dependency-groups]
 dev = [

@@ -9,7 +9,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-
 NOTEBOOK_PATH = Path(__file__).resolve().parents[2] / "notebooks" / "advanced.ipynb"
 CI_WORKFLOW_PATH = Path(__file__).resolve().parents[2] / ".github" / "workflows" / "ci.yml"
 

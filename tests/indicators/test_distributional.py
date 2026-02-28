@@ -369,8 +369,9 @@ class TestIndicatorResultExport:
         self, tmp_path, simple_income_distribution_panel: PanelOutput
     ) -> None:
         """export_csv() writes indicator table to CSV and returns Path."""
-        import pyarrow.csv as pa_csv
         from pathlib import Path
+
+        import pyarrow.csv as pa_csv
 
         result = compute_distributional_indicators(simple_income_distribution_panel)
 
@@ -397,8 +398,9 @@ class TestIndicatorResultExport:
         self, tmp_path, simple_income_distribution_panel: PanelOutput
     ) -> None:
         """export_parquet() writes indicator table to Parquet and returns Path."""
-        import pyarrow.parquet as pq
         from pathlib import Path
+
+        import pyarrow.parquet as pq
 
         result = compute_distributional_indicators(simple_income_distribution_panel)
 
@@ -433,8 +435,8 @@ class TestIndicatorResultExport:
         from reformlab.indicators.distributional import compute_distributional_indicators
         from reformlab.indicators.fiscal import compute_fiscal_indicators
         from reformlab.indicators.geographic import compute_geographic_indicators
-        from reformlab.indicators.welfare import compute_welfare_indicators
         from reformlab.indicators.types import FiscalConfig, GeographicConfig
+        from reformlab.indicators.welfare import compute_welfare_indicators
         from reformlab.orchestrator.panel import PanelOutput
 
         # Create test panel with all required fields

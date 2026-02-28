@@ -250,7 +250,7 @@ class SimulationResult:
             msg = "Operation failed — No panel output available — Ensure the simulation completed successfully"
             raise SimulationError(msg, fix="Ensure the simulation completed successfully")
 
-        provenance_metadata = {
+        provenance_metadata: dict[str, str | bytes] = {
             "reformlab_manifest_id": self.manifest.manifest_id,
             "reformlab_manifest_created_at": self.manifest.created_at,
             "reformlab_engine_version": self.manifest.engine_version,
@@ -993,7 +993,7 @@ def _normalize_parameters(params: dict[str, Any]) -> dict[str, Any]:
         Normalized parameters with string keys.
     """
 
-    def normalize_value(value: Any) -> Any:
+    def normalize_value(value: Any) -> dict[str, Any] | list[Any] | Any:
         if isinstance(value, dict):
             # Convert all keys to strings
             return {str(k): normalize_value(v) for k, v in value.items()}
@@ -1002,7 +1002,8 @@ def _normalize_parameters(params: dict[str, Any]) -> dict[str, Any]:
         else:
             return value
 
-    return normalize_value(params)
+    result: dict[str, Any] = normalize_value(params)  # type: ignore[assignment]
+    return result
 
 
 def _load_scenario(
@@ -1186,8 +1187,8 @@ def _execute_orchestration(
         scenario_version="1.0.0",
         parameters=normalized_params,
         seeds={"master": seed} if seed is not None else {},
-        assumptions=_coerce_dict_list(workflow_result.metadata.get("assumptions")),
-        mappings=_coerce_dict_list(workflow_result.metadata.get("mappings")),
+        assumptions=_coerce_dict_list(workflow_result.metadata.get("assumptions")),  # type: ignore[arg-type]
+        mappings=_coerce_dict_list(workflow_result.metadata.get("mappings")),  # type: ignore[arg-type]
         warnings=_coerce_string_list(workflow_result.metadata.get("warnings")),
         step_pipeline=_coerce_string_list(workflow_result.metadata.get("step_pipeline")),
         parent_manifest_id=parent_manifest_id,
@@ -1571,7 +1572,7 @@ def _estimate_population_size(population_path: Path | None) -> int:
             import pyarrow.parquet as pq
 
             metadata = pq.read_metadata(population_path)
-            return metadata.num_rows
+            return int(metadata.num_rows)
         elif suffixes[-2:] == (".csv", ".gz") or suffixes[-1:] == (".csv",):
             # For CSV, estimate based on file size
             # Rough heuristic: ~200 bytes per row on average

@@ -511,8 +511,8 @@ class TestRunScenario:
 
     def test_run_scenario_invalid_year_range(self) -> None:
         """run_scenario raises ValidationErrors for end_year < start_year."""
-        from reformlab.interfaces.errors import ValidationErrors
         from reformlab import ScenarioConfig, run_scenario
+        from reformlab.interfaces.errors import ValidationErrors
 
         config = ScenarioConfig(
             template_name="test",
@@ -533,8 +533,8 @@ class TestRunScenario:
 
     def test_run_scenario_invalid_year_bounds(self) -> None:
         """run_scenario raises ValidationErrors for unreasonable years."""
-        from reformlab.interfaces.errors import ValidationErrors
         from reformlab import ScenarioConfig, run_scenario
+        from reformlab.interfaces.errors import ValidationErrors
 
         config = ScenarioConfig(
             template_name="test",
@@ -555,8 +555,8 @@ class TestRunScenario:
 
     def test_run_scenario_missing_population_file(self) -> None:
         """run_scenario raises ValidationErrors for missing population file."""
-        from reformlab.interfaces.errors import ValidationErrors
         from reformlab import ScenarioConfig, run_scenario
+        from reformlab.interfaces.errors import ValidationErrors
 
         config = ScenarioConfig(
             template_name="test",
@@ -580,8 +580,8 @@ class TestRunScenario:
         self, tmp_path: Path
     ) -> None:
         """run_scenario aggregates multiple config validation issues in one error."""
-        from reformlab.interfaces.errors import ValidationErrors
         from reformlab import RunConfig, ScenarioConfig, run_scenario
+        from reformlab.interfaces.errors import ValidationErrors
 
         output_file = tmp_path / "not-a-directory.txt"
         output_file.write_text("not a directory", encoding="utf-8")
@@ -609,8 +609,8 @@ class TestRunScenario:
 
     def test_run_scenario_raises_simulation_error_with_run_state_context(self) -> None:
         """run_scenario raises SimulationError with failed year/step and partial states."""
-        from reformlab.computation.types import PolicyConfig, PopulationData
         from reformlab import ScenarioConfig, SimulationError, run_scenario
+        from reformlab.computation.types import PolicyConfig, PopulationData
 
         class FailOnSecondYearAdapter(MockAdapter):
             def compute(
@@ -645,9 +645,9 @@ class TestRunScenario:
 
     def test_run_scenario_mapping_error_includes_context_and_suggestion(self) -> None:
         """Mapping failures expose field context and close-match guidance."""
+        from reformlab import ScenarioConfig, SimulationError, run_scenario
         from reformlab.computation.exceptions import ApiMappingError
         from reformlab.computation.types import PolicyConfig, PopulationData
-        from reformlab import ScenarioConfig, SimulationError, run_scenario
 
         class MappingFailureAdapter(MockAdapter):
             def compute(
@@ -1198,8 +1198,8 @@ class TestErrorHandling:
 
     def test_no_bare_value_errors_from_api(self) -> None:
         """API never raises bare ValueError - only ConfigurationError/ValidationErrors or SimulationError."""
-        from reformlab.interfaces.errors import ValidationErrors
         from reformlab import ConfigurationError, run_scenario
+        from reformlab.interfaces.errors import ValidationErrors
 
         # Invalid config should raise ValidationErrors, not ValueError
         config = {
