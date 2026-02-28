@@ -119,15 +119,14 @@ In Jupyter, use `Run All Cells` (or `Kernel → Restart & Run All`).
 
 **Expected outcomes:**
 
-1. **Cell 1-6**: Imports, configuration, and first simulation run complete without errors
-2. **Cell 8**: Panel data table displays with 100 rows × multiple columns
-3. **Cell 11**: Distributional indicators computed (should show ~50 indicator records)
-4. **Cell 13**: Bar chart displays "Carbon Tax Burden by Income Decile" (10 bars, blue)
-5. **Cell 15-16**: Second simulation with higher rate (€100/tCO2) completes
-6. **Cell 18**: Side-by-side comparison chart shows baseline vs. reform (gray and coral bars)
-7. **Cell 21-22**: Run manifest displays with unique manifest ID, seeds, parameters
-8. **Cell 26**: Export actions complete, CSV and Parquet files created in temp directory
-9. **Cell 25**: Indicator export completes successfully
+1. **First Run section**: Imports, configuration, and first simulation run complete without errors
+2. **Inspect Results section**: Panel data table displays with 100 rows × multiple columns
+3. **Distributional Analysis section**: Indicators computed (should show ~50 indicator records)
+4. **Distributional chart cell**: "Carbon Tax Burden by Income Decile" renders (10 bars, blue)
+5. **Parameter Modification section**: Second simulation with higher rate (€100/tCO2) completes
+6. **Scenario Comparison section**: Side-by-side baseline vs. reform chart renders (gray and coral bars)
+7. **Reproducibility section**: Run manifest displays with unique manifest ID, seeds, and parameters
+8. **Export Actions section**: Panel CSV/Parquet exports complete, then indicator CSV export completes
 
 **Critical check:** All cells execute without `NameError`, `ImportError`, or `AttributeError`. Charts render correctly.
 
@@ -322,7 +321,7 @@ Record your execution environment for the pilot report:
 
 ### Final Sign-Off
 
-**Pilot outcome:** ☐ PASS ☑ PASS WITH MINOR ISSUES ☐ FAIL
+**Pilot outcome:** ☐ PASS ☐ PASS WITH MINOR ISSUES ☐ FAIL
 
 **Comments:**
 

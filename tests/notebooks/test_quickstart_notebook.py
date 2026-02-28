@@ -80,3 +80,20 @@ def test_quickstart_notebook_includes_export_examples() -> None:
     assert "result.export_parquet(" in source
     assert "indicators.export_csv(" in source
     assert "pa_csv.read_csv(" in source
+
+
+def test_quickstart_export_section_precedes_next_steps() -> None:
+    """Export walkthrough should appear before final next-steps guidance."""
+    source = _all_sources(_load_notebook())
+    export_heading = source.find("## 6. Export Actions")
+    panel_export = source.find("result.export_csv(")
+    indicator_export = source.find("indicators.export_csv(")
+    next_steps = source.find("## 7. Next Steps")
+
+    assert export_heading != -1
+    assert panel_export != -1
+    assert indicator_export != -1
+    assert next_steps != -1
+
+    assert export_heading < panel_export < indicator_export < next_steps
+    assert source.count("## 7. Next Steps") == 1

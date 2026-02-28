@@ -108,6 +108,21 @@ def test_advanced_notebook_includes_export_examples_and_roundtrip() -> None:
     assert "result_multi.scenario.start_year" not in source
 
 
+def test_advanced_notebook_export_heading_precedes_export_code() -> None:
+    """Export section heading should come before export directory and artifact writes."""
+    source = _all_sources(_load_notebook())
+    heading = source.find("Export simulation results for external analysis (Story 6-5)")
+    export_dir = source.find("export_dir = Path(tempfile.mkdtemp())")
+    panel_export = source.find("result_multi.export_parquet(")
+    indicator_export = source.find("fiscal_reform.export_parquet(")
+
+    assert heading != -1
+    assert export_dir != -1
+    assert panel_export != -1
+    assert indicator_export != -1
+    assert heading < export_dir < panel_export < indicator_export
+
+
 def test_ci_executes_advanced_notebook_with_nbmake() -> None:
     """CI should execute the advanced notebook in fresh kernel mode."""
     ci_workflow = CI_WORKFLOW_PATH.read_text(encoding="utf-8")
