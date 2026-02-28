@@ -229,10 +229,12 @@ class OpenFiscaApiAdapter:
         """Construct an OpenFisca Simulation from population and policy data."""
         from openfisca_core.simulation_builder import SimulationBuilder
 
-        # Validate entity keys against TBS
-        tbs_entity_names = {entity.key for entity in tbs.entities}
+        # Validate entity keys against TBS (accept both singular and plural)
+        tbs_entity_keys = {entity.key for entity in tbs.entities}
+        tbs_entity_plurals = {entity.plural for entity in tbs.entities}
+        valid_names = tbs_entity_keys | tbs_entity_plurals
         unknown_entities = [
-            key for key in population.tables if key not in tbs_entity_names
+            key for key in population.tables if key not in valid_names
         ]
         if unknown_entities:
             raise ApiMappingError(
@@ -243,11 +245,11 @@ class OpenFiscaApiAdapter:
                 ),
                 fix=(
                     f"Population entity keys must be one of: "
-                    f"{', '.join(sorted(tbs_entity_names))}. "
+                    f"{', '.join(sorted(tbs_entity_keys))}. "
                     "Check PopulationData.tables keys."
                 ),
                 invalid_names=tuple(unknown_entities),
-                valid_names=tuple(sorted(tbs_entity_names)),
+                valid_names=tuple(sorted(tbs_entity_keys)),
             )
 
         # Validate policy parameters
@@ -273,30 +275,42 @@ class OpenFiscaApiAdapter:
     ) -> dict[str, Any]:
         """Convert PopulationData tables to the dict format expected by OpenFisca.
 
-        OpenFisca's ``build_from_entities`` expects::
+        OpenFisca's ``build_from_entities`` expects **plural** entity keys::
 
             {
-                "persons": {
-                    "person_0": {"salary": {"2025": 30000.0}},
+                "individus": {
+                    "person_0": {"salaire_de_base": {"2024": 30000.0}},
                     ...
                 },
-                "households": {
-                    "household_0": {"parents": ["person_0"]},
+                "menages": {
+                    "menage_0": {"personne_de_reference": ["person_0"]},
                     ...
                 }
             }
+
+        PopulationData tables may use either singular (entity.key) or plural
+        (entity.plural) keys.  This method normalises to plural.
         """
         result: dict[str, Any] = {}
 
+        # Build key→plural mapping for normalisation
+        key_to_plural = {entity.key: entity.plural for entity in tbs.entities}
+        plural_set = set(key_to_plural.values())
+
         # Identify the person entity (singular entity in OpenFisca)
-        person_entity_key: str | None = None
+        person_entity_plural: str | None = None
         for entity in tbs.entities:
             if not getattr(entity, "is_person", False):
                 continue
-            person_entity_key = entity.key
+            person_entity_plural = entity.plural
             break
 
         for entity_key, table in population.tables.items():
+            # Normalise to plural key
+            plural_key = key_to_plural.get(entity_key, entity_key)
+            if entity_key in plural_set:
+                plural_key = entity_key
+
             entity_dict: dict[str, Any] = {}
             columns = table.column_names
             num_rows = table.num_rows
@@ -312,13 +326,13 @@ class OpenFiscaApiAdapter:
 
                 entity_dict[instance_id] = instance_data
 
-            result[entity_key] = entity_dict
+            result[plural_key] = entity_dict
 
         # Inject policy parameters as input-variable values on the person entity
-        if policy.parameters and person_entity_key and person_entity_key in result:
-            for instance_id in result[person_entity_key]:
+        if policy.parameters and person_entity_plural and person_entity_plural in result:
+            for instance_id in result[person_entity_plural]:
                 for param_key, param_value in policy.parameters.items():
-                    result[person_entity_key][instance_id][param_key] = {
+                    result[person_entity_plural][instance_id][param_key] = {
                         period_str: param_value
                     }
 

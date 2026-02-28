@@ -28,6 +28,7 @@ import yaml
 
 if TYPE_CHECKING:
     from reformlab.computation.adapter import ComputationAdapter
+    from reformlab.data.pipeline import DatasetManifest
     from reformlab.governance.benchmarking import BenchmarkSuiteResult
     from reformlab.governance.manifest import RunManifest
     from reformlab.governance.memory import MemoryEstimate
@@ -1490,6 +1491,96 @@ def get_scenario(
             actual=name,
             fix=f"Check that scenario '{name}' exists in the registry using list_scenarios()",
         ) from exc
+
+
+@dataclass(frozen=True)
+class PopulationResult:
+    """Result of synthetic population generation.
+
+    Attributes:
+        manifest: Dataset manifest with provenance metadata.
+        row_count: Number of households generated.
+        path: Output file path (if saved to disk).
+    """
+
+    manifest: DatasetManifest
+    row_count: int
+    path: Path | None = None
+
+    def __repr__(self) -> str:
+        saved = f", path={self.path}" if self.path else ""
+        return f"PopulationResult(rows={self.row_count:,}, hash={self.manifest.content_hash[:12]}{saved})"
+
+
+def generate_population(
+    *,
+    size: int = 100_000,
+    seed: int = 42,
+    output_path: Path | str | None = None,
+    format: str = "parquet",
+) -> PopulationResult:
+    """Generate a deterministic synthetic population dataset.
+
+    Creates a synthetic household population for benchmarking and scale
+    testing. The output is deterministic for the same (size, seed) pair.
+
+    Args:
+        size: Number of households to generate.
+        seed: Random seed for reproducibility.
+        output_path: If provided, save population to this file path.
+        format: Output format when saving (``"parquet"`` or ``"csv"``).
+
+    Returns:
+        PopulationResult with manifest, row count, and output path.
+
+    Example:
+        >>> from reformlab import generate_population
+        >>> result = generate_population(size=10_000, seed=42)
+        >>> print(result)
+        PopulationResult(rows=10,000, hash=abc123def456)
+    """
+    from reformlab.data.synthetic import generate_synthetic_population, save_synthetic_population
+
+    table = generate_synthetic_population(size=size, seed=seed)
+
+    if output_path is not None:
+        resolved = Path(output_path)
+        manifest = save_synthetic_population(table, resolved)
+        return PopulationResult(
+            manifest=manifest,
+            row_count=len(table),
+            path=resolved,
+        )
+
+    # No file output — build in-memory manifest
+    from reformlab.data.pipeline import DatasetManifest as _DatasetManifest
+    from reformlab.data.pipeline import DataSourceMetadata
+
+    source = DataSourceMetadata(
+        name="synthetic-population",
+        version="1.0.0",
+        url="",
+        description=f"Deterministic synthetic population ({size} households, seed={seed})",
+        license="internal",
+    )
+
+    from datetime import UTC, datetime
+
+    manifest = _DatasetManifest(
+        source=source,
+        content_hash="",
+        file_path=Path(""),
+        format="parquet",
+        row_count=len(table),
+        column_names=tuple(table.schema.names),
+        loaded_at=datetime.now(UTC).isoformat(timespec="seconds"),
+    )
+
+    return PopulationResult(
+        manifest=manifest,
+        row_count=len(table),
+        path=None,
+    )
 
 
 def run_benchmarks(

@@ -53,6 +53,7 @@ from reformlab.interfaces import (
     ConfigurationError,
     MemoryCheckResult,
     MemoryWarning,
+    PopulationResult,
     RunConfig,
     ScenarioConfig,
     SimulationError,
@@ -63,6 +64,7 @@ from reformlab.interfaces import (
     clone_scenario,
     create_quickstart_adapter,
     create_scenario,
+    generate_population,
     get_scenario,
     list_scenarios,
     run_benchmarks,
@@ -79,9 +81,11 @@ __all__ = [
     "create_quickstart_adapter",
     "create_scenario",
     "clone_scenario",
+    "generate_population",
     "list_scenarios",
     "get_scenario",
     # Result types
+    "PopulationResult",
     "SimulationResult",
     # Configuration types
     "RunConfig",

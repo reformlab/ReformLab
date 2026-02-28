@@ -12,6 +12,7 @@ from reformlab.data.pipeline import (
     load_dataset,
 )
 from reformlab.data.schemas import EMISSION_FACTOR_SCHEMA, SYNTHETIC_POPULATION_SCHEMA
+from reformlab.data.synthetic import generate_synthetic_population, save_synthetic_population
 
 __all__ = [
     "EMISSION_FACTOR_SCHEMA",
@@ -21,6 +22,8 @@ __all__ = [
     "EmissionFactorIndex",
     "SYNTHETIC_POPULATION_SCHEMA",
     "build_emission_factor_index",
+    "generate_synthetic_population",
     "hash_file",
     "load_dataset",
+    "save_synthetic_population",
 ]
