@@ -352,3 +352,458 @@ Kamal is provider-agnostic. All migrations below require zero application code c
 3. **SecNumCloud required:** Deploy to a server on Scalingo/Outscale `osc-secnum-fr1` or Clever Cloud on Cloud Temple SecNumCloud zone. Same Kamal config, different target.
 4. **User accounts:** Replace shared-password middleware with OAuth/OIDC. Add user table (SQLite or PostgreSQL).
 5. **Horizontal scaling:** Kamal supports multi-server deployment. Add server IPs to `config/deploy.yml` and Kamal load-balances across them via Traefik.
+
+## API Design — FastAPI Server Layer (2026-02-28)
+
+### Design Principle
+
+The FastAPI server is a **thin HTTP facade** over the existing Python API in `src/reformlab/interfaces/api.py`. No business logic lives in the server layer. Every route handler delegates to functions that already work: `run_scenario()`, `create_scenario()`, `list_scenarios()`, `get_scenario()`, `clone_scenario()`, `check_memory_requirements()`, and `SimulationResult` methods (`indicators()`, `export_csv()`, `export_parquet()`).
+
+### Package Structure
+
+```
+src/reformlab/server/
+├── __init__.py
+├── app.py              ← FastAPI app factory (create_app())
+├── auth.py             ← Shared-password middleware
+├── models.py           ← Pydantic v2 request/response models
+├── dependencies.py     ← Dependency injection (adapter, result cache)
+└── routes/
+    ├── __init__.py
+    ├── scenarios.py    ← Scenario CRUD
+    ├── runs.py         ← Simulation execution
+    ├── indicators.py   ← Indicator computation
+    ├── exports.py      ← File export/download
+    ├── templates.py    ← Template listing
+    └── populations.py  ← Population dataset listing
+```
+
+### Dependencies
+
+Add as optional extra in `pyproject.toml`:
+
+```toml
+[project.optional-dependencies]
+server = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+    "python-multipart>=0.0.9",
+]
+```
+
+Install with `uv sync --extra server`. Pydantic v2 is already a transitive dependency of FastAPI.
+
+### App Factory
+
+`src/reformlab/server/app.py` exposes `create_app() -> FastAPI`:
+
+```python
+def create_app() -> FastAPI:
+    app = FastAPI(
+        title="ReformLab API",
+        version=reformlab.__version__,
+        docs_url="/api/docs",
+        openapi_url="/api/openapi.json",
+    )
+
+    # CORS must be added BEFORE auth middleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_cors_origins(),  # localhost:5173 + production
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # Auth middleware (skips /api/auth/login and /api/docs)
+    app.add_middleware(AuthMiddleware)
+
+    # Register route groups
+    app.include_router(auth_router,        prefix="/api/auth")
+    app.include_router(scenarios_router,   prefix="/api/scenarios")
+    app.include_router(runs_router,        prefix="/api/runs")
+    app.include_router(indicators_router,  prefix="/api/indicators")
+    app.include_router(exports_router,     prefix="/api/exports")
+    app.include_router(templates_router,   prefix="/api/templates")
+    app.include_router(populations_router, prefix="/api/populations")
+
+    return app
+```
+
+Run with: `uvicorn src.reformlab.server.app:create_app --factory --host 0.0.0.0 --port 8000`
+
+Dev mode: `uvicorn src.reformlab.server.app:create_app --factory --reload --port 8000`
+
+### Route Contracts
+
+#### Authentication
+
+| Method | Path | Request Body | Response | Status |
+|--------|------|-------------|----------|--------|
+| `POST` | `/api/auth/login` | `{ "password": "string" }` | `{ "token": "string" }` | 200 or 401 |
+
+- Password validated against `REFORMLAB_PASSWORD` env var.
+- Token is a random hex string stored server-side in a session set.
+- Subsequent requests pass token via `Authorization: Bearer <token>` header.
+- No expiry for MVP. Phase 3 replaces with OAuth/OIDC.
+
+#### Scenarios
+
+| Method | Path | Request Body | Response | Status |
+|--------|------|-------------|----------|--------|
+| `GET` | `/api/scenarios` | — | `{ "scenarios": ["name1", ...] }` | 200 |
+| `GET` | `/api/scenarios/{name}` | — | `ScenarioResponse` | 200 or 404 |
+| `POST` | `/api/scenarios` | `CreateScenarioRequest` | `{ "version_id": "string" }` | 201 or 422 |
+| `POST` | `/api/scenarios/{name}/clone` | `{ "new_name": "string" }` | `ScenarioResponse` | 201 or 404 |
+
+Delegates to: `list_scenarios()`, `get_scenario(name)`, `create_scenario(scenario, name, register=True)`, `clone_scenario(name, new_name=new_name)`.
+
+#### Simulation Runs
+
+| Method | Path | Request Body | Response | Status |
+|--------|------|-------------|----------|--------|
+| `POST` | `/api/runs` | `RunRequest` | `RunResponse` | 200 or 422/500 |
+| `POST` | `/api/runs/memory-check` | `MemoryCheckRequest` | `MemoryCheckResponse` | 200 |
+
+**Execution model (MVP):** `POST /api/runs` is **synchronous** — it blocks until the simulation completes and returns the full result. This is acceptable because:
+- Target run time is <10s for 100k households (NFR1).
+- MVP serves 2-10 users, not concurrent load.
+- Frontend shows a loading spinner during the request.
+
+**Upgrade path:** If runs exceed 10s, switch to polling: `POST /api/runs` returns `{ "run_id": "..." }` immediately, `GET /api/runs/{run_id}/status` returns progress, `GET /api/runs/{run_id}/result` returns the completed result.
+
+#### Indicators
+
+| Method | Path | Request Body | Response | Status |
+|--------|------|-------------|----------|--------|
+| `POST` | `/api/indicators/{type}` | `IndicatorRequest` | `IndicatorResponse` | 200 or 422 |
+| `POST` | `/api/comparison` | `ComparisonRequest` | `IndicatorResponse` | 200 or 422 |
+
+`{type}` is one of: `distributional`, `geographic`, `welfare`, `fiscal`.
+
+Delegates to: `cached_result.indicators(type, **kwargs)`.
+
+For welfare indicators and comparison, the request must reference both a baseline and reform `run_id` from the result cache.
+
+#### Exports
+
+| Method | Path | Request Body | Response | Status |
+|--------|------|-------------|----------|--------|
+| `POST` | `/api/exports/csv` | `{ "run_id": "string" }` | `StreamingResponse` (file download) | 200 or 404 |
+| `POST` | `/api/exports/parquet` | `{ "run_id": "string" }` | `StreamingResponse` (file download) | 200 or 404 |
+
+Delegates to: `cached_result.export_csv(tmp_path)` and `cached_result.export_parquet(tmp_path)`.
+
+Returns file as `StreamingResponse` with appropriate `Content-Disposition` header.
+
+#### Templates
+
+| Method | Path | Request Body | Response | Status |
+|--------|------|-------------|----------|--------|
+| `GET` | `/api/templates` | — | `{ "templates": [TemplateListItem, ...] }` | 200 |
+| `GET` | `/api/templates/{name}` | — | `TemplateDetailResponse` | 200 or 404 |
+
+Lists available policy templates (carbon tax, subsidy, rebate, feebate) with their default parameters and parameter groups.
+
+#### Populations
+
+| Method | Path | Request Body | Response | Status |
+|--------|------|-------------|----------|--------|
+| `GET` | `/api/populations` | — | `{ "populations": [PopulationItem, ...] }` | 200 |
+
+Lists available population datasets by scanning the data directory for CSV/Parquet files.
+
+### Pydantic v2 Request/Response Models
+
+All models in `src/reformlab/server/models.py`. Key patterns:
+
+**Frozen dataclass → Pydantic model translation:** The domain layer uses frozen dataclasses (`ScenarioConfig`, `SimulationResult`). The server layer creates parallel Pydantic models for HTTP serialization. Route handlers translate between them.
+
+```python
+# Request models
+
+class LoginRequest(BaseModel):
+    password: str
+
+class RunRequest(BaseModel):
+    template_name: str
+    parameters: dict[str, Any]
+    start_year: int
+    end_year: int
+    population_id: str | None = None
+    seed: int | None = None
+    baseline_id: str | None = None
+
+class MemoryCheckRequest(BaseModel):
+    template_name: str
+    parameters: dict[str, Any] = {}
+    start_year: int
+    end_year: int
+    population_id: str | None = None
+
+class IndicatorRequest(BaseModel):
+    run_id: str
+    income_field: str = "income"
+    by_year: bool = False
+
+class ComparisonRequest(BaseModel):
+    baseline_run_id: str
+    reform_run_id: str
+    welfare_field: str = "disposable_income"
+    threshold: float = 0.0
+
+class ExportRequest(BaseModel):
+    run_id: str
+
+class CreateScenarioRequest(BaseModel):
+    name: str
+    policy_type: str           # "carbon_tax" | "subsidy" | "rebate" | "feebate"
+    parameters: dict[str, Any]
+    start_year: int
+    end_year: int
+    description: str = ""
+    baseline_ref: str | None = None
+
+class CloneRequest(BaseModel):
+    new_name: str
+```
+
+```python
+# Response models
+
+class LoginResponse(BaseModel):
+    token: str
+
+class RunResponse(BaseModel):
+    run_id: str
+    success: bool
+    scenario_id: str
+    years: list[int]
+    row_count: int
+    manifest_id: str
+
+class MemoryCheckResponse(BaseModel):
+    should_warn: bool
+    estimated_gb: float
+    available_gb: float
+    message: str
+
+class IndicatorResponse(BaseModel):
+    indicator_type: str
+    data: dict[str, list[Any]]     # PyArrow table.to_pydict()
+    metadata: dict[str, Any]
+    warnings: list[str]
+    excluded_count: int
+
+class ScenarioResponse(BaseModel):
+    name: str
+    policy_type: str
+    description: str
+    version: str
+    parameters: dict[str, Any]
+    year_schedule: dict[str, int]  # {"start_year": N, "end_year": M}
+    baseline_ref: str | None = None
+
+class TemplateListItem(BaseModel):
+    id: str
+    name: str
+    type: str
+    parameter_count: int
+    description: str
+    parameter_groups: list[str]
+
+class TemplateDetailResponse(TemplateListItem):
+    default_parameters: dict[str, Any]
+
+class PopulationItem(BaseModel):
+    id: str
+    name: str
+    households: int
+    source: str
+    year: int
+
+class ErrorResponse(BaseModel):
+    error: str
+    what: str
+    why: str
+    fix: str
+    status_code: int
+```
+
+### Serialization Rules
+
+- **PyArrow `pa.Table` → JSON:** `table.to_pydict()` produces `dict[str, list]`. This is the canonical wire format for panel data and indicator tables.
+- **`Path` objects:** Serialize as strings via Pydantic `model_serializer`.
+- **`datetime` objects:** Serialize as ISO 8601 strings.
+- **Frozen dataclasses:** Converted to Pydantic models at the route handler boundary. No `dataclasses.asdict()` in responses — explicit Pydantic field mapping.
+
+### Result Cache
+
+Simulation results contain large PyArrow tables. Re-serializing on every indicator/export request is wasteful.
+
+```python
+class ResultCache:
+    """In-memory LRU cache for SimulationResult objects."""
+
+    def __init__(self, max_size: int = 10):
+        self._cache: OrderedDict[str, SimulationResult] = OrderedDict()
+        self._max_size = max_size
+
+    def store(self, run_id: str, result: SimulationResult) -> None:
+        if len(self._cache) >= self._max_size:
+            self._cache.popitem(last=False)  # Evict oldest
+        self._cache[run_id] = result
+
+    def get(self, run_id: str) -> SimulationResult | None:
+        result = self._cache.get(run_id)
+        if result is not None:
+            self._cache.move_to_end(run_id)  # Mark as recently used
+        return result
+```
+
+- `POST /api/runs` stores the result under a generated `run_id` (UUID4).
+- `POST /api/indicators/{type}` and `POST /api/exports/*` reference `run_id` to retrieve cached results.
+- Max 10 entries. LRU eviction. No disk persistence — results are ephemeral across server restarts.
+
+### Dependency Injection
+
+```python
+# src/reformlab/server/dependencies.py
+
+# Global singletons (created once in app factory, injected via Depends)
+_result_cache = ResultCache(max_size=10)
+_adapter: ComputationAdapter | None = None
+
+def get_result_cache() -> ResultCache:
+    return _result_cache
+
+def get_adapter() -> ComputationAdapter:
+    global _adapter
+    if _adapter is None:
+        # Initialize default adapter (MockAdapter in dev, OpenFiscaAdapter in prod)
+        _adapter = _create_adapter()
+    return _adapter
+```
+
+Route handlers use `Depends(get_result_cache)` and `Depends(get_adapter)`.
+
+### Authentication Middleware
+
+```python
+# src/reformlab/server/auth.py
+
+class AuthMiddleware(BaseHTTPMiddleware):
+    """Shared-password auth for MVP (2-10 trusted colleagues)."""
+
+    SKIP_PATHS = {"/api/auth/login", "/api/docs", "/api/openapi.json"}
+
+    async def dispatch(self, request, call_next):
+        if request.url.path in self.SKIP_PATHS:
+            return await call_next(request)
+
+        token = request.headers.get("Authorization", "").removeprefix("Bearer ")
+        if not token or token not in _active_sessions:
+            return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+
+        return await call_next(request)
+```
+
+- `_active_sessions` is a `set[str]` stored in-memory.
+- `POST /api/auth/login` validates password against `os.environ["REFORMLAB_PASSWORD"]`, generates a random token via `secrets.token_hex(32)`, adds it to `_active_sessions`, returns it.
+- No expiry for MVP. Server restart clears all sessions (users re-enter password).
+
+### Error Mapping
+
+Python API exceptions map to HTTP responses:
+
+| Python Exception | HTTP Status | Error Response |
+|-----------------|-------------|----------------|
+| `ConfigurationError` | 422 Unprocessable Entity | `{ "error": "Configuration error", "what": field_path, "why": expected vs actual, "fix": guidance }` |
+| `ValidationErrors` | 422 Unprocessable Entity | `{ "error": "Validation failed", "what": "N issues found", "why": issues list, "fix": per-issue guidance }` |
+| `SimulationError` | 500 Internal Server Error | `{ "error": "Simulation error", "what": message, "why": cause, "fix": guidance }` |
+| `RegistryError` | 404 Not Found | `{ "error": "Not found", "what": summary, "why": reason, "fix": guidance }` |
+| `MemoryWarning` | 200 (with `should_warn: true`) | Not an error — returned as data in `MemoryCheckResponse` |
+
+Implement via FastAPI exception handlers registered in `create_app()`:
+
+```python
+@app.exception_handler(ConfigurationError)
+async def configuration_error_handler(request, exc):
+    return JSONResponse(status_code=422, content={
+        "error": "Configuration error",
+        "what": exc.field_path,
+        "why": f"Expected {exc.expected}, got {exc.actual!r}",
+        "fix": exc.fix or f"Provide a valid {exc.expected}",
+        "status_code": 422,
+    })
+```
+
+### CORS Configuration
+
+```python
+def _cors_origins() -> list[str]:
+    origins = ["http://localhost:5173"]  # Vite dev server
+    extra = os.environ.get("REFORMLAB_CORS_ORIGINS", "")
+    if extra:
+        origins.extend(o.strip() for o in extra.split(",") if o.strip())
+    return origins
+```
+
+Production adds `https://app.reformlab.fr` via `REFORMLAB_CORS_ORIGINS` env var.
+
+### Vite Dev Proxy
+
+Add to `frontend/vite.config.ts`:
+
+```typescript
+server: {
+  proxy: {
+    "/api": {
+      target: "http://localhost:8000",
+      changeOrigin: true,
+    },
+  },
+}
+```
+
+Frontend calls `/api/scenarios` (relative) in development. Vite proxies to the FastAPI backend. In production, Traefik routes by subdomain (`api.reformlab.fr` vs `app.reformlab.fr`).
+
+### Data Flow Summary
+
+```
+Frontend (React)
+    │
+    ├─ POST /api/runs { template, params, years }
+    │       ↓
+    │  RunRequest → ScenarioConfig → run_scenario(config, adapter)
+    │       ↓
+    │  SimulationResult stored in ResultCache[run_id]
+    │       ↓
+    │  RunResponse { run_id, success, years, row_count }
+    │
+    ├─ POST /api/indicators/distributional { run_id }
+    │       ↓
+    │  ResultCache.get(run_id) → result.indicators("distributional")
+    │       ↓
+    │  IndicatorResult.to_table().to_pydict() → IndicatorResponse
+    │
+    ├─ POST /api/comparison { baseline_run_id, reform_run_id }
+    │       ↓
+    │  baseline = cache.get(baseline_run_id)
+    │  reform = cache.get(reform_run_id)
+    │  baseline.indicators("welfare", reform_result=reform)
+    │       ↓
+    │  IndicatorResponse
+    │
+    └─ POST /api/exports/csv { run_id }
+            ↓
+        result.export_csv(tmp) → StreamingResponse
+```
+
+### Code Quality Standards
+
+- `from __future__ import annotations` at top of every server module.
+- Pydantic v2 conventions: `model_validate()`, `model_dump()`, `ConfigDict`.
+- `mypy --strict` must pass on all server code.
+- `ruff` compliance (E, F, I, W rules).
+- No direct OpenFisca imports in server code — adapter protocol only.
+- Structured logging with `logging.getLogger(__name__)`.
