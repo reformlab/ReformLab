@@ -15,6 +15,12 @@ dependencies = [
 [project.optional-dependencies]
 openfisca = [
     "openfisca-core>=44.0.0",
+    "openfisca-france>=175.0.0",
+]
+server = [
+    "fastapi>=0.133.0",
+    "uvicorn[standard]>=0.41.0",
+    "python-multipart>=0.0.9",
 ]
 dev = [
     "pytest>=8.3.3",
@@ -34,8 +40,11 @@ packages = ["src/reformlab"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+addopts = "-m 'not integration'"
 markers = [
     "benchmark: marks tests as benchmark validation tests (deselect with '-m \"not benchmark\"')",
+    "integration: marks tests as integration tests requiring openfisca-france (run with '-m integration')",
+    "scale: marks tests as scale validation tests (100k-500k population, may be slow)",
 ]
 
 [tool.ruff]
@@ -48,6 +57,7 @@ select = ["E", "F", "I", "W"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/computation/test_openfisca_api_adapter.py" = ["E402"]
+"tests/computation/test_openfisca_integration.py" = ["E402"]
 "tests/templates/carbon_tax/test_performance.py" = ["E402"]
 "src/reformlab/interfaces/api.py" = ["E501"]
 "tests/interfaces/test_api.py" = ["E501"]
@@ -71,6 +81,10 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = ["yaml", "yaml.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["fastapi", "fastapi.*", "uvicorn", "uvicorn.*", "starlette", "starlette.*"]
 ignore_missing_imports = true
 
 [tool.coverage.run]
