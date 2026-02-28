@@ -41,6 +41,57 @@
       "runOptions": {
         "reevaluateOnRerun": true
       },
+      "group": "build"
+    },
+    {
+      "label": "Backend: API Server",
+      "type": "shell",
+      "command": "uv run --extra server uvicorn reformlab.server.app:create_app --factory --reload --port 8000",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "/bin/zsh",
+          "args": [
+            "-lc"
+          ]
+        }
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "custom",
+        "fileLocation": [
+          "relative",
+          "${workspaceFolder}"
+        ],
+        "pattern": {
+          "regexp": "^(?!x)x$",
+          "file": 1,
+          "location": 2,
+          "message": 3
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^INFO:",
+          "endsPattern": "Application startup complete"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": false
+      },
+      "runOptions": {
+        "reevaluateOnRerun": true
+      }
+    },
+    {
+      "label": "Dev: Full Stack",
+      "dependsOn": [
+        "Backend: API Server",
+        "Frontend: Dev Server"
+      ],
+      "dependsOrder": "parallel",
+      "problemMatcher": [],
       "group": {
         "kind": "build",
         "isDefault": true
