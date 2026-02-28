@@ -1,6 +1,6 @@
 # Story 6.6: Improve Operational Error UX
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 

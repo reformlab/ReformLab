@@ -1,6 +1,6 @@
 # Story 6.4a: Build Static GUI Prototype — Configuration and Simulation Flows
 
-Status: review
+Status: done
 
 ## Story
 
