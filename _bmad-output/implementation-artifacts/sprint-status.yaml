@@ -110,6 +110,6 @@ development_status:
   7-1-verify-simulation-outputs-against-benchmarks: done
   7-2-warn-before-exceeding-memory-limits: done
   7-3-enforce-ci-quality-gates: done
-  7-4-external-pilot-run-carbon-tax-workflow: backlog
+  7-4-external-pilot-run-carbon-tax-workflow: ready-for-dev
   7-5-define-phase-1-exit-checklist: backlog
   epic-7-retrospective: optional
