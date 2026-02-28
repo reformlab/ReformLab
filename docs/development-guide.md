@@ -1,7 +1,7 @@
 # Development Guide — ReformLab
 
-**Generated:** 2026-02-25
-**Status:** Pre-implementation (planned setup)
+**Generated:** 2026-02-28
+**Status:** Phase 1 Complete
 
 ## Prerequisites
 
@@ -9,109 +9,208 @@
 |-------------|---------|-------|
 | Python | 3.13+ | Required by architecture spec |
 | uv | Latest | Python package manager |
-| OpenFisca | TBD (version-pinned) | Core computation dependency |
+| Node.js | 18+ | For frontend development (optional) |
 | Git | Latest | Version control |
 
-## Project Setup (Planned)
+OpenFisca is an **optional** dependency — core functionality works without it.
 
-The project uses standard scientific Python tooling:
+## Quick Start
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/lucas-vivier/reformlab.git
 cd reformlab
 
-# Install dependencies with uv
+# Install Python dependencies
 uv sync
 
-# Verify installation
-uv run python -c "import reformlab; print(reformlab.__version__)"
+# Run tests (1374 tests)
+uv run pytest
+
+# Type check
+uv run mypy src
+
+# Lint
+uv run ruff check src tests
+```
+
+## Frontend Setup (Optional)
+
+```bash
+cd frontend
+
+# Install Node dependencies
+npm install
+
+# Start dev server
+npm run dev
+
+# Run frontend tests
+npm test
+
+# Type check
+npm run typecheck
+
+# Lint
+npm run lint
+
+# Build for production
+npm run build
 ```
 
 ## Package Configuration
 
-The project will use `pyproject.toml` for packaging with the following planned tooling:
+### Python (pyproject.toml)
 
-| Tool | Purpose |
-|------|---------|
-| `uv` | Dependency management and virtual environments |
-| `pytest` | Test framework |
-| `ruff` | Linting and formatting |
-| `mypy` | Static type checking |
+| Tool | Purpose | Command |
+|------|---------|---------|
+| uv | Dependency management | `uv sync` |
+| pytest | Test framework (1374 tests) | `uv run pytest` |
+| pytest-cov | Coverage (80%+ enforced) | `uv run pytest --cov` |
+| nbmake | Notebook validation | `uv run pytest --nbmake notebooks/*.ipynb` |
+| ruff | Linting (E, F, I, W rules) | `uv run ruff check src tests` |
+| mypy | Type checking (strict mode) | `uv run mypy src` |
 
-## Build and Run Commands (Planned)
+### Frontend (package.json)
+
+| Tool | Purpose | Command |
+|------|---------|---------|
+| Vite 7 | Dev server + build | `npm run dev` / `npm run build` |
+| Vitest | Component tests | `npm test` |
+| TypeScript 5.9 | Type checking | `npm run typecheck` |
+| ESLint | Linting | `npm run lint` |
+
+## Build Commands
 
 ```bash
-# Run tests
+# === Python ===
+
+# Run all tests
 uv run pytest
 
-# Run fast tests only (adapter/unit)
-uv run pytest tests/unit tests/contract
+# Run with coverage report
+uv run pytest --cov=src/reformlab --cov-report=term-missing
 
-# Run integration tests
-uv run pytest tests/integration
+# Run specific subsystem tests
+uv run pytest tests/computation/
+uv run pytest tests/templates/
+uv run pytest tests/orchestrator/
+uv run pytest tests/indicators/
+uv run pytest tests/governance/
+
+# Run benchmarks only
+uv run pytest -m benchmark
+
+# Validate notebooks (no kernel execution)
+uv run pytest --nbmake notebooks/quickstart.ipynb -v
+uv run pytest --nbmake notebooks/advanced.ipynb -v
 
 # Lint
-uv run ruff check .
+uv run ruff check src tests
 
 # Type check
-uv run mypy src/reformlab/
+uv run mypy src
 
-# Format
-uv run ruff format .
+# Build Python package
+uv build
+
+# === Frontend ===
+
+cd frontend
+npm run dev          # Start dev server (Vite)
+npm run build        # Production build (tsc + vite)
+npm test             # Run vitest
+npm run typecheck    # TypeScript check
+npm run lint         # ESLint
 ```
 
-## CI Strategy (Planned)
+## CI Pipeline
 
-The CI pipeline is planned to be split into:
+The CI runs on every push and pull request (`.github/workflows/ci.yml`):
 
-1. **Fast lane:** Adapter contract tests + unit tests (runs on every push)
-2. **Slow lane:** Integration and regression tests (runs on PR merge)
+1. **Setup:** Python 3.13 via uv with caching
+2. **Lint:** `uv run ruff check src tests`
+3. **Type check:** `uv run mypy src`
+4. **Test:** `uv run pytest --cov=src/reformlab --cov-report=term-missing tests/`
+5. **Notebooks:** `uv run pytest --nbmake notebooks/quickstart.ipynb -v`
+6. **Notebooks:** `uv run pytest --nbmake notebooks/advanced.ipynb -v`
 
-Coverage focus areas:
-- Adapter contracts (ComputationAdapter interface compliance)
-- Orchestrator determinism (same inputs = same outputs)
-- Vintage transitions (cohort aging correctness)
-- Template correctness (carbon tax, subsidy calculations)
+Coverage threshold: **80%** (enforced in `pyproject.toml`).
 
-## Environment Configuration
+## Deployment
 
-- The project targets **fully offline operation** in the user environment
-- No cloud dependencies for core functionality
-- Target hardware: single machine with 16GB RAM (laptop-scale)
-- Data contracts use CSV/Parquet for interoperability
+Deployment is automated on push to `master` (`.github/workflows/deploy.yml`):
 
-## Data Setup
+1. **Build:** Docker image from `Dockerfile` (Python 3.13-slim)
+2. **Deploy:** Kamal 2 to Hetzner VPS
+3. **Domains:** `api.reformlab.fr` (backend), `app.reformlab.fr` (frontend)
+4. **TLS:** Let's Encrypt via Traefik
 
-The project will work with:
-- **Open data (default):** Synthetic populations and public datasets for immediate use
-- **Custom data (optional):** Restricted microdata from national statistical offices
+See [Deployment Guide](./deployment-guide.md) for full details.
 
-No environment variables or API keys are required for core functionality.
+## Project Structure
 
-## Development Workflow
+```
+src/reformlab/          # 72 Python modules across 8 subsystems
+tests/                  # 93 test files, 1374 tests
+frontend/src/           # 46 TypeScript/React files
+notebooks/              # 7 Jupyter notebooks
+examples/workflows/     # 3 workflow configuration examples
+```
 
-1. All code changes require tests
-2. Adapter interface changes require contract test updates
-3. Scenario template changes require validation test updates
-4. Run manifests must be reproducible (seed-controlled)
-5. PR process TBD (to be established with CONTRIBUTING.md)
+See [Source Tree Analysis](./source-tree-analysis.md) for the full annotated tree.
 
-## Key Architecture Decisions for Developers
+## Development Conventions
 
-- **Never call OpenFisca directly** — Always go through `ComputationAdapter`
-- **Environmental policy logic is Python code** — No YAML formula strings or custom compilers
-- **Steps are plugins** — Register new orchestrator steps without modifying the engine
-- **Contract failures are blocking** — Field-level validation errors at every ingestion boundary
-- **Manifests are mandatory** — Every run produces a JSON manifest with full lineage
+### Code Style
 
-## Current State
+- **Line length:** 110 characters (ruff)
+- **Import sorting:** isort-compatible (ruff I rules)
+- **Type annotations:** Required on all public functions (mypy strict)
+- **Docstrings:** On public API only — internal code uses self-documenting names
 
-This project is in the **planning phase**. Implementation has not started. The Phase 1 backlog (7 epics) is defined in the planning artifacts. Development begins with EPIC-1 (Computation Adapter and Data Layer).
+### Architecture Rules
 
-## Relevant Documentation
+1. **Never call OpenFisca directly** — Always go through `ComputationAdapter`
+2. **Environmental policy logic is Python code** — No YAML formula strings or custom compilers
+3. **Steps are plugins** — Register new orchestrator steps without modifying the engine
+4. **Contract failures are blocking** — Field-level validation errors at every ingestion boundary
+5. **Manifests are mandatory** — Every run produces a JSON manifest with full lineage
+6. **Frozen dataclasses** — All data structures are immutable
+7. **Structured errors** — Follow `[What] — [Why] — [How to fix]` pattern
 
-- [Project Overview](./project-overview.md) — High-level project summary
-- [Architecture](./architecture.md) — Architecture decisions and design
-- [Source Tree Analysis](./source-tree-analysis.md) — Project structure
-- Planning artifacts: `_bmad-output/planning-artifacts/`
+### Testing Requirements
+
+- All code changes require tests
+- Tests mirror the source structure (`tests/computation/` tests `src/reformlab/computation/`)
+- Adapter interface changes require contract test updates
+- Scenario template changes require validation test updates
+- Run manifests must be reproducible (seed-controlled)
+- Golden file tests validate output determinism
+
+### Git Workflow
+
+- Branch protection on `master` with required status check `check`
+- Require branches to be up to date before merging
+- All CI checks must pass before merge
+
+## Key Files Reference
+
+| File | Purpose |
+|------|---------|
+| `pyproject.toml` | Package config, dependencies, tool settings |
+| `uv.lock` | Locked dependency versions |
+| `Dockerfile` | Container build for deployment |
+| `config/deploy.yml` | Kamal deployment configuration |
+| `.github/workflows/ci.yml` | CI pipeline definition |
+| `.github/workflows/deploy.yml` | Deploy pipeline definition |
+| `CLAUDE.md` | AI assistant project instructions |
+| `README.md` | Public-facing project readme |
+
+## Related Documentation
+
+- [Project Overview](./project-overview.md) — Executive summary
+- [Architecture](./architecture.md) — Design decisions and subsystem details
+- [Source Tree Analysis](./source-tree-analysis.md) — Annotated directory structure
+- [Deployment Guide](./deployment-guide.md) — Docker + Kamal deployment
+- [Compatibility Matrix](./compatibility.md) — OpenFisca version support

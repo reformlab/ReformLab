@@ -1453,7 +1453,7 @@ class TestRegistryValidationStatus:
         sample_baseline: BaselineScenario,
     ) -> None:
         """is_validated with version_id=None resolves to latest version."""
-        version_id = registry.save(sample_baseline, "test-scenario")
+        registry.save(sample_baseline, "test-scenario")
         registry.set_validated("test-scenario", validated=True)
         assert registry.is_validated("test-scenario") is True
 
