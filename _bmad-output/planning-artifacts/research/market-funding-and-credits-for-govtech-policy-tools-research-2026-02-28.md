@@ -1,5 +1,5 @@
 ---
-stepsCompleted: [1, 2]
+stepsCompleted: [1, 2, 3, 4]
 inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
 workflowType: 'research'
@@ -273,3 +273,297 @@ _Source: [GitHub Sponsors](https://github.com/sponsors)_
 - _Motivation:_ Sustain open-source infrastructure, build community
 - _What they give:_ Small grants, fiscal sponsorship, community credibility
 - _Best fit for Lucas:_ GitHub Sponsors (instant setup), NumFOCUS affiliation (longer-term)
+
+---
+
+## Unexpected & Niche Funding Sources
+
+### 5. GitHub Beyond Sponsors
+
+#### 5.1 GitHub Fund (Venture Capital)
+
+$10M fund in partnership with M12 (Microsoft's VC arm). Invests pre-seed/seed in open-source developer tools.
+
+| Detail | Value |
+|--------|-------|
+| **Investment** | Pre-seed / seed stage equity investment |
+| **Focus** | Open-source developer tools, AI, security, infrastructure |
+| **Eligibility** | Current contributor/maintainer of an OSS project on GitHub (up to 3 people) |
+| **How** | Apply via github.com/open-source/github-fund |
+
+_Why unexpected:_ Most people think of GitHub as just hosting. They also do VC investing in OSS projects. ReformLab as an OpenFisca-based developer tool with AI orchestration fits their thesis.
+_Caveat:_ This is equity investment, not a grant. Only relevant if you go the startup route.
+_Source: [GitHub Fund](https://github.com/open-source/github-fund), [M12 Partnership](https://m12.vc/github-fund/)_
+
+#### 5.2 GitHub Accelerator
+
+10-week program with $20k stipend + mentorship. Focus on AI-powered open-source projects.
+
+| Detail | Value |
+|--------|-------|
+| **Stipend** | $20,000 |
+| **Duration** | 10 weeks |
+| **Focus** | AI open-source projects |
+| **Eligibility** | OSS maintainers, individuals or small teams |
+
+_Why unexpected:_ The accelerator specifically targets AI-powered open-source — ReformLab using LLMs for policy analysis fits perfectly. Non-dilutive (it's a stipend, not equity).
+_Source: [GitHub Accelerator](https://accelerator.github.com/), [Application](https://github.com/open-source/accelerator)_
+
+#### 5.3 GitHub Secure Open Source Fund
+
+$1.25M across ~125 projects. Rolling applications. $10k per project + 3-week security program.
+
+_Already noted in Section 4.2 but worth highlighting: this is rolling — you can apply anytime._
+_Source: [GitHub Secure Open Source Fund](https://github.com/open-source/github-secure-open-source-fund)_
+
+---
+
+### 6. Sovereign Tech Agency (Germany)
+
+#### 6.1 Sovereign Tech Fund
+
+Strategic investments in open-source digital infrastructure. Budget: €17M+ in 2025, growing in 2026.
+
+| Detail | Value |
+|--------|-------|
+| **Amounts** | Varies (past investments: €50k–€900k+) |
+| **Focus** | Critical open-source infrastructure, digital sovereignty |
+| **Eligibility** | Open-source projects of public interest |
+| **Geographic** | EU-friendly (German government funded) |
+
+_Why unexpected:_ German government-backed fund specifically for open-source digital sovereignty. A French policy analysis tool built on open-source infrastructure (OpenFisca) aligns with their "European digital sovereignty" mission.
+_Source: [Sovereign Tech Fund](https://www.sovereign.tech/programs/fund), [Wikipedia](https://en.wikipedia.org/wiki/Sovereign_Tech_Agency)_
+
+#### 6.2 Sovereign Tech Fellowship
+
+Pays individual maintainers for their work. €63k–€78k/year full-time (Germany-based) or freelance option (anywhere).
+
+| Detail | Value |
+|--------|-------|
+| **Full-time** | €63,000–€78,000/year (Germany-based only) |
+| **Freelance** | 6–32 hours/week (available anywhere) |
+| **Duration** | 12 months |
+| **Status** | Current round closed; watch for next call |
+
+_Why unexpected:_ They literally pay you a salary to maintain open-source. The freelance option works from France. Next application round expected 2026.
+_Source: [Sovereign Tech Fellowship](https://www.sovereign.tech/programs/fellowship), [FAQ](https://www.sovereign.tech/programs/fellowship/faq)_
+
+---
+
+### 7. Mozilla Foundation Programs
+
+#### 7.1 Democracy x AI Incubator 2026
+
+$50,000 per project. 12 months of support. Focus: AI for democratic participation and civic engagement.
+
+| Detail | Value |
+|--------|-------|
+| **Amount** | $50,000 per project |
+| **Duration** | 12 months + intensive support |
+| **Focus** | AI technologies that protect/expand civic space |
+| **Cohort** | ~10 projects |
+
+_Why unexpected:_ ReformLab enables citizens and policymakers to understand environmental policy impacts — this is exactly "AI for democratic accountability." Strong narrative fit: transparent, open-source policy simulation as a democratic tool.
+_Source: [Mozilla Democracy x AI](https://www.mozillafoundation.org/en/what-we-do/grantmaking/incubator/democracy-ai-cohort/)_
+
+#### 7.2 Mozilla Fellowship Program
+
+$100k–$125k stipend + $25k project budget. Nominations-based (closed Jan 2026 for 2026 cohort).
+
+_Note:_ Fellowship requires nomination. Worth watching for 2027 cycle. If you build visibility in the OpenFisca/policy-tech community, you could be nominated.
+_Source: [Mozilla Fellowship](https://www.mozillafoundation.org/en/what-we-do/grantmaking/fellowship/)_
+
+---
+
+### 8. French-Specific Niche Programs
+
+#### 8.1 CNRS OPEN Programme
+
+CNRS Innovation program to valorize open-source research software. Provides a software developer (6–18 months) and support for documentation, governance, legal compliance.
+
+| Detail | Value |
+|--------|-------|
+| **Support** | Developer placement (6–18 months) + mentoring |
+| **Focus** | Open-source scientific software from CNRS labs |
+| **Eligibility** | CNRS-affiliated researchers |
+
+_Why unexpected:_ If you have any CNRS affiliation or can partner with a CNRS lab (economics, environmental science), you could get a dedicated developer assigned to ReformLab. Not cash — but a developer for 18 months is worth more.
+_Caveat:_ Requires CNRS connection. Worth exploring if you have academic contacts.
+_Source: [CNRS OPEN Programme](https://www.cnrs.fr/fr/actualite/open-le-nouveau-programme-de-financement-et-daccompagnement-du-cnrs-pour-valoriser-les), [CNRS Innovation](https://www.cnrsinnovation.com/open/)_
+
+#### 8.2 Fondation Afnic — "Le numérique au service d'une société plus équitable"
+
+French foundation (internet domain registry) funding digital tools for social equity.
+
+| Detail | Value |
+|--------|-------|
+| **Focus** | Digital platforms/software for societal equity |
+| **Eligibility** | Associations, organizations (revenues < €350k) |
+| **Status** | 2026 calls expected Q1 2026 |
+
+_Why unexpected:_ A foundation run by the French internet domain registry (.fr) that funds civic-tech and digital equity tools. ReformLab (making policy impact analysis accessible) fits "numérique au service d'une société plus équitable."
+_Caveat:_ Typically requires association structure (not individual).
+_Source: [Fondation Afnic](https://www.fondation-afnic.fr/fr/Financements.htm)_
+
+---
+
+### 9. Prototype Fund (Germany — but replicable model)
+
+€47,500 per project for 6 months. For civic tech, open source, public interest tech.
+
+| Detail | Value |
+|--------|-------|
+| **Amount** | Up to €47,500 |
+| **Duration** | 6 months |
+| **Focus** | Civic Tech, Data Security, Data Literacy, Software Infrastructure |
+| **Eligibility** | Independent developers/small teams **based in Germany** |
+| **Next call** | October–November 2026 |
+
+_Why unexpected:_ The concept is being replicated across Europe. Check if a French equivalent exists or is being created. The model (small grants to individual developers for public-interest software) is exactly what you need.
+_Caveat:_ Germany-only for now.
+_Source: [Prototype Fund](https://www.prototypefund.de/en), [Application](https://www.prototypefund.de/en/application)_
+
+---
+
+### 10. Open Collective Europe Foundation
+
+Not a grant — a fiscal hosting infrastructure. Lets you receive donations, grants, and sponsorships without forming your own legal entity.
+
+| Detail | Value |
+|--------|-------|
+| **What** | Belgian foundation that acts as your legal/fiscal host |
+| **Cost** | ~8% of funds received |
+| **Benefit** | Receive grants, donations, sponsorships transparently — no company needed |
+
+_Why unexpected:_ OpenFisca itself uses Open Collective Europe Foundation as its fiscal host. You could set up ReformLab on Open Collective, receive grants (like NGI) through it, and accept donations — all without forming a micro-enterprise.
+_Source: [Open Collective Europe](https://opencollective.com/europe), [OCE Foundation](https://www.oceurope.org/)_
+
+---
+
+### 11. Digital Europe Programme (EU)
+
+EU programme with SME-specific calls offering 75% funding rate.
+
+| Detail | Value |
+|--------|-------|
+| **SME funding rate** | 75% of eligible costs |
+| **Focus areas** | AI, cybersecurity, digital skills, interoperability |
+| **Eligibility** | SMEs and startups in EU |
+| **Timeline** | Calls open through March 2026 |
+
+_Why unexpected:_ Higher funding rate for SMEs than standard EU grants. If you form a micro-enterprise, you get 75% coverage on eligible project costs.
+_Source: [Digital Europe Programme](https://digital-strategy.ec.europa.eu/en/activities/digital-programme), [How to Apply](https://digital-strategy.ec.europa.eu/en/activities/get-funding-digital)_
+
+---
+
+### 12. Recent Development: Open Source Funding Initiative (Feb 2026)
+
+A VC and prominent programmers announced a new initiative to "solve open source's funding problem permanently" (TechCrunch, Feb 26, 2026 — 2 days ago).
+
+_Worth monitoring:_ Brand new initiative. Details still emerging. Could be a significant new funding channel for OSS projects.
+_Source: [TechCrunch Feb 2026](https://techcrunch.com/2026/02/26/a-vc-and-some-big-name-programmers-are-trying-to-solve-open-sources-funding-problem-permanently/)_
+
+---
+
+## Strategic Synthesis & Recommendations
+
+### Prioritized Action Plan
+
+#### Phase 1: Do This Week (no cost, no paperwork)
+
+| # | Action | Effort | Value |
+|---|--------|--------|-------|
+| 1 | Sign up for **Gemini API free tier** | 10 min | Instant benchmarking access |
+| 2 | Sign up for **Mistral free experiment tier** | 10 min | Instant benchmarking access |
+| 3 | Sign up for **Azure Founders Hub** ($1k credits) | 30 min | Instant cloud credits |
+| 4 | Set up **GitHub Sponsors** on ReformLab repo | 30 min | Passive funding channel |
+
+_Total effort: ~2 hours. Total value: instant AI benchmarking + $1k cloud credits + funding channel._
+
+#### Phase 2: Apply This Month (March 2026)
+
+| # | Action | Deadline | Potential Value |
+|---|--------|----------|-----------------|
+| 5 | **NGI Zero Commons Fund** application | April 1, 2026 | €5,000–€50,000 grant |
+| 6 | **OpenAI Researcher Access Program** | March 2026 review cycle | Up to $1,000 API credits |
+| 7 | **OpenAI Codex Open Source Fund** | Rolling | Part of $1M initiative |
+| 8 | **GitHub Secure Open Source Fund** | Rolling | $10,000 + security program |
+| 9 | **GitHub Accelerator** (check next cohort dates) | Check website | $20,000 stipend |
+
+_The NGI Zero application is the single highest-value action. It's the only program offering €5k–€50k to individuals for exactly what ReformLab does._
+
+#### Phase 3: With Micro-Enterprise (Q2 2026)
+
+If you decide to register a micro-enterprise (auto-entrepreneur or SASU):
+
+| # | Action | Potential Value |
+|---|--------|-----------------|
+| 10 | **AWS Activate Founders** | $1,000 cloud credits |
+| 11 | **Google Cloud for Startups** (unfunded tier) | $2,000 cloud credits |
+| 12 | **Scaleway Founders** | €1,000 cloud credits |
+| 13 | **Bourse French Tech (BPI)** | Up to €30,000 subsidy |
+| 14 | **Fondation Afnic** (if association) | TBD (watch Q1 2026 call) |
+
+_Forming a micro-enterprise unlocks ~$4,000 in immediate cloud credits plus access to BPI's €30k subsidy._
+
+#### Phase 4: Watch & Apply Later (H2 2026+)
+
+| # | Opportunity | Why Wait |
+|---|-------------|----------|
+| 15 | **Sovereign Tech Fellowship** (freelance from France) | Next call expected 2026 |
+| 16 | **Mozilla Democracy x AI Incubator** | Check next cohort application dates |
+| 17 | **CNRS OPEN Programme** | Need CNRS academic partnership |
+| 18 | **DINUM Communs Numériques** | Monitor for calls, build OpenFisca community ties |
+| 19 | **ADEME** | When ReformLab demonstrates environmental policy impact |
+| 20 | **Sovereign Tech Fund** | When project is more mature |
+| 21 | **Digital Europe Programme** | With micro-enterprise, for specific calls |
+| 22 | **Mozilla Fellowship 2027** | Build visibility first, nominations-based |
+
+---
+
+### Key Strategic Insight: The Open Collective Path
+
+You have an alternative to forming a micro-enterprise: **host ReformLab on Open Collective Europe Foundation** (the same structure OpenFisca uses). This gives you:
+
+- A legal entity to receive grants (including NGI)
+- Transparent financial management
+- No company registration needed
+- ~8% fee on funds received
+- Alignment with the OpenFisca ecosystem
+
+This is particularly powerful if you want to stay nimble and apply for grants without committing to a governance structure yet.
+
+---
+
+### Total Potential Funding Summary
+
+| Category | Accessible Now (individual) | With Micro-Enterprise | Longer-Term |
+|----------|----------------------------|----------------------|-------------|
+| AI Credits | Free tiers (Gemini, Mistral) + $1k OpenAI | Same | Anthropic AI for Science |
+| Cloud Credits | $1,000 (Azure) | $4,000+ (Azure+AWS+GCP+Scaleway) | €100k+ (OVH, programs) |
+| Grants | €5k–€50k (NGI), $10k–$20k (GitHub) | €30k (BPI) + all above | €50k+ (Sovereign Tech, Mozilla, ADEME) |
+| **Conservative total** | **~€10k–€75k** | **~€40k–€110k** | **€100k–€300k+** |
+
+---
+
+### Research Confidence Assessment
+
+| Finding | Confidence | Notes |
+|---------|------------|-------|
+| Free AI tiers (Gemini, Mistral) | High | Verified on official sites |
+| Cloud credit programs (AWS, Azure, GCP) | High | Well-documented, stable programs |
+| NGI Zero Commons Fund deadline & eligibility | High | Official NLnet call, verified |
+| BPI Bourse French Tech | Medium-High | Program exists, specific terms may vary |
+| GitHub Accelerator/Fund availability | Medium | Cohort timing uncertain, check for next round |
+| Sovereign Tech Fellowship next call | Medium | Expected 2026 but not confirmed |
+| Mozilla Democracy x AI 2026 cohort | Medium | Announced but application dates not confirmed |
+| CNRS OPEN accessibility | Low-Medium | Requires CNRS partnership, unclear eligibility for external projects |
+| New OSS funding initiative (Feb 2026) | Low | Just announced, details not yet available |
+
+---
+
+### Final Recommendation
+
+**Your single most impactful action is applying to the NGI Zero Commons Fund before April 1, 2026.** ReformLab is a textbook fit: open-source, public interest, European, individual-eligible, and the grant size (€5k–€50k) matches a solo developer's needs. Everything else is complementary.
+
+**Research completed on 2026-02-28.**
