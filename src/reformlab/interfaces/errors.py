@@ -125,3 +125,31 @@ class ValidationErrors(Exception):
 
         self.message = message
         super().__init__(message)
+
+
+class MemoryWarning(UserWarning):
+    """Warning emitted when simulation may exceed available memory.
+
+    Follows canonical format: "[What] — [Why] — [How to fix]".
+
+    Attributes:
+        estimate: MemoryEstimate with usage details.
+        message: Formatted warning message.
+    """
+
+    def __init__(self, estimate: Any) -> None:
+        """Initialize memory warning with estimate.
+
+        Args:
+            estimate: MemoryEstimate instance with memory usage details.
+        """
+        self.estimate = estimate
+        message = (
+            f"Memory warning — Population of {estimate.population_size:,} households "
+            f"over {estimate.projection_years} years requires ~{estimate.estimated_gb:.1f}GB, "
+            f"but only {estimate.available_gb:.1f}GB available "
+            f"(threshold: {estimate.threshold_gb:.1f}GB for safe operation on 16GB machine) — "
+            "Reduce population size, increase available memory, or set "
+            "REFORMLAB_SKIP_MEMORY_WARNING=true to proceed"
+        )
+        super().__init__(message)

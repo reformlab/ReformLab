@@ -27,6 +27,9 @@ Public API:
     BenchmarkResult: Result of a single benchmark test
     BenchmarkSuiteResult: Result of running the complete benchmark suite
     run_benchmark_suite: Orchestrate benchmark checks
+    MemoryEstimate: Memory usage estimate for simulation runs
+    estimate_memory_usage: Estimate memory usage for a simulation
+    get_available_memory: Get available system memory
 """
 
 from reformlab.governance.benchmarking import (
@@ -59,6 +62,11 @@ from reformlab.governance.lineage import (
     validate_lineage,
 )
 from reformlab.governance.manifest import RunManifest
+from reformlab.governance.memory import (
+    MemoryEstimate,
+    estimate_memory_usage,
+    get_available_memory,
+)
 from reformlab.governance.reproducibility import (
     ReproducibilityResult,
     check_reproducibility,
@@ -87,4 +95,7 @@ __all__ = [
     "BenchmarkResult",
     "BenchmarkSuiteResult",
     "run_benchmark_suite",
+    "MemoryEstimate",
+    "estimate_memory_usage",
+    "get_available_memory",
 ]

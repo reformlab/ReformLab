@@ -74,6 +74,21 @@ class RunConfig:
 
 
 @dataclass(frozen=True)
+class MemoryCheckResult:
+    """Result of pre-execution memory check.
+
+    Attributes:
+        should_warn: Whether a memory warning should be displayed.
+        estimate: MemoryEstimate with usage details.
+        message: Formatted warning message if applicable.
+    """
+
+    should_warn: bool
+    estimate: Any  # MemoryEstimate from governance.memory
+    message: str
+
+
+@dataclass(frozen=True)
 class SimulationResult:
     """Result of a simulation run with notebook-friendly display.
 
@@ -261,10 +276,10 @@ def create_quickstart_adapter(
     This helper keeps quickstart notebooks on the public API surface while
     using synthetic, offline data suitable for first-run onboarding.
     """
+    import pyarrow as pa
+
     from reformlab.computation.mock_adapter import MockAdapter
     from reformlab.interfaces.errors import ConfigurationError
-
-    import pyarrow as pa
 
     if household_count <= 0:
         raise ConfigurationError(
@@ -314,9 +329,93 @@ def create_quickstart_adapter(
     )
 
 
+def check_memory_requirements(
+    config: RunConfig | ScenarioConfig,
+    skip_check: bool = False,
+) -> MemoryCheckResult:
+    """Check if simulation memory requirements exceed safe thresholds.
+
+    Args:
+        config: Scenario or run configuration to check.
+        skip_check: If True, skip the check and return no warning.
+
+    Returns:
+        MemoryCheckResult with warning recommendation.
+
+    Example:
+        >>> from reformlab import ScenarioConfig, check_memory_requirements
+        >>> config = ScenarioConfig(
+        ...     template_name="test",
+        ...     parameters={},
+        ...     start_year=2025,
+        ...     end_year=2030,
+        ... )
+        >>> result = check_memory_requirements(config)
+        >>> if result.should_warn:
+        ...     print(result.message)
+    """
+    from reformlab.governance.memory import estimate_memory_usage
+
+    # Skip check if requested or env var set
+    if skip_check or _should_skip_memory_check():
+        # Return dummy result with no warning
+        dummy_estimate = estimate_memory_usage(0, 0)
+        return MemoryCheckResult(
+            should_warn=False,
+            estimate=dummy_estimate,
+            message="",
+        )
+
+    # Extract scenario config
+    if isinstance(config, RunConfig):
+        scenario = config.scenario
+        # Convert to ScenarioConfig if needed
+        if isinstance(scenario, Path):
+            scenario = _load_scenario(scenario)
+        elif isinstance(scenario, dict):
+            scenario = _dict_to_scenario_config(scenario)
+    else:
+        scenario = config
+
+    # Calculate population size (estimate based on population_path or default)
+    # For pre-execution check, we estimate population size from file metadata
+    # or use a conservative default if no population file is specified
+    population_size = _estimate_population_size(scenario.population_path)
+
+    # Calculate projection years
+    projection_years = scenario.end_year - scenario.start_year + 1
+
+    # Estimate memory usage
+    estimate = estimate_memory_usage(population_size, projection_years)
+
+    # Check if threshold is exceeded
+    if estimate.exceeds_threshold:
+        message = (
+            f"Memory warning — Population of {estimate.population_size:,} households "
+            f"over {estimate.projection_years} years requires ~{estimate.estimated_gb:.1f}GB, "
+            f"but only {estimate.available_gb:.1f}GB available "
+            f"(threshold: {estimate.threshold_gb:.1f}GB for safe operation on 16GB machine) — "
+            "Reduce population size, increase available memory, or set "
+            "REFORMLAB_SKIP_MEMORY_WARNING=true to proceed"
+        )
+        return MemoryCheckResult(
+            should_warn=True,
+            estimate=estimate,
+            message=message,
+        )
+
+    return MemoryCheckResult(
+        should_warn=False,
+        estimate=estimate,
+        message="",
+    )
+
+
 def run_scenario(
     config: RunConfig | ScenarioConfig | Path | dict[str, Any],
     adapter: ComputationAdapter | None = None,
+    *,
+    skip_memory_check: bool = False,
 ) -> SimulationResult:
     """Run a complete simulation scenario.
 
@@ -360,6 +459,19 @@ def run_scenario(
     # Step 2: Validate before execution
     _validate_config(run_config)
 
+    # Step 2b: Memory pre-check (before orchestration)
+    if not skip_memory_check and not _should_skip_memory_check():
+        check_result = check_memory_requirements(run_config)
+        if check_result.should_warn:
+            import logging
+            import warnings
+
+            from reformlab.interfaces.errors import MemoryWarning
+
+            warnings.warn(MemoryWarning(check_result.estimate))
+            logger = logging.getLogger(__name__)
+            logger.warning(check_result.message)
+
     # Step 3: Load scenario template
     try:
         scenario = _load_scenario(run_config.scenario)
@@ -367,7 +479,7 @@ def run_scenario(
         raise
     except Exception as exc:
         raise SimulationError(
-            f"Scenario loading failed — Could not load scenario configuration — Check scenario file format and content",
+            "Scenario loading failed — Could not load scenario configuration — Check scenario file format and content",
             cause=exc,
             fix="Check scenario file format and content",
         ) from exc
@@ -424,7 +536,7 @@ def run_scenario(
             ) from exc
         else:
             raise SimulationError(
-                f"Simulation execution failed — Error during orchestrator execution — Check adapter configuration and input data",
+                "Simulation execution failed — Error during orchestrator execution — Check adapter configuration and input data",
                 cause=exc,
                 fix="Check adapter configuration and input data",
             ) from exc
@@ -1415,3 +1527,50 @@ def run_benchmarks(
 
     # Delegate to governance benchmarking subsystem
     return run_benchmark_suite(panel, reference_path)
+
+
+def _should_skip_memory_check() -> bool:
+    """Check if memory check should be skipped based on environment variable."""
+    skip_env = os.environ.get("REFORMLAB_SKIP_MEMORY_WARNING", "").lower()
+    return skip_env in ("true", "1", "yes")
+
+
+def _estimate_population_size(population_path: Path | None) -> int:
+    """Estimate population size from file metadata or use default.
+
+    Args:
+        population_path: Path to population file, or None.
+
+    Returns:
+        Estimated population size.
+    """
+    if population_path is None:
+        # Default to 100k households if no population file specified
+        return 100_000
+
+    if not population_path.exists():
+        # File doesn't exist yet, use default
+        return 100_000
+
+    # Try to read row count from file metadata without loading entire file
+    suffixes = tuple(part.lower() for part in population_path.suffixes)
+    try:
+        if suffixes[-1:] in ((".parquet",), (".pq",)):
+            # Read Parquet metadata for fast row count
+            import pyarrow.parquet as pq
+
+            metadata = pq.read_metadata(population_path)
+            return metadata.num_rows
+        elif suffixes[-2:] == (".csv", ".gz") or suffixes[-1:] == (".csv",):
+            # For CSV, estimate based on file size
+            # Rough heuristic: ~200 bytes per row on average
+            file_size = population_path.stat().st_size
+            estimated_rows = file_size // 200
+            return max(estimated_rows, 1000)  # At least 1k rows
+    except Exception:
+        # On any error, fall back to conservative default
+        pass
+
+    # Conservative default: 500k households
+    # This will trigger warnings on 16GB machines
+    return 500_000
