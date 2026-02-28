@@ -1,6 +1,6 @@
 # Story 7.4: External Pilot User Can Run Complete Carbon-Tax Workflow
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -335,10 +335,85 @@ Pattern: Epic 7 stories are validation/hardening tasks. This story follows the s
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Sonnet 4.5 (claude-sonnet-4-5-20250929)
 
 ### Debug Log References
 
+N/A - Validation story, no debugging required.
+
 ### Completion Notes List
 
+**Validation Results:**
+
+1. **AC-1: Clean install and API smoke test** ✓ PASS
+   - Created fresh Python 3.13 venv
+   - Installed from built wheel (`reformlab-0.1.0-py3-none-any.whl`)
+   - `import reformlab` succeeded
+   - API smoke test confirmed `ScenarioConfig` and `RunConfig` instantiation
+
+2. **AC-2: Quickstart notebook execution** ✓ PASS (with fix)
+   - Fixed cell ordering issue (cells 25/26 were reversed)
+   - All cells execute without errors via `pytest --nbmake`
+   - Distributional outputs produced
+   - Run manifest emitted correctly
+
+3. **AC-3: Advanced multi-year workflow** ✓ PASS (with fix)
+   - Fixed cell ordering issue (export_dir definition before usage)
+   - Multi-year projection (2025-2034) completes successfully
+   - Vintage tracking outputs demonstrated
+   - Baseline/reform comparison charts render correctly
+   - CSV/Parquet exports complete
+
+4. **AC-4: External user documentation independence** ✓ PASS
+   - Created `docs/pilot-checklist.md` with step-by-step instructions
+   - README.md provides clear installation guidance
+   - Notebooks are self-documenting with markdown cells
+   - No external data downloads required
+
+5. **AC-5: Credibility checks** ✓ PASS
+   - All 7 benchmark tests pass via `pytest -m benchmark`
+   - Carbon tax values are within expected ranges
+   - Distributional patterns are credible (progressive in absolute terms)
+
+6. **AC-6: Reproducibility** ✓ PASS
+   - Identical configs with same seed produce identical outputs
+   - Manifest seeds and parameters are preserved
+   - Deterministic rerun confirmed programmatically
+
+7. **AC-7: Pilot bundle completeness** ✓ PASS
+   - Installable wheel built successfully
+   - Notebooks discoverable in `notebooks/` directory
+   - Examples available in `examples/workflows/`
+   - Documentation in `docs/` and `README.md`
+   - No external dependencies beyond pip-installable packages
+
+**Issues Fixed:**
+
+1. **Quickstart notebook cell ordering:** Cells 25 (export indicators) and 26 (create export_dir) were reversed, causing `NameError`. Swapped cells using JSON manipulation.
+2. **Advanced notebook cell ordering:** Cell 41 (export fiscal indicators) executed before cell 42 (create export_dir). Reordered cells.
+
+**Artifacts Created:**
+
+- `docs/pilot-checklist.md` — Complete external user onboarding guide (6 sections, ~400 lines)
+- Fixed `notebooks/quickstart.ipynb` — Cell order corrected
+- Fixed `notebooks/advanced.ipynb` — Cell order corrected
+
+**Cross-Machine Reproducibility:**
+
+- Tested on macOS Darwin 25.3.0 with Python 3.13.0
+- Deterministic outputs confirmed in same environment
+- Cross-machine variance not tested (optional, tolerance-compliant variance expected)
+
+**Pilot Outcome:** ✓ PASS
+
+All acceptance criteria met. ReformLab Phase 1 is ready for external pilot validation.
+
 ### File List
+
+**Modified:**
+- `notebooks/quickstart.ipynb` (cell 25/26 order fix)
+- `notebooks/advanced.ipynb` (cell 41/42 order fix)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (story status: done)
+
+**Created:**
+- `docs/pilot-checklist.md` (pilot onboarding documentation)
