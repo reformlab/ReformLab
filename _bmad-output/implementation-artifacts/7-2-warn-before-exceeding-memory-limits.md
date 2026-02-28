@@ -25,7 +25,7 @@ From backlog (BKL-702), aligned with NFR3.
 3. **AC-3: Warning includes actionable guidance**
    - Given a memory warning is triggered
    - When the warning is displayed
-   - Then it includes: estimated memory requirement, available memory, population size, and suggested remediation (reduce population, increase memory, or use streaming mode in future)
+   - Then it includes: estimated memory requirement, available memory, population size, projection years, and suggested remediation (reduce population size, reduce projection horizon, increase available memory, or intentionally bypass with documented override)
 
 4. **AC-4: Warning is configurable and can be suppressed**
    - Given a user who wants to proceed despite the warning
@@ -39,22 +39,26 @@ From backlog (BKL-702), aligned with NFR3.
 
 ## Dependencies
 
+Dependency gate: if any hard dependency below is not `done`, set this story to `blocked`.
+
 - **Hard dependencies (from backlog BKL-702):**
   - Story 7-1 (BKL-701): Benchmark suite completed (DONE) — establishes performance baseline
 
 - **Integration dependencies:**
   - Story 6-1 (BKL-601): Stable API surface for user-facing warning entrypoint (DONE)
-  - Story 5-2 (BKL-502): Governance warning capture pattern (DONE)
+  - Story 6-6 (BKL-606): Canonical user-facing warning/error message format (DONE)
+  - Story 5-2 (BKL-502): Manifest warning capture helpers (`capture_warnings`) (DONE)
   - Story 3-5 (BKL-305): Orchestrator execution flow where pre-run checks occur (DONE)
 
 - **Follow-on stories (not in scope here):**
-  - Story 7-3 (BKL-703): CI quality-gate enforcement
-  - Story 7-4 (BKL-704): External pilot workflow packaging
+  - Story 7-3 (BKL-703): Enforce CI quality gates
+  - Story 7-4 (BKL-704): External pilot run carbon-tax workflow
+  - Story 7-5 (BKL-705): Define Phase 1 exit checklist and pilot sign-off criteria
 
 ## Tasks / Subtasks
 
 - [ ] **Task 0: Review prerequisite contracts and dependency status** (AC: dependency check)
-  - [ ] Confirm dependencies in `sprint-status.yaml` for 7-1, 6-1, 5-2, 3-5
+  - [ ] Confirm dependencies in `sprint-status.yaml` for 7-1, 6-1, 6-6, 5-2, 3-5
   - [ ] Review `interfaces/api.py` run_scenario() entrypoint for pre-execution hook location
   - [ ] Review `governance/capture.py` warning capture patterns
   - [ ] Review `interfaces/errors.py` for warning/error patterns
@@ -63,14 +67,14 @@ From backlog (BKL-702), aligned with NFR3.
   - [ ] Add `src/reformlab/governance/memory.py`
   - [ ] Implement `MemoryEstimate` dataclass:
     - `population_size: int` (row count)
+    - `projection_years: int`
     - `estimated_bytes: int` (memory estimate for simulation)
     - `available_bytes: int` (system available memory)
     - `threshold_bytes: int` (safe threshold for target environment)
-    - `exceeds_threshold: bool`
+    - `exceeds_threshold` as a computed property (not duplicated state)
   - [ ] Implement `estimate_memory_usage(population_size: int, projection_years: int) -> MemoryEstimate`
-    - Use heuristic: ~1KB per household-year for core simulation state
-    - Account for indicator computation buffer (~2x for distributional)
-    - Configurable via `REFORMLAB_MEMORY_MULTIPLIER` env var for tuning
+    - Use baseline heuristic from benchmark context: `population_size * projection_years * 800` bytes
+    - Apply configurable safety multiplier (default `2.0`) via `REFORMLAB_MEMORY_MULTIPLIER`
   - [ ] Implement `get_available_memory() -> int` using `psutil` or fallback detection
   - [ ] Export from `src/reformlab/governance/__init__.py`
 
@@ -93,8 +97,8 @@ From backlog (BKL-702), aligned with NFR3.
 
 - [ ] **Task 4: Implement memory warning emission** (AC: 1, 3)
   - [ ] On threshold exceeded: emit Python `warnings.warn()` with `MemoryWarning`
-  - [ ] Log warning at INFO level via standard logger
-  - [ ] Include in run manifest `warnings` field via existing capture pattern
+  - [ ] Log warning at WARNING level via standard logger
+  - [ ] Include warning text in run manifest `warnings` via `capture_warnings(..., additional_warnings=[...])`
   - [ ] Warning message format:
     ```
     Memory warning — Population of {N} households over {Y} years requires ~{X}GB,
@@ -102,19 +106,14 @@ From backlog (BKL-702), aligned with NFR3.
     Reduce population size, increase available memory, or set REFORMLAB_SKIP_MEMORY_WARNING=true to proceed
     ```
 
-- [ ] **Task 5: Add public API function for explicit memory check** (AC: 5)
-  - [ ] Add `estimate_memory(population_size: int, projection_years: int = 10) -> MemoryEstimate` to `reformlab.interfaces.api`
-  - [ ] Export from `reformlab.__init__.py` for top-level access
-  - [ ] Add notebook-friendly `__repr__` to `MemoryEstimate`
-
-- [ ] **Task 6: Write unit tests for memory estimation** (AC: 1, 2, 3, 5)
+- [ ] **Task 5: Write unit tests for memory estimation** (AC: 1, 2, 3, 5)
   - [ ] Add `tests/governance/test_memory.py`
   - [ ] Test `estimate_memory_usage()` returns reasonable estimates for known population sizes
   - [ ] Test threshold comparison logic (above/below)
   - [ ] Test performance: estimation completes in < 100ms for 1M households
   - [ ] Test `get_available_memory()` returns positive integer
 
-- [ ] **Task 7: Write integration tests for warning flow** (AC: 1, 2, 4)
+- [ ] **Task 6: Write integration tests for warning flow** (AC: 1, 2, 4)
   - [ ] Add `tests/interfaces/test_memory_warning.py`
   - [ ] Test: Large population triggers warning via `run_scenario()`
   - [ ] Test: Small population does not trigger warning
@@ -122,7 +121,7 @@ From backlog (BKL-702), aligned with NFR3.
   - [ ] Test: `REFORMLAB_SKIP_MEMORY_WARNING=true` env var suppresses warning
   - [ ] Test: Warning appears in run manifest `warnings` field
 
-- [ ] **Task 8: Run quality checks** (AC: all)
+- [ ] **Task 7: Run quality checks** (AC: all)
   - [ ] Run `ruff check src/reformlab/governance src/reformlab/interfaces tests/governance tests/interfaces`
   - [ ] Run `mypy src/reformlab/governance src/reformlab/interfaces`
   - [ ] Run targeted tests: `pytest tests/governance tests/interfaces -v -k memory`
@@ -137,7 +136,7 @@ This story implements memory-limit warnings from PRD NFR3 and directly addresses
 - Memory estimation lives in `governance/` (operational guardrails concern)
 - Warning types live in `interfaces/errors.py` (user-facing error/warning layer)
 - Pre-execution check integrates into `interfaces/api.py` run_scenario() flow
-- Uses existing warning capture pattern from `governance/capture.py`
+- Uses existing manifest warning capture pattern from `governance/capture.py`
 
 **Key existing modules to use:**
 - `src/reformlab/interfaces/api.py` - run_scenario() entrypoint where check integrates
@@ -250,7 +249,7 @@ src/reformlab/
     __init__.py            # Export memory APIs
   interfaces/
     errors.py              # Add MemoryWarning
-    api.py                 # Add check_memory_requirements, estimate_memory, update run_scenario
+    api.py                 # Add check_memory_requirements and update run_scenario
 
 tests/
   governance/
@@ -308,7 +307,6 @@ def test_large_population_triggers_warning(monkeypatch):
   - Pre-execution memory estimation and warning emission
   - Environment variable and parameter-based warning suppression
   - Memory warning in run manifest warnings field
-  - Public API for explicit memory estimation
   - Heuristic-based estimation (not actual measurement)
 
 - **Out of scope:**
@@ -372,4 +370,3 @@ Pattern: New governance capabilities added as separate modules with clean export
 ### Completion Notes List
 
 ### File List
-
