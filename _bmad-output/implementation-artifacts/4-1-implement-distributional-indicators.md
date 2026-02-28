@@ -1,6 +1,6 @@
 # Story 4.1: Implement Distributional Indicators by Income Decile
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -225,10 +225,22 @@ src/reformlab/indicators/
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Unknown (record not captured during implementation)
 
 ### Debug Log References
 
+- Dev Agent Record backfilled during Phase 1 retro cleanup. Original debug logs were not recorded.
+
 ### Completion Notes List
 
+- Dev Agent Record backfilled during Phase 1 retro cleanup. Original implementation agent and debug details were not recorded.
+
 ### File List
+
+- `src/reformlab/indicators/__init__.py` (modified) — package exports for indicators module
+- `src/reformlab/indicators/deciles.py` (new) — decile computation logic
+- `src/reformlab/indicators/distributional.py` (new) — distributional indicator calculations
+- `src/reformlab/indicators/types.py` (new) — type definitions for indicator results
+- `tests/indicators/conftest.py` (new) — shared fixtures for indicator tests
+- `tests/indicators/test_distributional.py` (new) — tests for distributional indicators
+- `tests/test_scaffold.py` (modified) — scaffold test updates

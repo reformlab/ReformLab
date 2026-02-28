@@ -1,6 +1,6 @@
 # Story 6.3: Build Advanced Notebook
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -401,10 +401,18 @@ def plot_comparison(baseline_result, reform_result, indicator="net_impact"):
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Unknown (record not captured during implementation)
 
 ### Debug Log References
 
+- Dev Agent Record backfilled during Phase 1 retro cleanup. Original debug logs were not recorded.
+
 ### Completion Notes List
 
+- Dev Agent Record backfilled during Phase 1 retro cleanup. Original implementation agent and debug details were not recorded.
+
 ### File List
+
+- `notebooks/advanced.ipynb` (new) — advanced analysis Jupyter notebook
+- `tests/notebooks/test_advanced_notebook.py` (new) — smoke test for advanced notebook
+- `.github/workflows/ci.yml` (modified) — CI updates for notebook testing

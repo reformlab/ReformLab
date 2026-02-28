@@ -1,6 +1,6 @@
 # Story 4.2: Implement Geographic Aggregation Indicators
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 

@@ -1,6 +1,6 @@
 # Story 2.1: Define Scenario Template Schema
 
-Status: review
+Status: done
 
 ## Story
 

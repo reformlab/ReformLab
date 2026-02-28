@@ -1,6 +1,6 @@
 # Story 3.2: Define Orchestrator Step Interface
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 

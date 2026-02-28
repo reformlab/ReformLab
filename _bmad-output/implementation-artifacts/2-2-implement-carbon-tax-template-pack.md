@@ -1,6 +1,6 @@
 # Story 2.2: Implement Carbon Tax Template Pack
 
-Status: review
+Status: done
 
 ## Story
 
@@ -376,10 +376,37 @@ parameters:
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Unknown (record not captured during implementation)
 
 ### Debug Log References
 
+- Dev Agent Record backfilled during Phase 1 retro cleanup. Original debug logs were not recorded.
+
 ### Completion Notes List
 
+- Dev Agent Record backfilled during Phase 1 retro cleanup. Original implementation agent and debug details were not recorded.
+
 ### File List
+
+- `src/reformlab/data/schemas.py` (modified) — data schema updates for template support
+- `src/reformlab/templates/__init__.py` (modified) — templates package init
+- `src/reformlab/templates/carbon_tax/__init__.py` (new) — carbon tax template subpackage
+- `src/reformlab/templates/carbon_tax/compare.py` (new) — carbon tax scenario comparison logic
+- `src/reformlab/templates/carbon_tax/compute.py` (new) — carbon tax computation logic
+- `src/reformlab/templates/loader.py` (modified) — template pack loader
+- `src/reformlab/templates/packs/__init__.py` (new) — packs subpackage init
+- `src/reformlab/templates/schema.py` (modified) — template schema definitions
+- `src/reformlab/templates/packs/carbon_tax/carbon-tax-flat-lump-sum-dividend.yaml` (new) — template pack YAML
+- `src/reformlab/templates/packs/carbon_tax/carbon-tax-flat-no-redistribution.yaml` (new) — template pack YAML
+- `src/reformlab/templates/packs/carbon_tax/carbon-tax-flat-progressive-dividend.yaml` (new) — template pack YAML
+- `src/reformlab/templates/packs/carbon_tax/carbon-tax-progressive-no-redistribution.yaml` (new) — template pack YAML
+- `src/reformlab/templates/packs/carbon_tax/carbon-tax-progressive-progressive-dividend.yaml` (new) — template pack YAML
+- `tests/templates/carbon_tax/__init__.py` (new) — test subpackage init
+- `tests/templates/carbon_tax/conftest.py` (new) — carbon tax test fixtures
+- `tests/templates/carbon_tax/test_compare.py` (new) — comparison tests
+- `tests/templates/carbon_tax/test_compute.py` (new) — computation tests
+- `tests/templates/carbon_tax/test_golden_outputs.py` (new) — golden output regression tests
+- `tests/templates/carbon_tax/test_pack_loader.py` (new) — pack loader tests
+- `tests/templates/carbon_tax/test_performance.py` (new) — performance/benchmark tests
+- `tests/templates/test_loader.py` (modified) — loader tests updated
+- `tests/templates/test_schema.py` (modified) — schema tests updated

@@ -1,6 +1,6 @@
 # Story 7.2: Warn Before Exceeding Memory Limits
 
-Status: review
+Status: done
 
 ## Story
 

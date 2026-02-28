@@ -1,6 +1,6 @@
 # Story 2.4: Build Scenario Registry with Immutable Version IDs
 
-Status: review
+Status: done
 
 ## Story
 

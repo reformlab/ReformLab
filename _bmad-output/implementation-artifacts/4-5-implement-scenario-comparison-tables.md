@@ -1,6 +1,6 @@
 # Story 4.5: Implement Scenario Comparison Tables
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -447,10 +447,18 @@ The export functionality supports:
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Unknown (record not captured during implementation)
 
 ### Debug Log References
 
+- Dev Agent Record backfilled during Phase 1 retro cleanup. Original debug logs were not recorded.
+
 ### Completion Notes List
 
+- Dev Agent Record backfilled during Phase 1 retro cleanup. Original implementation agent and debug details were not recorded.
+
 ### File List
+
+- `src/reformlab/indicators/__init__.py` (modified) — indicators package exports updated
+- `src/reformlab/indicators/comparison.py` (new) — scenario comparison table generation
+- `tests/indicators/test_comparison.py` (new) — comparison table tests

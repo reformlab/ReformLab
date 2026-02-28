@@ -1,6 +1,6 @@
 # Story 2.6: Add Schema Migration Helper
 
-Status: review
+Status: done
 
 ## Story
 

@@ -50,7 +50,7 @@ development_status:
   1-6-add-direct-openfisca-api-orchestration-mode: done
   1-7-create-compatibility-matrix: done
   1-8-set-up-project-scaffold: done
-  epic-1-retrospective: optional
+  epic-1-retrospective: done
 
   # EPIC-2: Scenario Templates and Registry
   epic-2: done
@@ -61,7 +61,7 @@ development_status:
   2-5-implement-scenario-cloning: done
   2-6-add-schema-migration-helper: done
   2-7-implement-yaml-json-workflow-configuration: done
-  epic-2-retrospective: optional
+  epic-2-retrospective: done
 
   # EPIC-3: Step-Pluggable Dynamic Orchestrator and Vintage Tracking
   epic-3: done
@@ -72,7 +72,7 @@ development_status:
   3-5-integrate-computationadapter-calls: done
   3-6-log-seed-controls: done
   3-7-produce-scenario-year-panel-output: done
-  epic-3-retrospective: optional
+  epic-3-retrospective: done
 
   # EPIC-4: Indicators and Scenario Comparison
   epic-4: done
@@ -82,7 +82,7 @@ development_status:
   4-4-implement-fiscal-indicators: done
   4-5-implement-scenario-comparison-tables: done
   4-6-implement-custom-derived-indicator-formulas: done
-  epic-4-retrospective: optional
+  epic-4-retrospective: done
 
   # EPIC-5: Governance and Reproducibility
   epic-5: done
@@ -92,18 +92,18 @@ development_status:
   5-4-hash-input-output-artifacts: done
   5-5-add-reproducibility-check-harness: done
   5-6-add-warning-system-for-unvalidated-templates: done
-  epic-5-retrospective: optional
+  epic-5-retrospective: done
 
   # EPIC-6: Interfaces (Python API, Notebooks, Early No-Code GUI)
-  epic-6: done
+  epic-6: in-progress
   6-1-implement-stable-python-api: done
   6-2-build-quickstart-notebook: done
   6-3-build-advanced-notebook: done
   6-4a-build-static-gui-prototype: done
-  6-4b-wire-gui-prototype-to-backend: done
+  6-4b-wire-gui-prototype-to-backend: review
   6-5-add-export-actions: done
   6-6-improve-operational-error-ux: done
-  epic-6-retrospective: optional
+  epic-6-retrospective: done
 
   # EPIC-7: Trusted Outputs and External Pilot Validation
   epic-7: done
@@ -112,4 +112,17 @@ development_status:
   7-3-enforce-ci-quality-gates: done
   7-4-external-pilot-run-carbon-tax-workflow: done
   7-5-define-phase-1-exit-checklist: done
-  epic-7-retrospective: optional
+  epic-7-retrospective: done
+
+  # EPIC-8: Post-Phase-1 Validation Spikes
+  epic-8: in-progress
+  8-1-e2e-openfisca-integration-spike: done
+  8-2-scale-validation-100k-synthetic-population-benchmarks: review
+
+  # EPIC-9: OpenFisca Adapter Hardening (follow-ups from spike 8-1)
+  epic-9: backlog
+  9-1-fix-entity-dict-plural-keys: done  # fixed during 8-1 code review
+  9-2-handle-multi-entity-output-arrays: backlog
+  9-3-add-variable-periodicity-handling: backlog
+  9-4-define-population-data-4-entity-format: backlog
+  9-5-openfisca-france-reference-test-suite: backlog

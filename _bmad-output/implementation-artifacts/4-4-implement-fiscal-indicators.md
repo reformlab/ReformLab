@@ -1,6 +1,6 @@
 # Story 4.4: Implement Fiscal Indicators
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -331,10 +331,19 @@ The `to_table()` output format enables:
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Unknown (record not captured during implementation)
 
 ### Debug Log References
 
+- Dev Agent Record backfilled during Phase 1 retro cleanup. Original debug logs were not recorded.
+
 ### Completion Notes List
 
+- Dev Agent Record backfilled during Phase 1 retro cleanup. Original implementation agent and debug details were not recorded.
+
 ### File List
+
+- `src/reformlab/indicators/__init__.py` (modified) — indicators package exports updated
+- `src/reformlab/indicators/fiscal.py` (new) — fiscal indicator calculations
+- `src/reformlab/indicators/types.py` (modified) — type definitions extended for fiscal indicators
+- `tests/indicators/test_fiscal.py` (new) — fiscal indicator tests

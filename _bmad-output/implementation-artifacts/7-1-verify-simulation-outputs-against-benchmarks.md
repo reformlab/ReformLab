@@ -1,6 +1,6 @@
 # Story 7.1: Verify Simulation Outputs Against Published Benchmarks
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 

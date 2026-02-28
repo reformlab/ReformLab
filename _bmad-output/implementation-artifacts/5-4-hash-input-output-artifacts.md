@@ -1,6 +1,6 @@
 # Story 5.4: Hash Input/Output Artifacts
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -282,10 +282,20 @@ tests/governance/
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Unknown (record not captured during implementation)
 
 ### Debug Log References
 
+- Dev Agent Record backfilled during Phase 1 retro cleanup. Original debug logs were not recorded.
+
 ### Completion Notes List
 
+- Dev Agent Record backfilled during Phase 1 retro cleanup. Original implementation agent and debug details were not recorded.
+
 ### File List
+
+- `src/reformlab/governance/__init__.py` (modified) — governance package exports updated
+- `src/reformlab/governance/hashing.py` (new) — artifact hashing implementation
+- `src/reformlab/orchestrator/runner.py` (modified) — runner integration with artifact hashing
+- `tests/governance/test_hashing.py` (new) — hashing logic tests
+- `tests/orchestrator/test_integration.py` (modified) — integration test updates

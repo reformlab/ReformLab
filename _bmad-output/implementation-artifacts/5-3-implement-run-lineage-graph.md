@@ -293,10 +293,24 @@ def validate_lineage(
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Unknown (record not captured during implementation)
 
 ### Debug Log References
 
+- Dev Agent Record backfilled during Phase 1 retro cleanup. Original debug logs were not recorded.
+
 ### Completion Notes List
 
+- Dev Agent Record backfilled during Phase 1 retro cleanup. Original implementation agent and debug details were not recorded.
+
 ### File List
+
+- `src/reformlab/governance/__init__.py` (modified) — governance package exports updated
+- `src/reformlab/governance/errors.py` (new) — governance-specific error types
+- `src/reformlab/governance/lineage.py` (new) — run lineage graph implementation
+- `src/reformlab/governance/manifest.py` (modified) — manifest updates for lineage support
+- `src/reformlab/orchestrator/runner.py` (modified) — runner integration with lineage tracking
+- `tests/governance/conftest.py` (new) — shared governance test fixtures
+- `tests/governance/test_lineage.py` (new) — lineage graph tests
+- `tests/governance/test_manifest.py` (new) — manifest tests
+- `tests/orchestrator/test_integration.py` (new) — orchestrator integration tests

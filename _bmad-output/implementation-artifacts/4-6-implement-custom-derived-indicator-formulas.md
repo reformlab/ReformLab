@@ -1,6 +1,6 @@
 # Story 4.6: Implement Custom Derived Indicator Formulas
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 

@@ -1,6 +1,6 @@
 # Story 5.2: Capture Assumptions/Mappings/Parameters in Manifests
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -231,10 +231,23 @@ Action: Mark this scenario as validated before relying on outputs for production
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Unknown (record not captured during implementation)
 
 ### Debug Log References
 
+- Dev Agent Record backfilled during Phase 1 retro cleanup. Original debug logs were not recorded.
+
 ### Completion Notes List
 
+- Dev Agent Record backfilled during Phase 1 retro cleanup. Original implementation agent and debug details were not recorded.
+
 ### File List
+
+- `src/reformlab/governance/__init__.py` (modified) — governance package exports updated
+- `src/reformlab/governance/capture.py` (new) — assumption/mapping/parameter capture logic
+- `src/reformlab/governance/manifest.py` (modified) — manifest structure extended for assumptions
+- `src/reformlab/orchestrator/runner.py` (modified) — runner integration with capture
+- `tests/governance/conftest.py` (modified) — governance test fixtures extended
+- `tests/governance/test_capture.py` (new) — capture logic tests
+- `tests/governance/test_manifest.py` (modified) — manifest tests updated
+- `tests/orchestrator/test_integration.py` (modified) — integration test updates

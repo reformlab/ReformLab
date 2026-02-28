@@ -1,6 +1,6 @@
 # Story 4.3: Implement Welfare Indicators
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
