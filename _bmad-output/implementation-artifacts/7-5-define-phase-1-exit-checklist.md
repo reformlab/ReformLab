@@ -22,12 +22,12 @@ From backlog (BKL-705), aligned with PRD go/no-go criteria and Phase 1 exit crit
 2. **AC-2: Functional coverage is complete**
    - Given the exit checklist functional requirements section
    - When matched against PRD FR1-FR35 Phase 1 scope
-   - Then all P0 functional requirements have a pass/fail criterion with evidence reference
+   - Then the checklist includes one row per FR in scope (FR1-FR35), and each row has an evidence path plus a status (`PASS`, `FAIL`, or `DEFERRED-P1`) with rationale
 
 3. **AC-3: Non-functional targets are measurable**
    - Given the exit checklist NFR section
    - When matched against PRD NFR1-NFR21 Phase 1 scope
-   - Then each applicable NFR has a concrete metric, target value, and measurement method
+   - Then each NFR row includes metric, target, measurement method, evidence source, and measured result/status
 
 4. **AC-4: Pilot sign-off criteria are explicit**
    - Given the pilot sign-off section
@@ -42,7 +42,7 @@ From backlog (BKL-705), aligned with PRD go/no-go criteria and Phase 1 exit crit
 6. **AC-6: All P0 stories are done**
    - Given the sprint status file
    - When the exit checklist is verified
-   - Then all P0 stories across Epics 1-7 are marked as `done` in `sprint-status.yaml`
+   - Then the checklist records a status snapshot showing all prerequisite P0 stories (BKL-101 through BKL-704) are `done`, with any remaining P1 stories listed as non-blocking
 
 ## Dependencies
 
@@ -50,6 +50,8 @@ Dependency gate: all required dependencies are DONE.
 
 - **Hard dependencies (from backlog BKL-705):**
   - Story 7-4 (BKL-704): External pilot user can run complete carbon-tax workflow — DONE
+  - Story 7-3 (BKL-703): CI quality gates enforced — DONE
+  - Story 7-1 (BKL-701): Benchmark verification baseline — DONE
 
 - **Required integration dependencies:**
   - Epic 1 stories (1-1 to 1-8): Adapter + data layer — all DONE
@@ -57,7 +59,7 @@ Dependency gate: all required dependencies are DONE.
   - Epic 3 stories (3-1 to 3-7): Orchestrator + vintage — all DONE
   - Epic 4 stories (4-1 to 4-6): Indicators — all DONE
   - Epic 5 stories (5-1 to 5-5): Governance core — all DONE
-  - Epic 6 stories (6-1 to 6-5, 6-6): Interfaces P0 — all DONE
+  - Epic 6 P0 stories (6-1, 6-2, 6-3, 6-4a, 6-5, 6-6): Interfaces baseline — all DONE
   - Epic 7 stories (7-1 to 7-4): Trusted outputs core — all DONE
 
 - **P1 stories (not blocking Phase 1 exit):**
@@ -65,6 +67,11 @@ Dependency gate: all required dependencies are DONE.
   - Story 6-4b (BKL-604b): GUI-backend wiring — backlog
 
 ## Tasks / Subtasks
+
+- [ ] **Task 0: Confirm dependency gate and status snapshot inputs** (AC: 6)
+  - [ ] Verify hard dependencies (7-1, 7-3, 7-4) are `done` in `_bmad-output/implementation-artifacts/sprint-status.yaml`
+  - [ ] Verify prerequisite P0 stories (BKL-101 through BKL-704) are `done`
+  - [ ] If any prerequisite P0 dependency is not `done`, set story status to `blocked` and stop implementation
 
 - [ ] **Task 1: Draft exit checklist structure** (AC: 1, 2, 3, 4)
   - [ ] Create `docs/phase-1-exit-checklist.md` with section headers
@@ -74,13 +81,15 @@ Dependency gate: all required dependencies are DONE.
   - [ ] Define governance and reproducibility verification section
 
 - [ ] **Task 2: Map functional requirements to evidence** (AC: 1, 2)
+  - [ ] Group FR mapping by architecture subsystems from `architecture.md` (`computation`, `data`, `templates`, `orchestrator`/`vintage`, `indicators`, `governance`, `interfaces`)
   - [ ] For each FR in Phase 1 scope, identify: test file, code file, or artifact path
-  - [ ] Mark each FR as PASS/FAIL with evidence reference
+  - [ ] Mark each FR as PASS/FAIL/DEFERRED-P1 with evidence reference and rationale
   - [ ] Ensure 100% coverage of P0 functional requirements
   - [ ] Document any FR with partial coverage or deferred scope
 
 - [ ] **Task 3: Map non-functional requirements to metrics** (AC: 1, 3)
   - [ ] For each NFR, define: metric name, target value, measurement method
+  - [ ] Explicitly cover architecture constraints: deterministic yearly runs, offline execution, single-machine memory/performance envelope, adapter-version traceability
   - [ ] Include benchmark references where applicable (from Story 7-1)
   - [ ] Include CI quality gate references (from Story 7-3)
   - [ ] Document reproducibility evidence (from Stories 5-1 to 5-5)
@@ -93,7 +102,7 @@ Dependency gate: all required dependencies are DONE.
 
 - [ ] **Task 5: Verify sprint status completeness** (AC: 6)
   - [ ] Audit `_bmad-output/implementation-artifacts/sprint-status.yaml`
-  - [ ] Confirm all P0 stories are `done`
+  - [ ] Confirm all prerequisite P0 stories (BKL-101 through BKL-704) are `done`
   - [ ] Document any P1 stories remaining in backlog (non-blocking)
   - [ ] Ensure epic statuses reflect story completion
 
@@ -116,6 +125,7 @@ This story is a **documentation and verification task**, not a feature implement
 
 **Strategic Direction (from Sprint Change Proposal):**
 The dynamic orchestrator is the core product. OpenFisca is the computation backend. The exit checklist should validate that this architectural identity is reflected in the delivered Phase 1 artifacts.
+For Phase 1 evidence, GUI coverage is satisfied by Story 6-4a (static prototype) plus Story 6-5 (export actions); Story 6-4b remains P1 and is tracked as non-blocking.
 
 ### Current State Assessment
 
@@ -249,7 +259,7 @@ uv run pytest --nbmake notebooks/quickstart.ipynb notebooks/advanced.ipynb -v
 - Verifying sprint status completeness
 
 **Out of scope:**
-- Implementing missing features (all P0 stories are done)
+- Implementing or refactoring product features (this is a verification/documentation story)
 - Running additional external pilots (Story 7-4 covered this)
 - P1 story completion (deferred to post-Phase 1)
 - PyPI publishing (separate release process)
