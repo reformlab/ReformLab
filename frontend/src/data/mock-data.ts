@@ -14,6 +14,7 @@ export interface Template {
   type: string;
   parameterCount: number;
   description: string;
+  parameterGroups: string[];
 }
 
 export interface Parameter {
@@ -43,6 +44,8 @@ export interface Scenario {
   parameterChanges: number;
   linkedBaseline?: string;
   lastRun?: string;
+  templateId?: string;
+  templateName?: string;
 }
 
 export interface SummaryStatistic {
@@ -84,6 +87,7 @@ export const mockTemplates: Template[] = [
     type: "carbon-tax",
     parameterCount: 8,
     description: "Flat carbon tax rate applied uniformly across all households",
+    parameterGroups: ["Tax Rates", "Thresholds"],
   },
   {
     id: "carbon-tax-progressive",
@@ -91,6 +95,7 @@ export const mockTemplates: Template[] = [
     type: "carbon-tax",
     parameterCount: 12,
     description: "Progressive rate by income decile with exemptions",
+    parameterGroups: ["Tax Rates", "Thresholds"],
   },
   {
     id: "carbon-tax-dividend",
@@ -98,6 +103,7 @@ export const mockTemplates: Template[] = [
     type: "carbon-tax",
     parameterCount: 10,
     description: "Flat tax with equal per-capita dividend redistribution",
+    parameterGroups: ["Tax Rates", "Thresholds", "Redistribution"],
   },
   {
     id: "subsidy-energy",
@@ -105,6 +111,7 @@ export const mockTemplates: Template[] = [
     type: "subsidy",
     parameterCount: 6,
     description: "Means-tested energy efficiency subsidy for low-income households",
+    parameterGroups: ["Redistribution", "Thresholds"],
   },
   {
     id: "feebate-vehicle",
@@ -112,6 +119,7 @@ export const mockTemplates: Template[] = [
     type: "feebate",
     parameterCount: 9,
     description: "Fee on high-emission, rebate on low-emission vehicles",
+    parameterGroups: ["Redistribution", "Thresholds"],
   },
 ];
 
@@ -228,6 +236,8 @@ export const mockScenarios: Scenario[] = [
     parameterChanges: 3,
     linkedBaseline: "baseline",
     lastRun: "2026-02-27 14:35",
+    templateId: "carbon-tax-dividend",
+    templateName: "Carbon Tax \u2014 With Dividend",
   },
 ];
 

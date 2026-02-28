@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { LeftPanel } from "@/components/layout/LeftPanel";
 import { MainContent } from "@/components/layout/MainContent";
 import { RightPanel } from "@/components/layout/RightPanel";
 import { WorkspaceLayout } from "@/components/layout/WorkspaceLayout";
+import { PasswordPrompt } from "@/components/auth/PasswordPrompt";
 import { AssumptionsReviewScreen } from "@/components/screens/AssumptionsReviewScreen";
 import { ParameterEditingScreen } from "@/components/screens/ParameterEditingScreen";
 import { PopulationSelectionScreen } from "@/components/screens/PopulationSelectionScreen";
@@ -17,16 +19,14 @@ import { DistributionalChart } from "@/components/simulation/DistributionalChart
 import { RunProgressBar } from "@/components/simulation/RunProgressBar";
 import { ScenarioCard } from "@/components/simulation/ScenarioCard";
 import { SummaryStatCard } from "@/components/simulation/SummaryStatCard";
+import { Toaster } from "@/components/ui/sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useAppState } from "@/contexts/AppContext";
+import { ApiError } from "@/api/client";
+import { exportCsv, exportParquet } from "@/api/exports";
 import {
-  mockDecileData,
-  mockParameters,
-  mockPopulations,
-  mockScenarios,
-  mockSimulationSteps,
   mockSummaryStats,
-  mockTemplates,
 } from "@/data/mock-data";
 
 const STEP_ORDER: ConfigStep["key"][] = [
@@ -40,14 +40,6 @@ const LEFT_COLLAPSE_STORAGE_KEY = "reformlab-left-panel-collapsed";
 const RIGHT_COLLAPSE_STORAGE_KEY = "reformlab-right-panel-collapsed";
 
 type ViewMode = "configuration" | "run" | "progress" | "results" | "comparison";
-
-const TEMPLATE_FAST_PATHS: Record<string, Partial<Record<string, number>>> = {
-  "carbon-tax-flat": { tax_rate: 55, dividend_per_capita: 0 },
-  "carbon-tax-progressive": { tax_rate: 0.62, dividend_per_capita: 140 },
-  "carbon-tax-dividend": { tax_rate: 48, dividend_per_capita: 150 },
-  "subsidy-energy": { rebate_rate: 0.22, means_test_ceiling: 24000 },
-  "feebate-vehicle": { rebate_rate: 0.18, exemption_threshold: 17500 },
-};
 
 function readStoredBool(key: string): boolean {
   const value = window.localStorage.getItem(key);
@@ -63,31 +55,53 @@ function getConfigSteps(activeStep: ConfigStep["key"]): ConfigStep[] {
   ];
 }
 
-export default function App() {
+function Workspace() {
+  const {
+    populations,
+    templates,
+    parameters,
+    parameterValues,
+    setParameterValue,
+    scenarios,
+    decileData,
+    selectedPopulationId,
+    setSelectedPopulationId,
+    selectedTemplateId,
+    selectTemplate,
+    selectedScenarioId,
+    setSelectedScenarioId,
+    startRun,
+    runLoading,
+    runResult,
+    cloneScenario,
+    deleteScenario,
+  } = useAppState();
+
   const [activeStep, setActiveStep] = useState<ConfigStep["key"]>("population");
   const [viewMode, setViewMode] = useState<ViewMode>("configuration");
-  const [selectedPopulationId, setSelectedPopulationId] = useState(mockPopulations[0]?.id ?? "");
-  const [selectedTemplateId, setSelectedTemplateId] = useState(mockTemplates[0]?.id ?? "");
   const [selectedScenarioIds, setSelectedScenarioIds] = useState<string[]>(["baseline", "reform-a"]);
-  const [selectedScenarioId, setSelectedScenarioId] = useState("reform-a");
-  const [progress, setProgress] = useState(0);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const [isNarrow, setIsNarrow] = useState(false);
-  const [parameterValues, setParameterValues] = useState<Record<string, number>>(() =>
-    Object.fromEntries(mockParameters.map((parameter) => [parameter.id, parameter.value])),
-  );
+  const [previousViewMode, setPreviousViewMode] = useState<ViewMode>("results");
 
   const configSteps = useMemo(() => getConfigSteps(activeStep), [activeStep]);
   const selectedPopulation = useMemo(
-    () => mockPopulations.find((population) => population.id === selectedPopulationId),
-    [selectedPopulationId],
+    () => populations.find((p) => p.id === selectedPopulationId),
+    [populations, selectedPopulationId],
   );
   const selectedTemplate = useMemo(
-    () => mockTemplates.find((template) => template.id === selectedTemplateId),
-    [selectedTemplateId],
+    () => templates.find((t) => t.id === selectedTemplateId),
+    [templates, selectedTemplateId],
   );
 
+  // Filter parameters based on selected template's parameter groups
+  const filteredParameters = useMemo(() => {
+    if (!selectedTemplate) return parameters;
+    return parameters.filter((p) => selectedTemplate.parameterGroups.includes(p.group));
+  }, [selectedTemplate, parameters]);
+
+  // Layout effects
   useEffect(() => {
     const onResize = () => {
       const width = window.innerWidth;
@@ -129,70 +143,110 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  useEffect(() => {
-    if (viewMode !== "progress") {
-      return undefined;
-    }
-
-    const interval = window.setInterval(() => {
-      setProgress((current) => {
-        if (current >= 100) {
-          window.clearInterval(interval);
-          setViewMode("results");
-          return 100;
-        }
-        return Math.min(current + 12, 100);
-      });
-    }, 450);
-
-    return () => window.clearInterval(interval);
-  }, [viewMode]);
-
-  const currentProgressStep =
-    mockSimulationSteps[Math.min(Math.floor(progress / 14), mockSimulationSteps.length - 1)] ??
-    "Finalizing results...";
-
+  // Navigation
   const nextStep = () => {
     const currentIndex = STEP_ORDER.indexOf(activeStep);
-    const next = STEP_ORDER[Math.min(currentIndex + 1, STEP_ORDER.length - 1)] ?? activeStep;
+    if (currentIndex >= STEP_ORDER.length - 1) {
+      setViewMode("run");
+      return;
+    }
+    const next = STEP_ORDER[currentIndex + 1] ?? activeStep;
     setActiveStep(next);
   };
 
-  const selectTemplate = (templateId: string) => {
-    setSelectedTemplateId(templateId);
-    const defaults = TEMPLATE_FAST_PATHS[templateId] ?? {};
-    setParameterValues((current) => {
-      const next = { ...current };
-      for (const [key, value] of Object.entries(defaults)) {
-        if (typeof value === "number") {
-          next[key] = value;
-        }
+  // Run simulation using real API
+  const handleStartRun = async () => {
+    setViewMode("progress");
+    try {
+      await startRun();
+      setViewMode("results");
+    } catch (err) {
+      setViewMode("run");
+      if (err instanceof ApiError) {
+        toast.error(`${err.what} — ${err.why}`, { description: err.fix });
+      } else if (err instanceof Error) {
+        toast.error("Simulation failed", { description: err.message });
       }
-      return next;
-    });
+    }
   };
 
-  const startRun = () => {
-    setViewMode("progress");
-    setProgress(0);
+  // Export handlers
+  const handleExportCsv = async () => {
+    if (!runResult?.run_id) {
+      toast.error("No results to export", { description: "Run a simulation first" });
+      return;
+    }
+    try {
+      await exportCsv(runResult.run_id);
+      toast.success("CSV exported");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        toast.error(`${err.what} — ${err.why}`, { description: err.fix });
+      } else {
+        toast.error("Export failed");
+      }
+    }
   };
+
+  const handleExportParquet = async () => {
+    if (!runResult?.run_id) {
+      toast.error("No results to export", { description: "Run a simulation first" });
+      return;
+    }
+    try {
+      await exportParquet(runResult.run_id);
+      toast.success("Parquet exported");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        toast.error(`${err.what} — ${err.why}`, { description: err.fix });
+      } else {
+        toast.error("Export failed");
+      }
+    }
+  };
+
+  // Comparison
+  const openComparison = () => {
+    setPreviousViewMode(viewMode);
+    setViewMode("comparison");
+  };
+
+  const backFromComparison = () => {
+    setViewMode(previousViewMode === "comparison" ? "results" : previousViewMode);
+  };
+
+  const selectedScenario = useMemo(
+    () => scenarios.find((s) => s.id === selectedScenarioId),
+    [scenarios, selectedScenarioId],
+  );
+
+  const isLastStep = activeStep === STEP_ORDER[STEP_ORDER.length - 1];
 
   const mainPanelContent = (
     <>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border border-slate-200 bg-white p-3">
         <div>
-          <h1 className="text-lg font-semibold">ReformLab Static GUI Prototype</h1>
+          <h1 className="text-lg font-semibold">ReformLab</h1>
           <p className="text-sm text-slate-600">
-            Dense Terminal layout with reusable React components for Stories 6-4a and 6-4b.
+            Environmental policy analysis workspace
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant={viewMode === "configuration" ? "default" : "outline"} onClick={() => setViewMode("configuration")}>
-            Configuration
-          </Button>
-          <Button variant={viewMode === "run" ? "default" : "outline"} onClick={() => setViewMode("run")}>
-            Simulation
-          </Button>
+          {viewMode !== "configuration" && viewMode !== "comparison" ? (
+            <Button variant="outline" onClick={() => setViewMode("configuration")}>
+              Configuration
+            </Button>
+          ) : null}
+          {viewMode === "configuration" ? (
+            <Button onClick={() => setViewMode("run")}>
+              Simulation
+            </Button>
+          ) : null}
+          {viewMode === "comparison" ? (
+            <Button variant="outline" onClick={backFromComparison}>
+              Back to Results
+            </Button>
+          ) : null}
         </div>
       </div>
 
@@ -202,7 +256,7 @@ export default function App() {
 
           {activeStep === "population" ? (
             <PopulationSelectionScreen
-              populations={mockPopulations}
+              populations={populations}
               selectedPopulationId={selectedPopulationId}
               onSelectPopulation={setSelectedPopulationId}
             />
@@ -210,7 +264,7 @@ export default function App() {
 
           {activeStep === "template" ? (
             <TemplateSelectionScreen
-              templates={mockTemplates}
+              templates={templates}
               selectedTemplateId={selectedTemplateId}
               onSelectTemplate={selectTemplate}
             />
@@ -218,9 +272,9 @@ export default function App() {
 
           {activeStep === "parameters" ? (
             <ParameterEditingScreen
-              parameters={mockParameters}
+              parameters={filteredParameters}
               parameterValues={parameterValues}
-              onParameterChange={(id, value) => setParameterValues((current) => ({ ...current, [id]: value }))}
+              onParameterChange={setParameterValue}
             />
           ) : null}
 
@@ -228,73 +282,72 @@ export default function App() {
             <AssumptionsReviewScreen
               population={selectedPopulation}
               template={selectedTemplate}
-              parameters={mockParameters}
+              parameters={filteredParameters}
               parameterValues={parameterValues}
             />
           ) : null}
 
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setViewMode("run")}>
-              Jump to Simulation
+          <div className="flex justify-end">
+            <Button onClick={nextStep}>
+              {isLastStep ? "Go to Simulation" : "Next Step"}
             </Button>
-            <Button onClick={nextStep}>Next Step</Button>
           </div>
         </section>
       ) : null}
 
       {viewMode === "run" ? (
         <section className="space-y-3 border border-slate-200 bg-white p-3">
-          <h2 className="text-lg font-semibold">Run Trigger</h2>
+          <h2 className="text-lg font-semibold">Run Simulation</h2>
           <p className="text-sm text-slate-600">
-            Ready to compute baseline and reform results using mock data and simulated execution.
+            Ready to compute baseline and reform results for{" "}
+            <span className="font-medium">{selectedTemplate?.name ?? "selected policy"}</span>.
           </p>
           <div className="grid gap-2 xl:grid-cols-3">
             {mockSummaryStats.map((stat) => (
               <SummaryStatCard key={stat.id} stat={stat} />
             ))}
           </div>
-          <div className="flex gap-2">
-            <Button onClick={startRun}>Run Simulation</Button>
-            <Button variant="outline" onClick={() => setViewMode("configuration")}>
-              Back to Configuration
-            </Button>
-          </div>
+          <Button onClick={handleStartRun} disabled={runLoading}>
+            {runLoading ? "Running..." : "Run Simulation"}
+          </Button>
         </section>
       ) : null}
 
       {viewMode === "progress" ? (
         <RunProgressBar
-          progress={progress}
-          currentStep={currentProgressStep}
-          eta={`${Math.max(1, Math.round((100 - progress) / 12))}s`}
-          onCancel={() => {
-            setViewMode("run");
-            setProgress(0);
-          }}
+          progress={runLoading ? 50 : 100}
+          currentStep={runLoading ? "Computing simulation..." : "Complete"}
+          eta={runLoading ? "estimating..." : "0s"}
+          onCancel={() => setViewMode("run")}
         />
       ) : null}
 
       {viewMode === "results" ? (
         <section className="space-y-3">
-          <DistributionalChart data={mockDecileData} />
+          <DistributionalChart
+            data={decileData}
+            reformLabel={selectedScenario?.templateName ?? selectedScenario?.name ?? "Reform"}
+          />
           <div className="grid gap-2 xl:grid-cols-3">
             {mockSummaryStats.map((stat) => (
               <SummaryStatCard key={stat.id} stat={stat} />
             ))}
           </div>
           <div className="flex gap-2">
-            <Button onClick={() => setViewMode("comparison")}>Open Comparison</Button>
-            <Button variant="outline" onClick={() => setViewMode("run")}>Run Again</Button>
+            <Button onClick={openComparison}>Open Comparison</Button>
+            <Button variant="outline" onClick={handleStartRun}>Run Again</Button>
+            <Button variant="outline" onClick={handleExportCsv}>Export CSV</Button>
+            <Button variant="outline" onClick={handleExportParquet}>Export Parquet</Button>
           </div>
         </section>
       ) : null}
 
       {viewMode === "comparison" ? (
         <ComparisonView
-          scenarios={mockScenarios}
+          scenarios={scenarios}
           selectedScenarioIds={selectedScenarioIds}
           onChangeSelectedScenarioIds={setSelectedScenarioIds}
-          decileData={mockDecileData}
+          decileData={decileData}
         />
       ) : null}
     </>
@@ -314,20 +367,42 @@ export default function App() {
         leftPanel={
           <LeftPanel collapsed={isNarrow ? true : leftCollapsed} onToggle={() => setLeftCollapsed((current) => !current)}>
             <div className="space-y-2">
-              {mockScenarios.map((scenario) => (
+              <Button
+                variant={viewMode === "configuration" ? "default" : "outline"}
+                className="w-full"
+                onClick={() => setViewMode("configuration")}
+              >
+                Configure Policy
+              </Button>
+
+              {scenarios.map((scenario) => (
                 <ScenarioCard
                   key={scenario.id}
                   scenario={scenario}
                   selected={scenario.id === selectedScenarioId}
+                  onSelect={(id) => {
+                    setSelectedScenarioId(id);
+                    const s = scenarios.find((sc) => sc.id === id);
+                    if (s?.status === "completed") {
+                      setViewMode("results");
+                    }
+                  }}
                   onRun={(id) => {
                     setSelectedScenarioId(id);
+                    const s = scenarios.find((sc) => sc.id === id);
+                    if (s?.templateId) {
+                      selectTemplate(s.templateId);
+                    }
                     setViewMode("run");
                   }}
                   onCompare={(id) => {
                     setSelectedScenarioId(id);
                     setSelectedScenarioIds(["baseline", id]);
+                    setPreviousViewMode(viewMode);
                     setViewMode("comparison");
                   }}
+                  onClone={cloneScenario}
+                  onDelete={deleteScenario}
                 />
               ))}
             </div>
@@ -337,6 +412,27 @@ export default function App() {
         rightPanel={
           <RightPanel collapsed={isNarrow ? true : rightCollapsed} onToggle={() => setRightCollapsed((current) => !current)}>
             <div className="space-y-3">
+              {selectedScenario ? (
+                <section className="border border-slate-200 bg-white p-3">
+                  <p className="text-xs font-semibold uppercase text-slate-500">Selected Scenario</p>
+                  <p className="text-sm font-medium text-slate-800">{selectedScenario.name}</p>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    <Badge variant={selectedScenario.status === "completed" ? "success" : "default"}>
+                      {selectedScenario.status}
+                    </Badge>
+                  </div>
+                  {selectedScenario.lastRun ? (
+                    <p className="mt-1 text-xs text-slate-500">Last run: {selectedScenario.lastRun}</p>
+                  ) : null}
+                  {selectedScenario.templateName ? (
+                    <p className="mt-1 text-xs text-slate-500">Policy: {selectedScenario.templateName}</p>
+                  ) : null}
+                  <p className="mt-1 text-xs text-slate-500">
+                    {selectedScenario.parameterChanges} parameter{selectedScenario.parameterChanges === 1 ? "" : "s"} changed
+                  </p>
+                </section>
+              ) : null}
+
               <section className="border border-slate-200 bg-white p-3">
                 <p className="text-xs font-semibold uppercase text-slate-500">Population</p>
                 <p className="text-sm text-slate-800">{selectedPopulation?.name}</p>
@@ -351,7 +447,9 @@ export default function App() {
                 <p className="text-xs font-semibold uppercase text-slate-500">Workspace State</p>
                 <div className="mt-2 flex flex-wrap gap-1">
                   <Badge variant="info">{viewMode}</Badge>
-                  <Badge variant="violet">{activeStep}</Badge>
+                  {viewMode === "configuration" ? (
+                    <Badge variant="violet">{activeStep}</Badge>
+                  ) : null}
                 </div>
               </section>
             </div>
@@ -359,5 +457,25 @@ export default function App() {
         }
       />
     </div>
+  );
+}
+
+export default function App() {
+  const { isAuthenticated, authLoading, authenticate } = useAppState();
+
+  if (!isAuthenticated) {
+    return (
+      <>
+        <PasswordPrompt onSubmit={authenticate} loading={authLoading} />
+        <Toaster />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Workspace />
+      <Toaster />
+    </>
   );
 }

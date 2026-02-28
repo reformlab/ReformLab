@@ -1,4 +1,4 @@
-import { Clock3, Play, Trash2 } from "lucide-react";
+import { Clock3, Copy, Play, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,8 +8,11 @@ import type { Scenario } from "@/data/mock-data";
 interface ScenarioCardProps {
   scenario: Scenario;
   selected: boolean;
+  onSelect: (id: string) => void;
   onRun: (id: string) => void;
   onCompare: (id: string) => void;
+  onClone: (id: string) => void;
+  onDelete: (id: string) => void;
 }
 
 function mapStatusToVariant(status: Scenario["status"]) {
@@ -25,9 +28,12 @@ function mapStatusToVariant(status: Scenario["status"]) {
   }
 }
 
-export function ScenarioCard({ scenario, selected, onRun, onCompare }: ScenarioCardProps) {
+export function ScenarioCard({ scenario, selected, onSelect, onRun, onCompare, onClone, onDelete }: ScenarioCardProps) {
   return (
-    <Card className={selected ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white"}>
+    <Card
+      className={`cursor-pointer ${selected ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white"}`}
+      onClick={() => onSelect(scenario.id)}
+    >
       <CardHeader className="p-2">
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="text-xs">{scenario.name}</CardTitle>
@@ -42,7 +48,7 @@ export function ScenarioCard({ scenario, selected, onRun, onCompare }: ScenarioC
           <Clock3 className="h-3 w-3" />
           {scenario.lastRun ?? "Not run yet"}
         </p>
-        <div className="flex gap-1">
+        <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
           <Button size="sm" className="w-full" onClick={() => onRun(scenario.id)}>
             <Play className="h-3 w-3" />
             Run
@@ -55,9 +61,24 @@ export function ScenarioCard({ scenario, selected, onRun, onCompare }: ScenarioC
           >
             Compare
           </Button>
-          <Button size="sm" variant="ghost" aria-label="Delete scenario" disabled={scenario.isBaseline}>
-            <Trash2 className="h-3 w-3" />
+          <Button
+            size="sm"
+            variant="ghost"
+            aria-label="Clone scenario"
+            onClick={() => onClone(scenario.id)}
+          >
+            <Copy className="h-3 w-3" />
           </Button>
+          {!scenario.isBaseline ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              aria-label="Delete scenario"
+              onClick={() => onDelete(scenario.id)}
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          ) : null}
         </div>
       </CardContent>
     </Card>
