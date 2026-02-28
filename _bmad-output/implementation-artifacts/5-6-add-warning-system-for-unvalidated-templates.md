@@ -1,6 +1,6 @@
 # Story 5.6: Add Warning System for Unvalidated Templates
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -67,45 +67,45 @@ From backlog (BKL-506), aligned with FR27 (system emits warnings for unvalidated
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Extend registry with validation status (AC: #5)
-  - [ ] 1.1 Add `is_validated: bool` field to registry metadata structure
-  - [ ] 1.2 Implement `ScenarioRegistry.set_validated(name, version_id, validated: bool) -> None`
-  - [ ] 1.3 Implement `ScenarioRegistry.is_validated(name, version_id) -> bool` with default `False`
-  - [ ] 1.4 Update `_save_metadata()` and `_load_metadata()` to handle validation status
-  - [ ] 1.5 Add tests for validation status CRUD in `tests/templates/test_registry.py`
+- [x] Task 1: Extend registry with validation status (AC: #5)
+  - [x] 1.1 Add `is_validated: bool` field to registry metadata structure
+  - [x] 1.2 Implement `ScenarioRegistry.set_validated(name, version_id, validated: bool) -> None`
+  - [x] 1.3 Implement `ScenarioRegistry.is_validated(name, version_id) -> bool` with default `False`
+  - [x] 1.4 Update `_save_metadata()` and `_load_metadata()` to handle validation status
+  - [x] 1.5 Add tests for validation status CRUD in `tests/templates/test_registry.py`
 
-- [ ] Task 2: Add warning capture for mappings (AC: #2, #6)
-  - [ ] 2.1 Add `is_validated: bool = False` field to frozen `MappingConfig` in `computation/mapping.py` (field must have default; callers use `dataclasses.replace()` to create validated copies)
-  - [ ] 2.2 Create `capture_unvalidated_mapping_warning()` in `governance/capture.py`
-  - [ ] 2.3 Update `capture_warnings()` to accept optional mapping config and emit mapping warning
-  - [ ] 2.4 Export `capture_unvalidated_template_warning` AND new function from `governance/__init__.py` (add to imports and `__all__`)
-  - [ ] 2.5 Add tests in `tests/governance/test_capture.py`
+- [x] Task 2: Add warning capture for mappings (AC: #2, #6)
+  - [x] 2.1 Add `is_validated: bool = False` field to frozen `MappingConfig` in `computation/mapping.py` (field must have default; callers use `dataclasses.replace()` to create validated copies)
+  - [x] 2.2 Create `capture_unvalidated_mapping_warning()` in `governance/capture.py`
+  - [x] 2.3 Update `capture_warnings()` to accept optional mapping config and emit mapping warning
+  - [x] 2.4 Export `capture_unvalidated_template_warning` AND new function from `governance/__init__.py` (add to imports and `__all__`)
+  - [x] 2.5 Add tests in `tests/governance/test_capture.py`
 
-- [ ] Task 3: Add warning capture for unsupported configs (AC: #3, #6)
-  - [ ] 3.1 Create `capture_unsupported_config_warning()` in `governance/capture.py`
-  - [ ] 3.2 Define configuration limit constants: `TESTED_MAX_HORIZON = 20`, `TESTED_MAX_POPULATION = 100_000`
-  - [ ] 3.3 Implement warning generation for horizon and population size
-  - [ ] 3.4 Export new function from `governance/__init__.py`
-  - [ ] 3.5 Add tests in `tests/governance/test_capture.py`
+- [x] Task 3: Add warning capture for unsupported configs (AC: #3, #6)
+  - [x] 3.1 Create `capture_unsupported_config_warning()` in `governance/capture.py`
+  - [x] 3.2 Define configuration limit constants: `TESTED_MAX_HORIZON = 20`, `TESTED_MAX_POPULATION = 100_000`
+  - [x] 3.3 Implement warning generation for horizon and population size
+  - [x] 3.4 Export new function from `governance/__init__.py`
+  - [x] 3.5 Add tests in `tests/governance/test_capture.py`
 
-- [ ] Task 4: Integrate warnings into orchestrator (AC: #7)
-  - [ ] 4.1 Update `OrchestratorRunner._capture_manifest_fields()` to collect all warning types
-  - [ ] 4.2 Add validation status check: query registry or scenario metadata for `is_validated`
-  - [ ] 4.3 Add mapping validation check: inspect `MappingConfig.is_validated` from adapter
-  - [ ] 4.4 Add config range check: horizon years and population size validation
-  - [ ] 4.5 Pass collected warnings to `capture_warnings()` with deduplication
-  - [ ] 4.6 Add integration test: run with unvalidated template produces manifest with warnings
+- [x] Task 4: Integrate warnings into orchestrator (AC: #7)
+  - [x] 4.1 Update `OrchestratorRunner._capture_manifest_fields()` to collect all warning types
+  - [x] 4.2 Add validation status check: query registry or scenario metadata for `is_validated`
+  - [x] 4.3 Add mapping validation check: inspect `MappingConfig.is_validated` from adapter
+  - [x] 4.4 Add config range check: horizon years and population size validation
+  - [x] 4.5 Pass collected warnings to `capture_warnings()` with deduplication
+  - [x] 4.6 Add integration test: run with unvalidated template produces manifest with warnings
 
-- [ ] Task 5: Update manifest capture flow (AC: #4)
-  - [ ] 5.1 Add deduplication in `OrchestratorRunner._capture_manifest_fields()` via `list(dict.fromkeys(manifest_warnings))` — `capture_warnings()` does NOT deduplicate, so dedup must happen before manifest construction
-  - [ ] 5.2 Verify warning format includes actionable guidance
-  - [ ] 5.3 Add test: multiple warnings from different sources all appear in manifest
+- [x] Task 5: Update manifest capture flow (AC: #4)
+  - [x] 5.1 Add deduplication in `OrchestratorRunner._capture_manifest_fields()` via `list(dict.fromkeys(manifest_warnings))` — `capture_warnings()` does NOT deduplicate, so dedup must happen before manifest construction
+  - [x] 5.2 Verify warning format includes actionable guidance
+  - [x] 5.3 Add test: multiple warnings from different sources all appear in manifest
 
-- [ ] Task 6: Run quality checks (AC: all)
-  - [ ] 6.1 Run `ruff check src/reformlab/governance src/reformlab/templates src/reformlab/orchestrator`
-  - [ ] 6.2 Run `mypy src/reformlab/governance src/reformlab/templates src/reformlab/orchestrator`
-  - [ ] 6.3 Run targeted tests (`pytest tests/governance tests/templates/test_registry.py tests/orchestrator -v`)
-  - [ ] 6.4 Verify all existing tests still pass
+- [x] Task 6: Run quality checks (AC: all)
+  - [x] 6.1 Run `ruff check src/reformlab/governance src/reformlab/templates src/reformlab/orchestrator`
+  - [x] 6.2 Run `mypy src/reformlab/governance src/reformlab/templates src/reformlab/orchestrator`
+  - [x] 6.3 Run targeted tests (`pytest tests/governance tests/templates/test_registry.py tests/orchestrator -v`)
+  - [x] 6.4 Verify all existing tests still pass
 
 ## Dev Notes
 
@@ -394,10 +394,36 @@ From Story 2-4 (registry):
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6 (claude-opus-4-6)
 
 ### Debug Log References
 
+- mypy strict mode caught `Returning Any from function declared to return "bool"` in `is_validated()` — fixed with explicit `bool()` cast on `version.get("is_validated", False)`.
+
 ### Completion Notes List
 
+- **Task 1:** Added `set_validated()` and `is_validated()` methods to `ScenarioRegistry`. Validation status is stored per-version in `metadata.yaml` version entries. Missing `is_validated` field defaults to `False` for backward compatibility. 12 tests added.
+- **Task 2:** Added `is_validated: bool = False` field to frozen `MappingConfig`. Created `capture_unvalidated_mapping_warning()` in `governance/capture.py`. Extended `capture_warnings()` with `mapping_config` parameter. Exported both `capture_unvalidated_template_warning` and `capture_unvalidated_mapping_warning` from `governance/__init__.py`. 7 tests added (5 in `TestCaptureUnvalidatedMappingWarning`, 2 mapping tests in `TestCaptureWarnings`).
+- **Task 3:** Created `capture_unsupported_config_warning()` with `TESTED_MAX_HORIZON_YEARS=20` and `TESTED_MAX_POPULATION_SIZE=100_000` constants. Exported from `governance/__init__.py`. 9 tests added.
+- **Task 4:** Updated `OrchestratorRunner._capture_manifest_fields()` to collect warnings from all three sources: scenario validation, mapping validation, and config range checks. Unsupported config warnings pulled from `run_config.projection_years` and `run_config.population_size`. Mapping config validation status checked via `is_validated` attribute. 7 integration tests added.
+- **Task 5:** Added deduplication via `list(dict.fromkeys(...))` wrapping the `capture_warnings()` call in `_capture_manifest_fields()`. 1 deduplication test added.
+- **Task 6:** All modified source files pass ruff and mypy strict. 165 targeted tests pass (governance + templates/test_registry + orchestrator). 1372/1374 full suite tests pass (2 pre-existing notebook failures unrelated to this story).
+
+### Change Log
+
+- 2026-02-28: Implemented Story 5-6 — Warning system for unvalidated templates, mappings, and unsupported configs (FR27)
+- 2026-02-28: Code review passed — Fixed: notebooks missing from File List (M1), test count in completion notes (M2), pre-existing ruff I001 in benchmarking.py (M3), added clarifying comment to capture_warnings logic (L1). All 7 ACs verified implemented. 165/165 targeted tests pass. ruff + mypy clean.
+
 ### File List
+
+**Modified:**
+- `src/reformlab/templates/registry.py` — Added `set_validated()` and `is_validated()` methods
+- `src/reformlab/computation/mapping.py` — Added `is_validated: bool = False` field to `MappingConfig`
+- `src/reformlab/governance/capture.py` — Added `capture_unvalidated_mapping_warning()`, `capture_unsupported_config_warning()`, constants, extended `capture_warnings()` with `mapping_config` parameter
+- `src/reformlab/governance/__init__.py` — Exported new functions and constants
+- `src/reformlab/orchestrator/runner.py` — Updated `_capture_manifest_fields()` for warning collection, deduplication, and unsupported config checks
+- `tests/templates/test_registry.py` — Added `TestRegistryValidationStatus` (12 tests)
+- `tests/governance/test_capture.py` — Added `TestCaptureUnvalidatedMappingWarning` (5 tests), `TestCaptureUnsupportedConfigWarning` (9 tests), mapping warning tests in `TestCaptureWarnings` (2 tests)
+- `tests/orchestrator/test_integration.py` — Added `TestOrchestratorWarningIntegration` (7 tests)
+- `notebooks/quickstart.ipynb` — Updated outputs to reflect warning system in manifest metadata
+- `notebooks/advanced.ipynb` — Updated outputs to reflect warning system in manifest metadata
