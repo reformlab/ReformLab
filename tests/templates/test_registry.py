@@ -1412,3 +1412,133 @@ class TestMigrate:
             assert migrated.parameters == original.parameters
             if hasattr(original, "year_schedule"):
                 assert migrated.year_schedule == original.year_schedule
+
+
+class TestRegistryValidationStatus:
+    """Tests for registry validation status tracking (Story 5-6, AC-5)."""
+
+    def test_default_is_not_validated(
+        self,
+        registry: ScenarioRegistry,
+        sample_baseline: BaselineScenario,
+    ) -> None:
+        """Scenarios default to not validated."""
+        registry.save(sample_baseline, "test-scenario")
+        assert registry.is_validated("test-scenario") is False
+
+    def test_set_validated_true(
+        self,
+        registry: ScenarioRegistry,
+        sample_baseline: BaselineScenario,
+    ) -> None:
+        """Mark a scenario as validated."""
+        version_id = registry.save(sample_baseline, "test-scenario")
+        registry.set_validated("test-scenario", version_id, validated=True)
+        assert registry.is_validated("test-scenario", version_id) is True
+
+    def test_set_validated_false(
+        self,
+        registry: ScenarioRegistry,
+        sample_baseline: BaselineScenario,
+    ) -> None:
+        """Explicitly mark a scenario as not validated."""
+        version_id = registry.save(sample_baseline, "test-scenario")
+        registry.set_validated("test-scenario", version_id, validated=True)
+        registry.set_validated("test-scenario", version_id, validated=False)
+        assert registry.is_validated("test-scenario", version_id) is False
+
+    def test_is_validated_resolves_latest_version(
+        self,
+        registry: ScenarioRegistry,
+        sample_baseline: BaselineScenario,
+    ) -> None:
+        """is_validated with version_id=None resolves to latest version."""
+        version_id = registry.save(sample_baseline, "test-scenario")
+        registry.set_validated("test-scenario", validated=True)
+        assert registry.is_validated("test-scenario") is True
+
+    def test_set_validated_resolves_latest_version(
+        self,
+        registry: ScenarioRegistry,
+        sample_baseline: BaselineScenario,
+    ) -> None:
+        """set_validated with version_id=None resolves to latest version."""
+        version_id = registry.save(sample_baseline, "test-scenario")
+        registry.set_validated("test-scenario", validated=True)
+        assert registry.is_validated("test-scenario", version_id) is True
+
+    def test_is_validated_nonexistent_scenario(
+        self,
+        registry: ScenarioRegistry,
+    ) -> None:
+        """is_validated returns False for nonexistent scenario."""
+        assert registry.is_validated("nonexistent") is False
+
+    def test_is_validated_nonexistent_version(
+        self,
+        registry: ScenarioRegistry,
+        sample_baseline: BaselineScenario,
+    ) -> None:
+        """is_validated returns False for nonexistent version."""
+        registry.save(sample_baseline, "test-scenario")
+        assert registry.is_validated("test-scenario", "nonexistent-version") is False
+
+    def test_set_validated_nonexistent_scenario_raises(
+        self,
+        registry: ScenarioRegistry,
+    ) -> None:
+        """set_validated raises ScenarioNotFoundError for nonexistent scenario."""
+        with pytest.raises(ScenarioNotFoundError):
+            registry.set_validated("nonexistent", validated=True)
+
+    def test_set_validated_nonexistent_version_raises(
+        self,
+        registry: ScenarioRegistry,
+        sample_baseline: BaselineScenario,
+    ) -> None:
+        """set_validated raises VersionNotFoundError for nonexistent version."""
+        registry.save(sample_baseline, "test-scenario")
+        with pytest.raises(VersionNotFoundError):
+            registry.set_validated(
+                "test-scenario", "nonexistent-version", validated=True
+            )
+
+    def test_validation_persists_after_reload(
+        self,
+        tmp_path: Path,
+        sample_baseline: BaselineScenario,
+    ) -> None:
+        """Validation status persists across registry instances."""
+        reg_path = tmp_path / "persist-registry"
+        reg1 = ScenarioRegistry(reg_path)
+        version_id = reg1.save(sample_baseline, "test-scenario")
+        reg1.set_validated("test-scenario", version_id, validated=True)
+
+        # Create new registry instance pointing to same path
+        reg2 = ScenarioRegistry(reg_path)
+        assert reg2.is_validated("test-scenario", version_id) is True
+
+    def test_validation_per_version(
+        self,
+        registry: ScenarioRegistry,
+        sample_baseline: BaselineScenario,
+    ) -> None:
+        """Validation status is tracked per version."""
+        v1 = registry.save(sample_baseline, "test-scenario")
+        modified = replace(sample_baseline, description="v2")
+        v2 = registry.save(modified, "test-scenario", "second version")
+
+        registry.set_validated("test-scenario", v1, validated=True)
+        assert registry.is_validated("test-scenario", v1) is True
+        assert registry.is_validated("test-scenario", v2) is False
+
+    def test_backward_compat_missing_is_validated_field(
+        self,
+        registry: ScenarioRegistry,
+        sample_baseline: BaselineScenario,
+    ) -> None:
+        """Existing metadata without is_validated field defaults to False."""
+        # Save scenario (metadata will not have is_validated)
+        version_id = registry.save(sample_baseline, "test-scenario")
+        # is_validated should return False for existing scenarios
+        assert registry.is_validated("test-scenario", version_id) is False

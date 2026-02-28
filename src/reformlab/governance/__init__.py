@@ -38,9 +38,14 @@ from reformlab.governance.benchmarking import (
     run_benchmark_suite,
 )
 from reformlab.governance.capture import (
+    TESTED_MAX_HORIZON_YEARS,
+    TESTED_MAX_POPULATION_SIZE,
     capture_assumptions,
     capture_mappings,
     capture_parameters,
+    capture_unsupported_config_warning,
+    capture_unvalidated_mapping_warning,
+    capture_unvalidated_template_warning,
     capture_warnings,
 )
 from reformlab.governance.errors import (
@@ -81,9 +86,14 @@ __all__ = [
     "LineageGraph",
     "get_lineage",
     "validate_lineage",
+    "TESTED_MAX_HORIZON_YEARS",
+    "TESTED_MAX_POPULATION_SIZE",
     "capture_assumptions",
     "capture_mappings",
     "capture_parameters",
+    "capture_unsupported_config_warning",
+    "capture_unvalidated_mapping_warning",
+    "capture_unvalidated_template_warning",
     "capture_warnings",
     "hash_file",
     "hash_input_artifacts",

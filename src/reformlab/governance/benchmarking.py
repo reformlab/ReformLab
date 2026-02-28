@@ -173,10 +173,8 @@ def run_benchmark_suite(
 
     if distributional_benchmarks:
         from reformlab.indicators import compute_distributional_indicators
-        from reformlab.indicators.types import (
-            DecileIndicators as DecileIndicatorsType,
-            DistributionalConfig,
-        )
+        from reformlab.indicators.types import DecileIndicators as DecileIndicatorsType
+        from reformlab.indicators.types import DistributionalConfig
 
         # Compute distributional indicators
         config = DistributionalConfig(income_field=income_field, by_year=False)

@@ -9,9 +9,13 @@ import pytest
 
 from reformlab.computation.mapping import FieldMapping, MappingConfig
 from reformlab.governance.capture import (
+    TESTED_MAX_HORIZON_YEARS,
+    TESTED_MAX_POPULATION_SIZE,
     capture_assumptions,
     capture_mappings,
     capture_parameters,
+    capture_unvalidated_mapping_warning,
+    capture_unsupported_config_warning,
     capture_unvalidated_template_warning,
     capture_warnings,
 )
@@ -325,3 +329,173 @@ class TestCaptureWarnings:
         assert len(warnings) == 1
         assert "policy-x" in warnings[0]
         assert "version 'unknown'" in warnings[0]
+
+    def test_capture_mapping_warning_via_capture_warnings(self) -> None:
+        """capture_warnings emits mapping warning when mapping_config is unvalidated."""
+        config = MappingConfig(
+            mappings=(),
+            source_path=Path("/tmp/test-mapping.yaml"),
+            is_validated=False,
+        )
+        warnings = capture_warnings(
+            scenario_name="test",
+            scenario_version="v1",
+            is_validated=True,
+            mapping_config=config,
+        )
+
+        assert len(warnings) == 1
+        assert "test-mapping.yaml" in warnings[0]
+        assert "not marked as validated" in warnings[0]
+
+    def test_capture_no_mapping_warning_when_validated(self) -> None:
+        """capture_warnings skips mapping warning when mapping_config is validated."""
+        config = MappingConfig(
+            mappings=(),
+            source_path=Path("/tmp/test-mapping.yaml"),
+            is_validated=True,
+        )
+        warnings = capture_warnings(
+            scenario_name="test",
+            scenario_version="v1",
+            is_validated=True,
+            mapping_config=config,
+        )
+
+        assert warnings == []
+
+
+class TestCaptureUnvalidatedMappingWarning:
+    """Tests for capture_unvalidated_mapping_warning() (Story 5-6, AC-2)."""
+
+    def test_warning_for_unvalidated_mapping(self) -> None:
+        """Generate warning for unvalidated mapping."""
+        warning = capture_unvalidated_mapping_warning(
+            source_file="/tmp/mappings.yaml",
+            is_validated=False,
+        )
+
+        assert warning is not None
+        assert "mappings.yaml" in warning
+        assert "not marked as validated" in warning
+        assert "Action:" in warning
+
+    def test_no_warning_for_validated_mapping(self) -> None:
+        """No warning for validated mapping."""
+        warning = capture_unvalidated_mapping_warning(
+            source_file="/tmp/mappings.yaml",
+            is_validated=True,
+        )
+
+        assert warning is None
+
+    def test_warning_with_none_validation(self) -> None:
+        """Warning emitted when is_validated is None (unknown)."""
+        warning = capture_unvalidated_mapping_warning(
+            source_file="/tmp/mappings.yaml",
+            is_validated=None,
+        )
+
+        assert warning is not None
+        assert "not marked as validated" in warning
+
+    def test_warning_with_empty_source_file(self) -> None:
+        """Empty source_file defaults to 'unknown'."""
+        warning = capture_unvalidated_mapping_warning(
+            source_file="",
+            is_validated=False,
+        )
+
+        assert warning is not None
+        assert "'unknown'" in warning
+
+    def test_warning_format_matches_ac2(self) -> None:
+        """Warning format matches AC-2 specification."""
+        warning = capture_unvalidated_mapping_warning(
+            source_file="my-mapping.yaml",
+            is_validated=False,
+        )
+
+        assert warning == (
+            "WARNING: Mapping configuration 'my-mapping.yaml' is not marked as "
+            "validated. Action: Review mapping correctness before relying on outputs."
+        )
+
+
+class TestCaptureUnsupportedConfigWarning:
+    """Tests for capture_unsupported_config_warning() (Story 5-6, AC-3)."""
+
+    def test_no_warnings_within_tested_range(self) -> None:
+        """No warnings when parameters are within tested ranges."""
+        warnings = capture_unsupported_config_warning(
+            horizon_years=10,
+            population_size=50_000,
+        )
+        assert warnings == []
+
+    def test_warning_for_large_horizon(self) -> None:
+        """Warning for projection horizon exceeding tested range."""
+        warnings = capture_unsupported_config_warning(horizon_years=25)
+
+        assert len(warnings) == 1
+        assert "25 years" in warnings[0]
+        assert "exceeds tested range" in warnings[0]
+        assert "Action:" in warnings[0]
+
+    def test_warning_for_large_population(self) -> None:
+        """Warning for population size exceeding test coverage."""
+        warnings = capture_unsupported_config_warning(population_size=200_000)
+
+        assert len(warnings) == 1
+        assert "200,000" in warnings[0]
+        assert "exceeds standard test coverage" in warnings[0]
+        assert "Action:" in warnings[0]
+
+    def test_both_warnings(self) -> None:
+        """Both warnings emitted when both exceed ranges."""
+        warnings = capture_unsupported_config_warning(
+            horizon_years=30,
+            population_size=500_000,
+        )
+        assert len(warnings) == 2
+
+    def test_no_warning_at_boundary(self) -> None:
+        """No warning when exactly at tested limits."""
+        warnings = capture_unsupported_config_warning(
+            horizon_years=TESTED_MAX_HORIZON_YEARS,
+            population_size=TESTED_MAX_POPULATION_SIZE,
+        )
+        assert warnings == []
+
+    def test_warning_one_above_boundary(self) -> None:
+        """Warning when one above tested limits."""
+        warnings = capture_unsupported_config_warning(
+            horizon_years=TESTED_MAX_HORIZON_YEARS + 1,
+        )
+        assert len(warnings) == 1
+
+    def test_no_warnings_with_none_values(self) -> None:
+        """No warnings when parameters are None."""
+        warnings = capture_unsupported_config_warning(
+            horizon_years=None,
+            population_size=None,
+        )
+        assert warnings == []
+
+    def test_horizon_warning_format_matches_ac3(self) -> None:
+        """Horizon warning format matches AC-3 specification."""
+        warnings = capture_unsupported_config_warning(horizon_years=25)
+        assert warnings[0] == (
+            "WARNING: Projection horizon of 25 years exceeds tested "
+            f"range (10-{TESTED_MAX_HORIZON_YEARS} years). Action: Results for years "
+            "beyond tested range may have reduced credibility."
+        )
+
+    def test_population_warning_format_matches_ac3(self) -> None:
+        """Population warning format matches AC-3 specification."""
+        warnings = capture_unsupported_config_warning(population_size=200_000)
+        assert warnings[0] == (
+            "WARNING: Population size (200,000 households) exceeds "
+            f"standard test coverage ({TESTED_MAX_POPULATION_SIZE:,}). Action: "
+            "Review memory usage and consider chunked processing."
+        )

@@ -485,3 +485,175 @@ class TestEndToEndWorkflow:
         result = runner.run(request)
 
         assert result.success is True
+
+
+# ============================================================================
+# Test: Warning integration (Story 5-6, AC-7)
+# ============================================================================
+
+
+class TestOrchestratorWarningIntegration:
+    """Integration tests for warning collection in OrchestratorRunner (Story 5-6)."""
+
+    def test_unvalidated_scenario_produces_warning_in_manifest(self) -> None:
+        """Run with unvalidated scenario produces warning in manifest metadata."""
+        runner = OrchestratorRunner(
+            scenario_name="test-unvalidated",
+            scenario_version="v1",
+            scenario_validated=False,
+        )
+        request = {
+            "run_config": {
+                "start_year": 2025,
+                "projection_years": 1,
+            },
+        }
+        result = runner.run(request)
+
+        assert result.success is True
+        warnings = result.metadata["warnings"]
+        assert len(warnings) >= 1
+        assert any("test-unvalidated" in w for w in warnings)
+        assert any("not marked as validated" in w for w in warnings)
+
+    def test_unvalidated_mapping_produces_warning_in_manifest(self) -> None:
+        """Run with unvalidated mapping config produces warning in manifest."""
+        mapping_config = MappingConfig(
+            mappings=(),
+            source_path=Path("/tmp/test-mapping.yaml"),
+            is_validated=False,
+        )
+        runner = OrchestratorRunner(
+            mapping_config=mapping_config,
+            scenario_name="test",
+            scenario_version="v1",
+            scenario_validated=True,
+        )
+        request = {
+            "run_config": {
+                "start_year": 2025,
+                "projection_years": 1,
+            },
+        }
+        result = runner.run(request)
+
+        assert result.success is True
+        warnings = result.metadata["warnings"]
+        assert any("test-mapping.yaml" in w for w in warnings)
+
+    def test_unsupported_horizon_produces_warning_in_manifest(self) -> None:
+        """Run with horizon > 20 years produces warning in manifest."""
+        runner = OrchestratorRunner(
+            scenario_name="test",
+            scenario_version="v1",
+            scenario_validated=True,
+        )
+        request = {
+            "run_config": {
+                "start_year": 2025,
+                "projection_years": 25,
+            },
+        }
+        result = runner.run(request)
+
+        assert result.success is True
+        warnings = result.metadata["warnings"]
+        assert any("25 years" in w and "exceeds tested range" in w for w in warnings)
+
+    def test_unsupported_population_produces_warning_in_manifest(self) -> None:
+        """Run with large population produces warning in manifest."""
+        runner = OrchestratorRunner(
+            scenario_name="test",
+            scenario_version="v1",
+            scenario_validated=True,
+        )
+        request = {
+            "run_config": {
+                "start_year": 2025,
+                "projection_years": 1,
+                "population_size": 200_000,
+            },
+        }
+        result = runner.run(request)
+
+        assert result.success is True
+        warnings = result.metadata["warnings"]
+        assert any(
+            "200,000" in w and "exceeds standard test coverage" in w for w in warnings
+        )
+
+    def test_multiple_warning_sources_all_appear(self) -> None:
+        """Warnings from template, mapping, and config all appear in manifest."""
+        mapping_config = MappingConfig(
+            mappings=(),
+            source_path=Path("/tmp/mapping.yaml"),
+            is_validated=False,
+        )
+        runner = OrchestratorRunner(
+            mapping_config=mapping_config,
+            scenario_name="unvalidated-scenario",
+            scenario_version="v1",
+            scenario_validated=False,
+            additional_warnings=["Custom warning from user"],
+        )
+        request = {
+            "run_config": {
+                "start_year": 2025,
+                "projection_years": 25,
+                "population_size": 200_000,
+            },
+        }
+        result = runner.run(request)
+
+        assert result.success is True
+        warnings = result.metadata["warnings"]
+        # Template warning
+        assert any("unvalidated-scenario" in w for w in warnings)
+        # Mapping warning
+        assert any("mapping.yaml" in w for w in warnings)
+        # Horizon warning
+        assert any("25 years" in w for w in warnings)
+        # Population warning
+        assert any("200,000" in w for w in warnings)
+        # Custom warning
+        assert any("Custom warning from user" in w for w in warnings)
+
+    def test_validated_scenario_no_template_warning(self) -> None:
+        """Run with validated scenario produces no template warning."""
+        runner = OrchestratorRunner(
+            scenario_name="validated-scenario",
+            scenario_version="v1",
+            scenario_validated=True,
+        )
+        request = {
+            "run_config": {
+                "start_year": 2025,
+                "projection_years": 1,
+            },
+        }
+        result = runner.run(request)
+
+        assert result.success is True
+        warnings = result.metadata["warnings"]
+        assert not any("not marked as validated" in w for w in warnings)
+
+    def test_duplicate_warnings_are_deduplicated(self) -> None:
+        """Duplicate warning strings appear only once in manifest (AC-4)."""
+        duplicate_warning = "WARNING: Duplicate test warning"
+        runner = OrchestratorRunner(
+            scenario_name="test",
+            scenario_version="v1",
+            scenario_validated=True,
+            additional_warnings=[duplicate_warning, duplicate_warning, duplicate_warning],
+        )
+        request = {
+            "run_config": {
+                "start_year": 2025,
+                "projection_years": 1,
+            },
+        }
+        result = runner.run(request)
+
+        assert result.success is True
+        warnings = result.metadata["warnings"]
+        assert warnings.count(duplicate_warning) == 1

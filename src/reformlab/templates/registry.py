@@ -858,6 +858,85 @@ class ScenarioRegistry:
 
         return report
 
+    def set_validated(
+        self,
+        name: str,
+        version_id: str | None = None,
+        *,
+        validated: bool = True,
+    ) -> None:
+        """Set validation status for a scenario version.
+
+        Args:
+            name: Scenario name.
+            version_id: Version ID (None = latest version).
+            validated: Whether to mark as validated.
+
+        Raises:
+            ScenarioNotFoundError: If scenario doesn't exist.
+            VersionNotFoundError: If version doesn't exist.
+        """
+        scenario_name = _validate_scenario_name(name)
+        scenario_dir = self._path / scenario_name
+        metadata_file = scenario_dir / "metadata.yaml"
+
+        if not metadata_file.exists():
+            raise ScenarioNotFoundError(scenario_name, self.list_scenarios())
+
+        metadata = self._load_metadata(metadata_file)
+        versions = metadata.get("versions", [])
+
+        # Resolve version_id
+        if version_id is None:
+            version_id = metadata.get("latest_version")
+
+        # Find and update the version entry
+        for version in versions:
+            if version.get("version_id") == version_id:
+                version["is_validated"] = validated
+                break
+        else:
+            raise VersionNotFoundError(
+                scenario_name,
+                version_id or "",
+                [v.get("version_id", "") for v in versions],
+            )
+
+        self._save_metadata(metadata, metadata_file)
+
+    def is_validated(self, name: str, version_id: str | None = None) -> bool:
+        """Check validation status for a scenario version.
+
+        Args:
+            name: Scenario name.
+            version_id: Version ID (None = latest version).
+
+        Returns:
+            True if scenario version is marked as validated, False otherwise.
+            Returns False for scenarios without explicit validation status.
+        """
+        try:
+            scenario_name = _validate_scenario_name(name)
+        except RegistryError:
+            return False
+
+        scenario_dir = self._path / scenario_name
+        metadata_file = scenario_dir / "metadata.yaml"
+
+        if not metadata_file.exists():
+            return False
+
+        metadata = self._load_metadata(metadata_file)
+
+        if version_id is None:
+            version_id = metadata.get("latest_version")
+
+        for version in metadata.get("versions", []):
+            if version.get("version_id") == version_id:
+                return bool(version.get("is_validated", False))
+
+        return False
+
     def _ensure_version_integrity(
         self,
         *,

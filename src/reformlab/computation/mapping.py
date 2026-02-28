@@ -53,6 +53,7 @@ class MappingConfig:
 
     mappings: tuple[FieldMapping, ...]
     source_path: Path | None = None
+    is_validated: bool = False
 
     def by_openfisca_name(self, name: str) -> FieldMapping | None:
         """Find mapping by OpenFisca variable name."""

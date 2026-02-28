@@ -195,11 +195,73 @@ def capture_unvalidated_template_warning(
     )
 
 
+def capture_unvalidated_mapping_warning(
+    *,
+    source_file: str = "",
+    is_validated: bool | None = None,
+) -> str | None:
+    """Generate warning if mapping configuration is not validated.
+
+    Args:
+        source_file: Path to the mapping configuration file.
+        is_validated: Whether the mapping is marked as validated.
+
+    Returns:
+        Warning message string if not validated, None otherwise.
+    """
+    if is_validated is True:
+        return None
+    normalized_source = source_file.strip() or "unknown"
+    return (
+        f"WARNING: Mapping configuration '{normalized_source}' is not marked as "
+        "validated. Action: Review mapping correctness before relying on outputs."
+    )
+
+
+# Constants for tested ranges
+TESTED_MAX_HORIZON_YEARS = 20
+TESTED_MAX_POPULATION_SIZE = 100_000
+
+
+def capture_unsupported_config_warning(
+    *,
+    horizon_years: int | None = None,
+    population_size: int | None = None,
+) -> list[str]:
+    """Generate warnings for run configurations outside tested ranges.
+
+    Args:
+        horizon_years: Number of years in the projection horizon.
+        population_size: Number of households in the population.
+
+    Returns:
+        List of warning strings (empty if all within tested ranges).
+    """
+    warnings: list[str] = []
+
+    if horizon_years is not None and horizon_years > TESTED_MAX_HORIZON_YEARS:
+        warnings.append(
+            f"WARNING: Projection horizon of {horizon_years} years exceeds tested "
+            f"range (10-{TESTED_MAX_HORIZON_YEARS} years). Action: Results for years "
+            "beyond tested range may have reduced credibility."
+        )
+
+    if population_size is not None and population_size > TESTED_MAX_POPULATION_SIZE:
+        warnings.append(
+            f"WARNING: Population size ({population_size:,} households) exceeds "
+            f"standard test coverage ({TESTED_MAX_POPULATION_SIZE:,}). Action: "
+            "Review memory usage and consider chunked processing."
+        )
+
+    return warnings
+
+
 def capture_warnings(
     *,
     scenario_name: str = "",
     scenario_version: str = "",
     is_validated: bool | None = None,
+    mapping_config: MappingConfig | None = None,
     additional_warnings: list[str] | None = None,
 ) -> list[str]:
     """Capture all warnings for manifest generation.
@@ -211,6 +273,7 @@ def capture_warnings(
         scenario_name: Name of the scenario/template.
         scenario_version: Version identifier.
         is_validated: Whether the scenario is marked as validated.
+        mapping_config: Optional mapping configuration to check validation status.
         additional_warnings: Optional list of additional warning strings.
 
     Returns:
@@ -228,13 +291,15 @@ def capture_warnings(
     """
     warnings: list[str] = []
 
+    # Emit template validation warning when:
+    # - A scenario identity is present (name or version), OR
+    # - is_validated is explicitly False (even without identity, uses "unknown").
+    # When is_validated=None and no identity: skip (no scenario context to warn about).
     should_emit_validation_warning = bool(
         scenario_name.strip() or scenario_version.strip()
     )
     if is_validated is False:
         should_emit_validation_warning = True
-
-    # Add unvalidated template warning if applicable.
     if should_emit_validation_warning:
         unvalidated_warning = capture_unvalidated_template_warning(
             scenario_name=scenario_name,
@@ -243,6 +308,15 @@ def capture_warnings(
         )
         if unvalidated_warning:
             warnings.append(unvalidated_warning)
+
+    # Add unvalidated mapping warning if applicable.
+    if mapping_config is not None:
+        mapping_warning = capture_unvalidated_mapping_warning(
+            source_file=str(mapping_config.source_path or ""),
+            is_validated=mapping_config.is_validated,
+        )
+        if mapping_warning:
+            warnings.append(mapping_warning)
 
     # Add any additional warnings
     if additional_warnings:

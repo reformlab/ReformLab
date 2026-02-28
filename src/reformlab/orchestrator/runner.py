@@ -20,6 +20,7 @@ from reformlab.governance.capture import (
     capture_assumptions,
     capture_mappings,
     capture_parameters,
+    capture_unsupported_config_warning,
     capture_warnings,
 )
 from reformlab.governance.hashing import hash_input_artifacts, hash_output_artifacts
@@ -623,6 +624,28 @@ class OrchestratorRunner:
             request=request, fallback=self.additional_warnings
         )
 
+        # Story 5-6 AC-3: Collect unsupported config warnings
+        run_config = request.get("run_config")
+        horizon_years: int | None = None
+        population_size: int | None = None
+        if isinstance(run_config, dict):
+            proj = run_config.get("projection_years")
+            if isinstance(proj, int):
+                horizon_years = proj
+            pop = run_config.get("population_size")
+            if isinstance(pop, int):
+                population_size = pop
+        config_warnings = capture_unsupported_config_warning(
+            horizon_years=horizon_years,
+            population_size=population_size,
+        )
+        additional_warnings = additional_warnings + config_warnings
+
+        # Story 5-6 AC-2: Resolve mapping config for validation warning
+        resolved_mapping_config = None
+        if mapping_payload is not None and hasattr(mapping_payload, "is_validated"):
+            resolved_mapping_config = mapping_payload
+
         # Story 5-4 AC-5: Hash artifacts if paths provided
         data_hashes: dict[str, str] = {}
         if input_paths:
@@ -639,11 +662,17 @@ class OrchestratorRunner:
             ),
             "mappings": mappings,
             "parameters": parameters,
-            "warnings": capture_warnings(
-                scenario_name=scenario_name,
-                scenario_version=scenario_version,
-                is_validated=scenario_validated,
-                additional_warnings=additional_warnings,
+            # Story 5-6 AC-4: Deduplicate warnings before manifest construction
+            "warnings": list(
+                dict.fromkeys(
+                    capture_warnings(
+                        scenario_name=scenario_name,
+                        scenario_version=scenario_version,
+                        is_validated=scenario_validated,
+                        mapping_config=resolved_mapping_config,
+                        additional_warnings=additional_warnings,
+                    )
+                )
             ),
             "scenario_version": scenario_version,
             "parent_manifest_id": parent_manifest_id,
