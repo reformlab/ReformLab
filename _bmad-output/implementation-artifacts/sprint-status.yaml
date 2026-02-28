@@ -111,5 +111,5 @@ development_status:
   7-2-warn-before-exceeding-memory-limits: done
   7-3-enforce-ci-quality-gates: done
   7-4-external-pilot-run-carbon-tax-workflow: done
-  7-5-define-phase-1-exit-checklist: backlog
+  7-5-define-phase-1-exit-checklist: ready-for-dev
   epic-7-retrospective: optional
