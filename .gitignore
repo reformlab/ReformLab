@@ -64,5 +64,6 @@ data/
 !frontend/src/data/
 !frontend/src/data/*.ts
 
-# === Notebooks sample data ===
+# === Notebooks ===
 notebooks/data/
+notebooks/demo/
