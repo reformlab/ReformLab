@@ -45,7 +45,7 @@ def _make_mock_tbs(
 
     entities = []
     for key in entity_keys:
-        entity = SimpleNamespace(key=key, is_person=(key == person_entity))
+        entity = SimpleNamespace(key=key, plural=key, is_person=(key == person_entity))
         entities.append(entity)
     tbs.entities = entities
 
