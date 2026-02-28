@@ -1096,6 +1096,12 @@ class TestPublicAPIImports:
 
         assert callable(run_benchmarks)
 
+    def test_import_check_memory_requirements(self) -> None:
+        """check_memory_requirements is importable from reformlab package root."""
+        from reformlab import check_memory_requirements
+
+        assert callable(check_memory_requirements)
+
     def test_import_simulation_result(self) -> None:
         """SimulationResult is importable from reformlab package root."""
         from reformlab import SimulationResult
@@ -1120,6 +1126,12 @@ class TestPublicAPIImports:
 
         assert ConfigurationError is not None
 
+    def test_import_memory_warning(self) -> None:
+        """MemoryWarning is importable from reformlab package root."""
+        from reformlab import MemoryWarning
+
+        assert MemoryWarning is not None
+
     def test_import_simulation_error(self) -> None:
         """SimulationError is importable from reformlab package root."""
         from reformlab import SimulationError
@@ -1133,6 +1145,7 @@ class TestPublicAPIImports:
         expected_exports = {
             "run_scenario",
             "run_benchmarks",
+            "check_memory_requirements",
             "create_quickstart_adapter",
             "create_scenario",
             "clone_scenario",
@@ -1141,7 +1154,9 @@ class TestPublicAPIImports:
             "SimulationResult",
             "RunConfig",
             "ScenarioConfig",
+            "MemoryCheckResult",
             "ConfigurationError",
+            "MemoryWarning",
             "SimulationError",
             "ValidationErrors",
             "ValidationIssue",

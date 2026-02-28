@@ -6,7 +6,10 @@ Provides user-friendly exception types with structured error information.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from reformlab.governance.memory import MemoryEstimate
 
 
 class ConfigurationError(Exception):
@@ -137,7 +140,7 @@ class MemoryWarning(UserWarning):
         message: Formatted warning message.
     """
 
-    def __init__(self, estimate: Any) -> None:
+    def __init__(self, estimate: MemoryEstimate) -> None:
         """Initialize memory warning with estimate.
 
         Args:
@@ -149,7 +152,8 @@ class MemoryWarning(UserWarning):
             f"over {estimate.projection_years} years requires ~{estimate.estimated_gb:.1f}GB, "
             f"but only {estimate.available_gb:.1f}GB available "
             f"(threshold: {estimate.threshold_gb:.1f}GB for safe operation on 16GB machine) — "
-            "Reduce population size, increase available memory, or set "
-            "REFORMLAB_SKIP_MEMORY_WARNING=true to proceed"
+            "Reduce population size, reduce projection horizon, increase available memory, "
+            "or intentionally bypass with skip_memory_check=True / "
+            "REFORMLAB_SKIP_MEMORY_WARNING=true"
         )
         super().__init__(message)

@@ -9,7 +9,6 @@ Tests:
 - get_available_memory() returns positive integer
 """
 
-import os
 import time
 
 import pytest
@@ -161,6 +160,26 @@ def test_estimate_memory_usage_invalid_multiplier(monkeypatch):
     assert estimate.estimated_bytes == expected_bytes
 
 
+def test_estimate_memory_usage_non_positive_multiplier(monkeypatch):
+    """Non-positive multiplier falls back to default."""
+    monkeypatch.setenv("REFORMLAB_MEMORY_MULTIPLIER", "-1")
+
+    estimate = estimate_memory_usage(population_size=10_000, projection_years=5)
+
+    expected_bytes = 10_000 * 5 * 800 * 2
+    assert estimate.estimated_bytes == expected_bytes
+
+
+def test_estimate_memory_usage_non_finite_multiplier(monkeypatch):
+    """Non-finite multiplier falls back to default."""
+    monkeypatch.setenv("REFORMLAB_MEMORY_MULTIPLIER", "nan")
+
+    estimate = estimate_memory_usage(population_size=10_000, projection_years=5)
+
+    expected_bytes = 10_000 * 5 * 800 * 2
+    assert estimate.estimated_bytes == expected_bytes
+
+
 def test_memory_estimate_frozen():
     """MemoryEstimate is immutable (frozen dataclass)."""
     estimate = estimate_memory_usage(population_size=10_000, projection_years=5)
@@ -185,6 +204,18 @@ def test_estimate_memory_usage_zero_years():
     assert estimate.projection_years == 0
     assert estimate.estimated_bytes == 0
     assert not estimate.exceeds_threshold
+
+
+def test_estimate_memory_usage_negative_population_raises():
+    """Negative population values are rejected."""
+    with pytest.raises(ValueError, match="population_size must be >= 0"):
+        estimate_memory_usage(population_size=-1, projection_years=5)
+
+
+def test_estimate_memory_usage_negative_years_raises():
+    """Negative projection years are rejected."""
+    with pytest.raises(ValueError, match="projection_years must be >= 0"):
+        estimate_memory_usage(population_size=10_000, projection_years=-1)
 
 
 def test_threshold_calculation():

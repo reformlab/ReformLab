@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from reformlab.computation.adapter import ComputationAdapter
     from reformlab.governance.benchmarking import BenchmarkSuiteResult
     from reformlab.governance.manifest import RunManifest
+    from reformlab.governance.memory import MemoryEstimate
     from reformlab.indicators.types import IndicatorResult
     from reformlab.orchestrator.panel import PanelOutput
     from reformlab.orchestrator.types import YearState
@@ -84,7 +85,7 @@ class MemoryCheckResult:
     """
 
     should_warn: bool
-    estimate: Any  # MemoryEstimate from governance.memory
+    estimate: MemoryEstimate
     message: str
 
 
@@ -355,6 +356,7 @@ def check_memory_requirements(
         ...     print(result.message)
     """
     from reformlab.governance.memory import estimate_memory_usage
+    from reformlab.interfaces.errors import MemoryWarning
 
     # Skip check if requested or env var set
     if skip_check or _should_skip_memory_check():
@@ -389,15 +391,12 @@ def check_memory_requirements(
     estimate = estimate_memory_usage(population_size, projection_years)
 
     # Check if threshold is exceeded
-    if estimate.exceeds_threshold:
-        message = (
-            f"Memory warning — Population of {estimate.population_size:,} households "
-            f"over {estimate.projection_years} years requires ~{estimate.estimated_gb:.1f}GB, "
-            f"but only {estimate.available_gb:.1f}GB available "
-            f"(threshold: {estimate.threshold_gb:.1f}GB for safe operation on 16GB machine) — "
-            "Reduce population size, increase available memory, or set "
-            "REFORMLAB_SKIP_MEMORY_WARNING=true to proceed"
-        )
+    sixteen_gb_bytes = 16 * (1024**3)
+    exceeds_population_guardrail = (
+        estimate.population_size > 500_000 and estimate.available_bytes <= sixteen_gb_bytes
+    )
+    if estimate.exceeds_threshold or exceeds_population_guardrail:
+        message = str(MemoryWarning(estimate))
         return MemoryCheckResult(
             should_warn=True,
             estimate=estimate,
@@ -460,6 +459,7 @@ def run_scenario(
     _validate_config(run_config)
 
     # Step 2b: Memory pre-check (before orchestration)
+    preflight_warnings: list[str] = []
     if not skip_memory_check and not _should_skip_memory_check():
         check_result = check_memory_requirements(run_config)
         if check_result.should_warn:
@@ -468,9 +468,11 @@ def run_scenario(
 
             from reformlab.interfaces.errors import MemoryWarning
 
-            warnings.warn(MemoryWarning(check_result.estimate))
+            warning = MemoryWarning(check_result.estimate)
+            warnings.warn(warning, stacklevel=2)
             logger = logging.getLogger(__name__)
             logger.warning(check_result.message)
+            preflight_warnings.append(str(warning))
 
     # Step 3: Load scenario template
     try:
@@ -490,7 +492,12 @@ def run_scenario(
 
     # Step 5: Execute via orchestrator
     try:
-        result = _execute_orchestration(scenario, run_config, adapter)
+        result = _execute_orchestration(
+            scenario,
+            run_config,
+            adapter,
+            additional_warnings=preflight_warnings,
+        )
     except ConfigurationError:
         raise
     except Exception as exc:
@@ -1036,6 +1043,8 @@ def _execute_orchestration(
     scenario: ScenarioConfig,
     run_config: RunConfig,
     adapter: ComputationAdapter,
+    *,
+    additional_warnings: list[str] | None = None,
 ) -> SimulationResult:
     """Execute orchestration and package results.
 
@@ -1043,6 +1052,7 @@ def _execute_orchestration(
         scenario: Validated scenario configuration.
         run_config: Run configuration.
         adapter: Computation adapter.
+        additional_warnings: Optional pre-execution warnings to carry into manifest.
 
     Returns:
         SimulationResult with execution outcomes.
@@ -1082,6 +1092,7 @@ def _execute_orchestration(
         },
         "scenarios": [{"role": "scenario", "reference": scenario.template_name}],
         "parameters": normalized_params,
+        "additional_warnings": list(additional_warnings or []),
     }
 
     # Use seed from run_config if provided, otherwise from scenario

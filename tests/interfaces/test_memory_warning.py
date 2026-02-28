@@ -16,9 +16,9 @@ from pathlib import Path
 import pyarrow as pa
 import pytest
 
+from reformlab.computation.mock_adapter import MockAdapter
 from reformlab.interfaces.api import (
     MemoryCheckResult,
-    RunConfig,
     ScenarioConfig,
     check_memory_requirements,
     run_scenario,
@@ -85,20 +85,26 @@ def test_check_memory_requirements_small_population(small_population_config):
     assert result.estimate.projection_years == 6
 
 
-def test_check_memory_requirements_large_population(large_population_config):
-    """Large population triggers warning."""
+def test_check_memory_requirements_large_population(
+    large_population_config, monkeypatch
+):
+    """Large population on a 16GB machine triggers warning."""
+    monkeypatch.setattr(
+        "reformlab.governance.memory.get_available_memory",
+        lambda: 16 * (1024**3),
+    )
+
     result = check_memory_requirements(large_population_config)
 
     assert isinstance(result, MemoryCheckResult)
-    # May or may not trigger depending on available system memory
-    # Just verify structure is correct
+    assert result.should_warn
     assert result.estimate.population_size == 600_000
     assert result.estimate.projection_years == 11
-
-    if result.should_warn:
-        assert "600,000 households" in result.message
-        assert "11 years" in result.message
-        assert "GB" in result.message
+    assert "600,000 households" in result.message
+    assert "11 years" in result.message
+    assert "GB" in result.message
+    assert "reduce projection horizon" in result.message.lower()
+    assert "skip_memory_check=True" in result.message
 
 
 def test_check_memory_requirements_skip_check(large_population_config):
@@ -166,6 +172,8 @@ def test_memory_warning_class():
     assert "600,000 households" in message
     assert "11 years" in message
     assert "GB" in message
+    assert "reduce projection horizon" in message.lower()
+    assert "skip_memory_check=True" in message
     assert "REFORMLAB_SKIP_MEMORY_WARNING" in message
 
 
@@ -173,48 +181,26 @@ def test_memory_warning_integration_with_mock_adapter(
     large_population_config, monkeypatch
 ):
     """Large population triggers MemoryWarning via run_scenario with mock adapter."""
-    from reformlab.computation.mock_adapter import MockAdapter
-
     # Mock available memory to 8GB to ensure warning triggers
-    def mock_get_available_memory():
-        return 8 * (1024**3)
-
     monkeypatch.setattr(
         "reformlab.governance.memory.get_available_memory",
-        mock_get_available_memory,
+        lambda: 8 * (1024**3),
     )
 
-    # Create mock adapter that returns simple output
-    mock_output = pa.table(
-        {
-            "household_id": pa.array(range(600_000), type=pa.int64()),
-            "year": pa.array([2025] * 600_000, type=pa.int64()),
-            "income": pa.array([30000.0] * 600_000, type=pa.float64()),
-            "carbon_tax": pa.array([150.0] * 600_000, type=pa.float64()),
-            "disposable_income": pa.array([29850.0] * 600_000, type=pa.float64()),
-        }
-    )
-    adapter = MockAdapter(default_output=mock_output, version_string="test-v1")
+    adapter = MockAdapter(version_string="test-v1")
 
     # Capture warnings
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
 
-        # This should trigger warning but proceed
-        # Note: Will fail at orchestration stage since we're not setting up
-        # full orchestration pipeline, but warning should be captured
-        try:
-            result = run_scenario(large_population_config, adapter=adapter)
-        except Exception:
-            # Expected to fail during orchestration, that's OK
-            # We just want to verify the warning was emitted
-            pass
+        result = run_scenario(large_population_config, adapter=adapter)
+        assert result.success
 
         # Check that warning was emitted
         memory_warnings = [
             warning for warning in w if issubclass(warning.category, MemoryWarning)
         ]
-        assert len(memory_warnings) >= 1
+        assert len(memory_warnings) == 1
 
         # Check warning content
         warning_message = str(memory_warnings[0].message)
@@ -222,42 +208,53 @@ def test_memory_warning_integration_with_mock_adapter(
         assert "11 years" in warning_message
 
 
+def test_memory_warning_is_captured_in_manifest(
+    large_population_config, monkeypatch
+):
+    """Preflight memory warning is persisted to workflow metadata and manifest."""
+    monkeypatch.setattr(
+        "reformlab.governance.memory.get_available_memory",
+        lambda: 8 * (1024**3),
+    )
+
+    result = run_scenario(large_population_config, adapter=MockAdapter())
+    assert result.success
+
+    metadata_warnings = result.metadata.get("warnings")
+    assert isinstance(metadata_warnings, list)
+    assert any(
+        "Memory warning — Population of 600,000 households" in w
+        for w in metadata_warnings
+    )
+    assert result.manifest.warnings == metadata_warnings
+    assert any(
+        "Memory warning — Population of 600,000 households" in w
+        for w in result.manifest.warnings
+    )
+
+
 def test_memory_warning_suppression_via_parameter(
     large_population_config, monkeypatch
 ):
     """skip_memory_check parameter suppresses warning."""
-    from reformlab.computation.mock_adapter import MockAdapter
-
     # Mock available memory to 8GB to ensure warning would trigger
-    def mock_get_available_memory():
-        return 8 * (1024**3)
-
     monkeypatch.setattr(
         "reformlab.governance.memory.get_available_memory",
-        mock_get_available_memory,
+        lambda: 8 * (1024**3),
     )
 
-    mock_output = pa.table(
-        {
-            "household_id": pa.array(range(600_000), type=pa.int64()),
-            "year": pa.array([2025] * 600_000, type=pa.int64()),
-            "income": pa.array([30000.0] * 600_000, type=pa.float64()),
-        }
-    )
-    adapter = MockAdapter(default_output=mock_output, version_string="test-v1")
+    adapter = MockAdapter(version_string="test-v1")
 
     # Capture warnings
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
 
-        try:
-            result = run_scenario(
-                large_population_config,
-                adapter=adapter,
-                skip_memory_check=True,
-            )
-        except Exception:
-            pass
+        result = run_scenario(
+            large_population_config,
+            adapter=adapter,
+            skip_memory_check=True,
+        )
+        assert result.success
 
         # No memory warnings should be emitted
         memory_warnings = [
@@ -270,36 +267,22 @@ def test_memory_warning_suppression_via_env_var(
     large_population_config, monkeypatch
 ):
     """REFORMLAB_SKIP_MEMORY_WARNING env var suppresses warning."""
-    from reformlab.computation.mock_adapter import MockAdapter
-
     monkeypatch.setenv("REFORMLAB_SKIP_MEMORY_WARNING", "true")
 
     # Mock available memory to 8GB to ensure warning would trigger
-    def mock_get_available_memory():
-        return 8 * (1024**3)
-
     monkeypatch.setattr(
         "reformlab.governance.memory.get_available_memory",
-        mock_get_available_memory,
+        lambda: 8 * (1024**3),
     )
 
-    mock_output = pa.table(
-        {
-            "household_id": pa.array(range(600_000), type=pa.int64()),
-            "year": pa.array([2025] * 600_000, type=pa.int64()),
-            "income": pa.array([30000.0] * 600_000, type=pa.float64()),
-        }
-    )
-    adapter = MockAdapter(default_output=mock_output, version_string="test-v1")
+    adapter = MockAdapter(version_string="test-v1")
 
     # Capture warnings
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
 
-        try:
-            result = run_scenario(large_population_config, adapter=adapter)
-        except Exception:
-            pass
+        result = run_scenario(large_population_config, adapter=adapter)
+        assert result.success
 
         # No memory warnings should be emitted
         memory_warnings = [
@@ -310,25 +293,14 @@ def test_memory_warning_suppression_via_env_var(
 
 def test_small_population_no_warning(small_population_config):
     """Small population does not trigger warning."""
-    from reformlab.computation.mock_adapter import MockAdapter
-
-    mock_output = pa.table(
-        {
-            "household_id": pa.array(range(1000), type=pa.int64()),
-            "year": pa.array([2025] * 1000, type=pa.int64()),
-            "income": pa.array([30000.0] * 1000, type=pa.float64()),
-        }
-    )
-    adapter = MockAdapter(default_output=mock_output, version_string="test-v1")
+    adapter = MockAdapter(version_string="test-v1")
 
     # Capture warnings
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
 
-        try:
-            result = run_scenario(small_population_config, adapter=adapter)
-        except Exception:
-            pass
+        result = run_scenario(small_population_config, adapter=adapter)
+        assert result.success
 
         # No memory warnings should be emitted for small population
         memory_warnings = [

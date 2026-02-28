@@ -11,6 +11,7 @@ The stable Python API for running simulations and managing scenarios.
 Core functions:
     - run_scenario: Execute a complete simulation
     - run_benchmarks: Run benchmark validation suite
+    - check_memory_requirements: Preflight memory-risk check before execution
     - create_scenario: Create and optionally register a scenario
     - clone_scenario: Clone an existing scenario
     - list_scenarios: List all registered scenarios
@@ -22,9 +23,11 @@ Result types:
 Configuration types:
     - RunConfig: Configuration for running a simulation
     - ScenarioConfig: Configuration for a scenario
+    - MemoryCheckResult: Result payload from memory preflight checks
 
 Error types:
     - ConfigurationError: Invalid configuration before execution
+    - MemoryWarning: Memory-risk warning category for preflight alerts
     - SimulationError: Execution failure during simulation
 
 Example usage:
@@ -48,12 +51,15 @@ For more details, see the documentation at: https://reformlab.readthedocs.io
 
 from reformlab.interfaces import (
     ConfigurationError,
+    MemoryCheckResult,
+    MemoryWarning,
     RunConfig,
     ScenarioConfig,
     SimulationError,
     SimulationResult,
     ValidationErrors,
     ValidationIssue,
+    check_memory_requirements,
     clone_scenario,
     create_quickstart_adapter,
     create_scenario,
@@ -69,6 +75,7 @@ __all__ = [
     # Core API functions
     "run_scenario",
     "run_benchmarks",
+    "check_memory_requirements",
     "create_quickstart_adapter",
     "create_scenario",
     "clone_scenario",
@@ -79,8 +86,10 @@ __all__ = [
     # Configuration types
     "RunConfig",
     "ScenarioConfig",
+    "MemoryCheckResult",
     # Error types
     "ConfigurationError",
+    "MemoryWarning",
     "SimulationError",
     "ValidationErrors",
     "ValidationIssue",

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from math import isfinite
 
 # Try to import psutil for system memory detection
 try:
@@ -92,6 +93,15 @@ def estimate_memory_usage(
         >>> print(estimate.estimated_gb)
         1.5
     """
+    if population_size < 0:
+        raise ValueError(
+            f"population_size must be >= 0, got {population_size!r}"
+        )
+    if projection_years < 0:
+        raise ValueError(
+            f"projection_years must be >= 0, got {projection_years!r}"
+        )
+
     # Heuristic from Story 7.1 benchmarks:
     # ~200 bytes for core state arrays (income, carbon_tax, etc.)
     # ~100 bytes for indicator buffers during computation
@@ -106,6 +116,9 @@ def estimate_memory_usage(
             multiplier = float(multiplier_env)
         except ValueError:
             multiplier = 2.0
+        else:
+            if not isfinite(multiplier) or multiplier <= 0:
+                multiplier = 2.0
     else:
         multiplier = 2.0
 
