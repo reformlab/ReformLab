@@ -24,8 +24,16 @@ Public API:
     ArtifactVerificationResult: Hash verification result
     check_reproducibility: Re-execute a run and verify outputs match
     ReproducibilityResult: Result of reproducibility check
+    BenchmarkResult: Result of a single benchmark test
+    BenchmarkSuiteResult: Result of running the complete benchmark suite
+    run_benchmark_suite: Orchestrate benchmark checks
 """
 
+from reformlab.governance.benchmarking import (
+    BenchmarkResult,
+    BenchmarkSuiteResult,
+    run_benchmark_suite,
+)
 from reformlab.governance.capture import (
     capture_assumptions,
     capture_mappings,
@@ -76,4 +84,7 @@ __all__ = [
     "ArtifactVerificationResult",
     "check_reproducibility",
     "ReproducibilityResult",
+    "BenchmarkResult",
+    "BenchmarkSuiteResult",
+    "run_benchmark_suite",
 ]

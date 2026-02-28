@@ -13,6 +13,7 @@ from reformlab.interfaces.api import (
     create_scenario,
     get_scenario,
     list_scenarios,
+    run_benchmarks,
     run_scenario,
 )
 from reformlab.interfaces.errors import (
@@ -25,6 +26,7 @@ from reformlab.interfaces.errors import (
 __all__ = [
     # Core API functions
     "run_scenario",
+    "run_benchmarks",
     "create_quickstart_adapter",
     "create_scenario",
     "clone_scenario",

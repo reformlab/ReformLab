@@ -10,6 +10,7 @@ The stable Python API for running simulations and managing scenarios.
 
 Core functions:
     - run_scenario: Execute a complete simulation
+    - run_benchmarks: Run benchmark validation suite
     - create_scenario: Create and optionally register a scenario
     - clone_scenario: Clone an existing scenario
     - list_scenarios: List all registered scenarios
@@ -58,6 +59,7 @@ from reformlab.interfaces import (
     create_scenario,
     get_scenario,
     list_scenarios,
+    run_benchmarks,
     run_scenario,
 )
 
@@ -66,6 +68,7 @@ __version__ = "0.1.0"
 __all__ = [
     # Core API functions
     "run_scenario",
+    "run_benchmarks",
     "create_quickstart_adapter",
     "create_scenario",
     "clone_scenario",

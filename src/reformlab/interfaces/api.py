@@ -1363,3 +1363,54 @@ def get_scenario(
             actual=name,
             fix=f"Check that scenario '{name}' exists in the registry using list_scenarios()",
         ) from exc
+
+
+def run_benchmarks(
+    panel: PanelOutput | None = None,
+    result: SimulationResult | None = None,
+    reference_path: Path | None = None,
+) -> Any:  # BenchmarkSuiteResult
+    """Run benchmark validation suite against simulation outputs.
+
+    This is a thin facade over the governance benchmarking subsystem,
+    providing a stable user-facing API for benchmark verification.
+
+    Args:
+        panel: Panel output to benchmark. If None, extracts from result.
+        result: Simulation result containing panel output. Used if panel is None.
+        reference_path: Path to benchmark reference YAML file.
+            If None, uses default location.
+
+    Returns:
+        BenchmarkSuiteResult with benchmark outcomes and timing.
+
+    Raises:
+        SimulationError: If no panel output is available.
+        FileNotFoundError: If reference file is not found.
+
+    Example:
+        >>> from reformlab import run_scenario, run_benchmarks
+        >>> result = run_scenario(config)
+        >>> benchmark_result = run_benchmarks(result=result)
+        >>> print(benchmark_result)
+        BenchmarkSuiteResult(3/3 passed, 0.45s)
+    """
+    from reformlab.governance.benchmarking import run_benchmark_suite
+    from reformlab.interfaces.errors import SimulationError
+
+    # Extract panel from result if not provided
+    if panel is None:
+        if result is None:
+            raise SimulationError(
+                "Benchmark validation failed — No panel or result provided — Pass panel=<PanelOutput> or result=<SimulationResult>",
+                fix="Pass panel=<PanelOutput> or result=<SimulationResult>",
+            )
+        if result.panel_output is None:
+            raise SimulationError(
+                "Benchmark validation failed — Simulation result has no panel output — Ensure the simulation completed successfully",
+                fix="Ensure the simulation completed successfully",
+            )
+        panel = result.panel_output
+
+    # Delegate to governance benchmarking subsystem
+    return run_benchmark_suite(panel, reference_path)
