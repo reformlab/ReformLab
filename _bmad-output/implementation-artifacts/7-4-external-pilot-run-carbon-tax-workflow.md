@@ -14,41 +14,40 @@ so that **I can independently validate the platform's readiness for production p
 
 From backlog (BKL-704), aligned with FR35, NFR19, and Phase 1 exit criteria.
 
-1. **AC-1: Clean install completes successfully**
+1. **AC-1: Clean install and API smoke test succeed**
    - Given a fresh Python 3.13+ environment with no prior ReformLab installation
-   - When `pip install reformlab` is run
-   - Then the package installs with all required dependencies and no errors
+   - When the release artifact is installed via `pip install reformlab` (or equivalent pilot wheel)
+   - Then installation succeeds without dependency errors and `import reformlab` succeeds
 
-2. **AC-2: Carbon-tax quickstart runs without modification**
-   - Given the installed package and shipped quickstart notebook
-   - When the notebook is executed cell-by-cell
-   - Then all cells complete without errors and produce distributional charts
+2. **AC-2: Quickstart carbon-tax flow runs without code edits**
+   - Given the installed package and pilot quickstart notebook
+   - When the notebook is executed exactly as documented
+   - Then all cells complete without errors, distributional outputs are produced, and a run manifest is emitted
 
-3. **AC-3: Advanced notebook completes end-to-end**
-   - Given the installed package and shipped advanced notebook
-   - When the notebook is executed in full
-   - Then multi-year projection with vintage tracking, baseline/reform comparison, and indicator exports complete successfully
+3. **AC-3: Advanced multi-year flow runs end-to-end**
+   - Given the installed package and pilot advanced notebook
+   - When the notebook is executed exactly as documented
+   - Then multi-year projection, vintage tracking outputs, baseline/reform comparison, and CSV/Parquet exports complete successfully
 
-4. **AC-4: Documentation enables independent execution**
-   - Given the shipped documentation (README, quickstart notebook, API reference)
-   - When an external user follows the instructions
-   - Then they can complete the carbon-tax workflow without external assistance
+4. **AC-4: External user can execute independently from docs**
+   - Given README + notebook guidance + API usage notes in the pilot materials
+   - When an external pilot user follows the instructions without maintainer help
+   - Then they can complete the carbon-tax workflow and reproduce the documented example outputs
 
-5. **AC-5: Results are verifiable against benchmarks**
-   - Given completed simulation outputs
-   - When compared to the benchmark reference values shipped with the package
-   - Then distributional patterns and aggregate indicators match within documented tolerances
+5. **AC-5: Credibility checks pass against benchmark tolerances**
+   - Given completed simulation outputs from the pilot workflow
+   - When `run_benchmarks(result=...)` is executed
+   - Then benchmark checks pass within Story 7-1 documented tolerances, or failures are explicitly triaged with expected vs actual values
 
-6. **AC-6: Pilot package is self-contained**
-   - Given the shipped package contents
-   - When inspected
-   - Then example datasets, templates, notebooks, and documentation are all included without requiring external downloads
+6. **AC-6: Reproducibility is demonstrated from run manifest**
+   - Given a completed pilot run with saved manifest metadata
+   - When the same scenario is rerun with identical manifest inputs in the same environment
+   - Then output hashes are identical and any cross-machine differences are documented against tolerance rules
 
-7. **AC-7: Run manifests enable reproducibility**
-   - Given a completed pilot workflow
-   - When the run manifest is inspected
-   - Then all parameters, seeds, versions, and assumptions are recorded
-   - And a second run with the same manifest inputs produces identical outputs
+7. **AC-7: Pilot distribution bundle is complete**
+   - Given the defined pilot distribution contract (installable package + companion notebooks/docs/examples)
+   - When the bundle is audited
+   - Then all required artifacts are present and no non-project data downloads are required to run the example workflow
 
 ## Dependencies
 
@@ -59,92 +58,61 @@ Dependency gate: if any hard dependency below is not `done`, set this story to `
   - Story 6-3 (BKL-603): Advanced notebook — DONE
   - Story 5-1 (BKL-501): Immutable run manifest schema — DONE
 
-- **Integration dependencies (for complete pilot experience):**
-  - Story 1-1 to 1-8: Computation adapter and data layer — all DONE
-  - Story 2-1 to 2-7: Scenario templates and registry — all DONE
-  - Story 3-1 to 3-7: Dynamic orchestrator and vintage tracking — all DONE
-  - Story 4-1 to 4-6: Indicators and comparison — all DONE
-  - Story 5-2 to 5-5: Governance and reproducibility — all DONE
+- **Required integration dependencies:**
+  - Epic 1 stories (1-1 to 1-8): Adapter + data layer baseline — all DONE
+  - Epic 2 stories (2-1 to 2-7): Carbon-tax template + scenario registry — all DONE
+  - Epic 3 stories (3-1 to 3-7): Dynamic orchestrator + vintage loop — all DONE
+  - Epic 4 stories (4-1 to 4-6): Indicator and comparison outputs — all DONE
+  - Story 5-2 to 5-5: Assumptions, lineage, and output hashing — DONE
   - Story 6-1 (BKL-601): Stable Python API — DONE
   - Story 6-5 (BKL-605): Export actions — DONE
-  - Story 7-1 (BKL-701): Benchmark verification — DONE
-  - Story 7-2 (BKL-702): Memory warnings — DONE
-  - Story 7-3 (BKL-703): CI quality gates — DONE
+  - Story 7-1 (BKL-701): Benchmark verification harness — DONE
+  - Story 7-2 (BKL-702): Memory warning UX for large runs — DONE
+  - Story 7-3 (BKL-703): CI quality gates for shipped examples — DONE
 
 - **Follow-on stories (not blocking):**
   - Story 7-5 (BKL-705): Define Phase 1 exit checklist and pilot sign-off criteria
+  - Story 5-6 (BKL-506): Warning system for unvalidated templates (improves UX, not required for BKL-704)
+  - Story 6-4b: GUI-backend wiring (separate interface track, not required for notebook/API pilot)
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Verify package installation on clean environment** (AC: 1, 6)
+- [ ] **Task 0: Confirm dependency gate before execution** (AC: dependency check)
+  - [ ] Verify all hard/required dependencies above are `done` in `_bmad-output/implementation-artifacts/sprint-status.yaml`
+  - [ ] If any required dependency is not `done`, set story status to `blocked` and stop implementation
+
+- [ ] **Task 1: Validate clean install path** (AC: 1, 7)
   - [ ] Create a fresh Python 3.13+ virtual environment
-  - [ ] Run `pip install reformlab` (from local build or TestPyPI)
-  - [ ] Verify all dependencies install correctly
-  - [ ] Confirm `import reformlab` works without errors
-  - [ ] Document any installation issues or missing dependencies
+  - [ ] Install from pilot artifact (`pip install reformlab` or pilot wheel)
+  - [ ] Verify `import reformlab` and minimal API smoke call succeed
+  - [ ] Record environment details (OS, Python, package version)
 
-- [ ] **Task 2: Audit shipped package contents** (AC: 6)
-  - [ ] Verify `pyproject.toml` includes all required entries: examples, notebooks, data
-  - [ ] Confirm MANIFEST.in (if used) or pyproject.toml `[tool.setuptools.package-data]` includes:
-    - `notebooks/quickstart.ipynb`
-    - `notebooks/advanced.ipynb`
-    - Example YAML workflow configurations
-    - Benchmark reference data
-    - Synthetic population fixtures
-  - [ ] Verify package size is reasonable (< 50MB for core package)
-  - [ ] Document what is NOT included and should be (if any)
+- [ ] **Task 2: Validate pilot bundle completeness** (AC: 7)
+  - [ ] Verify release contract is explicit: installable package + companion notebooks/docs/examples
+  - [ ] Confirm quickstart and advanced notebooks are discoverable from the documented pilot entrypoint
+  - [ ] Confirm required templates, benchmark references, and synthetic fixtures used by examples are available from project artifacts
+  - [ ] Record any missing artifact as blocking defect
 
-- [ ] **Task 3: Validate quickstart notebook execution** (AC: 2, 4)
-  - [ ] Run `quickstart.ipynb` on fresh install environment
-  - [ ] Verify all cells execute without errors
-  - [ ] Verify distributional charts are produced
-  - [ ] Verify manifest is generated
-  - [ ] Time the total execution (target: < 30 minutes including reading)
-  - [ ] Document any confusing steps or missing explanations
+- [ ] **Task 3: Execute quickstart workflow as an external user** (AC: 2, 4)
+  - [ ] Run `notebooks/quickstart.ipynb` exactly as documented (no notebook code edits)
+  - [ ] Verify all cells execute, charts render, and manifest output is generated
+  - [ ] Log documentation friction points that block independent execution
 
-- [ ] **Task 4: Validate advanced notebook execution** (AC: 3, 4)
-  - [ ] Run `advanced.ipynb` on fresh install environment
-  - [ ] Verify multi-year projection (e.g., 2025-2030) completes
-  - [ ] Verify vintage tracking state is visible in outputs
-  - [ ] Verify baseline/reform comparison produces side-by-side tables
-  - [ ] Verify indicator exports (CSV/Parquet) work correctly
-  - [ ] Document any issues or missing functionality
+- [ ] **Task 4: Execute advanced workflow as an external user** (AC: 3, 4)
+  - [ ] Run `notebooks/advanced.ipynb` exactly as documented (no notebook code edits)
+  - [ ] Verify multi-year run, vintage outputs, scenario comparison, and CSV/Parquet exports
+  - [ ] Log documentation friction points that block independent execution
 
-- [ ] **Task 5: Benchmark verification** (AC: 5)
-  - [ ] Locate benchmark reference values in shipped package
-  - [ ] Run benchmark suite against quickstart outputs: `run_benchmarks(result=result)`
-  - [ ] Verify all benchmark tests pass
-  - [ ] If any fail: document expected vs actual, determine if tolerance needs adjustment
-  - [ ] Confirm distributional patterns match known carbon tax literature (qualitative check)
+- [ ] **Task 5: Run credibility and reproducibility checks** (AC: 5, 6)
+  - [ ] Run benchmark verification on pilot output: `run_benchmarks(result=...)`
+  - [ ] Capture pass/fail and tolerance diagnostics
+  - [ ] Re-run from identical manifest inputs and compare output hashes
+  - [ ] Document cross-machine variance if tested; treat tolerance-compliant variance as non-blocking
 
-- [ ] **Task 6: Reproducibility verification** (AC: 7)
-  - [ ] Complete a full pilot run and save the manifest
-  - [ ] Re-run with identical seed and configuration
-  - [ ] Compare output hashes (should be identical)
-  - [ ] Cross-machine test: run on a different OS/Python environment with same versions
-  - [ ] Document any reproducibility issues
-
-- [ ] **Task 7: Documentation gap analysis** (AC: 4)
-  - [ ] Review README for clarity and completeness
-  - [ ] Review quickstart notebook narrative
-  - [ ] Review advanced notebook narrative
-  - [ ] Identify missing explanations or confusing sections
-  - [ ] Add missing documentation or clarifications
-  - [ ] Ensure YAML template documentation exists
-  - [ ] Ensure API reference docstrings are complete
-
-- [ ] **Task 8: Create pilot onboarding checklist** (AC: all)
-  - [ ] Create `docs/pilot-checklist.md` with step-by-step instructions
-  - [ ] Include: environment setup, installation, first run, verification steps
-  - [ ] Include: common troubleshooting guidance
-  - [ ] Include: links to additional resources
-
-- [ ] **Task 9: Final pilot validation** (AC: all)
-  - [ ] Complete full workflow as if external user (no codebase knowledge)
-  - [ ] Record any friction points or errors
-  - [ ] Fix blocking issues
-  - [ ] Document non-blocking issues for future improvement
-  - [ ] Confirm pilot readiness
+- [ ] **Task 6: Produce pilot onboarding and sign-off artifacts** (AC: all)
+  - [ ] Create/update `docs/pilot-checklist.md` with exact external-user steps
+  - [ ] Apply only minimal doc/notebook text fixes required to remove blocking ambiguity
+  - [ ] Record final pilot outcome: pass/fail per AC and open follow-up items for non-blocking issues
 
 ## Dev Notes
 
@@ -168,54 +136,49 @@ This story validates the complete Phase 1 platform against external adoption req
 - Complete Python API (`src/reformlab/interfaces/api.py`) with `run_scenario()`, `ScenarioConfig`, `RunConfig`, `SimulationResult`
 - Quickstart notebook (`notebooks/quickstart.ipynb`) demonstrating carbon tax workflow
 - Advanced notebook (`notebooks/advanced.ipynb`) with multi-year projections
-- Benchmark suite (`governance/benchmarking.py`) with `run_benchmarks()` API
-- Memory warning system (`governance/memory.py`)
+- Benchmark suite (`src/reformlab/governance/benchmarking.py`) with `run_benchmarks()` API
+- Memory warning system (`src/reformlab/governance/memory.py`)
 - CI quality gates with coverage enforcement
 - Export actions (CSV/Parquet) in `SimulationResult.export_csv()` / `export_parquet()`
 - Run manifest generation with full provenance
 
 **What needs verification:**
-- Package contents include all required artifacts when installed via pip
+- Pilot distribution contract is explicit and complete (installable package + companion notebooks/docs/examples)
 - Documentation is sufficient for independent external execution
-- Benchmark tolerances are calibrated correctly
-- Cross-machine reproducibility is confirmed
+- Existing benchmark tolerances remain valid for pilot outputs
+- Manifest-based reproducibility is confirmed (same environment required, cross-machine optional evidence)
 
 ### Implementation Approach
 
 This story is primarily a **validation and verification task**, not a feature implementation story. The work involves:
 
 1. **Testing from external perspective**: Simulate being an external user with no codebase knowledge
-2. **Package auditing**: Ensure pip-installable package is complete and self-contained
+2. **Distribution auditing**: Validate package install path and companion pilot assets
 3. **Documentation polish**: Fill gaps in explanations and instructions
-4. **Benchmark calibration**: Confirm shipped benchmarks match expected outputs
+4. **Benchmark verification**: Confirm shipped benchmarks pass on pilot outputs
 5. **Reproducibility testing**: Verify manifest-based reruns produce identical results
 
 **Key principle:** No new features. Fix only what is needed for a clean external pilot experience.
 
 ### Package Inclusion Verification
 
-Check `pyproject.toml` for package data inclusion:
+ReformLab uses `hatchling` packaging. Validate packaging boundaries in `pyproject.toml`:
 
 ```toml
-[tool.setuptools.package-data]
-reformlab = [
-    "py.typed",
-    # Ensure these are included:
-    # - Example workflows
-    # - Benchmark references
-    # - Synthetic population fixtures
-]
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/reformlab"]
 ```
 
-Notebooks are typically NOT included in the package itself but distributed via:
-- GitHub repository clone
-- Separate documentation site
-- ReadTheDocs or similar
+Implication: notebooks and other pilot collateral are companion assets, not wheel-internal package data.
 
-**Decision:** For pilot, ensure notebooks are:
-1. Accessible from GitHub repository (clearly documented)
+**Decision:** For pilot, ensure companion assets are:
+1. Clearly linked from the primary pilot entrypoint documentation
 2. Runnable with a fresh `pip install reformlab`
-3. Reference shipped synthetic data (no external downloads)
+3. Backed by project-shipped synthetic/reference data (no third-party download requirements)
 
 ### Benchmark Reference Integration
 
@@ -228,7 +191,7 @@ result = run_scenario(config, adapter=adapter)
 benchmark_result = run_benchmarks(result=result)
 
 # Expected: all benchmarks pass
-assert benchmark_result.all_passed
+assert benchmark_result.passed
 ```
 
 If benchmarks fail, investigate:
@@ -238,14 +201,14 @@ If benchmarks fail, investigate:
 
 ### Cross-Machine Reproducibility
 
-To validate NFR7 (identical outputs across machines):
+Minimum requirement for this story:
 
-1. Run on Ubuntu (CI environment)
-2. Run on macOS (development machine)
-3. Run on Windows (if available)
-4. Compare output hashes from manifests
+1. Complete one full pilot run and save manifest/hash evidence
+2. Re-run with identical manifest inputs in the same environment
+3. Compare output hashes from both runs (must match)
 
-Documented tolerances apply for floating-point differences. Document any platform-specific variance.
+Optional supporting evidence:
+- Repeat on a second environment (for example CI runner or another OS) and document tolerance-compliant variance.
 
 ### Documentation Checklist
 
@@ -278,12 +241,9 @@ source pilot-test/bin/activate
 # Install package
 pip install reformlab
 
-# Run quickstart notebook
-cd notebooks
-jupyter execute quickstart.ipynb
-
-# Run advanced notebook
-jupyter execute advanced.ipynb
+# Run notebooks exactly as CI validates them
+uv run pytest --nbmake notebooks/quickstart.ipynb -v
+uv run pytest --nbmake notebooks/advanced.ipynb -v
 
 # Verify benchmarks
 python -c "from reformlab import run_scenario, run_benchmarks, ScenarioConfig, RunConfig, create_quickstart_adapter; adapter = create_quickstart_adapter(carbon_tax_rate=44.0, year=2025, household_count=100); config = RunConfig(scenario=ScenarioConfig(template_name='carbon-tax', parameters={'rate_schedule': {2025: 44.0}}, start_year=2025, end_year=2025), seed=42); result = run_scenario(config, adapter=adapter); benchmarks = run_benchmarks(result=result); print(benchmarks)"
@@ -295,7 +255,7 @@ python -c "from reformlab import run_scenario, run_benchmarks, ScenarioConfig, R
 - Package content verification
 - Notebook execution validation
 - Documentation gap filling
-- Benchmark calibration
+- Benchmark verification (using existing tolerances from Story 7-1)
 - Reproducibility testing
 - Pilot onboarding checklist creation
 
@@ -340,7 +300,7 @@ Pattern: Epic 7 stories are validation/hardening tasks. This story follows the s
 **Files to verify (not create):**
 - `notebooks/quickstart.ipynb` — must run on fresh install
 - `notebooks/advanced.ipynb` — must run on fresh install
-- `pyproject.toml` — package data inclusion
+- `pyproject.toml` — packaging boundary (`hatchling` wheel target)
 - `README.md` — installation and quickstart instructions
 
 **Files to create:**
@@ -350,7 +310,7 @@ Pattern: Epic 7 stories are validation/hardening tasks. This story follows the s
 - `README.md` — if documentation gaps found
 - `notebooks/quickstart.ipynb` — if cell execution issues found
 - `notebooks/advanced.ipynb` — if cell execution issues found
-- `pyproject.toml` — if package data missing
+- `docs/` pilot onboarding docs — if entrypoint guidance is missing
 
 ### Project Structure Notes
 
