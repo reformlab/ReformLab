@@ -107,6 +107,7 @@ This project is in early development. Contribution guidelines will be establishe
 2. `uv run pytest && uv run mypy src && uv run ruff check src tests` must pass
 3. Every module gets a `.pyi` stub file
 4. Never call OpenFisca directly — always go through `ComputationAdapter`
+5. For `master`, enable branch protection with required status check `check` and "Require branches to be up to date before merging"
 
 ## License
 

@@ -1002,8 +1002,10 @@ def _normalize_parameters(params: dict[str, Any]) -> dict[str, Any]:
         else:
             return value
 
-    result: dict[str, Any] = normalize_value(params)  # type: ignore[assignment]
-    return result
+    normalized = normalize_value(params)
+    if not isinstance(normalized, dict):
+        return {}
+    return {str(key): value for key, value in normalized.items()}
 
 
 def _load_scenario(
@@ -1187,8 +1189,8 @@ def _execute_orchestration(
         scenario_version="1.0.0",
         parameters=normalized_params,
         seeds={"master": seed} if seed is not None else {},
-        assumptions=_coerce_dict_list(workflow_result.metadata.get("assumptions")),  # type: ignore[arg-type]
-        mappings=_coerce_dict_list(workflow_result.metadata.get("mappings")),  # type: ignore[arg-type]
+        assumptions=_coerce_dict_list(workflow_result.metadata.get("assumptions")),
+        mappings=_coerce_dict_list(workflow_result.metadata.get("mappings")),
         warnings=_coerce_string_list(workflow_result.metadata.get("warnings")),
         step_pipeline=_coerce_string_list(workflow_result.metadata.get("step_pipeline")),
         parent_manifest_id=parent_manifest_id,
