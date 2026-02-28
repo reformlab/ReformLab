@@ -106,8 +106,8 @@ development_status:
   epic-6-retrospective: optional
 
   # EPIC-7: Trusted Outputs and External Pilot Validation
-  epic-7: backlog
-  7-1-verify-simulation-outputs-against-benchmarks: backlog
+  epic-7: in-progress
+  7-1-verify-simulation-outputs-against-benchmarks: ready-for-dev
   7-2-warn-before-exceeding-memory-limits: backlog
   7-3-enforce-ci-quality-gates: backlog
   7-4-external-pilot-run-carbon-tax-workflow: backlog
