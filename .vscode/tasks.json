@@ -4,7 +4,7 @@
     {
       "label": "Frontend: Dev Server",
       "type": "shell",
-      "command": "source ~/.nvm/nvm.sh && nvm use && cd frontend && npm run dev -- --host 127.0.0.1 --port 4173",
+      "command": "source ~/.nvm/nvm.sh && cd frontend && nvm use && npm run dev -- --host 127.0.0.1 --port 4173",
       "options": {
         "cwd": "${workspaceFolder}",
         "shell": {
