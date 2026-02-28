@@ -1,6 +1,15 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 
 import App from "@/App";
+import { AppProvider } from "@/contexts/AppContext";
+
+function renderApp() {
+  return render(
+    <AppProvider>
+      <App />
+    </AppProvider>,
+  );
+}
 
 describe("App", () => {
   beforeEach(() => {
@@ -9,15 +18,17 @@ describe("App", () => {
       configurable: true,
       value: 1600,
     });
+    sessionStorage.clear();
   });
 
-  it("renders and allows starting a simulation run", () => {
-    render(<App />);
+  it("shows password prompt when not authenticated", () => {
+    renderApp();
+    expect(screen.getByPlaceholderText(/password/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /enter/i })).toBeInTheDocument();
+  });
 
-    fireEvent.click(screen.getByRole("button", { name: /^Simulation$/i }));
-    expect(screen.getByRole("heading", { name: /Run Trigger/i })).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: /Run Simulation/i }));
-    expect(screen.getByText(/Running Simulation/i)).toBeInTheDocument();
+  it("renders ReformLab heading on the login page", () => {
+    renderApp();
+    expect(screen.getByRole("heading", { name: /reformlab/i })).toBeInTheDocument();
   });
 });
