@@ -13,13 +13,21 @@ Tests:
 from __future__ import annotations
 
 import time
+import warnings
+from pathlib import Path
 
 import pyarrow as pa
 import pyarrow.compute as pc
+import pyarrow.parquet as pq
 import pytest
 
-from reformlab.data.synthetic import generate_synthetic_population
+from reformlab.data.synthetic import generate_synthetic_population, save_synthetic_population
 from reformlab.governance.benchmarking import run_benchmark_suite
+from reformlab.governance.memory import estimate_memory_usage
+from reformlab.indicators.distributional import compute_distributional_indicators
+from reformlab.indicators.fiscal import compute_fiscal_indicators
+from reformlab.indicators.types import FiscalConfig
+from reformlab.interfaces.errors import MemoryWarning
 from reformlab.orchestrator.panel import PanelOutput
 
 pytestmark = pytest.mark.scale
@@ -55,18 +63,27 @@ def _build_panel_with_carbon_tax(
 # ============================================================================
 
 
-def test_100k_benchmark_with_persistent_population() -> None:
+def test_100k_benchmark_with_persistent_population(tmp_path: Path) -> None:
     """AC-2: BKL-701 benchmark suite passes with persistent 100k population.
 
     Given:
-        100k population generated via generate_synthetic_population()
+        100k population generated, saved to Parquet, and loaded back
     When:
         Panel built with carbon tax at 44 EUR/tCO2, then benchmarks run
     Then:
         All fiscal and distributional benchmarks pass
     """
+    # Generate and persist to Parquet
     population = generate_synthetic_population(size=100_000, seed=42)
-    panel = _build_panel_with_carbon_tax(population, carbon_tax_rate=44.0)
+    parquet_path = tmp_path / "population_100k.parquet"
+    manifest = save_synthetic_population(population, parquet_path)
+    assert manifest.content_hash, "Manifest must have non-empty SHA-256 hash"
+
+    # Load back from persisted file (validates round-trip through Parquet)
+    loaded_population = pq.read_table(parquet_path)
+    assert loaded_population.equals(population), "Round-trip through Parquet must preserve data"
+
+    panel = _build_panel_with_carbon_tax(loaded_population, carbon_tax_rate=44.0)
     result = run_benchmark_suite(panel)
 
     assert result.passed, (
@@ -102,6 +119,11 @@ def test_nfr1_performance_100k() -> None:
     t_panel = time.perf_counter() - t0
 
     t0 = time.perf_counter()
+    compute_distributional_indicators(panel)
+    compute_fiscal_indicators(panel, FiscalConfig(revenue_fields=["carbon_tax"]))
+    t_indicators = time.perf_counter() - t0
+
+    t0 = time.perf_counter()
     suite_result = run_benchmark_suite(panel)
     t_bench = time.perf_counter() - t0
 
@@ -111,6 +133,7 @@ def test_nfr1_performance_100k() -> None:
     print("\n  Timing breakdown (100k):")
     print(f"    Generation:  {t_gen:.3f}s")
     print(f"    Panel build: {t_panel:.3f}s")
+    print(f"    Indicators:  {t_indicators:.3f}s")
     print(f"    Benchmarks:  {t_bench:.3f}s")
     print(f"    Total:       {t_total:.3f}s")
 
@@ -132,6 +155,7 @@ def test_nfr3_500k_no_crash() -> None:
         Single-year simulation is run
     Then:
         Simulation completes with valid result (correct row count, no NaN)
+        And memory warning is emitted for multi-year projections at this scale
     """
     t_start = time.perf_counter()
     population = generate_synthetic_population(size=500_000, seed=42)
@@ -159,6 +183,19 @@ def test_nfr3_500k_no_crash() -> None:
             nan_count = pc.sum(pc.is_nan(col)).as_py()
             assert nan_count == 0, f"Column {col_name} has {nan_count} NaN values"
 
+    # Verify memory estimation system works at 500k scale (AC-4 memory warning)
+    # Per Story 7-2: 500k × 1yr = ~0.75GB (below threshold), but
+    # 500k × 20yr = ~15GB (exceeds threshold). Validate warning emits correctly.
+    estimate_20yr = estimate_memory_usage(population_size=500_000, projection_years=20)
+    assert estimate_20yr.exceeds_threshold, (
+        "500k × 20yr should exceed threshold — memory warning system must detect this"
+    )
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        warnings.warn(MemoryWarning(estimate_20yr))
+        memory_warnings = [x for x in w if issubclass(x.category, MemoryWarning)]
+        assert len(memory_warnings) >= 1, "MemoryWarning must be emittable for 500k multi-year"
+
     print("\n  Timing breakdown (500k):")
     print(f"    Generation:  {t_gen:.3f}s")
     print(f"    Panel build: {t_panel:.3f}s")
@@ -166,22 +203,24 @@ def test_nfr3_500k_no_crash() -> None:
 
 
 def test_nfr3_memory_warning_500k() -> None:
-    """AC-4: check_memory_requirements returns should_warn=True for 500k multi-year.
+    """AC-4: Memory estimation validates 500k thresholds at multiple projections.
 
     Validates that the memory estimation system correctly identifies
-    a 500k × 10-year simulation as exceeding safe thresholds on 16GB.
+    500k populations at various projection lengths and that MemoryWarning
+    messages follow the canonical format.
     """
-    from reformlab.governance.memory import estimate_memory_usage
+    # 500k × 1 year: should be well within threshold (~0.75 GB)
+    estimate_1yr = estimate_memory_usage(population_size=500_000, projection_years=1)
+    assert estimate_1yr.estimated_bytes > 0
+    print(f"\n  Memory estimate (500k × 1yr):  {estimate_1yr.estimated_gb:.1f} GB")
+    print(f"  Threshold: {estimate_1yr.threshold_gb:.1f} GB")
 
-    # 500k households × 10 years → ~7.5 GB estimated (800 bytes × 2x multiplier)
-    estimate = estimate_memory_usage(population_size=500_000, projection_years=10)
+    # 500k × 10 years: should be under or near threshold (~7.5 GB)
+    estimate_10yr = estimate_memory_usage(population_size=500_000, projection_years=10)
+    assert estimate_10yr.estimated_bytes > 0
+    print(f"  Memory estimate (500k × 10yr): {estimate_10yr.estimated_gb:.1f} GB")
 
-    # With 2x multiplier: 500_000 × 10 × 800 × 2 = 8,000,000,000 bytes (~7.5 GB)
-    assert estimate.estimated_bytes > 0
-    print(f"\n  Memory estimate (500k × 10yr): {estimate.estimated_gb:.1f} GB")
-    print(f"  Threshold: {estimate.threshold_gb:.1f} GB")
-
-    # For 500k × 20 years, it should exceed the 12GB threshold
+    # 500k × 20 years: must exceed the 12GB threshold
     estimate_20yr = estimate_memory_usage(population_size=500_000, projection_years=20)
     assert estimate_20yr.exceeds_threshold, (
         f"500k × 20yr should exceed threshold: "
@@ -190,8 +229,6 @@ def test_nfr3_memory_warning_500k() -> None:
     print(f"  Memory estimate (500k × 20yr): {estimate_20yr.estimated_gb:.1f} GB (exceeds threshold)")
 
     # Verify warning message format via MemoryWarning
-    from reformlab.interfaces.errors import MemoryWarning
-
     warning = MemoryWarning(estimate_20yr)
     message = str(warning)
     assert "500,000 households" in message

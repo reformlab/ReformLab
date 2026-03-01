@@ -54,7 +54,7 @@ def main() -> None:
     table = generate_synthetic_population(size=args.size, seed=args.seed)
 
     print(f"Saving to {path}...")
-    manifest = save_synthetic_population(table, path)
+    manifest = save_synthetic_population(table, path, seed=args.seed)
 
     print("\nManifest summary:")
     print(f"  Path:       {manifest.file_path}")

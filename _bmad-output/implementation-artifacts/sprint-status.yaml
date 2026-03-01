@@ -117,7 +117,7 @@ development_status:
   # EPIC-8: Post-Phase-1 Validation Spikes
   epic-8: in-progress
   8-1-e2e-openfisca-integration-spike: done
-  8-2-scale-validation-100k-synthetic-population-benchmarks: review
+  8-2-scale-validation-100k-synthetic-population-benchmarks: done
 
   # EPIC-9: OpenFisca Adapter Hardening (follow-ups from spike 8-1)
   epic-9: backlog

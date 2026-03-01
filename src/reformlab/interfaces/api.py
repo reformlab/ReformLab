@@ -1517,7 +1517,6 @@ def generate_population(
     size: int = 100_000,
     seed: int = 42,
     output_path: Path | str | None = None,
-    format: str = "parquet",
 ) -> PopulationResult:
     """Generate a deterministic synthetic population dataset.
 
@@ -1527,8 +1526,7 @@ def generate_population(
     Args:
         size: Number of households to generate.
         seed: Random seed for reproducibility.
-        output_path: If provided, save population to this file path.
-        format: Output format when saving (``"parquet"`` or ``"csv"``).
+        output_path: If provided, save population to Parquet at this path.
 
     Returns:
         PopulationResult with manifest, row count, and output path.
@@ -1545,16 +1543,25 @@ def generate_population(
 
     if output_path is not None:
         resolved = Path(output_path)
-        manifest = save_synthetic_population(table, resolved)
+        manifest = save_synthetic_population(table, resolved, seed=seed)
         return PopulationResult(
             manifest=manifest,
             row_count=len(table),
             path=resolved,
         )
 
-    # No file output — build in-memory manifest
+    # No file output — build in-memory manifest with content hash
+    import hashlib
+    import io
+
+    import pyarrow.parquet as pq
+
     from reformlab.data.pipeline import DatasetManifest as _DatasetManifest
     from reformlab.data.pipeline import DataSourceMetadata
+
+    buf = io.BytesIO()
+    pq.write_table(table, buf)
+    content_hash = hashlib.sha256(buf.getvalue()).hexdigest()
 
     source = DataSourceMetadata(
         name="synthetic-population",
@@ -1568,7 +1575,7 @@ def generate_population(
 
     manifest = _DatasetManifest(
         source=source,
-        content_hash="",
+        content_hash=content_hash,
         file_path=Path(""),
         format="parquet",
         row_count=len(table),

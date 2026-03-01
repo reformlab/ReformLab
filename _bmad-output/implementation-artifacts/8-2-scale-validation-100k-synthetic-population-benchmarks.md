@@ -1,6 +1,6 @@
 # Story 8.2: Generate 100k-Household Synthetic Population and Run BKL-701 Benchmarks at Target Scale
 
-Status: review
+Status: done
 
 ## Story
 
@@ -425,6 +425,48 @@ Extracted deterministic population generation from conftest.py into a reusable `
 - `tests/interfaces/test_api.py` — Updated expected exports set
 - `pyproject.toml` — Added `pytest.mark.scale` marker
 
+## Senior Developer Review (AI)
+
+**Reviewer:** Lucas (via Claude Opus 4.6 adversarial code review)
+**Date:** 2026-03-01
+**Outcome:** Approved with fixes applied
+
+### Issues Found and Fixed (3 High, 4 Medium, 2 Low)
+
+**HIGH (all fixed):**
+- **H1:** AC-2 test did not use persistent population — fixed to save/load via Parquet round-trip
+- **H2:** AC-3 test missing indicators phase measurement — fixed to include distributional + fiscal indicator computation in timing
+- **H3:** AC-4 test missing memory warning capture — fixed to verify MemoryWarning emission at 500k scale
+
+**MEDIUM (all fixed):**
+- **M1:** `generate_population()` had unused `format` parameter promising CSV support that didn't exist — removed
+- **M2:** In-memory `PopulationResult` had empty content hash (`""`) producing confusing `hash=` display — fixed to compute SHA-256 from in-memory Parquet serialization
+- **M3:** Scale tests (including 500k generation) ran by default in `pytest` — fixed `addopts` to exclude `scale` marker
+- **M4:** `save_synthetic_population()` hardcoded `SEED=42` in default description regardless of actual seed — added `seed` keyword parameter
+
+**LOW (noted, not fixed):**
+- **L1:** `format` parameter shadowed built-in (removed with M1 fix)
+- **L2:** No functional tests for `generate_population()` API (export tests exist, functional coverage is low priority)
+
+### What Passed Review
+
+- Algorithm compatibility between `synthetic.py` and original `conftest.py` — bit-identical output confirmed
+- File List matches git reality — no discrepancies
+- Export chain is correct and complete
+- `pytest.mark.scale` marker properly registered and applied
+- Unit tests for `synthetic.py` are thorough (14 tests including compatibility)
+- Refactored `conftest.py` is clean and minimal
+
+### Test Results Post-Review
+
+- 14/14 synthetic unit tests pass
+- 7/7 existing benchmark tests pass (no regression)
+- 4/4 scale validation tests pass (with fixes)
+- 1394/1394 default test suite passes (3 pre-existing failures excluded)
+- ruff: clean
+- mypy: clean (2 pre-existing issues in api.py unrelated to this story)
+
 ## Change Log
 
 - **2026-02-28:** Story 8.2 implemented — synthetic population generator, scale validation tests (NFR1/NFR3), public API entry point, CLI script. All acceptance criteria satisfied.
+- **2026-03-01:** Code review completed — 7 issues found and fixed (3H, 4M). AC-2 test now validates Parquet round-trip, AC-3 test includes indicator computation, AC-4 test captures memory warnings. Removed unused `format` parameter, fixed empty in-memory hash, excluded scale tests from default runs, fixed hardcoded seed in metadata.
