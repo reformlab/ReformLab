@@ -109,7 +109,15 @@ setup_test_env() {
   # Default mocks: succeed silently.
   create_mock "claude" 'echo "mock-claude: $*"'
   create_mock "npx" 'echo "mock-npx: $*"'
-  # python mock: default to passing tests
+  # uv mock: default to passing tests (uv is preferred over python when available)
+  create_mock "uv" '
+if [[ "$1" == "run" && "$2" == "pytest" ]]; then
+  echo "mock-pytest: all tests passed"
+  exit 0
+fi
+echo "mock-uv: $*"
+'
+  # python mock: fallback for systems without uv
   create_mock "python" '
 if [[ "$1" == "-m" && "$2" == "pytest" ]]; then
   echo "mock-pytest: all tests passed"
@@ -222,7 +230,7 @@ YAML
   assert_exit_code "succeeds" "0" "$RUN_EXIT_CODE"
   assert_contains "reports done stories" "Already done: 2" "$RUN_OUTPUT"
   assert_contains "reports pending stories" "Pending stories: 2" "$RUN_OUTPUT"
-  assert_not_contains "does not process done story" "[dry-run] Would run: claude -p /bmad-bmm-dev-story for 1-5" "$RUN_OUTPUT"
+  assert_not_contains "does not process done story" "Story: 1-5-add-data-quality-checks" "$RUN_OUTPUT"
   assert_contains "processes pending story" "1-7-create-compatibility-matrix" "$RUN_OUTPUT"
   teardown_test_env
 }
@@ -282,9 +290,9 @@ YAML
 
   run_script 1
   assert_exit_code "succeeds" "0" "$RUN_EXIT_CODE"
-  assert_contains "skips create for ready-for-dev" "Step 1/4: Skipped (status is ready-for-dev)" "$RUN_OUTPUT"
+  assert_contains "skips create for ready-for-dev" "Step 1/5: Skipped (status: ready-for-dev)" "$RUN_OUTPUT"
   # 1-8 is backlog so create should run.
-  assert_contains "runs create for backlog" "[dry-run] Would run: claude -p /bmad-bmm-create-story for 1-8" "$RUN_OUTPUT"
+  assert_contains "runs create for backlog" "[dry-run] Would run: claude --model opus -p /bmad-bmm-create-story for 1-8" "$RUN_OUTPUT"
   teardown_test_env
 }
 
@@ -342,7 +350,16 @@ YAML
   echo "# Story 1-8" > "${WORK_DIR}/_bmad-output/implementation-artifacts/1-8-set-up-project-scaffold.md"
   (cd "$WORK_DIR" && git add -A && git commit -m "story file" -q)
 
-  # Make pytest fail.
+  # Make claude produce a change so dev step creates a commit and test gate runs.
+  create_mock "claude" 'echo "implemented" >> src/changes.py; echo "mock-claude: $*"'
+  # Make pytest fail (mock both uv and python since run_test_gate checks uv first).
+  create_mock "uv" '
+if [[ "$1" == "run" && "$2" == "pytest" ]]; then
+  echo "FAILED test_something"
+  exit 1
+fi
+echo "mock-uv: $*"
+'
   create_mock "python" '
 if [[ "$1" == "-m" && "$2" == "pytest" ]]; then
   echo "FAILED test_something"
@@ -351,18 +368,7 @@ fi
 echo "mock-python: $*"
 '
 
-  # Verify the mock is on PATH.
-  local mock_path
-  mock_path="$(which python)"
-  echo "  [debug] python mock at: ${mock_path}"
-
-  # Run directly, capturing exit code explicitly.
-  local rc=0
-  RUN_OUTPUT="$(cd "$WORK_DIR" && bash ./overnight-build.sh 1 2>&1)" || rc=$?
-  RUN_EXIT_CODE=$rc
-  echo "  [debug] exit code: ${rc}"
-  echo "  [debug] output grep test: $(echo "$RUN_OUTPUT" | grep -i "test gate")"
-  echo "  [debug] output grep pytest: $(echo "$RUN_OUTPUT" | grep -i "pytest")"
+  run_script_live 1
 
   assert_exit_code "exits 1 when tests fail" "1" "$RUN_EXIT_CODE"
   assert_contains "reports test gate failure" "FAILED the test gate" "$RUN_OUTPUT"
@@ -385,9 +391,12 @@ YAML
   echo "# Story 1-8" > "${WORK_DIR}/_bmad-output/implementation-artifacts/1-8-set-up-project-scaffold.md"
   (cd "$WORK_DIR" && git add -A && git commit -m "story files" -q)
 
+  # Make claude produce changes so dev step creates commits and test gate runs.
+  create_mock "claude" 'echo "implemented" >> src/changes.py; echo "mock-claude: $*"'
   # Track which stories pytest is called for using a counter file.
-  create_mock "python" '
-if [[ "$1" == "-m" && "$2" == "pytest" ]]; then
+  # First call fails, second succeeds.
+  create_mock "uv" '
+if [[ "$1" == "run" && "$2" == "pytest" ]]; then
   COUNTER_FILE="${WORK_DIR:-/tmp}/.pytest_call_count"
   if [[ ! -f "$COUNTER_FILE" ]]; then
     echo "1" > "$COUNTER_FILE"
@@ -454,6 +463,8 @@ YAML
   echo "# Story 1-8" > "${WORK_DIR}/_bmad-output/implementation-artifacts/1-8-set-up-project-scaffold.md"
   (cd "$WORK_DIR" && git add -A && git commit -m "story file" -q)
 
+  # Make claude produce a change so dev creates a commit.
+  create_mock "claude" 'echo "implemented" >> src/changes.py; echo "mock-claude: $*"'
   # Make pytest fail — but SKIP_TESTS should bypass it.
   create_mock "python" 'exit 1'
 
@@ -524,14 +535,18 @@ YAML
   echo "# Story 1-8" > "${WORK_DIR}/_bmad-output/implementation-artifacts/1-8-set-up-project-scaffold.md"
   (cd "$WORK_DIR" && git add -A && git commit -m "story file" -q)
 
-  # Capture what npx (codex) receives.
+  # Make claude produce a change so dev step creates a new commit.
+  create_mock "claude" 'echo "implemented" >> src/changes.py; echo "mock-claude: $*"'
+  # Capture what npx (codex) receives — the prompt includes "git diff <commit>".
   create_mock "npx" 'echo "mock-npx-args: $*"'
 
   run_script_live 1
 
-  # The final codex review should use --diff, not --uncommitted.
-  assert_contains "codex review uses --diff" "review --diff" "$RUN_OUTPUT"
-  assert_not_contains "codex review does not use --uncommitted" "--uncommitted" "$RUN_OUTPUT"
+  # The codex review prompt should contain "git diff" with a commit hash,
+  # meaning it reviews the diff range, not the full codebase.
+  assert_contains "codex review prompt includes git diff" "git diff" "$RUN_OUTPUT"
+  # Should use the specific Code Review step, not the full-review path.
+  assert_contains "codex review step runs" "Step 4/5: Code Review (Codex)" "$RUN_OUTPUT"
   teardown_test_env
 }
 

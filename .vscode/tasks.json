@@ -49,6 +49,9 @@
       "command": "uv run --extra server uvicorn reformlab.server.app:create_app --factory --reload --port 8000",
       "options": {
         "cwd": "${workspaceFolder}",
+        "env": {
+          "REFORMLAB_PASSWORD": "local"
+        },
         "shell": {
           "executable": "/bin/zsh",
           "args": [
