@@ -1,0 +1,5871 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- BMAD Prompt Run Metadata -->
+<!-- Epic: 9 -->
+<!-- Story: 9.4 -->
+<!-- Phase: create-story -->
+<!-- Timestamp: 20260301T204730Z -->
+<compiled-workflow>
+<mission><![CDATA[
+
+Create the next user story from epics+stories with enhanced context analysis and direct ready-for-dev marking
+
+Target: Story 9.4 - define-population-data-4-entity-format
+Create comprehensive developer context and implementation-ready story.
+
+]]></mission>
+<context>
+<file id="git-intel" path="[git-intelligence]"><![CDATA[<git-intelligence>
+Git intelligence extracted at compile time. Do NOT run additional git commands - use this embedded data instead.
+
+### Recent Commits (last 5)
+```
+0eaf712 refactor(story-9.3): apply code review changes
+e8c7e74 feat(story-9.3): implement story
+9dca5f3 docs(story-9.3): create story file
+5230047 refactor(story-9.2): apply code review changes
+46800c1 feat(story-9.2): implement story
+```
+
+### Related Story Commits
+```
+0eaf712 refactor(story-9.3): apply code review changes
+e8c7e74 feat(story-9.3): implement story
+9dca5f3 docs(story-9.3): create story file
+5230047 refactor(story-9.2): apply code review changes
+46800c1 feat(story-9.2): implement story
+```
+
+### Recently Modified Files (excluding docs/)
+```
+.bmad-assist/running.lock
+.bmad-assist/runs/run-20260301T162433Z-dfe5eccd.yaml
+.bmad-assist/runs/run-20260301T163026Z-6cdb01f4.yaml
+.bmad-assist/runs/run-20260301T190149Z-ae8684d9.yaml
+.bmad-assist/state.yaml
+_bmad-output/implementation-artifacts/benchmarks/2026-03/eval-9-2-a-20260301T191025Z.yaml
+_bmad-output/implementation-artifacts/benchmarks/2026-03/eval-9-2-b-20260301T191025Z.yaml
+_bmad-output/implementation-artifacts/benchmarks/2026-03/eval-9-2-master-20260301T164922Z.yaml
+_bmad-output/implementation-artifacts/benchmarks/2026-03/eval-9-2-synthesizer-20260301T191809Z.yaml
+_bmad-output/implementation-artifacts/benchmarks/2026-03/eval-9-3-a-20260301T193918Z.yaml
+```
+
+</git-intelligence>]]></file>
+<file id="b5c6fe32" path="_bmad-output/project-context.md" label="PROJECT CONTEXT"><![CDATA[
+
+---
+project_name: 'ReformLab'
+user_name: 'Lucas'
+date: '2026-02-27'
+status: 'complete'
+sections_completed: ['technology_stack', 'language_rules', 'framework_rules', 'testing_rules', 'code_quality', 'workflow_rules', 'critical_rules']
+rule_count: 38
+optimized_for_llm: true
+---
+
+# Project Context for AI Agents
+
+_This file contains critical rules and patterns that AI agents must follow when implementing code in this project. Focus on unobvious details that agents might otherwise miss._
+
+---
+
+## Technology Stack & Versions
+
+- **Python 3.13+** — `target-version = "py313"` (ruff), `python_version = "3.13"` (mypy strict)
+- **uv** — package manager, **hatchling** — build backend
+- **pyarrow >= 18.0.0** — canonical data type (`pa.Table`), CSV/Parquet I/O
+- **pyyaml >= 6.0.2** — YAML template/config loading
+- **jsonschema >= 4.23.0** — JSON Schema validation for templates
+- **openfisca-core >= 44.0.0** — optional dependency (`[openfisca]` extra); never import outside adapter modules
+- **pytest >= 8.3.3, ruff >= 0.15.0, mypy >= 1.19.0** — dev tooling
+- **Planned frontend:** React 18+ / TypeScript / Vite / Shadcn/ui / Tailwind v4
+- **Planned backend API:** FastAPI + uvicorn
+- **Planned deployment:** Kamal 2 on Hetzner CX22
+
+### Version Constraints
+
+- mypy runs in **strict mode** with explicit `ignore_missing_imports` overrides for openfisca, pyarrow, jsonschema, yaml
+- OpenFisca is optional — core library must function without it installed
+
+## Critical Implementation Rules
+
+### Python Language Rules
+
+- **Every file starts with** `from __future__ import annotations` — no exceptions
+- **Use `if TYPE_CHECKING:` guards** for imports that are only needed for annotations or would create circular dependencies; do the runtime import locally where needed
+- **Frozen dataclasses are the default** — all domain types use `@dataclass(frozen=True)`; mutate via `dataclasses.replace()`, never by assignment
+- **Protocols, not ABCs** — interfaces are `Protocol` + `@runtime_checkable`; no abstract base classes; structural (duck) typing only
+- **Subsystem-specific exceptions** — each module defines its own error hierarchy; never raise bare `Exception` or `ValueError` for domain errors
+- **Metadata bags** use `dict[str, Any]` with **stable string-constant keys** defined at module level (e.g., `STEP_EXECUTION_LOG_KEY`)
+- **Union syntax** — use `X | None` not `Optional[X]`; use `dict[str, int]` not `Dict[str, int]` (modern generics, no `typing` aliases)
+- **`tuple[...]` for immutable sequences** — function parameters and return types that are ordered-and-fixed use `tuple`, not `list`
+
+### Architecture & Framework Rules
+
+- **Adapter isolation is absolute** — only `computation/openfisca_adapter.py` and `openfisca_api_adapter.py` may import OpenFisca; all other code uses the `ComputationAdapter` protocol
+- **Step pipeline contract** — steps implement `OrchestratorStep` protocol (`name` + `execute(year, state) -> YearState`); bare callables accepted via `adapt_callable()`; registration via `StepRegistry` with topological sort on `depends_on`
+- **Template packs are YAML** — live in `src/reformlab/templates/packs/{policy_type}/`; validated against JSON Schemas in `templates/schema/`; each policy type has its own subpackage with `compute.py` + `compare.py`
+- **Data flows through PyArrow** — `PopulationData` (dict of `pa.Table` by entity) → adapter → `ComputationResult` (`pa.Table`) → `YearState.data` → `PanelOutput` (stacked table) → indicators
+- **`YearState` is the state token** — passed between steps and years; immutable (frozen dataclass); updated via `replace()`
+- **Orchestrator is the core product** — never build custom policy engines, formula compilers, or entity graph engines; OpenFisca handles computation, this project handles orchestration
+
+### Testing Rules
+
+- **Mirror source structure** — `tests/{subsystem}/` matches `src/reformlab/{subsystem}/`; each has `__init__.py` and `conftest.py`
+- **Class-based test grouping** — group tests by feature or acceptance criterion (e.g., `TestOrchestratorBasicExecution`); reference story/AC IDs in comments and docstrings
+- **Fixtures in conftest.py** — subsystem-specific fixtures per `conftest.py`; build PyArrow tables inline, use `tmp_path` for I/O, golden YAML files in `tests/fixtures/`
+- **Direct assertions** — use plain `assert`; no custom assertion helpers; use `pytest.raises(ExceptionClass, match=...)` for errors
+- **Test helpers are explicit** — import shared callables from conftest directly (`from tests.orchestrator.conftest import ...`); no hidden magic
+- **Golden file tests** — YAML fixtures in `tests/fixtures/templates/`; test load → validate → round-trip cycle
+- **MockAdapter for unit tests** — never use real OpenFisca in orchestrator/template/indicator unit tests; `MockAdapter` is the standard test double
+
+### Code Quality & Style Rules
+
+- **ruff** enforces `E`, `F`, `I`, `W` rule sets; `src = ["src"]`; target Python 3.13
+- **mypy strict** — all code must pass `mypy --strict`; new modules need `ignore_missing_imports` overrides in `pyproject.toml` only for third-party libs without stubs
+- **File naming** — `snake_case.py` throughout; no PascalCase or kebab-case files
+- **Class naming** — PascalCase for classes (`OrchestratorStep`, `CarbonTaxParameters`); no suffixes like `Impl` or `Base`
+- **Module-level docstrings** — every module has a docstring explaining its role, referencing relevant story/FR
+- **Section separators** — use `# ====...====` comment blocks to separate major sections within longer modules (see `step.py`)
+- **No wildcard imports** — always import specific names; `from reformlab.orchestrator import Orchestrator, OrchestratorConfig`
+- **Logging** — use `logging.getLogger(__name__)`; structured key=value format for parseable log lines (e.g., `year=%d seed=%s event=year_start`)
+
+### Development Workflow Rules
+
+- **Package manager is uv** — use `uv pip install`, `uv run pytest`, etc.; not `pip` directly
+- **Test command** — `uv run pytest tests/` (or specific subsystem path)
+- **Lint command** — `uv run ruff check src/ tests/` and `uv run mypy src/`
+- **Source layout** — `src/reformlab/` is the installable package; `tests/` is separate; `pythonpath = ["src"]` in pytest config
+- **Build system** — hatchling with `packages = ["src/reformlab"]`
+- **No auto-formatting on save assumed** — agents must produce ruff-compliant code; run `ruff check --fix` if needed
+
+### Critical Don't-Miss Rules
+
+- **Never import OpenFisca outside adapter modules** — this is the single most important architectural boundary; violation couples the entire codebase to one backend
+- **All domain types are frozen** — never add a mutable dataclass; if you need mutation, use `dataclasses.replace()` and return a new instance
+- **Determinism is non-negotiable** — every run must be reproducible; seeds are explicit, logged in manifests, derived deterministically (`master_seed XOR year`)
+- **Data contracts fail loudly** — contract validation at ingestion boundaries is field-level and blocking; never silently coerce or drop data
+- **Assumption transparency** — every run produces a manifest (JSON); assumptions, versions, seeds, data hashes are all recorded
+- **PyArrow is the canonical data type** — do not use pandas DataFrames in core logic; `pa.Table` is the standard; pandas only at display/export boundaries if needed
+- **No custom formula compiler** — environmental policy logic is Python code in template `compute.py` modules, not YAML formula strings or DSLs
+- **France/Europe first** — initial scenarios use French policy parameters (EUR, INSEE deciles, French carbon tax rates); European data sources (Eurostat, EU-SILC)
+
+---
+
+## Usage Guidelines
+
+**For AI Agents:**
+
+- Read this file before implementing any code
+- Follow ALL rules exactly as documented
+- When in doubt, prefer the more restrictive option
+- Update this file if new patterns emerge
+
+**For Humans:**
+
+- Keep this file lean and focused on agent needs
+- Update when technology stack changes
+- Review quarterly for outdated rules
+- Remove rules that become obvious over time
+
+Last Updated: 2026-02-27
+
+
+]]></file>
+<file id="ab55991d" path="_bmad-output/planning-artifacts/prd.md" label="PRD"><![CDATA[
+
+---
+stepsCompleted:
+  - step-01-init
+  - step-02-discovery
+  - step-02b-vision
+  - step-02c-executive-summary
+  - step-03-success
+  - step-04-journeys
+  - step-05-domain
+  - step-06-innovation
+  - step-07-project-type
+  - step-08-scoping
+  - step-09-functional
+  - step-10-nonfunctional
+  - step-01b-continue
+  - step-11-polish
+  - step-12-complete
+inputDocuments:
+  - _bmad-output/planning-artifacts/product-brief-ReformLab-2026-02-23.md
+  - _bmad-output/planning-artifacts/research/domain-generic-microsimulation-frameworks-research-2026-02-23.md
+  - _bmad-output/planning-artifacts/research/technical-entity-graph-data-modeling-and-vectorized-simulation-engines-research-2026-02-23.md
+  - _bmad-output/brainstorming/brainstorming-session-2026-02-23.md
+workflowType: 'prd'
+documentCounts:
+  briefs: 1
+  research: 2
+  brainstorming: 1
+  projectDocs: 0
+classification:
+  projectType: developer_tool
+  domain: scientific
+  complexity: high
+  projectContext: greenfield
+---
+
+# Product Requirements Document - ReformLab
+
+**Author:** Lucas
+**Date:** 2026-02-24
+
+## Strategic Direction Update (2026-02-25)
+
+This PRD follows an **OpenFisca-first platform strategy**.
+
+- **OpenFisca is the tax-benefit computation backend**, accessed through a clean adapter interface (`ComputationAdapter`). No custom policy engine, formula compiler, or entity graph engine will be built.
+- **The dynamic orchestrator is the core product.** It manages multi-year projections by executing a pluggable step pipeline between yearly OpenFisca computations: vintage transitions, state carry-forward, and (Phase 2) behavioral response adjustments.
+- **Open-data-first:** The platform works out of the box with public data (synthetic populations, emission factors). Custom data is optional.
+- ReformLab provides the end-to-end environmental policy assessment experience: data preparation, scenario templates, dynamic orchestration with vintage tracking, indicators, governance, and user interfaces.
+- The adapter pattern ensures the platform is not locked to OpenFisca — computation backends can be swapped without changing the orchestration layer.
+- Endogenous market-clearing and physical system feedback loops are explicitly out of MVP scope.
+
+If a statement elsewhere implies "new core simulation engine replacing OpenFisca," this section supersedes it.
+
+## Executive Summary
+
+ReformLab is an OpenFisca-first policy analysis platform for environmental and distributional assessment. Instead of rebuilding a microsimulation core, it turns OpenFisca outputs plus external data into a single operational workflow: ingest and harmonize data, define environmental policy scenarios, run multi-year projections, track assumptions, and produce decision-ready indicators.
+
+The target users are analysts and researchers already chaining scripts and tools for carbon-tax and subsidy analysis. The product promise is speed and trust: reusable templates, deterministic scenario execution, ten-year projection support through iterative orchestration, and full run provenance. MVP validates the approach with French household carbon-tax and redistribution scenarios while preserving full compatibility with OpenFisca.
+
+Built by a domain expert with AI-assisted execution, the immediate objective is practical: make policy-grade environmental assessment reproducible and fast without waiting for a new engine ecosystem to emerge.
+
+### What Makes This Special
+
+**Speed-to-decision is the core value.** Configure a carbon-tax scenario, run baseline vs reform over multiple years, and get distributional and welfare indicators in minutes instead of weeks of manual stitching.
+
+**OpenFisca-first architecture is the strategic choice.** Reuse mature tax-benefit policy logic, then layer environmental modeling, orchestration, and indicators on top.
+
+**Assumption transparency is built-in, not aspirational.** Every dataset, parameter, scenario, and run configuration is tracked with reproducible manifests.
+
+**Open-data-first adoption remains key.** Synthetic populations and public datasets enable immediate use; restricted microdata is optional.
+
+## Project Classification
+
+| Dimension | Value |
+|-----------|-------|
+| **Project Type** | OpenFisca-centered policy analysis product (Python + notebook + no-code UI) |
+| **Domain** | Environmental and distributional policy simulation |
+| **Complexity** | High — multi-source data engineering, dynamic orchestration, reproducibility governance, multi-persona UX |
+| **Project Context** | Greenfield product layer on top of mature open-source core |
+
+## Success Criteria
+
+### User Success
+
+- **Time-to-first-result:** New user installs via pip, runs the carbon tax example, and sees distributional charts in under 30 minutes
+- **Complete analysis in a single run:** One command produces welfare effects, fiscal cost, and distributional impact in notebook outputs — ready for analysis without post-processing
+- **Full assumption traceability:** Every simulation run produces an immutable manifest documenting all parameters, data sources, and assumptions — reproducibility by default
+- **Policy correctness:** Simulation results match known policy outcomes and published benchmarks (e.g., known carbon tax revenue, distributional patterns from academic literature) within defined tolerance
+
+### Business Success
+
+Since ReformLab is an open-source project, "business" success means adoption, credibility, and real-world policy impact.
+
+| Objective | 12-Month Target |
+| --- | --- |
+| **Government adoption** | At least 1 evaluation team in French/EU public administration actively using the framework |
+| **Correctness credibility** | Validation suite covering the carbon tax domain; results independently reproducible |
+| **Research adoption** | At least 1 published paper or working paper using ReformLab |
+| **Ecosystem seeding** | Carbon tax MVP fully functional with 4-5 redistribution scenario templates |
+
+### Technical Success
+
+- **Deterministic execution:** Identical inputs always produce identical outputs across runs and environments
+- **Vectorized performance:** Full population simulation (100k+ households) completes in seconds, not minutes
+- **Assumption traceability:** Every simulation run produces an immutable manifest — data sources, parameters, assumptions, engine version — with zero manual documentation effort
+- **Open-data default:** Framework is fully functional using only publicly available data; no restricted microdata required for any core workflow
+
+### Measurable Outcomes
+
+| Metric | Target | Measurement |
+| --- | --- | --- |
+| Time from install to first meaningful output | < 30 minutes | Tested with new users unfamiliar with the framework |
+| Validation benchmark pass rate | 100% on core benchmarks before any public release | Automated test suite against reference datasets |
+| Analysis completeness | Single run produces distributional, welfare, and fiscal cost outputs | Automated check on notebook outputs |
+| Run manifest generation | 100% of simulation runs produce complete manifests | Automated verification |
+
+## Product Scope
+
+### MVP Strategy & Philosophy
+
+**MVP Approach:** Problem-solving MVP — prove that an OpenFisca-first stack with dedicated product layers can deliver environmental policy assessment faster and with higher reproducibility than ad-hoc tool chains.
+
+**Resource Reality:** Solo developer with AI assistance. Sequence for leverage: avoid rebuilding policy-calculation internals, build only differentiated layers.
+
+**Architectural Bet:** The differentiation is orchestration and product UX, not core tax-benefit computation. OpenFisca integration is first-class from day one.
+
+### MVP Feature Set (Phase 1)
+
+**Core User Journeys Supported:**
+- Alex (First-Time Installer) — pip install → quickstart notebook → carbon tax charts in 15 minutes
+- Sophie (Policy Analyst) — YAML policy definition → scenario comparison → distributional analysis in notebooks
+- Marco (Researcher) — Python API → Jupyter workflow → reproducible results via run manifests
+
+**Must-Have Capabilities:**
+
+| # | Capability | Justification |
+|---|-----------|---------------|
+| 1 | OpenFisca Integration Layer | Treat OpenFisca outputs/API as canonical baseline for tax-benefit calculations |
+| 2 | Data Ingestion and Harmonization | Ingest OpenFisca outputs, synthetic populations, and environmental datasets into a consistent analytical model |
+| 3 | Environmental Policy Template Library | Carbon tax, targeted rebates, subsidy/feebate templates reusable across scenarios |
+| 4 | Dynamic Orchestrator | Multi-year (10+ year) iterative simulation runner with explicit yearly state transitions |
+| 5 | Vintage Tracking Module | Track cohort/asset vintages (e.g., heating systems, vehicles) through time |
+| 6 | Indicator and Analysis Layer | Distributional, welfare, fiscal, and policy-performance indicators |
+| 7 | Assumption Logging & Run Manifests | Immutable run-level provenance across datasets, templates, parameters, and code versions |
+| 8 | Scenario Registry & Comparison | Versioned baseline/reform scenarios with side-by-side comparison workflows |
+| 9 | Python API + Notebook Workflow | Research-grade programmability for advanced users |
+| 10 | Early No-Code GUI | Fast scenario setup, launch, and comparison for non-coding policy analysts |
+
+**Explicitly Deferred from MVP:**
+- Endogenous market-clearing models
+- Physical system feedback loops (energy/climate stock-flow models)
+- Full behavioral equilibrium modeling
+- Fully automated report authoring pipeline
+- Advanced policy-rule authoring beyond template-driven workflows
+
+### Post-MVP Features
+
+**Phase 2 (Growth):**
+
+| Feature | Trigger |
+|---------|---------|
+| Automated sensitivity sweeps | After MVP scenario flows are stable |
+| Replication package export | After run-governance schema is validated with external users |
+| Reduced-form behavioral module | After static dynamic loop is benchmarked |
+| Additional policy templates | After carbon-tax + subsidy templates are externally piloted |
+| GUI expansion | After MVP no-code workflow proves analyst value |
+| OpenFisca direct API orchestration hardening | After CSV/Parquet contract is stable in production workflows |
+| Calibration engine | After benchmark datasets and acceptance tolerances are finalized |
+
+**Phase 3 (Expansion):**
+
+| Feature | Trigger |
+|---------|---------|
+| Public-facing web app | Non-technical user access with guardrails |
+| Election showcase application | Compare candidate proposals side-by-side |
+| Advanced dynamic module | Lifecycle and transition modeling beyond MVP orchestrator |
+| Cloud-Scalable Computation | Large Monte Carlo runs |
+| Community Template Gallery | Researcher-published reusable model templates |
+| Multi-Country Support | Beyond France |
+| AI-Assisted Model Building | Interpretation and model construction assistance |
+
+### Risk Mitigation Strategy
+
+**Technical Risks:**
+
+| Risk | Mitigation |
+|------|-----------|
+| OpenFisca contract drift (outputs/API changes) | Version-pinned adapters, contract tests, and compatibility matrix by OpenFisca version |
+| Dynamic orchestration complexity | Start with deterministic yearly loop + explicit state schema before adding behavioral layers |
+| Data harmonization fragility | Canonical schema contracts and validation at every ingestion boundary |
+
+**Market Risks:**
+
+| Risk | Mitigation |
+|------|-----------|
+| Overlap with PolicyEngine positioning | Focus on environmental policy templates, dynamic vintage effects, and analyst workflow governance |
+| Researchers don't trust orchestration results | Publish benchmark packs and scenario traceability evidence |
+| No adoption beyond creator | Secure one ministry/lab pilot with real policy question and documented outcomes |
+
+**Resource Risks:**
+
+| Risk | Mitigation |
+|------|-----------|
+| Solo development stalls or scope overwhelms | Ruthless Phase 1 focus on 10 must-have capabilities; defer everything else |
+| AI-assisted development hits limits on complex architectural decisions | Entity graph and engine architecture designed upfront with clear interfaces; AI assists on implementation, human decides architecture |
+| MVP takes too long to reach external validation | Go/no-go checkpoint: at least 1 external user runs carbon tax model before starting Phase 2 |
+
+## User Journeys
+
+### Journey 1: First-Time Installer — "Alex"
+
+**Profile:** Alex is a PhD student in environmental economics at Sciences Po. He's seen ReformLab mentioned in a conference talk and wants to evaluate whether it's worth using for his dissertation on carbon tax incidence. He's comfortable with Python but has never used a microsimulation framework.
+
+**Opening Scene:** Alex finds the PyPI page after a quick search. He's skeptical — he's tried OpenFisca before and gave up after two hours of configuration. He has 30 minutes before his next seminar.
+
+**Rising Action:** `pip install reformlab` works cleanly. He opens the quickstart notebook linked in the README. The first cell loads a pre-configured carbon tax scenario on synthetic French households. He runs it — distributional charts by income decile appear in seconds. He modifies the tax rate from €44/tCO2 to €100/tCO2, re-runs. The charts update. He switches the redistribution scenario from flat dividend to progressive rebate. New charts, new winners/losers table, all in the same notebook.
+
+**Climax:** Alex realizes he just did in 15 minutes what took him three weeks of ad-hoc scripting last semester — and the results come with full methodology documentation he didn't have to write.
+
+**Resolution:** He bookmarks the API docs, forks the carbon tax example into his dissertation project folder, and starts thinking about how to extend the entity model with vehicle ownership data. He's hooked.
+
+**Requirements revealed:** Frictionless pip install, working quickstart example, pre-loaded synthetic data, instant visual output, clear extension path from examples to custom models.
+
+---
+
+### Journey 2: Sophie — Policy Analyst at French Ministry
+
+**Profile:** Sophie works in the evaluation department of the Ministry of Ecological Transition. She evaluates proposed environmental policies and produces briefing-ready analysis. She's comfortable with Python but frustrated by rebuilding infrastructure for every assessment.
+
+**Opening Scene:** Sophie's director asks for a distributional impact assessment of a proposed carbon tax reform with three redistribution options — due in two weeks. Normally this means: pull the latest INSEE data, chain OpenFisca for income effects, write custom scripts for energy consumption, build Excel charts, and manually document methodology. She's done this five times and dreads it.
+
+**Rising Action:** Sophie opens ReformLab, copies the carbon tax template YAML, and adjusts the parameters to match the proposed reform: tax rate, energy categories, exemptions. She defines the three redistribution scenarios as YAML diffs against the baseline. She points the framework at the synthetic French population (already built-in) and runs all three scenarios.
+
+**Climax:** Within an hour, Sophie has distributional impact charts by income decile for all three scenarios, a winners/losers table, and fiscal cost estimates in her notebook workflow. She runs manual parameter variations (for example, tax rate ±20%) by editing YAML and rerunning. The methodology trail is already documented through run manifests.
+
+**Resolution:** The director gets the briefing a week early. When a colleague questions an assumption about energy consumption by income group, Sophie opens the assumption log, shows the exact distributional assumption used, and re-runs with an alternative assumption in five minutes. She becomes the department's go-to person for policy assessment and starts customizing templates for recurring evaluations.
+
+**Requirements revealed:** YAML policy definition with reform-as-diff, multiple scenario comparison, built-in synthetic population, assumption logging via run manifests, assumption swappability, and fast rerun workflow from notebooks.
+
+---
+
+### Journey 3: Marco — Academic Researcher
+
+**Profile:** Marco is a labor and environmental economist. He's estimated energy demand elasticities by income group using French household survey data. Now he needs to show the distributional effect of a carbon tax with progressive redistribution for a journal submission.
+
+**Opening Scene:** Marco has a set of estimated elasticities in a CSV file from his Stata analysis. He needs a microsimulation layer to compute distributional impacts. Last time, he wrote 800 lines of custom NumPy code that took a month, produced results he couldn't easily replicate, and generated a replication package his co-author couldn't run.
+
+**Rising Action:** Marco opens a Jupyter notebook with the ReformLab carbon tax template. He loads the built-in synthetic French population, defines his carbon tax reform in YAML, and — crucially — his elasticities aren't needed for the MVP (behavioral responses are Phase 2). But the static simulation already gives him the mechanical distributional impact. He runs the simulation and gets distributional charts with deterministic run manifests for reproducibility.
+
+**Climax:** Marco shares the YAML configuration, notebook, and run manifest with his co-author. The co-author reruns the analysis in a clean environment and gets matching outputs because assumptions, parameters, and engine context are pinned.
+
+**Resolution:** Marco includes the ReformLab results in his paper's simulation section. When Phase 2 adds replication package export and behavioral responses, he'll use those for journal appendices and elasticity integration. Even the Phase 1 static results are publishable and credible, so he starts planning an energy poverty template contribution.
+
+**Requirements revealed:** Jupyter notebook workflow, Python API, static simulation as credible standalone output, run-manifest-based cross-machine reproducibility, and clear extension points for future behavioral and replication features.
+
+---
+
+### Journey 4: Claire — Engaged Citizen (Vision / Post-MVP)
+
+**Profile:** Claire is a French teacher, 32, politically engaged. She wants to understand how proposed environmental policies would affect her household and others like hers. She doesn't code.
+
+**Opening Scene:** Before municipal or national elections, Claire sees a link shared on social media: "Compare candidates' carbon tax proposals — see who wins, who loses." She clicks through to a web application built on the ReformLab framework.
+
+**Rising Action:** Claire answers a short questionnaire: monthly household income, region, housing type (apartment, gas heating), commuting pattern (15km by car), household composition. The app builds her household profile and runs pre-configured simulations for each candidate's environmental proposal.
+
+**Climax:** Claire sees: "Under Candidate A's carbon tax, your household pays €340/year more in energy costs but receives €420 in carbon dividends — net gain €80. Under Candidate B's approach, you pay €280 more but receive no rebate." She also sees the distributional picture: income decile 1 gains under both proposals, decile 10 loses under both, but the magnitude differs. She switches to "People Like Me" view and sees how households with her profile compare to the national average.
+
+**Resolution:** Claire shares the comparison with friends. She returns before the election with updated proposals. She doesn't know she's using a microsimulation framework — she just knows she finally understands who wins and who loses.
+
+**Requirements revealed (Vision):** Web UI with guided questionnaire, pre-configured policy scenarios, household profile builder, candidate comparison dashboard, "People Like Me" contextual view, accessible non-technical language, social sharing.
+
+---
+
+<!-- TRUNCATED: Content exceeded token budget. See full document for details. -->
+
+]]></file>
+<file id="1456c4bb" path="_bmad-output/planning-artifacts/architecture.md" label="ARCHITECTURE"><![CDATA[
+
+---
+stepsCompleted: [1, 2, 3, 4, 5]
+inputDocuments:
+  - _bmad-output/planning-artifacts/prd.md
+  - _bmad-output/planning-artifacts/product-brief-ReformLab-2026-02-23.md
+  - _bmad-output/planning-artifacts/stakeholder-review-brief-ReformLab-2026-02-24.md
+  - _bmad-output/planning-artifacts/ux-design-specification.md
+  - _bmad-output/planning-artifacts/research/technical-entity-graph-data-modeling-and-vectorized-simulation-engines-research-2026-02-23.md
+  - _bmad-output/planning-artifacts/research/domain-generic-microsimulation-frameworks-research-2026-02-23.md
+workflowType: 'architecture'
+project_name: 'ReformLab'
+user_name: 'Lucas'
+date: '2026-02-25'
+---
+
+# Architecture Decision Document
+
+_Updated 2026-02-25: Legacy custom engine sections removed per Sprint Change Proposal. See sprint-change-proposal-2026-02-25.md._
+
+## Strategic Direction Update (2026-02-25)
+
+### Decision
+
+ReformLab will **not** build a replacement tax-benefit microsimulation core.
+OpenFisca is the policy-calculation foundation, accessed through a clean adapter interface. This project builds differentiated layers above it: data preparation, environmental policy orchestration, multi-year projection with vintage tracking, indicators, governance, and user interfaces.
+
+The **dynamic orchestrator is the core product** — not a computation engine.
+
+### Active Scope
+
+- Data ingestion and harmonization (OpenFisca outputs, synthetic population inputs, environmental datasets).
+- Scenario/template layer for environmental policies (carbon tax, subsidies, rebates, feebates).
+- Step-pluggable dynamic orchestrator for multi-year execution (10+ years) with vintage/cohort tracking.
+- Indicator layer (distributional, welfare, fiscal, custom metrics).
+- Run governance (manifests, assumption logs, lineage).
+- No-code analyst GUI for scenario setup, execution, and comparison.
+
+### Out Of Scope (MVP)
+
+- Reimplementing OpenFisca internals.
+- Custom formula compiler or policy engine.
+- Endogenous market-clearing/equilibrium simulation.
+- Physical system loop simulation (climate/energy stock-flow engines).
+
+## Project Context Analysis (Active Baseline)
+
+### Requirements Overview
+
+**Functional focus (35 FRs):**
+
+- OpenFisca integration and data contracts.
+- Environmental scenario templates and batch comparison.
+- Dynamic yearly orchestration with vintage tracking.
+- Indicator computation and extensibility.
+- Governance, reproducibility, and lineage.
+- Notebook/API + early no-code GUI workflows.
+
+**Non-functional focus (21 NFRs):**
+
+- Deterministic and reproducible outputs.
+- Laptop-scale performance for common workloads.
+- Strict data privacy and offline execution.
+- Versioned adapter compatibility with OpenFisca.
+- CI-enforced quality on adapters, orchestration, and templates.
+
+### Technical Constraints
+
+- Python 3.13+.
+- OpenFisca as the core rules engine dependency.
+- CSV/Parquet as interoperability contracts.
+- Fully offline operation in user environment.
+- Single-machine target (16GB laptop) for MVP.
+
+### Cross-Cutting Concerns
+
+1. Assumption transparency and manifest lineage across all runs.
+2. Deterministic sequencing in multi-year iterative execution.
+3. Adapter/version governance for OpenFisca compatibility.
+4. Clear data-contract validation at every ingestion boundary.
+5. Scenario/template versioning for auditability and collaboration.
+
+## Active Architecture Blueprint
+
+### Core Design Principle
+
+ReformLab does NOT build a policy computation engine. OpenFisca is the tax-benefit computation layer. This project builds everything around it: data preparation, environmental policy orchestration, multi-year projection, vintage tracking, indicators, governance, and user interfaces.
+
+### Layered Architecture
+
+```
+┌─────────────────────────────────────────────────┐
+│  Interfaces (Python API, Notebooks, No-Code GUI)│
+├─────────────────────────────────────────────────┤
+│  Indicator Engine (distributional/welfare/fiscal)│
+├─────────────────────────────────────────────────┤
+│  Governance (manifests, assumptions, lineage)    │
+├─────────────────────────────────────────────────┤
+│  Dynamic Orchestrator (year loop + step pipeline)│
+│  ├── Vintage Transitions                         │
+│  ├── State Carry-Forward                         │
+│  └── [Phase 2: Behavioral Response Steps]        │
+├─────────────────────────────────────────────────┤
+│  Scenario Template Layer (environmental policies)│
+├─────────────────────────────────────────────────┤
+│  Data Layer (ingestion, open data, synthetic pop)│
+├─────────────────────────────────────────────────┤
+│  Computation Adapter Interface                   │
+│  └── OpenFiscaAdapter (primary implementation)   │
+└─────────────────────────────────────────────────┘
+```
+
+### Computation Adapter Pattern
+
+The orchestrator never calls OpenFisca directly. All tax-benefit computation goes through a clean adapter interface:
+
+```python
+class ComputationAdapter(Protocol):
+    """Interface for tax-benefit computation backends."""
+    def compute(self, population: PopulationData, policy: PolicyConfig,
+                period: int) -> ComputationResult: ...
+    def version(self) -> str: ...
+
+class OpenFiscaAdapter(ComputationAdapter):
+    """Primary implementation wrapping OpenFisca."""
+    ...
+```
+
+This allows:
+- Swapping OpenFisca for PolicyEngine or other backends in the future
+- Mocking the computation layer for orchestrator testing
+- Version-pinning OpenFisca without coupling the core codebase
+
+### Step-Pluggable Dynamic Orchestrator
+
+The orchestrator runs a yearly loop (t → t+n) where each year executes a pipeline of pluggable steps:
+
+```
+For each year t in [start_year .. end_year]:
+  1. Run ComputationAdapter (OpenFisca tax-benefit for year t)
+  2. Apply environmental policy templates (carbon tax, subsidies)
+  3. Execute transition steps (pluggable pipeline):
+     a. Vintage transitions (asset cohort aging, fleet turnover)
+     b. State carry-forward (income updates, demographic changes)
+     c. [Phase 2: Behavioral response adjustments]
+  4. Record year-t results and manifest entry
+  5. Feed updated state into year t+1
+```
+
+Steps are registered as plugins. Phase 1 ships vintage transitions and state carry-forward. Phase 2 adds behavioral response steps without modifying the orchestrator core.
+
+### Subsystems
+
+1. `computation/`: Adapter interface + OpenFiscaAdapter implementation. Handles CSV/Parquet ingestion of OpenFisca outputs and optional direct API orchestration. Version-pinned contracts.
+2. `data/`: Open data ingestion, synthetic population generation, data transformation pipelines. Prepares inputs for the computation adapter.
+3. `templates/`: Environmental policy templates (carbon tax, subsidies, rebates, feebates) and scenario registry with versioned definitions.
+4. `orchestrator/`: Dynamic yearly loop with step-pluggable pipeline. Manages deterministic sequencing, seed control, and state transitions.
+5. `vintage/`: Cohort/vintage state management. Registered as orchestrator step. Tracks asset classes (vehicles, heating) through time.
+6. `indicators/`: Distributional, welfare, fiscal, and custom indicator computation. Aggregation by decile, geography, and custom groupings.
+7. `governance/`: Run manifests, assumption logs, run lineage, output hashes. Tracks OpenFisca version, adapter version, scenario version.
+8. `interfaces/`: Python API, notebook workflows, early no-code GUI.
+
+### Starter & Tooling Decisions
+
+- Scientific Python packaging: `pyproject.toml`, `uv`, `pytest`, `ruff`, `mypy`
+- CI split: fast adapter/unit tests and slower integration/regression runs
+- Coverage focus: adapter contracts, orchestrator determinism, vintage transitions, template correctness
+- No custom formula compiler — environmental policy logic is Python code in template modules, not YAML formula strings
+
+### Data Contracts
+
+- Input: OpenFisca outputs (CSV/Parquet), synthetic populations, environmental datasets (emission factors, energy consumption)
+- Output: yearly panel datasets, scenario comparison tables, indicator exports
+- Contract failures are explicit, field-level, and blocking
+- Adapter interface defines the computation contract boundary
+
+### Dynamic Execution Semantics
+
+- Baseline and reform scenarios run over 10+ years.
+- Each year is explicit (`t`, `t+1`, ..., `t+n`), with deterministic carry-forward rules.
+- Vintage states are updated through registered transition step functions.
+- Randomness is seed-controlled and logged in manifests.
+- Orchestrator step pipeline is the extension point for Phase 2+ capabilities.
+
+### Reproducibility & Governance
+
+- Every run records: OpenFisca version, adapter version, scenario version, data hashes, seeds, assumptions, step pipeline configuration.
+- Cross-machine reproducibility uses documented tolerances where floating point differs.
+- Lineage links yearly sub-runs to parent scenario runs.
+- Manifests are JSON, machine-readable, Git-diffable.
+
+### Delivery Sequence
+
+1. Computation adapter + OpenFisca integration (simplified EPIC-1).
+2. Carbon-tax + subsidy templates with baseline/reform comparison.
+3. Dynamic orchestrator (pluggable step pipeline) + vintage module MVP.
+4. Indicator layer and manifest lineage hardening.
+5. Early no-code GUI workflow for analyst scenario operations.
+
+### Phase 2+ Architecture Extensions
+
+- **Behavioral responses:** New orchestrator step that applies elasticities between yearly computation runs (proven pattern from PolicyEngine).
+- **System dynamics bridge:** Aggregate stock-flow outputs derived from microsimulation vintage tracking results.
+- **Alternative computation backends:** Swap adapter implementations without changing orchestrator or indicator layers.
+
+## Deployment & GUI Architecture (2026-02-27)
+
+### Deployment Decision
+
+The no-code GUI (EPIC-6) will be a web application with a React/TypeScript frontend and a FastAPI Python backend, deployed on a Hetzner VPS using Kamal 2 (Docker-based deployment tool). The MVP is deployed from day one to enable sharing with colleagues (2-10 users).
+
+### Rationale
+
+- **Same stack for MVP and future phases** — no throwaway prototype. The MVP GUI uses the same React + Shadcn/ui + Tailwind + FastAPI stack specified in the UX design document. Phase 3 (public web app) extends rather than replaces.
+- **Hetzner** chosen for: best price/performance in Europe (~3.29 EUR/month for CX22), EU datacenter (Germany), GDPR compliance, not subject to US Cloud Act.
+- **Kamal 2** chosen for: zero-downtime Docker deployments via SSH, built-in Traefik reverse proxy with automatic HTTPS, single YAML config file, language-agnostic (works with Python, Node, any Docker image), rollback in one command. Created by DHH (Rails creator), standard in Rails 8, but fully framework-agnostic.
+- **Provider-agnostic** — Kamal deploys to any Linux server via SSH. Migrating to a different host (Scaleway, OVH, or a SecNumCloud provider) means changing one IP address in the config.
+- **File-based storage works natively** — real persistent disk on the VPS, no need to adapt code for S3/object storage. Standard `open()` / `pd.read_parquet()` calls work as-is.
+
+### Monorepo Structure
+
+```
+reformlab/
+  src/                        ← Python backend (FastAPI API + core library)
+  frontend/                   ← React/TypeScript (Vite + Shadcn/ui + Tailwind)
+  tests/
+  Dockerfile                  ← Backend container definition
+  frontend/Dockerfile         ← Frontend container (nginx serving build)
+  config/
+    deploy.yml                ← Kamal deployment configuration
+  .github/workflows/
+    deploy.yml                ← GitHub Actions auto-deploy on push
+  .kamal/
+    secrets                   ← Encrypted secrets for Kamal
+  pyproject.toml
+```
+
+Both frontend and backend live in the same repository. Kamal manages both as separate services on the same Hetzner server.
+
+### Deployment Topology
+
+```
+┌─────────────────────────────────────────────────────┐
+│  GitHub Repository (monorepo)                       │
+│  push to master                                     │
+└──────────────────────┬──────────────────────────────┘
+                       │
+                GitHub Actions
+                runs: kamal deploy
+                       │
+                    SSH + Docker
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────┐
+│  Hetzner CX22 (Germany)                             │
+│  2 vCPU, 4 GB RAM, 40 GB SSD                       │
+│                                                     │
+│  ┌───────────────────────────────────────────┐      │
+│  │  Traefik (reverse proxy, auto HTTPS)      │      │
+│  │  api.reformlab.fr → backend:8000          │      │
+│  │  app.reformlab.fr → frontend:8080         │      │
+│  └───────────────────────────────────────────┘      │
+│                                                     │
+│  ┌─────────────────┐   ┌──────────────────┐         │
+│  │  FastAPI         │   │  nginx + React   │         │
+│  │  (backend)       │   │  (frontend)      │         │
+│  │  :8000           │   │  :8080           │         │
+│  └────────┬────────┘   └──────────────────┘         │
+│           │                                         │
+│           ▼                                         │
+│  ┌──────────────────┐                               │
+│  │  /data/reformlab  │                               │
+│  │  (CSV/Parquet/    │                               │
+│  │   YAML/JSON)      │                               │
+│  └──────────────────┘                               │
+└─────────────────────────────────────────────────────┘
+```
+
+### Frontend Stack
+
+As specified in the UX design document:
+
+- React 18+ with TypeScript
+- Vite (build tooling)
+- Shadcn/ui + Radix UI (component library)
+- Tailwind CSS v4 (styling with design tokens)
+- Recharts/Nivo (simulation charts)
+- React Flow (lineage DAG visualization)
+- React Hook Form + Zod (form handling)
+
+Served as a static build by an nginx container. Calls the backend API via HTTPS.
+
+### Backend Stack
+
+- FastAPI (REST API)
+- Python 3.13+ (same as core library)
+- uvicorn (ASGI server)
+- The FastAPI layer exposes the existing Python API (orchestrator, scenarios, indicators, governance) as HTTP endpoints
+
+### Deployment Stack
+
+- **Kamal 2** — Docker-based deployment tool (SSH + Docker, no Kubernetes)
+- **Traefik** — reverse proxy with automatic Let's Encrypt HTTPS certificates (managed by Kamal)
+- **Docker** — containerization for both frontend and backend
+- **GitHub Actions** — CI/CD trigger on push to master, calls `kamal deploy`
+- **GitHub Container Registry (ghcr.io)** — Docker image storage
+
+### Data Storage (MVP)
+
+File-based, no database:
+
+- **Scenario configs:** YAML/JSON files on server disk (`/data/reformlab/`)
+- **Run outputs:** CSV/Parquet on server disk
+- **Run manifests:** JSON on server disk
+- **Scenario registry:** File-based (already implemented in EPIC-2)
+
+Docker volume mount maps `/data/reformlab` on the host to `/app/data` in the backend container. Data persists across deployments and container restarts. Sufficient for 2-10 users working with open/public data. If multi-user concurrent writes become an issue in Phase 3, migrate to SQLite or PostgreSQL — the file-based contract layer makes this a contained change.
+
+### Authentication (MVP)
+
+Simple shared-password authentication via FastAPI middleware:
+
+- Single shared password stored as a Kamal secret (encrypted in `.kamal/secrets`, injected as environment variable)
+- FastAPI middleware checks password on every API request
+- Frontend shows a password prompt on first access, stores the token in browser session
+- No user accounts, no OAuth, no database — appropriate for 2-10 trusted colleagues
+
+Phase 3 (public web app with Claire persona) will require proper user authentication (OAuth or similar). This is a separate architectural decision at that point.
+
+### Cost Estimate
+
+| Service | Monthly Cost |
+| --- | --- |
+| Hetzner CX22 (2 vCPU, 4 GB RAM, 40 GB SSD) | 3.29 EUR |
+| Domain name (annual, amortized) | ~1 EUR |
+| **Total** | **~4.29 EUR/month** |
+
+### Sovereignty & Compliance Positioning
+
+- Hosted on Hetzner, European provider (Germany), EU datacenter
+- GDPR compliant, data stays in EU, no transfer outside EU
+- Not subject to US Cloud Act or other extra-territorial legislation
+- Application uses exclusively open public data (INSEE, Eurostat, synthetic populations)
+- SecNumCloud is not required for open public data under the French "Cloud au Centre" doctrine
+- If SecNumCloud becomes required (e.g., restricted microdata handling), Kamal deploys to any Linux server via SSH — migrate by changing the target IP to a SecNumCloud-qualified provider (Scalingo on Outscale `osc-secnum-fr1`, or Clever Cloud on Cloud Temple SecNumCloud zone). Application code unchanged.
+
+### Migration Path to Phase 3
+
+Kamal is provider-agnostic. All migrations below require zero application code changes:
+
+1. **More users / more power:** Upgrade Hetzner server (CX32 at 5.39 EUR, CX42 at 17.49 EUR). Change server spec in Hetzner console, redeploy.
+2. **French sovereignty required:** Move to Scaleway or OVH VPS in Paris. Change one IP in `config/deploy.yml`, run `kamal setup && kamal deploy`.
+3. **SecNumCloud required:** Deploy to a server on Scalingo/Outscale `osc-secnum-fr1` or Clever Cloud on Cloud Temple SecNumCloud zone. Same Kamal config, different target.
+4. **User accounts:** Replace shared-password middleware with OAuth/OIDC. Add user table (SQLite or PostgreSQL).
+5. **Horizontal scaling:** Kamal supports multi-server deployment. Add server IPs to `config/deploy.yml` and Kamal load-balances across them via Traefik.
+
+## API Design — FastAPI Server Layer (2026-02-28)
+
+### Design Principle
+
+The FastAPI server is a **thin HTTP facade** over the existing Python API in `src/reformlab/interfaces/api.py`. No business logic lives in the server layer. Every route handler delegates to functions that already work: `run_scenario()`, `create_scenario()`, `list_scenarios()`, `get_scenario()`, `clone_scenario()`, `check_memory_requirements()`, and `SimulationResult` methods (`indicators()`, `export_csv()`, `export_parquet()`).
+
+### Package Structure
+
+```
+src/reformlab/server/
+├── __init__.py
+├── app.py              ← FastAPI app factory (create_app())
+├── auth.py             ← Shared-password middleware
+├── models.py           ← Pydantic v2 request/response models
+├── dependencies.py     ← Dependency injection (adapter, result cache)
+└── routes/
+    ├── __init__.py
+    ├── scenarios.py    ← Scenario CRUD
+    ├── runs.py         ← Simulation execution
+    ├── indicators.py   ← Indicator computation
+    ├── exports.py      ← File export/download
+    ├── templates.py    ← Template listing
+    └── populations.py  ← Population dataset listing
+```
+
+### Dependencies
+
+Add as optional extra in `pyproject.toml`:
+
+```toml
+[project.optional-dependencies]
+server = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+    "python-multipart>=0.0.9",
+]
+```
+
+Install with `uv sync --extra server`. Pydantic v2 is already a transitive dependency of FastAPI.
+
+### App Factory
+
+`src/reformlab/server/app.py` exposes `create_app() -> FastAPI`:
+
+```python
+def create_app() -> FastAPI:
+    app = FastAPI(
+        title="ReformLab API",
+        version=reformlab.__version__,
+        docs_url="/api/docs",
+        openapi_url="/api/openapi.json",
+    )
+
+    # CORS must be added BEFORE auth middleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_cors_origins(),  # localhost:5173 + production
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # Auth middleware (skips /api/auth/login and /api/docs)
+    app.add_middleware(AuthMiddleware)
+
+    # Register route groups
+    app.include_router(auth_router,        prefix="/api/auth")
+    app.include_router(scenarios_router,   prefix="/api/scenarios")
+    app.include_router(runs_router,        prefix="/api/runs")
+    app.include_router(indicators_router,  prefix="/api/indicators")
+    app.include_router(exports_router,     prefix="/api/exports")
+    app.include_router(templates_router,   prefix="/api/templates")
+    app.include_router(populations_router, prefix="/api/populations")
+
+    return app
+```
+
+Run with: `uvicorn src.reformlab.server.app:create_app --factory --host 0.0.0.0 --port 8000`
+
+Dev mode: `uvicorn src.reformlab.server.app:create_app --factory --reload --port 8000`
+
+### Route Contracts
+
+#### Authentication
+
+| Method | Path | Request Body | Response | Status |
+|--------|------|-------------|----------|--------|
+| `POST` | `/api/auth/login` | `{ "password": "string" }` | `{ "token": "string" }` | 200 or 401 |
+
+- Password validated against `REFORMLAB_PASSWORD` env var.
+- Token is a random hex string stored server-side in a session set.
+- Subsequent requests pass token via `Authorization: Bearer <token>` header.
+- No expiry for MVP. Phase 3 replaces with OAuth/OIDC.
+
+#### Scenarios
+
+| Method | Path | Request Body | Response | Status |
+|--------|------|-------------|----------|--------|
+| `GET` | `/api/scenarios` | — | `{ "scenarios": ["name1", ...] }` | 200 |
+| `GET` | `/api/scenarios/{name}` | — | `ScenarioResponse` | 200 or 404 |
+| `POST` | `/api/scenarios` | `CreateScenarioRequest` | `{ "version_id": "string" }` | 201 or 422 |
+| `POST` | `/api/scenarios/{name}/clone` | `{ "new_name": "string" }` | `ScenarioResponse` | 201 or 404 |
+
+Delegates to: `list_scenarios()`, `get_scenario(name)`, `create_scenario(scenario, name, register=True)`, `clone_scenario(name, new_name=new_name)`.
+
+#### Simulation Runs
+
+| Method | Path | Request Body | Response | Status |
+|--------|------|-------------|----------|--------|
+| `POST` | `/api/runs` | `RunRequest` | `RunResponse` | 200 or 422/500 |
+| `POST` | `/api/runs/memory-check` | `MemoryCheckRequest` | `MemoryCheckResponse` | 200 |
+
+**Execution model (MVP):** `POST /api/runs` is **synchronous** — it blocks until the simulation completes and returns the full result. This is acceptable because:
+- Target run time is <10s for 100k households (NFR1).
+- MVP serves 2-10 users, not concurrent load.
+- Frontend shows a loading spinner during the request.
+
+**Upgrade path:** If runs exceed 10s, switch to polling: `POST /api/runs` returns `{ "run_id": "..." }` immediately, `GET /api/runs/{run_id}/status` returns progress, `GET /api/runs/{run_id}/result` returns the completed result.
+
+#### Indicators
+
+| Method | Path | Request Body | Response | Status |
+|--------|------|-------------|----------|--------|
+| `POST` | `/api/indicators/{type}` | `IndicatorRequest` | `IndicatorResponse` | 200 or 422 |
+| `POST` | `/api/comparison` | `ComparisonRequest` | `IndicatorResponse` | 200 or 422 |
+
+`{type}` is one of: `distributional`, `geographic`, `welfare`, `fiscal`.
+
+Delegates to: `cached_result.indicators(type, **kwargs)`.
+
+For welfare indicators and comparison, the request must reference both a baseline and reform `run_id` from the result cache.
+
+#### Exports
+
+| Method | Path | Request Body | Response | Status |
+|--------|------|-------------|----------|--------|
+| `POST` | `/api/exports/csv` | `{ "run_id": "string" }` | `StreamingResponse` (file download) | 200 or 404 |
+| `POST` | `/api/exports/parquet` | `{ "run_id": "string" }` | `StreamingResponse` (file download) | 200 or 404 |
+
+Delegates to: `cached_result.export_csv(tmp_path)` and `cached_result.export_parquet(tmp_path)`.
+
+Returns file as `StreamingResponse` with appropriate `Content-Disposition` header.
+
+#### Templates
+
+| Method | Path | Request Body | Response | Status |
+|--------|------|-------------|----------|--------|
+| `GET` | `/api/templates` | — | `{ "templates": [TemplateListItem, ...] }` | 200 |
+| `GET` | `/api/templates/{name}` | — | `TemplateDetailResponse` | 200 or 404 |
+
+Lists available policy templates (carbon tax, subsidy, rebate, feebate) with their default parameters and parameter groups.
+
+#### Populations
+
+| Method | Path | Request Body | Response | Status |
+|--------|------|-------------|----------|--------|
+| `GET` | `/api/populations` | — | `{ "populations": [PopulationItem, ...] }` | 200 |
+
+Lists available population datasets by scanning the data directory for CSV/Parquet files.
+
+### Pydantic v2 Request/Response Models
+
+All models in `src/reformlab/server/models.py`. Key patterns:
+
+**Frozen dataclass → Pydantic model translation:** The domain layer uses frozen dataclasses (`ScenarioConfig`, `SimulationResult`). The server layer creates parallel Pydantic models for HTTP serialization. Route handlers translate between them.
+
+```python
+# Request models
+
+class LoginRequest(BaseModel):
+    password: str
+
+class RunRequest(BaseModel):
+    template_name: str
+    parameters: dict[str, Any]
+    start_year: int
+    end_year: int
+    population_id: str | None = None
+    seed: int | None = None
+    baseline_id: str | None = None
+
+class MemoryCheckRequest(BaseModel):
+    template_name: str
+    parameters: dict[str, Any] = {}
+    start_year: int
+    end_year: int
+    population_id: str | None = None
+
+class IndicatorRequest(BaseModel):
+    run_id: str
+    income_field: str = "income"
+    by_year: bool = False
+
+class ComparisonRequest(BaseModel):
+    baseline_run_id: str
+    reform_run_id: str
+    welfare_field: str = "disposable_income"
+    threshold: float = 0.0
+
+class ExportRequest(BaseModel):
+    run_id: str
+
+class CreateScenarioRequest(BaseModel):
+    name: str
+    policy_type: str           # "carbon_tax" | "subsidy" | "rebate" | "feebate"
+    parameters: dict[str, Any]
+    start_year: int
+    end_year: int
+    description: str = ""
+    baseline_ref: str | None = None
+
+class CloneRequest(BaseModel):
+    new_name: str
+```
+
+```python
+# Response models
+
+class LoginResponse(BaseModel):
+    token: str
+
+class RunResponse(BaseModel):
+    run_id: str
+    success: bool
+    scenario_id: str
+    years: list[int]
+    row_count: int
+    manifest_id: str
+
+class MemoryCheckResponse(BaseModel):
+    should_warn: bool
+    estimated_gb: float
+    available_gb: float
+    message: str
+
+class IndicatorResponse(BaseModel):
+    indicator_type: str
+    data: dict[str, list[Any]]     # PyArrow table.to_pydict()
+    metadata: dict[str, Any]
+    warnings: list[str]
+    excluded_count: int
+
+class ScenarioResponse(BaseModel):
+    name: str
+    policy_type: str
+    description: str
+    version: str
+    parameters: dict[str, Any]
+    year_schedule: dict[str, int]  # {"start_year": N, "end_year": M}
+    baseline_ref: str | None = None
+
+class TemplateListItem(BaseModel):
+    id: str
+    name: str
+    type: str
+    parameter_count: int
+    description: str
+    parameter_groups: list[str]
+
+class TemplateDetailResponse(TemplateListItem):
+    default_parameters: dict[str, Any]
+
+class PopulationItem(BaseModel):
+    id: str
+    name: str
+    households: int
+    source: str
+    year: int
+
+class ErrorResponse(BaseModel):
+    error: str
+    what: str
+    why: str
+    fix: str
+    status_code: int
+```
+
+### Serialization Rules
+
+- **PyArrow `pa.Table` → JSON:** `table.to_pydict()` produces `dict[str, list]`. This is the canonical wire format for panel data and indicator tables.
+- **`Path` objects:** Serialize as strings via Pydantic `model_serializer`.
+- **`datetime` objects:** Serialize as ISO 8601 strings.
+- **Frozen dataclasses:** Converted to Pydantic models at the route handler boundary. No `dataclasses.asdict()` in responses — explicit Pydantic field mapping.
+
+### Result Cache
+
+Simulation results contain large PyArrow tables. Re-serializing on every indicator/export request is wasteful.
+
+```python
+class ResultCache:
+    """In-memory LRU cache for SimulationResult objects."""
+
+    def __init__(self, max_size: int = 10):
+        self._cache: OrderedDict[str, SimulationResult] = OrderedDict()
+        self._max_size = max_size
+
+    def store(self, run_id: str, result: SimulationResult) -> None:
+        if len(self._cache) >= self._max_size:
+            self._cache.popitem(last=False)  # Evict oldest
+        self._cache[run_id] = result
+
+    def get(self, run_id: str) -> SimulationResult | None:
+        result = self._cache.get(run_id)
+        if result is not None:
+            self._cache.move_to_end(run_id)  # Mark as recently used
+        return result
+```
+
+- `POST /api/runs` stores the result under a generated `run_id` (UUID4).
+- `POST /api/indicators/{type}` and `POST /api/exports/*` reference `run_id` to retrieve cached results.
+- Max 10 entries. LRU eviction. No disk persistence — results are ephemeral across server restarts.
+
+### Dependency Injection
+
+```python
+# src/reformlab/server/dependencies.py
+
+# Global singletons (created once in app factory, injected via Depends)
+_result_cache = ResultCache(max_size=10)
+_adapter: ComputationAdapter | None = None
+
+def get_result_cache() -> ResultCache:
+    return _result_cache
+
+def get_adapter() -> ComputationAdapter:
+    global _adapter
+    if _adapter is None:
+        # Initialize default adapter (MockAdapter in dev, OpenFiscaAdapter in prod)
+        _adapter = _create_adapter()
+    return _adapter
+```
+
+Route handlers use `Depends(get_result_cache)` and `Depends(get_adapter)`.
+
+### Authentication Middleware
+
+```python
+# src/reformlab/server/auth.py
+
+class AuthMiddleware(BaseHTTPMiddleware):
+    """Shared-password auth for MVP (2-10 trusted colleagues)."""
+
+    SKIP_PATHS = {"/api/auth/login", "/api/docs", "/api/openapi.json"}
+
+    async def dispatch(self, request, call_next):
+        if request.url.path in self.SKIP_PATHS:
+            return await call_next(request)
+
+        token = request.headers.get("Authorization", "").removeprefix("Bearer ")
+        if not token or token not in _active_sessions:
+            return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+
+        return await call_next(request)
+```
+
+- `_active_sessions` is a `set[str]` stored in-memory.
+- `POST /api/auth/login` validates password against `os.environ["REFORMLAB_PASSWORD"]`, generates a random token via `secrets.token_hex(32)`, adds it to `_active_sessions`, returns it.
+- No expiry for MVP. Server restart clears all sessions (users re-enter password).
+
+### Error Mapping
+
+Python API exceptions map to HTTP responses:
+
+| Python Exception | HTTP Status | Error Response |
+|-----------------|-------------|----------------|
+| `ConfigurationError` | 422 Unprocessable Entity | `{ "error": "Configuration error", "what": field_path, "why": expected vs actual, "fix": guidance }` |
+| `ValidationErrors` | 422 Unprocessable Entity | `{ "error": "Validation failed", "what": "N issues found", "why": issues list, "fix": per-issue guidance }` |
+| `SimulationError` | 500 Internal Server Error | `{ "error": "Simulation error", "what": message, "why": cause, "fix": guidance }` |
+| `RegistryError` | 404 Not Found | `{ "error": "Not found", "what": summary, "why": reason, "fix": guidance }` |
+| `MemoryWarning` | 200 (with `should_warn: true`) | Not an error — returned as data in `MemoryCheckResponse` |
+
+Implement via FastAPI exception handlers registered in `create_app()`:
+
+```python
+@app.exception_handler(ConfigurationError)
+async def configuration_error_handler(request, exc):
+    return JSONResponse(status_code=422, content={
+        "error": "Configuration error",
+        "what": exc.field_path,
+        "why": f"Expected {exc.expected}, got {exc.actual!r}",
+        "fix": exc.fix or f"Provide a valid {exc.expected}",
+        "status_code": 422,
+    })
+```
+
+### CORS Configuration
+
+```python
+def _cors_origins() -> list[str]:
+    origins = ["http://localhost:5173"]  # Vite dev server
+    extra = os.environ.get("REFORMLAB_CORS_ORIGINS", "")
+    if extra:
+        origins.extend(o.strip() for o in extra.split(",") if o.strip())
+    return origins
+```
+
+Production adds `https://app.reformlab.fr` via `REFORMLAB_CORS_ORIGINS` env var.
+
+### Vite Dev Proxy
+
+Add to `frontend/vite.config.ts`:
+
+```typescript
+server: {
+  proxy: {
+    "/api": {
+      target: "http://localhost:8000",
+      changeOrigin: true,
+    },
+  },
+}
+```
+
+Frontend calls `/api/scenarios` (relative) in development. Vite proxies to the FastAPI backend. In production, Traefik routes by subdomain (`api.reformlab.fr` vs `app.reformlab.fr`).
+
+### Data Flow Summary
+
+```
+Frontend (React)
+    │
+    ├─ POST /api/runs { template, params, years }
+    │       ↓
+    │  RunRequest → ScenarioConfig → run_scenario(config, adapter)
+    │       ↓
+    │  SimulationResult stored in ResultCache[run_id]
+    │       ↓
+    │  RunResponse { run_id, success, years, row_count }
+    │
+    ├─ POST /api/indicators/distributional { run_id }
+    │       ↓
+    │  ResultCache.get(run_id) → result.indicators("distributional")
+    │       ↓
+    │  IndicatorResult.to_table().to_pydict() → IndicatorResponse
+    │
+    ├─ POST /api/comparison { baseline_run_id, reform_run_id }
+    │       ↓
+    │  baseline = cache.get(baseline_run_id)
+    │  reform = cache.get(reform_run_id)
+    │  baseline.indicators("welfare", reform_result=reform)
+    │       ↓
+    │  IndicatorResponse
+    │
+    └─ POST /api/exports/csv { run_id }
+            ↓
+        result.export_csv(tmp) → StreamingResponse
+```
+
+### Code Quality Standards
+
+- `from __future__ import annotations` at top of every server module.
+- Pydantic v2 conventions: `model_validate()`, `model_dump()`, `ConfigDict`.
+- `mypy --strict` must pass on all server code.
+- `ruff` compliance (E, F, I, W rules).
+- No direct OpenFisca imports in server code — adapter protocol only.
+- Structured logging with `logging.getLogger(__name__)`.
+
+
+]]></file>
+<file id="9e4374e5" path="_bmad-output/planning-artifacts/epics.md" label="EPIC"><![CDATA[
+
+---
+title: ReformLab — Epics and Stories
+project: ReformLab
+description: Single source of truth for all epics, stories, and acceptance criteria
+date: 2026-03-01
+source_documents:
+  - _bmad-output/planning-artifacts/prd.md
+  - _bmad-output/planning-artifacts/architecture.md
+  - _bmad-output/planning-artifacts/phase-1-implementation-backlog-2026-02-25.md
+  - _bmad-output/implementation-artifacts/sprint-status.yaml
+---
+
+# Epics and Stories
+
+Single source of truth for all epics and stories across the project. For detailed dev notes, subtask checklists, and agent records, see individual story files in `_bmad-output/implementation-artifacts/`.
+
+## Epic Index
+
+| Epic | Title | Status | Stories |
+|------|-------|--------|---------|
+| EPIC-1 | Computation Adapter and Data Layer | done | 8 |
+| EPIC-2 | Scenario Templates and Registry | done | 7 |
+| EPIC-3 | Step-Pluggable Dynamic Orchestrator and Vintage Tracking | done | 7 |
+| EPIC-4 | Indicators and Scenario Comparison | done | 6 |
+| EPIC-5 | Governance and Reproducibility | done | 6 |
+| EPIC-6 | Interfaces (Python API, Notebooks, Early No-Code GUI) | done | 7 |
+| EPIC-7 | Trusted Outputs and External Pilot Validation | done | 5 |
+| EPIC-8 | Post-Phase-1 Validation Spikes | done | 2 |
+| EPIC-9 | OpenFisca Adapter Hardening | backlog | 5 |
+
+## Conventions
+
+- **Priority:** `P0` (must ship), `P1` (ship if capacity allows after P0)
+- **Size:** Story points (`SP`) on Fibonacci scale (1, 2, 3, 5, 8, 13)
+- **Types:** `Story`, `Task`, `Spike`
+- **Done:** Acceptance criteria pass and tests are in CI
+- **Story files:** `_bmad-output/implementation-artifacts/{epic}-{story-slug}.md`
+
+---
+
+## EPIC-1: Computation Adapter and Data Layer
+
+**User outcome:** Analyst can connect OpenFisca outputs and open datasets to the framework with validated data contracts.
+
+**Status:** done
+
+| ID | Type | Pri | SP | Title | Status | PRD Refs |
+|------|------|-----|----|-------|--------|----------|
+| BKL-101 | Story | P0 | 5 | Define ComputationAdapter interface and OpenFiscaAdapter implementation | done | FR1, FR2, FR3 |
+| BKL-102 | Story | P0 | 5 | Implement CSV/Parquet ingestion for OpenFisca outputs and population data | done | FR1, FR3, NFR14 |
+| BKL-103 | Story | P0 | 5 | Build input/output mapping configuration for OpenFisca variable names | done | FR3, FR4, NFR4 |
+| BKL-104 | Story | P0 | 5 | Implement open-data ingestion pipeline (synthetic population, emission factors) | done | FR5, FR6 |
+| BKL-105 | Task | P0 | 3 | Add data-quality checks with blocking field-level errors at adapter boundary | done | FR4, FR27, NFR4 |
+| BKL-106 | Story | P1 | 5 | Add direct OpenFisca API orchestration mode (version-pinned) | done | FR2, NFR15 |
+| BKL-107 | Task | P0 | 2 | Create compatibility matrix for supported OpenFisca versions | done | NFR15, NFR21 |
+| BKL-108 | Task | P0 | 3 | Set up project scaffold, dev environment, and CI smoke pipeline | done | NFR18, NFR19 |
+
+### Epic-Level Acceptance Criteria
+
+- ComputationAdapter interface is defined with `compute()` and `version()` methods.
+- OpenFiscaAdapter passes contract tests for CSV/Parquet input and output mapping.
+- Adapter can be mocked for orchestrator unit testing.
+- Open-data pipeline loads synthetic population and emission factor datasets.
+- Mapping errors return exact field names and actionable messages.
+- Unsupported OpenFisca version fails with explicit compatibility error.
+- Adapter test fixtures run in CI.
+- Repository has pyproject.toml with dependency pinning, ruff linting, mypy type checking, and pytest configured.
+- CI pipeline runs lint + unit tests on every push.
+
+### Story-Level Acceptance Criteria
+
+**BKL-101: Define ComputationAdapter interface and OpenFiscaAdapter implementation**
+
+- Given an OpenFisca output dataset (CSV or Parquet), when the adapter's `compute()` method is called, then it returns a ComputationResult with mapped output fields.
+- Given a mock adapter, when the orchestrator calls `compute()`, then it receives valid results without requiring OpenFisca installed.
+- Given an unsupported OpenFisca version, when the adapter is initialized, then it raises an explicit compatibility error with version mismatch details.
+
+**BKL-102: Implement CSV/Parquet ingestion for OpenFisca outputs and population data**
+
+- Given a valid CSV file with OpenFisca household outputs, when ingested through the adapter, then population data is loaded into the internal schema with correct types.
+- Given a valid Parquet file, when ingested, then results match CSV ingestion for the same data.
+- Given a CSV with missing required columns, when ingested, then a clear error lists the missing column names.
+
+**BKL-103: Build input/output mapping configuration for OpenFisca variable names**
+
+- Given a YAML mapping configuration, when loaded, then OpenFisca variable names are mapped to project schema field names.
+- Given a mapping with an unknown OpenFisca variable, when validated, then an error identifies the exact field name and suggests corrections.
+- Given a valid mapping, when applied to adapter output, then all mapped fields are present in the result with correct values.
+
+**BKL-104: Implement open-data ingestion pipeline (synthetic population, emission factors)**
+
+- Given a synthetic population dataset in CSV/Parquet, when loaded through the pipeline, then data source metadata and hash are recorded.
+- Given an emission factor dataset, when loaded, then factors are accessible by category and year for template computations.
+- Given a corrupted or incomplete dataset, when loaded, then the pipeline fails with a specific error before any computation begins.
+
+**BKL-105: Add data-quality checks with blocking field-level errors at adapter boundary**
+
+- Given adapter output with a null value in a required field, when validated, then a blocking error identifies the exact field and row.
+- Given adapter output with type mismatches, when validated, then each mismatch is reported with expected vs actual types.
+- Given valid adapter output, when validated, then checks pass silently and computation proceeds.
+
+**BKL-107: Create compatibility matrix for supported OpenFisca versions**
+
+- Given the compatibility matrix, when a user queries a specific OpenFisca version, then the matrix indicates supported/unsupported status.
+- Given an OpenFisca version not in the matrix, when the adapter is initialized, then a warning is emitted with a link to the matrix.
+
+**BKL-108: Set up project scaffold, dev environment, and CI smoke pipeline**
+
+- Given a fresh clone of the repository, when `uv sync` is run, then all dependencies install and `pytest` runs successfully.
+- Given a push to the repository, when CI triggers, then lint (ruff) and unit tests execute and report pass/fail.
+- Given the project directory structure, when inspected, then it matches the architecture subsystem layout.
+
+---
+
+## EPIC-2: Scenario Templates and Registry
+
+**User outcome:** Analyst can define, version, and reuse environmental policy scenarios without writing code.
+
+**Status:** done
+
+| ID | Type | Pri | SP | Title | Status | PRD Refs |
+|------|------|-----|----|-------|--------|----------|
+| BKL-201 | Story | P0 | 5 | Define scenario template schema (baseline + reform overrides) | done | FR7, FR8, FR12 |
+| BKL-202 | Story | P0 | 8 | Implement carbon-tax template pack (4-5 variants) | done | FR7, FR10, FR11 |
+| BKL-203 | Story | P0 | 5 | Implement subsidy/rebate/feebate template pack | done | FR7, FR11 |
+| BKL-204 | Story | P0 | 5 | Build scenario registry with immutable version IDs | done | FR9, FR28 |
+| BKL-205 | Story | P0 | 3 | Implement scenario cloning and baseline/reform linking | done | FR8, FR9 |
+| BKL-206 | Task | P1 | 3 | Add schema migration helper for template version changes | done | FR9, NFR21 |
+| BKL-207 | Story | P0 | 5 | Implement YAML/JSON workflow configuration with schema validation | done | FR31, NFR4, NFR20 |
+
+### Epic-Level Acceptance Criteria
+
+- Analysts can create baseline/reform scenarios from templates without code changes.
+- Registry stores versioned scenario snapshots.
+- Scenario validation enforces year-indexed schedules (>= 10 years configurable).
+- Analyst can define and run a complete scenario workflow from a YAML configuration file without code changes.
+- YAML schema is validated on load with field-level error messages.
+- YAML configuration files are version-controlled and round-trip stable.
+
+### Story-Level Acceptance Criteria
+
+**BKL-201: Define scenario template schema (baseline + reform overrides)**
+
+- Given a YAML template definition with baseline parameters, when loaded, then the schema validates required fields (policy type, year schedule, parameter values).
+- Given a reform defined as parameter overrides to a baseline, when loaded, then only the overridden fields differ from baseline defaults.
+- Given a template with a year schedule shorter than 10 years, when validated, then a warning is emitted (error if enforcement mode is strict).
+
+**BKL-202: Implement carbon-tax template pack (4-5 variants)**
+
+- Given the shipped carbon-tax template pack, when listed, then at least 4 variants are available (e.g., flat rate, progressive rate, with/without dividend).
+- Given a carbon-tax template, when executed with a baseline population, then tax burden and redistribution amounts are computed per household.
+- Given two carbon-tax variants, when run in batch, then comparison output shows per-decile differences.
+
+**BKL-203: Implement subsidy/rebate/feebate template pack**
+
+- Given the subsidy template pack, when listed, then at least subsidy, rebate, and feebate templates are available.
+- Given a feebate template, when applied to a population, then households above the threshold pay and households below receive.
+- Given a rebate template with income-conditioned parameters, when executed, then rebate amounts vary by income group.
+
+**BKL-204: Build scenario registry with immutable version IDs**
+
+- Given a scenario saved to the registry, when retrieved by version ID, then the returned definition is identical to what was saved.
+- Given a saved scenario, when modified and re-saved, then a new version ID is assigned and the previous version remains accessible.
+- Given an invalid version ID, when queried, then a clear error indicates the version does not exist.
+
+**BKL-205: Implement scenario cloning and baseline/reform linking**
+
+- Given a baseline scenario, when cloned, then the clone has a new ID and identical parameters.
+- Given a reform scenario linked to a baseline, when the baseline is retrieved, then the link is navigable in both directions.
+- Given a clone with modifications, when saved, then it does not alter the original scenario.
+
+**BKL-207: Implement YAML/JSON workflow configuration with schema validation**
+
+- Given a valid YAML workflow configuration, when loaded, then the workflow executes end-to-end (data load, scenario, run, indicators).
+- Given a YAML file with an invalid field, when validated, then the error message identifies the exact line and field name.
+- Given a YAML file saved and reloaded, when compared, then the content is round-trip stable (no silent changes).
+- Given the shipped YAML examples, when CI runs validation, then all examples pass schema checks.
+
+---
+
+## EPIC-3: Step-Pluggable Dynamic Orchestrator and Vintage Tracking
+
+**User outcome:** Analyst can run multi-year projections with vintage tracking and get year-by-year panel results.
+
+**Status:** done
+
+| ID | Type | Pri | SP | Title | Status | PRD Refs |
+|------|------|-----|----|-------|--------|----------|
+| BKL-301 | Story | P0 | 8 | Implement yearly loop orchestrator with step pipeline architecture | done | FR13, FR18 |
+| BKL-302 | Story | P0 | 5 | Define orchestrator step interface and step registration mechanism | done | FR14, FR16 |
+| BKL-303 | Story | P0 | 5 | Implement carry-forward step (deterministic state updates between years) | done | FR14, FR17, NFR10 |
+| BKL-304 | Story | P0 | 8 | Implement vintage transition step for one asset class (vehicle or heating) | done | FR15, FR16 |
+| BKL-305 | Story | P0 | 5 | Integrate ComputationAdapter calls into orchestrator yearly loop | done | FR13, FR2 |
+| BKL-306 | Task | P0 | 3 | Log seed controls, step execution order, and adapter version per yearly step | done | FR17, NFR8 |
+| BKL-307 | Story | P0 | 5 | Produce scenario-year panel output dataset | done | FR18, FR33 |
+
+### Epic-Level Acceptance Criteria
+
+- Orchestrator executes a registered pipeline of steps for each year in t..t+n.
+- Steps are pluggable: vintage and carry-forward ship in Phase 1; new steps can be added without modifying orchestrator core.
+- OpenFisca computation is called via ComputationAdapter at each yearly iteration.
+- 10-year baseline and reform runs complete end-to-end.
+- Yearly state transitions are deterministic given same inputs and seeds.
+- Vintage outputs are visible per year in panel results.
+- Step pipeline configuration is recorded in run manifest.
+
+### Story-Level Acceptance Criteria
+
+**BKL-301: Implement yearly loop orchestrator with step pipeline architecture**
+
+- Given a scenario with a 10-year horizon, when the orchestrator runs, then it executes the step pipeline for each year from t to t+9 in order.
+- Given an empty step pipeline, when the orchestrator runs, then it completes without error (no-op per year).
+- Given a step that raises an error at year t+3, when the orchestrator runs, then execution halts with a clear error indicating the failing step and year.
+
+**BKL-302: Define orchestrator step interface and step registration mechanism**
+
+- Given a custom step implementing the step interface, when registered with the orchestrator, then it is called at the correct position in the pipeline for each year.
+- Given a step registered with dependencies on another step, when the pipeline is built, then steps execute in dependency order.
+- Given a step with an invalid interface, when registered, then a clear error identifies the missing method or signature mismatch.
+
+**BKL-303: Implement carry-forward step (deterministic state updates between years)**
+
+- Given household state at year t, when carry-forward executes, then state variables are updated for year t+1 according to configured rules.
+- Given identical inputs and seeds, when carry-forward runs twice, then outputs are bit-identical.
+- Given no explicit period semantics in configuration, when carry-forward is configured, then validation rejects the configuration (NFR10 compliance).
+
+**BKL-304: Implement vintage transition step for one asset class (vehicle or heating)**
+
+- Given a vehicle fleet with age distribution at year t, when vintage transition runs, then cohorts age by one year and new vintages are added according to transition rules.
+- Given identical transition rules and seeds, when run twice, then vintage state at year t+n is identical.
+- Given vintage state at each year, when panel output is produced, then vintage composition is visible per year.
+
+**BKL-305: Integrate ComputationAdapter calls into orchestrator yearly loop**
+
+- Given a configured OpenFiscaAdapter, when the orchestrator runs year t, then the adapter's `compute()` is called with the correct population and policy for that year.
+- Given a mock adapter, when the orchestrator runs, then the full yearly loop completes using mock results.
+- Given an adapter that fails at year t+2, when the orchestrator runs, then the error includes the adapter version, year, and failure details.
+
+**BKL-306: Log seed controls, step execution order, and adapter version per yearly step**
+
+- Given an orchestrator run, when inspecting the log, then each yearly step shows the random seed used, the step execution order, and the adapter version.
+- Given two runs with different seeds, when logs are compared, then the seed difference is visible in the log entries.
+
+**BKL-307: Produce scenario-year panel output dataset**
+
+- Given a completed 10-year run, when panel output is produced, then it contains one row per household per year with all computed fields.
+- Given panel output, when exported to CSV/Parquet, then the file is readable by pandas/polars with correct types.
+- Given baseline and reform runs, when panel outputs are compared, then per-household per-year differences are computable.
+
+---
+
+## EPIC-4: Indicators and Scenario Comparison
+
+**User outcome:** Analyst can compute and compare distributional, welfare, and fiscal indicators across scenarios.
+
+**Status:** done
+
+| ID | Type | Pri | SP | Title | Status | PRD Refs |
+|------|------|-----|----|-------|--------|----------|
+| BKL-401 | Story | P0 | 5 | Implement distributional indicators by income decile | done | FR19 |
+| BKL-402 | Story | P0 | 3 | Implement geographic aggregation indicators | done | FR20 |
+| BKL-403 | Story | P0 | 5 | Implement welfare indicators (winners/losers, net changes) | done | FR21 |
+| BKL-404 | Story | P0 | 5 | Implement fiscal indicators (annual and cumulative) | done | FR22 |
+| BKL-405 | Story | P0 | 5 | Implement scenario comparison tables across runs | done | FR24, FR33 |
+| BKL-406 | Story | P1 | 5 | Implement custom derived indicator formulas | done | FR23 |
+
+### Epic-Level Acceptance Criteria
+
+- Indicators are generated per scenario and per year.
+- Comparison outputs support side-by-side baseline/reform analysis.
+- Export format is machine-readable CSV/Parquet.
+
+### Story-Level Acceptance Criteria
+
+**BKL-401: Implement distributional indicators by income decile**
+
+- Given a completed scenario run with household-level results, when distributional analysis is invoked, then indicators are computed for each of the 10 income deciles.
+- Given a population with missing income data for some households, when analysis runs, then those households are flagged and excluded with a count warning.
+
+**BKL-402: Implement geographic aggregation indicators**
+
+- Given household results with region codes, when geographic aggregation is invoked, then indicators are grouped by region.
+- Given a region code not in the reference table, when aggregated, then results include an "unmatched" category with count.
+
+**BKL-403: Implement welfare indicators (winners/losers, net changes)**
+
+- Given baseline and reform scenario results, when welfare indicators are computed, then winner count, loser count, and net gain/loss per decile are returned.
+- Given a scenario where all households are neutral (zero net change), when computed, then winner and loser counts are both zero.
+
+**BKL-404: Implement fiscal indicators (annual and cumulative)**
+
+- Given a multi-year scenario run, when fiscal indicators are computed, then annual revenue, cost, and balance are returned per year.
+- Given a 10-year run, when cumulative fiscal indicators are requested, then they sum correctly across all years.
+
+**BKL-405: Implement scenario comparison tables across runs**
+
+- Given two completed scenario runs (baseline and reform), when comparison is invoked, then a side-by-side table is produced with all indicator types.
+- Given comparison output, when exported to CSV/Parquet, then the file is readable with correct column headers and types.
+
+**BKL-406: Implement custom derived indicator formulas**
+
+- Given a user-defined formula referencing existing indicator fields, when the formula is registered and invoked, then it produces a new derived indicator column with correct values.
+- Given an invalid formula (e.g., referencing a nonexistent field), when registered, then a clear error identifies the problem before computation begins.
+
+---
+
+## EPIC-5: Governance and Reproducibility
+
+**User outcome:** Analyst can trust and reproduce any simulation run through immutable manifests and lineage tracking.
+
+**Status:** done (BKL-502, BKL-504, and BKL-505 are partial stubs — see [Phase 1 retrospective GAP 3](../implementation-artifacts/phase-1-retro-2026-02-28.md))
+
+| ID | Type | Pri | SP | Title | Status | PRD Refs |
+|------|------|-----|----|-------|--------|----------|
+| BKL-501 | Story | P0 | 5 | Define immutable run manifest schema v1 | done | FR25, NFR9 |
+| BKL-502 | Story | P0 | 5 | Capture assumptions/mappings/parameters in manifests | done | FR26, FR27 |
+| BKL-503 | Story | P0 | 5 | Implement run lineage graph (scenario run -> yearly child runs) | done | FR29 |
+| BKL-504 | Task | P0 | 3 | Hash input/output artifacts and store in manifest | done | FR25, NFR12 |
+| BKL-505 | Story | P0 | 5 | Add reproducibility check harness for deterministic reruns | done | NFR6, NFR7 |
+| BKL-506 | Task | P1 | 3 | Add warning system for unvalidated templates/configs | done | FR27 |
+
+### Epic-Level Acceptance Criteria
+
+- Each run emits one parent manifest plus linked yearly manifests.
+- Manifest includes OpenFisca adapter version, scenario version, data hashes, and seeds.
+- Rerun harness demonstrates reproducibility for benchmark fixtures.
+
+### Story-Level Acceptance Criteria
+
+**BKL-501: Define immutable run manifest schema v1**
+
+- Given a completed simulation run, when the manifest is generated, then it contains engine version, adapter version, scenario version, data hashes, seeds, timestamps, and parameter snapshot.
+- Given a generated manifest, when any field is modified, then integrity checks detect the tampering.
+
+**BKL-502: Capture assumptions/mappings/parameters in manifests**
+
+- Given a run with custom mapping configuration, when the manifest is inspected, then all mappings and assumption sources are listed with their values.
+- Given a run using an unvalidated template, when the manifest is generated, then a warning flag is included in the manifest metadata.
+
+**BKL-503: Implement run lineage graph (scenario run -> yearly child runs)**
+
+- Given a 10-year scenario run, when lineage is queried, then one parent manifest links to 10 yearly child manifests.
+- Given a yearly child manifest, when its parent is queried, then the parent scenario run is returned.
+
+**BKL-504: Hash input/output artifacts and store in manifest**
+
+- Given input CSV/Parquet files, when hashed, then SHA-256 hashes are stored in the manifest without embedding raw data.
+- Given output artifacts, when hashed, then output hashes are stored and can be verified after the run.
+
+**BKL-505: Add reproducibility check harness for deterministic reruns**
+
+- Given a completed run and its manifest, when the harness re-executes with the same inputs and seeds, then outputs are bit-identical.
+- Given a run on a different machine (same Python and dependency versions), when re-executed, then outputs match within documented tolerances.
+
+**BKL-506: Add warning system for unvalidated templates/configs**
+
+- Given a scenario using a template not yet marked as validated, when a run is initiated, then a visible warning is emitted before execution proceeds.
+- Given a validated template, when a run is initiated, then no warning is emitted.
+
+---
+
+## EPIC-6: Interfaces (Python API, Notebooks, Early No-Code GUI)
+
+**User outcome:** User can operate the full analysis workflow from Python API, notebooks, or a no-code GUI.
+
+**Status:** done
+
+| ID | Type | Pri | SP | Title | Status | PRD Refs |
+|------|------|-----|----|-------|--------|----------|
+| BKL-601 | Story | P0 | 5 | Implement stable Python API for run orchestration | done | FR30, NFR16 |
+| BKL-602 | Story | P0 | 5 | Build quickstart notebook | done | FR34, NFR19 |
+| BKL-603 | Story | P0 | 5 | Build advanced notebook (multi-year + vintage + comparison) | done | FR30, FR35 |
+| BKL-604a | Story | P0 | 3 | Build static GUI prototype | done | FR32 |
+| BKL-604b | Story | P0 | 5 | Wire GUI prototype to FastAPI backend | done | FR32 |
+| BKL-605 | Task | P0 | 3 | Add export actions in API/GUI for CSV/Parquet outputs | done | FR33 |
+| BKL-606 | Task | P1 | 3 | Improve operational error UX | done | FR4, FR27 |
+
+### Epic-Level Acceptance Criteria
+
+- API supports full run lifecycle from data ingest to comparison outputs.
+- GUI supports baseline/reform scenario operations without code.
+
+### Story-Level Acceptance Criteria
+
+**BKL-601: Implement stable Python API for run orchestration**
+
+- Given the Python API, when a user calls the run method with a scenario configuration, then a complete orchestration cycle executes and returns results.
+- Given API objects (scenarios, results, manifests), when displayed in a Jupyter notebook, then sensible `__repr__` output is shown.
+- Given an invalid scenario configuration, when passed to the API, then a clear error is raised before execution begins.
+
+**BKL-602: Build quickstart notebook**
+
+- Given a fresh install of the package, when the quickstart notebook is run cell by cell, then it completes without errors and produces distributional charts.
+
+**BKL-603: Build advanced notebook (multi-year + vintage + comparison)**
+
+- Given the advanced notebook, when executed, then it demonstrates a multi-year run with vintage tracking and baseline/reform comparison.
+- Given the advanced notebook, when run in CI, then it passes without modification.
+
+**BKL-604a: Build static GUI prototype**
+
+- Given the prototype, when opened in a browser, then the analyst can navigate the full configuration and simulation flows using clickable screens.
+- Given the prototype, when inspected, then it uses the target stack (React + Shadcn/ui + Tailwind) so screens are reusable in the final app.
+
+**BKL-604b: Wire GUI prototype to FastAPI backend**
+
+- Given the wired GUI, when an analyst creates a new scenario from a template, then no code editing is required.
+- Given the wired GUI, when an analyst clones a baseline and modifies parameters, then a reform scenario is created and linked to the baseline.
+- Given two completed runs in the GUI, when comparison is invoked, then side-by-side indicator tables are displayed.
+
+**BKL-605: Add export actions in API/GUI for CSV/Parquet outputs**
+
+- Given completed scenario results, when export to CSV is invoked, then a valid CSV file is produced with correct headers.
+- Given completed scenario results, when export to Parquet is invoked, then a valid Parquet file is produced readable by pandas/polars.
+
+---
+
+## EPIC-7: Trusted Outputs and External Pilot Validation
+
+**User outcome:** External pilot user can validate simulation credibility against published benchmarks and run the carbon-tax workflow independently.
+
+**Status:** done
+
+| ID | Type | Pri | SP | Title | Status | PRD Refs |
+|------|------|-----|----|-------|--------|----------|
+| BKL-701 | Story | P0 | 5 | Verify simulation outputs against published benchmarks (100k households) | done | NFR1, NFR5 |
+| BKL-702 | Task | P0 | 3 | System warns analyst before exceeding memory limits | done | NFR3 |
+| BKL-703 | Task | P0 | 3 | Enforce CI quality gates | done | NFR18, NFR20 |
+| BKL-704 | Story | P0 | 5 | External pilot user can run complete carbon-tax workflow | done | FR35, NFR19 |
+| BKL-705 | Task | P0 | 3 | Define Phase 1 exit checklist and pilot sign-off criteria | done | PRD go/no-go |
+
+### Epic-Level Acceptance Criteria
+
+- Analyst can run benchmark suite and see pass/fail against Phase 1 NFR targets.
+- CI blocks merges on failing tests or coverage gates.
+- At least one external pilot user runs the carbon-tax workflow end-to-end and confirms result credibility.
+- Pilot package includes example datasets, templates, and documentation sufficient for independent execution.
+
+### Story-Level Acceptance Criteria
+
+**BKL-701: Verify simulation outputs against published benchmarks (100k households)**
+
+- Given the benchmark suite and a 100k household population, when run on a standard laptop (4-core, 16GB RAM), then all benchmark tests complete and deviations are within documented tolerances.
+- Given a benchmark failure, when reported, then the output identifies which metric failed, expected vs actual values, and tolerance.
+
+**BKL-702: System warns analyst before exceeding memory limits**
+
+- Given a population exceeding 500k households on a 16GB machine, when a run is attempted, then a clear memory warning is displayed before execution begins.
+
+**BKL-703: Enforce CI quality gates**
+
+- Given a pull request with failing lint checks, when CI runs, then the merge is blocked with specific lint errors listed.
+- Given a pull request with test coverage below the threshold, when CI runs, then the merge is blocked with coverage report.
+
+**BKL-704: External pilot user can run complete carbon-tax workflow**
+
+- Given the pilot package on a clean Python environment, when installed and the example is run, then the carbon-tax workflow completes end-to-end with charts and indicators.
+- Given the pilot package, when an external user follows the documentation, then they can reproduce the example results without assistance.
+
+**BKL-705: Define Phase 1 exit checklist and pilot sign-off criteria**
+
+- Given the exit checklist, when reviewed against completed work, then each criterion maps to a verifiable artifact or test result.
+
+---
+
+## EPIC-8: Post-Phase-1 Validation Spikes
+
+**User outcome:** Platform developers confirm that the adapter layer works end-to-end with real OpenFisca and at production scale.
+
+**Status:** done
+
+Priority and SP are not assigned for post-Phase-1 spikes.
+
+| ID | Type | Pri | SP | Title | Status | PRD Refs |
+|------|------|-----|------|-------|--------|----------|
+| 8-1 | Spike | — | — | End-to-end OpenFisca integration spike | done | — |
+| 8-2 | Story | — | — | Scale validation: 100k synthetic population benchmarks | done | NFR1, NFR3 |
+
+### Epic-Level Acceptance Criteria
+
+- Adapter processes real OpenFisca-France computations end-to-end without error.
+- Platform handles 100k-household populations within NFR performance targets.
+- All findings and gaps are documented for follow-up in EPIC-9.
+
+### Story-Level Acceptance Criteria
+
+**8-1: End-to-end OpenFisca integration spike**
+
+- `openfisca-france` installs and is importable in the project's Python 3.13 environment.
+- `OpenFiscaApiAdapter` loads a real `CountryTaxBenefitSystem` and returns a valid version string.
+- Real computation returns numeric values (not all zeros, not NaN) for known variables and periods.
+- Multi-entity population works via `SimulationBuilder.build_from_entities()`.
+- Variable mapping round-trip produces correct project-schema column names.
+- Findings documented in [8-1 spike findings](../implementation-artifacts/spike-findings-8-1-openfisca-integration.md).
+
+**8-2: Scale validation — 100k synthetic population benchmarks**
+
+- Persistent 100k synthetic population generated with seed 42, registered via `DatasetManifest` with SHA-256 hash.
+- BKL-701 benchmark suite passes with the persistent population.
+- Full simulation completes within NFR1 target (< 10 seconds) for 100k households.
+
+---
+
+## Epic 9: OpenFisca Adapter Hardening
+
+**User outcome:** Adapter handles real-world OpenFisca entity models, variable periodicities, and multi-entity outputs correctly.
+
+**Status:** backlog (follow-ups from spike 8-1 findings)
+
+### Epic-Level Acceptance Criteria
+
+- Adapter correctly handles all OpenFisca-France entity types and variable periodicities.
+- A reference test suite validates adapter output against known French tax-benefit values.
+
+---
+
+### Story 9.1: Fix entity-dict plural keys
+
+**Status:** done
+**Priority:** P0
+**Estimate:** 1
+
+Entity dicts use correct plural key names as expected by OpenFisca's `SimulationBuilder`.
+Fixed during 8-1 code review.
+
+#### Acceptance Criteria
+
+- Entity dicts use correct plural key names as expected by OpenFisca's `SimulationBuilder`.
+
+---
+
+### Story 9.2: Handle multi-entity output arrays
+
+**Status:** backlog
+**Priority:** P0
+**Estimate:** 5
+
+**Dependencies:** Story 9.1
+
+#### Acceptance Criteria
+
+- Given output variables that return per-entity arrays (e.g., per-menage, per-foyer_fiscal), when the adapter processes results, then arrays are correctly mapped to their respective entity tables.
+- Given a variable defined on `foyer_fiscal` entity, when results are returned, then the output array length matches the number of foyers fiscaux, not the number of individuals.
+- Given mixed-entity output variables, when processed, then each variable's values are stored in the correct entity-level result table with proper entity IDs.
+
+---
+
+### Story 9.3: Add variable periodicity handling
+
+**Status:** backlog
+**Priority:** P0
+**Estimate:** 5
+
+**Dependencies:** Story 9.2
+
+#### Acceptance Criteria
+
+- Given variables with different periodicities (monthly, yearly), when `compute()` is called, then the adapter converts periods correctly before passing to OpenFisca.
+- Given a monthly variable requested for a yearly period, when computed, then the adapter handles period conversion according to OpenFisca conventions.
+- Given an invalid period format, when passed to the adapter, then a clear error identifies the expected format.
+
+---
+
+### Story 9.4: Define population data 4-entity format
+
+**Status:** backlog
+**Priority:** P0
+**Estimate:** 8
+
+**Dependencies:** Story 9.2
+
+#### Acceptance Criteria
+
+- Given the French tax-benefit model's 4 entities (individu, menage, famille, foyer_fiscal), when a population dataset is loaded, then all entity relationships are preserved and passable to `SimulationBuilder`.
+- Given a population with membership arrays for all 4 entities, when built via `SimulationBuilder`, then entity group memberships are correctly assigned.
+- Given a population dataset missing a required entity relationship, when loaded, then validation fails with a clear error identifying the missing relationship.
+
+---
+
+### Story 9.5: OpenFisca-France reference test suite
+
+**Status:** backlog
+**Priority:** P0
+**Estimate:** 5
+
+**Dependencies:** Story 9.3, Story 9.4
+
+#### Acceptance Criteria
+
+- Given a set of known French tax-benefit scenarios with published expected values, when run through the adapter, then computed values match reference values within documented tolerances.
+- Given the reference test suite, when run in CI, then all tests pass and tolerance thresholds are documented.
+- Given a new OpenFisca-France version, when the reference suite is run, then regressions are detected and reported.
+
+
+]]></file>
+<file id="ccd1eda3" path="_bmad-output/implementation-artifacts/9-3-add-variable-periodicity-handling.md" label="STORY FILE"><![CDATA[
+
+# Story 9.3: Add Variable Periodicity Handling
+
+Status: in-progress
+
+<!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
+
+## Story
+
+As a **platform developer integrating OpenFisca-France**,
+I want the adapter to automatically detect variable periodicities and use the correct OpenFisca calculation method (`calculate()` vs `calculate_add()`),
+so that monthly variables (e.g., `salaire_net`) are correctly summed over yearly periods without crashing, and yearly/eternity variables continue to work as before.
+
+## Context & Motivation
+
+OpenFisca variables have a `definition_period` attribute that specifies the temporal granularity at which they are computed. In OpenFisca-France:
+
+| Periodicity | `definition_period` | Example Variables | `calculate("var", "2024")` behavior |
+|---|---|---|---|
+| Monthly | `DateUnit.MONTH` ("month") | `salaire_net`, `salaire_de_base` | **Raises `ValueError`** — period mismatch |
+| Yearly | `DateUnit.YEAR` ("year") | `impot_revenu_restant_a_payer`, `revenu_disponible` | Works — period matches |
+| Eternal | `DateUnit.ETERNITY` ("eternity") | `date_naissance`, `sexe` | Works — any period accepted |
+
+**The current adapter uses `simulation.calculate()` for ALL variables** (line 503 of `openfisca_api_adapter.py`). This crashes with a `ValueError` for monthly variables like `salaire_net` when the period is yearly (e.g., `"2024"`).
+
+**The fix:** Detect each variable's `definition_period` from the TBS and dispatch to the correct calculation method:
+- `MONTH`/`DAY`/`WEEK`/`WEEKDAY` → `simulation.calculate_add(var, period)` — sums sub-period values over the requested period
+- `YEAR` → `simulation.calculate(var, period)` — direct calculation (current behavior)
+- `ETERNITY` → `simulation.calculate(var, period)` — always accepted by OpenFisca
+
+**Source:** Spike 8-1 findings, Gap 4. [Source: `_bmad-output/implementation-artifacts/spike-findings-8-1-openfisca-integration.md`, lines 71-77]
+
+## Acceptance Criteria
+
+1. **AC-1: Periodicity-aware calculation dispatch** — Given variables with different periodicities (monthly, yearly), when `compute()` is called with a yearly period, then the adapter uses `calculate_add()` for monthly variables and `calculate()` for yearly/eternity variables — producing correct results without `ValueError`.
+
+2. **AC-2: Monthly variable yearly aggregation** — Given a monthly variable (e.g., `salaire_net`) requested for a yearly period, when computed, then the adapter automatically sums the 12 monthly values via `calculate_add()` according to OpenFisca conventions.
+
+3. **AC-3: Invalid period format rejection** — Given an invalid period value (non-positive integer, zero, or outside the 4-digit year range 1000–9999), when passed to the adapter's `compute()` as the very first check before any TBS operations, then a clear `ApiMappingError` is raised with summary `"Invalid period"`, the actual value, and the expected format (`"positive integer year in range [1000, 9999], e.g. 2024"`).
+
+4. **AC-4: Backward compatibility** — Given output variables that are all yearly (the existing common case), when `compute()` is called, then behavior is identical to the pre-change implementation — no regression in results, metadata, or `entity_tables`.
+
+5. **AC-5: Periodicity metadata** — Given a completed `compute()` call, when the result metadata is inspected, then it includes two entries: `"variable_periodicities"` (a `dict[str, str]` mapping each output variable to its detected periodicity string, e.g., `{"salaire_net": "month", "irpp": "year"}`) and `"calculation_methods"` (a `dict[str, str]` mapping each output variable to the method invoked, e.g., `{"salaire_net": "calculate_add", "irpp": "calculate"}`).
+
+6. **AC-6: Eternity variable handling** — Given an ETERNITY-period variable (e.g., `date_naissance`, `sexe`) as an output variable, when `compute()` is called, then `simulation.calculate()` is used (NOT `calculate_add()`, which explicitly raises `"eternal variables can't be summed over time"`) and the value is returned correctly. Verified by unit test with mock simulation asserting `simulation.calculate` is called and `simulation.calculate_add` is NOT called when `periodicity == "eternity"`.
+
+## Tasks / Subtasks
+
+- [x] Task 1: Add `_resolve_variable_periodicities()` method (AC: #1, #2, #6)
+  - [x] 1.1 Add method to `OpenFiscaApiAdapter` that queries `tbs.variables[var_name].definition_period` for each output variable
+  - [x] 1.2 Return `dict[str, str]` mapping variable name to periodicity string (`"month"`, `"year"`, `"eternity"`, `"day"`, `"week"`, `"weekday"`)
+  - [x] 1.3 Handle edge case where `definition_period` attribute is missing or has unexpected value — raise `ApiMappingError`
+  - [x] 1.4 Unit tests with mock TBS: verify periodicity detection for month/year/eternity variables, error on missing attribute
+  - [x] 1.5 Update `_make_mock_tbs()` in `tests/computation/test_openfisca_api_adapter.py` to add `var_mock.definition_period = "year"` in the variable-building loop — required because `_resolve_variable_periodicities()` now accesses `variable.definition_period` during every `compute()` call; without this fix, `MagicMock().definition_period` returns a MagicMock (not `"year"`), causing all existing `compute()` unit tests to dispatch to `calculate_add()` instead of `calculate()`, breaking `TestPeriodFormatting.test_period_passed_as_string`
+
+- [x] Task 2: Add `_calculate_variable()` dispatch method (AC: #1, #2, #6)
+  - [x] 2.1 Add private method `_calculate_variable(simulation, var_name, period_str, periodicity) -> numpy.ndarray`
+  - [x] 2.2 Dispatch logic: `"month"`, `"day"`, `"week"`, `"weekday"` → `simulation.calculate_add(var, period_str)`; `"year"`, `"eternity"` → `simulation.calculate(var, period_str)`
+  - [x] 2.3 Log calculation method used per variable at DEBUG level
+  - [x] 2.4 Unit tests with mock simulation: verify correct method called based on periodicity
+
+- [x] Task 3: Refactor `_extract_results_by_entity()` to use periodicity-aware calculation (AC: #1, #2, #4, #6)
+  - [x] 3.1 Add `variable_periodicities: dict[str, str]` parameter to `_extract_results_by_entity()` — ⚠️ this is a breaking change to a private method used directly by 3 existing unit tests; update all 3 callers in `TestExtractResultsByEntity` (`test_single_entity_extraction`, `test_multi_entity_extraction`, `test_multiple_variables_per_entity`) to pass `variable_periodicities` with `"year"` for each test variable (e.g., `variable_periodicities={"salaire_net": "year", "irpp": "year"}`)
+  - [x] 3.2 Replace `simulation.calculate(var_name, period_str)` with `self._calculate_variable(simulation, var_name, period_str, variable_periodicities[var_name])`
+  - [x] 3.3 Unit tests: verify multi-entity extraction with mixed periodicities
+
+- [x] Task 4: Wire periodicity resolution into `compute()` (AC: #1, #2, #4, #5)
+  - [x] 4.1 Call `_resolve_variable_periodicities(tbs)` in `compute()` using this explicit call order (fail-fast — all validation before expensive simulation construction):
+        1. `_validate_output_variables(tbs)`
+        2. `vars_by_entity = _resolve_variable_entities(tbs)`          # Story 9.2
+        3. `var_periodicities = _resolve_variable_periodicities(tbs)`  # Story 9.3 (NEW)
+        4. `simulation = _build_simulation(population, policy, period, tbs)` # Expensive
+        5. `entity_tables = _extract_results_by_entity(simulation, period, vars_by_entity, var_periodicities)` # Modified
+  - [x] 4.2 Pass `variable_periodicities` to `_extract_results_by_entity()`
+  - [x] 4.3 Add `"variable_periodicities"` and `"calculation_methods"` to result metadata as two separate `dict[str, str]` entries. Example for a mixed-periodicity compute: `"variable_periodicities": {"salaire_net": "month", "irpp": "year"}` and `"calculation_methods": {"salaire_net": "calculate_add", "irpp": "calculate"}`
+  - [x] 4.4 Unit tests: verify metadata populated correctly in compute() result
+
+- [x] Task 5: Add period validation (AC: #3)
+  - [x] 5.1 Add validation as the FIRST operation in `compute()`, before `_get_tax_benefit_system()` or any TBS queries: period must be a positive integer in range [1000, 9999] (4-digit year; this is OpenFisca's practical supported temporal range — sub-period summation via `calculate_add()` is undefined outside plausible year values)
+  - [x] 5.2 Raise `ApiMappingError` with summary "Invalid period", reason showing actual value, fix showing expected format
+  - [x] 5.3 Unit tests: invalid periods (0, -1, 99, 99999) raise `ApiMappingError`; valid periods (2024, 2025) pass
+
+- [x] Task 6: Verify backward compatibility (AC: #4)
+  - [x] 6.1 Run existing unit tests in `test_openfisca_api_adapter.py` — ensure all pass unchanged
+  - [x] 6.2 Run existing integration tests in `test_openfisca_integration.py` — note: any Story 9.2 integration test using `salaire_net` (a monthly variable) that is already failing with `ValueError: Period mismatch` is a pre-existing failure this story fixes as a side-effect (Story 9.2 added the test before the dispatch fix existed); Story 9.3 is expected to make it green; verify all other pre-existing integration tests remain green
+  - [ ] 6.3 Verify `MockAdapter` still produces valid `ComputationResult` (no new required fields)
+  - [x] 6.4 Verify `ComputationStep` in orchestrator still works (`result.output_fields.num_rows`)
+
+- [x] Task 7: Integration tests with real OpenFisca-France (AC: #1, #2, #6)
+  - [x] 7.1 Test: `salaire_net` (MONTH) with yearly period → verify `calculate_add()` is used and returns correct yearly sum. Since real `Simulation` objects cannot be mock-asserted, verify dispatch via metadata: `assert result.metadata["calculation_methods"]["salaire_net"] == "calculate_add"`, and verify value correctness: `assert 20000 < result.entity_tables["individus"].column("salaire_net")[0].as_py() < 30000`
+  - [x] 7.2 Test: `impot_revenu_restant_a_payer` (YEAR) with yearly period → verify `calculate()` is used (unchanged)
+  - [x] 7.3 Test: mixed periodicity output variables in single `compute()` call → verify correct method per variable
+  - [x] 7.4 Test: `adapter.compute()` end-to-end with monthly output variable produces correct values
+  - [x] 7.5 Test: verify `variable_periodicities` metadata in integration test result
+  - [x] 7.6 Mark integration tests with `@pytest.mark.integration`
+
+- [x] Task 8: Run quality gates (all ACs)
+  - [x] 8.1 `uv run ruff check src/ tests/`
+  - [x] 8.2 `uv run mypy src/`
+  - [x] 8.3 `uv run pytest tests/computation/ tests/orchestrator/`
+
+## Dev Notes
+
+### Architecture Constraints
+
+- **Adapter isolation is absolute**: Only `computation/openfisca_adapter.py` and `openfisca_api_adapter.py` may import OpenFisca. All OpenFisca imports must be lazy (inside methods, not at module level).
+- **Frozen dataclasses**: `ComputationResult` is `@dataclass(frozen=True)`. No new fields are added in this story — only metadata entries.
+- **Protocol compatibility**: `ComputationAdapter` protocol (`period: int`) is unchanged. The periodicity handling is internal to `OpenFiscaApiAdapter`.
+- **PyArrow is canonical**: All data containers use `pa.Table`. No pandas.
+- **`from __future__ import annotations`** at top of every file.
+- **No bare `Exception` or `ValueError`**: Use subsystem-specific exceptions (`ApiMappingError`).
+
+### OpenFisca Periodicity System — Complete Reference
+
+**`DateUnit` is a `StrEnum`** (from `openfisca_core.periods.date_unit`):
+
+```python
+class DateUnit(StrEnum, metaclass=DateUnitMeta):
+    WEEKDAY = "weekday"    # weight: 100
+    WEEK = "week"          # weight: 200
+    DAY = "day"            # weight: 100
+    MONTH = "month"        # weight: 200
+    YEAR = "year"          # weight: 300
+    ETERNITY = "eternity"  # weight: 400
+```
+
+Since `DateUnit` extends `StrEnum`:
+```python
+variable.definition_period == "month"   # True (StrEnum comparison)
+str(variable.definition_period)          # "month"
+variable.definition_period.value         # "month"
+variable.definition_period.name          # "MONTH"
+```
+
+**Accessing a variable's periodicity:**
+```python
+variable = tbs.variables["salaire_net"]
+periodicity = variable.definition_period  # DateUnit.MONTH (a StrEnum)
+# Since it's StrEnum, string comparison works directly:
+if periodicity == "month":
+    ...
+```
+
+### OpenFisca Calculation Method Dispatch
+
+**`simulation.calculate(var, period)`:**
+- Calls `_check_period_consistency()` which raises `ValueError` if `definition_period` doesn't match the period's unit
+- ETERNITY: always accepted (any period)
+- YEAR: requires yearly period
+- MONTH: requires monthly period → **fails with yearly period**
+- DAY: requires daily period
+
+**`simulation.calculate_add(var, period)`:**
+- Sums sub-period values: `sum(calculate(var, sub_period) for sub_period in period.get_subperiods(definition_period))`
+- For MONTH variable with "2024" period → sums 12 monthly calculations
+- REJECTS ETERNITY variables explicitly: "eternal variables can't be summed over time"
+- Rejects if `unit_weight(definition_period) > unit_weight(period.unit)` (can't sum larger into smaller)
+
+**`simulation.calculate_divide(var, period)`:**
+- Divides a larger-period variable into smaller periods (e.g., yearly / 12 for monthly)
+- Not needed for this story (we only have yearly periods as input)
+
+### Dispatch Table (for yearly period input)
+
+| `definition_period` | Method to use | Rationale |
+|---|---|---|
+| `"month"` | `calculate_add()` | Sum 12 monthly values to yearly |
+| `"year"` | `calculate()` | Period matches directly |
+| `"eternity"` | `calculate()` | Any period accepted; `calculate_add()` rejects eternity |
+| `"day"` | `calculate_add()` | Sum ~365 daily values to yearly |
+| `"week"` | `calculate_add()` | Sum ~52 weekly values to yearly |
+| `"weekday"` | `calculate_add()` | Sum weekday values to yearly |
+
+**Simplified rule:** Use `calculate()` for `"year"` and `"eternity"`, `calculate_add()` for everything else.
+
+### Files to Modify
+
+| File | Change |
+|------|--------|
+| `src/reformlab/computation/openfisca_api_adapter.py` | Add `_resolve_variable_periodicities()`, `_calculate_variable()`, refactor `_extract_results_by_entity()`, add period validation in `compute()` |
+| `tests/computation/test_openfisca_api_adapter.py` | Three required changes: (1) update `_make_mock_tbs()` to add `var_mock.definition_period = "year"` in the variable-building loop; (2) update existing `TestExtractResultsByEntity` tests (3 methods) to pass new `variable_periodicities` argument; (3) add new test classes for periodicity detection, calculation dispatch, and period validation |
+| `tests/computation/test_openfisca_integration.py` | Add integration tests with monthly variables (`salaire_net`) |
+
+### Files to Verify (No Changes Expected)
+
+| File | Why |
+|------|-----|
+| `src/reformlab/computation/adapter.py` | Protocol unchanged (`period: int`) |
+| `src/reformlab/computation/types.py` | `ComputationResult` unchanged — no new fields |
+| `src/reformlab/computation/types.pyi` | Type stub unchanged |
+| `src/reformlab/computation/mock_adapter.py` | Unaffected — no periodicity logic needed |
+| `src/reformlab/computation/exceptions.py` | Reuse existing `ApiMappingError` — no new exception types |
+| `src/reformlab/orchestrator/computation_step.py` | Passes `period=year` (int) to adapter — unchanged |
+| `src/reformlab/orchestrator/panel.py` | Accesses `comp_result.output_fields` — unchanged |
+
+### Backward Compatibility Strategy
+
+This story is purely **internal to `OpenFiscaApiAdapter`** — no external interface changes:
+
+1. `ComputationAdapter` protocol is unchanged (`period: int`).
+2. `ComputationResult` is unchanged (no new fields; periodicity info goes in existing `metadata` dict).
+3. `MockAdapter` is unaffected — it never calls OpenFisca.
+4. Existing unit tests with mock TBS continue to work because `_make_mock_tbs()` creates variables with a default entity that (now) also needs a default `definition_period`. The existing mock assigns all variables to the person entity; Story 9.3 must ensure that mocks also set `definition_period` (default to `"year"` for backward compatibility).
+5. `_extract_results_by_entity()` signature changes (new `variable_periodicities` parameter) — this is a private method, no external consumers.
+
+### Mock TBS Extension for Unit Tests
+
+Extend existing `_make_mock_tbs()` and `_make_mock_tbs_with_entities()` in the test file to include `definition_period`:
+
+```python
+# Existing _make_mock_tbs() — add default definition_period
+def _make_mock_tbs(...):
+    ...
+    for name in variable_names:
+        var_mock = MagicMock()
+        var_mock.entity = default_entity
+        var_mock.definition_period = "year"  # Default for backward compat
+        variables[name] = var_mock
+    ...
+
+# New helper or extend _make_mock_tbs_with_entities()
+def _make_mock_tbs_with_periodicities(
+    variable_entities: dict[str, str],
+    variable_periodicities: dict[str, str],
+    ...
+) -> MagicMock:
+    """Create a mock TBS with both entity and periodicity info."""
+    ...
+    for var_name in variable_entities:
+        var_mock = MagicMock()
+        var_mock.entity = entities_by_key[variable_entities[var_name]]
+        var_mock.definition_period = variable_periodicities.get(var_name, "year")
+        variables[var_name] = var_mock
+    ...
+```
+
+### Mock Simulation Extension for Unit Tests
+
+The existing `_make_mock_simulation()` returns results keyed by variable name. For periodicity dispatch tests, extend to track which method was called:
+
+```python
+def _make_mock_simulation_with_methods(
+    results: dict[str, numpy.ndarray],
+) -> MagicMock:
+    """Mock simulation that tracks calculate vs calculate_add calls."""
+    sim = MagicMock()
+    sim.calculate.side_effect = lambda var, period: results[var]
+    sim.calculate_add.side_effect = lambda var, period: results[var]
+    return sim
+```
+
+Then assert: `sim.calculate.assert_called_with("irpp", "2024")` and `sim.calculate_add.assert_called_with("salaire_net", "2024")`.
+
+### Integration Test Reference Data
+
+**Monthly variable test case — `salaire_net` for single person with 30k base salary:**
+
+```python
+# Input: salaire_de_base = 30000.0 (yearly salary base)
+# Output: salaire_net = sum of 12 monthly net salary values
+# Expected: salaire_net should be positive and in range [20000, 30000]
+# (net salary is less than gross due to social contributions)
+
+population = PopulationData(
+    tables={
+        "individu": pa.table({
+            "salaire_de_base": pa.array([30000.0]),
+            "age": pa.array([30]),
+        }),
+    },
+)
+```
+
+**Mixed periodicity test case — `salaire_net` (MONTH) + `impot_revenu_restant_a_payer` (YEAR):**
+
+```python
+# Using multi-entity adapter with mixed periodicities:
+adapter = OpenFiscaApiAdapter(
+    country_package="openfisca_france",
+    output_variables=(
+        "salaire_net",                      # individu, MONTH → calculate_add
+        "impot_revenu_restant_a_payer",      # foyer_fiscal, YEAR → calculate
+    ),
+)
+# Both variables should return correct values without ValueError
+```
+
+### Existing Integration Test Fix Required
+
+The existing integration test `test_multi_entity_variable_array_lengths` (line 305 in `test_openfisca_integration.py`) already uses `calculate_add` for `salaire_net` manually:
+
+```python
+salaire_net = simulation.calculate_add("salaire_net", "2024")
+```
+
+This test calls OpenFisca directly (not through the adapter). After Story 9.3, new integration tests should verify that the **adapter** itself correctly dispatches to `calculate_add()` for monthly variables.
+
+### What This Story Does NOT Cover
+
+- **Input variable period assignment** — `_population_to_entity_dict()` wraps all input values in `{period_str: value}`. Some input variables may need monthly period format (e.g., `"2024-01"` instead of `"2024"` for `age`). This is a separate concern for future work (potentially Story 9.4 or a follow-up).
+- **Sub-yearly period support in the protocol** — `ComputationAdapter.compute(period: int)` remains yearly. Supporting monthly computation periods would require protocol changes.
+- **`calculate_divide()` support** — Not needed since the adapter only handles yearly periods (the largest common unit).
+- **PopulationData 4-entity format** — That is Story 9.4.
+- **Entity broadcasting** — Broadcasting group-level values to person level is not in scope.
+- **Modifying `MockAdapter`** — It never calls OpenFisca and doesn't need periodicity logic.
+
+### Project Structure Notes
+
+- Source layout: `src/reformlab/` is the installable package
+- Tests mirror source: `tests/computation/` matches `src/reformlab/computation/`
+- Each test subdirectory has `__init__.py` and `conftest.py`
+- Class-based test grouping with AC references in docstrings
+- Integration tests require `openfisca-france` optional dependency: `uv sync --extra openfisca`
+- Run unit tests: `uv run pytest tests/computation/ -m "not integration"`
+- Run integration tests: `uv run pytest tests/computation/ -m integration`
+- Quality gates: `uv run ruff check src/ tests/` and `uv run mypy src/`
+
+### References
+
+- [Source: `_bmad-output/implementation-artifacts/spike-findings-8-1-openfisca-integration.md` — Gap 4: Monthly vs yearly variable periodicity]
+- [Source: `src/reformlab/computation/openfisca_api_adapter.py` — `_extract_results_by_entity()` method, line 503: `simulation.calculate(var_name, period_str)`]
+- [Source: `.venv/.../openfisca_core/periods/date_unit.py` — `DateUnit(StrEnum)` definition with MONTH, YEAR, ETERNITY values]
+- [Source: `.venv/.../openfisca_core/simulations/simulation.py` — `_check_period_consistency()` lines 353-374: raises ValueError for period mismatch]
+- [Source: `.venv/.../openfisca_core/simulations/simulation.py` — `calculate_add()` lines 180-223: sums sub-periods, rejects ETERNITY]
+- [Source: `.venv/.../openfisca_core/variables/variable.py` — `definition_period` attribute, line 144: required, allowed_values=DateUnit]
+- [Source: `src/reformlab/computation/adapter.py` — `ComputationAdapter` protocol, `period: int` parameter]
+- [Source: `src/reformlab/computation/exceptions.py` — `ApiMappingError` structured error pattern]
+- [Source: `src/reformlab/orchestrator/computation_step.py` — downstream consumer, passes `period=year` to adapter]
+- [Source: `_bmad-output/implementation-artifacts/9-2-handle-multi-entity-output-arrays.md` — predecessor story, explicitly excludes periodicity handling]
+- [Source: `_bmad-output/planning-artifacts/epics.md` — Epic 9, Story 9.3 acceptance criteria]
+- [Source: `tests/computation/test_openfisca_integration.py` — lines 305-314: `calculate_add("salaire_net", "2024")` used manually in existing test]
+
+## Dev Agent Record
+
+### Agent Model Used
+
+Claude Opus 4.6 (via create-story workflow)
+
+### Debug Log References
+
+### Completion Notes List
+
+- Ultimate context engine analysis completed — comprehensive developer guide created
+- All 3 acceptance criteria from epics file expanded to 6 ACs with backward compatibility, metadata, and eternity variable coverage
+- Spike 8-1 findings Gap 4 fully integrated as context with root cause analysis
+- OpenFisca periodicity system documented from source code inspection:
+  - `DateUnit` is a `StrEnum` — string comparison works directly
+  - `calculate()` raises `ValueError` for MONTH variables with yearly periods
+  - `calculate_add()` sums sub-periods but REJECTS ETERNITY variables
+  - Complete dispatch table documented for all 6 `DateUnit` values
+- `_check_period_consistency()` source code analyzed (simulation.py lines 353-374) to understand exact failure mode
+- `calculate_add()` source code analyzed (simulation.py lines 180-223) to understand ETERNITY rejection and sub-period iteration
+- Backward compatibility strategy: purely internal changes to `OpenFiscaApiAdapter`, no protocol/type/mock changes
+- Mock TBS extension patterns documented for unit tests (add `definition_period` to variable mocks)
+- Integration test reference data documented (salaire_net monthly, mixed periodicity cases)
+- Story 9.2 predecessor analysis: confirms explicit exclusion of periodicity ("What This Story Does NOT Cover")
+
+**Code Review Synthesis (2026-03-01) — applied fixes:**
+- Added `from typing import Any` to `test_openfisca_api_adapter.py` imports (mypy strict compliance; `Any` was used at lines 62, 128 without being imported)
+- Corrected misleading comment in `_make_mock_tbs()` — the original comment claimed that a MagicMock definition_period would cause dispatch to `calculate_add()`; in fact it causes `ApiMappingError("Unexpected periodicity")` from `_resolve_variable_periodicities()` since the MagicMock string repr is not in `_VALID_PERIODICITIES`
+- Added `test_period_validation_precedes_tbs_loading` to `TestPeriodValidation` — verifies AC-3's "FIRST check" ordering constraint by asserting TBS remains `None` after an invalid-period error (previous tests pre-loaded the TBS so the constraint was untested)
+- Removed dead SimulationBuilder mock setup from `test_compute_entity_detection_error` — the error fires in `_resolve_variable_entities()` before `_build_simulation()` is ever called; the mock_builder_instance/mock_simulation setup was unreachable
+- Added `test_empty_output_variables_raises_error` to `TestOutputVariableValidation` — tests the `__init__` guard for empty `output_variables` tuple (guard existed but was untested)
+- Extracted `_periodicity_to_method_name(periodicity: str) -> str` module-level helper in `openfisca_api_adapter.py` — eliminates DRY violation where the `_CALCULATE_ADD_PERIODICITIES` membership check was duplicated between `_calculate_variable()` and the `calculation_methods` metadata dict comprehension in `compute()`
+- **False positive (context artifact):** Reviewer A flagged `test_openfisca_integration.py` as having broken imports, duplicate classes, and truncated methods. The actual file on disk is clean — the corrupted rendering was an XML embedding artifact in the review context, not the real file
+
+### File List
+
+- `src/reformlab/computation/openfisca_api_adapter.py` — modify (add `_resolve_variable_periodicities()`, `_calculate_variable()`, refactor `_extract_results_by_entity()`, add period validation)
+- `tests/computation/test_openfisca_api_adapter.py` — modify (add periodicity unit tests, extend mock TBS with `definition_period`)
+- `tests/computation/test_openfisca_integration.py` — modify (add monthly variable integration tests)
+
+
+]]></file>
+<file id="65375f24" path="src/reformlab/computation/openfisca_api_adapter.py" label="SOURCE CODE"><![CDATA[
+
+"""Adapter that executes OpenFisca computations via the Python API.
+
+Unlike ``OpenFiscaAdapter`` (pre-computed file mode), this adapter
+runs live tax-benefit calculations using OpenFisca's ``SimulationBuilder``.
+
+All OpenFisca imports are lazy since ``openfisca-core`` is an optional
+dependency.
+
+Story 9.2: Added entity-aware result extraction to correctly handle
+output variables belonging to different entity types (individu, menage,
+famille, foyer_fiscal).
+
+Story 9.3: Added periodicity-aware calculation dispatch. Monthly variables
+use ``calculate_add()`` to sum sub-period values; yearly and eternity
+variables use ``calculate()``. Period validation ensures valid 4-digit year.
+"""
+
+from __future__ import annotations
+
+import difflib
+import logging
+import time
+from typing import Any
+
+import pyarrow as pa
+
+from reformlab.computation.exceptions import ApiMappingError, CompatibilityError
+from reformlab.computation.openfisca_common import (
+    _check_version,
+    _detect_openfisca_version,
+)
+from reformlab.computation.types import ComputationResult, PolicyConfig, PopulationData
+
+logger = logging.getLogger(__name__)
+
+# Story 9.3: Valid OpenFisca DateUnit periodicity values (StrEnum).
+# Sub-yearly periodicities use calculate_add(); year/eternity use calculate().
+_VALID_PERIODICITIES = frozenset({
+    "month", "year", "eternity", "day", "week", "weekday",
+})
+_CALCULATE_ADD_PERIODICITIES = frozenset({
+    "month", "day", "week", "weekday",
+})
+
+
+def _periodicity_to_method_name(periodicity: str) -> str:
+    """Map a DateUnit periodicity string to the OpenFisca calculation method name.
+
+    Single source of truth for the ``calculate`` vs ``calculate_add`` dispatch
+    decision. Sub-yearly periodicities (month, day, week, weekday) aggregate
+    via ``calculate_add``; year and eternity use ``calculate`` directly.
+    """
+    return "calculate_add" if periodicity in _CALCULATE_ADD_PERIODICITIES else "calculate"
+
+
+class OpenFiscaApiAdapter:
+    """Adapter that executes OpenFisca computations via the Python API.
+
+    Unlike ``OpenFiscaAdapter`` (pre-computed file mode), this adapter
+    runs live tax-benefit calculations using OpenFisca's ``SimulationBuilder``.
+    """
+
+    def __init__(
+        self,
+        *,
+        country_package: str = "openfisca_france",
+        output_variables: tuple[str, ...],
+        skip_version_check: bool = False,
+    ) -> None:
+        if not output_variables:
+            raise ApiMappingError(
+                summary="Empty output_variables",
+                reason="output_variables tuple is empty — no variables to compute",
+                fix="Provide at least one valid output variable name.",
+                invalid_names=(),
+                valid_names=(),
+            )
+        self._country_package = country_package
+        self._output_variables = output_variables
+
+        if not skip_version_check:
+            self._version = _detect_openfisca_version()
+            _check_version(self._version)
+        else:
+            self._version = "unknown"
+
+        self._tax_benefit_system: Any = None
+
+    def version(self) -> str:
+        """Return the detected OpenFisca-Core version string."""
+        return self._version
+
+    def compute(
+        self,
+        population: PopulationData,
+        policy: PolicyConfig,
+        period: int,
+    ) -> ComputationResult:
+        """Run a live OpenFisca computation for the given inputs.
+
+        Args:
+            population: Input population data with entity tables.
+            policy: Scenario parameters (applied as input-variable values).
+            period: Computation period (integer year, e.g. 2025).
+
+        Returns:
+            A ``ComputationResult`` with output variables as a PyArrow Table.
+            When output variables span multiple entities, ``entity_tables``
+            contains per-entity tables keyed by entity plural name.
+
+        Raises:
+            ApiMappingError: If the period is invalid (not a 4-digit year
+                in range [1000, 9999]).
+        """
+        # Story 9.3 AC-3: Period validation — FIRST check before any TBS operations.
+        self._validate_period(period)
+
+        start = time.monotonic()
+
+        tbs = self._get_tax_benefit_system()
+        self._validate_output_variables(tbs)
+
+        # Story 9.2: Resolve entity grouping before building simulation (fail fast —
+        # avoid expensive SimulationBuilder.build_from_entities() if entity
+        # resolution fails due to incompatible country package).
+        vars_by_entity = self._resolve_variable_entities(tbs)
+
+        # Story 9.3 AC-1, AC-2, AC-6: Resolve periodicities before simulation
+        # (fail fast — detect unsupported periodicity values early).
+        var_periodicities = self._resolve_variable_periodicities(tbs)
+
+        simulation = self._build_simulation(population, policy, period, tbs)
+        entity_tables = self._extract_results_by_entity(
+            simulation, period, vars_by_entity, var_periodicities
+        )
+
+        # Determine primary output_fields table for backward compatibility:
+        # - Single entity → that entity's table
+        # - Multiple entities → person-entity table (or first entity's table)
+        output_fields = self._select_primary_output(entity_tables, tbs)
+
+        elapsed = time.monotonic() - start
+
+        # Only expose entity_tables for multi-entity results — keeps metadata
+        # consistent with entity_tables (single-entity uses {} for backward compat).
+        result_entity_tables = entity_tables if len(entity_tables) > 1 else {}
+        output_entities = sorted(result_entity_tables.keys())
+        entity_row_counts = {
+            entity: table.num_rows for entity, table in result_entity_tables.items()
+        }
+
+        # Story 9.3 AC-5: Build calculation methods mapping from periodicities.
+        # Uses _periodicity_to_method_name() — single source of truth for the
+        # calculate vs calculate_add dispatch decision.
+        calculation_methods: dict[str, str] = {
+            var_name: _periodicity_to_method_name(periodicity)
+            for var_name, periodicity in var_periodicities.items()
+        }
+
+        return ComputationResult(
+            output_fields=output_fields,
+            adapter_version=self._version,
+            period=period,
+            metadata={
+                "timing_seconds": round(elapsed, 4),
+                "row_count": output_fields.num_rows,
+                "source": "api",
+                "policy_name": policy.name,
+                "country_package": self._country_package,
+                "output_variables": list(self._output_variables),
+                "output_entities": output_entities,
+                "entity_row_counts": entity_row_counts,
+                "variable_periodicities": dict(var_periodicities),
+                "calculation_methods": calculation_methods,
+            },
+            entity_tables=result_entity_tables,
+        )
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _get_tax_benefit_system(self) -> Any:
+        """Lazily import the country package and cache the TaxBenefitSystem."""
+        if self._tax_benefit_system is not None:
+            return self._tax_benefit_system
+
+        try:
+            import importlib
+
+            module = importlib.import_module(self._country_package)
+        except ImportError:
+            raise CompatibilityError(
+                expected=self._country_package,
+                actual="not-installed",
+                details=(
+                    f"Country package '{self._country_package}' is not installed. "
+                    f"Install it with: uv add '{self._country_package}'. "
+                    "See https://openfisca.org/doc/ for available country packages."
+                ),
+            )
+
+        # Country packages expose the TBS via a conventional attribute.
+        # openfisca_france → FranceTaxBenefitSystem (via CountryTaxBenefitSystem)
+        tbs_class = getattr(module, "CountryTaxBenefitSystem", None)
+        if tbs_class is None:
+            # Fallback: try the generic TaxBenefitSystem attribute
+            tbs_class = getattr(module, "TaxBenefitSystem", None)
+        if tbs_class is None:
+            raise CompatibilityError(
+                expected=f"TaxBenefitSystem in {self._country_package}",
+                actual="not found",
+                details=(
+                    f"Package '{self._country_package}' does not expose "
+                    "'CountryTaxBenefitSystem' or 'TaxBenefitSystem'. "
+                    "Verify the package is a valid OpenFisca country package."
+                ),
+            )
+
+        self._tax_benefit_system = tbs_class()
+        return self._tax_benefit_system
+
+    def _validate_output_variables(self, tbs: Any) -> None:
+        """Check that all requested output variables exist in the TBS."""
+        known_variables = set(tbs.variables.keys())
+        invalid = [v for v in self._output_variables if v not in known_variables]
+
+        if not invalid:
+            return
+
+        suggestions: dict[str, list[str]] = {}
+        known_list = sorted(known_variables)
+        for name in invalid:
+            matches = difflib.get_close_matches(name, known_list, n=3, cutoff=0.6)
+            if matches:
+                suggestions[name] = matches
+
+        suggestion_lines = []
+        for name in invalid:
+            if name in suggestions:
+                suggestion_lines.append(
+                    f"  '{name}' → did you mean: {', '.join(suggestions[name])}?"
+                )
+            else:
+                suggestion_lines.append(f"  '{name}' → no close matches found")
+
+        raise ApiMappingError(
+            summary="Unknown output variables",
+            reason=(
+                f"{len(invalid)} variable(s) not found in "
+                f"{self._country_package} TaxBenefitSystem: "
+                f"{', '.join(invalid)}"
+            ),
+            fix=(
+                "Check variable names against the country package. "
+                "Suggestions:\n" + "\n".join(suggestion_lines)
+            ),
+            invalid_names=tuple(invalid),
+            valid_names=tuple(sorted(known_variables)),
+            suggestions=suggestions,
+        )
+
+    # ------------------------------------------------------------------
+    # Story 9.3: Period validation and periodicity-aware dispatch
+    # ------------------------------------------------------------------
+
+    def _validate_period(self, period: int) -> None:
+        """Validate that the period is a 4-digit year in [1000, 9999].
+
+        Story 9.3 AC-3: Called as the FIRST operation in ``compute()``,
+        before any TBS queries or simulation construction.
+
+        Raises:
+            ApiMappingError: If the period is invalid.
+        """
+        if not (1000 <= period <= 9999):
+            raise ApiMappingError(
+                summary="Invalid period",
+                reason=(
+                    f"Period {period!r} is not a valid 4-digit year"
+                ),
+                fix=(
+                    "Provide a positive integer year in range [1000, 9999], "
+                    "e.g. 2024"
+                ),
+                invalid_names=(),
+                valid_names=(),
+            )
+
+    def _resolve_variable_periodicities(
+        self, tbs: Any
+    ) -> dict[str, str]:
+        """Detect the periodicity of each output variable from the TBS.
+
+        Story 9.3 AC-1, AC-2, AC-6: Queries
+        ``tbs.variables[var_name].definition_period`` for each output variable
+        to determine whether ``calculate()`` or ``calculate_add()`` should
+        be used.
+
+        Args:
+            tbs: The loaded TaxBenefitSystem.
+
+        Returns:
+            Dict mapping variable name to periodicity string
+            (e.g. ``{"salaire_net": "month", "irpp": "year"}``).
+
+        Raises:
+            ApiMappingError: If a variable's periodicity cannot be determined
+                or has an unexpected value.
+        """
+        periodicities: dict[str, str] = {}
+
+        for var_name in self._output_variables:
+            variable = tbs.variables.get(var_name)
+            if variable is None:
+                # Defensive — _validate_output_variables should have caught this.
+                raise ApiMappingError(
+                    summary="Cannot resolve variable periodicity",
+                    reason=(
+                        f"Variable '{var_name}' not found in "
+                        f"{self._country_package} TaxBenefitSystem"
+                    ),
+                    fix=(
+                        "Ensure the variable exists in the country package. "
+                        "This may indicate the TBS was modified after validation."
+                    ),
+                    invalid_names=(var_name,),
+                    valid_names=tuple(sorted(tbs.variables.keys())),
+                )
+
+            definition_period = getattr(variable, "definition_period", None)
+            if definition_period is None:
+                raise ApiMappingError(
+                    summary="Cannot determine periodicity for variable",
+                    reason=(
+                        f"Variable '{var_name}' has no .definition_period "
+                        f"attribute in {self._country_package} TaxBenefitSystem"
+                    ),
+                    fix=(
+                        "This variable may not be properly defined in the "
+                        "country package. Check the variable definition."
+                    ),
+                    invalid_names=(var_name,),
+                    valid_names=tuple(sorted(tbs.variables.keys())),
+                )
+
+            # DateUnit is a StrEnum — string comparison works directly.
+            periodicity_str = str(definition_period)
+            if periodicity_str not in _VALID_PERIODICITIES:
+                raise ApiMappingError(
+                    summary="Unexpected periodicity for variable",
+                    reason=(
+                        f"Variable '{var_name}' has definition_period="
+                        f"'{periodicity_str}', expected one of: "
+                        f"{', '.join(sorted(_VALID_PERIODICITIES))}"
+                    ),
+                    fix=(
+                        "This may indicate an incompatible OpenFisca version. "
+                        "Check the OpenFisca compatibility matrix."
+                    ),
+                    invalid_names=(var_name,),
+                    valid_names=tuple(sorted(tbs.variables.keys())),
+                )
+
+            periodicities[var_name] = periodicity_str
+
+        logger.debug(
+            "variable_periodicities=%s output_variables=%s",
+            periodicities,
+            list(self._output_variables),
+        )
+
+        return periodicities
+
+    def _calculate_variable(
+        self,
+        simulation: Any,
+        var_name: str,
+        period_str: str,
+        periodicity: str,
+    ) -> Any:
+        """Dispatch to the correct OpenFisca calculation method.
+
+        Story 9.3 AC-1, AC-2, AC-6:
+        - ``"month"``, ``"day"``, ``"week"``, ``"weekday"``
+          → ``simulation.calculate_add(var, period)``
+        - ``"year"``, ``"eternity"``
+          → ``simulation.calculate(var, period)``
+
+        Args:
+            simulation: The OpenFisca simulation.
+            var_name: Variable name to compute.
+            period_str: Period string (e.g. "2024").
+            periodicity: The variable's definition_period string.
+
+        Returns:
+            numpy.ndarray of computed values.
+        """
+        method = _periodicity_to_method_name(periodicity)
+        logger.debug(
+            "var=%s periodicity=%s method=%s period=%s",
+            var_name, periodicity, method, period_str,
+        )
+        if method == "calculate_add":
+            return simulation.calculate_add(var_name, period_str)
+        else:
+            return simulation.calculate(var_name, period_str)
+
+    def _validate_policy_parameters(self, policy: PolicyConfig, tbs: Any) -> None:
+        """Check that all policy parameter keys are valid input variables."""
+        if not policy.parameters:
+            return
+
+        known_variables = set(tbs.variables.keys())
+        invalid = [k for k in policy.parameters if k not in known_variables]
+
+        if not invalid:
+            return
+
+        suggestions: dict[str, list[str]] = {}
+        known_list = sorted(known_variables)
+        for name in invalid:
+            matches = difflib.get_close_matches(name, known_list, n=3, cutoff=0.6)
+            if matches:
+                suggestions[name] = matches
+
+        suggestion_lines = []
+        for name in invalid:
+            if name in suggestions:
+                suggestion_lines.append(
+                    f"  '{name}' → did you mean: {', '.join(suggestions[name])}?"
+                )
+            else:
+                suggestion_lines.append(f"  '{name}' → no close matches found")
+
+        raise ApiMappingError(
+            summary="Unknown policy parameter keys",
+            reason=(
+                f"{len(invalid)} parameter key(s) not found as variables in "
+                f"{self._country_package} TaxBenefitSystem: "
+                f"{', '.join(invalid)}"
+            ),
+            fix=(
+                "PolicyConfig.parameters keys must be valid OpenFisca variable names. "
+                "Suggestions:\n" + "\n".join(suggestion_lines)
+            ),
+            invalid_names=tuple(invalid),
+            valid_names=tuple(sorted(known_variables)),
+            suggestions=suggestions,
+        )
+
+    def _build_simulation(
+        self,
+        population: PopulationData,
+        policy: PolicyConfig,
+        period: int,
+        tbs: Any,
+    ) -> Any:
+        """Construct an OpenFisca Simulation from population and policy data."""
+        from openfisca_core.simulation_builder import SimulationBuilder
+
+        # Validate entity keys against TBS (accept both singular and plural)
+        tbs_entity_keys = {entity.key for entity in tbs.entities}
+        tbs_entity_plurals = {entity.plural for entity in tbs.entities}
+        valid_names = tbs_entity_keys | tbs_entity_plurals
+        unknown_entities = [
+            key for key in population.tables if key not in valid_names
+        ]
+        if unknown_entities:
+            raise ApiMappingError(
+                summary="Unknown entity keys in population data",
+                reason=(
+                    f"Entity key(s) {', '.join(unknown_entities)} not found in "
+                    f"{self._country_package} TaxBenefitSystem"
+                ),
+                fix=(
+                    f"Population entity keys must be one of: "
+                    f"{', '.join(sorted(tbs_entity_keys))}. "
+                    "Check PopulationData.tables keys."
+                ),
+                invalid_names=tuple(unknown_entities),
+                valid_names=tuple(sorted(tbs_entity_keys)),
+            )
+
+        # Validate policy parameters
+        self._validate_policy_parameters(policy, tbs)
+
+        # Build entity dict for SimulationBuilder.build_from_entities
+        period_str = str(period)
+        entities_dict = self._population_to_entity_dict(
+            population, policy, period_str, tbs
+        )
+
+        builder = SimulationBuilder()
+        simulation = builder.build_from_entities(tbs, entities_dict)
+
+        return simulation
+
+    def _population_to_entity_dict(
+        self,
+        population: PopulationData,
+        policy: PolicyConfig,
+        period_str: str,
+        tbs: Any,
+    ) -> dict[str, Any]:
+        """Convert PopulationData tables to the dict format expected by OpenFisca.
+
+        OpenFisca's ``build_from_entities`` expects **plural** entity keys::
+
+            {
+                "individus": {
+                    "person_0": {"salaire_de_base": {"2024": 30000.0}},
+                    ...
+                },
+                "menages": {
+                    "menage_0": {"personne_de_reference": ["person_0"]},
+                    ...
+                }
+            }
+
+        PopulationData tables may use either singular (entity.key) or plural
+        (entity.plural) keys.  This method normalises to plural.
+        """
+        result: dict[str, Any] = {}
+
+        # Build key→plural mapping for normalisation
+        key_to_plural = {entity.key: entity.plural for entity in tbs.entities}
+        plural_set = set(key_to_plural.values())
+
+        # Identify the person entity (singular entity in OpenFisca)
+        person_entity_plural: str | None = None
+        for entity in tbs.entities:
+            if not getattr(entity, "is_person", False):
+                continue
+            person_entity_plural = entity.plural
+            break
+
+        for entity_key, table in population.tables.items():
+            # Normalise to plural key
+            plural_key = key_to_plural.get(entity_key, entity_key)
+            if entity_key in plural_set:
+                plural_key = entity_key
+
+            entity_dict: dict[str, Any] = {}
+            columns = table.column_names
+            num_rows = table.num_rows
+
+            for i in range(num_rows):
+                instance_id = f"{entity_key}_{i}"
+                instance_data: dict[str, Any] = {}
+
+                for col in columns:
+                    value = table.column(col)[i].as_py()
+                    # Wrap scalar values in period dict for variable assignments
+                    instance_data[col] = {period_str: value}
+
+                entity_dict[instance_id] = instance_data
+
+            result[plural_key] = entity_dict
+
+        # Inject policy parameters as input-variable values on the person entity
+        if policy.parameters and person_entity_plural and person_entity_plural in result:
+            for instance_id in result[person_entity_plural]:
+                for param_key, param_value in policy.parameters.items():
+                    result[person_entity_plural][instance_id][param_key] = {
+                        period_str: param_value
+                    }
+
+        return result
+
+    # ------------------------------------------------------------------
+    # Story 9.2: Entity-aware result extraction
+    # ------------------------------------------------------------------
+
+    def _resolve_variable_entities(
+        self, tbs: Any
+    ) -> dict[str, list[str]]:
+        """Group output variables by their entity's plural name.
+
+        Queries ``tbs.variables[var_name].entity`` to determine which entity
+        each output variable belongs to, then groups them.
+
+        Args:
+            tbs: The loaded TaxBenefitSystem.
+
+        Returns:
+            Dict mapping entity plural name to list of variable names.
+            E.g. ``{"individus": ["salaire_net"], "foyers_fiscaux": ["irpp"]}``.
+
+        Raises:
+            ApiMappingError: If a variable's entity cannot be determined.
+        """
+        vars_by_entity: dict[str, list[str]] = {}
+
+        for var_name in self._output_variables:
+            variable = tbs.variables.get(var_name)
+            if variable is None:
+                # Should not happen — _validate_output_variables runs first.
+                # Defensive guard for edge cases.
+                raise ApiMappingError(
+                    summary="Cannot resolve variable entity",
+                    reason=(
+                        f"Variable '{var_name}' not found in "
+                        f"{self._country_package} TaxBenefitSystem"
+                    ),
+                    fix=(
+                        "Ensure the variable exists in the country package. "
+                        "This may indicate the TBS was modified after validation."
+                    ),
+                    invalid_names=(var_name,),
+                    valid_names=tuple(sorted(tbs.variables.keys())),
+                )
+
+            entity = getattr(variable, "entity", None)
+            if entity is None:
+                raise ApiMappingError(
+                    summary="Cannot determine entity for variable",
+                    reason=(
+                        f"Variable '{var_name}' has no .entity attribute in "
+                        f"{self._country_package} TaxBenefitSystem"
+                    ),
+                    fix=(
+                        "This variable may not be properly defined in the "
+                        "country package. Check the variable definition."
+                    ),
+                    invalid_names=(var_name,),
+                    valid_names=tuple(sorted(tbs.variables.keys())),
+                )
+
+            entity_plural = getattr(entity, "plural", None)
+            if entity_plural is None:
+                # entity.plural is required — silently falling back to entity.key
+                # would produce wrong plural keys (e.g. "foyer_fiscal" instead of
+                # "foyers_fiscaux") causing subtle downstream lookup failures.
+                # This path only occurs with a malformed/incompatible TBS.
+                entity_key = getattr(entity, "key", None)
+                raise ApiMappingError(
+                    summary="Cannot determine entity plural name for variable",
+                    reason=(
+                        f"Variable '{var_name}' entity has no .plural attribute"
+                        + (
+                            f" (entity.key={entity_key!r})"
+                            if entity_key
+                            else ", no .key attribute either"
+                        )
+                    ),
+                    fix=(
+                        "This may indicate an incompatible OpenFisca version. "
+                        "Check the OpenFisca compatibility matrix."
+                    ),
+                    invalid_names=(var_name,),
+                    valid_names=tuple(sorted(tbs.variables.keys())),
+                )
+
+            vars_by_entity.setdefault(entity_plural, []).append(var_name)
+
+        logger.debug(
+            "entity_variable_mapping=%s output_variables=%s",
+            {k: v for k, v in vars_by_entity.items()},
+            list(self._output_variables),
+        )
+
+        return vars_by_entity
+
+    def _extract_results_by_entity(
+        self,
+        simulation: Any,
+        period: int,
+        vars_by_entity: dict[str, list[str]],
+        variable_periodicities: dict[str, str],
+    ) -> dict[str, pa.Table]:
+        """Extract output variables grouped by entity into per-entity tables.
+
+        For each entity group, calls the appropriate calculation method
+        (``calculate()`` or ``calculate_add()``) for its variables and
+        builds a ``pa.Table`` per entity. Arrays within an entity group
+        share the same length (entity instance count).
+
+        Story 9.3: Uses ``_calculate_variable()`` for periodicity-aware
+        dispatch instead of calling ``simulation.calculate()`` directly.
+
+        Args:
+            simulation: The completed OpenFisca simulation.
+            period: Computation period (integer year).
+            vars_by_entity: Output variables grouped by entity plural name
+                (from ``_resolve_variable_entities``).
+            variable_periodicities: Periodicity per variable
+                (from ``_resolve_variable_periodicities``).
+
+        Returns:
+            Dict mapping entity plural name to a PyArrow Table containing
+            that entity's output variables.
+        """
+        period_str = str(period)
+        entity_tables: dict[str, pa.Table] = {}
+
+        for entity_plural, var_names in vars_by_entity.items():
+            arrays: dict[str, pa.Array] = {}
+            for var_name in var_names:
+                periodicity = variable_periodicities[var_name]
+                numpy_array = self._calculate_variable(
+                    simulation, var_name, period_str, periodicity
+                )
+                arrays[var_name] = pa.array(numpy_array)
+            entity_tables[entity_plural] = pa.table(arrays)
+
+        return entity_tables
+
+    def _select_primary_output(
+        self,
+        entity_tables: dict[str, pa.Table],
+        tbs: Any,
+    ) -> pa.Table:
+        """Select the primary output_fields table for backward compatibility.
+
+        When all variables belong to one entity, returns that entity's table.
+        When variables span multiple entities, returns the person-entity table
+        (or the first entity's table if no person entity is present).
+
+        Args:
+            entity_tables: Per-entity output tables.
+            tbs: The loaded TaxBenefitSystem.
+
+        Returns:
+            A single PyArrow Table to use as ``output_fields``.
+        """
+        if len(entity_tables) == 1:
+            return next(iter(entity_tables.values()))
+
+        # Find the person entity plural name
+        for entity in tbs.entities:
+            if getattr(entity, "is_person", False):
+                person_plural = entity.plural
+                if person_plural in entity_tables:
+                    return entity_tables[person_plural]
+
+        # Fallback: return the first entity's table
+        return next(iter(entity_tables.values()))
+
+
+]]></file>
+<file id="e38c6079" path="tests/computation/test_openfisca_api_adapter.py" label="SOURCE CODE"><![CDATA[
+
+"""Tests for OpenFiscaApiAdapter (Story 1.6: Direct OpenFisca API mode).
+
+All OpenFisca internals are mocked since openfisca-core is an optional
+dependency and may not be installed in CI.
+
+Story 9.2: Added tests for multi-entity output array handling — entity-aware
+result extraction, per-entity tables, and backward compatibility.
+"""
+
+from __future__ import annotations
+
+import sys
+from types import SimpleNamespace
+from typing import Any
+from unittest.mock import MagicMock, patch
+
+import pyarrow as pa
+import pytest
+
+np = pytest.importorskip("numpy")
+
+from reformlab.computation.adapter import ComputationAdapter
+from reformlab.computation.exceptions import ApiMappingError, CompatibilityError
+from reformlab.computation.openfisca_api_adapter import OpenFiscaApiAdapter
+from reformlab.computation.types import ComputationResult, PolicyConfig, PopulationData
+
+# ---------------------------------------------------------------------------
+# Helpers / Fixtures
+# ---------------------------------------------------------------------------
+
+# Install a fake openfisca_core.simulation_builder module so that
+# `from openfisca_core.simulation_builder import SimulationBuilder`
+# inside _build_simulation can be patched. We register it once in
+# sys.modules so the import succeeds, then individual tests patch
+# the SimulationBuilder attribute.
+
+_mock_sim_builder_module = MagicMock()
+sys.modules.setdefault("openfisca_core", MagicMock())
+sys.modules.setdefault("openfisca_core.simulation_builder", _mock_sim_builder_module)
+
+
+def _make_mock_tbs(
+    entity_keys: tuple[str, ...] = ("persons", "households"),
+    variable_names: tuple[str, ...] = ("income_tax", "carbon_tax", "salary"),
+    person_entity: str = "persons",
+) -> MagicMock:
+    """Create a mock TaxBenefitSystem with configurable entities and variables."""
+    tbs = MagicMock()
+
+    entities = []
+    entities_by_key: dict[str, SimpleNamespace] = {}
+    for key in entity_keys:
+        entity = SimpleNamespace(key=key, plural=key, is_person=(key == person_entity))
+        entities.append(entity)
+        entities_by_key[key] = entity
+    tbs.entities = entities
+
+    # Variables get a default entity (the person entity) for backward compatibility
+    # with existing tests that don't need entity-aware behavior.
+    # Story 9.3: Also set definition_period = "year" by default. Without this,
+    # MagicMock().definition_period returns a MagicMock object whose str()
+    # representation ("<MagicMock ...>") is not in _VALID_PERIODICITIES, causing
+    # _resolve_variable_periodicities() to raise ApiMappingError("Unexpected
+    # periodicity...") and breaking all existing compute() unit tests.
+    default_entity = entities_by_key.get(person_entity, entities[0])
+    variables: dict[str, Any] = {}
+    for name in variable_names:
+        var_mock = MagicMock()
+        var_mock.entity = default_entity
+        var_mock.definition_period = "year"
+        variables[name] = var_mock
+    tbs.variables = variables
+
+    return tbs
+
+
+def _make_mock_tbs_with_entities(
+    entity_keys: tuple[str, ...] = ("individu", "foyer_fiscal", "menage"),
+    entity_plurals: dict[str, str] | None = None,
+    variable_entities: dict[str, str] | None = None,
+    variable_periodicities: dict[str, str] | None = None,
+    person_entity: str = "individu",
+) -> MagicMock:
+    """Create a mock TBS where variables know their entity.
+
+    Story 9.2: Extended mock for entity-aware extraction tests.
+    Story 9.3: Added variable_periodicities parameter for periodicity-aware tests.
+
+    Args:
+        entity_keys: Entity singular keys.
+        entity_plurals: Mapping of singular key to plural form.
+            Defaults to appending "s" (with special cases).
+        variable_entities: Mapping of variable name to entity key.
+        variable_periodicities: Mapping of variable name to periodicity string
+            (e.g. "month", "year", "eternity"). Defaults to "year" for all.
+        person_entity: Which entity key is the person entity.
+
+    Returns:
+        Mock TBS with entity-aware variables.
+    """
+    tbs = MagicMock()
+
+    # Default plurals for French entities
+    default_plurals = {
+        "individu": "individus",
+        "famille": "familles",
+        "foyer_fiscal": "foyers_fiscaux",
+        "menage": "menages",
+    }
+    if entity_plurals is None:
+        entity_plurals = {}
+    if variable_periodicities is None:
+        variable_periodicities = {}
+
+    entities_by_key: dict[str, SimpleNamespace] = {}
+    entities = []
+    for key in entity_keys:
+        plural = entity_plurals.get(key) or default_plurals.get(key) or key + "s"
+        entity = SimpleNamespace(
+            key=key,
+            plural=plural,
+            is_person=(key == person_entity),
+        )
+        entities.append(entity)
+        entities_by_key[key] = entity
+    tbs.entities = entities
+
+    # Build variables with entity references
+    # Story 9.3: Also set definition_period (default "year" for backward compat)
+    if variable_entities is None:
+        variable_entities = {}
+    variables: dict[str, Any] = {}
+    for var_name, entity_key in variable_entities.items():
+        var_mock = MagicMock()
+        var_mock.entity = entities_by_key[entity_key]
+        var_mock.definition_period = variable_periodicities.get(var_name, "year")
+        variables[var_name] = var_mock
+    tbs.variables = variables
+
+    return tbs
+
+
+def _make_mock_simulation(
+    results: dict[str, np.ndarray],
+) -> MagicMock:
+    """Create a mock Simulation that returns given arrays for calculate()."""
+    sim = MagicMock()
+    sim.calculate.side_effect = lambda var, period: results[var]
+    return sim
+
+
+def _patch_simulation_builder(mock_builder_instance: MagicMock):  # type: ignore[no-untyped-def]
+    """Patch SimulationBuilder in the fake openfisca_core.simulation_builder module."""
+    return patch.object(
+        _mock_sim_builder_module,
+        "SimulationBuilder",
+        return_value=mock_builder_instance,
+    )
+
+
+@pytest.fixture()
+def sample_population() -> PopulationData:
+    return PopulationData(
+        tables={
+            "persons": pa.table(
+                {
+                    "person_id": pa.array([1, 2, 3]),
+                    "salary": pa.array([30000.0, 45000.0, 60000.0]),
+                }
+            ),
+        },
+        metadata={"source": "test"},
+    )
+
+
+@pytest.fixture()
+def sample_policy() -> PolicyConfig:
+    return PolicyConfig(
+        parameters={"salary": 35000.0},
+        name="test-policy",
+    )
+
+
+@pytest.fixture()
+def empty_policy() -> PolicyConfig:
+    return PolicyConfig(parameters={}, name="no-params")
+
+
+# ---------------------------------------------------------------------------
+# AC-7: Protocol compliance
+# ---------------------------------------------------------------------------
+
+
+class TestProtocolCompliance:
+    """AC-7: isinstance(OpenFiscaApiAdapter(...), ComputationAdapter) returns True."""
+
+    def test_isinstance_check(self) -> None:
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        assert isinstance(adapter, ComputationAdapter)
+
+    def test_has_compute_method(self) -> None:
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        assert callable(getattr(adapter, "compute", None))
+
+    def test_has_version_method(self) -> None:
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        assert callable(getattr(adapter, "version", None))
+
+
+# ---------------------------------------------------------------------------
+# AC-2: Version-pinned execution
+# ---------------------------------------------------------------------------
+
+
+class TestVersionChecking:
+    """AC-2: Version validation reuses shared logic from openfisca_common."""
+
+    def test_supported_version_passes(self) -> None:
+        with patch(
+            "reformlab.computation.openfisca_api_adapter._detect_openfisca_version",
+            return_value="44.2.2",
+        ):
+            adapter = OpenFiscaApiAdapter(output_variables=("income_tax",))
+            assert adapter.version() == "44.2.2"
+
+    def test_unsupported_version_raises(self) -> None:
+        with patch(
+            "reformlab.computation.openfisca_api_adapter._detect_openfisca_version",
+            return_value="30.0.0",
+        ):
+            with pytest.raises(CompatibilityError) as exc_info:
+                OpenFiscaApiAdapter(output_variables=("income_tax",))
+            assert "30.0.0" in str(exc_info.value)
+
+    def test_skip_version_check(self) -> None:
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        assert adapter.version() == "unknown"
+
+
+# ---------------------------------------------------------------------------
+# AC-8: Graceful degradation when OpenFisca not installed
+# ---------------------------------------------------------------------------
+
+
+class TestGracefulDegradation:
+    """AC-8: Missing openfisca-core raises CompatibilityError, not ImportError."""
+
+    def test_not_installed_raises_compatibility_error(self) -> None:
+        with patch(
+            "reformlab.computation.openfisca_api_adapter._detect_openfisca_version",
+            return_value="not-installed",
+        ):
+            with pytest.raises(CompatibilityError) as exc_info:
+                OpenFiscaApiAdapter(output_variables=("income_tax",))
+            assert "not installed" in str(exc_info.value).lower()
+            assert exc_info.value.actual == "not-installed"
+
+    def test_not_installed_is_not_import_error(self) -> None:
+        """Verify the error type is CompatibilityError, NOT ImportError."""
+        with patch(
+            "reformlab.computation.openfisca_api_adapter._detect_openfisca_version",
+            return_value="not-installed",
+        ):
+            with pytest.raises(CompatibilityError):
+                OpenFiscaApiAdapter(output_variables=("income_tax",))
+
+
+# ---------------------------------------------------------------------------
+# AC-3: TaxBenefitSystem configuration (lazy loading + caching)
+# ---------------------------------------------------------------------------
+
+
+class TestTaxBenefitSystemLoading:
+    """AC-3: Country package is imported, TBS is instantiated and cached."""
+
+    def test_missing_country_package_raises_compatibility_error(self) -> None:
+        adapter = OpenFiscaApiAdapter(
+            country_package="openfisca_nonexistent",
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        with patch(
+            "importlib.import_module",
+            side_effect=ImportError("No module named 'openfisca_nonexistent'"),
+        ):
+            with pytest.raises(CompatibilityError) as exc_info:
+                adapter._get_tax_benefit_system()
+            assert "openfisca_nonexistent" in str(exc_info.value)
+            assert "not-installed" == exc_info.value.actual
+
+    def test_tbs_is_cached_after_first_load(self) -> None:
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs()
+        mock_module = MagicMock()
+        mock_module.CountryTaxBenefitSystem.return_value = mock_tbs
+
+        with patch(
+            "importlib.import_module",
+            return_value=mock_module,
+        ) as mock_import:
+            tbs1 = adapter._get_tax_benefit_system()
+            tbs2 = adapter._get_tax_benefit_system()
+
+            assert tbs1 is tbs2
+            mock_import.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# AC-1: Live computation via OpenFisca Python API
+# ---------------------------------------------------------------------------
+
+
+class TestCompute:
+    """AC-1: compute() invokes SimulationBuilder and Simulation.calculate()."""
+
+    def test_compute_returns_computation_result(
+        self, sample_population: PopulationData, empty_policy: PolicyConfig
+    ) -> None:
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+
+        mock_tbs = _make_mock_tbs()
+        mock_simulation = _make_mock_simulation(
+            {"income_tax": np.array([3000.0, 6750.0, 12000.0])}
+        )
+        adapter._tax_benefit_system = mock_tbs
+
+        mock_builder_instance = MagicMock()
+        mock_builder_instance.build_from_entities.return_value = mock_simulation
+
+        with _patch_simulation_builder(mock_builder_instance):
+            result = adapter.compute(sample_population, empty_policy, 2025)
+
+        assert isinstance(result, ComputationResult)
+        assert isinstance(result.output_fields, pa.Table)
+        assert result.period == 2025
+        assert result.output_fields.num_rows == 3
+        assert result.output_fields.column_names == ["income_tax"]
+
+    def test_compute_with_policy_parameters(
+        self, sample_population: PopulationData, sample_policy: PolicyConfig
+    ) -> None:
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+
+        mock_tbs = _make_mock_tbs()
+        mock_simulation = _make_mock_simulation(
+            {"income_tax": np.array([3500.0, 3500.0, 3500.0])}
+        )
+        adapter._tax_benefit_system = mock_tbs
+
+        mock_builder_instance = MagicMock()
+        mock_builder_instance.build_from_entities.return_value = mock_simulation
+
+        with _patch_simulation_builder(mock_builder_instance):
+            result = adapter.compute(sample_population, sample_policy, 2025)
+
+        assert isinstance(result, ComputationResult)
+        call_args = mock_builder_instance.build_from_entities.call_args
+        entities_dict = call_args[0][1]
+        for instance_data in entities_dict["persons"].values():
+            assert "salary" in instance_data
+
+    def test_compute_multiple_output_variables(
+        self, sample_population: PopulationData, empty_policy: PolicyConfig
+    ) -> None:
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax", "carbon_tax"),
+            skip_version_check=True,
+        )
+
+        mock_tbs = _make_mock_tbs()
+        mock_simulation = _make_mock_simulation(
+            {
+                "income_tax": np.array([3000.0, 6750.0, 12000.0]),
+                "carbon_tax": np.array([134.0, 200.0, 267.0]),
+            }
+        )
+        adapter._tax_benefit_system = mock_tbs
+
+        mock_builder_instance = MagicMock()
+        mock_builder_instance.build_from_entities.return_value = mock_simulation
+
+        with _patch_simulation_builder(mock_builder_instance):
+            result = adapter.compute(sample_population, empty_policy, 2025)
+
+        assert result.output_fields.column_names == ["income_tax", "carbon_tax"]
+        assert result.output_fields.num_rows == 3
+
+
+# ---------------------------------------------------------------------------
+# AC-4: Variable selection — unknown variables raise structured error
+# ---------------------------------------------------------------------------
+
+
+class TestOutputVariableValidation:
+    """AC-4: Unknown variable names raise a clear error before computation."""
+
+    def test_unknown_variable_raises_api_mapping_error(self) -> None:
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax", "nonexistent_var"),
+            skip_version_check=True,
+        )
+
+        mock_tbs = _make_mock_tbs(variable_names=("income_tax", "carbon_tax", "salary"))
+
+        with pytest.raises(ApiMappingError) as exc_info:
+            adapter._validate_output_variables(mock_tbs)
+
+        assert "nonexistent_var" in str(exc_info.value)
+        assert exc_info.value.invalid_names == ("nonexistent_var",)
+
+    def test_valid_variables_pass_validation(self) -> None:
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+
+        mock_tbs = _make_mock_tbs(variable_names=("income_tax", "carbon_tax"))
+        adapter._validate_output_variables(mock_tbs)
+
+    def test_suggestions_for_close_matches(self) -> None:
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("incme_tax",),  # typo
+            skip_version_check=True,
+        )
+
+        mock_tbs = _make_mock_tbs(variable_names=("income_tax", "carbon_tax", "salary"))
+
+        with pytest.raises(ApiMappingError) as exc_info:
+            adapter._validate_output_variables(mock_tbs)
+
+        assert "incme_tax" in exc_info.value.invalid_names
+        assert len(exc_info.value.suggestions) > 0
+
+    def test_empty_output_variables_raises_error(self) -> None:
+        """Empty output_variables tuple raises ApiMappingError at construction time."""
+        with pytest.raises(ApiMappingError) as exc_info:
+            OpenFiscaApiAdapter(
+                output_variables=(),
+                skip_version_check=True,
+            )
+        assert "Empty output_variables" in exc_info.value.summary
+
+
+# ---------------------------------------------------------------------------
+# AC-5: Period mapping
+# ---------------------------------------------------------------------------
+
+
+class TestPeriodFormatting:
+    """AC-5: Integer period is correctly passed as OpenFisca period string."""
+
+    def test_period_passed_as_string(
+        self, sample_population: PopulationData, empty_policy: PolicyConfig
+    ) -> None:
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+
+        mock_tbs = _make_mock_tbs()
+        mock_simulation = _make_mock_simulation(
+            {"income_tax": np.array([3000.0, 6750.0, 12000.0])}
+        )
+        adapter._tax_benefit_system = mock_tbs
+
+        mock_builder_instance = MagicMock()
+        mock_builder_instance.build_from_entities.return_value = mock_simulation
+
+        with _patch_simulation_builder(mock_builder_instance):
+            adapter.compute(sample_population, empty_policy, 2025)
+
+        mock_simulation.calculate.assert_called_once_with("income_tax", "2025")
+
+
+# ---------------------------------------------------------------------------
+# AC-6: ComputationResult compatibility
+# ---------------------------------------------------------------------------
+
+
+class TestComputationResultStructure:
+    """AC-6: Result has correct metadata and structure."""
+
+    def test_metadata_source_is_api(
+        self, sample_population: PopulationData, empty_policy: PolicyConfig
+    ) -> None:
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+
+        mock_tbs = _make_mock_tbs()
+        mock_simulation = _make_mock_simulation(
+            {"income_tax": np.array([3000.0, 6750.0, 12000.0])}
+        )
+        adapter._tax_benefit_system = mock_tbs
+
+        mock_builder_instance = MagicMock()
+        mock_builder_instance.build_from_entities.return_value = mock_simulation
+
+        with _patch_simulation_builder(mock_builder_instance):
+            result = adapter.compute(sample_population, empty_policy, 2025)
+
+        assert result.metadata["source"] == "api"
+
+    def test_adapter_version_in_result(
+        self, sample_population: PopulationData, empty_policy: PolicyConfig
+    ) -> None:
+        with patch(
+            "reformlab.computation.openfisca_api_adapter._detect_openfisca_version",
+            return_value="44.2.2",
+        ):
+            adapter = OpenFiscaApiAdapter(output_variables=("income_tax",))
+
+        mock_tbs = _make_mock_tbs()
+        mock_simulation = _make_mock_simulation(
+            {"income_tax": np.array([3000.0, 6750.0, 12000.0])}
+        )
+        adapter._tax_benefit_system = mock_tbs
+
+        mock_builder_instance = MagicMock()
+        mock_builder_instance.build_from_entities.return_value = mock_simulation
+
+        with _patch_simulation_builder(mock_builder_instance):
+            result = adapter.compute(sample_population, empty_policy, 2025)
+
+        assert result.adapter_version == "44.2.2"
+
+    def test_output_fields_is_pyarrow_table(
+        self, sample_population: PopulationData, empty_policy: PolicyConfig
+    ) -> None:
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+
+        mock_tbs = _make_mock_tbs()
+        mock_simulation = _make_mock_simulation(
+            {"income_tax": np.array([3000.0, 6750.0, 12000.0])}
+        )
+        adapter._tax_benefit_system = mock_tbs
+
+        mock_builder_instance = MagicMock()
+        mock_builder_instance.build_from_entities.return_value = mock_simulation
+
+        with _patch_simulation_builder(mock_builder_instance):
+            result = adapter.compute(sample_population, empty_policy, 2025)
+
+        assert isinstance(result.output_fields, pa.Table)
+
+    def test_metadata_includes_required_fields(
+        self, sample_population: PopulationData, empty_policy: PolicyConfig
+    ) -> None:
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+
+        mock_tbs = _make_mock_tbs()
+        mock_simulation = _make_mock_simulation(
+            {"income_tax": np.array([3000.0, 6750.0, 12000.0])}
+        )
+        adapter._tax_benefit_system = mock_tbs
+
+        mock_builder_instance = MagicMock()
+        mock_builder_instance.build_from_entities.return_value = mock_simulation
+
+        with _patch_simulation_builder(mock_builder_instance):
+            result = adapter.compute(sample_population, empty_policy, 2025)
+
+        assert "timing_seconds" in result.metadata
+        assert "row_count" in result.metadata
+        assert "source" in result.metadata
+        assert "policy_name" in result.metadata
+        assert "country_package" in result.metadata
+        assert "output_variables" in result.metadata
+        assert result.metadata["row_count"] == 3
+        assert result.metadata["country_package"] == "openfisca_france"
+        assert result.metadata["output_variables"] == ["income_tax"]
+
+    def test_period_is_correct(
+        self, sample_population: PopulationData, empty_policy: PolicyConfig
+    ) -> None:
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+
+        mock_tbs = _make_mock_tbs()
+        mock_simulation = _make_mock_simulation(
+            {"income_tax": np.array([3000.0, 6750.0, 12000.0])}
+        )
+        adapter._tax_benefit_system = mock_tbs
+
+        mock_builder_instance = MagicMock()
+        mock_builder_instance.build_from_entities.return_value = mock_simulation
+
+        with _patch_simulation_builder(mock_builder_instance):
+            result = adapter.compute(sample_population, empty_policy, 2025)
+
+        assert result.period == 2025
+
+
+# ---------------------------------------------------------------------------
+# AC-9: Coexistence with pre-computed mode
+# ---------------------------------------------------------------------------
+
+
+class TestCoexistence:
+    """AC-9: Both adapters instantiate independently."""
+
+    def test_both_adapters_instantiate(self, tmp_path: object) -> None:
+        from reformlab.computation.openfisca_adapter import OpenFiscaAdapter
+
+        pre_computed = OpenFiscaAdapter(data_dir=str(tmp_path), skip_version_check=True)
+        api_adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+
+        assert isinstance(pre_computed, ComputationAdapter)
+        assert isinstance(api_adapter, ComputationAdapter)
+        assert type(pre_computed) is not type(api_adapter)
+
+    def test_adapters_do_not_share_state(self, tmp_path: object) -> None:
+        from reformlab.computation.openfisca_adapter import OpenFiscaAdapter
+
+        pre_computed = OpenFiscaAdapter(data_dir=str(tmp_path), skip_version_check=True)
+        api_adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+
+        # Both return "unknown" when skip_version_check=True
+        assert pre_computed.version() == "unknown"
+        assert api_adapter.version() == "unknown"
+        # They are distinct objects with no shared mutable state
+        assert pre_computed is not api_adapter
+
+
+# ---------------------------------------------------------------------------
+# Entity mapping errors
+# ---------------------------------------------------------------------------
+
+
+class TestEntityMapping:
+    """Entity keys in PopulationData must match TBS entity names."""
+
+    def test_unknown_entity_raises_api_mapping_error(
+        self, sample_policy: PolicyConfig
+    ) -> None:
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+
+        mock_tbs = _make_mock_tbs(entity_keys=("persons", "households"))
+        adapter._tax_benefit_system = mock_tbs
+
+        bad_population = PopulationData(
+            tables={
+                "unknown_entity": pa.table({"x": pa.array([1])}),
+            },
+        )
+
+        mock_builder_instance = MagicMock()
+        with _patch_simulation_builder(mock_builder_instance):
+            with pytest.raises(ApiMappingError) as exc_info:
+                adapter.compute(bad_population, sample_policy, 2025)
+
+        assert "unknown_entity" in str(exc_info.value)
+        assert exc_info.value.invalid_names == ("unknown_entity",)
+
+    def test_unknown_policy_parameter_raises_api_mapping_error(self) -> None:
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+
+        mock_tbs = _make_mock_tbs(variable_names=("income_tax", "salary"))
+        adapter._tax_benefit_system = mock_tbs
+
+        population = PopulationData(
+            tables={
+                "persons": pa.table({"salary": pa.array([30000.0])}),
+            },
+        )
+        bad_policy = PolicyConfig(
+            parameters={"nonexistent_param": 100.0},
+            name="bad-policy",
+        )
+
+        mock_builder_instance = MagicMock()
+        with _patch_simulation_builder(mock_builder_instance):
+            with pytest.raises(ApiMappingError) as exc_info:
+                adapter.compute(population, bad_policy, 2025)
+
+        assert "nonexistent_param" in str(exc_info.value)
+
+
+# ===========================================================================
+# Story 9.2: Multi-entity output array handling
+# ===========================================================================
+
+
+class TestResolveVariableEntities:
+    """Story 9.2 AC-1, AC-2, AC-5: Variable-to-entity mapping from TBS."""
+
+    def test_groups_variables_by_entity(self) -> None:
+        """AC-1: Variables are correctly grouped by their entity."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("salaire_net", "irpp", "revenu_disponible"),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs_with_entities(
+            variable_entities={
+                "salaire_net": "individu",
+                "irpp": "foyer_fiscal",
+                "revenu_disponible": "menage",
+            },
+        )
+        adapter._tax_benefit_system = mock_tbs
+
+        result = adapter._resolve_variable_entities(mock_tbs)
+
+        assert "individus" in result
+        assert "foyers_fiscaux" in result
+        assert "menages" in result
+        assert result["individus"] == ["salaire_net"]
+        assert result["foyers_fiscaux"] == ["irpp"]
+        assert result["menages"] == ["revenu_disponible"]
+
+    def test_multiple_variables_same_entity(self) -> None:
+        """AC-1: Multiple variables on the same entity are grouped together."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("salaire_net", "age"),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs_with_entities(
+            variable_entities={
+                "salaire_net": "individu",
+                "age": "individu",
+            },
+        )
+        adapter._tax_benefit_system = mock_tbs
+
+        result = adapter._resolve_variable_entities(mock_tbs)
+
+        assert len(result) == 1
+        assert "individus" in result
+        assert result["individus"] == ["salaire_net", "age"]
+
+    def test_variable_without_entity_raises_error(self) -> None:
+        """AC-5: Variable with no .entity attribute raises ApiMappingError."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("broken_var",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs_with_entities(
+            variable_entities={},
+        )
+        # Add a variable without entity attribute
+        var_mock = MagicMock()
+        var_mock.entity = None
+        mock_tbs.variables["broken_var"] = var_mock
+
+        with pytest.raises(ApiMappingError, match="Cannot determine entity"):
+            adapter._resolve_variable_entities(mock_tbs)
+
+    def test_variable_not_in_tbs_raises_error(self) -> None:
+        """AC-5: Variable not in TBS raises ApiMappingError."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("nonexistent_var",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs_with_entities(
+            variable_entities={},
+        )
+        # TBS has no variables at all
+
+        with pytest.raises(ApiMappingError, match="Cannot resolve variable entity"):
+            adapter._resolve_variable_entities(mock_tbs)
+
+
+class TestExtractResultsByEntity:
+    """Story 9.2 AC-1, AC-2, AC-3: Per-entity result extraction."""
+
+    def test_single_entity_extraction(self) -> None:
+        """AC-1: Single entity produces one table."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("salaire_net",),
+            skip_version_check=True,
+        )
+        mock_simulation = _make_mock_simulation(
+            {"salaire_net": np.array([20000.0, 35000.0])}
+        )
+        vars_by_entity = {"individus": ["salaire_net"]}
+        # Story 9.3: Pass variable_periodicities (required parameter)
+        variable_periodicities = {"salaire_net": "year"}
+
+        result = adapter._extract_results_by_entity(
+            mock_simulation, 2024, vars_by_entity, variable_periodicities
+        )
+
+        assert "individus" in result
+        assert result["individus"].num_rows == 2
+        assert result["individus"].column_names == ["salaire_net"]
+
+    def test_multi_entity_extraction(self) -> None:
+        """AC-2, AC-3: Different entities produce separate tables with correct lengths."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("salaire_net", "irpp", "revenu_disponible"),
+            skip_version_check=True,
+        )
+        mock_simulation = _make_mock_simulation({
+            "salaire_net": np.array([20000.0, 35000.0]),
+            "irpp": np.array([-1500.0]),
+            "revenu_disponible": np.array([40000.0]),
+        })
+        vars_by_entity = {
+            "individus": ["salaire_net"],
+            "foyers_fiscaux": ["irpp"],
+            "menages": ["revenu_disponible"],
+        }
+        # Story 9.3: Pass variable_periodicities (required parameter)
+        variable_periodicities = {
+            "salaire_net": "year",
+            "irpp": "year",
+            "revenu_disponible": "year",
+        }
+
+        result = adapter._extract_results_by_entity(
+            mock_simulation, 2024, vars_by_entity, variable_periodicities
+        )
+
+        assert len(result) == 3
+        assert result["individus"].num_rows == 2
+        assert result["foyers_fiscaux"].num_rows == 1
+        assert result["menages"].num_rows == 1
+
+    def test_multiple_variables_per_entity(self) -> None:
+        """AC-3: Multiple variables on same entity are in the same table."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("salaire_net", "age"),
+            skip_version_check=True,
+        )
+        mock_simulation = _make_mock_simulation({
+            "salaire_net": np.array([20000.0, 35000.0]),
+            "age": np.array([30.0, 45.0]),
+        })
+        vars_by_entity = {"individus": ["salaire_net", "age"]}
+        # Story 9.3: Pass variable_periodicities (required parameter)
+        variable_periodicities = {"salaire_net": "year", "age": "year"}
+
+        result = adapter._extract_results_by_entity(
+            mock_simulation, 2024, vars_by_entity, variable_periodicities
+        )
+
+        assert result["individus"].num_rows == 2
+        assert set(result["individus"].column_names) == {"salaire_net", "age"}
+
+
+class TestSelectPrimaryOutput:
+    """Story 9.2 AC-4: Primary output_fields selection for backward compatibility."""
+
+    def test_single_entity_returns_that_table(self) -> None:
+        """AC-4: With one entity, output_fields is that entity's table."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("salaire_net",),
+            skip_version_check=True,
+        )
+        person_table = pa.table({"salaire_net": pa.array([20000.0, 35000.0])})
+        mock_tbs = _make_mock_tbs_with_entities()
+
+        result = adapter._select_primary_output({"individus": person_table}, mock_tbs)
+
+        assert result is person_table
+
+    def test_multi_entity_returns_person_table(self) -> None:
+        """AC-4: With multiple entities, output_fields is the person-entity table."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("salaire_net", "irpp"),
+            skip_version_check=True,
+        )
+        person_table = pa.table({"salaire_net": pa.array([20000.0, 35000.0])})
+        foyer_table = pa.table({"irpp": pa.array([-1500.0])})
+        mock_tbs = _make_mock_tbs_with_entities()
+
+        result = adapter._select_primary_output(
+            {"individus": person_table, "foyers_fiscaux": foyer_table},
+            mock_tbs,
+        )
+
+        assert result is person_table
+
+    def test_multi_entity_without_person_returns_first(self) -> None:
+        """AC-4: Without person entity in results, returns first entity's table."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("irpp", "revenu_disponible"),
+            skip_version_check=True,
+        )
+        foyer_table = pa.table({"irpp": pa.array([-1500.0])})
+        menage_table = pa.table({"revenu_disponible": pa.array([40000.0])})
+        mock_tbs = _make_mock_tbs_with_entities()
+
+        result = adapter._select_primary_output(
+            {"foyers_fiscaux": foyer_table, "menages": menage_table},
+            mock_tbs,
+        )
+
+        assert result is foyer_table
+
+
+# ===========================================================================
+# Story 9.3: Variable periodicity handling
+# ===========================================================================
+
+
+def _make_mock_simulation_with_methods(
+    results: dict[str, np.ndarray],
+) -> MagicMock:
+    """Mock simulation that tracks calculate vs calculate_add calls.
+
+    Story 9.3: Used for periodicity dispatch verification.
+    """
+    sim = MagicMock()
+    sim.calculate.side_effect = lambda var, period: results[var]
+    sim.calculate_add.side_effect = lambda var, period: results[var]
+    return sim
+
+
+class TestResolveVariablePeriodicities:
+    """Story 9.3 AC-1, AC-2, AC-6: Periodicity detection from TBS variables."""
+
+    def test_detects_yearly_periodicity(self) -> None:
+        """AC-1: Yearly variable detected correctly."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("irpp",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs_with_entities(
+            variable_entities={"irpp": "foyer_fiscal"},
+            variable_periodicities={"irpp": "year"},
+        )
+
+        result = adapter._resolve_variable_periodicities(mock_tbs)
+
+        assert result == {"irpp": "year"}
+
+    def test_detects_monthly_periodicity(self) -> None:
+        """AC-2: Monthly variable detected correctly."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("salaire_net",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs_with_entities(
+            variable_entities={"salaire_net": "individu"},
+            variable_periodicities={"salaire_net": "month"},
+        )
+
+        result = adapter._resolve_variable_periodicities(mock_tbs)
+
+        assert result == {"salaire_net": "month"}
+
+    def test_detects_eternity_periodicity(self) -> None:
+        """AC-6: Eternity variable detected correctly."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("date_naissance",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs_with_entities(
+            variable_entities={"date_naissance": "individu"},
+            variable_periodicities={"date_naissance": "eternity"},
+        )
+
+        result = adapter._resolve_variable_periodicities(mock_tbs)
+
+        assert result == {"date_naissance": "eternity"}
+
+    def test_detects_mixed_periodicities(self) -> None:
+        """AC-1, AC-2, AC-6: Mixed periodicities detected for multiple variables."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("salaire_net", "irpp", "date_naissance"),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs_with_entities(
+            variable_entities={
+                "salaire_net": "individu",
+                "irpp": "foyer_fiscal",
+                "date_naissance": "individu",
+            },
+            variable_periodicities={
+                "salaire_net": "month",
+                "irpp": "year",
+                "date_naissance": "eternity",
+            },
+        )
+
+        result = adapter._resolve_variable_periodicities(mock_tbs)
+
+        assert result == {
+            "salaire_net": "month",
+            "irpp": "year",
+            "date_naissance": "eternity",
+        }
+
+    def test_missing_definition_period_raises_error(self) -> None:
+        """AC-1: Variable with no definition_period attribute raises ApiMappingError."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("broken_var",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs_with_entities(
+            variable_entities={},
+        )
+        # Add variable without definition_period (set to None explicitly)
+        var_mock = MagicMock()
+        var_mock.entity = SimpleNamespace(key="individu", plural="individus", is_person=True)
+        var_mock.definition_period = None
+        mock_tbs.variables["broken_var"] = var_mock
+
+        with pytest.raises(ApiMappingError, match="Cannot determine periodicity"):
+            adapter._resolve_variable_periodicities(mock_tbs)
+
+    def test_unexpected_periodicity_raises_error(self) -> None:
+        """AC-1: Variable with unexpected periodicity value raises ApiMappingError."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("broken_var",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs_with_entities(
+            variable_entities={},
+        )
+        var_mock = MagicMock()
+        var_mock.entity = SimpleNamespace(key="individu", plural="individus", is_person=True)
+        var_mock.definition_period = "invalid_period"
+        mock_tbs.variables["broken_var"] = var_mock
+
+        with pytest.raises(ApiMappingError, match="Unexpected periodicity"):
+            adapter._resolve_variable_periodicities(mock_tbs)
+
+    def test_day_periodicity_detected(self) -> None:
+        """AC-1: Day periodicity is detected correctly."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("daily_var",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs_with_entities(
+            variable_entities={"daily_var": "individu"},
+            variable_periodicities={"daily_var": "day"},
+        )
+
+        result = adapter._resolve_variable_periodicities(mock_tbs)
+
+        assert result == {"daily_var": "day"}
+
+
+class TestCalculateVariable:
+    """Story 9.3 AC-1, AC-2, AC-6: Calculation dispatch based on periodicity."""
+
+    def test_yearly_uses_calculate(self) -> None:
+        """AC-1: Yearly variables use simulation.calculate()."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("irpp",),
+            skip_version_check=True,
+        )
+        sim = _make_mock_simulation_with_methods(
+            {"irpp": np.array([-1500.0])}
+        )
+
+        result = adapter._calculate_variable(sim, "irpp", "2024", "year")
+
+        sim.calculate.assert_called_once_with("irpp", "2024")
+        sim.calculate_add.assert_not_called()
+        assert result[0] == -1500.0
+
+    def test_monthly_uses_calculate_add(self) -> None:
+        """AC-2: Monthly variables use simulation.calculate_add()."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("salaire_net",),
+            skip_version_check=True,
+        )
+        sim = _make_mock_simulation_with_methods(
+            {"salaire_net": np.array([24000.0])}
+        )
+
+        result = adapter._calculate_variable(sim, "salaire_net", "2024", "month")
+
+        sim.calculate_add.assert_called_once_with("salaire_net", "2024")
+        sim.calculate.assert_not_called()
+        assert result[0] == 24000.0
+
+    def test_eternity_uses_calculate(self) -> None:
+        """AC-6: Eternity variables use simulation.calculate(), NOT calculate_add()."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("date_naissance",),
+            skip_version_check=True,
+        )
+        sim = _make_mock_simulation_with_methods(
+            {"date_naissance": np.array([19960101])}
+        )
+
+        result = adapter._calculate_variable(sim, "date_naissance", "2024", "eternity")
+
+        sim.calculate.assert_called_once_with("date_naissance", "2024")
+        sim.calculate_add.assert_not_called()
+
+    def test_day_uses_calculate_add(self) -> None:
+        """AC-1: Day-period variables use simulation.calculate_add()."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("daily_var",),
+            skip_version_check=True,
+        )
+        sim = _make_mock_simulation_with_methods(
+            {"daily_var": np.array([365.0])}
+        )
+
+        result = adapter._calculate_variable(sim, "daily_var", "2024", "day")
+
+        sim.calculate_add.assert_called_once_with("daily_var", "2024")
+        sim.calculate.assert_not_called()
+
+    def test_week_uses_calculate_add(self) -> None:
+        """AC-1: Week-period variables use simulation.calculate_add()."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("weekly_var",),
+            skip_version_check=True,
+        )
+        sim = _make_mock_simulation_with_methods(
+            {"weekly_var": np.array([52.0])}
+        )
+
+        result = adapter._calculate_variable(sim, "weekly_var", "2024", "week")
+
+        sim.calculate_add.assert_called_once_with("weekly_var", "2024")
+        sim.calculate.assert_not_called()
+
+    def test_weekday_uses_calculate_add(self) -> None:
+        """AC-1: Weekday-period variables use simulation.calculate_add()."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("weekday_var",),
+            skip_version_check=True,
+        )
+        sim = _make_mock_simulation_with_methods(
+            {"weekday_var": np.array([260.0])}
+        )
+
+        result = adapter._calculate_variable(sim, "weekday_var", "2024", "weekday")
+
+        sim.calculate_add.assert_called_once_with("weekday_var", "2024")
+        sim.calculate.assert_not_called()
+
+
+class TestPeriodValidation:
+    """Story 9.3 AC-3: Invalid period format rejection."""
+
+    def test_zero_period_raises_error(
+        self, sample_population: PopulationData, empty_policy: PolicyConfig
+    ) -> None:
+        """AC-3: Period of 0 raises ApiMappingError."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs()
+        adapter._tax_benefit_system = mock_tbs
+
+        with pytest.raises(ApiMappingError, match="Invalid period"):
+            adapter.compute(sample_population, empty_policy, 0)
+
+    def test_negative_period_raises_error(
+        self, sample_population: PopulationData, empty_policy: PolicyConfig
+    ) -> None:
+        """AC-3: Negative period raises ApiMappingError."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs()
+        adapter._tax_benefit_system = mock_tbs
+
+        with pytest.raises(ApiMappingError, match="Invalid period"):
+            adapter.compute(sample_population, empty_policy, -1)
+
+    def test_two_digit_period_raises_error(
+        self, sample_population: PopulationData, empty_policy: PolicyConfig
+    ) -> None:
+        """AC-3: Two-digit period (99) raises ApiMappingError."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs()
+        adapter._tax_benefit_system = mock_tbs
+
+        with pytest.raises(ApiMappingError, match="Invalid period"):
+            adapter.compute(sample_population, empty_policy, 99)
+
+    def test_five_digit_period_raises_error(
+        self, sample_population: PopulationData, empty_policy: PolicyConfig
+    ) -> None:
+        """AC-3: Five-digit period (99999) raises ApiMappingError."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs()
+        adapter._tax_benefit_system = mock_tbs
+
+        with pytest.raises(ApiMappingError, match="Invalid period"):
+            adapter.compute(sample_population, empty_policy, 99999)
+
+    def test_valid_period_2024_passes(
+        self, sample_population: PopulationData, empty_policy: PolicyConfig
+    ) -> None:
+        """AC-3: Valid period (2024) passes validation."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs()
+        mock_simulation = _make_mock_simulation(
+            {"income_tax": np.array([3000.0, 6750.0, 12000.0])}
+        )
+        adapter._tax_benefit_system = mock_tbs
+
+        mock_builder_instance = MagicMock()
+        mock_builder_instance.build_from_entities.return_value = mock_simulation
+
+        with _patch_simulation_builder(mock_builder_instance):
+            result = adapter.compute(sample_population, empty_policy, 2024)
+
+        assert result.period == 2024
+
+    def test_valid_period_1000_passes(
+        self, sample_population: PopulationData, empty_policy: PolicyConfig
+    ) -> None:
+        """AC-3: Edge case — period 1000 (minimum valid) passes."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs()
+        mock_simulation = _make_mock_simulation(
+            {"income_tax": np.array([3000.0, 6750.0, 12000.0])}
+        )
+        adapter._tax_benefit_system = mock_tbs
+
+        mock_builder_instance = MagicMock()
+        mock_builder_instance.build_from_entities.return_value = mock_simulation
+
+        with _patch_simulation_builder(mock_builder_instance):
+            result = adapter.compute(sample_population, empty_policy, 1000)
+
+        assert result.period == 1000
+
+    def test_valid_period_9999_passes(
+        self, sample_population: PopulationData, empty_policy: PolicyConfig
+    ) -> None:
+        """AC-3: Edge case — period 9999 (maximum valid) passes."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs()
+        mock_simulation = _make_mock_simulation(
+            {"income_tax": np.array([3000.0, 6750.0, 12000.0])}
+        )
+        adapter._tax_benefit_system = mock_tbs
+
+        mock_builder_instance = MagicMock()
+        mock_builder_instance.build_from_entities.return_value = mock_simulation
+
+        with _patch_simulation_builder(mock_builder_instance):
+            result = adapter.compute(sample_population, empty_policy, 9999)
+
+        assert result.period == 9999
+
+    def test_period_error_includes_actual_value(
+        self, sample_population: PopulationData, empty_policy: PolicyConfig
+    ) -> None:
+        """AC-3: Error message includes the actual invalid value."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs()
+        adapter._tax_benefit_system = mock_tbs
+
+        with pytest.raises(ApiMappingError) as exc_info:
+            adapter.compute(sample_population, empty_policy, 42)
+
+        assert "42" in exc_info.value.reason
+        assert "Invalid period" in exc_info.value.summary
+
+    def test_period_validation_precedes_tbs_loading(
+        self, sample_population: PopulationData, empty_policy: PolicyConfig
+    ) -> None:
+        """AC-3: Period validation fires BEFORE any TBS operations.
+
+        AC-3 requires the period check to be "the very first check before any
+        TBS operations". This test verifies the ordering constraint by NOT
+        pre-loading the TBS — if _validate_period() truly runs first, the TBS
+        will still be None after the ApiMappingError is raised.
+        """
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        # Deliberately do NOT pre-load TBS — if validation runs first,
+        # the TBS will still be None after the error.
+        assert adapter._tax_benefit_system is None
+
+        with pytest.raises(ApiMappingError, match="Invalid period"):
+            adapter.compute(sample_population, empty_policy, 0)
+
+        # Confirm TBS was never loaded — period check was genuinely first.
+        assert adapter._tax_benefit_system is None
+
+
+class TestPeriodicityMetadata:
+    """Story 9.3 AC-5: Periodicity metadata in compute() result."""
+
+    def test_variable_periodicities_in_metadata(
+        self, empty_policy: PolicyConfig
+    ) -> None:
+        """AC-5: Metadata includes variable_periodicities dict."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("salaire_net", "irpp"),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs_with_entities(
+            variable_entities={
+                "salaire_net": "individu",
+                "irpp": "foyer_fiscal",
+            },
+            variable_periodicities={
+                "salaire_net": "month",
+                "irpp": "year",
+            },
+        )
+        mock_simulation = _make_mock_simulation_with_methods({
+            "salaire_net": np.array([24000.0, 40000.0]),
+            "irpp": np.array([-1500.0]),
+        })
+        adapter._tax_benefit_system = mock_tbs
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0, 50000.0]),
+                }),
+            },
+        )
+
+        mock_builder_instance = MagicMock()
+        mock_builder_instance.build_from_entities.return_value = mock_simulation
+
+        with _patch_simulation_builder(mock_builder_instance):
+            result = adapter.compute(
+                population, PolicyConfig(parameters={}, name="test"), 2024
+            )
+
+        assert "variable_periodicities" in result.metadata
+        assert result.metadata["variable_periodicities"] == {
+            "salaire_net": "month",
+            "irpp": "year",
+        }
+
+    def test_calculation_methods_in_metadata(
+        self, empty_policy: PolicyConfig
+    ) -> None:
+        """AC-5: Metadata includes calculation_methods dict."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("salaire_net", "irpp"),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs_with_entities(
+            variable_entities={
+                "salaire_net": "individu",
+                "irpp": "foyer_fiscal",
+            },
+            variable_periodicities={
+                "salaire_net": "month",
+                "irpp": "year",
+            },
+        )
+        mock_simulation = _make_mock_simulation_with_methods({
+            "salaire_net": np.array([24000.0, 40000.0]),
+            "irpp": np.array([-1500.0]),
+        })
+        adapter._tax_benefit_system = mock_tbs
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0, 50000.0]),
+                }),
+            },
+        )
+
+        mock_builder_instance = MagicMock()
+        mock_builder_instance.build_from_entities.return_value = mock_simulation
+
+        with _patch_simulation_builder(mock_builder_instance):
+            result = adapter.compute(
+                population, PolicyConfig(parameters={}, name="test"), 2024
+            )
+
+        assert "calculation_methods" in result.metadata
+        assert result.metadata["calculation_methods"] == {
+            "salaire_net": "calculate_add",
+            "irpp": "calculate",
+        }
+
+    def test_eternity_variable_uses_calculate_in_metadata(self) -> None:
+        """AC-5, AC-6: Eternity variables show 'calculate' method in metadata."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("date_naissance",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs_with_entities(
+            variable_entities={"date_naissance": "individu"},
+            variable_periodicities={"date_naissance": "eternity"},
+        )
+        mock_simulation = _make_mock_simulation_with_methods({
+            "date_naissance": np.array([19960101]),
+        })
+        adapter._tax_benefit_system = mock_tbs
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "age": pa.array([30]),
+                }),
+            },
+        )
+
+        mock_builder_instance = MagicMock()
+        mock_builder_instance.build_from_entities.return_value = mock_simulation
+
+        with _patch_simulation_builder(mock_builder_instance):
+            result = adapter.compute(
+                population, PolicyConfig(parameters={}, name="test"), 2024
+            )
+
+        assert result.metadata["variable_periodicities"]["date_naissance"] == "eternity"
+        assert result.metadata["calculation_methods"]["date_naissance"] == "calculate"
+
+
+class TestComputeMultiEntity:
+    """Story 9.2 AC-1, AC-2, AC-3, AC-4: End-to-end multi-entity compute()."""
+
+    def test_compute_single_entity_backward_compatible(
+        self, sample_population: PopulationData, empty_policy: PolicyConfig
+    ) -> None:
+        """AC-4: Single-entity output produces empty entity_tables (backward compat)."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+
+        mock_tbs = _make_mock_tbs()
+        mock_simulation = _make_mock_simulation(
+            {"income_tax": np.array([3000.0, 6750.0, 12000.0])}
+        )
+        adapter._tax_benefit_system = mock_tbs
+
+        mock_builder_instance = MagicMock()
+        mock_builder_instance.build_from_entities.return_value = mock_simulation
+
+        with _patch_simulation_builder(mock_builder_instance):
+            result = adapter.compute(sample_population, empty_policy, 2025)
+
+        # Single entity: entity_tables should be empty for backward compatibility
+        assert result.entity_tables == {}
+        # Metadata must be consistent with entity_tables — both empty for single-entity
+        # (regression guard for the bug where output_entities was non-empty while
+        # entity_tables was {}, causing consumers to see contradictory state).
+        assert result.metadata["output_entities"] == []
+        assert result.metadata["entity_row_counts"] == {}
+        # output_fields still works
+        assert result.output_fields.num_rows == 3
+        assert result.output_fields.column_names == ["income_tax"]
+
+    def test_compute_multi_entity_populates_entity_tables(self) -> None:
+        """AC-1, AC-3: Multi-entity output populates entity_tables."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("salaire_net", "irpp", "revenu_disponible"),
+            skip_version_check=True,
+        )
+
+        mock_tbs = _make_mock_tbs_with_entities(
+            variable_entities={
+                "salaire_net": "individu",
+                "irpp": "foyer_fiscal",
+                "revenu_disponible": "menage",
+            },
+        )
+        mock_simulation = _make_mock_simulation({
+            "salaire_net": np.array([20000.0, 35000.0]),
+            "irpp": np.array([-1500.0]),
+            "revenu_disponible": np.array([40000.0]),
+        })
+        adapter._tax_benefit_system = mock_tbs
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0, 50000.0]),
+                }),
+            },
+        )
+
+        mock_builder_instance = MagicMock()
+        mock_builder_instance.build_from_entities.return_value = mock_simulation
+
+        with _patch_simulation_builder(mock_builder_instance):
+            result = adapter.compute(
+                population, PolicyConfig(parameters={}, name="test"), 2024
+            )
+
+        # Multi-entity: entity_tables populated
+        assert len(result.entity_tables) == 3
+        assert "individus" in result.entity_tables
+        assert "foyers_fiscaux" in result.entity_tables
+        assert "menages" in result.entity_tables
+
+        # Correct array lengths per entity
+        assert result.entity_tables["individus"].num_rows == 2
+        assert result.entity_tables["foyers_fiscaux"].num_rows == 1
+        assert result.entity_tables["menages"].num_rows == 1
+
+        # output_fields is the person entity table
+        assert result.output_fields.num_rows == 2
+        assert "salaire_net" in result.output_fields.column_names
+
+    def test_compute_multi_entity_metadata(self) -> None:
+        """AC-1: Metadata includes output_entities and entity_row_counts."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("salaire_net", "irpp"),
+            skip_version_check=True,
+        )
+
+        mock_tbs = _make_mock_tbs_with_entities(
+            variable_entities={
+                "salaire_net": "individu",
+                "irpp": "foyer_fiscal",
+            },
+        )
+        mock_simulation = _make_mock_simulation({
+            "salaire_net": np.array([20000.0, 35000.0]),
+            "irpp": np.array([-1500.0]),
+        })
+        adapter._tax_benefit_system = mock_tbs
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0, 50000.0]),
+                }),
+            },
+        )
+
+        mock_builder_instance = MagicMock()
+        mock_builder_instance.build_from_entities.return_value = mock_simulation
+
+        with _patch_simulation_builder(mock_builder_instance):
+            result = adapter.compute(
+                population, PolicyConfig(parameters={}, name="test"), 2024
+            )
+
+        assert "output_entities" in result.metadata
+        assert sorted(result.metadata["output_entities"]) == [
+            "foyers_fiscaux", "individus"
+        ]
+        assert "entity_row_counts" in result.metadata
+        assert result.metadata["entity_row_counts"]["individus"] == 2
+        assert result.metadata["entity_row_counts"]["foyers_fiscaux"] == 1
+
+    def test_compute_entity_detection_error(self) -> None:
+        """AC-5: Variable with no entity raises ApiMappingError during compute."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("broken_var",),
+            skip_version_check=True,
+        )
+
+        mock_tbs = _make_mock_tbs_with_entities(variable_entities={})
+        # Add variable with no entity
+        var_mock = MagicMock()
+        var_mock.entity = None
+        mock_tbs.variables["broken_var"] = var_mock
+        adapter._tax_benefit_system = mock_tbs
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({"x": pa.array([1.0])}),
+            },
+        )
+
+        # The error is raised in _resolve_variable_entities() — before _build_simulation().
+        # No SimulationBuilder mock needed; the error fires before simulation construction.
+        with pytest.raises(ApiMappingError, match="Cannot determine entity"):
+            adapter.compute(
+                population, PolicyConfig(parameters={}, name="test"), 2024
+            )
+
+
+]]></file>
+<file id="895c54dc" path="tests/computation/test_openfisca_integration.py" label="SOURCE CODE"><![CDATA[
+
+"""Integration tests for OpenFiscaApiAdapter against real OpenFisca-France.
+
+Story 8.1: End-to-End OpenFisca Integration Spike.
+Story 9.2: Multi-entity output array handling integration tests.
+
+These tests call real OpenFisca-France computations (no mocking).
+Run with: uv run pytest tests/computation/test_openfisca_integration.py -m integration
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+import pyarrow as pa
+import pytest
+
+openfisca_france = pytest.importorskip("openfisca_france")
+
+from reformlab.computation.ingestion import DataSchema
+from reformlab.computation.mapping import apply_output_mapping, load_mapping
+from reformlab.computation.openfisca_api_adapter import OpenFiscaApiAdapter
+from reformlab.computation.quality import validate_output
+from reformlab.computation.types import ComputationResult, PolicyConfig, PopulationData
+
+# ---------------------------------------------------------------------------
+# Shared fixtures — TBS is expensive, cache at module scope
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def tbs() -> Any:
+    """Load the real French TaxBenefitSystem once per module."""
+    return openfisca_france.CountryTaxBenefitSystem()
+
+
+@pytest.fixture(scope="module")
+def adapter() -> OpenFiscaApiAdapter:
+    """Create a real OpenFiscaApiAdapter with a common output variable."""
+    return OpenFiscaApiAdapter(
+        country_package="openfisca_france",
+        output_variables=("impot_revenu_restant_a_payer",),
+    )
+
+
+@pytest.fixture()
+def single_person_population() -> PopulationData:
+    """Minimal single-person population using singular entity keys.
+
+    Only provides the individu table with input variables. The adapter's
+    _population_to_entity_dict handles normalisation to plural keys.
+    Note: group entities (famille, foyer_fiscal, menage) are omitted
+    because the adapter auto-creates them for single-person populations.
+    """
+    return PopulationData(
+        tables={
+            "individu": pa.table({
+                "salaire_de_base": pa.array([30000.0]),
+                "age": pa.array([30]),
+            }),
+        },
+        metadata={"source": "integration-test"},
+    )
+
+
+@pytest.fixture()
+def empty_policy() -> PolicyConfig:
+    return PolicyConfig(parameters={}, name="integration-test-policy")
+
+
+def _build_entities_dict(salary: float = 30000.0, age: int = 30) -> dict[str, Any]:
+    """Helper to build a valid OpenFisca-France entity dict (plural keys)."""
+    return {
+        "individus": {
+            "person_0": {
+                "salaire_de_base": {"2024": salary},
+                "age": {"2024-01": age},
+            },
+        },
+        "familles": {"famille_0": {"parents": ["person_0"]}},
+        "foyers_fiscaux": {"foyer_0": {"declarants": ["person_0"]}},
+        "menages": {"menage_0": {"personne_de_reference": ["person_0"]}},
+    }
+
+
+def _build_simulation(
+    tbs: Any,
+    individus: dict[str, dict[str, Any]],
+    *,
+    couples: bool = False,
+) -> Any:
+    """Helper to build a simulation with standard 4-entity structure."""
+    from openfisca_core.simulation_builder import SimulationBuilder
+
+    person_ids = list(individus.keys())
+
+    if couples and len(person_ids) == 2:
+        familles = {"famille_0": {"parents": person_ids}}
+        foyers = {"foyer_0": {"declarants": person_ids}}
+        menages = {"menage_0": {
+            "personne_de_reference": [person_ids[0]],
+            "conjoint": [person_ids[1]],
+        }}
+    else:
+        familles = {f"famille_{i}": {"parents": [pid]} for i, pid in enumerate(person_ids)}
+        foyers = {f"foyer_{i}": {"declarants": [pid]} for i, pid in enumerate(person_ids)}
+        menages = {f"menage_{i}": {"personne_de_reference": [pid]} for i, pid in enumerate(person_ids)}
+
+    entities_dict = {
+        "individus": individus,
+        "familles": familles,
+        "foyers_fiscaux": foyers,
+        "menages": menages,
+    }
+
+    builder = SimulationBuilder()
+    return builder.build_from_entities(tbs, entities_dict)
+
+
+# ---------------------------------------------------------------------------
+# AC-2: TaxBenefitSystem loads (Task 3)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+class TestTaxBenefitSystemLoading:
+    """AC-2: TaxBenefitSystem loads without error via adapter."""
+
+    def test_adapter_instantiates_without_error(self) -> None:
+        """AC-2: OpenFiscaApiAdapter with openfisca_france instantiates successfully."""
+        a = OpenFiscaApiAdapter(
+            country_package="openfisca_france",
+            output_variables=("impot_revenu_restant_a_payer",),
+        )
+        assert a is not None
+
+    def test_version_returns_valid_string(self) -> None:
+        """AC-2: adapter.version() returns a valid openfisca-core version string."""
+        a = OpenFiscaApiAdapter(
+            country_package="openfisca_france",
+            output_variables=("impot_revenu_restant_a_payer",),
+        )
+        version = a.version()
+        assert isinstance(version, str)
+        parts = version.split(".")
+        assert len(parts) == 3
+        assert parts[0] == "44"
+
+    def test_tbs_loads_lazily_and_is_cached(self) -> None:
+        """AC-2: TBS is loaded lazily on first access and cached."""
+        a = OpenFiscaApiAdapter(
+            country_package="openfisca_france",
+            output_variables=("impot_revenu_restant_a_payer",),
+        )
+        assert a._tax_benefit_system is None
+
+        local_tbs = a._get_tax_benefit_system()
+        assert local_tbs is not None
+
+        local_tbs2 = a._get_tax_benefit_system()
+        assert local_tbs is local_tbs2
+
+
+# ---------------------------------------------------------------------------
+# AC-3, AC-7: Real computation via adapter.compute() (Tasks 4, 8)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+class TestAdapterComputeEndToEnd:
+    """AC-3, AC-7: adapter.compute() returns valid results with real OpenFisca-France.
+
+    These tests call the adapter's public compute() method end-to-end,
+    validating that the full pipeline (TBS loading, entity dict construction,
+    simulation building, result extraction) works with OpenFisca-France.
+    """
+
+    def test_compute_returns_computation_result(
+        self,
+        adapter: OpenFiscaApiAdapter,
+        single_person_population: PopulationData,
+        empty_policy: PolicyConfig
+    ) -> None:
+        """AC-3: adapter.compute() returns a ComputationResult with real values."""
+        result = adapter.compute(single_person_population, empty_policy, 2024)
+
+        assert isinstance(result, ComputationResult)
+        assert isinstance(result.output_fields, pa.Table)
+        assert "impot_revenu_restant_a_payer" in result.output_fields.column_names
+        assert result.output_fields.num_rows == 1
+
+    def test_compute_result_has_correct_metadata(
+        self,
+        adapter: OpenFiscaApiAdapter,
+        single_person_population: PopulationData,
+        empty_policy: PolicyConfig
+    ) -> None:
+        """AC-3: adapter.compute() sets source='api' in metadata."""
+        result = adapter.compute(single_person_population, empty_policy, 2024)
+
+        assert result.metadata["source"] == "api"
+        assert result.metadata["country_package"] == "openfisca_france"
+        assert result.period == 2024
+
+    def test_irpp_value_is_negative_tax(
+        self,
+        adapter: OpenFiscaApiAdapter,
+        single_person_population: PopulationData,
+        empty_policy: PolicyConfig
+    ) -> None:
+        """AC-3, AC-7: irpp for 30k salary is negative (tax owed) and in reasonable range."""
+        result = adapter.compute(single_person_population, empty_policy, 2024)
+
+        irpp = result.output_fields.column("impot_revenu_restant_a_payer")[0].as_py()
+        assert irpp < 0, f"Expected negative irpp (tax), got {irpp}"
+        assert -5000 < irpp < 0, f"irpp {irpp} outside expected range [-5000, 0]"
+
+
+# ---------------------------------------------------------------------------
+# AC-4: Multi-entity population (Task 5)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+class TestMultiEntityPopulation:
+    """AC-4: Multi-entity population with all 4 OpenFisca-France entities."""
+
+    def test_multi_person_computation(self, tbs: Any) -> None:
+        """AC-4: Computation with 2 persons returns results for all."""
+        from openfisca_core.simulation_builder import SimulationBuilder
+
+        entities_dict = {
+            "individus": {
+                "person_0": {
+                    "salaire_de_base": {"2024": 30000.0},
+                    "age": {"2024-01": 30},
+                },
+                "person_1": {
+                    "salaire_de_base": {"2024": 50000.0},
+                    "age": {"2024-01": 45},
+                },
+            },
+            "familles": {
+                "famille_0": {"parents": ["person_0"]},
+                "famille_1": {"parents": ["person_1"]},
+            },
+            "foyers_fiscaux": {
+                "foyer_0": {"declarants": ["person_0"]},
+                "foyer_1": {"declarants": ["person_1"]},
+            },
+            "menages": {
+                "menage_0": {"personne_de_reference": ["person_0"]},
+                "menage_1": {"personne_de_reference": ["person_1"]},
+            },
+        }
+
+        builder = SimulationBuilder()
+        simulation = builder.build_from_entities(tbs, entities_dict)
+
+        irpp = simulation.calculate("impot_revenu_restant_a_payer", "2024")
+        assert len(irpp) == 2, f"Expected 2 results, got {len(irpp)}"
+        assert irpp[0] < 0
+        assert irpp[1] < 0
+        # Higher salary -> more tax (more negative)
+        assert irpp[1] < irpp[0], "Higher salary should yield higher tax"
+
+    def test_multi_entity_variable_array_lengths(self, tbs: Any) -> None:
+        """AC-4: Variables from different entities return different-length arrays.
+
+        This documents the known gap (Gap 2 in findings): multi-entity output
+        arrays have different lengths, so they can't be combined into one table.
+        """
+        from openfisca_core.simulation_builder import SimulationBuilder
+
+        # 2 persons but 1 foyer_fiscal and 1 menage (married couple)
+        entities_dict = {
+            "individus": {
+                "person_0": {
+                    "salaire_de_base": {"2024": 30000.0},
+                    "age": {"2024-01": 30},
+                },
+                "person_1": {
+                    "salaire_de_base": {"2024": 0.0},
+                    "age": {"2024-01": 28},
+                },
+            },
+            "familles": {
+                "famille_0": {"parents": ["person_0", "person_1"]},
+            },
+            "foyers_fiscaux": {
+                "foyer_0": {"declarants": ["person_0", "person_1"]},
+            },
+            "menages": {
+                "menage_0": {
+                    "personne_de_reference": ["person_0"],
+                    "conjoint": ["person_1"],
+                },
+            },
+        }
+
+        builder = SimulationBuilder()
+        simulation = builder.build_from_entities(tbs, entities_dict)
+
+        # individu-level variable: 2 values
+        salaire_net = simulation.calculate_add("salaire_net", "2024")
+        assert len(salaire_net) == 2
+
+        # foyer_fiscal-level variable: 1 value
+        irpp = simulation.calculate("impot_revenu_restant_a_payer", "2024")
+        assert len(irpp) == 1
+
+        # menage-level variable: 1 value
+        revenu_disponible = simulation.calculate("revenu_disponible", "2024")
+        assert len(revenu_disponible) == 1
+
+    def test_adapter_entity_key_to_plural_mapping(self, tbs: Any) -> None:
+        """AC-4: Document that entity.key != build_from_entities key (plural)."""
+        key_to_plural = {}
+        for entity in tbs.entities:
+            key_to_plural[entity.key] = entity.plural
+
+        assert key_to_plural["individu"] == "individus"
+        assert key_to_plural["famille"] == "familles"
+        assert key_to_plural["foyer_fiscal"] == "foyers_fiscaux"
+        assert key_to_plural["menage"] == "menages"
+
+
+# ---------------------------------------------------------------------------
+# AC-5: Variable mapping round-trip (Task 6)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+class TestVariableMappingRoundTrip:
+    """AC-5: Variable mapping correctly renames OpenFisca columns to project names."""
+
+    def test_mapping_renames_columns_correctly(self, tbs: Any, tmp_path: Path) -> None:
+        """AC-5: apply_output_mapping renames OpenFisca variable names to project names."""
+        from openfisca_core.simulation_builder import SimulationBuilder
+
+        mapping_yaml = tmp_path / "test_mapping.yaml"
+        mapping_yaml.write_text(
+            "version: 1\n"
+            "mappings:\n"
+            "  - openfisca_name: impot_revenu_restant_a_payer\n"
+            "    project_name: income_tax\n"
+            "    direction: output\n"
+            "    type: float64\n"
+            "  - openfisca_name: salaire_net\n"
+            "    project_name: net_salary\n"
+            "    direction: output\n"
+            "    type: float64\n"
+        )
+
+        config = load_mapping(mapping_yaml)
+
+        entities_dict = _build_entities_dict()
+        builder = SimulationBuilder()
+        simulation = builder.build_from_entities(tbs, entities_dict)
+
+        irpp_val = simulation.calculate("impot_revenu_restant_a_payer", "2024")
+        salaire_net_val = simulation.calculate_add("salaire_net", "2024")
+
+        original_table = pa.table({
+            "impot_revenu_restant_a_payer": pa.array(irpp_val),
+            "salaire_net": pa.array(salaire_net_val),
+        })
+
+        mapped_table = apply_output_mapping(original_table, config)
+
+        assert "income_tax" in mapped_table.column_names
+        assert "net_salary" in mapped_table.column_names
+        assert "impot_revenu_restant_a_payer" not in mapped_table.column_names
+        assert "salaire_net" not in mapped_table.column_names
+
+    def test_mapped_values_are_numerically_identical(self, tbs: Any, tmp_path: Path) -> None:
+        """AC-5: Mapped values are numerically identical to unmapped values."""
+        from openfisca_core.simulation_builder import SimulationBuilder
+
+        mapping_yaml = tmp_path / "test_mapping.yaml"
+        mapping_yaml.write_text(
+            "version: 1\n"
+            "mappings:\n"
+            "  - openfisca_name: impot_revenu_restant_a_payer\n"
+            "    project_name: income_tax\n"
+            "    direction: output\n"
+            "    type: float64\n"
+        )
+
+        config = load_mapping(mapping_yaml)
+
+        entities_dict = _build_entities_dict()
+        builder = SimulationBuilder()
+        simulation = builder.build_from_entities(tbs, entities_dict)
+
+        irpp_val = simulation.calculate("impot_revenu_restant_a_payer", "2024")
+
+        original_table = pa.table({
+            "impot_revenu_restant_a_payer": pa.array(irpp_val),
+        })
+        mapped_table = apply_output_mapping(original_table, config)
+
+        original_value = original_table.column("impot_revenu_restant_a_payer")[0].as_py()
+        mapped_value = mapped_table.column("income_tax")[0].as_py()
+        assert original_value == mapped_value
+
+
+# ---------------------------------------------------------------------------
+# AC-6: Output quality validation (Task 7)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+class TestOutputQualityValidation:
+    """AC-6: Output passes quality validation with appropriate schema."""
+
+    def test_validate_output_passes_with_adapter_result(
+        self,
+        adapter: OpenFiscaApiAdapter,
+        single_person_population: PopulationData,
+        empty_policy: PolicyConfig
+    ) -> None:
+        """AC-6: Real adapter.compute() output passes validate_output."""
+        result = adapter.compute(single_person_population, empty_policy, 2024)
+
+        schema = DataSchema(
+            schema=pa.schema([
+                pa.field("impot_revenu_restant_a_payer", pa.float32()),
+            ]),
+            required_columns=("impot_revenu_restant_a_payer",),
+        )
+
+        qr = validate_output(result, schema)
+        assert qr.passed is True
+        assert len(qr.errors) == 0
+
+
+# ---------------------------------------------------------------------------
+# AC-7: Known-value benchmark (Task 8)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+class TestKnownValueBenchmark:
+    """AC-7: Adapter results match expected French income tax for known salary."""
+
+    def test_irpp_determinism_via_adapter(
+        self, single_person_population: PopulationData, empty_policy: PolicyConfig
+    ) -> None:
+        """AC-7: Two independent adapter.compute() calls produce identical results."""
+        adapter1 = OpenFiscaApiAdapter(
+            country_package="openfisca_france",
+            output_variables=("impot_revenu_restant_a_payer",),
+        )
+        adapter2 = OpenFiscaApiAdapter(
+            country_package="openfisca_france",
+            output_variables=("impot_revenu_restant_a_payer",),
+        )
+
+        result1 = adapter1.compute(single_person_population, empty_policy, 2024)
+        result2 = adapter2.compute(single_person_population, empty_policy, 2024)
+
+        val1 = result1.output_fields.column("impot_revenu_restant_a_payer")[0].as_py()
+        val2 = result2.output_fields.column("impot_revenu_restant_a_payer")[0].as_py()
+
+        assert abs(float(val1) - float(val2)) < 1.0, (
+            f"Non-deterministic results: {val1} vs {val2}"
+        )
+
+    def test_higher_salary_yields_higher_tax(self, tbs: Any) -> None:
+        """AC-7: Progressive tax -- higher salary results in more tax."""
+        from openfisca_core.simulation_builder import SimulationBuilder
+
+        def compute_irpp(salary: float) -> float:
+            entities_dict = _build_entities_dict(salary=salary)
+            builder = SimulationBuilder()
+            sim = builder.build_from_entities(tbs, entities_dict)
+            return float(sim.calculate("impot_revenu_restant_a_payer", "2024")[0])
+
+        irpp_30k = compute_irpp(30000.0)
+        irpp_60k = compute_irpp(60000.0)
+        irpp_100k = compute_irpp(100000.0)
+
+        assert irpp_60k < irpp_30k, f"60k ({irpp_60k}) should pay more tax than 30k ({irpp_30k})"
+        assert irpp_100k < irpp_60k, f"100k ({irpp_100k}) should pay more tax than 60k ({irpp_60k})"
+
+
+# ---------------------------------------------------------------------------
+# Adapter plural-key fix validation (Task 5 supplement)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+class TestAdapterPluralKeyFix:
+    """Validate that the adapter normalises singular entity keys to plural.
+
+    The original spike identified that _population_to_entity_dict used
+    entity.key (singular) but build_from_entities requires entity.plural.
+    The fix normalises to plural keys automatically.
+    """
+
+    def test_population_to_entity_dict_normalises_to_plural(
+        self, adapter: OpenFiscaApiAdapter
+    ) -> None:
+        """Adapter now normalises singular entity keys to plural."""
+        local_tbs = adapter._get_tax_benefit_system()
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0]),
+                }),
+            },
+        )
+        policy = PolicyConfig(parameters={}, name="test")
+
+        entity_dict = adapter._population_to_entity_dict(population, policy, "2024", local_tbs)
+
+        assert "individus" in entity_dict, "Adapter should normalise to plural key"
+        assert "individu" not in entity_dict, "Singular key should be normalised away"
+
+    def test_build_from_entities_rejects_singular_keys(self, tbs: Any) -> None:
+        """build_from_entities raises error with singular entity keys."""
+        from openfisca_core.errors import SituationParsingError
+        from openfisca_core.simulation_builder import SimulationBuilder
+
+        singular_dict = {
+            "individu": {
+                "person_0": {"salaire_de_base": {"2024": 30000.0}},
+            },
+            "famille": {"famille_0": {"parents": ["person_0"]}},
+            "foyer_fiscal": {"foyer_0": {"declarants": ["person_0"]}},
+            "menage": {"menage_0": {"personne_de_reference": ["person_0"]}},
+        }
+
+        builder = SimulationBuilder()
+        with pytest.raises(SituationParsingError):
+            builder.build_from_entities(tbs, singular_dict)
+
+    def test_compute_works_with_singular_entity_keys(
+        self,
+        adapter: OpenFiscaApiAdapter,
+        single_person_population: PopulationData,
+        empty_policy: PolicyConfig
+    ) -> None:
+        """adapter.compute() works when PopulationData uses singular entity keys."""
+        result = adapter.compute(single_person_population, empty_policy, 2024)
+
+        assert isinstance(result, ComputationResult)
+        irpp = result.output_fields.column("impot_revenu_restant_a_payer")[0].as_py()
+        assert irpp < 0, f"Expected negative irpp, got {irpp}"
+
+
+# ---------------------------------------------------------------------------
+# OpenFisca-France reference test cases
+# Mirrors the format used in openfisca-france/tests/formulas/irpp.yaml
+# to verify our pipeline produces bit-identical results to the official
+# OpenFisca-France test suite.
+# See: https://github.com/openfisca/openfisca-france/tree/master/tests/formulas
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+class TestOpenFiscaFranceReferenceCases:
+    """Reference test cases mirroring openfisca-france's own test format.
+
+    These tests use salaire_imposable (taxable salary) as input -- the same
+    input variable used in openfisca-france/tests/formulas/irpp.yaml -- to
+    verify that our pipeline produces the same results as the official
+    OpenFisca-France test suite.
+
+    The expected values were computed directly via OpenFisca-France 175.0.18
+    with openfisca-core 44.2.2 on 2026-02-28 and serve as pinned reference
+    values for regression detection.
+    """
+
+    ABSOLUTE_ERROR_MARGIN = 0.5  # Same margin used by openfisca-france tests
+
+    def test_single_person_salaire_imposable_20k(self, tbs: Any) -> None:
+        """Reference: single person, salaire_imposable=20000, period 2024.
+
+        Expected: impot_revenu_restant_a_payer = -150.0
+        """
+        sim = _build_simulation(tbs, {
+            "person_0": {"salaire_imposable": {"2024": 20000.0}},
+        })
+        irpp = float(sim.calculate("impot_revenu_restant_a_payer", "2024")[0])
+        assert abs(irpp - (-150.0)) <= self.ABSOLUTE_ERROR_MARGIN, (
+            f"Expected -150.0, got {irpp}"
+        )
+
+    def test_single_person_salaire_imposable_50k(self, tbs: Any) -> None:
+        """Reference: single person, salaire_imposable=50000, period 2024.
+
+        Expected: impot_revenu_restant_a_payer = -6665.0
+        """
+        sim = _build_simulation(tbs, {
+            "person_0": {"salaire_imposable": {"2024": 50000.0}},
+        })
+        irpp = float(sim.calculate("impot_revenu_restant_a_payer", "2024")[0])
+        assert abs(irpp - (-6665.0)) <= self.ABSOLUTE_ERROR_MARGIN, (
+            f"Expected -6665.0, got {irpp}"
+        )
+
+    def test_couple_salaire_imposable_30k_25k(self, tbs: Any) -> None:
+        """Reference: couple, salaire_imposable=30000+25000, period 2024.
+
+        Expected: impot_revenu_restant_a_payer = -2765.0
+        Joint taxation with 2 tax shares (quotient familial).
+        """
+        sim = _build_simulation(
+            tbs,
+            {
+                "person_0": {"salaire_imposable": {"2024": 30000.0}},
+                "person_1": {"salaire_imposable": {"2024": 25000.0}},
+            },
+            couples=True,
+        )
+        irpp = float(sim.calculate("impot_revenu_restant_a_payer", "2024")[0])
+        assert abs(irpp - (-2765.0)) <= self.ABSOLUTE_ERROR_MARGIN, (
+            f"Expected -2765.0, got {irpp}"
+        )
+
+    def test_couple_pays_less_than_single_high_earner(self, tbs: Any) -> None:
+        """Reference: joint taxation benefit with asymmetric incomes.
+
+        French quotient familial means a couple filing jointly should pay
+        less total tax than a single person with the same total income,
+        especially when incomes are asymmetric.  We use 80k+0 to make the
+        benefit unambiguous (at lower incomes, the decote can make two
+        singles cheaper than one couple).
+        """
+        sim_couple = _build_simulation(
+            tbs,
+            {
+                "person_0": {"salaire_imposable": {"2024": 80000.0}},
+                "person_1": {"salaire_imposable": {"2024": 0.0}},
+            },
+            couples=True,
+        )
+        irpp_couple = float(sim_couple.calculate("impot_revenu_restant_a_payer", "2024")[0])
+
+        sim_single = _build_simulation(tbs, {
+            "person_0": {"salaire_imposable": {"2024": 80000.0}},
+        })
+        irpp_single = float(sim_single.calculate("impot_revenu_restant_a_payer", "2024")[0])
+
+        # Couple should pay less (less negative = less tax)
+        assert irpp_couple > irpp_single, (
+            f"Couple ({irpp_couple}) should pay less tax than single earner ({irpp_single})"
+        )
+
+
+# ===========================================================================
+# Story 9.2: Multi-entity output array handling (integration tests)
+# ===========================================================================
+
+
+@pytest.fixture(scope="module")
+def multi_entity_adapter() -> OpenFiscaApiAdapter:
+    """Adapter configured with mixed-entity output variables.
+
+    Story 9.2 AC-1, AC-2, AC-3: Tests multi-entity output extraction
+    with real OpenFisca-France variables from different entities.
+    """
+    return OpenFiscaApiAdapter(
+        country_package="openfisca_france",
+        output_variables=(
+            "salaire_net",                      # individu
+            "impot_revenu_restant_a_payer",      # foyer_fiscal
+            "revenu_disponible",                 # menage
+        ),
+    )
+
+
+@pytest.mark.integration
+class TestMultiEntityOutputArrays:
+    """Story 9.2 AC-1, AC-2, AC-3: Multi-entity output variable handling.
+
+    These tests validate that the adapter correctly handles output variables
+    belonging to different entities, producing separate per-entity tables
+    with correct array lengths.
+    """
+
+    def test_married_couple_multi_entity_extraction(
+        self, tbs: Any, multi_entity_adapter: OpenFiscaApiAdapter
+    ) -> None:
+        """AC-1, AC-2, AC-3: Married couple with 2 persons, 1 foyer, 1 menage.
+
+        The canonical multi-entity test case from spike 8-1:
+        - salaire_net (individu) → 2 values
+        - impot_revenu_restant_a_payer (foyer_fiscal) → 1 value
+        - revenu_disponible (menage) → 1 value
+        """
+        from openfisca_core.simulation_builder import SimulationBuilder
+
+        entities_dict = {
+            "individus": {
+                "person_0": {
+                    "salaire_de_base": {"2024": 30000.0},
+                    "age": {"2024-01": 30},
+                },
+                "person_1": {
+                    "salaire_de_base": {"2024": 0.0},
+                    "age": {"2024-01": 28},
+                },
+            },
+            "familles": {
+                "famille_0": {"parents": ["person_0", "person_1"]},
+            },
+            "foyers_fiscaux": {
+                "foyer_0": {"declarants": ["person_0", "person_1"]},
+            },
+            "menages": {
+                "menage_0": {
+                    "personne_de_reference": ["person_0"],
+                    "conjoint": ["person_1"],
+                },
+            },
+        }
+
+        # Test _resolve_variable_entities with real TBS
+        local_tbs = multi_entity_adapter._get_tax_benefit_system()
+        vars_by_entity = multi_entity_adapter._resolve_variable_entities(local_tbs)
+
+        # Verify entity grouping
+        assert "individus" in vars_by_entity
+        assert "foyers_fiscaux" in vars_by_entity
+        assert "menages" in vars_by_entity
+        assert "salaire_net" in vars_by_entity["individus"]
+        assert "impot_revenu_restant_a_payer" in vars_by_entity["foyers_fiscaux"]
+        assert "revenu_disponible" in vars_by_entity["menages"]
+
+        # Story 9.3: Resolve periodicities for _extract_results_by_entity
+        var_periodicities = multi_entity_adapter._resolve_variable_periodicities(
+            local_tbs
+        )
+
+        # Build simulation and extract results by entity
+        builder = SimulationBuilder()
+        simulation = builder.build_from_entities(tbs, entities_dict)
+
+        entity_tables = multi_entity_adapter._extract_results_by_entity(
+            simulation, 2024, vars_by_entity, var_periodicities
+        )
+
+        # AC-2: Correct array lengths per entity
+        assert entity_tables["individus"].num_rows == 2
+        assert entity_tables["foyers_fiscaux"].num_rows == 1
+        assert entity_tables["menages"].num_rows == 1
+
+        # AC-3: Correct columns per entity
+        assert "salaire_net" in entity_tables["individus"].column_names
+        assert "impot_revenu_restant_a_payer" in entity_tables["foyers_fiscaux"].column_names
+        assert "revenu_disponible" in entity_tables["menages"].column_names
+
+    def test_single_entity_backward_compatible(
+        self, tbs: Any
+    ) -> None:
+        """AC-4: Single-entity output produces backward-compatible result."""
+        adapter = OpenFiscaApiAdapter(
+            country_package="openfisca_france",
+            output_variables=("impot_revenu_restant_a_payer",),
+        )
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0]),
+                    "age": pa.array([30]),
+                }),
+            },
+            metadata={"source": "integration-test"},
+        )
+        policy = PolicyConfig(parameters={}, name="test")
+
+        result = adapter.compute(population, policy, 2024)
+
+        # Single entity: entity_tables should be empty
+        assert result.entity_tables == {}
+        # output_fields works as before
+        assert isinstance(result.output_fields, pa.Table)
+        assert "impot_revenu_restant_a_payer" in result.output_fields.column_names
+        assert result.output_fields.num_rows == 1
+
+    def test_variable_entity_resolution_matches_tbs(self, tbs: Any) -> None:
+        """AC-1: Variable entity resolution matches actual TBS entity definitions."""
+        # Verify entity attributes are accessible on real TBS variables
+        irpp_var = tbs.variables["impot_revenu_restant_a_payer"]
+        assert irpp_var.entity.key == "foyer_fiscal"
+        assert irpp_var.entity.plural == "foyers_fiscaux"
+
+        salaire_var = tbs.variables["salaire_net"]
+        assert salaire_var.entity.key == "individu"
+        assert salaire_var.entity.plural == "individus"
+
+        revenu_var = tbs.variables["revenu_disponible"]
+        assert revenu_var.entity.key == "menage"
+        assert revenu_var.entity.plural == "menages"
+
+    def test_multi_entity_adapter_compute_end_to_end(self, tbs: Any) -> None:
+        """AC-1, AC-2, AC-3: Full adapter.compute() with multi-entity output.
+
+        Tests that entity_tables and output_entities metadata are correctly
+        populated when output variables span multiple entities.
+
+        Note: This test uses only the individu table in PopulationData.
+        The adapter's _population_to_entity_dict handles auto-creation of
+        group entities for single-person populations. For married couples
+        (2 persons, 1 foyer), all 4 entity tables must be provided.
+        """
+        adapter = OpenFiscaApiAdapter(
+            country_package="openfisca_france",
+            output_variables=(
+                "salaire_net",
+                "impot_revenu_restant_a_payer",
+            ),
+        )
+
+        # Use 2 persons, 2 separate foyers (not married) to keep it simple
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0, 50000.0]),
+                    "age": pa.array([30, 45]),
+                }),
+            },
+        )
+        policy = PolicyConfig(parameters={}, name="multi-entity-test")
+
+        result = adapter.compute(population, policy, 2024)
+
+        # Multi-entity: entity_tables populated
+        assert len(result.entity_tables) == 2
+        assert "individus" in result.entity_tables
+        assert "foyers_fiscaux" in result.entity_tables
+
+        # AC-2: Correct array lengths
+        assert result.entity_tables["individus"].num_rows == 2
+        assert result.entity_tables["foyers_fiscaux"].num_rows == 2
+
+        # output_fields is person-entity table
+        assert result.output_fields.num_rows == 2
+        assert "salaire_net" in result.output_fields.column_names
+
+        # Metadata includes entity information
+        assert "output_entities" in result.metadata
+        assert "entity_row_counts" in result.metadata
+
+
+# ===========================================================================
+# Story 9.3: Variable periodicity handling (integration tests)
+# ===========================================================================
+
+
+@pytest.fixture(scope="module")
+def periodicity_adapter() -> OpenFiscaApiAdapter:
+    """Adapter with mixed-periodicity output variables.
+
+    Story 9.3 AC-1, AC-2: Tests periodicity-aware calculation dispatch
+    with real OpenFisca-France variables:
+    - salaire_net (individu, MONTH) → calculate_add
+    - impot_revenu_restant_a_payer (foyer_fiscal, YEAR) → calculate
+    """
+    return OpenFiscaApiAdapter(
+        country_package="openfisca_france",
+        output_variables=(
+            "salaire_net",                      # individu, MONTH
+            "impot_revenu_restant_a_payer",      # foyer_fiscal, YEAR
+        ),
+    )
+
+
+@pytest.mark.integration
+class TestVariablePeriodicityHandling:
+    """Story 9.3 AC-1, AC-2, AC-6: Periodicity-aware calculation dispatch.
+
+    These tests validate that the adapter correctly detects variable
+    periodicities and dispatches to the appropriate OpenFisca calculation
+    method (calculate vs calculate_add).
+    """
+
+    def test_monthly_variable_yearly_aggregation(self, tbs: Any) -> None:
+        """AC-2: Monthly variable (salaire_net) with yearly period returns correct sum.
+
+        Story 9.3 AC-2: Given a monthly variable requested for a yearly period,
+        the adapter automatically sums the 12 monthly values via calculate_add().
+        """
+        adapter = OpenFiscaApiAdapter(
+            country_package="openfisca_france",
+            output_variables=("salaire_net",),
+        )
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0]),
+                    "age": pa.array([30]),
+                }),
+            },
+        )
+        policy = PolicyConfig(parameters={}, name="periodicity-test")
+
+        result = adapter.compute(population, policy, 2024)
+
+        # AC-2: salaire_net should be a positive value representing yearly net salary
+        salaire_net = result.output_fields.column("salaire_net")[0].as_py()
+        assert 20000 < salaire_net < 30000, (
+            f"salaire_net={salaire_net} outside expected range [20000, 30000] "
+            f"for 30k gross salary"
+        )
+
+        # AC-5: Metadata shows correct dispatch
+        assert result.metadata["calculation_methods"]["salaire_net"] == "calculate_add"
+        assert result.metadata["variable_periodicities"]["salaire_net"] == "month"
+
+    def test_yearly_variable_uses_calculate(self, tbs: Any) -> None:
+        """AC-1: Yearly variable (irpp) with yearly period uses calculate().
+
+        Story 9.3 AC-4: Behavior is identical to pre-change implementation.
+        """
+        adapter = OpenFiscaApiAdapter(
+            country_package="openfisca_france",
+            output_variables=("impot_revenu_restant_a_payer",),
+        )
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0]),
+                    "age": pa.array([30]),
+                }),
+            },
+        )
+        policy = PolicyConfig(parameters={}, name="periodicity-test")
+
+        result = adapter.compute(population, policy, 2024)
+
+        # irpp should be negative (tax owed)
+        irpp = result.output_fields.column("impot_revenu_restant_a_payer")[0].as_py()
+        assert irpp < 0, f"Expected negative irpp (tax), got {irpp}"
+
+        # AC-5: Metadata shows correct dispatch
+        assert result.metadata["calculation_methods"]["impot_revenu_restant_a_payer"] == "calculate"
+        assert result.metadata["variable_periodicities"]["impot_revenu_restant_a_payer"] == "year"
+
+    def test_mixed_periodicity_compute(
+        self, periodicity_adapter: OpenFiscaApiAdapter
+    ) -> None:
+        """AC-1, AC-2: Mixed periodicity output variables in single compute().
+
+        Story 9.3 AC-1: The adapter uses calculate_add() for monthly variables
+        and calculate() for yearly variables, producing correct results for both.
+        """
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0, 50000.0]),
+                    "age": pa.array([30, 45]),
+                }),
+            },
+        )
+        policy = PolicyConfig(parameters={}, name="mixed-periodicity-test")
+
+        result = periodicity_adapter.compute(population, policy, 2024)
+
+        # Both variables should return results without ValueError
+        assert result.output_fields.num_rows == 2
+        assert "salaire_net" in result.output_fields.column_names
+
+        # entity_tables should have both entities
+        assert "individus" in result.entity_tables
+        assert "foyers_fiscaux" in result.entity_tables
+
+        # AC-5: Correct methods per variable
+        assert result.metadata["calculation_methods"]["salaire_net"] == "calculate_add"
+        assert result.metadata["calculation_methods"]["impot_revenu_restant_a_payer"] == "calculate"
+
+    def test_monthly_variable_end_to_end(self, tbs: Any) -> None:
+        """AC-2: End-to-end test that monthly output variable produces correct values.
+
+        Story 9.3 AC-2: adapter.compute() with a monthly output variable
+        produces correct yearly aggregated values.
+        """
+        adapter = OpenFiscaApiAdapter(
+            country_package="openfisca_france",
+            output_variables=("salaire_net",),
+        )
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0]),
+                    "age": pa.array([30]),
+                }),
+            },
+        )
+        policy = PolicyConfig(parameters={}, name="monthly-e2e-test")
+
+        result = adapter.compute(population, policy, 2024)
+
+        assert isinstance(result, ComputationResult)
+        assert result.output_fields.num_rows == 1
+        assert "salaire_net" in result.output_fields.column_names
+
+        # Verify the value is reasonable (should be yearly aggregate)
+        salaire_net = result.output_fields.column("salaire_net")[0].as_py()
+        assert salaire_net > 0, f"Net salary should be positive, got {salaire_net}"
+
+    def test_periodicity_metadata_in_integration(
+        self, periodicity_adapter: OpenFiscaApiAdapter
+    ) -> None:
+        """AC-5: variable_periodicities metadata in integration test result.
+
+        Story 9.3 AC-5: The result metadata includes variable_periodicities
+        and calculation_methods entries for each output variable.
+        """
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0]),
+                    "age": pa.array([30]),
+                }),
+            },
+        )
+        policy = PolicyConfig(parameters={}, name="metadata-test")
+
+        result = periodicity_adapter.compute(population, policy, 2024)
+
+        # AC-5: variable_periodicities present and correct
+        assert "variable_periodicities" in result.metadata
+        vp = result.metadata["variable_periodicities"]
+        assert vp["salaire_net"] == "month"
+        assert vp["impot_revenu_restant_a_payer"] == "year"
+
+        # AC-5: calculation_methods present and correct
+        assert "calculation_methods" in result.metadata
+        cm = result.metadata["calculation_methods"]
+        assert cm["salaire_net"] == "calculate_add"
+        assert cm["impot_revenu_restant_a_payer"] == "calculate"
+
+    def test_variable_periodicity_resolution_matches_tbs(self, tbs: Any) -> None:
+        """AC-1: Variable periodicity resolution matches actual TBS definitions.
+
+        Story 9.3: Verify that definition_period attributes are accessible
+        and match expected values for known OpenFisca-France variables.
+        """
+        # salaire_net is a MONTH variable
+        salaire_var = tbs.variables["salaire_net"]
+        assert str(salaire_var.definition_period) == "month"
+
+        # impot_revenu_restant_a_payer is a YEAR variable
+        irpp_var = tbs.variables["impot_revenu_restant_a_payer"]
+        assert str(irpp_var.definition_period) == "year"
+
+        # date_naissance is an ETERNITY variable
+        birth_var = tbs.variables["date_naissance"]
+        assert str(birth_var.definition_period) == "eternity"
+
+
+]]></file>
+<file id="90dfc412" path="[ANTIPATTERNS - DO NOT REPEAT]" label="VIRTUAL CONTENT"><![CDATA[
+
+# Epic 9 - Story Antipatterns
+
+> **WARNING: ANTI-PATTERNS**
+> The issues below were MISTAKES found during validation of previous stories.
+> DO NOT repeat these patterns. Learn from them and avoid similar errors.
+> These represent story-writing mistakes (unclear AC, missing Notes, unrealistic scope).
+
+## Story 9-3 (2026-03-01)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | Metadata field name contradiction in AC-5 vs Task 4.3 | Rewrote AC-5 to explicitly name two separate `dict[str, str]` keys with concrete examples; updated Task 4.3 to match with inline examples. *Consensus — both validators independently flagged this.* |
+| critical | `_make_mock_tbs()` lacks `definition_period` — silent test regression | Added explicit Task 1.5 requiring `var_mock.definition_period = "year"` in `_make_mock_tbs()` variable loop, with full explanation of the MagicMock failure mode and which specific test breaks (`TestPeriodFormatting.test_period_passed_as_string`). Without this task, the failure is a confusing `AssertionError` ("Expected call: calculate(...) not found") with no obvious cause. |
+| critical | `_extract_results_by_entity()` signature change silently breaks 3 existing test callers | Rewrote Task 3.1 to call out the breaking change explicitly, name all 3 affected test methods (`test_single_entity_extraction`, `test_multi_entity_extraction`, `test_multiple_variables_per_entity`), and show the required fix (`variable_periodicities={"var_name": "year"}`). Without this, a dev agent adds a new required parameter and watches 3 previously-passing tests fail with `TypeError`. |
+| high | Period validation placement ambiguous in AC-3 and Task 5.1 | Updated AC-3 to specify "very first check before any TBS operations"; updated Task 5.1 to say "FIRST operation in `compute()`, before `_get_tax_benefit_system()`" with rationale for the [1000, 9999] range. |
+| high | Explicit `compute()` call order not shown in Task 4.1 | Replaced the vague "fail-fast pattern" note with a numbered 5-step pseudocode sequence showing exactly where `_resolve_variable_periodicities()` fits relative to `_validate_output_variables()`, `_resolve_variable_entities()`, `_build_simulation()`, and `_extract_results_by_entity()`. |
+| high | Pre-existing Story 9.2 integration test failure not acknowledged | Updated Task 6.2 to warn that any Story 9.2 integration test using `salaire_net` may already be red (pre-existing `ValueError: Period mismatch`), and that Story 9.3 is expected to turn it green as a side-effect. |
+| high | Integration test dispatch verification strategy missing | Expanded Task 7.1 to explain that real `Simulation` objects cannot be mock-asserted, and provided the correct two-pronged verification approach (metadata `calculation_methods` key + value range assertion). |
+| medium | AC-6 eternity handling lacks WHY and test verification hint | Expanded AC-6 to add concrete example variables (`date_naissance`, `sexe`), the exact error message `calculate_add()` raises, and a test verification hint (assert `calculate` called, assert `calculate_add` NOT called for `periodicity == "eternity"`). |
+| medium | Files to Modify table understates test file changes | Replaced the single-line description with an enumerated 3-change list: (1) `_make_mock_tbs()` update, (2) existing `TestExtractResultsByEntity` caller updates, (3) new test classes. |
+
+
+]]></file>
+</context>
+<variables>
+<var name="architecture_file" description="Architecture (fallback - epics file should have relevant sections)" load_strategy="SELECTIVE_LOAD" token_approx="2785">_bmad-output/planning-artifacts/architecture-diagrams.md</var>
+<var name="author">BMad</var>
+<var name="communication_language">English</var>
+<var name="date">2026-03-01</var>
+<var name="default_output_file">_bmad-output/implementation-artifacts/9-4-define-population-data-4-entity-format.md</var>
+<var name="description">Create the next user story from epics+stories with enhanced context analysis and direct ready-for-dev marking</var>
+<var name="document_output_language">English</var>
+<var name="epic_num">9</var>
+<var name="epics_file" file_id="9e4374e5" description="Enhanced epics+stories file with BDD and source hints" load_strategy="EMBEDDED" token_approx="8484">embedded in prompt, file id: 9e4374e5</var>
+<var name="implementation_artifacts">_bmad-output/implementation-artifacts</var>
+<var name="name">create-story</var>
+<var name="output_folder">_bmad-output/implementation-artifacts</var>
+<var name="planning_artifacts">_bmad-output/planning-artifacts</var>
+<var name="prd_file" description="PRD (fallback - epics file should have most content)" load_strategy="SELECTIVE_LOAD" token_approx="7305">_bmad-output/planning-artifacts/prd-validation-report.md</var>
+<var name="project_context" file_id="b5c6fe32" load_strategy="EMBEDDED" token_approx="2024">embedded in prompt, file id: b5c6fe32</var>
+<var name="project_knowledge">docs</var>
+<var name="project_name">ReformLab</var>
+<var name="sprint_status">_bmad-output/implementation-artifacts/sprint-status.yaml</var>
+<var name="story_dir">_bmad-output/implementation-artifacts</var>
+<var name="story_id">9.4</var>
+<var name="story_key">9-4-define-population-data-4-entity-format</var>
+<var name="story_num">4</var>
+<var name="story_title">define-population-data-4-entity-format</var>
+<var name="timestamp">20260301_2147</var>
+<var name="user_name">Lucas</var>
+<var name="user_skill_level">expert</var>
+<var name="ux_file" description="UX design (fallback - epics file should have relevant sections)" load_strategy="SELECTIVE_LOAD" token_approx="20820">_bmad-output/planning-artifacts/ux-design-specification.md</var>
+</variables>
+<instructions><workflow>
+  <critical>🚫 SCOPE LIMITATION: Your ONLY task is to create the story markdown file. Do NOT read, modify, or update any sprint tracking files - that is handled programmatically by bmad-assist.</critical>
+<critical>You MUST have already loaded and processed: the &lt;workflow-yaml&gt; section embedded above</critical>
+  <critical>Communicate all responses in English and generate all documents in English</critical>
+
+  <critical>🔥 CRITICAL MISSION: You are creating the ULTIMATE story context engine that prevents LLM developer mistakes, omissions or
+    disasters! 🔥</critical>
+  <critical>Your purpose is NOT to copy from epics - it's to create a comprehensive, optimized story file that gives the DEV agent
+    EVERYTHING needed for flawless implementation</critical>
+  <critical>COMMON LLM MISTAKES TO PREVENT: reinventing wheels, wrong libraries, wrong file locations, breaking regressions, ignoring UX,
+    vague implementations, lying about completion, not learning from past work</critical>
+  <critical>🚨 EXHAUSTIVE ANALYSIS REQUIRED: You must thoroughly analyze ALL artifacts to extract critical context - do NOT be lazy or skim!
+    This is the most important function in the entire development process!</critical>
+  <critical>🔬 UTILIZE SUBPROCESSES AND SUBAGENTS: Use research subagents, subprocesses or parallel processing if available to thoroughly
+    analyze different artifacts simultaneously and thoroughly</critical>
+  <critical>❓ SAVE QUESTIONS: If you think of questions or clarifications during analysis, save them for the end after the complete story is
+    written</critical>
+  <critical>🎯 ZERO USER INTERVENTION: Process should be fully automated except for initial epic/story selection or missing documents</critical>
+  <critical>Git Intelligence is EMBEDDED in &lt;git-intelligence&gt; at the start of the prompt - do NOT run git commands yourself, use the embedded data instead</critical>
+
+  <step n="1" goal="Architecture analysis for developer guardrails">
+    <critical>🏗️ ARCHITECTURE INTELLIGENCE - Extract everything the developer MUST follow!</critical> **ARCHITECTURE DOCUMENT ANALYSIS:** <action>Systematically
+    analyze architecture content for story-relevant requirements:</action>
+
+    <!-- Load architecture - single file or sharded -->
+    <check if="architecture file is single file">
+      <action>Load complete {architecture_content}</action>
+    </check>
+    <check if="architecture is sharded to folder">
+      <action>Load architecture index and scan all architecture files</action>
+    </check> **CRITICAL ARCHITECTURE EXTRACTION:** <action>For
+    each architecture section, determine if relevant to this story:</action> - **Technical Stack:** Languages, frameworks, libraries with
+    versions - **Code Structure:** Folder organization, naming conventions, file patterns - **API Patterns:** Service structure, endpoint
+    patterns, data contracts - **Database Schemas:** Tables, relationships, constraints relevant to story - **Security Requirements:**
+    Authentication patterns, authorization rules - **Performance Requirements:** Caching strategies, optimization patterns - **Testing
+    Standards:** Testing frameworks, coverage expectations, test patterns - **Deployment Patterns:** Environment configurations, build
+    processes - **Integration Patterns:** External service integrations, data flows <action>Extract any story-specific requirements that the
+    developer MUST follow</action>
+    <action>Identify any architectural decisions that override previous patterns</action>
+  </step>
+
+  <step n="2" goal="Web research for latest technical specifics">
+    <critical>🌐 ENSURE LATEST TECH KNOWLEDGE - Prevent outdated implementations!</critical> **WEB INTELLIGENCE:** <action>Identify specific
+    technical areas that require latest version knowledge:</action>
+
+    <!-- Check for libraries/frameworks mentioned in architecture -->
+    <action>From architecture analysis, identify specific libraries, APIs, or
+    frameworks</action>
+    <action>For each critical technology, research latest stable version and key changes:
+      - Latest API documentation and breaking changes
+      - Security vulnerabilities or updates
+      - Performance improvements or deprecations
+      - Best practices for current version
+    </action>
+    **EXTERNAL CONTEXT INCLUSION:** <action>Include in story any critical latest information the developer needs:
+      - Specific library versions and why chosen
+      - API endpoints with parameters and authentication
+      - Recent security patches or considerations
+      - Performance optimization techniques
+      - Migration considerations if upgrading
+    </action>
+  </step>
+
+  <step n="3" goal="Create comprehensive story file">
+    <critical>📝 CREATE ULTIMATE STORY FILE - The developer's master implementation guide!</critical>
+
+    <action>Create file using the output-template format at: /Users/lucas/Workspace/reformlab/_bmad-output/implementation-artifacts/9-4-define-population-data-4-entity-format.md</action>
+    <!-- Story foundation from epics analysis -->
+    <!-- Developer context section - MOST IMPORTANT PART -->
+    <!-- Previous story intelligence -->
+    <!-- Git intelligence -->
+    <!-- Latest technical specifics -->
+    <!-- Project context reference -->
+    <!-- Final status update -->
+    <!-- CRITICAL: Set status to ready-for-dev -->
+    <action>Set story Status to: "ready-for-dev"</action>
+    <action>Add completion note: "Ultimate
+    context engine analysis completed - comprehensive developer guide created"</action>
+  </step>
+
+  <step n="4" goal="Validate and finalize">
+    <!-- checklist validation is separate workflow -->
+    <action>Save story document unconditionally</action>
+
+    <action>Report completion</action>
+    </step>
+
+</workflow></instructions>
+<output-template><![CDATA[
+
+# Story {{epic_num}}.{{story_num}}: {{story_title}}
+
+Status: ready-for-dev
+
+<!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
+
+## Story
+
+As a {{role}},
+I want {{action}},
+so that {{benefit}}.
+
+## Acceptance Criteria
+
+1. [Add acceptance criteria from epics/PRD]
+
+## Tasks / Subtasks
+
+- [ ] Task 1 (AC: #)
+  - [ ] Subtask 1.1
+- [ ] Task 2 (AC: #)
+  - [ ] Subtask 2.1
+
+## Dev Notes
+
+- Relevant architecture patterns and constraints
+- Source tree components to touch
+- Testing standards summary
+
+### Project Structure Notes
+
+- Alignment with unified project structure (paths, modules, naming)
+- Detected conflicts or variances (with rationale)
+
+### References
+
+- Cite all technical details with source paths and sections, e.g. [Source: docs/<file>.md#Section]
+
+## Dev Agent Record
+
+### Agent Model Used
+
+{{agent_model_name_version}}
+
+### Debug Log References
+
+### Completion Notes List
+
+### File List
+
+]]></output-template>
+</compiled-workflow>

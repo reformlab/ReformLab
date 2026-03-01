@@ -116,4 +116,13 @@ records:
   provider: claude
   created_at: '2026-03-01T20:47:30.432789+00:00'
   workflow_id: code-review-synthesis
-updated_at: '2026-03-01T20:47:30.441258+00:00'
+- record_id: 6f8e3c23-3f5b-4d0b-a2a5-afc0af8bd701
+  path: eval-9-4-master-20260301T205827Z.yaml
+  epic: 9
+  story: 4
+  role: master
+  role_id: null
+  provider: claude
+  created_at: '2026-03-01T20:58:27.600150+00:00'
+  workflow_id: create-story
+updated_at: '2026-03-01T20:58:27.608884+00:00'
