@@ -13,6 +13,12 @@ famille, foyer_fiscal).
 Story 9.3: Added periodicity-aware calculation dispatch. Monthly variables
 use ``calculate_add()`` to sum sub-period values; yearly and eternity
 variables use ``calculate()``. Period validation ensures valid 4-digit year.
+
+Story 9.4: Added 4-entity PopulationData format support. Membership columns
+on the person entity table (``{entity_key}_id`` and ``{entity_key}_role``)
+express entity relationships for multi-person populations. The adapter
+detects these columns, validates relationships, and produces a valid entity
+dict passable to ``SimulationBuilder.build_from_entities()``.
 """
 
 from __future__ import annotations
@@ -496,6 +502,240 @@ class OpenFiscaApiAdapter:
 
         return simulation
 
+    # ------------------------------------------------------------------
+    # Story 9.4: 4-entity PopulationData format — membership columns
+    # ------------------------------------------------------------------
+
+    def _detect_membership_columns(
+        self,
+        person_table: pa.Table,
+        tbs: Any,
+    ) -> dict[str, tuple[str, str]]:
+        """Detect membership columns on the person entity table.
+
+        Story 9.4 AC-1, AC-3, AC-6: Checks for ``{entity.key}_id`` and
+        ``{entity.key}_role`` columns for each group entity in the TBS.
+
+        Args:
+            person_table: The person entity PyArrow table.
+            tbs: The loaded TaxBenefitSystem.
+
+        Returns:
+            Dict mapping group entity key to ``(id_column, role_column)`` tuple.
+            Empty dict if no membership columns are detected (backward compat).
+
+        Raises:
+            ApiMappingError: If membership columns are incomplete (all-or-nothing)
+                or unpaired (_id without _role or vice versa).
+        """
+        col_names = set(person_table.column_names)
+
+        # Identify group entities from TBS
+        group_entity_keys: list[str] = []
+        for entity in tbs.entities:
+            if not getattr(entity, "is_person", False):
+                group_entity_keys.append(entity.key)
+
+        # Check for membership column presence
+        detected: dict[str, tuple[str, str]] = {}
+        has_any_id = False
+        has_any_role = False
+        unpaired: list[str] = []
+        present_pairs: list[str] = []
+        missing_pairs: list[str] = []
+
+        for entity_key in group_entity_keys:
+            id_col = f"{entity_key}_id"
+            role_col = f"{entity_key}_role"
+            has_id = id_col in col_names
+            has_role = role_col in col_names
+
+            if has_id:
+                has_any_id = True
+            if has_role:
+                has_any_role = True
+
+            if has_id and has_role:
+                detected[entity_key] = (id_col, role_col)
+                present_pairs.append(entity_key)
+            elif has_id and not has_role:
+                unpaired.append(
+                    f"'{id_col}' present but '{role_col}' missing"
+                )
+            elif has_role and not has_id:
+                unpaired.append(
+                    f"'{role_col}' present but '{id_col}' missing"
+                )
+            else:
+                missing_pairs.append(entity_key)
+
+        # No membership columns at all → backward compatible
+        if not has_any_id and not has_any_role:
+            return {}
+
+        # Unpaired columns: _id without _role or vice versa
+        if unpaired:
+            raise ApiMappingError(
+                summary="Unpaired membership column",
+                reason=(
+                    f"Membership columns must come in pairs "
+                    f"({{entity_key}}_id + {{entity_key}}_role). "
+                    f"Found: {'; '.join(unpaired)}"
+                ),
+                fix=(
+                    "Add the missing paired column for each membership column. "
+                    "Both _id and _role are required for each group entity."
+                ),
+                invalid_names=tuple(unpaired),
+                valid_names=tuple(
+                    f"{ek}_id, {ek}_role" for ek in group_entity_keys
+                ),
+            )
+
+        # All-or-nothing: if any membership columns exist, all group entities
+        # must have complete pairs
+        if missing_pairs:
+            raise ApiMappingError(
+                summary="Incomplete entity membership columns",
+                reason=(
+                    f"Found membership columns for: "
+                    f"{', '.join(present_pairs)}. "
+                    f"Missing membership columns for: "
+                    f"{', '.join(missing_pairs)}. "
+                    f"All group entities must have _id and _role columns "
+                    f"when any membership columns are present."
+                ),
+                fix=(
+                    f"Add {{entity_key}}_id and {{entity_key}}_role columns "
+                    f"for: {', '.join(missing_pairs)}"
+                ),
+                invalid_names=tuple(missing_pairs),
+                valid_names=tuple(group_entity_keys),
+            )
+
+        return detected
+
+    def _resolve_valid_role_keys(
+        self,
+        tbs: Any,
+    ) -> dict[str, frozenset[str]]:
+        """Build a mapping of entity key → valid role keys from the TBS.
+
+        Story 9.4 AC-4: Uses ``role.plural or role.key`` to match the dict
+        keys expected by ``SimulationBuilder.build_from_entities()``.
+
+        Args:
+            tbs: The loaded TaxBenefitSystem.
+
+        Returns:
+            Dict mapping group entity key to frozenset of valid role keys.
+        """
+        valid_roles: dict[str, frozenset[str]] = {}
+
+        for entity in tbs.entities:
+            if getattr(entity, "is_person", False):
+                continue
+
+            role_keys: set[str] = set()
+            roles = getattr(entity, "roles", ())
+            for role in roles:
+                plural = getattr(role, "plural", None)
+                key = getattr(role, "key", None)
+                role_dict_key = plural or key
+                if role_dict_key:
+                    role_keys.add(role_dict_key)
+
+            valid_roles[entity.key] = frozenset(role_keys)
+
+        return valid_roles
+
+    def _validate_entity_relationships(
+        self,
+        person_table: pa.Table,
+        membership_cols: dict[str, tuple[str, str]],
+        valid_roles: dict[str, frozenset[str]],
+    ) -> None:
+        """Validate membership column values for nulls and invalid roles.
+
+        Story 9.4 AC-3, AC-4, AC-5: Checks every membership column for null
+        values and validates role values against the TBS role definitions.
+
+        Args:
+            person_table: The person entity PyArrow table.
+            membership_cols: Detected membership columns per group entity.
+            valid_roles: Valid role keys per group entity.
+
+        Raises:
+            ApiMappingError: If null values or invalid role values are found.
+        """
+        for entity_key, (id_col, role_col) in membership_cols.items():
+            # AC-5: Null check on _id column
+            id_array = person_table.column(id_col)
+            null_mask = pa.compute.is_null(id_array)
+            if pa.compute.any(null_mask).as_py():
+                # Find first null index
+                for i in range(len(null_mask)):
+                    if null_mask[i].as_py():
+                        raise ApiMappingError(
+                            summary="Null value in membership column",
+                            reason=(
+                                f"Column '{id_col}' has null value at "
+                                f"row index {i}. All membership columns "
+                                f"must have non-null values."
+                            ),
+                            fix=(
+                                f"Ensure every person has a valid "
+                                f"{entity_key} group assignment in "
+                                f"'{id_col}'."
+                            ),
+                            invalid_names=(id_col,),
+                            valid_names=(),
+                        )
+
+            # AC-5: Null check on _role column
+            role_array = person_table.column(role_col)
+            null_mask = pa.compute.is_null(role_array)
+            if pa.compute.any(null_mask).as_py():
+                for i in range(len(null_mask)):
+                    if null_mask[i].as_py():
+                        raise ApiMappingError(
+                            summary="Null value in membership column",
+                            reason=(
+                                f"Column '{role_col}' has null value at "
+                                f"row index {i}. All membership columns "
+                                f"must have non-null values."
+                            ),
+                            fix=(
+                                f"Ensure every person has a valid role "
+                                f"in '{role_col}'."
+                            ),
+                            invalid_names=(role_col,),
+                            valid_names=(),
+                        )
+
+            # AC-4: Role value validation
+            entity_valid_roles = valid_roles.get(entity_key, frozenset())
+            if entity_valid_roles:
+                role_values = role_array.to_pylist()
+                for value in role_values:
+                    if value not in entity_valid_roles:
+                        raise ApiMappingError(
+                            summary="Invalid role value",
+                            reason=(
+                                f"Role value '{value}' in column "
+                                f"'{role_col}' is not valid for entity "
+                                f"'{entity_key}'. Valid roles: "
+                                f"{sorted(entity_valid_roles)}"
+                            ),
+                            fix=(
+                                f"Use one of the valid role values for "
+                                f"'{entity_key}': "
+                                f"{sorted(entity_valid_roles)}"
+                            ),
+                            invalid_names=(str(value),),
+                            valid_names=tuple(sorted(entity_valid_roles)),
+                        )
+
     def _population_to_entity_dict(
         self,
         population: PopulationData,
@@ -520,46 +760,187 @@ class OpenFiscaApiAdapter:
 
         PopulationData tables may use either singular (entity.key) or plural
         (entity.plural) keys.  This method normalises to plural.
+
+        Story 9.4: When membership columns are detected on the person table
+        (``{entity_key}_id`` and ``{entity_key}_role``), the method switches
+        to 4-entity mode — building group entity instances with role
+        assignments from the membership columns instead of treating every
+        table as an independent entity with period-wrapped columns.
         """
         result: dict[str, Any] = {}
 
-        # Build key→plural mapping for normalisation
+        # Step 1: Build key→plural mapping for normalisation
         key_to_plural = {entity.key: entity.plural for entity in tbs.entities}
         plural_set = set(key_to_plural.values())
 
-        # Identify the person entity (singular entity in OpenFisca)
-        person_entity_plural: str | None = None
+        # Step 2: Identify the person entity
+        person_entity: Any = None
         for entity in tbs.entities:
-            if not getattr(entity, "is_person", False):
+            if getattr(entity, "is_person", False):
+                person_entity = entity
+                break
+
+        person_entity_plural = person_entity.plural if person_entity else None
+
+        # Step 2b: Find person_table_key in population.tables
+        person_table_key: str | None = None
+        if person_entity is not None:
+            if person_entity.key in population.tables:
+                person_table_key = person_entity.key
+            elif person_entity.plural in population.tables:
+                person_table_key = person_entity.plural
+
+        # Step 3: Detect membership columns
+        membership_cols: dict[str, tuple[str, str]] = {}
+        if person_table_key is not None:
+            person_table = population.tables[person_table_key]
+            membership_cols = self._detect_membership_columns(person_table, tbs)
+
+        # Step 4: No membership columns → execute existing all-tables loop
+        if not membership_cols:
+            for entity_key, table in population.tables.items():
+                # Normalise to plural key
+                plural_key = key_to_plural.get(entity_key, entity_key)
+                if entity_key in plural_set:
+                    plural_key = entity_key
+
+                entity_dict: dict[str, Any] = {}
+                columns = table.column_names
+                num_rows = table.num_rows
+
+                for i in range(num_rows):
+                    instance_id = f"{entity_key}_{i}"
+                    instance_data: dict[str, Any] = {}
+
+                    for col in columns:
+                        value = table.column(col)[i].as_py()
+                        instance_data[col] = {period_str: value}
+
+                    entity_dict[instance_id] = instance_data
+
+                result[plural_key] = entity_dict
+
+            # Inject policy parameters
+            if (
+                policy.parameters
+                and person_entity_plural
+                and person_entity_plural in result
+            ):
+                for instance_id in result[person_entity_plural]:
+                    for param_key, param_value in policy.parameters.items():
+                        result[person_entity_plural][instance_id][param_key] = {
+                            period_str: param_value
+                        }
+
+            return result
+
+        # Step 5: 4-entity mode — membership columns detected
+        assert person_table_key is not None  # guaranteed by membership_cols being non-empty
+        person_table = population.tables[person_table_key]
+
+        # Step 5a: Resolve valid role keys
+        valid_roles = self._resolve_valid_role_keys(tbs)
+
+        # Step 5b: Validate entity relationships
+        self._validate_entity_relationships(person_table, membership_cols, valid_roles)
+
+        # Step 5c: Build set of membership column names to exclude from period-wrapping
+        membership_col_names: set[str] = set()
+        for id_col, role_col in membership_cols.values():
+            membership_col_names.add(id_col)
+            membership_col_names.add(role_col)
+
+        # Step 5d: Build person instances FROM PERSON TABLE ONLY
+        person_dict: dict[str, Any] = {}
+        for i in range(person_table.num_rows):
+            instance_id = f"{person_table_key}_{i}"
+            instance_data: dict[str, Any] = {}
+
+            for col in person_table.column_names:
+                if col in membership_col_names:
+                    continue
+                value = person_table.column(col)[i].as_py()
+                instance_data[col] = {period_str: value}
+
+            person_dict[instance_id] = instance_data
+
+        assert person_entity_plural is not None
+        result[person_entity_plural] = person_dict
+
+        # Step 5e: Build group entity instances from membership columns
+        for group_entity_key, (id_col, role_col) in membership_cols.items():
+            id_array = person_table.column(id_col)
+            role_array = person_table.column(role_col)
+
+            # Get sorted distinct group IDs
+            unique_ids = pa.compute.unique(id_array)
+            sorted_group_ids = sorted(unique_ids.to_pylist())
+
+            group_dict: dict[str, Any] = {}
+            for group_id in sorted_group_ids:
+                # Collect row indices where id_col == group_id
+                role_assignments: dict[str, list[str]] = {}
+                for i in range(person_table.num_rows):
+                    if id_array[i].as_py() == group_id:
+                        role_key = role_array[i].as_py()
+                        person_id = f"{person_table_key}_{i}"
+                        role_assignments.setdefault(role_key, []).append(person_id)
+
+                instance_id = f"{group_entity_key}_{group_id}"
+                group_dict[instance_id] = dict(role_assignments)
+
+            group_plural = key_to_plural[group_entity_key]
+            result[group_plural] = group_dict
+
+        # Step 5f: Merge group entity table variables (if present)
+        for group_entity_key, (id_col, _role_col) in membership_cols.items():
+            # Check if a group entity table exists in population.tables
+            group_table: pa.Table | None = None
+            group_table_key: str | None = None
+            group_plural = key_to_plural[group_entity_key]
+
+            if group_entity_key in population.tables and group_entity_key != person_table_key:
+                group_table = population.tables[group_entity_key]
+                group_table_key = group_entity_key
+            elif group_plural in population.tables and group_plural != person_table_key:
+                group_table = population.tables[group_plural]
+                group_table_key = group_plural
+
+            if group_table is None:
                 continue
-            person_entity_plural = entity.plural
-            break
 
-        for entity_key, table in population.tables.items():
-            # Normalise to plural key
-            plural_key = key_to_plural.get(entity_key, entity_key)
-            if entity_key in plural_set:
-                plural_key = entity_key
+            # Get sorted distinct group IDs from person table's _id column
+            id_array = person_table.column(id_col)
+            sorted_group_ids = sorted(pa.compute.unique(id_array).to_pylist())
 
-            entity_dict: dict[str, Any] = {}
-            columns = table.column_names
-            num_rows = table.num_rows
+            # Validate row count match
+            if group_table.num_rows != len(sorted_group_ids):
+                raise ApiMappingError(
+                    summary="Group entity table row count mismatch",
+                    reason=(
+                        f"Group entity table '{group_table_key}' has "
+                        f"{group_table.num_rows} rows but the person table "
+                        f"has {len(sorted_group_ids)} distinct "
+                        f"'{id_col}' values. Row counts must match."
+                    ),
+                    fix=(
+                        f"Ensure the '{group_table_key}' table has exactly "
+                        f"{len(sorted_group_ids)} rows, one per distinct "
+                        f"group ID in the person table's '{id_col}' column."
+                    ),
+                    invalid_names=(str(group_table_key),),
+                    valid_names=(),
+                )
 
-            for i in range(num_rows):
-                instance_id = f"{entity_key}_{i}"
-                instance_data: dict[str, Any] = {}
+            # Positional match: row i → sorted_group_ids[i]
+            for i, group_id in enumerate(sorted_group_ids):
+                instance_id = f"{group_entity_key}_{group_id}"
+                for col in group_table.column_names:
+                    value = group_table.column(col)[i].as_py()
+                    result[group_plural][instance_id][col] = {period_str: value}
 
-                for col in columns:
-                    value = table.column(col)[i].as_py()
-                    # Wrap scalar values in period dict for variable assignments
-                    instance_data[col] = {period_str: value}
-
-                entity_dict[instance_id] = instance_data
-
-            result[plural_key] = entity_dict
-
-        # Inject policy parameters as input-variable values on the person entity
-        if policy.parameters and person_entity_plural and person_entity_plural in result:
+        # Step 5g: Inject policy parameters into person entity instances
+        if policy.parameters and person_entity_plural in result:
             for instance_id in result[person_entity_plural]:
                 for param_key, param_value in policy.parameters.items():
                     result[person_entity_plural][instance_id][param_key] = {

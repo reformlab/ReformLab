@@ -18,3 +18,15 @@
 | high | Integration test dispatch verification strategy missing | Expanded Task 7.1 to explain that real `Simulation` objects cannot be mock-asserted, and provided the correct two-pronged verification approach (metadata `calculation_methods` key + value range assertion). |
 | medium | AC-6 eternity handling lacks WHY and test verification hint | Expanded AC-6 to add concrete example variables (`date_naissance`, `sexe`), the exact error message `calculate_add()` raises, and a test verification hint (assert `calculate` called, assert `calculate_add` NOT called for `periodicity == "eternity"`). |
 | medium | Files to Modify table understates test file changes | Replaced the single-line description with an enumerated 3-change list: (1) `_make_mock_tbs()` update, (2) existing `TestExtractResultsByEntity` caller updates, (3) new test classes. |
+
+## Story 9-4 (2026-03-01)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| high | Story 9.3 dependency not documented — 9.3 is in-progress and modifies the same file | Added "Prerequisites — Story Sequencing" subsection to Dev Notes with explicit merge-first guidance and concurrent-development strategy. |
+| high | Algorithm pseudocode step 3 calls `_detect_membership_columns(person_table, tbs)` without showing how to extract `person_table` from `population.tables` | Algorithm steps 2b and 3 now show the full extraction pattern, including singular/plural key matching and the "no person table → backward-compatible" fallback. |
+| high | Task 4.4 "same as current logic" is ambiguous — it was unclear whether the original all-tables loop was replaced or augmented in 4-entity mode | Task 4.4 now explicitly states the original all-tables loop is **replaced** by 4.4+4.5+4.6 combined, with a ⚠️ warning against running both paths. |
+| high | Task 4.5 hardcodes `"individu_0"` in role assignment example, contradicting Dev Notes' explanation that the prefix is the `population.tables` key | Task 4.5 example now uses `f"{person_table_key}_0"` with explicit note that this key must match Task 4.4's prefix. |
+| high | Task 4.6 positional matching risk was understated — silent data corruption possible when group entity table rows are not in ascending ID order | Task 4.6 now includes an explicit ⚠️ POSITIONAL MATCHING warning, the assumption about row ordering, and a specific unit test to validate non-contiguous ID mapping. |
+| medium | Edge Case #3 contained contradictory language: "This can't happen by construction" immediately followed by "Raise ApiMappingError" | Rewritten to accurately describe the actual scenario (group entity table with more rows than distinct person-table group IDs) and explain why the other formulation was contradictory. |
+| low | Integration test tolerance margin (`ABSOLUTE_ERROR_MARGIN`) not specified for new tests | Task 6.1 now specifies `ABSOLUTE_ERROR_MARGIN = 0.5` as a class attribute, consistent with the existing reference test suite. |

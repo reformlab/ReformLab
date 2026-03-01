@@ -2,6 +2,7 @@
 
 Story 8.1: End-to-End OpenFisca Integration Spike.
 Story 9.2: Multi-entity output array handling integration tests.
+Story 9.4: 4-entity PopulationData format integration tests.
 
 These tests call real OpenFisca-France computations (no mocking).
 Run with: uv run pytest tests/computation/test_openfisca_integration.py -m integration
@@ -1056,3 +1057,238 @@ class TestVariablePeriodicityHandling:
         # date_naissance is an ETERNITY variable
         birth_var = tbs.variables["date_naissance"]
         assert str(birth_var.definition_period) == "eternity"
+
+
+# ===========================================================================
+# Story 9.4: 4-entity PopulationData format (integration tests)
+# ===========================================================================
+
+
+@pytest.mark.integration
+class TestFourEntityPopulationFormat:
+    """Story 9.4: 4-entity PopulationData format via membership columns.
+
+    AC-1: Membership columns produce valid entity dict.
+    AC-2: Group membership assignment is correct.
+    AC-6: Backward compatibility preserved.
+    AC-7: Group entity input variables merged correctly.
+    """
+
+    ABSOLUTE_ERROR_MARGIN = 0.5  # Consistent with TestOpenFiscaFranceReferenceCases
+
+    def test_married_couple_via_membership_columns(self, tbs: Any) -> None:
+        """AC-1, AC-2: Married couple via membership columns matches hand-built test.
+
+        Should produce the SAME irpp as test_couple_salaire_imposable_30k_25k
+        (irpp ≈ -2765.0) — this validates that the membership column approach
+        produces identical results to manually building the entity dict.
+        """
+        adapter = OpenFiscaApiAdapter(
+            country_package="openfisca_france",
+            output_variables=("impot_revenu_restant_a_payer",),
+        )
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_imposable": pa.array([30000.0, 25000.0]),
+                    "famille_id": pa.array([0, 0]),
+                    "famille_role": pa.array(["parents", "parents"]),
+                    "foyer_fiscal_id": pa.array([0, 0]),
+                    "foyer_fiscal_role": pa.array(["declarants", "declarants"]),
+                    "menage_id": pa.array([0, 0]),
+                    "menage_role": pa.array([
+                        "personne_de_reference", "conjoint",
+                    ]),
+                }),
+            },
+        )
+        policy = PolicyConfig(parameters={}, name="4entity-couple-test")
+
+        result = adapter.compute(population, policy, 2024)
+
+        assert isinstance(result, ComputationResult)
+        irpp = result.output_fields.column(
+            "impot_revenu_restant_a_payer"
+        )[0].as_py()
+
+        # Match the reference case value from TestOpenFiscaFranceReferenceCases
+        assert abs(float(irpp) - (-2765.0)) <= self.ABSOLUTE_ERROR_MARGIN, (
+            f"Expected -2765.0, got {irpp}. Membership columns should produce "
+            f"identical results to hand-built entity dict."
+        )
+
+    def test_single_person_with_membership_columns(self, tbs: Any) -> None:
+        """AC-2, AC-6: Single person with membership columns matches without.
+
+        Results should be identical to single-person tests without membership
+        columns — the membership columns just make the entity structure explicit.
+        """
+        # Adapter with membership columns
+        adapter = OpenFiscaApiAdapter(
+            country_package="openfisca_france",
+            output_variables=("impot_revenu_restant_a_payer",),
+        )
+
+        population_with_membership = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0]),
+                    "age": pa.array([30]),
+                    "famille_id": pa.array([0]),
+                    "famille_role": pa.array(["parents"]),
+                    "foyer_fiscal_id": pa.array([0]),
+                    "foyer_fiscal_role": pa.array(["declarants"]),
+                    "menage_id": pa.array([0]),
+                    "menage_role": pa.array(["personne_de_reference"]),
+                }),
+            },
+        )
+
+        population_without_membership = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0]),
+                    "age": pa.array([30]),
+                }),
+            },
+        )
+        policy = PolicyConfig(parameters={}, name="4entity-single-test")
+
+        result_with = adapter.compute(population_with_membership, policy, 2024)
+        result_without = adapter.compute(population_without_membership, policy, 2024)
+
+        irpp_with = float(result_with.output_fields.column(
+            "impot_revenu_restant_a_payer"
+        )[0].as_py())
+        irpp_without = float(result_without.output_fields.column(
+            "impot_revenu_restant_a_payer"
+        )[0].as_py())
+
+        assert abs(irpp_with - irpp_without) < 1.0, (
+            f"Single person with membership ({irpp_with}) should match "
+            f"without membership ({irpp_without})"
+        )
+
+    def test_two_independent_households(self, tbs: Any) -> None:
+        """AC-1, AC-2: Two persons in separate households via membership columns."""
+        adapter = OpenFiscaApiAdapter(
+            country_package="openfisca_france",
+            output_variables=("impot_revenu_restant_a_payer",),
+        )
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0, 50000.0]),
+                    "age": pa.array([30, 45]),
+                    "famille_id": pa.array([0, 1]),
+                    "famille_role": pa.array(["parents", "parents"]),
+                    "foyer_fiscal_id": pa.array([0, 1]),
+                    "foyer_fiscal_role": pa.array(["declarants", "declarants"]),
+                    "menage_id": pa.array([0, 1]),
+                    "menage_role": pa.array([
+                        "personne_de_reference", "personne_de_reference",
+                    ]),
+                }),
+            },
+        )
+        policy = PolicyConfig(parameters={}, name="4entity-independent-test")
+
+        result = adapter.compute(population, policy, 2024)
+
+        assert isinstance(result, ComputationResult)
+        # 2 separate foyers → 2 irpp values
+        irpp_col = result.output_fields.column("impot_revenu_restant_a_payer")
+        assert len(irpp_col) == 2
+        # Both should pay tax (negative values)
+        assert irpp_col[0].as_py() < 0
+        assert irpp_col[1].as_py() < 0
+        # Higher salary → more tax
+        assert irpp_col[1].as_py() < irpp_col[0].as_py()
+
+    def test_group_entity_input_variables(self, tbs: Any) -> None:
+        """AC-7: Group entity table (menage with loyer) is merged into entity dict.
+
+        Verifies that group-level input variables from a separate table are
+        correctly period-wrapped and included in the entity dict passed to
+        SimulationBuilder.build_from_entities().
+        """
+        adapter = OpenFiscaApiAdapter(
+            country_package="openfisca_france",
+            output_variables=("impot_revenu_restant_a_payer",),
+        )
+
+        local_tbs = adapter._get_tax_benefit_system()
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0, 0.0]),
+                    "age": pa.array([30, 28]),
+                    "famille_id": pa.array([0, 0]),
+                    "famille_role": pa.array(["parents", "parents"]),
+                    "foyer_fiscal_id": pa.array([0, 0]),
+                    "foyer_fiscal_role": pa.array(["declarants", "declarants"]),
+                    "menage_id": pa.array([0, 0]),
+                    "menage_role": pa.array([
+                        "personne_de_reference", "conjoint",
+                    ]),
+                }),
+                "menage": pa.table({
+                    "loyer": pa.array([800.0]),
+                }),
+            },
+        )
+        policy = PolicyConfig(parameters={}, name="4entity-loyer-test")
+
+        # Verify entity dict has loyer merged
+        entity_dict = adapter._population_to_entity_dict(
+            population, policy, "2024", local_tbs
+        )
+
+        assert "loyer" in entity_dict["menages"]["menage_0"]
+        assert entity_dict["menages"]["menage_0"]["loyer"] == {"2024": 800.0}
+
+    def test_backward_compatibility_no_membership_columns(
+        self,
+        adapter: OpenFiscaApiAdapter,
+        single_person_population: PopulationData,
+        empty_policy: PolicyConfig,
+    ) -> None:
+        """AC-6: Existing single_person_population fixture still works identically."""
+        result = adapter.compute(single_person_population, empty_policy, 2024)
+
+        assert isinstance(result, ComputationResult)
+        irpp = result.output_fields.column(
+            "impot_revenu_restant_a_payer"
+        )[0].as_py()
+        assert irpp < 0, f"Expected negative irpp, got {irpp}"
+
+    def test_entity_role_resolution_from_real_tbs(self, tbs: Any) -> None:
+        """AC-4: _resolve_valid_role_keys() produces correct keys from real TBS.
+
+        Validates that the role key resolution logic works with real
+        OpenFisca-France entity and role objects.
+        """
+        adapter = OpenFiscaApiAdapter(
+            country_package="openfisca_france",
+            output_variables=("impot_revenu_restant_a_payer",),
+        )
+        local_tbs = adapter._get_tax_benefit_system()
+
+        valid_roles = adapter._resolve_valid_role_keys(local_tbs)
+
+        # famille roles
+        assert "parents" in valid_roles["famille"]
+        assert "enfants" in valid_roles["famille"]
+
+        # foyer_fiscal roles
+        assert "declarants" in valid_roles["foyer_fiscal"]
+        assert "personnes_a_charge" in valid_roles["foyer_fiscal"]
+
+        # menage roles — personne_de_reference and conjoint have plural=None
+        assert "personne_de_reference" in valid_roles["menage"]
+        assert "conjoint" in valid_roles["menage"]
+        assert "enfants" in valid_roles["menage"]
+        assert "autres" in valid_roles["menage"]

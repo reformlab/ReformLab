@@ -5,6 +5,10 @@ dependency and may not be installed in CI.
 
 Story 9.2: Added tests for multi-entity output array handling — entity-aware
 result extraction, per-entity tables, and backward compatibility.
+
+Story 9.4: Added tests for 4-entity PopulationData format with membership
+columns — detect membership columns, resolve valid role keys, validate entity
+relationships, and refactored _population_to_entity_dict() for 4-entity mode.
 """
 
 from __future__ import annotations
@@ -80,11 +84,13 @@ def _make_mock_tbs_with_entities(
     variable_entities: dict[str, str] | None = None,
     variable_periodicities: dict[str, str] | None = None,
     person_entity: str = "individu",
+    entity_roles: dict[str, list[dict[str, str | None]]] | None = None,
 ) -> MagicMock:
     """Create a mock TBS where variables know their entity.
 
     Story 9.2: Extended mock for entity-aware extraction tests.
     Story 9.3: Added variable_periodicities parameter for periodicity-aware tests.
+    Story 9.4: Added entity_roles parameter for 4-entity format tests.
 
     Args:
         entity_keys: Entity singular keys.
@@ -94,9 +100,13 @@ def _make_mock_tbs_with_entities(
         variable_periodicities: Mapping of variable name to periodicity string
             (e.g. "month", "year", "eternity"). Defaults to "year" for all.
         person_entity: Which entity key is the person entity.
+        entity_roles: Mapping of group entity key to list of role dicts.
+            Each role dict has "key" and "plural" (can be None).
+            E.g. {"famille": [{"key": "parent", "plural": "parents"}, ...]}.
+            Person entity gets empty roles list.
 
     Returns:
-        Mock TBS with entity-aware variables.
+        Mock TBS with entity-aware variables and role information.
     """
     tbs = MagicMock()
 
@@ -111,15 +121,29 @@ def _make_mock_tbs_with_entities(
         entity_plurals = {}
     if variable_periodicities is None:
         variable_periodicities = {}
+    if entity_roles is None:
+        entity_roles = {}
 
     entities_by_key: dict[str, SimpleNamespace] = {}
     entities = []
     for key in entity_keys:
         plural = entity_plurals.get(key) or default_plurals.get(key) or key + "s"
+        is_person = key == person_entity
+
+        # Story 9.4: Build role objects for group entities
+        roles: list[SimpleNamespace] = []
+        if not is_person and key in entity_roles:
+            for role_def in entity_roles[key]:
+                roles.append(SimpleNamespace(
+                    key=role_def["key"],
+                    plural=role_def.get("plural"),
+                ))
+
         entity = SimpleNamespace(
             key=key,
             plural=plural,
-            is_person=(key == person_entity),
+            is_person=is_person,
+            roles=roles,
         )
         entities.append(entity)
         entities_by_key[key] = entity
@@ -138,6 +162,25 @@ def _make_mock_tbs_with_entities(
     tbs.variables = variables
 
     return tbs
+
+
+# Story 9.4: Standard French entity roles for reuse across test classes
+_FRENCH_ENTITY_ROLES: dict[str, list[dict[str, str | None]]] = {
+    "famille": [
+        {"key": "parent", "plural": "parents"},
+        {"key": "enfant", "plural": "enfants"},
+    ],
+    "foyer_fiscal": [
+        {"key": "declarant", "plural": "declarants"},
+        {"key": "personne_a_charge", "plural": "personnes_a_charge"},
+    ],
+    "menage": [
+        {"key": "personne_de_reference", "plural": None},
+        {"key": "conjoint", "plural": None},
+        {"key": "enfant", "plural": "enfants"},
+        {"key": "autre", "plural": "autres"},
+    ],
+}
 
 
 def _make_mock_simulation(
@@ -1624,3 +1667,754 @@ class TestComputeMultiEntity:
             adapter.compute(
                 population, PolicyConfig(parameters={}, name="test"), 2024
             )
+
+
+# ===========================================================================
+# Story 9.4: 4-Entity PopulationData format — membership columns
+# ===========================================================================
+
+
+def _make_french_mock_tbs(
+    variable_entities: dict[str, str] | None = None,
+    variable_periodicities: dict[str, str] | None = None,
+) -> MagicMock:
+    """Create a full French 4-entity mock TBS with roles for Story 9.4 tests."""
+    return _make_mock_tbs_with_entities(
+        entity_keys=("individu", "famille", "foyer_fiscal", "menage"),
+        entity_roles=_FRENCH_ENTITY_ROLES,
+        variable_entities=variable_entities or {},
+        variable_periodicities=variable_periodicities or {},
+        person_entity="individu",
+    )
+
+
+class TestDetectMembershipColumns:
+    """Story 9.4 Task 1: _detect_membership_columns() detection logic.
+
+    AC-1: Detect membership columns on person entity table.
+    AC-3: Missing relationship validation (all-or-nothing, paired columns).
+    AC-6: Backward compatibility (no membership columns → empty dict).
+    """
+
+    def test_detect_all_three_group_entities(self) -> None:
+        """AC-1: All 3 group entity membership columns detected correctly."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_french_mock_tbs()
+        adapter._tax_benefit_system = mock_tbs
+
+        person_table = pa.table({
+            "salaire_de_base": pa.array([30000.0, 0.0]),
+            "famille_id": pa.array([0, 0]),
+            "famille_role": pa.array(["parents", "parents"]),
+            "foyer_fiscal_id": pa.array([0, 0]),
+            "foyer_fiscal_role": pa.array(["declarants", "declarants"]),
+            "menage_id": pa.array([0, 0]),
+            "menage_role": pa.array(["personne_de_reference", "conjoint"]),
+        })
+
+        result = adapter._detect_membership_columns(person_table, mock_tbs)
+
+        assert len(result) == 3
+        assert result["famille"] == ("famille_id", "famille_role")
+        assert result["foyer_fiscal"] == ("foyer_fiscal_id", "foyer_fiscal_role")
+        assert result["menage"] == ("menage_id", "menage_role")
+
+    def test_detect_none_backward_compat(self) -> None:
+        """AC-6: No membership columns → empty dict (backward compatible)."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_french_mock_tbs()
+        adapter._tax_benefit_system = mock_tbs
+
+        person_table = pa.table({
+            "salaire_de_base": pa.array([30000.0]),
+            "age": pa.array([30]),
+        })
+
+        result = adapter._detect_membership_columns(person_table, mock_tbs)
+        assert result == {}
+
+    def test_detect_partial_raises_error(self) -> None:
+        """AC-3: Only famille_id present (missing foyer_fiscal, menage) → error."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_french_mock_tbs()
+        adapter._tax_benefit_system = mock_tbs
+
+        person_table = pa.table({
+            "salaire_de_base": pa.array([30000.0]),
+            "famille_id": pa.array([0]),
+            "famille_role": pa.array(["parents"]),
+        })
+
+        with pytest.raises(ApiMappingError, match="Incomplete entity membership columns"):
+            adapter._detect_membership_columns(person_table, mock_tbs)
+
+    def test_detect_unpaired_id_without_role_raises_error(self) -> None:
+        """AC-3: famille_id exists but famille_role missing → unpaired error."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_french_mock_tbs()
+        adapter._tax_benefit_system = mock_tbs
+
+        person_table = pa.table({
+            "salaire_de_base": pa.array([30000.0]),
+            "famille_id": pa.array([0]),
+            # famille_role is missing — only _id without _role
+            "foyer_fiscal_id": pa.array([0]),
+            "foyer_fiscal_role": pa.array(["declarants"]),
+            "menage_id": pa.array([0]),
+            "menage_role": pa.array(["personne_de_reference"]),
+        })
+
+        with pytest.raises(ApiMappingError, match="Unpaired membership column"):
+            adapter._detect_membership_columns(person_table, mock_tbs)
+
+    def test_detect_unpaired_role_without_id_raises_error(self) -> None:
+        """AC-3: famille_role exists but famille_id missing → unpaired error."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_french_mock_tbs()
+        adapter._tax_benefit_system = mock_tbs
+
+        person_table = pa.table({
+            "salaire_de_base": pa.array([30000.0]),
+            # famille_id is missing — only _role without _id
+            "famille_role": pa.array(["parents"]),
+            "foyer_fiscal_id": pa.array([0]),
+            "foyer_fiscal_role": pa.array(["declarants"]),
+            "menage_id": pa.array([0]),
+            "menage_role": pa.array(["personne_de_reference"]),
+        })
+
+        with pytest.raises(ApiMappingError, match="Unpaired membership column"):
+            adapter._detect_membership_columns(person_table, mock_tbs)
+
+
+class TestResolveValidRoleKeys:
+    """Story 9.4 Task 2: _resolve_valid_role_keys() role key resolution.
+
+    AC-4: Valid role keys queried from TBS.
+    """
+
+    def test_french_entity_role_keys(self) -> None:
+        """AC-4: Correct role keys for all French group entities.
+
+        Uses role.plural or role.key — matching build_from_entities() behavior.
+        """
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_french_mock_tbs()
+        adapter._tax_benefit_system = mock_tbs
+
+        result = adapter._resolve_valid_role_keys(mock_tbs)
+
+        assert result["famille"] == frozenset({"parents", "enfants"})
+        assert result["foyer_fiscal"] == frozenset({"declarants", "personnes_a_charge"})
+        # menage: personne_de_reference and conjoint have plural=None → uses key
+        assert result["menage"] == frozenset({
+            "personne_de_reference", "conjoint", "enfants", "autres",
+        })
+
+    def test_person_entity_excluded(self) -> None:
+        """AC-4: Person entity (individu) is not in role keys dict."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_french_mock_tbs()
+        adapter._tax_benefit_system = mock_tbs
+
+        result = adapter._resolve_valid_role_keys(mock_tbs)
+        assert "individu" not in result
+
+
+class TestValidateEntityRelationships:
+    """Story 9.4 Task 3: _validate_entity_relationships() validation.
+
+    AC-3: Missing relationship validation.
+    AC-4: Invalid role validation.
+    AC-5: Null membership value rejection.
+    """
+
+    def test_null_in_id_column_raises_error(self) -> None:
+        """AC-5: Null value in _id column → ApiMappingError."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_french_mock_tbs()
+        adapter._tax_benefit_system = mock_tbs
+
+        person_table = pa.table({
+            "salaire_de_base": pa.array([30000.0, 0.0]),
+            "famille_id": pa.array([0, None]),  # null in _id
+            "famille_role": pa.array(["parents", "parents"]),
+            "foyer_fiscal_id": pa.array([0, 0]),
+            "foyer_fiscal_role": pa.array(["declarants", "declarants"]),
+            "menage_id": pa.array([0, 0]),
+            "menage_role": pa.array(["personne_de_reference", "conjoint"]),
+        })
+
+        membership_cols = {
+            "famille": ("famille_id", "famille_role"),
+            "foyer_fiscal": ("foyer_fiscal_id", "foyer_fiscal_role"),
+            "menage": ("menage_id", "menage_role"),
+        }
+        valid_roles = {
+            "famille": frozenset({"parents", "enfants"}),
+            "foyer_fiscal": frozenset({"declarants", "personnes_a_charge"}),
+            "menage": frozenset({"personne_de_reference", "conjoint", "enfants", "autres"}),
+        }
+
+        with pytest.raises(ApiMappingError, match="Null value in membership column"):
+            adapter._validate_entity_relationships(
+                person_table, membership_cols, valid_roles
+            )
+
+    def test_null_in_role_column_raises_error(self) -> None:
+        """AC-5: Null value in _role column → ApiMappingError."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_french_mock_tbs()
+        adapter._tax_benefit_system = mock_tbs
+
+        person_table = pa.table({
+            "salaire_de_base": pa.array([30000.0, 0.0]),
+            "famille_id": pa.array([0, 0]),
+            "famille_role": pa.array(["parents", None]),  # null in _role
+            "foyer_fiscal_id": pa.array([0, 0]),
+            "foyer_fiscal_role": pa.array(["declarants", "declarants"]),
+            "menage_id": pa.array([0, 0]),
+            "menage_role": pa.array(["personne_de_reference", "conjoint"]),
+        })
+
+        membership_cols = {
+            "famille": ("famille_id", "famille_role"),
+            "foyer_fiscal": ("foyer_fiscal_id", "foyer_fiscal_role"),
+            "menage": ("menage_id", "menage_role"),
+        }
+        valid_roles = {
+            "famille": frozenset({"parents", "enfants"}),
+            "foyer_fiscal": frozenset({"declarants", "personnes_a_charge"}),
+            "menage": frozenset({"personne_de_reference", "conjoint", "enfants", "autres"}),
+        }
+
+        with pytest.raises(ApiMappingError, match="Null value in membership column"):
+            adapter._validate_entity_relationships(
+                person_table, membership_cols, valid_roles
+            )
+
+    def test_invalid_role_value_raises_error(self) -> None:
+        """AC-4: Invalid role value → ApiMappingError with valid roles listed."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_french_mock_tbs()
+        adapter._tax_benefit_system = mock_tbs
+
+        person_table = pa.table({
+            "salaire_de_base": pa.array([30000.0]),
+            "famille_id": pa.array([0]),
+            "famille_role": pa.array(["parents"]),
+            "foyer_fiscal_id": pa.array([0]),
+            "foyer_fiscal_role": pa.array(["declarants"]),
+            "menage_id": pa.array([0]),
+            "menage_role": pa.array(["invalid_role"]),  # invalid role
+        })
+
+        membership_cols = {
+            "famille": ("famille_id", "famille_role"),
+            "foyer_fiscal": ("foyer_fiscal_id", "foyer_fiscal_role"),
+            "menage": ("menage_id", "menage_role"),
+        }
+        valid_roles = {
+            "famille": frozenset({"parents", "enfants"}),
+            "foyer_fiscal": frozenset({"declarants", "personnes_a_charge"}),
+            "menage": frozenset({"personne_de_reference", "conjoint", "enfants", "autres"}),
+        }
+
+        with pytest.raises(ApiMappingError, match="Invalid role value"):
+            adapter._validate_entity_relationships(
+                person_table, membership_cols, valid_roles
+            )
+
+    def test_all_valid_passes_silently(self) -> None:
+        """AC-3, AC-4, AC-5: All valid data passes without error."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_french_mock_tbs()
+        adapter._tax_benefit_system = mock_tbs
+
+        person_table = pa.table({
+            "salaire_de_base": pa.array([30000.0, 0.0]),
+            "famille_id": pa.array([0, 0]),
+            "famille_role": pa.array(["parents", "parents"]),
+            "foyer_fiscal_id": pa.array([0, 0]),
+            "foyer_fiscal_role": pa.array(["declarants", "declarants"]),
+            "menage_id": pa.array([0, 0]),
+            "menage_role": pa.array(["personne_de_reference", "conjoint"]),
+        })
+
+        membership_cols = {
+            "famille": ("famille_id", "famille_role"),
+            "foyer_fiscal": ("foyer_fiscal_id", "foyer_fiscal_role"),
+            "menage": ("menage_id", "menage_role"),
+        }
+        valid_roles = {
+            "famille": frozenset({"parents", "enfants"}),
+            "foyer_fiscal": frozenset({"declarants", "personnes_a_charge"}),
+            "menage": frozenset({"personne_de_reference", "conjoint", "enfants", "autres"}),
+        }
+
+        # Should not raise
+        adapter._validate_entity_relationships(
+            person_table, membership_cols, valid_roles
+        )
+
+
+class TestPopulationToEntityDict4Entity:
+    """Story 9.4 Task 4: Refactored _population_to_entity_dict() for 4-entity format.
+
+    AC-1: 4-entity format produces valid entity dict.
+    AC-2: Group membership assignment is correct.
+    AC-6: Backward compatibility (no membership columns → old behavior).
+    AC-7: Group entity input variables merged correctly.
+    """
+
+    def test_married_couple_entity_dict(self) -> None:
+        """AC-1, AC-2: Married couple produces correct entity dict.
+
+        2 persons in 1 famille, 1 foyer_fiscal, 1 menage with correct roles.
+        """
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_french_mock_tbs(
+            variable_entities={"income_tax": "individu"},
+        )
+        adapter._tax_benefit_system = mock_tbs
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0, 0.0]),
+                    "age": pa.array([30, 28]),
+                    "famille_id": pa.array([0, 0]),
+                    "famille_role": pa.array(["parents", "parents"]),
+                    "foyer_fiscal_id": pa.array([0, 0]),
+                    "foyer_fiscal_role": pa.array(["declarants", "declarants"]),
+                    "menage_id": pa.array([0, 0]),
+                    "menage_role": pa.array(["personne_de_reference", "conjoint"]),
+                }),
+            },
+        )
+        policy = PolicyConfig(parameters={}, name="test")
+
+        entity_dict = adapter._population_to_entity_dict(
+            population, policy, "2024", mock_tbs
+        )
+
+        # Person instances with period-wrapped variable values
+        assert "individus" in entity_dict
+        assert "individu_0" in entity_dict["individus"]
+        assert "individu_1" in entity_dict["individus"]
+        assert entity_dict["individus"]["individu_0"]["salaire_de_base"] == {"2024": 30000.0}
+        assert entity_dict["individus"]["individu_1"]["age"] == {"2024": 28}
+
+        # Membership columns should NOT appear in person instance data
+        assert "famille_id" not in entity_dict["individus"]["individu_0"]
+        assert "famille_role" not in entity_dict["individus"]["individu_0"]
+        assert "foyer_fiscal_id" not in entity_dict["individus"]["individu_0"]
+        assert "menage_id" not in entity_dict["individus"]["individu_0"]
+
+        # Group entity instances with role assignments
+        assert "familles" in entity_dict
+        assert "famille_0" in entity_dict["familles"]
+        assert entity_dict["familles"]["famille_0"]["parents"] == [
+            "individu_0", "individu_1"
+        ]
+
+        assert "foyers_fiscaux" in entity_dict
+        assert "foyer_fiscal_0" in entity_dict["foyers_fiscaux"]
+        assert entity_dict["foyers_fiscaux"]["foyer_fiscal_0"]["declarants"] == [
+            "individu_0", "individu_1"
+        ]
+
+        assert "menages" in entity_dict
+        assert "menage_0" in entity_dict["menages"]
+        assert entity_dict["menages"]["menage_0"]["personne_de_reference"] == ["individu_0"]
+        assert entity_dict["menages"]["menage_0"]["conjoint"] == ["individu_1"]
+
+    def test_family_with_child(self) -> None:
+        """AC-1, AC-2: Family with 2 parents + 1 child, different roles."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_french_mock_tbs(
+            variable_entities={"income_tax": "individu"},
+        )
+        adapter._tax_benefit_system = mock_tbs
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([40000.0, 20000.0, 0.0]),
+                    "age": pa.array([45, 42, 12]),
+                    "famille_id": pa.array([0, 0, 0]),
+                    "famille_role": pa.array(["parents", "parents", "enfants"]),
+                    "foyer_fiscal_id": pa.array([0, 0, 0]),
+                    "foyer_fiscal_role": pa.array([
+                        "declarants", "declarants", "personnes_a_charge",
+                    ]),
+                    "menage_id": pa.array([0, 0, 0]),
+                    "menage_role": pa.array([
+                        "personne_de_reference", "conjoint", "enfants",
+                    ]),
+                }),
+            },
+        )
+        policy = PolicyConfig(parameters={}, name="test")
+
+        entity_dict = adapter._population_to_entity_dict(
+            population, policy, "2024", mock_tbs
+        )
+
+        # famille roles
+        famille = entity_dict["familles"]["famille_0"]
+        assert famille["parents"] == ["individu_0", "individu_1"]
+        assert famille["enfants"] == ["individu_2"]
+
+        # foyer_fiscal roles
+        foyer = entity_dict["foyers_fiscaux"]["foyer_fiscal_0"]
+        assert foyer["declarants"] == ["individu_0", "individu_1"]
+        assert foyer["personnes_a_charge"] == ["individu_2"]
+
+        # menage roles
+        menage = entity_dict["menages"]["menage_0"]
+        assert menage["personne_de_reference"] == ["individu_0"]
+        assert menage["conjoint"] == ["individu_1"]
+        assert menage["enfants"] == ["individu_2"]
+
+    def test_backward_compat_no_membership_columns(self) -> None:
+        """AC-6: No membership columns → identical to pre-change behavior."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_french_mock_tbs(
+            variable_entities={"income_tax": "individu"},
+        )
+        adapter._tax_benefit_system = mock_tbs
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0]),
+                    "age": pa.array([30]),
+                }),
+            },
+        )
+        policy = PolicyConfig(parameters={}, name="test")
+
+        entity_dict = adapter._population_to_entity_dict(
+            population, policy, "2024", mock_tbs
+        )
+
+        # Old behavior: all columns period-wrapped, no group entities
+        assert "individus" in entity_dict
+        assert entity_dict["individus"]["individu_0"]["salaire_de_base"] == {"2024": 30000.0}
+        assert entity_dict["individus"]["individu_0"]["age"] == {"2024": 30}
+
+    def test_two_independent_households(self) -> None:
+        """AC-1, AC-2: Two independent single-person households."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_french_mock_tbs(
+            variable_entities={"income_tax": "individu"},
+        )
+        adapter._tax_benefit_system = mock_tbs
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0, 50000.0]),
+                    "famille_id": pa.array([0, 1]),
+                    "famille_role": pa.array(["parents", "parents"]),
+                    "foyer_fiscal_id": pa.array([0, 1]),
+                    "foyer_fiscal_role": pa.array(["declarants", "declarants"]),
+                    "menage_id": pa.array([0, 1]),
+                    "menage_role": pa.array([
+                        "personne_de_reference", "personne_de_reference",
+                    ]),
+                }),
+            },
+        )
+        policy = PolicyConfig(parameters={}, name="test")
+
+        entity_dict = adapter._population_to_entity_dict(
+            population, policy, "2024", mock_tbs
+        )
+
+        # 2 familles, 2 foyers, 2 menages
+        assert len(entity_dict["familles"]) == 2
+        assert len(entity_dict["foyers_fiscaux"]) == 2
+        assert len(entity_dict["menages"]) == 2
+
+        assert entity_dict["familles"]["famille_0"]["parents"] == ["individu_0"]
+        assert entity_dict["familles"]["famille_1"]["parents"] == ["individu_1"]
+
+    def test_group_entity_input_variables(self) -> None:
+        """AC-7: Group entity table with variables merged into entity dict."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_french_mock_tbs(
+            variable_entities={"income_tax": "individu"},
+        )
+        adapter._tax_benefit_system = mock_tbs
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0, 0.0]),
+                    "famille_id": pa.array([0, 0]),
+                    "famille_role": pa.array(["parents", "parents"]),
+                    "foyer_fiscal_id": pa.array([0, 0]),
+                    "foyer_fiscal_role": pa.array(["declarants", "declarants"]),
+                    "menage_id": pa.array([0, 0]),
+                    "menage_role": pa.array(["personne_de_reference", "conjoint"]),
+                }),
+                "menage": pa.table({
+                    "loyer": pa.array([800.0]),
+                }),
+            },
+        )
+        policy = PolicyConfig(parameters={}, name="test")
+
+        entity_dict = adapter._population_to_entity_dict(
+            population, policy, "2024", mock_tbs
+        )
+
+        # menage entity should have role assignments AND period-wrapped loyer
+        menage = entity_dict["menages"]["menage_0"]
+        assert menage["personne_de_reference"] == ["individu_0"]
+        assert menage["conjoint"] == ["individu_1"]
+        assert menage["loyer"] == {"2024": 800.0}
+
+    def test_non_contiguous_group_ids(self) -> None:
+        """Edge case: non-contiguous group IDs [0, 2] work correctly."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_french_mock_tbs(
+            variable_entities={"income_tax": "individu"},
+        )
+        adapter._tax_benefit_system = mock_tbs
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0, 50000.0]),
+                    "famille_id": pa.array([0, 2]),
+                    "famille_role": pa.array(["parents", "parents"]),
+                    "foyer_fiscal_id": pa.array([0, 2]),
+                    "foyer_fiscal_role": pa.array(["declarants", "declarants"]),
+                    "menage_id": pa.array([0, 2]),
+                    "menage_role": pa.array([
+                        "personne_de_reference", "personne_de_reference",
+                    ]),
+                }),
+                "menage": pa.table({
+                    "loyer": pa.array([800.0, 1200.0]),
+                }),
+            },
+        )
+        policy = PolicyConfig(parameters={}, name="test")
+
+        entity_dict = adapter._population_to_entity_dict(
+            population, policy, "2024", mock_tbs
+        )
+
+        # Non-contiguous IDs: famille_0 and famille_2 (no famille_1)
+        assert "famille_0" in entity_dict["familles"]
+        assert "famille_2" in entity_dict["familles"]
+        assert "famille_1" not in entity_dict["familles"]
+
+        # Group table: row 0 → smallest ID (0), row 1 → second-smallest ID (2)
+        assert entity_dict["menages"]["menage_0"]["loyer"] == {"2024": 800.0}
+        assert entity_dict["menages"]["menage_2"]["loyer"] == {"2024": 1200.0}
+
+    def test_group_table_row_count_mismatch_raises_error(self) -> None:
+        """Edge case: group entity table has more rows than distinct group IDs."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_french_mock_tbs(
+            variable_entities={"income_tax": "individu"},
+        )
+        adapter._tax_benefit_system = mock_tbs
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0]),
+                    "famille_id": pa.array([0]),
+                    "famille_role": pa.array(["parents"]),
+                    "foyer_fiscal_id": pa.array([0]),
+                    "foyer_fiscal_role": pa.array(["declarants"]),
+                    "menage_id": pa.array([0]),
+                    "menage_role": pa.array(["personne_de_reference"]),
+                }),
+                "menage": pa.table({
+                    "loyer": pa.array([800.0, 1200.0]),  # 2 rows but only 1 menage
+                }),
+            },
+        )
+        policy = PolicyConfig(parameters={}, name="test")
+
+        with pytest.raises(ApiMappingError, match="Group entity table row count mismatch"):
+            adapter._population_to_entity_dict(
+                population, policy, "2024", mock_tbs
+            )
+
+    def test_policy_parameters_injected_in_4entity_mode(self) -> None:
+        """AC-1: Policy parameters are injected into person instances in 4-entity mode."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_french_mock_tbs(
+            variable_entities={"income_tax": "individu"},
+        )
+        # Add the policy parameter variable to mock TBS
+        policy_var = MagicMock()
+        policy_var.entity = mock_tbs.entities[0]  # individu
+        policy_var.definition_period = "year"
+        mock_tbs.variables["custom_param"] = policy_var
+        adapter._tax_benefit_system = mock_tbs
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0]),
+                    "famille_id": pa.array([0]),
+                    "famille_role": pa.array(["parents"]),
+                    "foyer_fiscal_id": pa.array([0]),
+                    "foyer_fiscal_role": pa.array(["declarants"]),
+                    "menage_id": pa.array([0]),
+                    "menage_role": pa.array(["personne_de_reference"]),
+                }),
+            },
+        )
+        policy = PolicyConfig(parameters={"custom_param": 42.0}, name="test")
+
+        entity_dict = adapter._population_to_entity_dict(
+            population, policy, "2024", mock_tbs
+        )
+
+        assert entity_dict["individus"]["individu_0"]["custom_param"] == {"2024": 42.0}
+
+    def test_string_group_ids(self) -> None:
+        """Edge case: String (utf8) group IDs work correctly."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_french_mock_tbs(
+            variable_entities={"income_tax": "individu"},
+        )
+        adapter._tax_benefit_system = mock_tbs
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0, 0.0]),
+                    "famille_id": pa.array(["fam_a", "fam_a"]),
+                    "famille_role": pa.array(["parents", "parents"]),
+                    "foyer_fiscal_id": pa.array(["ff_a", "ff_a"]),
+                    "foyer_fiscal_role": pa.array(["declarants", "declarants"]),
+                    "menage_id": pa.array(["men_a", "men_a"]),
+                    "menage_role": pa.array(["personne_de_reference", "conjoint"]),
+                }),
+            },
+        )
+        policy = PolicyConfig(parameters={}, name="test")
+
+        entity_dict = adapter._population_to_entity_dict(
+            population, policy, "2024", mock_tbs
+        )
+
+        assert "famille_fam_a" in entity_dict["familles"]
+        assert "foyer_fiscal_ff_a" in entity_dict["foyers_fiscaux"]
+        assert "menage_men_a" in entity_dict["menages"]
+        assert entity_dict["menages"]["menage_men_a"]["personne_de_reference"] == [
+            "individu_0",
+        ]
+
+    def test_plural_person_table_key(self) -> None:
+        """Edge case: Person table key is plural ('individus' instead of 'individu').
+
+        Person instance IDs should use the plural key prefix.
+        """
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_french_mock_tbs(
+            variable_entities={"income_tax": "individu"},
+        )
+        adapter._tax_benefit_system = mock_tbs
+
+        population = PopulationData(
+            tables={
+                "individus": pa.table({  # plural key
+                    "salaire_de_base": pa.array([30000.0, 0.0]),
+                    "famille_id": pa.array([0, 0]),
+                    "famille_role": pa.array(["parents", "parents"]),
+                    "foyer_fiscal_id": pa.array([0, 0]),
+                    "foyer_fiscal_role": pa.array(["declarants", "declarants"]),
+                    "menage_id": pa.array([0, 0]),
+                    "menage_role": pa.array(["personne_de_reference", "conjoint"]),
+                }),
+            },
+        )
+        policy = PolicyConfig(parameters={}, name="test")
+
+        entity_dict = adapter._population_to_entity_dict(
+            population, policy, "2024", mock_tbs
+        )
+
+        # Person instance IDs use the original table key prefix ("individus")
+        assert "individus_0" in entity_dict["individus"]
+        assert "individus_1" in entity_dict["individus"]
+
+        # Group role assignments also use "individus_" prefix
+        assert entity_dict["familles"]["famille_0"]["parents"] == [
+            "individus_0", "individus_1"
+        ]

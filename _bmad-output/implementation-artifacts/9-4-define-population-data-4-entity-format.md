@@ -92,14 +92,14 @@ OpenFisca-France operates on a **4-entity model**:
   - [ ] 4.1 At the start of the method, call `_detect_membership_columns()` to determine format mode. If empty dict returned → execute existing code path unchanged (AC-6 backward compat)
   - [ ] 4.2 If membership columns detected, call `_resolve_valid_role_keys()` then `_validate_entity_relationships()`
   - [ ] 4.3 **Separate membership columns from variable columns**: build a set of all membership column names (all `_id` and `_role` columns). When iterating person table columns for period-wrapping, skip membership columns
-  - [ ] 4.4 **Build person instances**: same as current logic but excluding membership columns — produce `{"individu_0": {"salaire_de_base": {"2024": 30000.0}}, ...}`
+  - [ ] 4.4 **Build person instances FROM PERSON TABLE ONLY**: iterate the person entity table (identified by finding the `population.tables` key matching `person_entity.key` or `person_entity.plural`) — NOT all tables in `population.tables`. Exclude membership columns from period-wrapping. The instance ID prefix is the original key used in `population.tables` (e.g. `"individu"` → `"individu_0"`, `"individu_1"`; `"individus"` → `"individus_0"`, `"individus_1"`). ⚠️ In 4-entity mode, the original all-tables loop is **replaced** by this step (person table) combined with Tasks 4.5 (group membership from membership columns) and 4.6 (group variables from group entity tables). Do NOT run the old all-tables loop and then also run 4-entity logic — this would double-write group entity entries.
   - [ ] 4.5 **Build group entity instances from membership columns**: for each group entity:
       - Read `{entity_key}_id` and `{entity_key}_role` columns from person table
       - Group person instance IDs by group ID
       - Within each group, sub-group person IDs by role key
-      - Produce: `{"famille_0": {"parents": ["individu_0", "individu_1"]}, ...}`
+      - Produce: `{"famille_0": {"parents": [f"{person_table_key}_0", f"{person_table_key}_1"]}}` — where `person_table_key` is the original key from `population.tables` (e.g. `"individu"` or `"individus"`). Person instance IDs MUST use the same prefix as Task 4.4.
       - Group instance IDs follow format `f"{entity_key}_{group_id_value}"` — e.g., if `famille_id` column has value `0`, instance ID is `"famille_0"`
-  - [ ] 4.6 **Merge group entity table variables** (AC-7): if PopulationData contains a group entity table (e.g., `"menage"` or `"menages"` key in `population.tables`), iterate its columns and merge period-wrapped variable values into the corresponding group entity instances. Match group table row index to group instance by sorted order of distinct group IDs from the person table's `_id` column. ⚠️ Raise `ApiMappingError` if the group entity table row count doesn't match the number of distinct group IDs
+  - [ ] 4.6 **Merge group entity table variables** (AC-7): if PopulationData contains a group entity table (e.g., `"menage"` or `"menages"` key in `population.tables`), iterate its columns and merge period-wrapped variable values into the corresponding group entity instances. Match group table row index to group instance by sorted order of distinct group IDs from the person table's `_id` column. ⚠️ Raise `ApiMappingError` if the group entity table row count doesn't match the number of distinct group IDs. ⚠️ **POSITIONAL MATCHING**: row 0 of the group entity table maps to the smallest distinct group ID, row 1 to the second-smallest, etc. This requires the group entity table rows to be ordered by ascending `{entity_key}_id` value — no automatic reordering is performed. If rows are in a different order, values will be silently misassigned to the wrong group instances. Unit test to add: non-contiguous IDs `[0, 2]` → group table row 0 maps to `groupe_0`, row 1 maps to `groupe_2` (not reversed).
   - [ ] 4.7 **Store result keyed by entity plural** (existing behavior): use `key_to_plural` mapping to normalize keys
   - [ ] 4.8 **Policy parameter injection** (existing behavior): unchanged — inject on person entity only
   - [ ] 4.9 Unit tests: married couple (2 persons, 1 famille, 1 foyer, 1 menage), family with child (2 parents + 1 enfant, 1 famille, 2 foyers, 1 menage), backward compat (no membership columns)
@@ -110,7 +110,7 @@ OpenFisca-France operates on a **4-entity model**:
   - [ ] 5.3 Unit tests: verify validation errors fire before simulation builder is called
 
 - [ ] Task 6: Integration tests with real OpenFisca-France (AC: #1, #2, #7)
-  - [ ] 6.1 Test: **married couple** — 2 persons, 1 famille (both as `parents`), 1 foyer_fiscal (both as `declarants`), 1 menage (`personne_de_reference` + `conjoint`). Use membership columns on person table. Verify `compute()` produces correct results matching existing hand-built integration tests (same `irpp` values as `TestOpenFiscaFranceReferenceCases.test_couple_salaire_imposable_30k_25k`)
+  - [ ] 6.1 Test: **married couple** — 2 persons, 1 famille (both as `parents`), 1 foyer_fiscal (both as `declarants`), 1 menage (`personne_de_reference` + `conjoint`). Use membership columns on person table. Verify `compute()` produces correct results matching existing hand-built integration tests (same `irpp` values as `TestOpenFiscaFranceReferenceCases.test_couple_salaire_imposable_30k_25k`). Use `ABSOLUTE_ERROR_MARGIN = 0.5` as a class attribute on the new integration test class, consistent with the existing reference test suite.
   - [ ] 6.2 Test: **single person with membership columns** — 1 person, 1 famille (`parents`), 1 foyer_fiscal (`declarants`), 1 menage (`personne_de_reference`). Verify results match single-person tests without membership columns
   - [ ] 6.3 Test: **two independent households** — 2 persons each in separate famille/foyer_fiscal/menage. Verify entity instance counts match (2 familles, 2 foyers, 2 menages)
   - [ ] 6.4 Test: **group entity input variables** — menage table with `loyer` column. Verify the value appears in the entity dict and is passable to `build_from_entities()`
@@ -130,6 +130,12 @@ OpenFisca-France operates on a **4-entity model**:
   - [ ] 8.3 `uv run pytest tests/computation/ tests/orchestrator/`
 
 ## Dev Notes
+
+### Prerequisites — Story Sequencing
+
+⚠️ **Story 9.3 (Add Variable Periodicity Handling) must be merged before starting this story.** Both stories modify `src/reformlab/computation/openfisca_api_adapter.py`. Story 9.3 changes `compute()`, `_extract_results_by_entity()`, `_calculate_variable()`, and `_resolve_variable_periodicities()`. Story 9.4 adds three new private methods and refactors `_population_to_entity_dict()` — method-level overlap is limited, but file-level merge conflicts are likely.
+
+If concurrent development is unavoidable: develop Story 9.4 on a branch that explicitly tracks Story 9.3's branch and rebase before raising a PR. After Story 9.3 merges, `_population_to_entity_dict()` is unchanged — the methods added by Story 9.4 are fully additive.
 
 ### Architecture Constraints
 
@@ -325,31 +331,55 @@ for entity in tbs.entities:
 
 **The person instance ID is the key used in the role assignment lists.** The person instance IDs must match between the person entity dict and the group entity role arrays. Currently, `_population_to_entity_dict()` uses `f"{entity_key}_{i}"` where `entity_key` comes from the PopulationData table key (e.g., `"individu"`) and `i` is the row index. This convention must be preserved.
 
+**⚠️ Critical:** the prefix is the original `population.tables` key — not necessarily `person_entity.key`. If the caller passes `"individus"` (plural) as the table key, all person instance IDs become `"individus_0"`, `"individus_1"`, etc. The group entity role lists must use these same IDs. Capture this key early (`person_table_key`) and use it consistently for both person instances (Task 4.4) and role assignment lists (Task 4.5).
+
 ### Algorithm for Refactored `_population_to_entity_dict()`
 
 ```
-1. Build key_to_plural mapping (existing)
-2. Identify person entity (existing)
-3. Call _detect_membership_columns(person_table, tbs)
-4. IF no membership columns → execute EXISTING code path unchanged
-5. IF membership columns detected:
-   a. Call _resolve_valid_role_keys(tbs)
-   b. Call _validate_entity_relationships(person_table, membership_cols, valid_roles)
-   c. Build set of all membership column names (for exclusion)
-   d. Build person instances (excluding membership columns from period-wrapping)
-   e. For each group entity:
-      i.   Read _id and _role columns from person table
-      ii.  Get sorted distinct group IDs
-      iii. For each group ID:
-           - Collect person instance IDs with this group ID
-           - Sub-group by role key
-           - Build: {role_key: [person_ids]}
-      iv.  Store: result[entity_plural][f"{entity_key}_{group_id}"] = role_dict
+1. Build key_to_plural mapping: {entity.key: entity.plural for entity in tbs.entities}
+2. Identify person entity: person_entity = next(e for e in tbs.entities if e.is_person)
+2b. Find person_table_key: the key in population.tables matching person_entity.key
+    OR person_entity.plural (user may pass either singular or plural).
+    If no matching key found → no person entity table present; fall through to step 4
+    (backward-compatible: membership columns require a person entity table).
+3. person_table = population.tables[person_table_key]
+   membership_cols = _detect_membership_columns(person_table, tbs)
+4. IF empty dict returned → execute existing all-tables loop (current lines 538–569
+   of _population_to_entity_dict()): iterate ALL population.tables, period-wrap every
+   column, store keyed by entity plural. Return immediately.
+5. IF membership columns detected (4-entity mode):
+   ⚠️ The original all-tables iteration loop is REPLACED by steps 5a–5g.
+   Do NOT run the old loop before/after — this would double-write group entity
+   entries and corrupt the result dict.
+
+   a. valid_roles = _resolve_valid_role_keys(tbs)
+   b. _validate_entity_relationships(person_table, membership_cols, valid_roles)
+   c. Build membership_col_names: set of all _id and _role column names
+      (these are excluded from period-wrapping in step 5d)
+   d. Build person instances FROM PERSON TABLE ONLY:
+      - Use person_table_key as the instance ID prefix
+        (e.g. "individu" → "individu_0"; "individus" → "individus_0")
+      - Skip columns in membership_col_names
+      - result[person_entity.plural][f"{person_table_key}_{i}"] =
+          {col: {period_str: val} for col not in membership_col_names}
+   e. For each group_entity_key in membership_cols:
+      i.   id_col = person_table.column(f"{group_entity_key}_id")
+           role_col = person_table.column(f"{group_entity_key}_role")
+      ii.  sorted_group_ids = sorted(pa.compute.unique(id_col).to_pylist())
+      iii. For each group_id in sorted_group_ids:
+           - Collect row indices where id_col == group_id
+           - Build role_dict: {role_key: [f"{person_table_key}_{i}" for each index]}
+      iv.  group_plural = key_to_plural[group_entity_key]
+           result[group_plural][f"{group_entity_key}_{group_id}"] = role_dict
    f. Merge group entity table variables (if present):
-      i.   For each group entity with a table in PopulationData
-      ii.  Match table rows to group instances by sorted distinct ID order
-      iii. Add period-wrapped variable values to group instance dict
-   g. Inject policy parameters (existing, person entity only)
+      i.   For each group entity key with a table in population.tables
+      ii.  sorted_group_ids from person table _id column (same order as step 5e)
+      iii. Raise ApiMappingError if group_table.num_rows != len(sorted_group_ids)
+      iv.  ⚠️ POSITIONAL MATCH: row i of group table → sorted_group_ids[i]
+           Requires group table rows to be ordered by ascending {entity_key}_id value
+      v.   For each (i, group_id): period-wrap group_table row i columns and
+           merge into result[group_plural][f"{group_entity_key}_{group_id}"]
+   g. Inject policy parameters into person entity instances (unchanged)
 6. Return result
 ```
 
@@ -488,7 +518,7 @@ population = PopulationData(
 
 2. **String group IDs** — `famille_id` column could be utf8 instead of int64. The instance ID format becomes `f"{entity_key}_{str(group_id)}"`. Support both int64 and utf8 column types.
 
-3. **Empty group** — a group ID that appears in no person's `_id` column. This can't happen by construction (groups are discovered from person table), but if a group entity table has more rows than distinct group IDs from the person table, the extra rows are orphaned. Raise `ApiMappingError`.
+3. **Extra rows in group entity table** — if `population.tables["menage"]` has more rows than the number of distinct `menage_id` values in the person table, the extra rows are unmatched. Raise `ApiMappingError` with summary `"Group entity table row count mismatch"`, including the table row count and the number of distinct group IDs found in the person table. (A group ID appearing in no person's `_id` column cannot occur by construction — groups are discovered from the person table's `_id` column, not from a separate registry. The mismatch only occurs when the caller provides a group entity table with more rows than the person table's distinct IDs.)
 
 4. **Single person with membership columns** — valid. One person assigned to one group per entity. Should produce the same result as without membership columns.
 
