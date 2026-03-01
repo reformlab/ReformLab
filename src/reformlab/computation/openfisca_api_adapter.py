@@ -5,11 +5,16 @@ runs live tax-benefit calculations using OpenFisca's ``SimulationBuilder``.
 
 All OpenFisca imports are lazy since ``openfisca-core`` is an optional
 dependency.
+
+Story 9.2: Added entity-aware result extraction to correctly handle
+output variables belonging to different entity types (individu, menage,
+famille, foyer_fiscal).
 """
 
 from __future__ import annotations
 
 import difflib
+import logging
 import time
 from typing import Any
 
@@ -21,6 +26,8 @@ from reformlab.computation.openfisca_common import (
     _detect_openfisca_version,
 )
 from reformlab.computation.types import ComputationResult, PolicyConfig, PopulationData
+
+logger = logging.getLogger(__name__)
 
 
 class OpenFiscaApiAdapter:
@@ -67,6 +74,8 @@ class OpenFiscaApiAdapter:
 
         Returns:
             A ``ComputationResult`` with output variables as a PyArrow Table.
+            When output variables span multiple entities, ``entity_tables``
+            contains per-entity tables keyed by entity plural name.
         """
         start = time.monotonic()
 
@@ -74,22 +83,41 @@ class OpenFiscaApiAdapter:
         self._validate_output_variables(tbs)
 
         simulation = self._build_simulation(population, policy, period, tbs)
-        table = self._extract_results(simulation, period)
+
+        # Story 9.2: Entity-aware result extraction
+        vars_by_entity = self._resolve_variable_entities(tbs)
+        entity_tables = self._extract_results_by_entity(
+            simulation, period, vars_by_entity
+        )
+
+        # Determine primary output_fields table for backward compatibility:
+        # - Single entity → that entity's table
+        # - Multiple entities → person-entity table (or first entity's table)
+        output_fields = self._select_primary_output(entity_tables, tbs)
 
         elapsed = time.monotonic() - start
 
+        # Build output_entities metadata listing which entities have tables
+        output_entities = sorted(entity_tables.keys())
+        entity_row_counts = {
+            entity: table.num_rows for entity, table in entity_tables.items()
+        }
+
         return ComputationResult(
-            output_fields=table,
+            output_fields=output_fields,
             adapter_version=self._version,
             period=period,
             metadata={
                 "timing_seconds": round(elapsed, 4),
-                "row_count": table.num_rows,
+                "row_count": output_fields.num_rows,
                 "source": "api",
                 "policy_name": policy.name,
                 "country_package": self._country_package,
                 "output_variables": list(self._output_variables),
+                "output_entities": output_entities,
+                "entity_row_counts": entity_row_counts,
             },
+            entity_tables=entity_tables if len(entity_tables) > 1 else {},
         )
 
     # ------------------------------------------------------------------
@@ -338,13 +366,156 @@ class OpenFiscaApiAdapter:
 
         return result
 
-    def _extract_results(self, simulation: Any, period: int) -> pa.Table:
-        """Extract output variables from a completed simulation as a PyArrow Table."""
-        period_str = str(period)
-        arrays: dict[str, pa.Array] = {}
+    # ------------------------------------------------------------------
+    # Story 9.2: Entity-aware result extraction
+    # ------------------------------------------------------------------
+
+    def _resolve_variable_entities(
+        self, tbs: Any
+    ) -> dict[str, list[str]]:
+        """Group output variables by their entity's plural name.
+
+        Queries ``tbs.variables[var_name].entity`` to determine which entity
+        each output variable belongs to, then groups them.
+
+        Args:
+            tbs: The loaded TaxBenefitSystem.
+
+        Returns:
+            Dict mapping entity plural name to list of variable names.
+            E.g. ``{"individus": ["salaire_net"], "foyers_fiscaux": ["irpp"]}``.
+
+        Raises:
+            ApiMappingError: If a variable's entity cannot be determined.
+        """
+        vars_by_entity: dict[str, list[str]] = {}
 
         for var_name in self._output_variables:
-            numpy_array = simulation.calculate(var_name, period_str)
-            arrays[var_name] = pa.array(numpy_array)
+            variable = tbs.variables.get(var_name)
+            if variable is None:
+                # Should not happen — _validate_output_variables runs first.
+                # Defensive guard for edge cases.
+                raise ApiMappingError(
+                    summary="Cannot resolve variable entity",
+                    reason=(
+                        f"Variable '{var_name}' not found in "
+                        f"{self._country_package} TaxBenefitSystem"
+                    ),
+                    fix=(
+                        "Ensure the variable exists in the country package. "
+                        "This may indicate the TBS was modified after validation."
+                    ),
+                    invalid_names=(var_name,),
+                    valid_names=tuple(sorted(tbs.variables.keys())),
+                )
 
-        return pa.table(arrays)
+            entity = getattr(variable, "entity", None)
+            if entity is None:
+                raise ApiMappingError(
+                    summary="Cannot determine entity for variable",
+                    reason=(
+                        f"Variable '{var_name}' has no .entity attribute in "
+                        f"{self._country_package} TaxBenefitSystem"
+                    ),
+                    fix=(
+                        "This variable may not be properly defined in the "
+                        "country package. Check the variable definition."
+                    ),
+                    invalid_names=(var_name,),
+                    valid_names=tuple(sorted(tbs.variables.keys())),
+                )
+
+            entity_plural = getattr(entity, "plural", None)
+            if entity_plural is None:
+                # Fallback: try entity.key + "s" if plural is missing
+                entity_key = getattr(entity, "key", None)
+                if entity_key is None:
+                    raise ApiMappingError(
+                        summary="Cannot determine entity name for variable",
+                        reason=(
+                            f"Variable '{var_name}' entity has neither .plural "
+                            f"nor .key attribute"
+                        ),
+                        fix=(
+                            "This may indicate an incompatible OpenFisca version. "
+                            "Check the OpenFisca compatibility matrix."
+                        ),
+                        invalid_names=(var_name,),
+                        valid_names=tuple(sorted(tbs.variables.keys())),
+                    )
+                entity_plural = entity_key
+
+            vars_by_entity.setdefault(entity_plural, []).append(var_name)
+
+        logger.debug(
+            "entity_variable_mapping=%s output_variables=%s",
+            {k: v for k, v in vars_by_entity.items()},
+            list(self._output_variables),
+        )
+
+        return vars_by_entity
+
+    def _extract_results_by_entity(
+        self,
+        simulation: Any,
+        period: int,
+        vars_by_entity: dict[str, list[str]],
+    ) -> dict[str, pa.Table]:
+        """Extract output variables grouped by entity into per-entity tables.
+
+        For each entity group, calls ``simulation.calculate()`` for its
+        variables and builds a ``pa.Table`` per entity. Arrays within an
+        entity group share the same length (entity instance count).
+
+        Args:
+            simulation: The completed OpenFisca simulation.
+            period: Computation period (integer year).
+            vars_by_entity: Output variables grouped by entity plural name
+                (from ``_resolve_variable_entities``).
+
+        Returns:
+            Dict mapping entity plural name to a PyArrow Table containing
+            that entity's output variables.
+        """
+        period_str = str(period)
+        entity_tables: dict[str, pa.Table] = {}
+
+        for entity_plural, var_names in vars_by_entity.items():
+            arrays: dict[str, pa.Array] = {}
+            for var_name in var_names:
+                numpy_array = simulation.calculate(var_name, period_str)
+                arrays[var_name] = pa.array(numpy_array)
+            entity_tables[entity_plural] = pa.table(arrays)
+
+        return entity_tables
+
+    def _select_primary_output(
+        self,
+        entity_tables: dict[str, pa.Table],
+        tbs: Any,
+    ) -> pa.Table:
+        """Select the primary output_fields table for backward compatibility.
+
+        When all variables belong to one entity, returns that entity's table.
+        When variables span multiple entities, returns the person-entity table
+        (or the first entity's table if no person entity is present).
+
+        Args:
+            entity_tables: Per-entity output tables.
+            tbs: The loaded TaxBenefitSystem.
+
+        Returns:
+            A single PyArrow Table to use as ``output_fields``.
+        """
+        if len(entity_tables) == 1:
+            return next(iter(entity_tables.values()))
+
+        # Find the person entity plural name
+        for entity in tbs.entities:
+            if getattr(entity, "is_person", False):
+                person_plural = entity.plural
+                if person_plural in entity_tables:
+                    return entity_tables[person_plural]
+
+        # Fallback: return the first entity's table
+        return next(iter(entity_tables.values()))

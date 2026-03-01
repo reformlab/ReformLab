@@ -1,6 +1,7 @@
 """Integration tests for OpenFiscaApiAdapter against real OpenFisca-France.
 
 Story 8.1: End-to-End OpenFisca Integration Spike.
+Story 9.2: Multi-entity output array handling integration tests.
 
 These tests call real OpenFisca-France computations (no mocking).
 Run with: uv run pytest tests/computation/test_openfisca_integration.py -m integration
@@ -648,3 +649,195 @@ class TestOpenFiscaFranceReferenceCases:
         assert irpp_couple > irpp_single, (
             f"Couple ({irpp_couple}) should pay less tax than single earner ({irpp_single})"
         )
+
+
+# ===========================================================================
+# Story 9.2: Multi-entity output array handling (integration tests)
+# ===========================================================================
+
+
+@pytest.fixture(scope="module")
+def multi_entity_adapter() -> OpenFiscaApiAdapter:
+    """Adapter configured with mixed-entity output variables.
+
+    Story 9.2 AC-1, AC-2, AC-3: Tests multi-entity output extraction
+    with real OpenFisca-France variables from different entities.
+    """
+    return OpenFiscaApiAdapter(
+        country_package="openfisca_france",
+        output_variables=(
+            "salaire_net",                      # individu
+            "impot_revenu_restant_a_payer",      # foyer_fiscal
+            "revenu_disponible",                 # menage
+        ),
+    )
+
+
+@pytest.mark.integration
+class TestMultiEntityOutputArrays:
+    """Story 9.2 AC-1, AC-2, AC-3: Multi-entity output variable handling.
+
+    These tests validate that the adapter correctly handles output variables
+    belonging to different entities, producing separate per-entity tables
+    with correct array lengths.
+    """
+
+    def test_married_couple_multi_entity_extraction(
+        self, tbs: Any, multi_entity_adapter: OpenFiscaApiAdapter
+    ) -> None:
+        """AC-1, AC-2, AC-3: Married couple with 2 persons, 1 foyer, 1 menage.
+
+        The canonical multi-entity test case from spike 8-1:
+        - salaire_net (individu) → 2 values
+        - impot_revenu_restant_a_payer (foyer_fiscal) → 1 value
+        - revenu_disponible (menage) → 1 value
+        """
+        from openfisca_core.simulation_builder import SimulationBuilder
+
+        entities_dict = {
+            "individus": {
+                "person_0": {
+                    "salaire_de_base": {"2024": 30000.0},
+                    "age": {"2024-01": 30},
+                },
+                "person_1": {
+                    "salaire_de_base": {"2024": 0.0},
+                    "age": {"2024-01": 28},
+                },
+            },
+            "familles": {
+                "famille_0": {"parents": ["person_0", "person_1"]},
+            },
+            "foyers_fiscaux": {
+                "foyer_0": {"declarants": ["person_0", "person_1"]},
+            },
+            "menages": {
+                "menage_0": {
+                    "personne_de_reference": ["person_0"],
+                    "conjoint": ["person_1"],
+                },
+            },
+        }
+
+        # Test _resolve_variable_entities with real TBS
+        local_tbs = multi_entity_adapter._get_tax_benefit_system()
+        vars_by_entity = multi_entity_adapter._resolve_variable_entities(local_tbs)
+
+        # Verify entity grouping
+        assert "individus" in vars_by_entity
+        assert "foyers_fiscaux" in vars_by_entity
+        assert "menages" in vars_by_entity
+        assert "salaire_net" in vars_by_entity["individus"]
+        assert "impot_revenu_restant_a_payer" in vars_by_entity["foyers_fiscaux"]
+        assert "revenu_disponible" in vars_by_entity["menages"]
+
+        # Build simulation and extract results by entity
+        builder = SimulationBuilder()
+        simulation = builder.build_from_entities(tbs, entities_dict)
+
+        entity_tables = multi_entity_adapter._extract_results_by_entity(
+            simulation, 2024, vars_by_entity
+        )
+
+        # AC-2: Correct array lengths per entity
+        assert entity_tables["individus"].num_rows == 2
+        assert entity_tables["foyers_fiscaux"].num_rows == 1
+        assert entity_tables["menages"].num_rows == 1
+
+        # AC-3: Correct columns per entity
+        assert "salaire_net" in entity_tables["individus"].column_names
+        assert "impot_revenu_restant_a_payer" in entity_tables["foyers_fiscaux"].column_names
+        assert "revenu_disponible" in entity_tables["menages"].column_names
+
+    def test_single_entity_backward_compatible(
+        self, tbs: Any
+    ) -> None:
+        """AC-4: Single-entity output produces backward-compatible result."""
+        adapter = OpenFiscaApiAdapter(
+            country_package="openfisca_france",
+            output_variables=("impot_revenu_restant_a_payer",),
+        )
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0]),
+                    "age": pa.array([30]),
+                }),
+            },
+            metadata={"source": "integration-test"},
+        )
+        policy = PolicyConfig(parameters={}, name="test")
+
+        result = adapter.compute(population, policy, 2024)
+
+        # Single entity: entity_tables should be empty
+        assert result.entity_tables == {}
+        # output_fields works as before
+        assert isinstance(result.output_fields, pa.Table)
+        assert "impot_revenu_restant_a_payer" in result.output_fields.column_names
+        assert result.output_fields.num_rows == 1
+
+    def test_variable_entity_resolution_matches_tbs(self, tbs: Any) -> None:
+        """AC-1: Variable entity resolution matches actual TBS entity definitions."""
+        # Verify entity attributes are accessible on real TBS variables
+        irpp_var = tbs.variables["impot_revenu_restant_a_payer"]
+        assert irpp_var.entity.key == "foyer_fiscal"
+        assert irpp_var.entity.plural == "foyers_fiscaux"
+
+        salaire_var = tbs.variables["salaire_net"]
+        assert salaire_var.entity.key == "individu"
+        assert salaire_var.entity.plural == "individus"
+
+        revenu_var = tbs.variables["revenu_disponible"]
+        assert revenu_var.entity.key == "menage"
+        assert revenu_var.entity.plural == "menages"
+
+    def test_multi_entity_adapter_compute_end_to_end(self, tbs: Any) -> None:
+        """AC-1, AC-2, AC-3: Full adapter.compute() with multi-entity output.
+
+        Tests that entity_tables and output_entities metadata are correctly
+        populated when output variables span multiple entities.
+
+        Note: This test uses only the individu table in PopulationData.
+        The adapter's _population_to_entity_dict handles auto-creation of
+        group entities for single-person populations. For married couples
+        (2 persons, 1 foyer), all 4 entity tables must be provided.
+        """
+        adapter = OpenFiscaApiAdapter(
+            country_package="openfisca_france",
+            output_variables=(
+                "salaire_net",
+                "impot_revenu_restant_a_payer",
+            ),
+        )
+
+        # Use 2 persons, 2 separate foyers (not married) to keep it simple
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0, 50000.0]),
+                    "age": pa.array([30, 45]),
+                }),
+            },
+        )
+        policy = PolicyConfig(parameters={}, name="multi-entity-test")
+
+        result = adapter.compute(population, policy, 2024)
+
+        # Multi-entity: entity_tables populated
+        assert len(result.entity_tables) == 2
+        assert "individus" in result.entity_tables
+        assert "foyers_fiscaux" in result.entity_tables
+
+        # AC-2: Correct array lengths
+        assert result.entity_tables["individus"].num_rows == 2
+        assert result.entity_tables["foyers_fiscaux"].num_rows == 2
+
+        # output_fields is person-entity table
+        assert result.output_fields.num_rows == 2
+        assert "salaire_net" in result.output_fields.column_names
+
+        # Metadata includes entity information
+        assert "output_entities" in result.metadata
+        assert "entity_row_counts" in result.metadata

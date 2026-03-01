@@ -1,0 +1,52 @@
+cli_args:
+- run
+- -e
+- '9'
+- -g
+- -v
+- --skip-story-prompts
+cli_args_masked:
+- run
+- -e
+- '9'
+- -g
+- -v
+- --skip-story-prompts
+current_phase: null
+ended_at: null
+epic: 9
+phase_events:
+- duration_ms: null
+  epic: 9
+  error_type: null
+  event_type: started
+  model: opus
+  phase: DEV_STORY
+  provider: claude
+  status: null
+  story: '9.2'
+  timestamp: '2026-03-01T16:30:26.554590Z'
+- duration_ms: 1136077
+  epic: 9
+  error_type: null
+  event_type: completed
+  model: opus
+  phase: DEV_STORY
+  provider: claude
+  status: success
+  story: '9.2'
+  timestamp: '2026-03-01T16:49:22.632582Z'
+phases:
+- duration_ms: 1136077
+  ended_at: '2026-03-01T16:49:22.632582Z'
+  error_type: null
+  model: opus
+  phase: DEV_STORY
+  provider: claude
+  started_at: '2026-03-01T16:30:26.554590Z'
+  status: success
+project_path: /Users/lucas/Workspace/reformlab
+run_id: 6cdb01f4
+started_at: '2026-03-01T16:30:26.532949Z'
+status: running
+story: '9.2'

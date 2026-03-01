@@ -1,5 +1,5 @@
 # bmad-assist configuration for ReformLab
-# Strategy: Opus for creative/complex work, Gemini for validation/review (reduce bias + cost)
+# Strategy: Claude-only (Opus creates/devs, Sonnet validates/reviews)
 
 project_name: ReformLab
 user_name: Lucas
@@ -24,14 +24,10 @@ providers:
     provider: claude
     model: haiku
 
-  multi:
-    - provider: gemini
-      model: gemini-2.5-flash
-
 # Per-phase model assignment
-# Principle: Opus creates, Gemini validates/reviews (different model = less blind spots)
+# Opus creates/devs, Sonnet validates/reviews (different model = less bias)
 phase_models:
-  # --- Creative phases: Opus (needs deep reasoning) ---
+  # --- Creative phases: Opus ---
   create_story:
     provider: claude
     model: opus
@@ -39,23 +35,23 @@ phase_models:
     provider: claude
     model: opus
 
-  # --- Validation phases: Gemini (independent perspective, free tier) ---
+  # --- Validation phases: Sonnet ---
   validate_story:
-    - provider: gemini
-      model: gemini-2.5-flash
+    - provider: claude
+      model: sonnet
   validate_story_synthesis:
-    provider: gemini
-    model: gemini-2.5-flash
+    provider: claude
+    model: sonnet
 
-  # --- Review phases: Gemini (catches what Opus missed) ---
+  # --- Review phases: Sonnet ---
   code_review:
-    - provider: gemini
-      model: gemini-2.5-flash
+    - provider: claude
+      model: sonnet
   code_review_synthesis:
-    provider: gemini
-    model: gemini-2.5-flash
+    provider: claude
+    model: sonnet
 
-  # --- Retrospective: Sonnet (good enough, saves Opus tokens) ---
+  # --- Retrospective: Sonnet ---
   retrospective:
     provider: claude
     model: sonnet

@@ -2,6 +2,9 @@
 
 All OpenFisca internals are mocked since openfisca-core is an optional
 dependency and may not be installed in CI.
+
+Story 9.2: Added tests for multi-entity output array handling — entity-aware
+result extraction, per-entity tables, and backward compatibility.
 """
 
 from __future__ import annotations
@@ -44,12 +47,80 @@ def _make_mock_tbs(
     tbs = MagicMock()
 
     entities = []
+    entities_by_key: dict[str, SimpleNamespace] = {}
     for key in entity_keys:
         entity = SimpleNamespace(key=key, plural=key, is_person=(key == person_entity))
         entities.append(entity)
+        entities_by_key[key] = entity
     tbs.entities = entities
 
-    tbs.variables = {name: MagicMock() for name in variable_names}
+    # Variables get a default entity (the person entity) for backward compatibility
+    # with existing tests that don't need entity-aware behavior.
+    default_entity = entities_by_key.get(person_entity, entities[0])
+    variables: dict[str, Any] = {}
+    for name in variable_names:
+        var_mock = MagicMock()
+        var_mock.entity = default_entity
+        variables[name] = var_mock
+    tbs.variables = variables
+
+    return tbs
+
+
+def _make_mock_tbs_with_entities(
+    entity_keys: tuple[str, ...] = ("individu", "foyer_fiscal", "menage"),
+    entity_plurals: dict[str, str] | None = None,
+    variable_entities: dict[str, str] | None = None,
+    person_entity: str = "individu",
+) -> MagicMock:
+    """Create a mock TBS where variables know their entity.
+
+    Story 9.2: Extended mock for entity-aware extraction tests.
+
+    Args:
+        entity_keys: Entity singular keys.
+        entity_plurals: Mapping of singular key to plural form.
+            Defaults to appending "s" (with special cases).
+        variable_entities: Mapping of variable name to entity key.
+        person_entity: Which entity key is the person entity.
+
+    Returns:
+        Mock TBS with entity-aware variables.
+    """
+    tbs = MagicMock()
+
+    # Default plurals for French entities
+    default_plurals = {
+        "individu": "individus",
+        "famille": "familles",
+        "foyer_fiscal": "foyers_fiscaux",
+        "menage": "menages",
+    }
+    if entity_plurals is None:
+        entity_plurals = {}
+
+    entities_by_key: dict[str, SimpleNamespace] = {}
+    entities = []
+    for key in entity_keys:
+        plural = entity_plurals.get(key) or default_plurals.get(key) or key + "s"
+        entity = SimpleNamespace(
+            key=key,
+            plural=plural,
+            is_person=(key == person_entity),
+        )
+        entities.append(entity)
+        entities_by_key[key] = entity
+    tbs.entities = entities
+
+    # Build variables with entity references
+    if variable_entities is None:
+        variable_entities = {}
+    variables: dict[str, Any] = {}
+    for var_name, entity_key in variable_entities.items():
+        var_mock = MagicMock()
+        var_mock.entity = entities_by_key[entity_key]
+        variables[var_name] = var_mock
+    tbs.variables = variables
 
     return tbs
 
@@ -621,3 +692,356 @@ class TestEntityMapping:
                 adapter.compute(population, bad_policy, 2025)
 
         assert "nonexistent_param" in str(exc_info.value)
+
+
+# ===========================================================================
+# Story 9.2: Multi-entity output array handling
+# ===========================================================================
+
+
+class TestResolveVariableEntities:
+    """Story 9.2 AC-1, AC-2, AC-5: Variable-to-entity mapping from TBS."""
+
+    def test_groups_variables_by_entity(self) -> None:
+        """AC-1: Variables are correctly grouped by their entity."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("salaire_net", "irpp", "revenu_disponible"),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs_with_entities(
+            variable_entities={
+                "salaire_net": "individu",
+                "irpp": "foyer_fiscal",
+                "revenu_disponible": "menage",
+            },
+        )
+        adapter._tax_benefit_system = mock_tbs
+
+        result = adapter._resolve_variable_entities(mock_tbs)
+
+        assert "individus" in result
+        assert "foyers_fiscaux" in result
+        assert "menages" in result
+        assert result["individus"] == ["salaire_net"]
+        assert result["foyers_fiscaux"] == ["irpp"]
+        assert result["menages"] == ["revenu_disponible"]
+
+    def test_multiple_variables_same_entity(self) -> None:
+        """AC-1: Multiple variables on the same entity are grouped together."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("salaire_net", "age"),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs_with_entities(
+            variable_entities={
+                "salaire_net": "individu",
+                "age": "individu",
+            },
+        )
+        adapter._tax_benefit_system = mock_tbs
+
+        result = adapter._resolve_variable_entities(mock_tbs)
+
+        assert len(result) == 1
+        assert "individus" in result
+        assert result["individus"] == ["salaire_net", "age"]
+
+    def test_variable_without_entity_raises_error(self) -> None:
+        """AC-5: Variable with no .entity attribute raises ApiMappingError."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("broken_var",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs_with_entities(
+            variable_entities={},
+        )
+        # Add a variable without entity attribute
+        var_mock = MagicMock()
+        var_mock.entity = None
+        mock_tbs.variables["broken_var"] = var_mock
+
+        with pytest.raises(ApiMappingError, match="Cannot determine entity"):
+            adapter._resolve_variable_entities(mock_tbs)
+
+    def test_variable_not_in_tbs_raises_error(self) -> None:
+        """AC-5: Variable not in TBS raises ApiMappingError."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("nonexistent_var",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs_with_entities(
+            variable_entities={},
+        )
+        # TBS has no variables at all
+
+        with pytest.raises(ApiMappingError, match="Cannot resolve variable entity"):
+            adapter._resolve_variable_entities(mock_tbs)
+
+
+class TestExtractResultsByEntity:
+    """Story 9.2 AC-1, AC-2, AC-3: Per-entity result extraction."""
+
+    def test_single_entity_extraction(self) -> None:
+        """AC-1: Single entity produces one table."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("salaire_net",),
+            skip_version_check=True,
+        )
+        mock_simulation = _make_mock_simulation(
+            {"salaire_net": np.array([20000.0, 35000.0])}
+        )
+        vars_by_entity = {"individus": ["salaire_net"]}
+
+        result = adapter._extract_results_by_entity(mock_simulation, 2024, vars_by_entity)
+
+        assert "individus" in result
+        assert result["individus"].num_rows == 2
+        assert result["individus"].column_names == ["salaire_net"]
+
+    def test_multi_entity_extraction(self) -> None:
+        """AC-2, AC-3: Different entities produce separate tables with correct lengths."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("salaire_net", "irpp", "revenu_disponible"),
+            skip_version_check=True,
+        )
+        mock_simulation = _make_mock_simulation({
+            "salaire_net": np.array([20000.0, 35000.0]),
+            "irpp": np.array([-1500.0]),
+            "revenu_disponible": np.array([40000.0]),
+        })
+        vars_by_entity = {
+            "individus": ["salaire_net"],
+            "foyers_fiscaux": ["irpp"],
+            "menages": ["revenu_disponible"],
+        }
+
+        result = adapter._extract_results_by_entity(mock_simulation, 2024, vars_by_entity)
+
+        assert len(result) == 3
+        assert result["individus"].num_rows == 2
+        assert result["foyers_fiscaux"].num_rows == 1
+        assert result["menages"].num_rows == 1
+
+    def test_multiple_variables_per_entity(self) -> None:
+        """AC-3: Multiple variables on same entity are in the same table."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("salaire_net", "age"),
+            skip_version_check=True,
+        )
+        mock_simulation = _make_mock_simulation({
+            "salaire_net": np.array([20000.0, 35000.0]),
+            "age": np.array([30.0, 45.0]),
+        })
+        vars_by_entity = {"individus": ["salaire_net", "age"]}
+
+        result = adapter._extract_results_by_entity(mock_simulation, 2024, vars_by_entity)
+
+        assert result["individus"].num_rows == 2
+        assert set(result["individus"].column_names) == {"salaire_net", "age"}
+
+
+class TestSelectPrimaryOutput:
+    """Story 9.2 AC-4: Primary output_fields selection for backward compatibility."""
+
+    def test_single_entity_returns_that_table(self) -> None:
+        """AC-4: With one entity, output_fields is that entity's table."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("salaire_net",),
+            skip_version_check=True,
+        )
+        person_table = pa.table({"salaire_net": pa.array([20000.0, 35000.0])})
+        mock_tbs = _make_mock_tbs_with_entities()
+
+        result = adapter._select_primary_output({"individus": person_table}, mock_tbs)
+
+        assert result is person_table
+
+    def test_multi_entity_returns_person_table(self) -> None:
+        """AC-4: With multiple entities, output_fields is the person-entity table."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("salaire_net", "irpp"),
+            skip_version_check=True,
+        )
+        person_table = pa.table({"salaire_net": pa.array([20000.0, 35000.0])})
+        foyer_table = pa.table({"irpp": pa.array([-1500.0])})
+        mock_tbs = _make_mock_tbs_with_entities()
+
+        result = adapter._select_primary_output(
+            {"individus": person_table, "foyers_fiscaux": foyer_table},
+            mock_tbs,
+        )
+
+        assert result is person_table
+
+    def test_multi_entity_without_person_returns_first(self) -> None:
+        """AC-4: Without person entity in results, returns first entity's table."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("irpp", "revenu_disponible"),
+            skip_version_check=True,
+        )
+        foyer_table = pa.table({"irpp": pa.array([-1500.0])})
+        menage_table = pa.table({"revenu_disponible": pa.array([40000.0])})
+        mock_tbs = _make_mock_tbs_with_entities()
+
+        result = adapter._select_primary_output(
+            {"foyers_fiscaux": foyer_table, "menages": menage_table},
+            mock_tbs,
+        )
+
+        assert result is foyer_table
+
+
+class TestComputeMultiEntity:
+    """Story 9.2 AC-1, AC-2, AC-3, AC-4: End-to-end multi-entity compute()."""
+
+    def test_compute_single_entity_backward_compatible(
+        self, sample_population: PopulationData, empty_policy: PolicyConfig
+    ) -> None:
+        """AC-4: Single-entity output produces empty entity_tables (backward compat)."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+
+        mock_tbs = _make_mock_tbs()
+        mock_simulation = _make_mock_simulation(
+            {"income_tax": np.array([3000.0, 6750.0, 12000.0])}
+        )
+        adapter._tax_benefit_system = mock_tbs
+
+        mock_builder_instance = MagicMock()
+        mock_builder_instance.build_from_entities.return_value = mock_simulation
+
+        with _patch_simulation_builder(mock_builder_instance):
+            result = adapter.compute(sample_population, empty_policy, 2025)
+
+        # Single entity: entity_tables should be empty for backward compatibility
+        assert result.entity_tables == {}
+        # output_fields still works
+        assert result.output_fields.num_rows == 3
+        assert result.output_fields.column_names == ["income_tax"]
+
+    def test_compute_multi_entity_populates_entity_tables(self) -> None:
+        """AC-1, AC-3: Multi-entity output populates entity_tables."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("salaire_net", "irpp", "revenu_disponible"),
+            skip_version_check=True,
+        )
+
+        mock_tbs = _make_mock_tbs_with_entities(
+            variable_entities={
+                "salaire_net": "individu",
+                "irpp": "foyer_fiscal",
+                "revenu_disponible": "menage",
+            },
+        )
+        mock_simulation = _make_mock_simulation({
+            "salaire_net": np.array([20000.0, 35000.0]),
+            "irpp": np.array([-1500.0]),
+            "revenu_disponible": np.array([40000.0]),
+        })
+        adapter._tax_benefit_system = mock_tbs
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0, 50000.0]),
+                }),
+            },
+        )
+
+        mock_builder_instance = MagicMock()
+        mock_builder_instance.build_from_entities.return_value = mock_simulation
+
+        with _patch_simulation_builder(mock_builder_instance):
+            result = adapter.compute(
+                population, PolicyConfig(parameters={}, name="test"), 2024
+            )
+
+        # Multi-entity: entity_tables populated
+        assert len(result.entity_tables) == 3
+        assert "individus" in result.entity_tables
+        assert "foyers_fiscaux" in result.entity_tables
+        assert "menages" in result.entity_tables
+
+        # Correct array lengths per entity
+        assert result.entity_tables["individus"].num_rows == 2
+        assert result.entity_tables["foyers_fiscaux"].num_rows == 1
+        assert result.entity_tables["menages"].num_rows == 1
+
+        # output_fields is the person entity table
+        assert result.output_fields.num_rows == 2
+        assert "salaire_net" in result.output_fields.column_names
+
+    def test_compute_multi_entity_metadata(self) -> None:
+        """AC-1: Metadata includes output_entities and entity_row_counts."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("salaire_net", "irpp"),
+            skip_version_check=True,
+        )
+
+        mock_tbs = _make_mock_tbs_with_entities(
+            variable_entities={
+                "salaire_net": "individu",
+                "irpp": "foyer_fiscal",
+            },
+        )
+        mock_simulation = _make_mock_simulation({
+            "salaire_net": np.array([20000.0, 35000.0]),
+            "irpp": np.array([-1500.0]),
+        })
+        adapter._tax_benefit_system = mock_tbs
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0, 50000.0]),
+                }),
+            },
+        )
+
+        mock_builder_instance = MagicMock()
+        mock_builder_instance.build_from_entities.return_value = mock_simulation
+
+        with _patch_simulation_builder(mock_builder_instance):
+            result = adapter.compute(
+                population, PolicyConfig(parameters={}, name="test"), 2024
+            )
+
+        assert "output_entities" in result.metadata
+        assert sorted(result.metadata["output_entities"]) == [
+            "foyers_fiscaux", "individus"
+        ]
+        assert "entity_row_counts" in result.metadata
+        assert result.metadata["entity_row_counts"]["individus"] == 2
+        assert result.metadata["entity_row_counts"]["foyers_fiscaux"] == 1
+
+    def test_compute_entity_detection_error(self) -> None:
+        """AC-5: Variable with no entity raises ApiMappingError during compute."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("broken_var",),
+            skip_version_check=True,
+        )
+
+        mock_tbs = _make_mock_tbs_with_entities(variable_entities={})
+        # Add variable with no entity
+        var_mock = MagicMock()
+        var_mock.entity = None
+        mock_tbs.variables["broken_var"] = var_mock
+        adapter._tax_benefit_system = mock_tbs
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({"x": pa.array([1.0])}),
+            },
+        )
+
+        mock_builder_instance = MagicMock()
+        mock_simulation = MagicMock()
+        mock_builder_instance.build_from_entities.return_value = mock_simulation
+
+        with _patch_simulation_builder(mock_builder_instance):
+            with pytest.raises(ApiMappingError, match="Cannot determine entity"):
+                adapter.compute(
+                    population, PolicyConfig(parameters={}, name="test"), 2024
+                )
