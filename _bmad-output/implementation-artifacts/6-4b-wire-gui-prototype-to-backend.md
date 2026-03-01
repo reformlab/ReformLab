@@ -1,6 +1,6 @@
 # Story 6.4b: Wire GUI Prototype to FastAPI Backend
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -410,11 +410,28 @@ Claude Opus 4.6
   - Data fetching hooks: usePopulations, useTemplates, useTemplateDetails, useRunSimulation, useIndicators
   - Backend tests: 9 tests in tests/server/ covering auth, templates, populations, scenarios, error handling
   - Quality gates: TypeScript clean, ESLint 0 errors, ruff clean, mypy clean, 36 frontend tests pass, 9 backend tests pass, 1382 full suite tests pass (2 pre-existing notebook failures unrelated)
+- Adversarial code review (2026-03-01) found and fixed 11 issues:
+  - Backend: population_path resolution, export file size limit, session expiry, parameter validation, policy type error handling
+  - Frontend: scenario create/clone wired to API, mock data warning toast, accessibility improvements (PasswordPrompt, ScenarioCard)
+  - Tests: expanded from 9 to 25 tests, covering scenario CRUD, exports, indicators, comparison, auth edge cases
+  - Quality gates: 25 backend tests pass, 46 frontend tests pass, TypeScript clean, ruff clean, mypy clean
 
 ### Change Log
 
 - 2026-02-28: Code review — fixed 10 issues across backend server and frontend components
 - 2026-02-28: Completed frontend wiring — API client layer, React Context, auth flow, error handling, backend tests
+- 2026-03-01: Adversarial code review — fixed 11 issues (5 HIGH, 6 MEDIUM):
+  - H-1: Wired scenario create/clone to backend API (AppContext now calls apiCreateScenario/apiCloneScenario)
+  - H-2: Fixed population_path ignored in run endpoint (now resolves population_id to file path)
+  - H-3: Fixed test accepting HTTP 500 (template not found must be 404)
+  - H-4: Added 500MB export file size limit to prevent OOM
+  - H-5: Expanded backend tests from 9 to 25 (scenario CRUD, exports, indicators, error handling)
+  - M-1: Added mock data fallback warning toast when backend API unavailable
+  - M-2: Added 24-hour session expiry to auth tokens
+  - M-3: Added parameter key validation in create_scenario (rejects unknown fields)
+  - M-4: Added accessibility label and aria-describedby to PasswordPrompt
+  - M-5: Made ScenarioCard keyboard accessible (role=button, tabIndex, keyDown handler)
+  - M-6: Fixed type:ignore by adding proper union type annotation in scenario creation
 
 ### File List
 
@@ -422,14 +439,14 @@ Claude Opus 4.6
 - `uv.lock` — Updated with server dependencies
 - `src/reformlab/server/__init__.py` — Package init
 - `src/reformlab/server/app.py` — FastAPI app factory, CORS, middleware, exception handlers (import order fixed)
-- `src/reformlab/server/auth.py` — Shared-password auth middleware, login endpoint
+- `src/reformlab/server/auth.py` — Shared-password auth middleware, login endpoint, 24h session expiry
 - `src/reformlab/server/models.py` — Pydantic v2 request/response models
 - `src/reformlab/server/dependencies.py` — ResultCache (LRU) and adapter dependency injection (removed unused type:ignore)
 - `src/reformlab/server/routes/__init__.py` — Routes package init
-- `src/reformlab/server/routes/scenarios.py` — Scenario CRUD endpoints
-- `src/reformlab/server/routes/runs.py` — Simulation execution endpoints
+- `src/reformlab/server/routes/scenarios.py` — Scenario CRUD endpoints (added parameter validation, policy type error handling)
+- `src/reformlab/server/routes/runs.py` — Simulation execution endpoints (added population_path resolution)
 - `src/reformlab/server/routes/indicators.py` — Indicator computation + comparison endpoints
-- `src/reformlab/server/routes/exports.py` — CSV/Parquet export download endpoints
+- `src/reformlab/server/routes/exports.py` — CSV/Parquet export download endpoints (added 500MB size limit)
 - `src/reformlab/server/routes/templates.py` — Template listing endpoints
 - `src/reformlab/server/routes/populations.py` — Population dataset listing endpoint
 - `frontend/package.json` — Added sonner dependency
@@ -445,18 +462,19 @@ Claude Opus 4.6
 - `frontend/src/api/templates.ts` — Template listing API functions
 - `frontend/src/api/populations.ts` — Population dataset listing API functions
 - `frontend/src/api/auth.ts` — Authentication login API function
-- `frontend/src/hooks/useApi.ts` — Data fetching hooks for all API endpoints
-- `frontend/src/contexts/AppContext.tsx` — React Context for shared application state
-- `frontend/src/components/auth/PasswordPrompt.tsx` — Password prompt modal for shared-password auth
+- `frontend/src/hooks/useApi.ts` — Data fetching hooks for all API endpoints (added usingMockData tracking)
+- `frontend/src/contexts/AppContext.tsx` — React Context for shared application state (wired create/clone to API, mock data toast)
+- `frontend/src/components/auth/PasswordPrompt.tsx` — Password prompt modal with accessibility labels
 - `frontend/src/components/ui/sonner.tsx` — Updated to remove next-themes dependency, hardcoded dark theme
-- `frontend/src/components/simulation/ScenarioCard.tsx` — Added Clone button (AC-2)
+- `frontend/src/components/simulation/ScenarioCard.tsx` — Added Clone button (AC-2), keyboard accessible (role, tabIndex, keyDown)
+- `frontend/src/components/simulation/__tests__/ScenarioCard.test.tsx` — Updated button queries for role=button on Card
 - `frontend/src/components/simulation/DistributionalChart.tsx` — Added reformLabel prop
 - `frontend/src/components/layout/LeftPanel.tsx` — Minor layout updates
 - `frontend/src/data/mock-data.ts` — Updated Scenario type (templateId, templateName fields)
 - `frontend/src/__tests__/App.test.tsx` — Updated to use AppProvider, tests auth prompt
 - `tests/server/__init__.py` — Server test package init
 - `tests/server/conftest.py` — Test fixtures (client, auth token)
-- `tests/server/test_api.py` — 9 backend API tests (auth, templates, populations, scenarios, errors)
+- `tests/server/test_api.py` — 25 backend API tests (auth, templates, populations, scenarios, exports, indicators, errors)
 - `.vscode/tasks.json` — Added Backend API Server and Full Stack dev tasks
 
 ### Review Follow-ups (AI)
@@ -469,3 +487,17 @@ Claude Opus 4.6
 - [x] AI-Review MEDIUM — Task 8: Development workflow and testing (5/5 subtasks complete)
 - [x] AI-Review LOW — Task 0.4: Add missing frontend dependencies (sonner installed, next-themes removed)
 - [x] AI-Review LOW — Task 2.2: Verify full proxy works end-to-end (config verified)
+
+#### Review 2 Follow-ups (2026-03-01)
+
+- [x] AI-Review HIGH (H-1) — Scenario create/clone only in local state, not wired to backend API → Fixed: AppContext calls apiCreateScenario/apiCloneScenario
+- [x] AI-Review HIGH (H-2) — `population_path` hardcoded to None in run endpoint → Fixed: `_resolve_population_path()` scans data directory
+- [x] AI-Review HIGH (H-3) — `test_get_template_not_found` accepts HTTP 500 → Fixed: assert 404 only
+- [x] AI-Review HIGH (H-4) — exports `read_bytes()` with no size limit → Fixed: 500MB `_MAX_EXPORT_BYTES` guard
+- [x] AI-Review HIGH (H-5) — Only 9 placeholder tests → Fixed: 25 tests covering CRUD, exports, indicators, auth edge cases
+- [x] AI-Review MEDIUM (M-1) — Mock data fallback silent → Fixed: `toast.warning` when `usingMockData` after auth
+- [x] AI-Review MEDIUM (M-2) — No session expiry → Fixed: 24h `SESSION_TTL_SECONDS` with `time.monotonic()` check
+- [x] AI-Review MEDIUM (M-3) — `**raw` kwargs bypass validation → Fixed: validate keys against `__dataclass_fields__`
+- [x] AI-Review MEDIUM (M-4) — PasswordPrompt missing label → Fixed: sr-only label, aria-describedby, role=alert
+- [x] AI-Review MEDIUM (M-5) — ScenarioCard div not keyboard accessible → Fixed: role=button, tabIndex, onKeyDown
+- [x] AI-Review MEDIUM (M-6) — type:ignore[assignment] in scenario creation → Fixed: explicit union type annotation

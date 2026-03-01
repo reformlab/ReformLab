@@ -95,12 +95,12 @@ development_status:
   epic-5-retrospective: done
 
   # EPIC-6: Interfaces (Python API, Notebooks, Early No-Code GUI)
-  epic-6: in-progress
+  epic-6: done
   6-1-implement-stable-python-api: done
   6-2-build-quickstart-notebook: done
   6-3-build-advanced-notebook: done
   6-4a-build-static-gui-prototype: done
-  6-4b-wire-gui-prototype-to-backend: review
+  6-4b-wire-gui-prototype-to-backend: done
   6-5-add-export-actions: done
   6-6-improve-operational-error-ux: done
   epic-6-retrospective: done
@@ -115,7 +115,7 @@ development_status:
   epic-7-retrospective: done
 
   # EPIC-8: Post-Phase-1 Validation Spikes
-  epic-8: in-progress
+  epic-8: done
   8-1-e2e-openfisca-integration-spike: done
   8-2-scale-validation-100k-synthetic-population-benchmarks: done
 
