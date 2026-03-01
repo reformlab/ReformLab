@@ -669,55 +669,65 @@ class OpenFiscaApiAdapter:
             ApiMappingError: If null values or invalid role values are found.
         """
         for entity_key, (id_col, role_col) in membership_cols.items():
-            # AC-5: Null check on _id column
+            # AC-5: Null check on _id column.
+            # Use a vectorised filter to get the first null index rather than
+            # iterating element-by-element with .as_py() per row — the Python
+            # for-loop is only reached on the exceptional error path, but keeping
+            # it vectorised keeps the code consistent and avoids any O(n) per-
+            # element overhead even on validation failures.
             id_array = person_table.column(id_col)
             null_mask = pa.compute.is_null(id_array)
             if pa.compute.any(null_mask).as_py():
-                # Find first null index
-                for i in range(len(null_mask)):
-                    if null_mask[i].as_py():
-                        raise ApiMappingError(
-                            summary="Null value in membership column",
-                            reason=(
-                                f"Column '{id_col}' has null value at "
-                                f"row index {i}. All membership columns "
-                                f"must have non-null values."
-                            ),
-                            fix=(
-                                f"Ensure every person has a valid "
-                                f"{entity_key} group assignment in "
-                                f"'{id_col}'."
-                            ),
-                            invalid_names=(id_col,),
-                            valid_names=(),
-                        )
+                # Vectorised first-index extraction — one .as_py() call total.
+                null_positions = pa.compute.filter(
+                    pa.array(range(len(id_array))), null_mask
+                )
+                first_null = null_positions[0].as_py()
+                raise ApiMappingError(
+                    summary="Null value in membership column",
+                    reason=(
+                        f"Column '{id_col}' has null value at "
+                        f"row index {first_null}. All membership columns "
+                        f"must have non-null values."
+                    ),
+                    fix=(
+                        f"Ensure every person has a valid "
+                        f"{entity_key} group assignment in "
+                        f"'{id_col}'."
+                    ),
+                    invalid_names=(id_col,),
+                    valid_names=(),
+                )
 
-            # AC-5: Null check on _role column
+            # AC-5: Null check on _role column.
             role_array = person_table.column(role_col)
             null_mask = pa.compute.is_null(role_array)
             if pa.compute.any(null_mask).as_py():
-                for i in range(len(null_mask)):
-                    if null_mask[i].as_py():
-                        raise ApiMappingError(
-                            summary="Null value in membership column",
-                            reason=(
-                                f"Column '{role_col}' has null value at "
-                                f"row index {i}. All membership columns "
-                                f"must have non-null values."
-                            ),
-                            fix=(
-                                f"Ensure every person has a valid role "
-                                f"in '{role_col}'."
-                            ),
-                            invalid_names=(role_col,),
-                            valid_names=(),
-                        )
+                null_positions = pa.compute.filter(
+                    pa.array(range(len(role_array))), null_mask
+                )
+                first_null = null_positions[0].as_py()
+                raise ApiMappingError(
+                    summary="Null value in membership column",
+                    reason=(
+                        f"Column '{role_col}' has null value at "
+                        f"row index {first_null}. All membership columns "
+                        f"must have non-null values."
+                    ),
+                    fix=(
+                        f"Ensure every person has a valid role "
+                        f"in '{role_col}'."
+                    ),
+                    invalid_names=(role_col,),
+                    valid_names=(),
+                )
 
-            # AC-4: Role value validation
+            # AC-4: Role value validation — check unique values only (typically ≤4
+            # distinct roles per entity regardless of population size) to avoid
+            # an O(n) scan over all person records.
             entity_valid_roles = valid_roles.get(entity_key, frozenset())
             if entity_valid_roles:
-                role_values = role_array.to_pylist()
-                for value in role_values:
+                for value in pa.compute.unique(role_array).to_pylist():
                     if value not in entity_valid_roles:
                         raise ApiMappingError(
                             summary="Invalid role value",
@@ -835,7 +845,25 @@ class OpenFiscaApiAdapter:
             return result
 
         # Step 5: 4-entity mode — membership columns detected
-        assert person_table_key is not None  # guaranteed by membership_cols being non-empty
+        # Defensive: person_table_key should always be non-None here (membership
+        # columns require a person table), but assert would be stripped by -O and
+        # produce a cryptic KeyError. Raise ApiMappingError explicitly instead.
+        if person_table_key is None:
+            raise ApiMappingError(
+                summary="Person entity table not found in population",
+                reason=(
+                    "Membership columns were detected but no table keyed by the "
+                    "person entity singular or plural name was found in "
+                    "population.tables."
+                ),
+                fix=(
+                    "Include the person entity table (e.g. 'individu' or "
+                    "'individus') in PopulationData.tables when using membership "
+                    "columns."
+                ),
+                invalid_names=(),
+                valid_names=(),
+            )
         person_table = population.tables[person_table_key]
 
         # Step 5a: Resolve valid role keys
@@ -850,44 +878,68 @@ class OpenFiscaApiAdapter:
             membership_col_names.add(id_col)
             membership_col_names.add(role_col)
 
-        # Step 5d: Build person instances FROM PERSON TABLE ONLY
-        person_dict: dict[str, Any] = {}
-        for i in range(person_table.num_rows):
-            instance_id = f"{person_table_key}_{i}"
-            instance_data: dict[str, Any] = {}
+        # Step 5d: Build person instances FROM PERSON TABLE ONLY.
+        # Pre-materialise non-membership columns as Python lists once to avoid
+        # O(n×c) scalar-boxing inside the row loop (c = variable column count).
+        var_columns: dict[str, list[Any]] = {
+            col: person_table.column(col).to_pylist()
+            for col in person_table.column_names
+            if col not in membership_col_names
+        }
+        person_dict: dict[str, Any] = {
+            f"{person_table_key}_{i}": {
+                col: {period_str: vals[i]}
+                for col, vals in var_columns.items()
+            }
+            for i in range(person_table.num_rows)
+        }
 
-            for col in person_table.column_names:
-                if col in membership_col_names:
-                    continue
-                value = person_table.column(col)[i].as_py()
-                instance_data[col] = {period_str: value}
-
-            person_dict[instance_id] = instance_data
-
-        assert person_entity_plural is not None
+        # Defensive: person_entity_plural should always be non-None for valid TBS
+        # instances, but `assert` is stripped by -O and `result[None] = ...` would
+        # silently corrupt the entity dict. Raise ApiMappingError explicitly.
+        if person_entity_plural is None:
+            raise ApiMappingError(
+                summary="Cannot determine person entity plural name",
+                reason=(
+                    "The person entity in the TaxBenefitSystem has no .plural "
+                    "attribute. This indicates an incompatible OpenFisca version "
+                    "or malformed TBS."
+                ),
+                fix="Check the OpenFisca compatibility matrix.",
+                invalid_names=(),
+                valid_names=(),
+            )
         result[person_entity_plural] = person_dict
 
-        # Step 5e: Build group entity instances from membership columns
+        # Step 5e: Build group entity instances from membership columns.
+        # Single-pass O(n) approach: materialise each id/role array to a Python
+        # list once, then group persons by (group_id, role_key) in one iteration.
+        # The original O(n×g) nested loop (one inner scan per distinct group ID)
+        # would take O(n×g) = O(250k × 100k) ≈ 25 billion ops for a realistic
+        # French population — this replaces it with O(n) regardless of group count.
         for group_entity_key, (id_col, role_col) in membership_cols.items():
             id_array = person_table.column(id_col)
             role_array = person_table.column(role_col)
 
-            # Get sorted distinct group IDs
-            unique_ids = pa.compute.unique(id_array)
-            sorted_group_ids = sorted(unique_ids.to_pylist())
+            # Materialise ONCE to Python lists — avoids repeated .as_py() per element.
+            id_list = id_array.to_pylist()
+            role_list = role_array.to_pylist()
+            sorted_group_ids = sorted(set(id_list))
 
-            group_dict: dict[str, Any] = {}
-            for group_id in sorted_group_ids:
-                # Collect row indices where id_col == group_id
-                role_assignments: dict[str, list[str]] = {}
-                for i in range(person_table.num_rows):
-                    if id_array[i].as_py() == group_id:
-                        role_key = role_array[i].as_py()
-                        person_id = f"{person_table_key}_{i}"
-                        role_assignments.setdefault(role_key, []).append(person_id)
+            # Single O(n) pass: group person IDs by (group_id, role_key)
+            role_assignments_by_group: dict[Any, dict[str, list[str]]] = {}
+            for i, (gid, rkey) in enumerate(zip(id_list, role_list)):
+                person_id = f"{person_table_key}_{i}"
+                role_assignments_by_group.setdefault(gid, {}).setdefault(
+                    rkey, []
+                ).append(person_id)
 
-                instance_id = f"{group_entity_key}_{group_id}"
-                group_dict[instance_id] = dict(role_assignments)
+            group_dict: dict[str, Any] = {
+                f"{group_entity_key}_{group_id}": role_assignments_by_group.get(
+                    group_id, {}
+                )
+                for group_id in sorted_group_ids
+            }
 
             group_plural = key_to_plural[group_entity_key]
             result[group_plural] = group_dict
@@ -933,6 +985,18 @@ class OpenFiscaApiAdapter:
                 )
 
             # Positional match: row i → sorted_group_ids[i]
+            # ⚠️ ORDERING ASSUMPTION: group table rows must be ordered by ascending
+            # {entity_key}_id value from the person table. Mismatched order causes
+            # silent per-row value swapping (no error raised). Log a warning so
+            # this assumption is visible in structured logs during debugging.
+            logger.warning(
+                "event=group_entity_table_positional_merge "
+                "entity=%s table_key=%s sorted_ids=%s "
+                "assumption=rows_ordered_by_ascending_group_id",
+                group_entity_key,
+                group_table_key,
+                sorted_group_ids,
+            )
             for i, group_id in enumerate(sorted_group_ids):
                 instance_id = f"{group_entity_key}_{group_id}"
                 for col in group_table.column_names:
