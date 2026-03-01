@@ -27,6 +27,9 @@ from typing import TYPE_CHECKING, Any, cast
 import yaml
 
 if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+    from matplotlib.figure import Figure
+
     from reformlab.computation.adapter import ComputationAdapter
     from reformlab.data.pipeline import DatasetManifest
     from reformlab.governance.benchmarking import BenchmarkSuiteResult
@@ -34,7 +37,7 @@ if TYPE_CHECKING:
     from reformlab.governance.memory import MemoryEstimate
     from reformlab.indicators.types import IndicatorResult
     from reformlab.orchestrator.panel import PanelOutput
-    from reformlab.orchestrator.types import YearState
+    from reformlab.orchestrator.types import PipelineStep, YearState
 
 
 @dataclass(frozen=True)
@@ -202,6 +205,34 @@ class SimulationResult:
                 fix="Use one of the supported indicator types: distributional, geographic, welfare, fiscal",
             )
 
+    def export_manifest(self, path: str | Path) -> Path:
+        """Export run manifest to JSON file.
+
+        Writes the complete manifest (parameters, seeds, data hashes, versions,
+        assumptions) as canonical JSON. Useful for audit trails and reproducibility.
+
+        Args:
+            path: Destination file path for JSON export.
+
+        Returns:
+            Path to the written JSON file.
+
+        Example:
+            >>> result = run_scenario(config)
+            >>> manifest_path = result.export_manifest("output/manifest.json")
+        """
+        import json
+
+        dest = Path(path)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+
+        # Use to_json() for canonical content, then pretty-print for readability
+        canonical = self.manifest.to_json()
+        parsed = json.loads(canonical)
+        dest.write_text(json.dumps(parsed, indent=2, sort_keys=True), encoding="utf-8")
+
+        return dest
+
     def export_csv(self, path: str | Path) -> Path:
         """Export simulation panel output to CSV file.
 
@@ -265,6 +296,88 @@ class SimulationResult:
             schema_metadata=provenance_metadata,
         )
 
+    def plot_yearly(
+        self,
+        field: str,
+        metric: str = "mean",
+        *,
+        title: str | None = None,
+        color: str = "steelblue",
+    ) -> tuple[Figure, Axes]:
+        """Line chart of a field's metric over time from panel output.
+
+        Args:
+            field: Name of the field to plot (e.g., "carbon_tax").
+            metric: Aggregation metric ("mean", "median", "sum").
+            title: Chart title. Auto-generated if None.
+            color: Line color. Defaults to "steelblue".
+
+        Returns:
+            Tuple of (Figure, Axes).
+
+        Raises:
+            SimulationError: If panel output is not available.
+        """
+        from reformlab.interfaces.errors import SimulationError
+        from reformlab.visualization.plotting import plot_yearly
+
+        if self.panel_output is None:
+            msg = "Operation failed — No panel output available — Ensure the simulation completed successfully"
+            raise SimulationError(msg, fix="Ensure the simulation completed successfully")
+
+        return plot_yearly(
+            self.panel_output.table, field, metric, title=title, color=color,
+        )
+
+    def plot_comparison(
+        self,
+        other: SimulationResult,
+        field: str,
+        metric: str = "mean",
+        *,
+        baseline_label: str = "Baseline",
+        reform_label: str = "Reform",
+        title: str | None = None,
+    ) -> tuple[Figure, Axes]:
+        """Side-by-side bar chart comparing this result with another by decile.
+
+        Computes distributional indicators for both results and plots them
+        as a grouped bar chart.
+
+        Args:
+            other: Other SimulationResult to compare against.
+            field: Name of the field to compare (e.g., "carbon_tax").
+            metric: Metric to compare (e.g., "mean").
+            baseline_label: Legend label for this result's bars.
+            reform_label: Legend label for the other result's bars.
+            title: Chart title. Auto-generated if None.
+
+        Returns:
+            Tuple of (Figure, Axes).
+
+        Raises:
+            SimulationError: If panel output is not available on either result.
+        """
+        from reformlab.interfaces.errors import SimulationError
+        from reformlab.visualization.plotting import plot_comparison
+
+        if self.panel_output is None or other.panel_output is None:
+            msg = "Operation failed — No panel output available — Ensure both simulations completed successfully"
+            raise SimulationError(msg, fix="Ensure both simulations completed successfully")
+
+        baseline_indicators = self.indicators("distributional")
+        reform_indicators = other.indicators("distributional")
+
+        return plot_comparison(
+            baseline_indicators.to_table(),
+            reform_indicators.to_table(),
+            field,
+            metric,
+            baseline_label=baseline_label,
+            reform_label=reform_label,
+            title=title,
+        )
+
 
 def create_quickstart_adapter(
     *,
@@ -273,14 +386,23 @@ def create_quickstart_adapter(
     household_count: int = 100,
     version_string: str = "quickstart-demo-v1",
 ) -> ComputationAdapter:
-    """Create a synthetic adapter for quickstart notebook demos.
+    """Create a population-aware adapter for quickstart notebook demos.
 
-    This helper keeps quickstart notebooks on the public API surface while
-    using synthetic, offline data suitable for first-run onboarding.
+    The returned adapter reads income and carbon_emissions from the
+    population data passed to ``compute()`` and applies a simple carbon
+    tax formula::
+
+        carbon_tax = carbon_emissions * (carbon_tax_rate / 44.0)
+        disposable_income = income - carbon_tax
+
+    When the population is empty (no rows), the adapter falls back to a
+    pre-built synthetic table so that existing call-sites without
+    population data continue to work.
     """
     import pyarrow as pa
 
     from reformlab.computation.mock_adapter import MockAdapter
+    from reformlab.computation.types import PolicyConfig, PopulationData
     from reformlab.interfaces.errors import ConfigurationError
 
     if household_count <= 0:
@@ -308,11 +430,12 @@ def create_quickstart_adapter(
     baseline_rate = 44.0
     rate_multiplier = carbon_tax_rate / baseline_rate if baseline_rate else 1.0
 
+    # Fallback output for empty-population calls (backward compatibility)
     income_base = [15000.0 + (i * 800.0) for i in range(household_count)]
     carbon_tax_base = [150.0 + (i * 0.5) for i in range(household_count)]
     scaled_carbon_tax = [max(0.0, tax * rate_multiplier) for tax in carbon_tax_base]
 
-    synthetic_output = pa.table(
+    fallback_output = pa.table(
         {
             "household_id": pa.array(range(household_count), type=pa.int64()),
             "year": pa.array([year] * household_count, type=pa.int64()),
@@ -325,9 +448,46 @@ def create_quickstart_adapter(
         }
     )
 
+    def _compute_from_population(
+        population: PopulationData, policy: PolicyConfig, period: int
+    ) -> pa.Table:
+        """Compute carbon tax output from actual population data."""
+        table = population.tables.get("default")
+        if table is None or table.num_rows == 0:
+            return fallback_output
+
+        required_columns = {"household_id", "income", "carbon_emissions"}
+        missing = required_columns - set(table.column_names)
+        if missing:
+            raise ConfigurationError(
+                field_path="population.columns",
+                expected=f"columns {sorted(required_columns)}",
+                actual=f"missing {sorted(missing)} in {table.column_names}",
+                fix="Ensure population CSV contains household_id, income, and carbon_emissions columns",
+            )
+
+        household_ids = table.column("household_id")
+        incomes = table.column("income").to_pylist()
+        emissions = table.column("carbon_emissions").to_pylist()
+        n = len(incomes)
+
+        carbon_taxes = [max(0.0, e * rate_multiplier) for e in emissions]
+        disposable = [incomes[i] - carbon_taxes[i] for i in range(n)]
+
+        return pa.table(
+            {
+                "household_id": household_ids,
+                "year": pa.array([period] * n, type=pa.int64()),
+                "income": pa.array(incomes, type=pa.float64()),
+                "carbon_tax": pa.array(carbon_taxes, type=pa.float64()),
+                "disposable_income": pa.array(disposable, type=pa.float64()),
+            }
+        )
+
     return MockAdapter(
-        default_output=synthetic_output,
+        default_output=fallback_output,
         version_string=version_string,
+        compute_fn=_compute_from_population,
     )
 
 
@@ -415,6 +575,8 @@ def run_scenario(
     config: RunConfig | ScenarioConfig | Path | dict[str, Any],
     adapter: ComputationAdapter | None = None,
     *,
+    steps: tuple[PipelineStep, ...] | None = None,
+    initial_state: dict[str, Any] | None = None,
     skip_memory_check: bool = False,
 ) -> SimulationResult:
     """Run a complete simulation scenario.
@@ -427,6 +589,10 @@ def run_scenario(
         config: Scenario configuration as RunConfig, YAML path, or dict.
         adapter: Optional computation adapter. If None, uses OpenFiscaAdapter.
             Tests typically inject MockAdapter here.
+        steps: Optional additional pipeline steps to append after the default
+            ComputationStep. For example, ``(VintageTransitionStep(vintage_config),)``.
+        initial_state: Optional initial state dict passed to the orchestrator.
+            Keys are state slot names (e.g., ``"vintage_vehicle"``).
 
     Returns:
         SimulationResult with yearly states, panel output, and manifest.
@@ -452,6 +618,26 @@ def run_scenario(
         SimulationResult(SUCCESS, scenario='carbon-tax', years=2025-2030, ...)
     """
     from reformlab.interfaces.errors import ConfigurationError, SimulationError
+
+    # Step 0: Validate optional pipeline steps
+    if steps is not None:
+        if not isinstance(steps, tuple):
+            raise ConfigurationError(
+                field_path="steps",
+                expected="tuple of PipelineStep instances or None",
+                actual=f"{type(steps).__name__}",
+                fix="Pass steps as a tuple, e.g. steps=(VintageTransitionStep(config),)",
+            )
+        for i, step in enumerate(steps):
+            is_callable = callable(step)
+            has_execute = hasattr(step, "execute") and callable(getattr(step, "execute"))
+            if not (is_callable or has_execute):
+                raise ConfigurationError(
+                    field_path=f"steps[{i}]",
+                    expected="callable or object with execute() method",
+                    actual=f"{type(step).__name__}",
+                    fix="Each step must be callable or implement the OrchestratorStep protocol",
+                )
 
     # Step 1: Normalize config to RunConfig
     run_config = _normalize_config(config)
@@ -497,6 +683,8 @@ def run_scenario(
             scenario,
             run_config,
             adapter,
+            steps=steps,
+            initial_state=initial_state,
             additional_warnings=preflight_warnings,
         )
     except ConfigurationError:
@@ -1048,6 +1236,8 @@ def _execute_orchestration(
     run_config: RunConfig,
     adapter: ComputationAdapter,
     *,
+    steps: tuple[PipelineStep, ...] | None = None,
+    initial_state: dict[str, Any] | None = None,
     additional_warnings: list[str] | None = None,
 ) -> SimulationResult:
     """Execute orchestration and package results.
@@ -1056,6 +1246,8 @@ def _execute_orchestration(
         scenario: Validated scenario configuration.
         run_config: Run configuration.
         adapter: Computation adapter.
+        steps: Optional additional pipeline steps appended after ComputationStep.
+        initial_state: Optional initial state dict for the orchestrator.
         additional_warnings: Optional pre-execution warnings to carry into manifest.
 
     Returns:
@@ -1110,9 +1302,9 @@ def _execute_orchestration(
                 population=population,
                 policy=policy,
             ),
-        ),
+        ) + (steps or ()),
         seed=seed,
-        initial_state={},
+        initial_state=dict(initial_state or {}),
         parameters=normalized_params,
         scenario_name=scenario.template_name,
         scenario_version="api-v1",

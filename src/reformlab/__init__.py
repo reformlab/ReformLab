@@ -70,6 +70,17 @@ from reformlab.interfaces import (
     run_benchmarks,
     run_scenario,
 )
+from reformlab.vintage import (
+    VintageCohort,
+    VintageConfig,
+    VintageConfigError,
+    VintageState,
+    VintageSummary,
+    VintageTransitionError,
+    VintageTransitionRule,
+    VintageTransitionStep,
+)
+from reformlab.visualization import create_figure, show, style_axes
 
 __version__ = "0.1.0"
 
@@ -97,6 +108,19 @@ __all__ = [
     "SimulationError",
     "ValidationErrors",
     "ValidationIssue",
+    # Vintage types
+    "VintageCohort",
+    "VintageConfig",
+    "VintageConfigError",
+    "VintageState",
+    "VintageSummary",
+    "VintageTransitionError",
+    "VintageTransitionRule",
+    "VintageTransitionStep",
+    # Visualization utilities
+    "show",
+    "create_figure",
+    "style_axes",
     # Metadata
     "__version__",
 ]

@@ -376,6 +376,81 @@ class TestSimulationResult:
         assert schema_metadata[b"reformlab_adapter_version"] == b"2.0.0"
         assert schema_metadata[b"reformlab_scenario_version"] == b"1.0.0"
 
+    def test_simulation_result_export_manifest(self, tmp_path: Path) -> None:
+        """export_manifest() writes manifest to JSON and returns Path."""
+        import json
+        from datetime import datetime, timezone
+
+        from reformlab import SimulationResult
+
+        created_at = datetime.now(timezone.utc).isoformat()
+
+        result = SimulationResult(
+            success=True,
+            scenario_id="carbon-tax",
+            yearly_states={},
+            panel_output=PanelOutput(
+                table=pa.table({"household_id": pa.array([1], type=pa.int64())}),
+                metadata={},
+            ),
+            manifest=RunManifest(
+                manifest_id="manifest-456",
+                created_at=created_at,
+                engine_version="1.0.0",
+                openfisca_version="2.0.0",
+                adapter_version="2.0.0",
+                scenario_version="1.0.0",
+                parameters={"rate_schedule": {"2025": 44.0}},
+                seeds={"master": 42},
+            ),
+        )
+
+        output_path = tmp_path / "manifest.json"
+        returned_path = result.export_manifest(output_path)
+
+        # Returns Path to written file
+        assert returned_path == output_path
+        assert output_path.exists()
+
+        # Verify JSON content is readable and complete
+        loaded = json.loads(output_path.read_text(encoding="utf-8"))
+        assert loaded["manifest_id"] == "manifest-456"
+        assert loaded["engine_version"] == "1.0.0"
+        assert loaded["parameters"] == {"rate_schedule": {"2025": 44.0}}
+        assert loaded["seeds"] == {"master": 42}
+
+    def test_simulation_result_export_manifest_creates_parent_dirs(
+        self, tmp_path: Path
+    ) -> None:
+        """export_manifest() creates parent directories if needed."""
+        from datetime import datetime, timezone
+
+        from reformlab import SimulationResult
+
+        result = SimulationResult(
+            success=True,
+            scenario_id="carbon-tax",
+            yearly_states={},
+            panel_output=PanelOutput(
+                table=pa.table({"household_id": pa.array([1], type=pa.int64())}),
+                metadata={},
+            ),
+            manifest=RunManifest(
+                manifest_id="manifest-789",
+                created_at=datetime.now(timezone.utc).isoformat(),
+                engine_version="1.0.0",
+                openfisca_version="1.0.0",
+                adapter_version="1.0.0",
+                scenario_version="1.0.0",
+            ),
+        )
+
+        nested_path = tmp_path / "sub" / "dir" / "manifest.json"
+        returned_path = result.export_manifest(nested_path)
+
+        assert returned_path == nested_path
+        assert nested_path.exists()
+
     def test_simulation_result_export_no_panel(self, tmp_path: Path) -> None:
         """export methods raise SimulationError when panel_output is None."""
         from datetime import datetime, timezone
@@ -854,8 +929,79 @@ class TestQuickstartAdapter:
             period=2025,
         )
 
+        # Fallback output when population is empty
         assert result.output_fields.num_rows == 100
         assert "carbon_tax" in result.output_fields.column_names
+
+    def test_quickstart_adapter_computes_from_population(self) -> None:
+        """Adapter computes carbon tax from actual population data."""
+        from reformlab import create_quickstart_adapter
+        from reformlab.computation.types import PolicyConfig, PopulationData
+
+        population_table = pa.table(
+            {
+                "household_id": pa.array([0, 1, 2], type=pa.int64()),
+                "income": pa.array([20000.0, 40000.0, 60000.0], type=pa.float64()),
+                "carbon_emissions": pa.array([4.0, 8.0, 12.0], type=pa.float64()),
+            }
+        )
+        population = PopulationData(
+            tables={"default": population_table},
+            metadata={"source": "test"},
+        )
+
+        adapter = create_quickstart_adapter(carbon_tax_rate=44.0, year=2025)
+        result = adapter.compute(
+            population=population,
+            policy=PolicyConfig(name="carbon-tax", parameters={}),
+            period=2025,
+        )
+
+        output = result.output_fields
+        assert output.num_rows == 3
+        assert "carbon_tax" in output.column_names
+        assert "disposable_income" in output.column_names
+        assert "income" in output.column_names
+
+        # At baseline rate (44.0), multiplier is 1.0, so carbon_tax == emissions
+        carbon_taxes = output.column("carbon_tax").to_pylist()
+        assert carbon_taxes[0] == pytest.approx(4.0)
+        assert carbon_taxes[1] == pytest.approx(8.0)
+        assert carbon_taxes[2] == pytest.approx(12.0)
+
+        # disposable_income = income - carbon_tax
+        disposable = output.column("disposable_income").to_pylist()
+        assert disposable[0] == pytest.approx(20000.0 - 4.0)
+        assert disposable[1] == pytest.approx(40000.0 - 8.0)
+        assert disposable[2] == pytest.approx(60000.0 - 12.0)
+
+    def test_quickstart_adapter_scales_with_rate(self) -> None:
+        """Higher carbon tax rate scales carbon_tax proportionally."""
+        from reformlab import create_quickstart_adapter
+        from reformlab.computation.types import PolicyConfig, PopulationData
+
+        population_table = pa.table(
+            {
+                "household_id": pa.array([0], type=pa.int64()),
+                "income": pa.array([50000.0], type=pa.float64()),
+                "carbon_emissions": pa.array([10.0], type=pa.float64()),
+            }
+        )
+        population = PopulationData(
+            tables={"default": population_table},
+            metadata={"source": "test"},
+        )
+
+        # At rate 88.0 (double baseline), multiplier = 88/44 = 2.0
+        adapter = create_quickstart_adapter(carbon_tax_rate=88.0, year=2025)
+        result = adapter.compute(
+            population=population,
+            policy=PolicyConfig(name="carbon-tax", parameters={}),
+            period=2025,
+        )
+
+        carbon_tax = result.output_fields.column("carbon_tax").to_pylist()[0]
+        assert carbon_tax == pytest.approx(20.0)  # 10.0 * 2.0
 
 
 class TestScenarioManagement:
@@ -1162,6 +1308,17 @@ class TestPublicAPIImports:
             "SimulationError",
             "ValidationErrors",
             "ValidationIssue",
+            "VintageCohort",
+            "VintageConfig",
+            "VintageConfigError",
+            "VintageState",
+            "VintageSummary",
+            "VintageTransitionError",
+            "VintageTransitionRule",
+            "VintageTransitionStep",
+            "show",
+            "create_figure",
+            "style_axes",
             "__version__",
         }
 
@@ -1218,3 +1375,146 @@ class TestErrorHandling:
         # Should raise ValidationErrors (which is a structured error type, not bare ValueError)
         with pytest.raises((ConfigurationError, ValidationErrors)):  # Not ValueError
             run_scenario(config, adapter=adapter)
+
+
+class TestRunScenarioWithSteps:
+    """Test run_scenario with optional steps and initial_state parameters."""
+
+    def test_run_scenario_with_vintage_step(self) -> None:
+        """Passing a VintageTransitionStep via steps= populates vintage state."""
+        from reformlab import RunConfig, ScenarioConfig, run_scenario
+        from reformlab.vintage import (
+            VintageConfig,
+            VintageState,
+            VintageTransitionRule,
+            VintageTransitionStep,
+        )
+
+        config = RunConfig(
+            scenario=ScenarioConfig(
+                template_name="carbon-tax",
+                parameters={"rate_schedule": {2025: 50.0, 2026: 60.0}},
+                start_year=2025,
+                end_year=2026,
+            ),
+            seed=42,
+        )
+
+        vintage_step = VintageTransitionStep(
+            VintageConfig(
+                asset_class="vehicle",
+                rules=(
+                    VintageTransitionRule(
+                        rule_type="fixed_entry",
+                        parameters={"count": 10},
+                    ),
+                    VintageTransitionRule(
+                        rule_type="max_age_retirement",
+                        parameters={"max_age": 15},
+                    ),
+                ),
+            )
+        )
+
+        adapter = MockAdapter()
+
+        result = run_scenario(
+            config,
+            adapter=adapter,
+            steps=(vintage_step,),
+        )
+
+        assert result.success
+        for year in (2025, 2026):
+            state = result.yearly_states[year]
+            assert "vintage_vehicle" in state.data
+            vintage = state.data["vintage_vehicle"]
+            assert isinstance(vintage, VintageState)
+            assert vintage.total_count > 0
+
+    def test_run_scenario_with_initial_state(self) -> None:
+        """Passing initial_state seeds the orchestrator with pre-existing state."""
+        from reformlab import RunConfig, ScenarioConfig, run_scenario
+        from reformlab.vintage import (
+            VintageCohort,
+            VintageConfig,
+            VintageState,
+            VintageSummary,
+            VintageTransitionRule,
+            VintageTransitionStep,
+        )
+
+        config = RunConfig(
+            scenario=ScenarioConfig(
+                template_name="carbon-tax",
+                parameters={"rate_schedule": {2025: 50.0}},
+                start_year=2025,
+                end_year=2025,
+            ),
+            seed=42,
+        )
+
+        vintage_step = VintageTransitionStep(
+            VintageConfig(
+                asset_class="vehicle",
+                rules=(
+                    VintageTransitionRule(
+                        rule_type="fixed_entry",
+                        parameters={"count": 10},
+                    ),
+                    VintageTransitionRule(
+                        rule_type="max_age_retirement",
+                        parameters={"max_age": 15},
+                    ),
+                ),
+            )
+        )
+
+        # Initial fleet: 55 vehicles spread across ages 0-10
+        initial_fleet = VintageState(
+            asset_class="vehicle",
+            cohorts=tuple(
+                VintageCohort(age=age, count=10 - age)
+                for age in range(11)
+            ),
+        )
+        assert initial_fleet.total_count == 55
+
+        adapter = MockAdapter()
+
+        result = run_scenario(
+            config,
+            adapter=adapter,
+            steps=(vintage_step,),
+            initial_state={"vintage_vehicle": initial_fleet},
+        )
+
+        assert result.success
+        vintage = result.yearly_states[2025].data["vintage_vehicle"]
+        summary = VintageSummary.from_state(vintage)
+        # After aging: ages 1-11, retired none (max_age=15), plus 10 new at age 0
+        # Original cohorts: (0,10),(1,9),...,(10,1) -> aged to (1,10),(2,9),...,(11,1)
+        # Plus 10 new at age 0 -> total = 55 + 10 = 65
+        assert summary.total_count == 65
+
+    def test_run_scenario_without_steps_unchanged(self) -> None:
+        """Calling run_scenario without steps produces no vintage state."""
+        from reformlab import RunConfig, ScenarioConfig, run_scenario
+
+        config = RunConfig(
+            scenario=ScenarioConfig(
+                template_name="carbon-tax",
+                parameters={"rate_schedule": {2025: 50.0}},
+                start_year=2025,
+                end_year=2025,
+            ),
+            seed=42,
+        )
+
+        adapter = MockAdapter()
+
+        result = run_scenario(config, adapter=adapter)
+
+        assert result.success
+        state = result.yearly_states[2025]
+        assert "vintage_vehicle" not in state.data

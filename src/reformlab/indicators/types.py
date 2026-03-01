@@ -21,7 +21,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Sequence
+from typing import TYPE_CHECKING, Any, Sequence
+
+if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+    from matplotlib.figure import Figure
 
 import pyarrow as pa
 
@@ -471,6 +475,29 @@ class IndicatorResult:
                     "value": pa.array(values_dist, type=pa.float64()),
                 }
             )
+
+    def plot_deciles(
+        self,
+        field: str,
+        metric: str = "mean",
+        *,
+        title: str | None = None,
+        color: str = "steelblue",
+    ) -> tuple[Figure, Axes]:
+        """Bar chart of indicator values by income decile.
+
+        Args:
+            field: Name of the field to plot (e.g., "carbon_tax").
+            metric: Metric to plot (e.g., "mean", "median", "sum").
+            title: Chart title. Auto-generated if None.
+            color: Bar color. Defaults to "steelblue".
+
+        Returns:
+            Tuple of (Figure, Axes).
+        """
+        from reformlab.visualization.plotting import plot_deciles
+
+        return plot_deciles(self.to_table(), field, metric, title=title, color=color)
 
 
 @dataclass
