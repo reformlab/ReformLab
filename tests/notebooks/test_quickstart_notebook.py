@@ -59,7 +59,16 @@ def test_quickstart_notebook_uses_public_api_only() -> None:
     source = _all_sources(_load_notebook())
     assert "from reformlab import" in source
     assert "create_quickstart_adapter" in source
+    assert "show," in source
     assert "reformlab.computation" not in source
+
+
+def test_quickstart_notebook_uses_visualization_api() -> None:
+    """Notebook uses built-in visualization API instead of inline boilerplate."""
+    source = _all_sources(_load_notebook())
+    assert "plot_deciles(" in source
+    assert "plot_comparison(" in source
+    assert "def show(" not in source
 
 
 def test_quickstart_notebook_includes_story_key_sections() -> None:
@@ -75,20 +84,28 @@ def test_quickstart_notebook_includes_story_key_sections() -> None:
 def test_quickstart_notebook_includes_export_examples() -> None:
     """Story 6-5: notebook includes panel/indicator export and round-trip examples."""
     source = _all_sources(_load_notebook())
-    assert "## 6. Export Actions" in source
+    assert "## 7. Export Actions" in source
     assert "result.export_csv(" in source
     assert "result.export_parquet(" in source
     assert "indicators.export_csv(" in source
     assert "pa_csv.read_csv(" in source
 
 
+def test_quickstart_notebook_includes_population_loading() -> None:
+    """Notebook demonstrates loading population CSV and the adapter pattern."""
+    source = _all_sources(_load_notebook())
+    assert "POPULATION_PATH" in source
+    assert "population_path" in source
+    assert "adapter pattern" in source.lower() or "adapter" in source.lower()
+
+
 def test_quickstart_export_section_precedes_next_steps() -> None:
     """Export walkthrough should appear before final next-steps guidance."""
     source = _all_sources(_load_notebook())
-    export_heading = source.find("## 6. Export Actions")
+    export_heading = source.find("## 7. Export Actions")
     panel_export = source.find("result.export_csv(")
     indicator_export = source.find("indicators.export_csv(")
-    next_steps = source.find("## 7. Next Steps")
+    next_steps = source.find("## 8. Next Steps")
 
     assert export_heading != -1
     assert panel_export != -1
@@ -96,4 +113,4 @@ def test_quickstart_export_section_precedes_next_steps() -> None:
     assert next_steps != -1
 
     assert export_heading < panel_export < indicator_export < next_steps
-    assert source.count("## 7. Next Steps") == 1
+    assert source.count("## 8. Next Steps") == 1
