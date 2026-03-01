@@ -103,7 +103,7 @@
     {
       "label": "BMAD: Run Epic",
       "type": "shell",
-      "command": "source ~/.nvm/nvm.sh && nvm use 22 && git checkout -b epic-${input:epicNumber} master && /Users/lucas/Workspace/bmad-assist/.venv/bin/bmad-assist run -e ${input:epicNumber} -g -v --skip-story-prompts",
+      "command": "source ~/.nvm/nvm.sh && nvm use 22 && (git checkout epic-${input:epicNumber} 2>/dev/null || git checkout -b epic-${input:epicNumber} master) && /Users/lucas/Workspace/bmad-assist/.venv/bin/bmad-assist run -e ${input:epicNumber} -g -v --skip-story-prompts",
       "options": {
         "cwd": "${workspaceFolder}",
         "shell": {
