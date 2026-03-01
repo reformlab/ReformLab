@@ -1,0 +1,148 @@
+record_id: ee4523e5-0989-40f3-b4a3-40d249522d60
+created_at: '2026-03-01T19:10:25.811305+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 9
+  story_num: '2'
+  title: Story 9.2
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: true
+    requires_migration: false
+evaluator:
+  provider: claude
+  model: haiku
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-03-01T19:01:49.795731Z'
+  end_time: '2026-03-01T19:04:37.752731Z'
+  duration_ms: 167957
+  input_tokens: 0
+  output_tokens: 5265
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 21060
+  heading_count: 48
+  list_depth_max: 2
+  code_block_count: 22
+  sections_detected:
+  - '🔥 ADVERSARIAL CODE REVIEW: Story 9.2 - Handle Multi-Entity Output Arrays'
+  - Executive Summary
+  - 📊 Review Metrics
+  - 🚨 CRITICAL FINDINGS
+  - '❌ **FINDING 1: Task Status Integrity Failure**'
+  - 🐛 IMPORTANT FINDINGS (4 Correctness/Validation Issues)
+  - '⚠️ **FINDING 2: Fallback Entity Plural Logic is Broken**'
+  - openfisca_api_adapter.py lines 428-446
+  - 'Option 1: Use proper plural mapping'
+  - 'Option 2: Raise explicit error instead of silent fallback'
+  - '⚠️ **FINDING 3: No Validation for Empty output_variables Tuple**'
+  - 'adapter.py line 48: no check that output_variables is non-empty'
+  - 'Later at line 521:'
+  - 'Error: StopIteration (cryptic, not actionable)'
+  - 'Traceback (most recent call last):'
+  - File ..., line 521, in _select_primary_output
+  - return next(iter(entity_tables.values()))
+  - StopIteration  ← Confusing error message
+  - '⚠️ **FINDING 4: Integration Tests Won''t Run in Standard CI Pipeline**'
+  - '⚠️ **FINDING 5: Fallback Entity Selection Uses Unstable Dict Ordering**'
+  - openfisca_api_adapter.py line 521
+  - Which one gets returned? Depends on dict insertion order, not on entity importance
+  - Find highest-priority entity (person > household > tax > family)
+  - 'Or raise error instead:'
+  - 📋 MINOR FINDINGS (8 Documentation/Testing Issues)
+  - '**FINDING 6: Exception Constructor Parameter Assumptions Not Verified**'
+  - Line 408-410
+  - '**FINDING 7: No Test for entity.plural=None Fallback**'
+  - '**FINDING 8: Debug Logging Leaks Variable Names**'
+  - openfisca_api_adapter.py lines 450-454
+  - '**FINDING 9: Metadata Contract Undocumented**'
+  - openfisca_api_adapter.py lines 117-118
+  - '**FINDING 10: ComputationResult.entity_tables Default Behavior Undocumented**'
+  - openfisca_api_adapter.py line 120
+  - When all variables belong to one entity, entity_tables is empty for
+  - backward compatibility. Use output_fields instead.
+  - '(Multi-entity outputs: entity_tables populated, output_fields = person entity)'
+  - '**FINDING 11: Unrelated File Change in Commit**'
+  - '**FINDING 12: Missing Edge Case Tests**'
+  - ✅ WHAT WORKS WELL
+  - 🔧 Recommended Fixes (Priority Order)
+  - '**P1 - CRITICAL: Update Task Tracking**'
+  - '**P1 - FIX: Entity Plural Fallback Logic**'
+  - '**P1 - ADD: Input Validation**'
+  - '**P2 - FIX: Integration Test CI Configuration**'
+  - '**P2 - ADD: Test for entity.plural=None**'
+  - 📊 Evidence Score Calculation
+  - ✋ CONCLUSION
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.31
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 46800c19d83c
+findings:
+  total_count: 12
+  by_severity:
+    critical: 1
+    major: 4
+    minor: 7
+    nit: 0
+  by_category:
+    security: 1
+    performance: 0
+    correctness: 3
+    completeness: 3
+    clarity: 3
+    testability: 2
+  has_fix_count: 12
+  has_location_count: 12
+  has_evidence_count: 12
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 6
+  confidence_phrases_count: 0
+linguistic:
+  avg_sentence_length: 41.90163934426229
+  vocabulary_richness: 0.2746478873239437
+  flesch_reading_ease: 17.344209050861053
+  vague_terms_count: 0
+  formality_score: 0.72
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.93
+  evidence_quality: 0.88
+  follows_template: true
+  internal_consistency: 0.95
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: true
+    requires_migration: false
+  phase: code-review
+  file_count: 6
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

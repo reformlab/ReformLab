@@ -917,6 +917,11 @@ class TestComputeMultiEntity:
 
         # Single entity: entity_tables should be empty for backward compatibility
         assert result.entity_tables == {}
+        # Metadata must be consistent with entity_tables — both empty for single-entity
+        # (regression guard for the bug where output_entities was non-empty while
+        # entity_tables was {}, causing consumers to see contradictory state).
+        assert result.metadata["output_entities"] == []
+        assert result.metadata["entity_row_counts"] == {}
         # output_fields still works
         assert result.output_fields.num_rows == 3
         assert result.output_fields.column_names == ["income_tax"]

@@ -1,6 +1,6 @@
 # Story 9.2: Handle Multi-Entity Output Arrays
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -42,48 +42,48 @@ The current `_extract_results()` method (line 341-350 of `openfisca_api_adapter.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Determine variable-to-entity mapping from TBS (AC: #1, #2, #5)
-  - [ ] 1.1 Add `_resolve_variable_entities()` method that queries `tbs.variables[var_name].entity` to determine which entity each output variable belongs to
-  - [ ] 1.2 Group output variables by entity (e.g., `{"individu": ["salaire_net"], "foyer_fiscal": ["impot_revenu_restant_a_payer"]}`)
-  - [ ] 1.3 Handle edge case where variable entity cannot be resolved — raise `ApiMappingError` with actionable message
-  - [ ] 1.4 Unit tests with mock TBS: verify grouping logic, error on unknown variable entity
+- [x] Task 1: Determine variable-to-entity mapping from TBS (AC: #1, #2, #5)
+  - [x] 1.1 Add `_resolve_variable_entities()` method that queries `tbs.variables[var_name].entity` to determine which entity each output variable belongs to
+  - [x] 1.2 Group output variables by entity (e.g., `{"individu": ["salaire_net"], "foyer_fiscal": ["impot_revenu_restant_a_payer"]}`)
+  - [x] 1.3 Handle edge case where variable entity cannot be resolved — raise `ApiMappingError` with actionable message
+  - [x] 1.4 Unit tests with mock TBS: verify grouping logic, error on unknown variable entity
 
-- [ ] Task 2: Refactor `_extract_results()` to produce per-entity tables (AC: #1, #2, #3)
-  - [ ] 2.1 Replace single `pa.Table` construction with per-entity extraction loop
-  - [ ] 2.2 For each entity group, call `simulation.calculate()` for its variables and build a `pa.Table` per entity
-  - [ ] 2.3 Store results as `dict[str, pa.Table]` keyed by entity plural name
-  - [ ] 2.4 Unit tests: verify correct array lengths per entity, verify table column names
+- [x] Task 2: Refactor `_extract_results()` to produce per-entity tables (AC: #1, #2, #3)
+  - [x] 2.1 Replace single `pa.Table` construction with per-entity extraction loop
+  - [x] 2.2 For each entity group, call `simulation.calculate()` for its variables and build a `pa.Table` per entity
+  - [x] 2.3 Store results as `dict[str, pa.Table]` keyed by entity plural name
+  - [x] 2.4 Unit tests: verify correct array lengths per entity, verify table column names
 
-- [ ] Task 3: Evolve `ComputationResult` to support multi-entity outputs (AC: #1, #3, #4)
-  - [ ] 3.1 Add `entity_tables: dict[str, pa.Table]` field to `ComputationResult` (default empty dict for backward compatibility)
-  - [ ] 3.2 Keep `output_fields: pa.Table` as the primary/default output for backward compatibility — when all variables belong to one entity, `output_fields` is that entity's table
-  - [ ] 3.3 When variables span multiple entities, `output_fields` contains the person-entity table (or the first entity's table if no person entity), and `entity_tables` contains all per-entity tables
-  - [ ] 3.4 Add metadata entry `"output_entities"` listing which entities have tables
-  - [ ] 3.5 Update `ComputationResult` type stub (`.pyi` file)
-  - [ ] 3.6 Unit tests: verify backward compatibility (existing code accessing `output_fields` still works), verify `entity_tables` populated correctly
+- [x] Task 3: Evolve `ComputationResult` to support multi-entity outputs (AC: #1, #3, #4)
+  - [x] 3.1 Add `entity_tables: dict[str, pa.Table]` field to `ComputationResult` (default empty dict for backward compatibility)
+  - [x] 3.2 Keep `output_fields: pa.Table` as the primary/default output for backward compatibility — when all variables belong to one entity, `output_fields` is that entity's table
+  - [x] 3.3 When variables span multiple entities, `output_fields` contains the person-entity table (or the first entity's table if no person entity), and `entity_tables` contains all per-entity tables
+  - [x] 3.4 Add metadata entry `"output_entities"` listing which entities have tables
+  - [x] 3.5 Update `ComputationResult` type stub (`.pyi` file)
+  - [x] 3.6 Unit tests: verify backward compatibility (existing code accessing `output_fields` still works), verify `entity_tables` populated correctly
 
-- [ ] Task 4: Update `OpenFiscaApiAdapter.compute()` to wire new extraction (AC: #1, #2, #3)
-  - [ ] 4.1 Pass TBS to `_extract_results()` so it can resolve variable entities
-  - [ ] 4.2 Update `compute()` return to populate both `output_fields` and `entity_tables`
-  - [ ] 4.3 Update metadata with `"output_entities"` and per-entity row counts
-  - [ ] 4.4 Unit tests with mock TBS and mock simulation
+- [x] Task 4: Update `OpenFiscaApiAdapter.compute()` to wire new extraction (AC: #1, #2, #3)
+  - [x] 4.1 Pass TBS to `_extract_results()` so it can resolve variable entities
+  - [x] 4.2 Update `compute()` return to populate both `output_fields` and `entity_tables`
+  - [x] 4.3 Update metadata with `"output_entities"` and per-entity row counts
+  - [x] 4.4 Unit tests with mock TBS and mock simulation
 
-- [ ] Task 5: Update downstream consumers for backward compatibility (AC: #4)
-  - [ ] 5.1 Verify `ComputationStep` in orchestrator still works (it accesses `result.output_fields.num_rows`)
-  - [ ] 5.2 Verify `PanelOutput.from_orchestrator_result()` still works (it accesses `comp_result.output_fields`)
-  - [ ] 5.3 Verify `MockAdapter` still produces valid `ComputationResult` objects
-  - [ ] 5.4 Run full existing test suite to confirm no regressions
+- [x] Task 5: Update downstream consumers for backward compatibility (AC: #4)
+  - [x] 5.1 Verify `ComputationStep` in orchestrator still works (it accesses `result.output_fields.num_rows`)
+  - [x] 5.2 Verify `PanelOutput.from_orchestrator_result()` still works (it accesses `comp_result.output_fields`)
+  - [x] 5.3 Verify `MockAdapter` still produces valid `ComputationResult` objects
+  - [x] 5.4 Run full existing test suite to confirm no regressions
 
-- [ ] Task 6: Integration tests with real OpenFisca-France (AC: #1, #2, #3)
-  - [ ] 6.1 Test: married couple (2 persons, 1 foyer, 1 menage) with mixed-entity output variables — verify separate tables
-  - [ ] 6.2 Test: single-entity variables only — verify backward-compatible single table
-  - [ ] 6.3 Test: verify array lengths match entity instance counts
-  - [ ] 6.4 Mark integration tests with `@pytest.mark.integration` (requires `openfisca-france` installed)
+- [x] Task 6: Integration tests with real OpenFisca-France (AC: #1, #2, #3)
+  - [x] 6.1 Test: married couple (2 persons, 1 foyer, 1 menage) with mixed-entity output variables — verify separate tables
+  - [x] 6.2 Test: single-entity variables only — verify backward-compatible single table
+  - [x] 6.3 Test: verify array lengths match entity instance counts
+  - [x] 6.4 Mark integration tests with `@pytest.mark.integration` (requires `openfisca-france` installed)
 
-- [ ] Task 7: Run quality gates (all ACs)
-  - [ ] 7.1 `uv run ruff check src/ tests/`
-  - [ ] 7.2 `uv run mypy src/`
-  - [ ] 7.3 `uv run pytest tests/computation/ tests/orchestrator/`
+- [x] Task 7: Run quality gates (all ACs)
+  - [x] 7.1 `uv run ruff check src/ tests/`
+  - [x] 7.2 `uv run mypy src/`
+  - [x] 7.3 `uv run pytest tests/computation/ tests/orchestrator/`
 
 ## Dev Notes
 
@@ -277,6 +277,12 @@ Claude Opus 4.6 (via create-story workflow)
 - Backward compatibility strategy documented: additive `entity_tables` field with empty dict default
 - Mock TBS pattern extended with variable-to-entity mapping for unit tests
 - Integration test reference case (married couple) documented with expected array lengths
+- **Code review synthesis (2026-03-01):** Fixed 5 issues found during review:
+  1. (Critical) `metadata["output_entities"]` and `metadata["entity_row_counts"]` now computed from `result_entity_tables` (post-filter) so they are consistent with the returned `entity_tables` field — previously single-entity results had non-empty `output_entities` while `entity_tables` was `{}`, violating data contract
+  2. (High) Added `ApiMappingError` guard in `__init__` for empty `output_variables` — prevents cryptic `StopIteration` from propagating up
+  3. (High) Moved `_resolve_variable_entities()` call before `_build_simulation()` — fail-fast pattern avoids expensive simulation build if entity resolution fails
+  4. (Medium) Replaced misleading comment + silent singular-key fallback in `_resolve_variable_entities` with explicit `ApiMappingError` — silently using the singular key as the plural would produce wrong dict keys (e.g. `"foyer_fiscal"` instead of `"foyers_fiscaux"`) and cause silent downstream failures
+  5. (Medium) Added `metadata["output_entities"] == []` and `metadata["entity_row_counts"] == {}` assertions to `test_compute_single_entity_backward_compatible` — regression guard that would have caught issue #1
 
 ### File List
 

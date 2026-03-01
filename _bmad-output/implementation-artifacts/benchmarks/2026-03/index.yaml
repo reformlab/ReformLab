@@ -17,4 +17,31 @@ records:
   provider: claude
   created_at: '2026-03-01T16:49:22.626154+00:00'
   workflow_id: dev-story
-updated_at: '2026-03-01T16:49:22.629105+00:00'
+- record_id: 7f21b8f4-d1ba-450d-9aef-145b4d00676f
+  path: eval-9-2-a-20260301T191025Z.yaml
+  epic: 9
+  story: '2'
+  role: validator
+  role_id: a
+  provider: claude
+  created_at: '2026-03-01T19:10:25.795932+00:00'
+  workflow_id: code-review
+- record_id: ee4523e5-0989-40f3-b4a3-40d249522d60
+  path: eval-9-2-b-20260301T191025Z.yaml
+  epic: 9
+  story: '2'
+  role: validator
+  role_id: b
+  provider: claude
+  created_at: '2026-03-01T19:10:25.811305+00:00'
+  workflow_id: code-review
+- record_id: c1ff69ea-3f13-42ef-86d4-085599a9f8a0
+  path: eval-9-2-synthesizer-20260301T191809Z.yaml
+  epic: 9
+  story: '2'
+  role: synthesizer
+  role_id: null
+  provider: claude
+  created_at: '2026-03-01T19:18:09.636224+00:00'
+  workflow_id: code-review-synthesis
+updated_at: '2026-03-01T19:18:09.640349+00:00'

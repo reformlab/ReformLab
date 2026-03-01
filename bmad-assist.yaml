@@ -35,18 +35,22 @@ phase_models:
     provider: claude
     model: opus
 
-  # --- Validation phases: Sonnet ---
+  # --- Validation phases: Sonnet + Haiku (2 required) ---
   validate_story:
     - provider: claude
       model: sonnet
+    - provider: claude
+      model: haiku
   validate_story_synthesis:
     provider: claude
     model: sonnet
 
-  # --- Review phases: Sonnet ---
+  # --- Review phases: Sonnet + Haiku (2 required) ---
   code_review:
     - provider: claude
       model: sonnet
+    - provider: claude
+      model: haiku
   code_review_synthesis:
     provider: claude
     model: sonnet

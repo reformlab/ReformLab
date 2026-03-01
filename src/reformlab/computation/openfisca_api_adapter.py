@@ -44,6 +44,14 @@ class OpenFiscaApiAdapter:
         output_variables: tuple[str, ...],
         skip_version_check: bool = False,
     ) -> None:
+        if not output_variables:
+            raise ApiMappingError(
+                summary="Empty output_variables",
+                reason="output_variables tuple is empty — no variables to compute",
+                fix="Provide at least one valid output variable name.",
+                invalid_names=(),
+                valid_names=(),
+            )
         self._country_package = country_package
         self._output_variables = output_variables
 
@@ -82,10 +90,12 @@ class OpenFiscaApiAdapter:
         tbs = self._get_tax_benefit_system()
         self._validate_output_variables(tbs)
 
-        simulation = self._build_simulation(population, policy, period, tbs)
-
-        # Story 9.2: Entity-aware result extraction
+        # Story 9.2: Resolve entity grouping before building simulation (fail fast —
+        # avoid expensive SimulationBuilder.build_from_entities() if entity
+        # resolution fails due to incompatible country package).
         vars_by_entity = self._resolve_variable_entities(tbs)
+
+        simulation = self._build_simulation(population, policy, period, tbs)
         entity_tables = self._extract_results_by_entity(
             simulation, period, vars_by_entity
         )
@@ -97,10 +107,12 @@ class OpenFiscaApiAdapter:
 
         elapsed = time.monotonic() - start
 
-        # Build output_entities metadata listing which entities have tables
-        output_entities = sorted(entity_tables.keys())
+        # Only expose entity_tables for multi-entity results — keeps metadata
+        # consistent with entity_tables (single-entity uses {} for backward compat).
+        result_entity_tables = entity_tables if len(entity_tables) > 1 else {}
+        output_entities = sorted(result_entity_tables.keys())
         entity_row_counts = {
-            entity: table.num_rows for entity, table in entity_tables.items()
+            entity: table.num_rows for entity, table in result_entity_tables.items()
         }
 
         return ComputationResult(
@@ -117,7 +129,7 @@ class OpenFiscaApiAdapter:
                 "output_entities": output_entities,
                 "entity_row_counts": entity_row_counts,
             },
-            entity_tables=entity_tables if len(entity_tables) > 1 else {},
+            entity_tables=result_entity_tables,
         )
 
     # ------------------------------------------------------------------
@@ -427,23 +439,28 @@ class OpenFiscaApiAdapter:
 
             entity_plural = getattr(entity, "plural", None)
             if entity_plural is None:
-                # Fallback: try entity.key + "s" if plural is missing
+                # entity.plural is required — silently falling back to entity.key
+                # would produce wrong plural keys (e.g. "foyer_fiscal" instead of
+                # "foyers_fiscaux") causing subtle downstream lookup failures.
+                # This path only occurs with a malformed/incompatible TBS.
                 entity_key = getattr(entity, "key", None)
-                if entity_key is None:
-                    raise ApiMappingError(
-                        summary="Cannot determine entity name for variable",
-                        reason=(
-                            f"Variable '{var_name}' entity has neither .plural "
-                            f"nor .key attribute"
-                        ),
-                        fix=(
-                            "This may indicate an incompatible OpenFisca version. "
-                            "Check the OpenFisca compatibility matrix."
-                        ),
-                        invalid_names=(var_name,),
-                        valid_names=tuple(sorted(tbs.variables.keys())),
-                    )
-                entity_plural = entity_key
+                raise ApiMappingError(
+                    summary="Cannot determine entity plural name for variable",
+                    reason=(
+                        f"Variable '{var_name}' entity has no .plural attribute"
+                        + (
+                            f" (entity.key={entity_key!r})"
+                            if entity_key
+                            else ", no .key attribute either"
+                        )
+                    ),
+                    fix=(
+                        "This may indicate an incompatible OpenFisca version. "
+                        "Check the OpenFisca compatibility matrix."
+                    ),
+                    invalid_names=(var_name,),
+                    valid_names=tuple(sorted(tbs.variables.keys())),
+                )
 
             vars_by_entity.setdefault(entity_plural, []).append(var_name)
 
