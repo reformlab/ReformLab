@@ -56,11 +56,14 @@ def _make_mock_tbs(
 
     # Variables get a default entity (the person entity) for backward compatibility
     # with existing tests that don't need entity-aware behavior.
+    # Story 9.3: Also set definition_period = "year" by default so that
+    # _resolve_variable_periodicities() works correctly during compute().
     default_entity = entities_by_key.get(person_entity, entities[0])
     variables: dict[str, Any] = {}
     for name in variable_names:
         var_mock = MagicMock()
         var_mock.entity = default_entity
+        var_mock.definition_period = "year"
         variables[name] = var_mock
     tbs.variables = variables
 
@@ -71,17 +74,21 @@ def _make_mock_tbs_with_entities(
     entity_keys: tuple[str, ...] = ("individu", "foyer_fiscal", "menage"),
     entity_plurals: dict[str, str] | None = None,
     variable_entities: dict[str, str] | None = None,
+    variable_periodicities: dict[str, str] | None = None,
     person_entity: str = "individu",
 ) -> MagicMock:
     """Create a mock TBS where variables know their entity.
 
     Story 9.2: Extended mock for entity-aware extraction tests.
+    Story 9.3: Added variable_periodicities parameter for periodicity-aware tests.
 
     Args:
         entity_keys: Entity singular keys.
         entity_plurals: Mapping of singular key to plural form.
             Defaults to appending "s" (with special cases).
         variable_entities: Mapping of variable name to entity key.
+        variable_periodicities: Mapping of variable name to periodicity string
+            (e.g. "month", "year", "eternity"). Defaults to "year" for all.
         person_entity: Which entity key is the person entity.
 
     Returns:
@@ -98,6 +105,8 @@ def _make_mock_tbs_with_entities(
     }
     if entity_plurals is None:
         entity_plurals = {}
+    if variable_periodicities is None:
+        variable_periodicities = {}
 
     entities_by_key: dict[str, SimpleNamespace] = {}
     entities = []
@@ -113,12 +122,14 @@ def _make_mock_tbs_with_entities(
     tbs.entities = entities
 
     # Build variables with entity references
+    # Story 9.3: Also set definition_period (default "year" for backward compat)
     if variable_entities is None:
         variable_entities = {}
     variables: dict[str, Any] = {}
     for var_name, entity_key in variable_entities.items():
         var_mock = MagicMock()
         var_mock.entity = entities_by_key[entity_key]
+        var_mock.definition_period = variable_periodicities.get(var_name, "year")
         variables[var_name] = var_mock
     tbs.variables = variables
 
@@ -791,8 +802,12 @@ class TestExtractResultsByEntity:
             {"salaire_net": np.array([20000.0, 35000.0])}
         )
         vars_by_entity = {"individus": ["salaire_net"]}
+        # Story 9.3: Pass variable_periodicities (required parameter)
+        variable_periodicities = {"salaire_net": "year"}
 
-        result = adapter._extract_results_by_entity(mock_simulation, 2024, vars_by_entity)
+        result = adapter._extract_results_by_entity(
+            mock_simulation, 2024, vars_by_entity, variable_periodicities
+        )
 
         assert "individus" in result
         assert result["individus"].num_rows == 2
@@ -814,8 +829,16 @@ class TestExtractResultsByEntity:
             "foyers_fiscaux": ["irpp"],
             "menages": ["revenu_disponible"],
         }
+        # Story 9.3: Pass variable_periodicities (required parameter)
+        variable_periodicities = {
+            "salaire_net": "year",
+            "irpp": "year",
+            "revenu_disponible": "year",
+        }
 
-        result = adapter._extract_results_by_entity(mock_simulation, 2024, vars_by_entity)
+        result = adapter._extract_results_by_entity(
+            mock_simulation, 2024, vars_by_entity, variable_periodicities
+        )
 
         assert len(result) == 3
         assert result["individus"].num_rows == 2
@@ -833,8 +856,12 @@ class TestExtractResultsByEntity:
             "age": np.array([30.0, 45.0]),
         })
         vars_by_entity = {"individus": ["salaire_net", "age"]}
+        # Story 9.3: Pass variable_periodicities (required parameter)
+        variable_periodicities = {"salaire_net": "year", "age": "year"}
 
-        result = adapter._extract_results_by_entity(mock_simulation, 2024, vars_by_entity)
+        result = adapter._extract_results_by_entity(
+            mock_simulation, 2024, vars_by_entity, variable_periodicities
+        )
 
         assert result["individus"].num_rows == 2
         assert set(result["individus"].column_names) == {"salaire_net", "age"}
@@ -889,6 +916,519 @@ class TestSelectPrimaryOutput:
         )
 
         assert result is foyer_table
+
+
+# ===========================================================================
+# Story 9.3: Variable periodicity handling
+# ===========================================================================
+
+
+def _make_mock_simulation_with_methods(
+    results: dict[str, np.ndarray],
+) -> MagicMock:
+    """Mock simulation that tracks calculate vs calculate_add calls.
+
+    Story 9.3: Used for periodicity dispatch verification.
+    """
+    sim = MagicMock()
+    sim.calculate.side_effect = lambda var, period: results[var]
+    sim.calculate_add.side_effect = lambda var, period: results[var]
+    return sim
+
+
+class TestResolveVariablePeriodicities:
+    """Story 9.3 AC-1, AC-2, AC-6: Periodicity detection from TBS variables."""
+
+    def test_detects_yearly_periodicity(self) -> None:
+        """AC-1: Yearly variable detected correctly."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("irpp",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs_with_entities(
+            variable_entities={"irpp": "foyer_fiscal"},
+            variable_periodicities={"irpp": "year"},
+        )
+
+        result = adapter._resolve_variable_periodicities(mock_tbs)
+
+        assert result == {"irpp": "year"}
+
+    def test_detects_monthly_periodicity(self) -> None:
+        """AC-2: Monthly variable detected correctly."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("salaire_net",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs_with_entities(
+            variable_entities={"salaire_net": "individu"},
+            variable_periodicities={"salaire_net": "month"},
+        )
+
+        result = adapter._resolve_variable_periodicities(mock_tbs)
+
+        assert result == {"salaire_net": "month"}
+
+    def test_detects_eternity_periodicity(self) -> None:
+        """AC-6: Eternity variable detected correctly."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("date_naissance",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs_with_entities(
+            variable_entities={"date_naissance": "individu"},
+            variable_periodicities={"date_naissance": "eternity"},
+        )
+
+        result = adapter._resolve_variable_periodicities(mock_tbs)
+
+        assert result == {"date_naissance": "eternity"}
+
+    def test_detects_mixed_periodicities(self) -> None:
+        """AC-1, AC-2, AC-6: Mixed periodicities detected for multiple variables."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("salaire_net", "irpp", "date_naissance"),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs_with_entities(
+            variable_entities={
+                "salaire_net": "individu",
+                "irpp": "foyer_fiscal",
+                "date_naissance": "individu",
+            },
+            variable_periodicities={
+                "salaire_net": "month",
+                "irpp": "year",
+                "date_naissance": "eternity",
+            },
+        )
+
+        result = adapter._resolve_variable_periodicities(mock_tbs)
+
+        assert result == {
+            "salaire_net": "month",
+            "irpp": "year",
+            "date_naissance": "eternity",
+        }
+
+    def test_missing_definition_period_raises_error(self) -> None:
+        """AC-1: Variable with no definition_period attribute raises ApiMappingError."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("broken_var",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs_with_entities(
+            variable_entities={},
+        )
+        # Add variable without definition_period (set to None explicitly)
+        var_mock = MagicMock()
+        var_mock.entity = SimpleNamespace(key="individu", plural="individus", is_person=True)
+        var_mock.definition_period = None
+        mock_tbs.variables["broken_var"] = var_mock
+
+        with pytest.raises(ApiMappingError, match="Cannot determine periodicity"):
+            adapter._resolve_variable_periodicities(mock_tbs)
+
+    def test_unexpected_periodicity_raises_error(self) -> None:
+        """AC-1: Variable with unexpected periodicity value raises ApiMappingError."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("broken_var",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs_with_entities(
+            variable_entities={},
+        )
+        var_mock = MagicMock()
+        var_mock.entity = SimpleNamespace(key="individu", plural="individus", is_person=True)
+        var_mock.definition_period = "invalid_period"
+        mock_tbs.variables["broken_var"] = var_mock
+
+        with pytest.raises(ApiMappingError, match="Unexpected periodicity"):
+            adapter._resolve_variable_periodicities(mock_tbs)
+
+    def test_day_periodicity_detected(self) -> None:
+        """AC-1: Day periodicity is detected correctly."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("daily_var",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs_with_entities(
+            variable_entities={"daily_var": "individu"},
+            variable_periodicities={"daily_var": "day"},
+        )
+
+        result = adapter._resolve_variable_periodicities(mock_tbs)
+
+        assert result == {"daily_var": "day"}
+
+
+class TestCalculateVariable:
+    """Story 9.3 AC-1, AC-2, AC-6: Calculation dispatch based on periodicity."""
+
+    def test_yearly_uses_calculate(self) -> None:
+        """AC-1: Yearly variables use simulation.calculate()."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("irpp",),
+            skip_version_check=True,
+        )
+        sim = _make_mock_simulation_with_methods(
+            {"irpp": np.array([-1500.0])}
+        )
+
+        result = adapter._calculate_variable(sim, "irpp", "2024", "year")
+
+        sim.calculate.assert_called_once_with("irpp", "2024")
+        sim.calculate_add.assert_not_called()
+        assert result[0] == -1500.0
+
+    def test_monthly_uses_calculate_add(self) -> None:
+        """AC-2: Monthly variables use simulation.calculate_add()."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("salaire_net",),
+            skip_version_check=True,
+        )
+        sim = _make_mock_simulation_with_methods(
+            {"salaire_net": np.array([24000.0])}
+        )
+
+        result = adapter._calculate_variable(sim, "salaire_net", "2024", "month")
+
+        sim.calculate_add.assert_called_once_with("salaire_net", "2024")
+        sim.calculate.assert_not_called()
+        assert result[0] == 24000.0
+
+    def test_eternity_uses_calculate(self) -> None:
+        """AC-6: Eternity variables use simulation.calculate(), NOT calculate_add()."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("date_naissance",),
+            skip_version_check=True,
+        )
+        sim = _make_mock_simulation_with_methods(
+            {"date_naissance": np.array([19960101])}
+        )
+
+        result = adapter._calculate_variable(sim, "date_naissance", "2024", "eternity")
+
+        sim.calculate.assert_called_once_with("date_naissance", "2024")
+        sim.calculate_add.assert_not_called()
+
+    def test_day_uses_calculate_add(self) -> None:
+        """AC-1: Day-period variables use simulation.calculate_add()."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("daily_var",),
+            skip_version_check=True,
+        )
+        sim = _make_mock_simulation_with_methods(
+            {"daily_var": np.array([365.0])}
+        )
+
+        result = adapter._calculate_variable(sim, "daily_var", "2024", "day")
+
+        sim.calculate_add.assert_called_once_with("daily_var", "2024")
+        sim.calculate.assert_not_called()
+
+    def test_week_uses_calculate_add(self) -> None:
+        """AC-1: Week-period variables use simulation.calculate_add()."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("weekly_var",),
+            skip_version_check=True,
+        )
+        sim = _make_mock_simulation_with_methods(
+            {"weekly_var": np.array([52.0])}
+        )
+
+        result = adapter._calculate_variable(sim, "weekly_var", "2024", "week")
+
+        sim.calculate_add.assert_called_once_with("weekly_var", "2024")
+        sim.calculate.assert_not_called()
+
+    def test_weekday_uses_calculate_add(self) -> None:
+        """AC-1: Weekday-period variables use simulation.calculate_add()."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("weekday_var",),
+            skip_version_check=True,
+        )
+        sim = _make_mock_simulation_with_methods(
+            {"weekday_var": np.array([260.0])}
+        )
+
+        result = adapter._calculate_variable(sim, "weekday_var", "2024", "weekday")
+
+        sim.calculate_add.assert_called_once_with("weekday_var", "2024")
+        sim.calculate.assert_not_called()
+
+
+class TestPeriodValidation:
+    """Story 9.3 AC-3: Invalid period format rejection."""
+
+    def test_zero_period_raises_error(
+        self, sample_population: PopulationData, empty_policy: PolicyConfig
+    ) -> None:
+        """AC-3: Period of 0 raises ApiMappingError."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs()
+        adapter._tax_benefit_system = mock_tbs
+
+        with pytest.raises(ApiMappingError, match="Invalid period"):
+            adapter.compute(sample_population, empty_policy, 0)
+
+    def test_negative_period_raises_error(
+        self, sample_population: PopulationData, empty_policy: PolicyConfig
+    ) -> None:
+        """AC-3: Negative period raises ApiMappingError."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs()
+        adapter._tax_benefit_system = mock_tbs
+
+        with pytest.raises(ApiMappingError, match="Invalid period"):
+            adapter.compute(sample_population, empty_policy, -1)
+
+    def test_two_digit_period_raises_error(
+        self, sample_population: PopulationData, empty_policy: PolicyConfig
+    ) -> None:
+        """AC-3: Two-digit period (99) raises ApiMappingError."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs()
+        adapter._tax_benefit_system = mock_tbs
+
+        with pytest.raises(ApiMappingError, match="Invalid period"):
+            adapter.compute(sample_population, empty_policy, 99)
+
+    def test_five_digit_period_raises_error(
+        self, sample_population: PopulationData, empty_policy: PolicyConfig
+    ) -> None:
+        """AC-3: Five-digit period (99999) raises ApiMappingError."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs()
+        adapter._tax_benefit_system = mock_tbs
+
+        with pytest.raises(ApiMappingError, match="Invalid period"):
+            adapter.compute(sample_population, empty_policy, 99999)
+
+    def test_valid_period_2024_passes(
+        self, sample_population: PopulationData, empty_policy: PolicyConfig
+    ) -> None:
+        """AC-3: Valid period (2024) passes validation."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs()
+        mock_simulation = _make_mock_simulation(
+            {"income_tax": np.array([3000.0, 6750.0, 12000.0])}
+        )
+        adapter._tax_benefit_system = mock_tbs
+
+        mock_builder_instance = MagicMock()
+        mock_builder_instance.build_from_entities.return_value = mock_simulation
+
+        with _patch_simulation_builder(mock_builder_instance):
+            result = adapter.compute(sample_population, empty_policy, 2024)
+
+        assert result.period == 2024
+
+    def test_valid_period_1000_passes(
+        self, sample_population: PopulationData, empty_policy: PolicyConfig
+    ) -> None:
+        """AC-3: Edge case — period 1000 (minimum valid) passes."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs()
+        mock_simulation = _make_mock_simulation(
+            {"income_tax": np.array([3000.0, 6750.0, 12000.0])}
+        )
+        adapter._tax_benefit_system = mock_tbs
+
+        mock_builder_instance = MagicMock()
+        mock_builder_instance.build_from_entities.return_value = mock_simulation
+
+        with _patch_simulation_builder(mock_builder_instance):
+            result = adapter.compute(sample_population, empty_policy, 1000)
+
+        assert result.period == 1000
+
+    def test_valid_period_9999_passes(
+        self, sample_population: PopulationData, empty_policy: PolicyConfig
+    ) -> None:
+        """AC-3: Edge case — period 9999 (maximum valid) passes."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs()
+        mock_simulation = _make_mock_simulation(
+            {"income_tax": np.array([3000.0, 6750.0, 12000.0])}
+        )
+        adapter._tax_benefit_system = mock_tbs
+
+        mock_builder_instance = MagicMock()
+        mock_builder_instance.build_from_entities.return_value = mock_simulation
+
+        with _patch_simulation_builder(mock_builder_instance):
+            result = adapter.compute(sample_population, empty_policy, 9999)
+
+        assert result.period == 9999
+
+    def test_period_error_includes_actual_value(
+        self, sample_population: PopulationData, empty_policy: PolicyConfig
+    ) -> None:
+        """AC-3: Error message includes the actual invalid value."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs()
+        adapter._tax_benefit_system = mock_tbs
+
+        with pytest.raises(ApiMappingError) as exc_info:
+            adapter.compute(sample_population, empty_policy, 42)
+
+        assert "42" in exc_info.value.reason
+        assert "Invalid period" in exc_info.value.summary
+
+
+class TestPeriodicityMetadata:
+    """Story 9.3 AC-5: Periodicity metadata in compute() result."""
+
+    def test_variable_periodicities_in_metadata(
+        self, empty_policy: PolicyConfig
+    ) -> None:
+        """AC-5: Metadata includes variable_periodicities dict."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("salaire_net", "irpp"),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs_with_entities(
+            variable_entities={
+                "salaire_net": "individu",
+                "irpp": "foyer_fiscal",
+            },
+            variable_periodicities={
+                "salaire_net": "month",
+                "irpp": "year",
+            },
+        )
+        mock_simulation = _make_mock_simulation_with_methods({
+            "salaire_net": np.array([24000.0, 40000.0]),
+            "irpp": np.array([-1500.0]),
+        })
+        adapter._tax_benefit_system = mock_tbs
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0, 50000.0]),
+                }),
+            },
+        )
+
+        mock_builder_instance = MagicMock()
+        mock_builder_instance.build_from_entities.return_value = mock_simulation
+
+        with _patch_simulation_builder(mock_builder_instance):
+            result = adapter.compute(
+                population, PolicyConfig(parameters={}, name="test"), 2024
+            )
+
+        assert "variable_periodicities" in result.metadata
+        assert result.metadata["variable_periodicities"] == {
+            "salaire_net": "month",
+            "irpp": "year",
+        }
+
+    def test_calculation_methods_in_metadata(
+        self, empty_policy: PolicyConfig
+    ) -> None:
+        """AC-5: Metadata includes calculation_methods dict."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("salaire_net", "irpp"),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs_with_entities(
+            variable_entities={
+                "salaire_net": "individu",
+                "irpp": "foyer_fiscal",
+            },
+            variable_periodicities={
+                "salaire_net": "month",
+                "irpp": "year",
+            },
+        )
+        mock_simulation = _make_mock_simulation_with_methods({
+            "salaire_net": np.array([24000.0, 40000.0]),
+            "irpp": np.array([-1500.0]),
+        })
+        adapter._tax_benefit_system = mock_tbs
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0, 50000.0]),
+                }),
+            },
+        )
+
+        mock_builder_instance = MagicMock()
+        mock_builder_instance.build_from_entities.return_value = mock_simulation
+
+        with _patch_simulation_builder(mock_builder_instance):
+            result = adapter.compute(
+                population, PolicyConfig(parameters={}, name="test"), 2024
+            )
+
+        assert "calculation_methods" in result.metadata
+        assert result.metadata["calculation_methods"] == {
+            "salaire_net": "calculate_add",
+            "irpp": "calculate",
+        }
+
+    def test_eternity_variable_uses_calculate_in_metadata(self) -> None:
+        """AC-5, AC-6: Eternity variables show 'calculate' method in metadata."""
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("date_naissance",),
+            skip_version_check=True,
+        )
+        mock_tbs = _make_mock_tbs_with_entities(
+            variable_entities={"date_naissance": "individu"},
+            variable_periodicities={"date_naissance": "eternity"},
+        )
+        mock_simulation = _make_mock_simulation_with_methods({
+            "date_naissance": np.array([19960101]),
+        })
+        adapter._tax_benefit_system = mock_tbs
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "age": pa.array([30]),
+                }),
+            },
+        )
+
+        mock_builder_instance = MagicMock()
+        mock_builder_instance.build_from_entities.return_value = mock_simulation
+
+        with _patch_simulation_builder(mock_builder_instance):
+            result = adapter.compute(
+                population, PolicyConfig(parameters={}, name="test"), 2024
+            )
+
+        assert result.metadata["variable_periodicities"]["date_naissance"] == "eternity"
+        assert result.metadata["calculation_methods"]["date_naissance"] == "calculate"
 
 
 class TestComputeMultiEntity:

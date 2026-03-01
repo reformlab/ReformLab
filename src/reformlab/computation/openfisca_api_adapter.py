@@ -9,6 +9,10 @@ dependency.
 Story 9.2: Added entity-aware result extraction to correctly handle
 output variables belonging to different entity types (individu, menage,
 famille, foyer_fiscal).
+
+Story 9.3: Added periodicity-aware calculation dispatch. Monthly variables
+use ``calculate_add()`` to sum sub-period values; yearly and eternity
+variables use ``calculate()``. Period validation ensures valid 4-digit year.
 """
 
 from __future__ import annotations
@@ -28,6 +32,15 @@ from reformlab.computation.openfisca_common import (
 from reformlab.computation.types import ComputationResult, PolicyConfig, PopulationData
 
 logger = logging.getLogger(__name__)
+
+# Story 9.3: Valid OpenFisca DateUnit periodicity values (StrEnum).
+# Sub-yearly periodicities use calculate_add(); year/eternity use calculate().
+_VALID_PERIODICITIES = frozenset({
+    "month", "year", "eternity", "day", "week", "weekday",
+})
+_CALCULATE_ADD_PERIODICITIES = frozenset({
+    "month", "day", "week", "weekday",
+})
 
 
 class OpenFiscaApiAdapter:
@@ -84,7 +97,14 @@ class OpenFiscaApiAdapter:
             A ``ComputationResult`` with output variables as a PyArrow Table.
             When output variables span multiple entities, ``entity_tables``
             contains per-entity tables keyed by entity plural name.
+
+        Raises:
+            ApiMappingError: If the period is invalid (not a 4-digit year
+                in range [1000, 9999]).
         """
+        # Story 9.3 AC-3: Period validation — FIRST check before any TBS operations.
+        self._validate_period(period)
+
         start = time.monotonic()
 
         tbs = self._get_tax_benefit_system()
@@ -95,9 +115,13 @@ class OpenFiscaApiAdapter:
         # resolution fails due to incompatible country package).
         vars_by_entity = self._resolve_variable_entities(tbs)
 
+        # Story 9.3 AC-1, AC-2, AC-6: Resolve periodicities before simulation
+        # (fail fast — detect unsupported periodicity values early).
+        var_periodicities = self._resolve_variable_periodicities(tbs)
+
         simulation = self._build_simulation(population, policy, period, tbs)
         entity_tables = self._extract_results_by_entity(
-            simulation, period, vars_by_entity
+            simulation, period, vars_by_entity, var_periodicities
         )
 
         # Determine primary output_fields table for backward compatibility:
@@ -115,6 +139,14 @@ class OpenFiscaApiAdapter:
             entity: table.num_rows for entity, table in result_entity_tables.items()
         }
 
+        # Story 9.3 AC-5: Build calculation methods mapping from periodicities.
+        calculation_methods: dict[str, str] = {}
+        for var_name, periodicity in var_periodicities.items():
+            if periodicity in _CALCULATE_ADD_PERIODICITIES:
+                calculation_methods[var_name] = "calculate_add"
+            else:
+                calculation_methods[var_name] = "calculate"
+
         return ComputationResult(
             output_fields=output_fields,
             adapter_version=self._version,
@@ -128,6 +160,8 @@ class OpenFiscaApiAdapter:
                 "output_variables": list(self._output_variables),
                 "output_entities": output_entities,
                 "entity_row_counts": entity_row_counts,
+                "variable_periodicities": dict(var_periodicities),
+                "calculation_methods": calculation_methods,
             },
             entity_tables=result_entity_tables,
         )
@@ -215,6 +249,155 @@ class OpenFiscaApiAdapter:
             valid_names=tuple(sorted(known_variables)),
             suggestions=suggestions,
         )
+
+    # ------------------------------------------------------------------
+    # Story 9.3: Period validation and periodicity-aware dispatch
+    # ------------------------------------------------------------------
+
+    def _validate_period(self, period: int) -> None:
+        """Validate that the period is a 4-digit year in [1000, 9999].
+
+        Story 9.3 AC-3: Called as the FIRST operation in ``compute()``,
+        before any TBS queries or simulation construction.
+
+        Raises:
+            ApiMappingError: If the period is invalid.
+        """
+        if not (1000 <= period <= 9999):
+            raise ApiMappingError(
+                summary="Invalid period",
+                reason=(
+                    f"Period {period!r} is not a valid 4-digit year"
+                ),
+                fix=(
+                    "Provide a positive integer year in range [1000, 9999], "
+                    "e.g. 2024"
+                ),
+                invalid_names=(),
+                valid_names=(),
+            )
+
+    def _resolve_variable_periodicities(
+        self, tbs: Any
+    ) -> dict[str, str]:
+        """Detect the periodicity of each output variable from the TBS.
+
+        Story 9.3 AC-1, AC-2, AC-6: Queries
+        ``tbs.variables[var_name].definition_period`` for each output variable
+        to determine whether ``calculate()`` or ``calculate_add()`` should
+        be used.
+
+        Args:
+            tbs: The loaded TaxBenefitSystem.
+
+        Returns:
+            Dict mapping variable name to periodicity string
+            (e.g. ``{"salaire_net": "month", "irpp": "year"}``).
+
+        Raises:
+            ApiMappingError: If a variable's periodicity cannot be determined
+                or has an unexpected value.
+        """
+        periodicities: dict[str, str] = {}
+
+        for var_name in self._output_variables:
+            variable = tbs.variables.get(var_name)
+            if variable is None:
+                # Defensive — _validate_output_variables should have caught this.
+                raise ApiMappingError(
+                    summary="Cannot resolve variable periodicity",
+                    reason=(
+                        f"Variable '{var_name}' not found in "
+                        f"{self._country_package} TaxBenefitSystem"
+                    ),
+                    fix=(
+                        "Ensure the variable exists in the country package. "
+                        "This may indicate the TBS was modified after validation."
+                    ),
+                    invalid_names=(var_name,),
+                    valid_names=tuple(sorted(tbs.variables.keys())),
+                )
+
+            definition_period = getattr(variable, "definition_period", None)
+            if definition_period is None:
+                raise ApiMappingError(
+                    summary="Cannot determine periodicity for variable",
+                    reason=(
+                        f"Variable '{var_name}' has no .definition_period "
+                        f"attribute in {self._country_package} TaxBenefitSystem"
+                    ),
+                    fix=(
+                        "This variable may not be properly defined in the "
+                        "country package. Check the variable definition."
+                    ),
+                    invalid_names=(var_name,),
+                    valid_names=tuple(sorted(tbs.variables.keys())),
+                )
+
+            # DateUnit is a StrEnum — string comparison works directly.
+            periodicity_str = str(definition_period)
+            if periodicity_str not in _VALID_PERIODICITIES:
+                raise ApiMappingError(
+                    summary="Unexpected periodicity for variable",
+                    reason=(
+                        f"Variable '{var_name}' has definition_period="
+                        f"'{periodicity_str}', expected one of: "
+                        f"{', '.join(sorted(_VALID_PERIODICITIES))}"
+                    ),
+                    fix=(
+                        "This may indicate an incompatible OpenFisca version. "
+                        "Check the OpenFisca compatibility matrix."
+                    ),
+                    invalid_names=(var_name,),
+                    valid_names=tuple(sorted(tbs.variables.keys())),
+                )
+
+            periodicities[var_name] = periodicity_str
+
+        logger.debug(
+            "variable_periodicities=%s output_variables=%s",
+            periodicities,
+            list(self._output_variables),
+        )
+
+        return periodicities
+
+    def _calculate_variable(
+        self,
+        simulation: Any,
+        var_name: str,
+        period_str: str,
+        periodicity: str,
+    ) -> Any:
+        """Dispatch to the correct OpenFisca calculation method.
+
+        Story 9.3 AC-1, AC-2, AC-6:
+        - ``"month"``, ``"day"``, ``"week"``, ``"weekday"``
+          → ``simulation.calculate_add(var, period)``
+        - ``"year"``, ``"eternity"``
+          → ``simulation.calculate(var, period)``
+
+        Args:
+            simulation: The OpenFisca simulation.
+            var_name: Variable name to compute.
+            period_str: Period string (e.g. "2024").
+            periodicity: The variable's definition_period string.
+
+        Returns:
+            numpy.ndarray of computed values.
+        """
+        if periodicity in _CALCULATE_ADD_PERIODICITIES:
+            logger.debug(
+                "var=%s periodicity=%s method=calculate_add period=%s",
+                var_name, periodicity, period_str,
+            )
+            return simulation.calculate_add(var_name, period_str)
+        else:
+            logger.debug(
+                "var=%s periodicity=%s method=calculate period=%s",
+                var_name, periodicity, period_str,
+            )
+            return simulation.calculate(var_name, period_str)
 
     def _validate_policy_parameters(self, policy: PolicyConfig, tbs: Any) -> None:
         """Check that all policy parameter keys are valid input variables."""
@@ -477,18 +660,25 @@ class OpenFiscaApiAdapter:
         simulation: Any,
         period: int,
         vars_by_entity: dict[str, list[str]],
+        variable_periodicities: dict[str, str],
     ) -> dict[str, pa.Table]:
         """Extract output variables grouped by entity into per-entity tables.
 
-        For each entity group, calls ``simulation.calculate()`` for its
-        variables and builds a ``pa.Table`` per entity. Arrays within an
-        entity group share the same length (entity instance count).
+        For each entity group, calls the appropriate calculation method
+        (``calculate()`` or ``calculate_add()``) for its variables and
+        builds a ``pa.Table`` per entity. Arrays within an entity group
+        share the same length (entity instance count).
+
+        Story 9.3: Uses ``_calculate_variable()`` for periodicity-aware
+        dispatch instead of calling ``simulation.calculate()`` directly.
 
         Args:
             simulation: The completed OpenFisca simulation.
             period: Computation period (integer year).
             vars_by_entity: Output variables grouped by entity plural name
                 (from ``_resolve_variable_entities``).
+            variable_periodicities: Periodicity per variable
+                (from ``_resolve_variable_periodicities``).
 
         Returns:
             Dict mapping entity plural name to a PyArrow Table containing
@@ -500,7 +690,10 @@ class OpenFiscaApiAdapter:
         for entity_plural, var_names in vars_by_entity.items():
             arrays: dict[str, pa.Array] = {}
             for var_name in var_names:
-                numpy_array = simulation.calculate(var_name, period_str)
+                periodicity = variable_periodicities[var_name]
+                numpy_array = self._calculate_variable(
+                    simulation, var_name, period_str, periodicity
+                )
                 arrays[var_name] = pa.array(numpy_array)
             entity_tables[entity_plural] = pa.table(arrays)
 

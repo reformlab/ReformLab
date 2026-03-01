@@ -1,6 +1,6 @@
 # Story 9.3: Add Variable Periodicity Handling
 
-Status: ready-for-dev
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -35,57 +35,63 @@ OpenFisca variables have a `definition_period` attribute that specifies the temp
 
 2. **AC-2: Monthly variable yearly aggregation** — Given a monthly variable (e.g., `salaire_net`) requested for a yearly period, when computed, then the adapter automatically sums the 12 monthly values via `calculate_add()` according to OpenFisca conventions.
 
-3. **AC-3: Invalid period format rejection** — Given an invalid period value (non-positive integer, zero, or unreasonable year), when passed to the adapter's `compute()`, then a clear `ApiMappingError` is raised identifying the expected format.
+3. **AC-3: Invalid period format rejection** — Given an invalid period value (non-positive integer, zero, or outside the 4-digit year range 1000–9999), when passed to the adapter's `compute()` as the very first check before any TBS operations, then a clear `ApiMappingError` is raised with summary `"Invalid period"`, the actual value, and the expected format (`"positive integer year in range [1000, 9999], e.g. 2024"`).
 
 4. **AC-4: Backward compatibility** — Given output variables that are all yearly (the existing common case), when `compute()` is called, then behavior is identical to the pre-change implementation — no regression in results, metadata, or `entity_tables`.
 
-5. **AC-5: Periodicity metadata** — Given a completed `compute()` call, when the result metadata is inspected, then it includes `"variable_periodicities"` mapping each output variable to its detected periodicity and the calculation method used.
+5. **AC-5: Periodicity metadata** — Given a completed `compute()` call, when the result metadata is inspected, then it includes two entries: `"variable_periodicities"` (a `dict[str, str]` mapping each output variable to its detected periodicity string, e.g., `{"salaire_net": "month", "irpp": "year"}`) and `"calculation_methods"` (a `dict[str, str]` mapping each output variable to the method invoked, e.g., `{"salaire_net": "calculate_add", "irpp": "calculate"}`).
 
-6. **AC-6: Eternity variable handling** — Given an ETERNITY-period variable as an output variable, when `compute()` is called, then `simulation.calculate()` is used (NOT `calculate_add()`, which rejects eternity variables) and the value is returned correctly.
+6. **AC-6: Eternity variable handling** — Given an ETERNITY-period variable (e.g., `date_naissance`, `sexe`) as an output variable, when `compute()` is called, then `simulation.calculate()` is used (NOT `calculate_add()`, which explicitly raises `"eternal variables can't be summed over time"`) and the value is returned correctly. Verified by unit test with mock simulation asserting `simulation.calculate` is called and `simulation.calculate_add` is NOT called when `periodicity == "eternity"`.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add `_resolve_variable_periodicities()` method (AC: #1, #2, #6)
-  - [ ] 1.1 Add method to `OpenFiscaApiAdapter` that queries `tbs.variables[var_name].definition_period` for each output variable
-  - [ ] 1.2 Return `dict[str, str]` mapping variable name to periodicity string (`"month"`, `"year"`, `"eternity"`, `"day"`, `"week"`, `"weekday"`)
-  - [ ] 1.3 Handle edge case where `definition_period` attribute is missing or has unexpected value — raise `ApiMappingError`
-  - [ ] 1.4 Unit tests with mock TBS: verify periodicity detection for month/year/eternity variables, error on missing attribute
+- [x] Task 1: Add `_resolve_variable_periodicities()` method (AC: #1, #2, #6)
+  - [x] 1.1 Add method to `OpenFiscaApiAdapter` that queries `tbs.variables[var_name].definition_period` for each output variable
+  - [x] 1.2 Return `dict[str, str]` mapping variable name to periodicity string (`"month"`, `"year"`, `"eternity"`, `"day"`, `"week"`, `"weekday"`)
+  - [x] 1.3 Handle edge case where `definition_period` attribute is missing or has unexpected value — raise `ApiMappingError`
+  - [x] 1.4 Unit tests with mock TBS: verify periodicity detection for month/year/eternity variables, error on missing attribute
+  - [x] 1.5 Update `_make_mock_tbs()` in `tests/computation/test_openfisca_api_adapter.py` to add `var_mock.definition_period = "year"` in the variable-building loop — required because `_resolve_variable_periodicities()` now accesses `variable.definition_period` during every `compute()` call; without this fix, `MagicMock().definition_period` returns a MagicMock (not `"year"`), causing all existing `compute()` unit tests to dispatch to `calculate_add()` instead of `calculate()`, breaking `TestPeriodFormatting.test_period_passed_as_string`
 
-- [ ] Task 2: Add `_calculate_variable()` dispatch method (AC: #1, #2, #6)
-  - [ ] 2.1 Add private method `_calculate_variable(simulation, var_name, period_str, periodicity) -> numpy.ndarray`
-  - [ ] 2.2 Dispatch logic: `"month"`, `"day"`, `"week"`, `"weekday"` → `simulation.calculate_add(var, period_str)`; `"year"`, `"eternity"` → `simulation.calculate(var, period_str)`
-  - [ ] 2.3 Log calculation method used per variable at DEBUG level
-  - [ ] 2.4 Unit tests with mock simulation: verify correct method called based on periodicity
+- [x] Task 2: Add `_calculate_variable()` dispatch method (AC: #1, #2, #6)
+  - [x] 2.1 Add private method `_calculate_variable(simulation, var_name, period_str, periodicity) -> numpy.ndarray`
+  - [x] 2.2 Dispatch logic: `"month"`, `"day"`, `"week"`, `"weekday"` → `simulation.calculate_add(var, period_str)`; `"year"`, `"eternity"` → `simulation.calculate(var, period_str)`
+  - [x] 2.3 Log calculation method used per variable at DEBUG level
+  - [x] 2.4 Unit tests with mock simulation: verify correct method called based on periodicity
 
-- [ ] Task 3: Refactor `_extract_results_by_entity()` to use periodicity-aware calculation (AC: #1, #2, #4, #6)
-  - [ ] 3.1 Add `variable_periodicities: dict[str, str]` parameter to `_extract_results_by_entity()`
-  - [ ] 3.2 Replace `simulation.calculate(var_name, period_str)` with `self._calculate_variable(simulation, var_name, period_str, variable_periodicities[var_name])`
-  - [ ] 3.3 Unit tests: verify multi-entity extraction with mixed periodicities
+- [x] Task 3: Refactor `_extract_results_by_entity()` to use periodicity-aware calculation (AC: #1, #2, #4, #6)
+  - [x] 3.1 Add `variable_periodicities: dict[str, str]` parameter to `_extract_results_by_entity()` — ⚠️ this is a breaking change to a private method used directly by 3 existing unit tests; update all 3 callers in `TestExtractResultsByEntity` (`test_single_entity_extraction`, `test_multi_entity_extraction`, `test_multiple_variables_per_entity`) to pass `variable_periodicities` with `"year"` for each test variable (e.g., `variable_periodicities={"salaire_net": "year", "irpp": "year"}`)
+  - [x] 3.2 Replace `simulation.calculate(var_name, period_str)` with `self._calculate_variable(simulation, var_name, period_str, variable_periodicities[var_name])`
+  - [x] 3.3 Unit tests: verify multi-entity extraction with mixed periodicities
 
-- [ ] Task 4: Wire periodicity resolution into `compute()` (AC: #1, #2, #4, #5)
-  - [ ] 4.1 Call `_resolve_variable_periodicities(tbs)` in `compute()` after `_resolve_variable_entities()` (fail-fast pattern — resolve both before building simulation)
-  - [ ] 4.2 Pass `variable_periodicities` to `_extract_results_by_entity()`
-  - [ ] 4.3 Add `"variable_periodicities"` and `"calculation_methods"` to result metadata
-  - [ ] 4.4 Unit tests: verify metadata populated correctly in compute() result
+- [x] Task 4: Wire periodicity resolution into `compute()` (AC: #1, #2, #4, #5)
+  - [x] 4.1 Call `_resolve_variable_periodicities(tbs)` in `compute()` using this explicit call order (fail-fast — all validation before expensive simulation construction):
+        1. `_validate_output_variables(tbs)`
+        2. `vars_by_entity = _resolve_variable_entities(tbs)`          # Story 9.2
+        3. `var_periodicities = _resolve_variable_periodicities(tbs)`  # Story 9.3 (NEW)
+        4. `simulation = _build_simulation(population, policy, period, tbs)` # Expensive
+        5. `entity_tables = _extract_results_by_entity(simulation, period, vars_by_entity, var_periodicities)` # Modified
+  - [x] 4.2 Pass `variable_periodicities` to `_extract_results_by_entity()`
+  - [x] 4.3 Add `"variable_periodicities"` and `"calculation_methods"` to result metadata as two separate `dict[str, str]` entries. Example for a mixed-periodicity compute: `"variable_periodicities": {"salaire_net": "month", "irpp": "year"}` and `"calculation_methods": {"salaire_net": "calculate_add", "irpp": "calculate"}`
+  - [x] 4.4 Unit tests: verify metadata populated correctly in compute() result
 
-- [ ] Task 5: Add period validation (AC: #3)
-  - [ ] 5.1 Add validation at the top of `compute()`: period must be a positive integer in range [1000, 9999] (4-digit year)
-  - [ ] 5.2 Raise `ApiMappingError` with summary "Invalid period", reason showing actual value, fix showing expected format
-  - [ ] 5.3 Unit tests: invalid periods (0, -1, 99, 99999) raise `ApiMappingError`; valid periods (2024, 2025) pass
+- [x] Task 5: Add period validation (AC: #3)
+  - [x] 5.1 Add validation as the FIRST operation in `compute()`, before `_get_tax_benefit_system()` or any TBS queries: period must be a positive integer in range [1000, 9999] (4-digit year; this is OpenFisca's practical supported temporal range — sub-period summation via `calculate_add()` is undefined outside plausible year values)
+  - [x] 5.2 Raise `ApiMappingError` with summary "Invalid period", reason showing actual value, fix showing expected format
+  - [x] 5.3 Unit tests: invalid periods (0, -1, 99, 99999) raise `ApiMappingError`; valid periods (2024, 2025) pass
 
 - [ ] Task 6: Verify backward compatibility (AC: #4)
   - [ ] 6.1 Run existing unit tests in `test_openfisca_api_adapter.py` — ensure all pass unchanged
-  - [ ] 6.2 Run existing integration tests in `test_openfisca_integration.py` — ensure all pass unchanged
+  - [ ] 6.2 Run existing integration tests in `test_openfisca_integration.py` — note: any Story 9.2 integration test using `salaire_net` (a monthly variable) that is already failing with `ValueError: Period mismatch` is a pre-existing failure this story fixes as a side-effect (Story 9.2 added the test before the dispatch fix existed); Story 9.3 is expected to make it green; verify all other pre-existing integration tests remain green
   - [ ] 6.3 Verify `MockAdapter` still produces valid `ComputationResult` (no new required fields)
   - [ ] 6.4 Verify `ComputationStep` in orchestrator still works (`result.output_fields.num_rows`)
 
-- [ ] Task 7: Integration tests with real OpenFisca-France (AC: #1, #2, #6)
-  - [ ] 7.1 Test: `salaire_net` (MONTH) with yearly period → verify `calculate_add()` is used and returns correct yearly sum
-  - [ ] 7.2 Test: `impot_revenu_restant_a_payer` (YEAR) with yearly period → verify `calculate()` is used (unchanged)
-  - [ ] 7.3 Test: mixed periodicity output variables in single `compute()` call → verify correct method per variable
-  - [ ] 7.4 Test: `adapter.compute()` end-to-end with monthly output variable produces correct values
-  - [ ] 7.5 Test: verify `variable_periodicities` metadata in integration test result
-  - [ ] 7.6 Mark integration tests with `@pytest.mark.integration`
+- [x] Task 7: Integration tests with real OpenFisca-France (AC: #1, #2, #6)
+  - [x] 7.1 Test: `salaire_net` (MONTH) with yearly period → verify `calculate_add()` is used and returns correct yearly sum. Since real `Simulation` objects cannot be mock-asserted, verify dispatch via metadata: `assert result.metadata["calculation_methods"]["salaire_net"] == "calculate_add"`, and verify value correctness: `assert 20000 < result.entity_tables["individus"].column("salaire_net")[0].as_py() < 30000`
+  - [x] 7.2 Test: `impot_revenu_restant_a_payer` (YEAR) with yearly period → verify `calculate()` is used (unchanged)
+  - [x] 7.3 Test: mixed periodicity output variables in single `compute()` call → verify correct method per variable
+  - [x] 7.4 Test: `adapter.compute()` end-to-end with monthly output variable produces correct values
+  - [x] 7.5 Test: verify `variable_periodicities` metadata in integration test result
+  - [x] 7.6 Mark integration tests with `@pytest.mark.integration`
 
 - [ ] Task 8: Run quality gates (all ACs)
   - [ ] 8.1 `uv run ruff check src/ tests/`
@@ -171,7 +177,7 @@ if periodicity == "month":
 | File | Change |
 |------|--------|
 | `src/reformlab/computation/openfisca_api_adapter.py` | Add `_resolve_variable_periodicities()`, `_calculate_variable()`, refactor `_extract_results_by_entity()`, add period validation in `compute()` |
-| `tests/computation/test_openfisca_api_adapter.py` | Add unit tests for periodicity detection, calculation dispatch, period validation |
+| `tests/computation/test_openfisca_api_adapter.py` | Three required changes: (1) update `_make_mock_tbs()` to add `var_mock.definition_period = "year"` in the variable-building loop; (2) update existing `TestExtractResultsByEntity` tests (3 methods) to pass new `variable_periodicities` argument; (3) add new test classes for periodicity detection, calculation dispatch, and period validation |
 | `tests/computation/test_openfisca_integration.py` | Add integration tests with monthly variables (`salaire_net`) |
 
 ### Files to Verify (No Changes Expected)

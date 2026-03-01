@@ -731,12 +731,17 @@ class TestMultiEntityOutputArrays:
         assert "impot_revenu_restant_a_payer" in vars_by_entity["foyers_fiscaux"]
         assert "revenu_disponible" in vars_by_entity["menages"]
 
+        # Story 9.3: Resolve periodicities for _extract_results_by_entity
+        var_periodicities = multi_entity_adapter._resolve_variable_periodicities(
+            local_tbs
+        )
+
         # Build simulation and extract results by entity
         builder = SimulationBuilder()
         simulation = builder.build_from_entities(tbs, entities_dict)
 
         entity_tables = multi_entity_adapter._extract_results_by_entity(
-            simulation, 2024, vars_by_entity
+            simulation, 2024, vars_by_entity, var_periodicities
         )
 
         # AC-2: Correct array lengths per entity
@@ -841,3 +846,213 @@ class TestMultiEntityOutputArrays:
         # Metadata includes entity information
         assert "output_entities" in result.metadata
         assert "entity_row_counts" in result.metadata
+
+
+# ===========================================================================
+# Story 9.3: Variable periodicity handling (integration tests)
+# ===========================================================================
+
+
+@pytest.fixture(scope="module")
+def periodicity_adapter() -> OpenFiscaApiAdapter:
+    """Adapter with mixed-periodicity output variables.
+
+    Story 9.3 AC-1, AC-2: Tests periodicity-aware calculation dispatch
+    with real OpenFisca-France variables:
+    - salaire_net (individu, MONTH) → calculate_add
+    - impot_revenu_restant_a_payer (foyer_fiscal, YEAR) → calculate
+    """
+    return OpenFiscaApiAdapter(
+        country_package="openfisca_france",
+        output_variables=(
+            "salaire_net",                      # individu, MONTH
+            "impot_revenu_restant_a_payer",      # foyer_fiscal, YEAR
+        ),
+    )
+
+
+@pytest.mark.integration
+class TestVariablePeriodicityHandling:
+    """Story 9.3 AC-1, AC-2, AC-6: Periodicity-aware calculation dispatch.
+
+    These tests validate that the adapter correctly detects variable
+    periodicities and dispatches to the appropriate OpenFisca calculation
+    method (calculate vs calculate_add).
+    """
+
+    def test_monthly_variable_yearly_aggregation(self, tbs: Any) -> None:
+        """AC-2: Monthly variable (salaire_net) with yearly period returns correct sum.
+
+        Story 9.3 AC-2: Given a monthly variable requested for a yearly period,
+        the adapter automatically sums the 12 monthly values via calculate_add().
+        """
+        adapter = OpenFiscaApiAdapter(
+            country_package="openfisca_france",
+            output_variables=("salaire_net",),
+        )
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0]),
+                    "age": pa.array([30]),
+                }),
+            },
+        )
+        policy = PolicyConfig(parameters={}, name="periodicity-test")
+
+        result = adapter.compute(population, policy, 2024)
+
+        # AC-2: salaire_net should be a positive value representing yearly net salary
+        salaire_net = result.output_fields.column("salaire_net")[0].as_py()
+        assert 20000 < salaire_net < 30000, (
+            f"salaire_net={salaire_net} outside expected range [20000, 30000] "
+            f"for 30k gross salary"
+        )
+
+        # AC-5: Metadata shows correct dispatch
+        assert result.metadata["calculation_methods"]["salaire_net"] == "calculate_add"
+        assert result.metadata["variable_periodicities"]["salaire_net"] == "month"
+
+    def test_yearly_variable_uses_calculate(self, tbs: Any) -> None:
+        """AC-1: Yearly variable (irpp) with yearly period uses calculate().
+
+        Story 9.3 AC-4: Behavior is identical to pre-change implementation.
+        """
+        adapter = OpenFiscaApiAdapter(
+            country_package="openfisca_france",
+            output_variables=("impot_revenu_restant_a_payer",),
+        )
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0]),
+                    "age": pa.array([30]),
+                }),
+            },
+        )
+        policy = PolicyConfig(parameters={}, name="periodicity-test")
+
+        result = adapter.compute(population, policy, 2024)
+
+        # irpp should be negative (tax owed)
+        irpp = result.output_fields.column("impot_revenu_restant_a_payer")[0].as_py()
+        assert irpp < 0, f"Expected negative irpp (tax), got {irpp}"
+
+        # AC-5: Metadata shows correct dispatch
+        assert result.metadata["calculation_methods"]["impot_revenu_restant_a_payer"] == "calculate"
+        assert result.metadata["variable_periodicities"]["impot_revenu_restant_a_payer"] == "year"
+
+    def test_mixed_periodicity_compute(
+        self, periodicity_adapter: OpenFiscaApiAdapter
+    ) -> None:
+        """AC-1, AC-2: Mixed periodicity output variables in single compute().
+
+        Story 9.3 AC-1: The adapter uses calculate_add() for monthly variables
+        and calculate() for yearly variables, producing correct results for both.
+        """
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0, 50000.0]),
+                    "age": pa.array([30, 45]),
+                }),
+            },
+        )
+        policy = PolicyConfig(parameters={}, name="mixed-periodicity-test")
+
+        result = periodicity_adapter.compute(population, policy, 2024)
+
+        # Both variables should return results without ValueError
+        assert result.output_fields.num_rows == 2
+        assert "salaire_net" in result.output_fields.column_names
+
+        # entity_tables should have both entities
+        assert "individus" in result.entity_tables
+        assert "foyers_fiscaux" in result.entity_tables
+
+        # AC-5: Correct methods per variable
+        assert result.metadata["calculation_methods"]["salaire_net"] == "calculate_add"
+        assert result.metadata["calculation_methods"]["impot_revenu_restant_a_payer"] == "calculate"
+
+    def test_monthly_variable_end_to_end(self, tbs: Any) -> None:
+        """AC-2: End-to-end test that monthly output variable produces correct values.
+
+        Story 9.3 AC-2: adapter.compute() with a monthly output variable
+        produces correct yearly aggregated values.
+        """
+        adapter = OpenFiscaApiAdapter(
+            country_package="openfisca_france",
+            output_variables=("salaire_net",),
+        )
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0]),
+                    "age": pa.array([30]),
+                }),
+            },
+        )
+        policy = PolicyConfig(parameters={}, name="monthly-e2e-test")
+
+        result = adapter.compute(population, policy, 2024)
+
+        assert isinstance(result, ComputationResult)
+        assert result.output_fields.num_rows == 1
+        assert "salaire_net" in result.output_fields.column_names
+
+        # Verify the value is reasonable (should be yearly aggregate)
+        salaire_net = result.output_fields.column("salaire_net")[0].as_py()
+        assert salaire_net > 0, f"Net salary should be positive, got {salaire_net}"
+
+    def test_periodicity_metadata_in_integration(
+        self, periodicity_adapter: OpenFiscaApiAdapter
+    ) -> None:
+        """AC-5: variable_periodicities metadata in integration test result.
+
+        Story 9.3 AC-5: The result metadata includes variable_periodicities
+        and calculation_methods entries for each output variable.
+        """
+        population = PopulationData(
+            tables={
+                "individu": pa.table({
+                    "salaire_de_base": pa.array([30000.0]),
+                    "age": pa.array([30]),
+                }),
+            },
+        )
+        policy = PolicyConfig(parameters={}, name="metadata-test")
+
+        result = periodicity_adapter.compute(population, policy, 2024)
+
+        # AC-5: variable_periodicities present and correct
+        assert "variable_periodicities" in result.metadata
+        vp = result.metadata["variable_periodicities"]
+        assert vp["salaire_net"] == "month"
+        assert vp["impot_revenu_restant_a_payer"] == "year"
+
+        # AC-5: calculation_methods present and correct
+        assert "calculation_methods" in result.metadata
+        cm = result.metadata["calculation_methods"]
+        assert cm["salaire_net"] == "calculate_add"
+        assert cm["impot_revenu_restant_a_payer"] == "calculate"
+
+    def test_variable_periodicity_resolution_matches_tbs(self, tbs: Any) -> None:
+        """AC-1: Variable periodicity resolution matches actual TBS definitions.
+
+        Story 9.3: Verify that definition_period attributes are accessible
+        and match expected values for known OpenFisca-France variables.
+        """
+        # salaire_net is a MONTH variable
+        salaire_var = tbs.variables["salaire_net"]
+        assert str(salaire_var.definition_period) == "month"
+
+        # impot_revenu_restant_a_payer is a YEAR variable
+        irpp_var = tbs.variables["impot_revenu_restant_a_payer"]
+        assert str(irpp_var.definition_period) == "year"
+
+        # date_naissance is an ETERNITY variable
+        birth_var = tbs.variables["date_naissance"]
+        assert str(birth_var.definition_period) == "eternity"
