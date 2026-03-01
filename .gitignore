@@ -67,3 +67,8 @@ data/
 # === Notebooks ===
 notebooks/data/
 notebooks/demo/
+
+# bmad-assist artifacts (auto-generated, never commit)
+.bmad-assist/cache/
+*.meta.yaml
+*.tpl.xml
