@@ -43,6 +43,16 @@ _CALCULATE_ADD_PERIODICITIES = frozenset({
 })
 
 
+def _periodicity_to_method_name(periodicity: str) -> str:
+    """Map a DateUnit periodicity string to the OpenFisca calculation method name.
+
+    Single source of truth for the ``calculate`` vs ``calculate_add`` dispatch
+    decision. Sub-yearly periodicities (month, day, week, weekday) aggregate
+    via ``calculate_add``; year and eternity use ``calculate`` directly.
+    """
+    return "calculate_add" if periodicity in _CALCULATE_ADD_PERIODICITIES else "calculate"
+
+
 class OpenFiscaApiAdapter:
     """Adapter that executes OpenFisca computations via the Python API.
 
@@ -140,12 +150,12 @@ class OpenFiscaApiAdapter:
         }
 
         # Story 9.3 AC-5: Build calculation methods mapping from periodicities.
-        calculation_methods: dict[str, str] = {}
-        for var_name, periodicity in var_periodicities.items():
-            if periodicity in _CALCULATE_ADD_PERIODICITIES:
-                calculation_methods[var_name] = "calculate_add"
-            else:
-                calculation_methods[var_name] = "calculate"
+        # Uses _periodicity_to_method_name() — single source of truth for the
+        # calculate vs calculate_add dispatch decision.
+        calculation_methods: dict[str, str] = {
+            var_name: _periodicity_to_method_name(periodicity)
+            for var_name, periodicity in var_periodicities.items()
+        }
 
         return ComputationResult(
             output_fields=output_fields,
@@ -386,17 +396,14 @@ class OpenFiscaApiAdapter:
         Returns:
             numpy.ndarray of computed values.
         """
-        if periodicity in _CALCULATE_ADD_PERIODICITIES:
-            logger.debug(
-                "var=%s periodicity=%s method=calculate_add period=%s",
-                var_name, periodicity, period_str,
-            )
+        method = _periodicity_to_method_name(periodicity)
+        logger.debug(
+            "var=%s periodicity=%s method=%s period=%s",
+            var_name, periodicity, method, period_str,
+        )
+        if method == "calculate_add":
             return simulation.calculate_add(var_name, period_str)
         else:
-            logger.debug(
-                "var=%s periodicity=%s method=calculate period=%s",
-                var_name, periodicity, period_str,
-            )
             return simulation.calculate(var_name, period_str)
 
     def _validate_policy_parameters(self, policy: PolicyConfig, tbs: Any) -> None:

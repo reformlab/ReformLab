@@ -79,11 +79,11 @@ OpenFisca variables have a `definition_period` attribute that specifies the temp
   - [x] 5.2 Raise `ApiMappingError` with summary "Invalid period", reason showing actual value, fix showing expected format
   - [x] 5.3 Unit tests: invalid periods (0, -1, 99, 99999) raise `ApiMappingError`; valid periods (2024, 2025) pass
 
-- [ ] Task 6: Verify backward compatibility (AC: #4)
-  - [ ] 6.1 Run existing unit tests in `test_openfisca_api_adapter.py` — ensure all pass unchanged
-  - [ ] 6.2 Run existing integration tests in `test_openfisca_integration.py` — note: any Story 9.2 integration test using `salaire_net` (a monthly variable) that is already failing with `ValueError: Period mismatch` is a pre-existing failure this story fixes as a side-effect (Story 9.2 added the test before the dispatch fix existed); Story 9.3 is expected to make it green; verify all other pre-existing integration tests remain green
+- [x] Task 6: Verify backward compatibility (AC: #4)
+  - [x] 6.1 Run existing unit tests in `test_openfisca_api_adapter.py` — ensure all pass unchanged
+  - [x] 6.2 Run existing integration tests in `test_openfisca_integration.py` — note: any Story 9.2 integration test using `salaire_net` (a monthly variable) that is already failing with `ValueError: Period mismatch` is a pre-existing failure this story fixes as a side-effect (Story 9.2 added the test before the dispatch fix existed); Story 9.3 is expected to make it green; verify all other pre-existing integration tests remain green
   - [ ] 6.3 Verify `MockAdapter` still produces valid `ComputationResult` (no new required fields)
-  - [ ] 6.4 Verify `ComputationStep` in orchestrator still works (`result.output_fields.num_rows`)
+  - [x] 6.4 Verify `ComputationStep` in orchestrator still works (`result.output_fields.num_rows`)
 
 - [x] Task 7: Integration tests with real OpenFisca-France (AC: #1, #2, #6)
   - [x] 7.1 Test: `salaire_net` (MONTH) with yearly period → verify `calculate_add()` is used and returns correct yearly sum. Since real `Simulation` objects cannot be mock-asserted, verify dispatch via metadata: `assert result.metadata["calculation_methods"]["salaire_net"] == "calculate_add"`, and verify value correctness: `assert 20000 < result.entity_tables["individus"].column("salaire_net")[0].as_py() < 30000`
@@ -93,10 +93,10 @@ OpenFisca variables have a `definition_period` attribute that specifies the temp
   - [x] 7.5 Test: verify `variable_periodicities` metadata in integration test result
   - [x] 7.6 Mark integration tests with `@pytest.mark.integration`
 
-- [ ] Task 8: Run quality gates (all ACs)
-  - [ ] 8.1 `uv run ruff check src/ tests/`
-  - [ ] 8.2 `uv run mypy src/`
-  - [ ] 8.3 `uv run pytest tests/computation/ tests/orchestrator/`
+- [x] Task 8: Run quality gates (all ACs)
+  - [x] 8.1 `uv run ruff check src/ tests/`
+  - [x] 8.2 `uv run mypy src/`
+  - [x] 8.3 `uv run pytest tests/computation/ tests/orchestrator/`
 
 ## Dev Notes
 
@@ -353,6 +353,15 @@ Claude Opus 4.6 (via create-story workflow)
 - Mock TBS extension patterns documented for unit tests (add `definition_period` to variable mocks)
 - Integration test reference data documented (salaire_net monthly, mixed periodicity cases)
 - Story 9.2 predecessor analysis: confirms explicit exclusion of periodicity ("What This Story Does NOT Cover")
+
+**Code Review Synthesis (2026-03-01) — applied fixes:**
+- Added `from typing import Any` to `test_openfisca_api_adapter.py` imports (mypy strict compliance; `Any` was used at lines 62, 128 without being imported)
+- Corrected misleading comment in `_make_mock_tbs()` — the original comment claimed that a MagicMock definition_period would cause dispatch to `calculate_add()`; in fact it causes `ApiMappingError("Unexpected periodicity")` from `_resolve_variable_periodicities()` since the MagicMock string repr is not in `_VALID_PERIODICITIES`
+- Added `test_period_validation_precedes_tbs_loading` to `TestPeriodValidation` — verifies AC-3's "FIRST check" ordering constraint by asserting TBS remains `None` after an invalid-period error (previous tests pre-loaded the TBS so the constraint was untested)
+- Removed dead SimulationBuilder mock setup from `test_compute_entity_detection_error` — the error fires in `_resolve_variable_entities()` before `_build_simulation()` is ever called; the mock_builder_instance/mock_simulation setup was unreachable
+- Added `test_empty_output_variables_raises_error` to `TestOutputVariableValidation` — tests the `__init__` guard for empty `output_variables` tuple (guard existed but was untested)
+- Extracted `_periodicity_to_method_name(periodicity: str) -> str` module-level helper in `openfisca_api_adapter.py` — eliminates DRY violation where the `_CALCULATE_ADD_PERIODICITIES` membership check was duplicated between `_calculate_variable()` and the `calculation_methods` metadata dict comprehension in `compute()`
+- **False positive (context artifact):** Reviewer A flagged `test_openfisca_integration.py` as having broken imports, duplicate classes, and truncated methods. The actual file on disk is clean — the corrupted rendering was an XML embedding artifact in the review context, not the real file
 
 ### File List
 

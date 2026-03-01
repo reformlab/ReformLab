@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import sys
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pyarrow as pa
@@ -56,8 +57,11 @@ def _make_mock_tbs(
 
     # Variables get a default entity (the person entity) for backward compatibility
     # with existing tests that don't need entity-aware behavior.
-    # Story 9.3: Also set definition_period = "year" by default so that
-    # _resolve_variable_periodicities() works correctly during compute().
+    # Story 9.3: Also set definition_period = "year" by default. Without this,
+    # MagicMock().definition_period returns a MagicMock object whose str()
+    # representation ("<MagicMock ...>") is not in _VALID_PERIODICITIES, causing
+    # _resolve_variable_periodicities() to raise ApiMappingError("Unexpected
+    # periodicity...") and breaking all existing compute() unit tests.
     default_entity = entities_by_key.get(person_entity, entities[0])
     variables: dict[str, Any] = {}
     for name in variable_names:
@@ -447,6 +451,15 @@ class TestOutputVariableValidation:
 
         assert "incme_tax" in exc_info.value.invalid_names
         assert len(exc_info.value.suggestions) > 0
+
+    def test_empty_output_variables_raises_error(self) -> None:
+        """Empty output_variables tuple raises ApiMappingError at construction time."""
+        with pytest.raises(ApiMappingError) as exc_info:
+            OpenFiscaApiAdapter(
+                output_variables=(),
+                skip_version_check=True,
+            )
+        assert "Empty output_variables" in exc_info.value.summary
 
 
 # ---------------------------------------------------------------------------
@@ -1300,6 +1313,30 @@ class TestPeriodValidation:
         assert "42" in exc_info.value.reason
         assert "Invalid period" in exc_info.value.summary
 
+    def test_period_validation_precedes_tbs_loading(
+        self, sample_population: PopulationData, empty_policy: PolicyConfig
+    ) -> None:
+        """AC-3: Period validation fires BEFORE any TBS operations.
+
+        AC-3 requires the period check to be "the very first check before any
+        TBS operations". This test verifies the ordering constraint by NOT
+        pre-loading the TBS — if _validate_period() truly runs first, the TBS
+        will still be None after the ApiMappingError is raised.
+        """
+        adapter = OpenFiscaApiAdapter(
+            output_variables=("income_tax",),
+            skip_version_check=True,
+        )
+        # Deliberately do NOT pre-load TBS — if validation runs first,
+        # the TBS will still be None after the error.
+        assert adapter._tax_benefit_system is None
+
+        with pytest.raises(ApiMappingError, match="Invalid period"):
+            adapter.compute(sample_population, empty_policy, 0)
+
+        # Confirm TBS was never loaded — period check was genuinely first.
+        assert adapter._tax_benefit_system is None
+
 
 class TestPeriodicityMetadata:
     """Story 9.3 AC-5: Periodicity metadata in compute() result."""
@@ -1581,12 +1618,9 @@ class TestComputeMultiEntity:
             },
         )
 
-        mock_builder_instance = MagicMock()
-        mock_simulation = MagicMock()
-        mock_builder_instance.build_from_entities.return_value = mock_simulation
-
-        with _patch_simulation_builder(mock_builder_instance):
-            with pytest.raises(ApiMappingError, match="Cannot determine entity"):
-                adapter.compute(
-                    population, PolicyConfig(parameters={}, name="test"), 2024
-                )
+        # The error is raised in _resolve_variable_entities() — before _build_simulation().
+        # No SimulationBuilder mock needed; the error fires before simulation construction.
+        with pytest.raises(ApiMappingError, match="Cannot determine entity"):
+            adapter.compute(
+                population, PolicyConfig(parameters={}, name="test"), 2024
+            )
