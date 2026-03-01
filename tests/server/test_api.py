@@ -20,7 +20,7 @@ class TestAuthRoutes:
         assert response.status_code == 200
         data = response.json()
         assert "token" in data
-        assert len(data["token"]) > 0
+        assert len(data["token"]) == 64  # secrets.token_hex(32) → 64 hex chars
 
     def test_login_wrong_password(self, client: TestClient) -> None:
         response = client.post(
@@ -28,9 +28,32 @@ class TestAuthRoutes:
             json={"password": "wrong"},
         )
         assert response.status_code == 401
+        data = response.json()
+        assert "detail" in data
+
+    def test_login_empty_password(self, client: TestClient) -> None:
+        response = client.post(
+            "/api/auth/login",
+            json={"password": ""},
+        )
+        assert response.status_code == 401
 
     def test_unauthenticated_request_returns_401(self, client: TestClient) -> None:
         response = client.get("/api/templates")
+        assert response.status_code == 401
+
+    def test_invalid_bearer_token_returns_401(self, client: TestClient) -> None:
+        response = client.get(
+            "/api/templates",
+            headers={"Authorization": "Bearer invalid-token-value"},
+        )
+        assert response.status_code == 401
+
+    def test_missing_bearer_prefix_returns_401(self, client: TestClient) -> None:
+        response = client.get(
+            "/api/templates",
+            headers={"Authorization": "just-a-token-value"},
+        )
         assert response.status_code == 401
 
     def test_authenticated_request_succeeds(
@@ -38,6 +61,17 @@ class TestAuthRoutes:
     ) -> None:
         response = client.get("/api/templates", headers=auth_headers)
         assert response.status_code == 200
+
+    def test_multiple_logins_produce_unique_tokens(self, client: TestClient) -> None:
+        tokens = set()
+        for _ in range(3):
+            response = client.post(
+                "/api/auth/login",
+                json={"password": "test-password-123"},
+            )
+            assert response.status_code == 200
+            tokens.add(response.json()["token"])
+        assert len(tokens) == 3  # All unique
 
 
 class TestTemplateRoutes:
@@ -52,13 +86,26 @@ class TestTemplateRoutes:
         assert "templates" in data
         assert isinstance(data["templates"], list)
 
+    def test_list_templates_structure(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        response = client.get("/api/templates", headers=auth_headers)
+        data = response.json()
+        if data["templates"]:
+            item = data["templates"][0]
+            assert "id" in item
+            assert "name" in item
+            assert "type" in item
+            assert "parameter_count" in item
+            assert isinstance(item["parameter_count"], int)
+
     def test_get_template_not_found(
         self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
         response = client.get(
             "/api/templates/nonexistent-template", headers=auth_headers
         )
-        assert response.status_code in (404, 500)
+        assert response.status_code == 404
 
 
 class TestPopulationRoutes:
@@ -73,6 +120,20 @@ class TestPopulationRoutes:
         assert "populations" in data
         assert isinstance(data["populations"], list)
 
+    def test_list_populations_structure(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        response = client.get("/api/populations", headers=auth_headers)
+        data = response.json()
+        if data["populations"]:
+            item = data["populations"][0]
+            assert "id" in item
+            assert "name" in item
+            assert "households" in item
+            assert isinstance(item["households"], int)
+            assert "source" in item
+            assert "year" in item
+
 
 class TestScenarioRoutes:
     """AC-1, AC-2: Scenario CRUD operations."""
@@ -86,6 +147,127 @@ class TestScenarioRoutes:
         assert "scenarios" in data
         assert isinstance(data["scenarios"], list)
 
+    def test_get_scenario_not_found(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        response = client.get(
+            "/api/scenarios/nonexistent-scenario", headers=auth_headers
+        )
+        assert response.status_code == 404
+
+    def test_create_scenario_accepts_valid_request(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """Verify that a valid create request is accepted by the route handler.
+
+        The response code depends on whether the registry can persist the
+        scenario (201) or raises RegistryError (404). Either way the
+        request itself must not be rejected with 422.
+        """
+        response = client.post(
+            "/api/scenarios",
+            headers=auth_headers,
+            json={
+                "name": "test-scenario-create",
+                "policy_type": "carbon_tax",
+                "parameters": {"rate_schedule": {"2025": 44.6}},
+                "start_year": 2025,
+                "end_year": 2030,
+                "description": "Test scenario",
+            },
+        )
+        # Must not be a validation error — request shape is correct
+        assert response.status_code != 422
+        if response.status_code == 201:
+            data = response.json()
+            assert "version_id" in data
+
+    def test_create_scenario_invalid_policy_type(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        response = client.post(
+            "/api/scenarios",
+            headers=auth_headers,
+            json={
+                "name": "test-bad-type",
+                "policy_type": "invalid_type",
+                "parameters": {},
+                "start_year": 2025,
+                "end_year": 2030,
+            },
+        )
+        assert response.status_code == 422
+
+    def test_create_scenario_unknown_parameters_rejected(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        response = client.post(
+            "/api/scenarios",
+            headers=auth_headers,
+            json={
+                "name": "test-unknown-params",
+                "policy_type": "carbon_tax",
+                "parameters": {
+                    "rate_schedule": {2025: 44.6},
+                    "totally_fake_field": 999,
+                },
+                "start_year": 2025,
+                "end_year": 2030,
+            },
+        )
+        assert response.status_code == 422
+
+
+class TestExportRoutes:
+    """AC-5: Export endpoints."""
+
+    def test_export_csv_not_found(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        response = client.post(
+            "/api/exports/csv",
+            headers=auth_headers,
+            json={"run_id": "nonexistent-run-id"},
+        )
+        assert response.status_code == 404
+
+    def test_export_parquet_not_found(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        response = client.post(
+            "/api/exports/parquet",
+            headers=auth_headers,
+            json={"run_id": "nonexistent-run-id"},
+        )
+        assert response.status_code == 404
+
+
+class TestIndicatorRoutes:
+    """AC-3, AC-4: Indicator and comparison endpoints."""
+
+    def test_indicator_invalid_type(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        response = client.post(
+            "/api/indicators/invalid_type",
+            headers=auth_headers,
+            json={"run_id": "fake-run"},
+        )
+        assert response.status_code == 422
+
+    def test_comparison_missing_runs(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        response = client.post(
+            "/api/comparison",
+            headers=auth_headers,
+            json={
+                "baseline_run_id": "nonexistent-1",
+                "reform_run_id": "nonexistent-2",
+            },
+        )
+        assert response.status_code == 404
+
 
 class TestErrorHandling:
     """AC-6: Error responses use structured format."""
@@ -98,3 +280,21 @@ class TestErrorHandling:
         assert response.status_code == 401
         data = response.json()
         assert "detail" in data
+
+    def test_template_not_found_error_structure(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        response = client.get(
+            "/api/templates/nonexistent", headers=auth_headers
+        )
+        assert response.status_code == 404
+
+    def test_missing_request_body_returns_422(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        response = client.post(
+            "/api/scenarios",
+            headers=auth_headers,
+            content=b"not json",
+        )
+        assert response.status_code == 422

@@ -31,6 +31,7 @@ export function usePopulations() {
   const [populations, setPopulations] = useState<Population[]>(mockPopulations);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [usingMockData, setUsingMockData] = useState(true);
 
   const fetch = useCallback(async () => {
     setLoading(true);
@@ -39,18 +40,19 @@ export function usePopulations() {
       const items = await listPopulations();
       if (items.length > 0) {
         setPopulations(items.map(mapPopulation));
+        setUsingMockData(false);
       }
       // If empty, keep mock data as fallback
     } catch (err) {
       if (err instanceof AuthError) throw err;
       setError(err instanceof Error ? err : new Error(String(err)));
-      // Keep mock data on error
+      setUsingMockData(true);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  return { populations, loading, error, refetch: fetch };
+  return { populations, loading, error, usingMockData, refetch: fetch };
 }
 
 function mapPopulation(item: PopulationItem): Population {
@@ -71,6 +73,7 @@ export function useTemplates() {
   const [templates, setTemplates] = useState<Template[]>(mockTemplates);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [usingMockData, setUsingMockData] = useState(true);
 
   const fetch = useCallback(async () => {
     setLoading(true);
@@ -79,16 +82,18 @@ export function useTemplates() {
       const items = await listTemplates();
       if (items.length > 0) {
         setTemplates(items.map(mapTemplate));
+        setUsingMockData(false);
       }
     } catch (err) {
       if (err instanceof AuthError) throw err;
       setError(err instanceof Error ? err : new Error(String(err)));
+      setUsingMockData(true);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  return { templates, loading, error, refetch: fetch };
+  return { templates, loading, error, usingMockData, refetch: fetch };
 }
 
 function mapTemplate(item: TemplateListItem): Template {

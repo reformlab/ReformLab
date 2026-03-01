@@ -31,8 +31,17 @@ function mapStatusToVariant(status: Scenario["status"]) {
 export function ScenarioCard({ scenario, selected, onSelect, onRun, onCompare, onClone, onDelete }: ScenarioCardProps) {
   return (
     <Card
-      className={`cursor-pointer ${selected ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white"}`}
+      role="button"
+      tabIndex={0}
+      aria-pressed={selected}
+      className={`cursor-pointer ${selected ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white"} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500`}
       onClick={() => onSelect(scenario.id)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect(scenario.id);
+        }
+      }}
     >
       <CardHeader className="p-2">
         <div className="flex items-center justify-between gap-2">

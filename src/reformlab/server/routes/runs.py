@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import logging
+import os
 import uuid
+from pathlib import Path
 
 from fastapi import APIRouter, Depends
 
@@ -20,6 +22,22 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _resolve_population_path(population_id: str | None) -> Path | None:
+    """Resolve a population_id to a file path by scanning the data directory."""
+    if not population_id:
+        return None
+
+    data_dir = Path(os.environ.get("REFORMLAB_DATA_DIR", "data")) / "populations"
+    if not data_dir.exists():
+        return None
+
+    for path in data_dir.iterdir():
+        if path.stem == population_id and path.suffix.lower() in {".csv", ".parquet"}:
+            return path
+
+    return None
+
+
 @router.post("", response_model=RunResponse)
 async def run_simulation(
     body: RunRequest,
@@ -33,12 +51,14 @@ async def run_simulation(
 
     adapter = get_adapter()
 
+    population_path = _resolve_population_path(body.population_id)
+
     scenario_config = ScenarioConfig(
         template_name=body.template_name,
         parameters=body.parameters,
         start_year=body.start_year,
         end_year=body.end_year,
-        population_path=None,  # population_id resolves later
+        population_path=population_path,
         seed=body.seed,
     )
 

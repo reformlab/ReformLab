@@ -91,7 +91,14 @@ async def create_scenario(body: CreateScenarioRequest) -> dict[str, str]:
         YearSchedule,
     )
 
-    policy_type = PolicyType(body.policy_type)
+    try:
+        policy_type = PolicyType(body.policy_type)
+    except ValueError:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid policy_type: '{body.policy_type}'. "
+            f"Must be one of: {[e.value for e in PolicyType]}",
+        )
     year_schedule = YearSchedule(body.start_year, body.end_year)
 
     # Build typed parameters based on policy type
@@ -109,6 +116,18 @@ async def create_scenario(body: CreateScenarioRequest) -> dict[str, str]:
     thresholds = tuple(raw.pop("thresholds", ()))
     covered_categories = tuple(raw.pop("covered_categories", ()))
 
+    # Validate remaining keys against the dataclass fields
+    if hasattr(params_cls, "__dataclass_fields__"):
+        allowed = set(params_cls.__dataclass_fields__)
+        # Exclude common fields already extracted
+        allowed -= {"rate_schedule", "exemptions", "thresholds", "covered_categories"}
+        unknown = set(raw) - allowed
+        if unknown:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Unknown parameters for {policy_type.value}: {sorted(unknown)}",
+            )
+
     params = params_cls(
         rate_schedule=rate_schedule,
         exemptions=exemptions,
@@ -117,6 +136,7 @@ async def create_scenario(body: CreateScenarioRequest) -> dict[str, str]:
         **raw,
     )
 
+    scenario: BaselineScenario | ReformScenario
     if body.baseline_ref:
         scenario = ReformScenario(
             name=body.name,
@@ -127,7 +147,7 @@ async def create_scenario(body: CreateScenarioRequest) -> dict[str, str]:
             year_schedule=year_schedule,
         )
     else:
-        scenario = BaselineScenario(  # type: ignore[assignment]
+        scenario = BaselineScenario(
             name=body.name,
             policy_type=policy_type,
             year_schedule=year_schedule,

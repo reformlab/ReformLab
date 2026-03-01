@@ -1,6 +1,6 @@
 """Shared-password authentication middleware for MVP.
 
-Designed for 2-10 trusted colleagues. No expiry, no persistence.
+Designed for 2-10 trusted colleagues. Sessions expire after 24 hours.
 Server restart clears all sessions.
 """
 
@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import os
 import secrets
+import time
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
@@ -19,8 +20,10 @@ from reformlab.server.models import LoginRequest, LoginResponse
 
 logger = logging.getLogger(__name__)
 
-# In-memory session store — cleared on server restart
-_active_sessions: set[str] = set()
+SESSION_TTL_SECONDS = 24 * 60 * 60  # 24 hours
+
+# In-memory session store — maps token to creation timestamp
+_active_sessions: dict[str, float] = {}
 
 SKIP_PATHS = {"/api/auth/login", "/api/docs", "/api/openapi.json"}
 
@@ -43,6 +46,15 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 content={"error": "Unauthorized"},
             )
 
+        # Check session expiry
+        created_at = _active_sessions.get(token, 0.0)
+        if time.monotonic() - created_at > SESSION_TTL_SECONDS:
+            _active_sessions.pop(token, None)
+            return JSONResponse(
+                status_code=401,
+                content={"error": "Session expired"},
+            )
+
         return await call_next(request)
 
 
@@ -60,6 +72,6 @@ async def login(body: LoginRequest) -> LoginResponse:
         raise HTTPException(status_code=401, detail="Invalid password")
 
     token = secrets.token_hex(32)
-    _active_sessions.add(token)
+    _active_sessions[token] = time.monotonic()
     logger.info("New session created (active sessions: %d)", len(_active_sessions))
     return LoginResponse(token=token)

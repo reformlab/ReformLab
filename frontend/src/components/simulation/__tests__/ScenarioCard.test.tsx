@@ -78,10 +78,10 @@ describe("ScenarioCard", () => {
     const h = handlers();
     render(<ScenarioCard scenario={reformScenario} selected={false} {...h} />);
 
-    await userEvent.click(screen.getByRole("button", { name: /Run/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^Run$/i }));
     expect(h.onRun).toHaveBeenCalledWith("reform-a");
 
-    await userEvent.click(screen.getByRole("button", { name: /Compare/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^Compare$/i }));
     expect(h.onCompare).toHaveBeenCalledWith("reform-a");
 
     await userEvent.click(screen.getByRole("button", { name: /Clone scenario/i }));

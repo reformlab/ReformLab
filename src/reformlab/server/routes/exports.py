@@ -18,12 +18,24 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+_MAX_EXPORT_BYTES = 500 * 1024 * 1024  # 500 MB safety limit
+
+
 def _file_response(path: Path, media_type: str, filename: str) -> StreamingResponse:
     """Read file into memory and return as a download response.
 
     Reads eagerly so the temp directory can be cleaned up before the
-    response is streamed to the client.
+    response is streamed to the client.  Rejects files over 500 MB.
     """
+    size = path.stat().st_size
+    if size > _MAX_EXPORT_BYTES:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Export file too large ({size / 1024 / 1024:.0f} MB, "
+                f"limit {_MAX_EXPORT_BYTES // 1024 // 1024} MB)"
+            ),
+        )
     data = path.read_bytes()
     return StreamingResponse(
         io.BytesIO(data),

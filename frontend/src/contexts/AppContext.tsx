@@ -14,9 +14,12 @@ import {
   type ReactNode,
 } from "react";
 
+import { toast } from "sonner";
+
 import { AuthError } from "@/api/client";
 import { login } from "@/api/auth";
 import { getAuthToken, setAuthToken } from "@/api/client";
+import { createScenario as apiCreateScenario, cloneScenario as apiCloneScenario } from "@/api/scenarios";
 import {
   usePopulations,
   useTemplates,
@@ -110,8 +113,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Data hooks
-  const { populations, loading: populationsLoading, refetch: refetchPopulations } = usePopulations();
-  const { templates, loading: templatesLoading, refetch: refetchTemplates } = useTemplates();
+  const { populations, loading: populationsLoading, usingMockData: populationsMock, refetch: refetchPopulations } = usePopulations();
+  const { templates, loading: templatesLoading, usingMockData: templatesMock, refetch: refetchTemplates } = useTemplates();
 
   // Selections
   const [selectedPopulationId, setSelectedPopulationId] = useState("");
@@ -169,6 +172,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
     }
   }, [isAuthenticated, refetchPopulations, refetchTemplates]);
+
+  // Warn user if data is still mock after loading completes
+  useEffect(() => {
+    if (isAuthenticated && !populationsLoading && !templatesLoading) {
+      if (populationsMock || templatesMock) {
+        toast.warning("Using sample data — backend API may be unavailable", {
+          id: "mock-data-warning",
+          duration: 8000,
+        });
+      }
+    }
+  }, [isAuthenticated, populationsLoading, templatesLoading, populationsMock, templatesMock]);
 
   const selectTemplate = useCallback((id: string) => {
     setSelectedTemplateId(id);
@@ -238,6 +253,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setScenarios((current) => [...current, newScenario]);
       setSelectedScenarioId(newId);
       activeScenarioId = newId;
+
+      // Register scenario with backend API
+      try {
+        const template = templates.find((t) => t.id === selectedTemplateId);
+        await apiCreateScenario({
+          name: newId,
+          policy_type: template?.type ?? "carbon_tax",
+          parameters: parameterValues,
+          start_year: 2025,
+          end_year: 2030,
+          description: templateName,
+          baseline_ref: null,
+        });
+      } catch {
+        // Non-fatal: scenario still runs even if registration fails
+        // Non-fatal: run will still proceed
+      }
     } else {
       setScenarios((current) =>
         current.map((s) =>
@@ -282,10 +314,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!source) return;
     const existingCount = scenarios.filter((s) => !s.isBaseline).length;
     const newId = `reform-${String.fromCharCode(97 + existingCount)}`;
+    const cloneName = `${source.name} (copy)`;
     const cloned: Scenario = {
       ...source,
       id: newId,
-      name: `${source.name} (copy)`,
+      name: cloneName,
       status: "draft",
       isBaseline: false,
       linkedBaseline: source.isBaseline ? source.id : source.linkedBaseline,
@@ -293,6 +326,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     setScenarios((current) => [...current, cloned]);
     setSelectedScenarioId(newId);
+
+    // Clone on backend (fire-and-forget for MVP)
+    apiCloneScenario(id, cloneName).catch(() => {
+      // Non-fatal: local clone still works
+    });
   }, [scenarios]);
 
   const deleteScenario = useCallback((id: string) => {

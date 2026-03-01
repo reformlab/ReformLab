@@ -36,16 +36,19 @@ export function PasswordPrompt({ onSubmit, loading }: PasswordPromptProps) {
           Enter the shared workspace password to continue.
         </p>
         <form onSubmit={handleSubmit} className="space-y-3">
+          <label htmlFor="password" className="sr-only">Password</label>
           <Input
+            id="password"
             type="password"
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoFocus
             disabled={loading}
+            aria-describedby={error ? "password-error" : undefined}
           />
           {error ? (
-            <p className="text-sm text-red-600">{error}</p>
+            <p id="password-error" className="text-sm text-red-600" role="alert">{error}</p>
           ) : null}
           <Button type="submit" className="w-full" disabled={loading || !password}>
             {loading ? "Authenticating..." : "Enter"}
