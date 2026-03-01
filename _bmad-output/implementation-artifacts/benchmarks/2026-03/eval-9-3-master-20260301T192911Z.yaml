@@ -1,0 +1,49 @@
+record_id: 93edd52b-a6e6-4c3b-a279-9c6e73e3a43b
+created_at: '2026-03-01T19:29:11.006920+00:00'
+workflow:
+  id: create-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 9
+  story_num: 3
+  title: Story 9.3
+  complexity_flags: {}
+evaluator:
+  provider: claude
+  model: opus
+  role: master
+  role_id: null
+  session_id: de8bc09c-c751-490a-bb4f-b5ec49ef298e
+execution:
+  start_time: '2026-03-01T19:18:09.863545Z'
+  end_time: '2026-03-01T19:29:10.954825Z'
+  duration_ms: 661091
+  input_tokens: 0
+  output_tokens: 0
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 1927
+  heading_count: 0
+  list_depth_max: 2
+  code_block_count: 0
+  sections_detected: []
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.31
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 5230047a70dc
+findings: null
+reasoning: null
+linguistic: null
+quality: null
+consensus: null
+ground_truth: null
+custom: null
