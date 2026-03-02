@@ -72,19 +72,27 @@ def test_quickstart_notebook_uses_visualization_api() -> None:
 
 
 def test_quickstart_notebook_includes_story_key_sections() -> None:
-    """Notebook includes required tutorial and reproducibility content."""
+    """Notebook includes required tutorial and reproducibility content.
+
+    Story 6.7 reworked the quickstart to lead with policy objects.
+    Section headings changed from adapter-first to policy-first.
+    """
     source = _all_sources(_load_notebook())
-    assert "Try It Yourself" in source
-    assert "NEW_RATE = 100.0" in source
-    assert "Baseline vs. Reform" in source
+    assert "## 1. Define a Policy" in source
+    assert "CarbonTaxParameters(" in source
+    assert "BaselineScenario(" in source
+    assert "Modify the Policy and Compare" in source
     assert "result.manifest" in source
     assert "import matplotlib.pyplot as plt" in source
 
 
 def test_quickstart_notebook_includes_export_examples() -> None:
-    """Story 6-5: notebook includes panel/indicator export and round-trip examples."""
+    """Story 6-5/6-7: notebook includes panel/indicator export and round-trip examples.
+
+    Story 6.7 renamed the section from "Export Actions" to "Export and Next Steps".
+    """
     source = _all_sources(_load_notebook())
-    assert "## 7. Export Actions" in source
+    assert "## 7. Export and Next Steps" in source
     assert "result.export_csv(" in source
     assert "result.export_parquet(" in source
     assert "indicators.export_csv(" in source
@@ -100,12 +108,16 @@ def test_quickstart_notebook_includes_population_loading() -> None:
 
 
 def test_quickstart_export_section_precedes_next_steps() -> None:
-    """Export walkthrough should appear before final next-steps guidance."""
+    """Export walkthrough should appear before final next-steps guidance.
+
+    Story 6.7 merged export and next steps into a single section "## 7. Export and Next Steps".
+    Export code appears before the "### Next Steps" subsection heading.
+    """
     source = _all_sources(_load_notebook())
-    export_heading = source.find("## 7. Export Actions")
+    export_heading = source.find("## 7. Export and Next Steps")
     panel_export = source.find("result.export_csv(")
     indicator_export = source.find("indicators.export_csv(")
-    next_steps = source.find("## 8. Next Steps")
+    next_steps = source.find("### Next Steps")
 
     assert export_heading != -1
     assert panel_export != -1
@@ -113,4 +125,3 @@ def test_quickstart_export_section_precedes_next_steps() -> None:
     assert next_steps != -1
 
     assert export_heading < panel_export < indicator_export < next_steps
-    assert source.count("## 8. Next Steps") == 1

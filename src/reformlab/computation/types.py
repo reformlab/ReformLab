@@ -40,13 +40,21 @@ class ComputationResult:
     """Result returned by a ComputationAdapter.compute() call.
 
     Attributes:
-        output_fields: Mapped output data as a PyArrow Table.
+        output_fields: Mapped output data as a PyArrow Table. When all output
+            variables belong to a single entity, this is that entity's table.
+            When variables span multiple entities, this contains the person-entity
+            table (primary entity).
         adapter_version: Version string of the adapter that produced the result.
         period: The computation period (e.g. year).
         metadata: Timing, row count, and other run-level information.
+        entity_tables: Per-entity output tables keyed by entity plural name
+            (e.g. ``"individus"``, ``"foyers_fiscaux"``). Empty dict when all
+            outputs belong to a single entity (backward-compatible default).
+            Story 9.2: Handle multi-entity output arrays.
     """
 
     output_fields: OutputFields
     adapter_version: str
     period: int
     metadata: dict[str, Any] = field(default_factory=dict)
+    entity_tables: dict[str, pa.Table] = field(default_factory=dict)

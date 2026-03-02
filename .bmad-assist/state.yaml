@@ -1,0 +1,27 @@
+current_epic: Index
+current_story: Index.1
+current_phase: create_story
+completed_stories:
+- '9.2'
+- '9.3'
+- '9.4'
+- '9.5'
+completed_epics:
+- 9
+started_at: '2026-03-01T16:24:33.601834'
+updated_at: '2026-03-02T15:21:27.207217'
+story_started_at: '2026-03-02T15:21:27.206269'
+phase_started_at: '2026-03-02T15:21:27.207217'
+epic_started_at: '2026-03-02T15:21:27.206034'
+project_started_at: '2026-03-01T16:24:33.836467'
+anomalies: []
+testarch_preflight: null
+atdd_ran_for_story: false
+atdd_ran_in_epic: false
+framework_ran_in_epic: false
+ci_ran_in_epic: false
+test_design_ran_in_epic: false
+automate_ran_in_epic: false
+nfr_assess_ran_in_epic: false
+qa_category: A
+epic_setup_complete: false

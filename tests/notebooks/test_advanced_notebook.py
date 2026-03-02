@@ -79,9 +79,14 @@ def test_advanced_notebook_uses_visualization_api() -> None:
 
 
 def test_advanced_notebook_covers_multi_year_vintage_and_comparison_sections() -> None:
-    """Notebook includes core advanced workflow sections and scenario settings."""
+    """Notebook includes core advanced workflow sections and scenario settings.
+
+    Story 6.7 renamed Section 1 from "Multi-Year Simulation" to "Multi-Year Escalating Policy"
+    and added typed policy objects throughout.
+    """
     source = _all_sources(_load_notebook())
-    assert "Section 1: Multi-Year Simulation" in source
+    assert "Section 1: Multi-Year Escalating Policy" in source
+    assert "CarbonTaxParameters(" in source
     assert "start_year=2025" in source
     assert "end_year=2034" in source
     assert "sorted(result_multi.yearly_states.keys())" in source
@@ -98,9 +103,13 @@ def test_advanced_notebook_covers_multi_year_vintage_and_comparison_sections() -
 
 
 def test_advanced_notebook_covers_reproducibility_and_lineage() -> None:
-    """Notebook demonstrates reruns plus baseline/reform lineage visibility."""
+    """Notebook demonstrates reruns plus baseline/reform lineage visibility.
+
+    Story 6.7 renumbered this section from Section 4 to Section 5 to make room
+    for the new "Build Your Own Policy Type" Section 4.
+    """
     source = _all_sources(_load_notebook())
-    assert "Section 4: Lineage and Reproducibility" in source
+    assert "Section 5: Lineage and Reproducibility" in source
     assert "result_rerun = run_scenario" in source
     assert "if original_tax == rerun_tax" in source
     assert "baseline_manifest = result_baseline.manifest" in source
@@ -111,9 +120,12 @@ def test_advanced_notebook_covers_reproducibility_and_lineage() -> None:
 
 
 def test_advanced_notebook_includes_export_examples_and_roundtrip() -> None:
-    """Story 6-5: notebook shows export flows and Parquet round-trip verification."""
+    """Story 6-5/6-7: notebook shows export flows and Parquet round-trip verification.
+
+    Story 6.7 simplified the export section heading.
+    """
     source = _all_sources(_load_notebook())
-    assert "Export simulation results for external analysis (Story 6-5)" in source
+    assert "Export simulation results for external analysis" in source
     assert "result_vintage.export_parquet(" in source
     assert "fiscal_reform.export_parquet(" in source
     assert "fiscal_comparison.export_parquet(" in source
@@ -123,9 +135,12 @@ def test_advanced_notebook_includes_export_examples_and_roundtrip() -> None:
 
 
 def test_advanced_notebook_export_heading_precedes_export_code() -> None:
-    """Export section heading should come before export directory and artifact writes."""
+    """Export section heading should come before export directory and artifact writes.
+
+    Story 6.7 simplified the export section heading.
+    """
     source = _all_sources(_load_notebook())
-    heading = source.find("Export simulation results for external analysis (Story 6-5)")
+    heading = source.find("Export simulation results for external analysis")
     export_dir = source.find("export_dir = Path(tempfile.mkdtemp())")
     panel_export = source.find("result_vintage.export_parquet(")
     indicator_export = source.find("fiscal_reform.export_parquet(")
