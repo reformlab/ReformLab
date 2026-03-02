@@ -1163,7 +1163,7 @@ class TestCalculateVariable:
             {"date_naissance": np.array([19960101])}
         )
 
-        result = adapter._calculate_variable(sim, "date_naissance", "2024", "eternity")
+        adapter._calculate_variable(sim, "date_naissance", "2024", "eternity")
 
         sim.calculate.assert_called_once_with("date_naissance", "2024")
         sim.calculate_add.assert_not_called()
@@ -1178,7 +1178,7 @@ class TestCalculateVariable:
             {"daily_var": np.array([365.0])}
         )
 
-        result = adapter._calculate_variable(sim, "daily_var", "2024", "day")
+        adapter._calculate_variable(sim, "daily_var", "2024", "day")
 
         sim.calculate_add.assert_called_once_with("daily_var", "2024")
         sim.calculate.assert_not_called()
@@ -1193,7 +1193,7 @@ class TestCalculateVariable:
             {"weekly_var": np.array([52.0])}
         )
 
-        result = adapter._calculate_variable(sim, "weekly_var", "2024", "week")
+        adapter._calculate_variable(sim, "weekly_var", "2024", "week")
 
         sim.calculate_add.assert_called_once_with("weekly_var", "2024")
         sim.calculate.assert_not_called()
@@ -1208,7 +1208,7 @@ class TestCalculateVariable:
             {"weekday_var": np.array([260.0])}
         )
 
-        result = adapter._calculate_variable(sim, "weekday_var", "2024", "weekday")
+        adapter._calculate_variable(sim, "weekday_var", "2024", "weekday")
 
         sim.calculate_add.assert_called_once_with("weekday_var", "2024")
         sim.calculate.assert_not_called()
