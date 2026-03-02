@@ -46,11 +46,11 @@ class TestGoldenCarbonTax:
     def test_golden_carbon_tax_parameters(self, golden_path: Path) -> None:
         """Golden carbon tax has expected parameters."""
         scenario = load_scenario_template(golden_path)
-        assert isinstance(scenario.parameters, CarbonTaxParameters)
-        assert scenario.parameters.rate_schedule[2026] == 44.60
-        assert scenario.parameters.rate_schedule[2036] == 100.00
-        assert len(scenario.parameters.exemptions) == 2
-        assert len(scenario.parameters.covered_categories) == 3
+        assert isinstance(scenario.policy, CarbonTaxParameters)
+        assert scenario.policy.rate_schedule[2026] == 44.60
+        assert scenario.policy.rate_schedule[2036] == 100.00
+        assert len(scenario.policy.exemptions) == 2
+        assert len(scenario.policy.covered_categories) == 3
 
     def test_golden_carbon_tax_round_trip(
         self, golden_path: Path, tmp_path: Path
@@ -64,7 +64,7 @@ class TestGoldenCarbonTax:
         assert reloaded.name == original.name
         assert reloaded.policy_type == original.policy_type
         assert reloaded.year_schedule.start_year == original.year_schedule.start_year
-        assert reloaded.parameters.rate_schedule == original.parameters.rate_schedule
+        assert reloaded.policy.rate_schedule == original.policy.rate_schedule
 
 
 class TestGoldenReform:
@@ -92,9 +92,9 @@ class TestGoldenReform:
     def test_golden_reform_parameters(self, golden_reform_path: Path) -> None:
         """Golden reform has carbon-tax redistribution overrides loaded."""
         scenario = load_scenario_template(golden_reform_path)
-        assert isinstance(scenario.parameters, CarbonTaxParameters)
-        assert scenario.parameters.redistribution_type == "progressive_dividend"
-        assert scenario.parameters.income_weights["decile_1"] == 1.5
+        assert isinstance(scenario.policy, CarbonTaxParameters)
+        assert scenario.policy.redistribution_type == "progressive_dividend"
+        assert scenario.policy.income_weights["decile_1"] == 1.5
 
     def test_golden_reform_resolution(
         self, golden_baseline_path: Path, golden_reform_path: Path
@@ -113,11 +113,11 @@ class TestGoldenReform:
         assert resolved.year_schedule.start_year == 2026
         assert resolved.year_schedule.end_year == 2036
         # Inherits rate_schedule from baseline
-        assert resolved.parameters.rate_schedule[2026] == 44.60
+        assert resolved.policy.rate_schedule[2026] == 44.60
         # Keeps reform redistribution overrides
-        assert isinstance(resolved.parameters, CarbonTaxParameters)
-        assert resolved.parameters.redistribution_type == "progressive_dividend"
-        assert resolved.parameters.income_weights["decile_10"] == 0.2
+        assert isinstance(resolved.policy, CarbonTaxParameters)
+        assert resolved.policy.redistribution_type == "progressive_dividend"
+        assert resolved.policy.income_weights["decile_10"] == 0.2
 
 
 class TestEdgeCases:
@@ -135,7 +135,7 @@ class TestEdgeCases:
             year_schedule:
               start_year: 2026
               end_year: 2036
-            parameters:
+            policy:
               rate_schedule:
                 2026: 5000.0
                 2027: 4500.0
@@ -153,9 +153,9 @@ class TestEdgeCases:
         assert scenario.policy_type == PolicyType.SUBSIDY
         from reformlab.templates.schema import SubsidyParameters
 
-        assert isinstance(scenario.parameters, SubsidyParameters)
-        assert "electric_vehicle" in scenario.parameters.eligible_categories
-        assert scenario.parameters.income_caps[2026] == 50000.0
+        assert isinstance(scenario.policy, SubsidyParameters)
+        assert "electric_vehicle" in scenario.policy.eligible_categories
+        assert scenario.policy.income_caps[2026] == 50000.0
 
     def test_feebate_scenario(self, tmp_path: Path) -> None:
         """Feebate policy type with specific parameters."""
@@ -169,7 +169,7 @@ class TestEdgeCases:
             year_schedule:
               start_year: 2026
               end_year: 2036
-            parameters:
+            policy:
               rate_schedule:
                 2026: 100.0
               pivot_point: 150.0
@@ -183,10 +183,10 @@ class TestEdgeCases:
         assert scenario.policy_type == PolicyType.FEEBATE
         from reformlab.templates.schema import FeebateParameters
 
-        assert isinstance(scenario.parameters, FeebateParameters)
-        assert scenario.parameters.pivot_point == 150.0
-        assert scenario.parameters.fee_rate == 0.01
-        assert scenario.parameters.rebate_rate == 0.02
+        assert isinstance(scenario.policy, FeebateParameters)
+        assert scenario.policy.pivot_point == 150.0
+        assert scenario.policy.fee_rate == 0.01
+        assert scenario.policy.rebate_rate == 0.02
 
     def test_rebate_scenario(self, tmp_path: Path) -> None:
         """Rebate policy type with specific parameters."""
@@ -200,7 +200,7 @@ class TestEdgeCases:
             year_schedule:
               start_year: 2026
               end_year: 2036
-            parameters:
+            policy:
               rate_schedule:
                 2026: 500.0
               rebate_type: "flat_dividend"
@@ -214,9 +214,9 @@ class TestEdgeCases:
         scenario = load_scenario_template(p)
         assert scenario.policy_type == PolicyType.REBATE
 
-        assert isinstance(scenario.parameters, RebateParameters)
-        assert scenario.parameters.rebate_type == "flat_dividend"
-        assert scenario.parameters.income_weights["decile_1"] == 1.0
+        assert isinstance(scenario.policy, RebateParameters)
+        assert scenario.policy.rebate_type == "flat_dividend"
+        assert scenario.policy.income_weights["decile_1"] == 1.0
 
     def test_empty_parameters(self, tmp_path: Path) -> None:
         """Scenario with empty parameters section is rejected."""
@@ -232,12 +232,12 @@ class TestEdgeCases:
             year_schedule:
               start_year: 2026
               end_year: 2036
-            parameters: {}
+            policy: {}
         """)
         p = tmp_path / "empty-params.yaml"
         p.write_text(content, encoding="utf-8")
 
-        with pytest.raises(ScenarioError, match="parameters"):
+        with pytest.raises(ScenarioError, match="policy"):
             load_scenario_template(p)
 
     def test_minimal_valid_scenario(self, tmp_path: Path) -> None:
@@ -253,10 +253,10 @@ class TestEdgeCases:
             year_schedule:
               start_year: 2026
               end_year: 2036
-            parameters: {}
+            policy: {}
         """)
         p = tmp_path / "minimal.yaml"
         p.write_text(content, encoding="utf-8")
 
-        with pytest.raises(ScenarioError, match="parameters"):
+        with pytest.raises(ScenarioError, match="policy"):
             load_scenario_template(p)

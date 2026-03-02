@@ -39,7 +39,7 @@ class TestRunManifestCreation:
         assert minimal_manifest.data_hashes == {}
         assert minimal_manifest.output_hashes == {}
         assert minimal_manifest.seeds == {}
-        assert minimal_manifest.parameters == {}
+        assert minimal_manifest.policy == {}
         assert minimal_manifest.assumptions == []
         assert minimal_manifest.step_pipeline == []
         assert minimal_manifest.integrity_hash == ""
@@ -60,7 +60,7 @@ class TestRunManifestCreation:
             "year_2025": 1001,
             "year_2026": 1002,
         }
-        assert full_manifest.parameters["carbon_tax_rate"] == 44.6
+        assert full_manifest.policy["carbon_tax_rate"] == 44.6
         assert len(full_manifest.assumptions) == 3
         assert full_manifest.assumptions[0]["key"] == "constant_population"
         assert full_manifest.assumptions[0]["is_default"] is True
@@ -154,7 +154,7 @@ class TestRunManifestCreation:
                 openfisca_version="40.0.0",
                 adapter_version="1.0.0",
                 scenario_version="v1.0",
-                parameters={"unsupported": {1, 2, 3}},
+                policy={"unsupported": {1, 2, 3}},
             )
 
 
@@ -234,7 +234,7 @@ class TestManifestSerialization:
         assert restored.data_hashes == full_manifest.data_hashes
         assert restored.output_hashes == full_manifest.output_hashes
         assert restored.seeds == full_manifest.seeds
-        assert restored.parameters == full_manifest.parameters
+        assert restored.policy == full_manifest.policy
         assert restored.assumptions == full_manifest.assumptions
         assert restored.step_pipeline == full_manifest.step_pipeline
 
@@ -262,7 +262,7 @@ class TestManifestSerialization:
                 "data_hashes": {},
                 "output_hashes": {},
                 "seeds": {},
-                "parameters": {},
+                "policy": {},
                 "assumptions": [],
                 "mappings": [],
                 "warnings": [],
@@ -432,7 +432,7 @@ class TestManifestValidation:
                 "data_hashes": {},
                 "output_hashes": {},
                 "seeds": {},
-                "parameters": {},
+                "policy": {},
                 "assumptions": [],
                 "mappings": [],
                 "warnings": [],
@@ -889,7 +889,7 @@ class TestLineageFieldValidation:
                 "data_hashes": {},
                 "output_hashes": {},
                 "seeds": {},
-                "parameters": {},
+                "policy": {},
                 "assumptions": [],
                 "mappings": [],
                 "warnings": [],

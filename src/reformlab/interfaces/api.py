@@ -46,7 +46,7 @@ class ScenarioConfig:
 
     Attributes:
         template_name: Name of the scenario template to use.
-        parameters: Policy parameters to apply.
+        policy: Policy parameters to apply.
         population_path: Optional path to population data file.
         start_year: First year of the projection.
         end_year: Last year of the projection.
@@ -55,7 +55,7 @@ class ScenarioConfig:
     """
 
     template_name: str
-    parameters: dict[str, Any]
+    policy: dict[str, Any]
     start_year: int
     end_year: int
     population_path: Path | None = None
@@ -383,7 +383,6 @@ def create_quickstart_adapter(
     *,
     carbon_tax_rate: float,
     year: int = 2025,
-    household_count: int = 100,
     version_string: str = "quickstart-demo-v1",
 ) -> ComputationAdapter:
     """Create a population-aware adapter for quickstart notebook demos.
@@ -396,8 +395,8 @@ def create_quickstart_adapter(
         disposable_income = income - carbon_tax
 
     When the population is empty (no rows), the adapter falls back to a
-    pre-built synthetic table so that existing call-sites without
-    population data continue to work.
+    pre-built synthetic table with 100 households so that existing
+    call-sites without population data continue to work.
     """
     import pyarrow as pa
 
@@ -405,13 +404,6 @@ def create_quickstart_adapter(
     from reformlab.computation.types import PolicyConfig, PopulationData
     from reformlab.interfaces.errors import ConfigurationError
 
-    if household_count <= 0:
-        raise ConfigurationError(
-            field_path="household_count",
-            expected="positive integer",
-            actual=household_count,
-            fix="Provide a positive integer for household_count",
-        )
     if year < 0:
         raise ConfigurationError(
             field_path="year",
@@ -431,18 +423,19 @@ def create_quickstart_adapter(
     rate_multiplier = carbon_tax_rate / baseline_rate if baseline_rate else 1.0
 
     # Fallback output for empty-population calls (backward compatibility)
-    income_base = [15000.0 + (i * 800.0) for i in range(household_count)]
-    carbon_tax_base = [150.0 + (i * 0.5) for i in range(household_count)]
+    _fallback_size = 100
+    income_base = [15000.0 + (i * 800.0) for i in range(_fallback_size)]
+    carbon_tax_base = [150.0 + (i * 0.5) for i in range(_fallback_size)]
     scaled_carbon_tax = [max(0.0, tax * rate_multiplier) for tax in carbon_tax_base]
 
     fallback_output = pa.table(
         {
-            "household_id": pa.array(range(household_count), type=pa.int64()),
-            "year": pa.array([year] * household_count, type=pa.int64()),
+            "household_id": pa.array(range(_fallback_size), type=pa.int64()),
+            "year": pa.array([year] * _fallback_size, type=pa.int64()),
             "income": pa.array(income_base, type=pa.float64()),
             "carbon_tax": pa.array(scaled_carbon_tax, type=pa.float64()),
             "disposable_income": pa.array(
-                [income_base[i] - scaled_carbon_tax[i] for i in range(household_count)],
+                [income_base[i] - scaled_carbon_tax[i] for i in range(_fallback_size)],
                 type=pa.float64(),
             ),
         }
@@ -508,7 +501,7 @@ def check_memory_requirements(
         >>> from reformlab import ScenarioConfig, check_memory_requirements
         >>> config = ScenarioConfig(
         ...     template_name="test",
-        ...     parameters={},
+        ...     policy={},
         ...     start_year=2025,
         ...     end_year=2030,
         ... )
@@ -607,7 +600,7 @@ def run_scenario(
         >>> config = RunConfig(
         ...     scenario=ScenarioConfig(
         ...         template_name="carbon-tax",
-        ...         parameters={"rate_schedule": {2025: 50.0}},
+        ...         policy={"rate_schedule": {2025: 50.0}},
         ...         start_year=2025,
         ...         end_year=2030,
         ...     ),
@@ -870,7 +863,7 @@ def _workflow_config_to_run_config(workflow_config: Any) -> RunConfig:
     return RunConfig(
         scenario=ScenarioConfig(
             template_name=scenario_ref,
-            parameters={},
+            policy={},
             start_year=start_year,
             end_year=end_year,
         ),
@@ -1033,13 +1026,13 @@ def _dict_to_scenario_config(data: dict[str, Any]) -> ScenarioConfig:
             fix="Provide a valid template name as a non-empty string",
         )
 
-    parameters = data.get("parameters")
-    if not isinstance(parameters, dict):
+    policy_dict = data.get("policy")
+    if not isinstance(policy_dict, dict):
         raise ConfigurationError(
-            field_path="scenario.parameters",
+            field_path="scenario.policy",
             expected="dict of policy parameters",
-            actual=parameters,
-            fix="Provide parameters as a dictionary of policy parameters",
+            actual=policy_dict,
+            fix="Provide policy as a dictionary of policy parameters",
         )
 
     population_path = _coerce_optional_path(
@@ -1062,7 +1055,7 @@ def _dict_to_scenario_config(data: dict[str, Any]) -> ScenarioConfig:
 
     return ScenarioConfig(
         template_name=template_name,
-        parameters=dict(parameters),
+        policy=dict(policy_dict),
         start_year=_coerce_required_int(start_year, field_path="scenario.start_year"),
         end_year=_coerce_required_int(end_year, field_path="scenario.end_year"),
         population_path=population_path,
@@ -1170,16 +1163,16 @@ def _validate_config(run_config: RunConfig) -> None:
         raise ValidationErrors(issues)
 
 
-def _normalize_parameters(params: dict[str, Any]) -> dict[str, Any]:
-    """Normalize parameters for manifest compatibility.
+def _normalize_policy(params: dict[str, Any]) -> dict[str, Any]:
+    """Normalize policy for manifest compatibility.
 
     Converts numeric dictionary keys to strings for JSON serialization.
 
     Args:
-        params: Raw parameters dictionary.
+        params: Raw policy dictionary.
 
     Returns:
-        Normalized parameters with string keys.
+        Normalized policy with string keys.
     """
 
     def normalize_value(value: Any) -> dict[str, Any] | list[Any] | Any:
@@ -1267,13 +1260,13 @@ def _execute_orchestration(
     from reformlab.orchestrator.types import OrchestratorResult, YearState
     from reformlab.templates.workflow import WorkflowResult
 
-    # Normalize parameters to ensure manifest compatibility
+    # Normalize policy to ensure manifest compatibility
     # Convert any numeric keys to strings for JSON serialization
-    normalized_params = _normalize_parameters(scenario.parameters)
+    normalized_params = _normalize_policy(scenario.policy)
 
     population = _load_population_data(scenario.population_path)
     policy = PolicyConfig(
-        parameters=normalized_params,
+        policy=normalized_params,
         name=scenario.template_name,
     )
 
@@ -1287,7 +1280,7 @@ def _execute_orchestration(
             "output_format": "parquet",
         },
         "scenarios": [{"role": "scenario", "reference": scenario.template_name}],
-        "parameters": normalized_params,
+        "policy": normalized_params,
         "additional_warnings": list(additional_warnings or []),
     }
 
@@ -1305,7 +1298,7 @@ def _execute_orchestration(
         ) + (steps or ()),
         seed=seed,
         initial_state=dict(initial_state or {}),
-        parameters=normalized_params,
+        policy=normalized_params,
         scenario_name=scenario.template_name,
         scenario_version="api-v1",
     )
@@ -1380,7 +1373,7 @@ def _execute_orchestration(
         openfisca_version=adapter_version,
         adapter_version=adapter_version,
         scenario_version="1.0.0",
-        parameters=normalized_params,
+        policy=normalized_params,
         seeds={"master": seed} if seed is not None else {},
         assumptions=_coerce_dict_list(workflow_result.metadata.get("assumptions")),
         mappings=_coerce_dict_list(workflow_result.metadata.get("mappings")),
@@ -1566,6 +1559,9 @@ def create_scenario(
 
     Args:
         scenario: Scenario object to create (BaselineScenario or ReformScenario).
+            ``policy_type`` is optional on the scenario — when omitted, it is
+            automatically inferred from the ``policy`` parameter class
+            (e.g. ``CarbonTaxParameters`` → ``PolicyType.CARBON_TAX``).
         name: Name for the scenario.
         register: If True, save to registry and return version ID.
             If False, just return the scenario object.
@@ -1575,12 +1571,11 @@ def create_scenario(
 
     Example:
         >>> from reformlab import create_scenario
-        >>> from reformlab.templates.schema import BaselineScenario, PolicyType, YearSchedule
+        >>> from reformlab.templates.schema import BaselineScenario, CarbonTaxParameters, YearSchedule
         >>> scenario = BaselineScenario(
         ...     name="carbon-tax-2025",
-        ...     policy_type=PolicyType.CARBON_TAX,
         ...     year_schedule=YearSchedule(2025, 2030),
-        ...     parameters=...,
+        ...     policy=CarbonTaxParameters(rate_schedule={2025: 44.60}),
         ... )
         >>> version_id = create_scenario(scenario, "carbon-tax-2025", register=True)
     """

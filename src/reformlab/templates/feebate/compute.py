@@ -109,7 +109,7 @@ def compute_rebate_amount(
 
 def compute_feebate(
     population: pa.Table,
-    parameters: FeebateParameters,
+    policy: FeebateParameters,
     metric_column: str,
     year: int,
     template_name: str = "",
@@ -125,7 +125,7 @@ def compute_feebate(
 
     Args:
         population: Population table with household data including metric column.
-        parameters: Feebate parameters including pivot_point, fee_rate, rebate_rate.
+        policy: Feebate parameters including pivot_point, fee_rate, rebate_rate.
         metric_column: Name of the column containing the metric for pivot comparison
             (e.g., "vehicle_emissions_gkm").
         year: Year for computation.
@@ -150,15 +150,15 @@ def compute_feebate(
         for value in metric_col:
             raw_value = value.as_py()
             if raw_value is None:
-                metric_values.append(parameters.pivot_point)
+                metric_values.append(policy.pivot_point)
                 continue
             try:
                 metric_values.append(float(raw_value))
             except (TypeError, ValueError):
-                metric_values.append(parameters.pivot_point)
+                metric_values.append(policy.pivot_point)
     else:
         # No metric column - treat as everyone at pivot (no fees or rebates)
-        metric_values = [parameters.pivot_point] * num_households
+        metric_values = [policy.pivot_point] * num_households
 
     # Compute fees and rebates
     fees = []
@@ -167,10 +167,10 @@ def compute_feebate(
 
     for metric_val in metric_values:
         fee = compute_fee_amount(
-            metric_val, parameters.pivot_point, parameters.fee_rate
+            metric_val, policy.pivot_point, policy.fee_rate
         )
         rebate = compute_rebate_amount(
-            metric_val, parameters.pivot_point, parameters.rebate_rate
+            metric_val, policy.pivot_point, policy.rebate_rate
         )
         fees.append(fee)
         rebates.append(rebate)

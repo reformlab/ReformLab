@@ -34,8 +34,8 @@ class TestLoadScenarioTemplate:
         assert scenario.policy_type == PolicyType.CARBON_TAX
         assert scenario.year_schedule.start_year == 2026
         assert scenario.year_schedule.end_year == 2036
-        assert isinstance(scenario.parameters, CarbonTaxParameters)
-        assert scenario.parameters.rate_schedule[2026] == 44.60
+        assert isinstance(scenario.policy, CarbonTaxParameters)
+        assert scenario.policy.rate_schedule[2026] == 44.60
 
     def test_load_valid_reform_scenario(self, valid_reform_yaml: Path) -> None:
         """Valid reform YAML loads into ReformScenario with baseline_ref."""
@@ -114,7 +114,7 @@ class TestRequiredFieldValidation:
             year_schedule:
               start_year: 2026
               end_year: 2036
-            parameters: {}
+            policy: {}
         """)
         p = tmp_path / "no-version.yaml"
         p.write_text(content, encoding="utf-8")
@@ -122,8 +122,8 @@ class TestRequiredFieldValidation:
             load_scenario_template(p)
         assert "version" in str(exc_info.value)
 
-    def test_empty_parameters_raises(self, tmp_path: Path) -> None:
-        """Empty parameters mapping raises ScenarioError."""
+    def test_empty_policy_raises(self, tmp_path: Path) -> None:
+        """Empty policy mapping raises ScenarioError."""
         content = textwrap.dedent("""\
             version: "1.0"
             name: "Empty Params"
@@ -131,15 +131,15 @@ class TestRequiredFieldValidation:
             year_schedule:
               start_year: 2026
               end_year: 2036
-            parameters: {}
+            policy: {}
         """)
         p = tmp_path / "empty-params.yaml"
         p.write_text(content, encoding="utf-8")
-        with pytest.raises(ScenarioError, match="parameters"):
+        with pytest.raises(ScenarioError, match="policy"):
             load_scenario_template(p)
 
-    def test_parameters_must_be_mapping(self, tmp_path: Path) -> None:
-        """Non-mapping parameters raises ScenarioError."""
+    def test_policy_must_be_mapping(self, tmp_path: Path) -> None:
+        """Non-mapping policy raises ScenarioError."""
         content = textwrap.dedent("""\
             version: "1.0"
             name: "Bad Params"
@@ -147,12 +147,12 @@ class TestRequiredFieldValidation:
             year_schedule:
               start_year: 2026
               end_year: 2036
-            parameters:
+            policy:
               - nope
         """)
         p = tmp_path / "bad-params.yaml"
         p.write_text(content, encoding="utf-8")
-        with pytest.raises(ScenarioError, match="parameters"):
+        with pytest.raises(ScenarioError, match="policy"):
             load_scenario_template(p)
 
 
@@ -169,7 +169,7 @@ class TestTypeCoercion:
             year_schedule:
               start_year: "2026"
               end_year: "2036"
-            parameters:
+            policy:
               rate_schedule:
                 "2026": 44.60
         """)
@@ -177,7 +177,7 @@ class TestTypeCoercion:
         p.write_text(content, encoding="utf-8")
         scenario = load_scenario_template(p)
         assert scenario.year_schedule.start_year == 2026
-        assert 2026 in scenario.parameters.rate_schedule
+        assert 2026 in scenario.policy.rate_schedule
 
 
 class TestYearScheduleValidation:
@@ -227,7 +227,7 @@ class TestInvalidPolicyType:
             year_schedule:
               start_year: 2026
               end_year: 2036
-            parameters:
+            policy:
               rate_schedule:
                 2026: 44.6
         """)
@@ -246,7 +246,7 @@ class TestDumpScenarioTemplate:
             name="Test Carbon Tax",
             policy_type=PolicyType.CARBON_TAX,
             year_schedule=YearSchedule(2026, 2036),
-            parameters=CarbonTaxParameters(
+            policy=CarbonTaxParameters(
                 rate_schedule={2026: 44.60, 2027: 50.00},
                 covered_categories=("transport_fuel",),
             ),
@@ -266,7 +266,7 @@ class TestDumpScenarioTemplate:
             name="Round Trip Test",
             policy_type=PolicyType.CARBON_TAX,
             year_schedule=YearSchedule(2026, 2036),
-            parameters=CarbonTaxParameters(
+            policy=CarbonTaxParameters(
                 rate_schedule={
                     2026: 44.60,
                     2027: 50.00,
@@ -294,11 +294,11 @@ class TestDumpScenarioTemplate:
         assert loaded.name == scenario.name
         assert loaded.policy_type == scenario.policy_type
         assert loaded.year_schedule.start_year == scenario.year_schedule.start_year
-        assert loaded.parameters.rate_schedule == scenario.parameters.rate_schedule
-        assert loaded.parameters.exemptions == scenario.parameters.exemptions
+        assert loaded.policy.rate_schedule == scenario.policy.rate_schedule
+        assert loaded.policy.exemptions == scenario.policy.exemptions
         assert (
-            loaded.parameters.covered_categories
-            == scenario.parameters.covered_categories
+            loaded.policy.covered_categories
+            == scenario.policy.covered_categories
         )
 
     def test_round_trip_reform(self, tmp_path: Path) -> None:
@@ -309,7 +309,7 @@ class TestDumpScenarioTemplate:
             name="Reform Round Trip",
             policy_type=PolicyType.CARBON_TAX,
             baseline_ref="test-baseline",
-            parameters=RebateParameters(
+            policy=RebateParameters(
                 rate_schedule={2026: 500.0},
                 rebate_type="progressive_dividend",
                 income_weights={"decile_1": 1.5, "decile_10": 0.5},
@@ -324,7 +324,7 @@ class TestDumpScenarioTemplate:
         assert isinstance(loaded, ReformScenario)
         assert loaded.name == scenario.name
         assert loaded.baseline_ref == scenario.baseline_ref
-        assert loaded.parameters.rate_schedule == scenario.parameters.rate_schedule
+        assert loaded.policy.rate_schedule == scenario.policy.rate_schedule
 
 
 class TestCarbonTaxRedistributionLoading:
@@ -340,7 +340,7 @@ class TestCarbonTaxRedistributionLoading:
             year_schedule:
               start_year: 2026
               end_year: 2036
-            parameters:
+            policy:
               rate_schedule:
                 2026: 44.60
                 2027: 50.00
@@ -364,9 +364,9 @@ class TestCarbonTaxRedistributionLoading:
 
         scenario = load_scenario_template(p)
         assert isinstance(scenario, BaselineScenario)
-        assert isinstance(scenario.parameters, CarbonTaxParameters)
-        assert scenario.parameters.redistribution_type == "lump_sum"
-        assert scenario.parameters.income_weights == {}
+        assert isinstance(scenario.policy, CarbonTaxParameters)
+        assert scenario.policy.redistribution_type == "lump_sum"
+        assert scenario.policy.income_weights == {}
 
     def test_load_carbon_tax_with_progressive_dividend(self, tmp_path: Path) -> None:
         """Carbon tax template with progressive_dividend redistribution loads correctly."""
@@ -378,7 +378,7 @@ class TestCarbonTaxRedistributionLoading:
             year_schedule:
               start_year: 2026
               end_year: 2036
-            parameters:
+            policy:
               rate_schedule:
                 2026: 44.60
                 2027: 50.00
@@ -413,10 +413,10 @@ class TestCarbonTaxRedistributionLoading:
 
         scenario = load_scenario_template(p)
         assert isinstance(scenario, BaselineScenario)
-        assert isinstance(scenario.parameters, CarbonTaxParameters)
-        assert scenario.parameters.redistribution_type == "progressive_dividend"
-        assert scenario.parameters.income_weights["decile_1"] == 1.5
-        assert scenario.parameters.income_weights["decile_10"] == 0.2
+        assert isinstance(scenario.policy, CarbonTaxParameters)
+        assert scenario.policy.redistribution_type == "progressive_dividend"
+        assert scenario.policy.income_weights["decile_1"] == 1.5
+        assert scenario.policy.income_weights["decile_10"] == 0.2
 
     def test_load_carbon_tax_no_redistribution(
         self, valid_carbon_tax_yaml: Path
@@ -424,9 +424,9 @@ class TestCarbonTaxRedistributionLoading:
         """Carbon tax template without redistribution defaults to empty values."""
         scenario = load_scenario_template(valid_carbon_tax_yaml)
         assert isinstance(scenario, BaselineScenario)
-        assert isinstance(scenario.parameters, CarbonTaxParameters)
-        assert scenario.parameters.redistribution_type == ""
-        assert scenario.parameters.income_weights == {}
+        assert isinstance(scenario.policy, CarbonTaxParameters)
+        assert scenario.policy.redistribution_type == ""
+        assert scenario.policy.income_weights == {}
 
     def test_round_trip_carbon_tax_with_redistribution(self, tmp_path: Path) -> None:
         """Carbon tax with redistribution can round-trip through dump/load."""
@@ -434,7 +434,7 @@ class TestCarbonTaxRedistributionLoading:
             name="Carbon Tax Progressive",
             policy_type=PolicyType.CARBON_TAX,
             year_schedule=YearSchedule(2026, 2036),
-            parameters=CarbonTaxParameters(
+            policy=CarbonTaxParameters(
                 rate_schedule={
                     2026: 44.60,
                     2027: 50.00,
@@ -460,9 +460,9 @@ class TestCarbonTaxRedistributionLoading:
 
         loaded = load_scenario_template(output_path)
         assert isinstance(loaded, BaselineScenario)
-        assert isinstance(loaded.parameters, CarbonTaxParameters)
-        assert loaded.parameters.redistribution_type == "progressive_dividend"
-        assert loaded.parameters.income_weights == {"decile_1": 1.5, "decile_10": 0.2}
+        assert isinstance(loaded.policy, CarbonTaxParameters)
+        assert loaded.policy.redistribution_type == "progressive_dividend"
+        assert loaded.policy.income_weights == {"decile_1": 1.5, "decile_10": 0.2}
 
 
 class TestSubsidyParameterLoading:
@@ -482,7 +482,7 @@ class TestSubsidyParameterLoading:
             year_schedule:
               start_year: 2026
               end_year: 2036
-            parameters:
+            policy:
               rate_schedule:
                 2026: 5000.0
                 2027: 4500.0
@@ -516,14 +516,14 @@ class TestSubsidyParameterLoading:
 
         scenario = load_scenario_template(p)
         assert isinstance(scenario, BaselineScenario)
-        assert isinstance(scenario.parameters, SubsidyParameters)
-        assert scenario.parameters.eligible_categories == (
+        assert isinstance(scenario.policy, SubsidyParameters)
+        assert scenario.policy.eligible_categories == (
             "owner_occupier",
             "low_efficiency_home",
         )
-        assert scenario.parameters.income_caps[2026] == 45000.0
-        assert scenario.parameters.income_caps[2027] == 42000.0
-        assert scenario.parameters.rate_schedule[2026] == 5000.0
+        assert scenario.policy.income_caps[2026] == 45000.0
+        assert scenario.policy.income_caps[2027] == 42000.0
+        assert scenario.policy.rate_schedule[2026] == 5000.0
 
     def test_load_subsidy_minimal(self, tmp_path: Path) -> None:
         """Subsidy template with minimal fields loads with defaults."""
@@ -537,7 +537,7 @@ class TestSubsidyParameterLoading:
             year_schedule:
               start_year: 2026
               end_year: 2036
-            parameters:
+            policy:
               rate_schedule:
                 2026: 1000.0
                 2027: 1000.0
@@ -555,9 +555,9 @@ class TestSubsidyParameterLoading:
         p.write_text(content, encoding="utf-8")
 
         scenario = load_scenario_template(p)
-        assert isinstance(scenario.parameters, SubsidyParameters)
-        assert scenario.parameters.eligible_categories == ()
-        assert scenario.parameters.income_caps == {}
+        assert isinstance(scenario.policy, SubsidyParameters)
+        assert scenario.policy.eligible_categories == ()
+        assert scenario.policy.income_caps == {}
 
 
 class TestRebateParameterLoading:
@@ -575,7 +575,7 @@ class TestRebateParameterLoading:
             year_schedule:
               start_year: 2026
               end_year: 2036
-            parameters:
+            policy:
               rate_schedule:
                 2026: 100.0
                 2027: 100.0
@@ -595,9 +595,9 @@ class TestRebateParameterLoading:
 
         scenario = load_scenario_template(p)
         assert isinstance(scenario, BaselineScenario)
-        assert isinstance(scenario.parameters, RebateParameters)
-        assert scenario.parameters.rebate_type == "lump_sum"
-        assert scenario.parameters.income_weights == {}
+        assert isinstance(scenario.policy, RebateParameters)
+        assert scenario.policy.rebate_type == "lump_sum"
+        assert scenario.policy.income_weights == {}
 
     def test_load_rebate_with_progressive_dividend(self, tmp_path: Path) -> None:
         """Rebate template with progressive_dividend type and weights loads correctly."""
@@ -611,7 +611,7 @@ class TestRebateParameterLoading:
             year_schedule:
               start_year: 2026
               end_year: 2036
-            parameters:
+            policy:
               rate_schedule:
                 2026: 100.0
                 2027: 110.0
@@ -641,10 +641,10 @@ class TestRebateParameterLoading:
         p.write_text(content, encoding="utf-8")
 
         scenario = load_scenario_template(p)
-        assert isinstance(scenario.parameters, RebateParameters)
-        assert scenario.parameters.rebate_type == "progressive_dividend"
-        assert scenario.parameters.income_weights["decile_1"] == 2.0
-        assert scenario.parameters.income_weights["decile_10"] == 0.2
+        assert isinstance(scenario.policy, RebateParameters)
+        assert scenario.policy.rebate_type == "progressive_dividend"
+        assert scenario.policy.income_weights["decile_1"] == 2.0
+        assert scenario.policy.income_weights["decile_10"] == 0.2
 
 
 class TestFeebateParameterLoading:
@@ -662,7 +662,7 @@ class TestFeebateParameterLoading:
             year_schedule:
               start_year: 2026
               end_year: 2036
-            parameters:
+            policy:
               pivot_point: 120.0
               fee_rate: 50.0
               rebate_rate: 50.0
@@ -674,14 +674,14 @@ class TestFeebateParameterLoading:
 
         scenario = load_scenario_template(p)
         assert isinstance(scenario, BaselineScenario)
-        assert isinstance(scenario.parameters, FeebateParameters)
-        assert scenario.parameters.pivot_point == 120.0
-        assert scenario.parameters.fee_rate == 50.0
-        assert scenario.parameters.rebate_rate == 50.0
-        assert scenario.parameters.covered_categories == ("passenger_vehicle",)
+        assert isinstance(scenario.policy, FeebateParameters)
+        assert scenario.policy.pivot_point == 120.0
+        assert scenario.policy.fee_rate == 50.0
+        assert scenario.policy.rebate_rate == 50.0
+        assert scenario.policy.covered_categories == ("passenger_vehicle",)
 
-    def test_load_feebate_minimal_empty_parameters_raises(self, tmp_path: Path) -> None:
-        """Feebate template with empty parameters is invalid."""
+    def test_load_feebate_minimal_empty_policy_raises(self, tmp_path: Path) -> None:
+        """Feebate template with empty policy is invalid."""
         content = textwrap.dedent("""\
             $schema: "./schema/scenario-template.schema.json"
             version: "1.0"
@@ -690,12 +690,12 @@ class TestFeebateParameterLoading:
             year_schedule:
               start_year: 2026
               end_year: 2036
-            parameters: {}
+            policy: {}
         """)
         p = tmp_path / "feebate-minimal.yaml"
         p.write_text(content, encoding="utf-8")
 
-        with pytest.raises(ScenarioError, match="parameters"):
+        with pytest.raises(ScenarioError, match="policy"):
             load_scenario_template(p)
 
     def test_load_feebate_asymmetric_rates(self, tmp_path: Path) -> None:
@@ -710,7 +710,7 @@ class TestFeebateParameterLoading:
             year_schedule:
               start_year: 2026
               end_year: 2036
-            parameters:
+            policy:
               pivot_point: 100.0
               fee_rate: 75.0
               rebate_rate: 25.0
@@ -719,6 +719,6 @@ class TestFeebateParameterLoading:
         p.write_text(content, encoding="utf-8")
 
         scenario = load_scenario_template(p)
-        assert isinstance(scenario.parameters, FeebateParameters)
-        assert scenario.parameters.fee_rate == 75.0
-        assert scenario.parameters.rebate_rate == 25.0
+        assert isinstance(scenario.policy, FeebateParameters)
+        assert scenario.policy.fee_rate == 75.0
+        assert scenario.policy.rebate_rate == 25.0

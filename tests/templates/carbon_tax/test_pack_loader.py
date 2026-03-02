@@ -55,27 +55,27 @@ class TestLoadCarbonTaxTemplate:
         template = load_carbon_tax_template("carbon-tax-flat-no-redistribution")
         assert isinstance(template, BaselineScenario)
         assert template.policy_type == PolicyType.CARBON_TAX
-        assert isinstance(template.parameters, CarbonTaxParameters)
+        assert isinstance(template.policy, CarbonTaxParameters)
 
     def test_load_flat_lump_sum(self) -> None:
         """Load flat lump sum dividend variant."""
         template = load_carbon_tax_template("carbon-tax-flat-lump-sum-dividend")
         assert isinstance(template, BaselineScenario)
-        assert template.parameters.redistribution_type == "lump_sum"
+        assert template.policy.redistribution_type == "lump_sum"
 
     def test_load_progressive_dividend(self) -> None:
         """Load flat progressive dividend variant."""
         template = load_carbon_tax_template("carbon-tax-flat-progressive-dividend")
         assert isinstance(template, BaselineScenario)
-        assert template.parameters.redistribution_type == "progressive_dividend"
-        assert len(template.parameters.income_weights) == 10  # All 10 deciles
+        assert template.policy.redistribution_type == "progressive_dividend"
+        assert len(template.policy.income_weights) == 10  # All 10 deciles
 
     def test_load_progressive_rate_no_redistribution(self) -> None:
         """Progressive rate template carries decile multipliers for tax rates."""
         template = load_carbon_tax_template("carbon-tax-progressive-no-redistribution")
         assert isinstance(template, BaselineScenario)
-        assert template.parameters.redistribution_type == ""
-        assert len(template.parameters.income_weights) == 10
+        assert template.policy.redistribution_type == ""
+        assert len(template.policy.income_weights) == 10
 
     def test_year_schedule_at_least_10_years(self) -> None:
         """All templates have year schedules of at least 10 years (AC-1)."""

@@ -44,7 +44,7 @@ def sample_baseline() -> BaselineScenario:
         name="French Carbon Tax 2026",
         policy_type=PolicyType.CARBON_TAX,
         year_schedule=YearSchedule(start_year=2026, end_year=2036),
-        parameters=CarbonTaxParameters(
+        policy=CarbonTaxParameters(
             rate_schedule={
                 2026: 44.60,
                 2027: 50.00,
@@ -72,7 +72,7 @@ def sample_reform() -> ReformScenario:
         name="Progressive Carbon Dividend",
         policy_type=PolicyType.CARBON_TAX,
         baseline_ref="french-carbon-tax-2026",
-        parameters=CarbonTaxParameters(
+        policy=CarbonTaxParameters(
             rate_schedule={},
             redistribution_type="progressive_dividend",
             income_weights={
@@ -147,7 +147,7 @@ class TestVersionIdGeneration:
             name=sample_baseline.name,
             policy_type=sample_baseline.policy_type,
             year_schedule=sample_baseline.year_schedule,
-            parameters=sample_baseline.parameters,
+            policy=sample_baseline.policy,
             description=sample_baseline.description,
             version=sample_baseline.version,
         )
@@ -759,12 +759,12 @@ class TestClone:
         registry: ScenarioRegistry,
         sample_baseline: BaselineScenario,
     ) -> None:
-        """Cloned baseline has new name but identical parameters."""
+        """Cloned baseline has new name but identical policy."""
         registry.save(sample_baseline, "original")
         clone = registry.clone("original", new_name="clone-1")
 
         assert clone.name == "clone-1"
-        assert clone.parameters == sample_baseline.parameters
+        assert clone.policy == sample_baseline.policy
         assert clone.year_schedule == sample_baseline.year_schedule
         assert clone.policy_type == sample_baseline.policy_type
         assert clone.description == sample_baseline.description
@@ -774,12 +774,12 @@ class TestClone:
         registry: ScenarioRegistry,
         sample_reform: ReformScenario,
     ) -> None:
-        """Cloned reform has new name but identical parameters."""
+        """Cloned reform has new name but identical policy."""
         registry.save(sample_reform, "original-reform")
         clone = registry.clone("original-reform", new_name="clone-reform")
 
         assert clone.name == "clone-reform"
-        assert clone.parameters == sample_reform.parameters
+        assert clone.policy == sample_reform.policy
         assert clone.baseline_ref == sample_reform.baseline_ref
         assert clone.policy_type == sample_reform.policy_type
 
@@ -878,7 +878,7 @@ class TestBaselineReformNavigation:
             name="Progressive Dividend",
             policy_type=PolicyType.CARBON_TAX,
             baseline_ref="french-carbon-tax-2026",
-            parameters=CarbonTaxParameters(
+            policy=CarbonTaxParameters(
                 rate_schedule={},
                 redistribution_type="progressive_dividend",
             ),
@@ -887,7 +887,7 @@ class TestBaselineReformNavigation:
 
         baseline = registry.get_baseline("reform-1")
         assert baseline.name == sample_baseline.name
-        assert baseline.parameters == sample_baseline.parameters
+        assert baseline.policy == sample_baseline.policy
 
     def test_get_baseline_from_specific_reform_version(
         self,
@@ -901,7 +901,7 @@ class TestBaselineReformNavigation:
             name="Reform v1",
             policy_type=PolicyType.CARBON_TAX,
             baseline_ref="baseline",
-            parameters=CarbonTaxParameters(rate_schedule={}),
+            policy=CarbonTaxParameters(rate_schedule={}),
         )
         v1 = registry.save(reform, "reform")
 
@@ -930,7 +930,7 @@ class TestBaselineReformNavigation:
             name="Reform pinned",
             policy_type=PolicyType.CARBON_TAX,
             baseline_ref=f"baseline@{v1}",
-            parameters=CarbonTaxParameters(rate_schedule={}),
+            policy=CarbonTaxParameters(rate_schedule={}),
         )
         registry.save(reform, "reform-pinned")
 
@@ -959,7 +959,7 @@ class TestBaselineReformNavigation:
             name="Orphan Reform",
             policy_type=PolicyType.CARBON_TAX,
             baseline_ref="nonexistent-baseline",
-            parameters=CarbonTaxParameters(rate_schedule={}),
+            policy=CarbonTaxParameters(rate_schedule={}),
         )
         registry.save(reform, "orphan-reform")
 
@@ -976,7 +976,7 @@ class TestBaselineReformNavigation:
             name="Malformed Reform",
             policy_type=PolicyType.CARBON_TAX,
             baseline_ref="baseline@",
-            parameters=CarbonTaxParameters(rate_schedule={}),
+            policy=CarbonTaxParameters(rate_schedule={}),
         )
         registry.save(reform, "malformed-reform")
 
@@ -998,7 +998,7 @@ class TestBaselineReformNavigation:
                 name=f"Reform {i}",
                 policy_type=PolicyType.CARBON_TAX,
                 baseline_ref="baseline",
-                parameters=CarbonTaxParameters(rate_schedule={}),
+                policy=CarbonTaxParameters(rate_schedule={}),
             )
             registry.save(reform, f"reform-{i}")
 
@@ -1023,7 +1023,7 @@ class TestBaselineReformNavigation:
             name="Reform for v1",
             policy_type=PolicyType.CARBON_TAX,
             baseline_ref=f"baseline@{v1}",
-            parameters=CarbonTaxParameters(rate_schedule={}),
+            policy=CarbonTaxParameters(rate_schedule={}),
         )
         registry.save(reform_v1, "reform-v1")
 
@@ -1032,7 +1032,7 @@ class TestBaselineReformNavigation:
             name="Reform for v2",
             policy_type=PolicyType.CARBON_TAX,
             baseline_ref=f"baseline@{v2}",
-            parameters=CarbonTaxParameters(rate_schedule={}),
+            policy=CarbonTaxParameters(rate_schedule={}),
         )
         registry.save(reform_v2, "reform-v2")
 
@@ -1063,7 +1063,7 @@ class TestBaselineReformNavigation:
             name="Reform",
             policy_type=PolicyType.CARBON_TAX,
             baseline_ref="baseline",
-            parameters=CarbonTaxParameters(rate_schedule={}),
+            policy=CarbonTaxParameters(rate_schedule={}),
         )
         registry.save(reform, "my-reform")
 
@@ -1091,7 +1091,7 @@ class TestBaselineReformNavigation:
             name="Reform",
             policy_type=PolicyType.CARBON_TAX,
             baseline_ref="baseline",
-            parameters=CarbonTaxParameters(rate_schedule={}),
+            policy=CarbonTaxParameters(rate_schedule={}),
         )
         version_id = registry.save(reform, "my-reform")
 
@@ -1240,7 +1240,7 @@ class TestCloneIntegration:
             name="Progressive",
             policy_type=PolicyType.CARBON_TAX,
             baseline_ref="carbon-tax",
-            parameters=CarbonTaxParameters(
+            policy=CarbonTaxParameters(
                 rate_schedule={},
                 redistribution_type="progressive_dividend",
             ),
@@ -1370,7 +1370,7 @@ class TestMigrate:
             name="Old Scenario",
             policy_type=PolicyType.CARBON_TAX,
             year_schedule=YearSchedule(start_year=2025, end_year=2035),
-            parameters=CarbonTaxParameters(rate_schedule={2025: 50.0}),
+            policy=CarbonTaxParameters(rate_schedule={2025: 50.0}),
             version="1.0",
         )
         v1 = registry.save(old_scenario, "old-scenario")
@@ -1409,7 +1409,7 @@ class TestMigrate:
             # Core data should be preserved
             assert migrated.name == original.name
             assert migrated.policy_type == original.policy_type
-            assert migrated.parameters == original.parameters
+            assert migrated.policy == original.policy
             if hasattr(original, "year_schedule"):
                 assert migrated.year_schedule == original.year_schedule
 

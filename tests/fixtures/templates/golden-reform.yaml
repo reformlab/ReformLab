@@ -7,7 +7,7 @@ policy_type: carbon_tax
 
 baseline_ref: "french-carbon-tax-2026"
 
-parameters:
+policy:
   redistribution:
     type: "progressive_dividend"
     income_weights:

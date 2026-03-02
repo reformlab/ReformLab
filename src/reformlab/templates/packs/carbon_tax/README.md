@@ -118,7 +118,7 @@ template = load_carbon_tax_template("carbon-tax-flat-lump-sum-dividend")
 # Run computation
 result = compute_carbon_tax(
     population=population_table,
-    parameters=template.parameters,
+    policy=template.policy,
     emission_index=emission_index,
     year=2026,
     template_name=template.name,

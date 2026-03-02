@@ -72,7 +72,7 @@ def _as_array(values: pa.Array | pa.ChunkedArray) -> pa.Array:
 
 
 def _extract_progressive_rate_multipliers(
-    parameters: CarbonTaxParameters,
+    policy: CarbonTaxParameters,
 ) -> dict[str, float]:
     """Extract decile-based tax-rate multipliers from template parameters.
 
@@ -80,7 +80,7 @@ def _extract_progressive_rate_multipliers(
     - thresholds entry with name == "progressive_rate_multipliers"
     - legacy fallback: income_weights when redistribution_type == ""
     """
-    for threshold in parameters.thresholds:
+    for threshold in policy.thresholds:
         if not isinstance(threshold, dict):
             continue
         if str(threshold.get("name", "")) != "progressive_rate_multipliers":
@@ -99,14 +99,14 @@ def _extract_progressive_rate_multipliers(
             return multipliers
 
     # Backward-compatible encoding used by the progressive-no-redistribution template
-    if parameters.redistribution_type == "" and parameters.income_weights:
+    if policy.redistribution_type == "" and policy.income_weights:
         multipliers = {}
         for decile in range(1, 11):
             key = f"decile_{decile}"
-            if key not in parameters.income_weights:
+            if key not in policy.income_weights:
                 continue
             try:
-                multipliers[key] = float(parameters.income_weights[key])
+                multipliers[key] = float(policy.income_weights[key])
             except (TypeError, ValueError):
                 continue
         return multipliers
@@ -172,7 +172,7 @@ def get_exemption_rate(
 
 def compute_tax_burden(
     population: pa.Table,
-    parameters: CarbonTaxParameters,
+    policy: CarbonTaxParameters,
     emission_index: EmissionFactorIndex,
     year: int,
     *,
@@ -186,7 +186,7 @@ def compute_tax_burden(
 
     Args:
         population: Population table with household data and energy columns.
-        parameters: Carbon tax parameters including rate schedule and exemptions.
+        policy: Carbon tax parameters including rate schedule and exemptions.
         emission_index: Index of emission factors by category and year.
         year: Year for which to compute tax (determines rate and emission factors).
 
@@ -197,7 +197,7 @@ def compute_tax_burden(
     population = fill_missing_energy_columns(population)
 
     # Get the carbon tax rate for this year
-    rate_eur_per_tonne = float(parameters.rate_schedule.get(year, 0.0))
+    rate_eur_per_tonne = float(policy.rate_schedule.get(year, 0.0))
     num_households = population.num_rows
     if num_households == 0:
         return pa.array([], type=pa.float64())
@@ -206,11 +206,11 @@ def compute_tax_burden(
 
     # Process each covered category
     for energy_col, category in _ENERGY_COLUMN_TO_CATEGORY.items():
-        if category not in parameters.covered_categories:
+        if category not in policy.covered_categories:
             continue
 
         # Get exemption rate for this category
-        exemption_rate = get_exemption_rate(category, parameters.exemptions)
+        exemption_rate = get_exemption_rate(category, policy.exemptions)
         effective_rate = rate_eur_per_tonne * (1.0 - exemption_rate)
 
         if effective_rate <= 0:
@@ -240,7 +240,7 @@ def compute_tax_burden(
         tax_burdens = pc.add(tax_burdens, category_tax)
 
     # Apply optional income-decile progressive rate multipliers
-    multipliers = _extract_progressive_rate_multipliers(parameters)
+    multipliers = _extract_progressive_rate_multipliers(policy)
     if multipliers:
         if income_deciles is None:
             income_deciles = assign_income_deciles(
@@ -330,7 +330,7 @@ def compute_progressive_redistribution(
 
 def compute_carbon_tax(
     population: pa.Table,
-    parameters: CarbonTaxParameters,
+    policy: CarbonTaxParameters,
     emission_index: EmissionFactorIndex,
     year: int,
     template_name: str = "",
@@ -340,12 +340,12 @@ def compute_carbon_tax(
     This is the main entry point for carbon tax computation. It:
     1. Computes tax burden per household
     2. Assigns income deciles
-    3. Computes redistribution based on parameters
+    3. Computes redistribution based on policy
     4. Calculates net impact per household
 
     Args:
         population: Population table with household data and energy columns.
-        parameters: Carbon tax parameters.
+        policy: Carbon tax parameters.
         emission_index: Index of emission factors.
         year: Year for computation.
         template_name: Name of the template being executed.
@@ -366,7 +366,7 @@ def compute_carbon_tax(
     # Compute tax burden
     tax_burden = compute_tax_burden(
         population,
-        parameters,
+        policy,
         emission_index,
         year,
         income_deciles=income_deciles,
@@ -375,11 +375,11 @@ def compute_carbon_tax(
 
     # Compute redistribution based on type
     num_households = population.num_rows
-    if parameters.redistribution_type == "lump_sum":
+    if policy.redistribution_type == "lump_sum":
         redistribution = compute_lump_sum_redistribution(total_revenue, num_households)
-    elif parameters.redistribution_type == "progressive_dividend":
+    elif policy.redistribution_type == "progressive_dividend":
         redistribution = compute_progressive_redistribution(
-            total_revenue, income_deciles, parameters.income_weights
+            total_revenue, income_deciles, policy.income_weights
         )
     else:
         # No redistribution

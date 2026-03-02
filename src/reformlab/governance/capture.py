@@ -128,31 +128,31 @@ def capture_mappings(config: MappingConfig) -> list[dict[str, Any]]:
     return mappings
 
 
-def capture_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
-    """Capture parameter snapshot with deep copy for immutability.
+def capture_policy(policy: dict[str, Any]) -> dict[str, Any]:
+    """Capture policy snapshot with deep copy for immutability.
 
-    Creates a detached deep copy of the parameter dictionary to ensure
+    Creates a detached deep copy of the policy dictionary to ensure
     the manifest capture is immutable and not affected by subsequent
-    mutations of the source parameters.
+    mutations of the source policy.
 
     Args:
-        parameters: Parameter dictionary from scenario/template.
+        policy: Policy dictionary from scenario/template.
 
     Returns:
-        Deep-copied parameter dictionary (JSON-compatible).
+        Deep-copied policy dictionary (JSON-compatible).
 
     Example:
         >>> params = {"tax_rate": 0.15, "exemptions": ["food", "medicine"]}
-        >>> snapshot = capture_parameters(params)
+        >>> snapshot = capture_policy(params)
         >>> params["tax_rate"] = 0.20  # Mutation does not affect snapshot
         >>> snapshot["tax_rate"]
         0.15
     """
-    if not isinstance(parameters, dict):
+    if not isinstance(policy, dict):
         raise TypeError(
-            f"parameters must be a dictionary, got {type(parameters).__name__}"
+            f"policy must be a dictionary, got {type(policy).__name__}"
         )
-    return deepcopy(parameters)
+    return deepcopy(policy)
 
 
 def capture_unvalidated_template_warning(

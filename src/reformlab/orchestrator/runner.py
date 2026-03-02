@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING, Any, TypedDict, cast
 from reformlab.governance.capture import (
     capture_assumptions,
     capture_mappings,
-    capture_parameters,
+    capture_policy,
     capture_unsupported_config_warning,
     capture_warnings,
 )
@@ -432,7 +432,7 @@ class OrchestratorRunner:
         initial_state: dict[str, Any] | None = None,
         assumption_defaults: dict[str, Any] | None = None,
         assumption_overrides: dict[str, Any] | None = None,
-        parameters: dict[str, Any] | None = None,
+        policy: dict[str, Any] | None = None,
         mapping_config: MappingConfig | None = None,
         scenario_name: str = "",
         scenario_version: str = "",
@@ -447,7 +447,7 @@ class OrchestratorRunner:
             initial_state: Starting state for the projection.
             assumption_defaults: Default assumption values captured in metadata.
             assumption_overrides: Assumption override values captured in metadata.
-            parameters: Scenario/template parameters captured in metadata.
+            policy: Scenario/template policy parameters captured in metadata.
             mapping_config: Runtime mapping config captured in metadata.
             scenario_name: Optional scenario identifier for warning capture.
             scenario_version: Optional scenario version for warning capture.
@@ -459,7 +459,7 @@ class OrchestratorRunner:
         self.initial_state = initial_state or {}
         self.assumption_defaults = assumption_defaults or {}
         self.assumption_overrides = assumption_overrides or {}
-        self.parameters = parameters or {}
+        self.policy = policy or {}
         self.mapping_config = mapping_config
         self.scenario_name = scenario_name
         self.scenario_version = scenario_version
@@ -554,7 +554,7 @@ class OrchestratorRunner:
             **result.metadata,
             "assumptions": manifest_capture["assumptions"],
             "mappings": manifest_capture["mappings"],
-            "parameters": manifest_capture["parameters"],
+            "policy": manifest_capture["policy"],
             "warnings": manifest_capture["warnings"],
             "parent_manifest_id": manifest_capture["parent_manifest_id"],
             "child_manifests": manifest_capture["child_manifests"],
@@ -600,8 +600,8 @@ class OrchestratorRunner:
         assumption_overrides = _coerce_dict(
             request.get("assumption_overrides", self.assumption_overrides)
         )
-        parameters = capture_parameters(
-            _coerce_dict(request.get("parameters", self.parameters))
+        policy_snapshot = capture_policy(
+            _coerce_dict(request.get("policy", self.policy))
         )
 
         mapping_payload = request.get("mapping_config", self.mapping_config)
@@ -661,7 +661,7 @@ class OrchestratorRunner:
                 overrides=assumption_overrides,
             ),
             "mappings": mappings,
-            "parameters": parameters,
+            "policy": policy_snapshot,
             # Story 5-6 AC-4: Deduplicate warnings before manifest construction
             "warnings": list(
                 dict.fromkeys(

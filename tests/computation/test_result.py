@@ -175,12 +175,12 @@ class TestPopulationData:
 
 
 class TestPolicyConfig:
-    def test_policy_has_parameters(self) -> None:
-        pol = PolicyConfig(parameters={"rate": 0.1}, name="test")
-        assert pol.parameters["rate"] == 0.1
+    def test_policy_has_policy(self) -> None:
+        pol = PolicyConfig(policy={"rate": 0.1}, name="test")
+        assert pol.policy["rate"] == 0.1
         assert pol.name == "test"
 
     def test_policy_default_fields(self) -> None:
-        pol = PolicyConfig(parameters={})
+        pol = PolicyConfig(policy={})
         assert pol.name == ""
         assert pol.description == ""

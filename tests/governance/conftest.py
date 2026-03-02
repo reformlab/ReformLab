@@ -76,7 +76,7 @@ def full_manifest() -> RunManifest:
             "year_2025": 1001,
             "year_2026": 1002,
         },
-        parameters={
+        policy={
             "carbon_tax_rate": 44.6,
             "rebate_amount": 150.0,
             "simulation_years": [2025, 2026, 2027],

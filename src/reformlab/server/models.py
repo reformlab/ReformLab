@@ -21,7 +21,7 @@ class LoginRequest(BaseModel):
 
 class RunRequest(BaseModel):
     template_name: str
-    parameters: dict[str, Any]
+    policy: dict[str, Any]
     start_year: int
     end_year: int
     population_id: str | None = None
@@ -31,7 +31,7 @@ class RunRequest(BaseModel):
 
 class MemoryCheckRequest(BaseModel):
     template_name: str
-    parameters: dict[str, Any] = {}
+    policy: dict[str, Any] = {}
     start_year: int
     end_year: int
     population_id: str | None = None
@@ -56,8 +56,8 @@ class ExportRequest(BaseModel):
 
 class CreateScenarioRequest(BaseModel):
     name: str
-    policy_type: str  # "carbon_tax" | "subsidy" | "rebate" | "feebate"
-    parameters: dict[str, Any]
+    policy_type: str | None = None  # carbon_tax | subsidy | rebate | feebate
+    policy: dict[str, Any]
     start_year: int
     end_year: int
     description: str = ""
@@ -106,7 +106,7 @@ class ScenarioResponse(BaseModel):
     policy_type: str
     description: str
     version: str
-    parameters: dict[str, Any]
+    policy: dict[str, Any]
     year_schedule: dict[str, int]
     baseline_ref: str | None = None
 
@@ -121,7 +121,7 @@ class TemplateListItem(BaseModel):
 
 
 class TemplateDetailResponse(TemplateListItem):
-    default_parameters: dict[str, Any]
+    default_policy: dict[str, Any]
 
 
 class PopulationItem(BaseModel):

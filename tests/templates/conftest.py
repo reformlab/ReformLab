@@ -22,7 +22,7 @@ def valid_carbon_tax_yaml(tmp_path: Path) -> Path:
           start_year: 2026
           end_year: 2036
 
-        parameters:
+        policy:
           rate_schedule:
             2026: 44.60
             2027: 50.00
@@ -63,7 +63,7 @@ def valid_reform_yaml(tmp_path: Path) -> Path:
 
         baseline_ref: "french-carbon-tax-2026"
 
-        parameters:
+        policy:
           redistribution:
             type: "progressive_dividend"
             income_weights:
@@ -98,7 +98,7 @@ def short_year_schedule_yaml(tmp_path: Path) -> Path:
           start_year: 2026
           end_year: 2030
 
-        parameters:
+        policy:
           rate_schedule:
             2026: 44.60
             2027: 50.00
@@ -125,7 +125,7 @@ def invalid_policy_type_yaml(tmp_path: Path) -> Path:
           start_year: 2026
           end_year: 2036
 
-        parameters: {}
+        policy: {}
     """)
     p = tmp_path / "invalid-policy-type.yaml"
     p.write_text(content, encoding="utf-8")
@@ -145,7 +145,7 @@ def missing_required_field_yaml(tmp_path: Path) -> Path:
           start_year: 2026
           end_year: 2036
 
-        parameters: {}
+        policy: {}
     """)
     p = tmp_path / "missing-field.yaml"
     p.write_text(content, encoding="utf-8")

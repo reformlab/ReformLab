@@ -9,7 +9,7 @@ year_schedule:
   start_year: 2026
   end_year: 2036
 
-parameters:
+policy:
   # Flat subsidy amount per eligible household (EUR)
   # Declining schedule reflects expected market maturation
   rate_schedule:

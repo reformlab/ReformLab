@@ -282,7 +282,7 @@ class TestOrchestratorRunner:
         runner = OrchestratorRunner(
             assumption_defaults={"discount_rate": 0.03, "inflation": 0.02},
             assumption_overrides={"discount_rate": 0.04},
-            parameters={"tax": {"rate": 0.2}},
+            policy={"tax": {"rate": 0.2}},
             mapping_config=mapping_config,
         )
 
@@ -291,11 +291,11 @@ class TestOrchestratorRunner:
         assert result.success is True
         assert "assumptions" in result.metadata
         assert "mappings" in result.metadata
-        assert "parameters" in result.metadata
+        assert "policy" in result.metadata
         assert "warnings" in result.metadata
         assert len(result.metadata["assumptions"]) == 2
         assert result.metadata["mappings"][0]["openfisca_name"] == "income"
-        assert result.metadata["parameters"]["tax"]["rate"] == 0.2
+        assert result.metadata["policy"]["tax"]["rate"] == 0.2
         assert any("not marked as validated" in w for w in result.metadata["warnings"])
 
     def test_runner_captures_artifact_hashes_when_paths_provided(
@@ -339,22 +339,22 @@ class TestOrchestratorRunner:
         """Captured metadata snapshots are detached from source payloads."""
         defaults = {"nested": {"value": 10}}
         overrides = {"nested": {"value": 20}}
-        parameters = {"policy": {"rate": 0.15}}
+        policy_params = {"policy": {"rate": 0.15}}
 
         runner = OrchestratorRunner(
             assumption_defaults=defaults,
             assumption_overrides=overrides,
-            parameters=parameters,
+            policy=policy_params,
         )
         result = run_workflow(short_workflow_config, runner=runner)
 
         defaults["nested"]["value"] = 999
         overrides["nested"]["value"] = 777
-        parameters["policy"]["rate"] = 0.99
+        policy_params["policy"]["rate"] = 0.99
 
         assumption_entry = result.metadata["assumptions"][0]
         assert assumption_entry["value"] == {"value": 20}
-        assert result.metadata["parameters"]["policy"]["rate"] == 0.15
+        assert result.metadata["policy"]["policy"]["rate"] == 0.15
 
     def test_runner_captures_lineage_metadata_automatically(
         self, short_workflow_config: WorkflowConfig

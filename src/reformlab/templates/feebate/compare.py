@@ -61,14 +61,14 @@ def run_feebate_batch(
 
     results = {}
     for scenario in scenarios:
-        if not isinstance(scenario.parameters, FeebateParameters):
+        if not isinstance(scenario.policy, FeebateParameters):
             raise TypeError(
                 f"Scenario '{scenario.name}' does not have FeebateParameters"
             )
 
         result = compute_feebate(
             population=population,
-            parameters=scenario.parameters,
+            policy=scenario.policy,
             metric_column=metric_column,
             year=year,
             template_name=scenario.name,

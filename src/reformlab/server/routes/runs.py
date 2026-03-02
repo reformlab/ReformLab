@@ -55,7 +55,7 @@ async def run_simulation(
 
     scenario_config = ScenarioConfig(
         template_name=body.template_name,
-        parameters=body.parameters,
+        policy=body.policy,
         start_year=body.start_year,
         end_year=body.end_year,
         population_path=population_path,
@@ -89,7 +89,7 @@ async def memory_check(body: MemoryCheckRequest) -> MemoryCheckResponse:
 
     scenario_config = ScenarioConfig(
         template_name=body.template_name,
-        parameters=body.parameters,
+        policy=body.policy,
         start_year=body.start_year,
         end_year=body.end_year,
     )

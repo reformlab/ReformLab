@@ -13,7 +13,7 @@ from reformlab.governance.capture import (
     TESTED_MAX_POPULATION_SIZE,
     capture_assumptions,
     capture_mappings,
-    capture_parameters,
+    capture_policy,
     capture_unsupported_config_warning,
     capture_unvalidated_mapping_warning,
     capture_unvalidated_template_warning,
@@ -193,30 +193,30 @@ class TestCaptureMappings:
         assert result[0]["transform"] == "normalize_income"
 
 
-class TestCaptureParameters:
-    """Tests for capture_parameters()."""
+class TestCapturePolicy:
+    """Tests for capture_policy()."""
 
-    def test_capture_simple_parameters(self) -> None:
-        """Capture simple parameter dictionary."""
+    def test_capture_simple_policy(self) -> None:
+        """Capture simple policy dictionary."""
         params = {"rate": 0.15, "threshold": 1000}
-        result = capture_parameters(params)
+        result = capture_policy(params)
 
         assert result == {"rate": 0.15, "threshold": 1000}
 
-    def test_capture_nested_parameters(self) -> None:
-        """Capture nested parameter structure."""
+    def test_capture_nested_policy(self) -> None:
+        """Capture nested policy structure."""
         params = {
             "tax": {"rate": 0.15, "brackets": [10000, 50000, 100000]},
             "rebate": {"amount": 500},
         }
-        result = capture_parameters(params)
+        result = capture_policy(params)
 
         assert result == params
 
     def test_capture_detaches_from_source(self) -> None:
         """Parameter snapshot is detached from source."""
         params = {"nested": {"value": 100}}
-        snapshot = capture_parameters(params)
+        snapshot = capture_policy(params)
 
         # Mutate source
         params["nested"]["value"] = 200
@@ -224,15 +224,15 @@ class TestCaptureParameters:
         # Snapshot should be unchanged
         assert snapshot["nested"]["value"] == 100
 
-    def test_capture_empty_parameters(self) -> None:
-        """Capture empty parameter dictionary."""
-        result = capture_parameters({})
+    def test_capture_empty_policy(self) -> None:
+        """Capture empty policy dictionary."""
+        result = capture_policy({})
         assert result == {}
 
-    def test_capture_parameters_rejects_non_dict(self) -> None:
-        """Parameter capture enforces dictionary payloads."""
-        with pytest.raises(TypeError, match="parameters must be a dictionary"):
-            capture_parameters([])  # type: ignore[arg-type]
+    def test_capture_policy_rejects_non_dict(self) -> None:
+        """Policy capture enforces dictionary payloads."""
+        with pytest.raises(TypeError, match="policy must be a dictionary"):
+            capture_policy([])  # type: ignore[arg-type]
 
 
 class TestCaptureUnvalidatedTemplateWarning:

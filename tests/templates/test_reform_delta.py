@@ -32,7 +32,7 @@ class TestBaselineRefValidation:
             name="Test Reform",
             policy_type=PolicyType.CARBON_TAX,
             baseline_ref="french-carbon-tax-2026",
-            parameters=RebateParameters(rate_schedule={}),
+            policy=RebateParameters(rate_schedule={}),
         )
         assert scenario.baseline_ref == "french-carbon-tax-2026"
 
@@ -43,7 +43,7 @@ class TestBaselineRefValidation:
                 name="Test",
                 policy_type=PolicyType.CARBON_TAX,
                 baseline_ref="",
-                parameters=RebateParameters(rate_schedule={}),
+                policy=RebateParameters(rate_schedule={}),
             )
 
     def test_reform_baseline_ref_whitespace_only_raises(self) -> None:
@@ -53,7 +53,7 @@ class TestBaselineRefValidation:
                 name="Test",
                 policy_type=PolicyType.CARBON_TAX,
                 baseline_ref="   ",
-                parameters=RebateParameters(rate_schedule={}),
+                policy=RebateParameters(rate_schedule={}),
             )
 
     def test_reform_yaml_missing_baseline_ref(self, tmp_path: Path) -> None:
@@ -66,7 +66,7 @@ class TestBaselineRefValidation:
             year_schedule:
               start_year: 2026
               end_year: 2036
-            parameters:
+            policy:
               rate_schedule:
                 2026: 44.60
         """)
@@ -86,7 +86,7 @@ class TestResolveReformDefinition:
             name="French Carbon Tax 2026",
             policy_type=PolicyType.CARBON_TAX,
             year_schedule=YearSchedule(start_year=2026, end_year=2036),
-            parameters=CarbonTaxParameters(
+            policy=CarbonTaxParameters(
                 rate_schedule={
                     2026: 44.60,
                     2027: 50.00,
@@ -117,7 +117,7 @@ class TestResolveReformDefinition:
             name="Progressive Carbon Dividend",
             policy_type=PolicyType.CARBON_TAX,
             baseline_ref="french-carbon-tax-2026",
-            parameters=RebateParameters(
+            policy=RebateParameters(
                 rate_schedule={},  # Inherits from baseline
                 rebate_type="progressive_dividend",
                 income_weights={"decile_1": 1.5, "decile_10": 0.5},
@@ -145,15 +145,15 @@ class TestResolveReformDefinition:
         """Reform inherits rate_schedule from baseline when empty."""
         resolved = resolve_reform_definition(reform_scenario, baseline_scenario)
         # Rate schedule should come from baseline
-        assert resolved.parameters.rate_schedule[2026] == 44.60
-        assert resolved.parameters.rate_schedule[2036] == 100.00
+        assert resolved.policy.rate_schedule[2026] == 44.60
+        assert resolved.policy.rate_schedule[2036] == 100.00
 
     def test_resolve_reform_inherits_covered_categories(
         self, baseline_scenario: BaselineScenario, reform_scenario: ReformScenario
     ) -> None:
         """Reform inherits covered_categories from baseline."""
         resolved = resolve_reform_definition(reform_scenario, baseline_scenario)
-        assert "transport_fuel" in resolved.parameters.covered_categories
+        assert "transport_fuel" in resolved.policy.covered_categories
 
     def test_resolve_reform_overrides_applied(
         self, baseline_scenario: BaselineScenario
@@ -163,7 +163,7 @@ class TestResolveReformDefinition:
             name="Modified Tax",
             policy_type=PolicyType.CARBON_TAX,
             baseline_ref="french-carbon-tax-2026",
-            parameters=CarbonTaxParameters(
+            policy=CarbonTaxParameters(
                 rate_schedule={2026: 50.00, 2027: 60.00},  # Override some years
                 covered_categories=("transport_fuel",),  # Reduce coverage
             ),
@@ -171,12 +171,12 @@ class TestResolveReformDefinition:
         )
         resolved = resolve_reform_definition(reform, baseline_scenario)
         # Overridden values should be used
-        assert resolved.parameters.rate_schedule[2026] == 50.00
-        assert resolved.parameters.rate_schedule[2027] == 60.00
+        assert resolved.policy.rate_schedule[2026] == 50.00
+        assert resolved.policy.rate_schedule[2027] == 60.00
         # Non-overridden years should come from baseline
-        assert resolved.parameters.rate_schedule[2028] == 55.00
+        assert resolved.policy.rate_schedule[2028] == 55.00
         # Overridden covered_categories should be used
-        assert resolved.parameters.covered_categories == ("transport_fuel",)
+        assert resolved.policy.covered_categories == ("transport_fuel",)
 
     def test_resolve_reform_year_schedule_override(
         self, baseline_scenario: BaselineScenario
@@ -186,7 +186,7 @@ class TestResolveReformDefinition:
             name="Extended Reform",
             policy_type=PolicyType.CARBON_TAX,
             baseline_ref="french-carbon-tax-2026",
-            parameters=CarbonTaxParameters(rate_schedule={}),
+            policy=CarbonTaxParameters(rate_schedule={}),
             year_schedule=YearSchedule(start_year=2028, end_year=2040),
             version="1.0",
         )
@@ -211,7 +211,7 @@ class TestResolveReformDefinition:
             name="Wrong Type",
             policy_type=PolicyType.SUBSIDY,  # Different from baseline
             baseline_ref="french-carbon-tax-2026",
-            parameters=RebateParameters(rate_schedule={}),
+            policy=RebateParameters(rate_schedule={}),
             version="1.0",
         )
         with pytest.raises(ScenarioError, match="policy_type"):
@@ -234,20 +234,20 @@ class TestResolveReformDefinition:
             name="Partial Override",
             policy_type=PolicyType.CARBON_TAX,
             baseline_ref="french-carbon-tax-2026",
-            parameters=CarbonTaxParameters(
+            policy=CarbonTaxParameters(
                 rate_schedule={2030: 80.00, 2031: 90.00},  # Only override 2 years
             ),
             version="1.0",
         )
         resolved = resolve_reform_definition(reform, baseline_scenario)
         # Non-overridden years from baseline
-        assert resolved.parameters.rate_schedule[2026] == 44.60
-        assert resolved.parameters.rate_schedule[2029] == 60.00
+        assert resolved.policy.rate_schedule[2026] == 44.60
+        assert resolved.policy.rate_schedule[2029] == 60.00
         # Overridden years from reform
-        assert resolved.parameters.rate_schedule[2030] == 80.00
-        assert resolved.parameters.rate_schedule[2031] == 90.00
+        assert resolved.policy.rate_schedule[2030] == 80.00
+        assert resolved.policy.rate_schedule[2031] == 90.00
         # Later years from baseline
-        assert resolved.parameters.rate_schedule[2036] == 100.00
+        assert resolved.policy.rate_schedule[2036] == 100.00
 
     def test_resolve_reform_preserves_carbon_redistribution_overrides(
         self, baseline_scenario: BaselineScenario
@@ -257,10 +257,10 @@ class TestResolveReformDefinition:
             name=baseline_scenario.name,
             policy_type=baseline_scenario.policy_type,
             year_schedule=baseline_scenario.year_schedule,
-            parameters=CarbonTaxParameters(
-                rate_schedule=baseline_scenario.parameters.rate_schedule,
-                exemptions=baseline_scenario.parameters.exemptions,
-                covered_categories=baseline_scenario.parameters.covered_categories,
+            policy=CarbonTaxParameters(
+                rate_schedule=baseline_scenario.policy.rate_schedule,
+                exemptions=baseline_scenario.policy.exemptions,
+                covered_categories=baseline_scenario.policy.covered_categories,
                 redistribution_type="lump_sum",
                 income_weights={},
             ),
@@ -271,7 +271,7 @@ class TestResolveReformDefinition:
             name="Progressive Override",
             policy_type=PolicyType.CARBON_TAX,
             baseline_ref="french-carbon-tax-2026",
-            parameters=CarbonTaxParameters(
+            policy=CarbonTaxParameters(
                 rate_schedule={},
                 redistribution_type="progressive_dividend",
                 income_weights={"decile_1": 1.5, "decile_10": 0.2},
@@ -279,10 +279,10 @@ class TestResolveReformDefinition:
             version="1.0",
         )
         resolved = resolve_reform_definition(reform, baseline_with_redist)
-        assert isinstance(resolved.parameters, CarbonTaxParameters)
-        assert resolved.parameters.redistribution_type == "progressive_dividend"
-        assert resolved.parameters.income_weights["decile_1"] == 1.5
-        assert resolved.parameters.income_weights["decile_10"] == 0.2
+        assert isinstance(resolved.policy, CarbonTaxParameters)
+        assert resolved.policy.redistribution_type == "progressive_dividend"
+        assert resolved.policy.income_weights["decile_1"] == 1.5
+        assert resolved.policy.income_weights["decile_10"] == 0.2
 
     def test_resolve_feebate_reform_can_override_to_zero(self) -> None:
         """Explicit feebate zero values in reform override baseline values."""
@@ -290,7 +290,7 @@ class TestResolveReformDefinition:
             name="Baseline Feebate",
             policy_type=PolicyType.FEEBATE,
             year_schedule=YearSchedule(start_year=2026, end_year=2036),
-            parameters=FeebateParameters(
+            policy=FeebateParameters(
                 rate_schedule={2026: 1.0},
                 pivot_point=120.0,
                 fee_rate=50.0,
@@ -305,7 +305,7 @@ class TestResolveReformDefinition:
             name="Zeroed Feebate Reform",
             policy_type=PolicyType.FEEBATE,
             baseline_ref="baseline-feebate",
-            parameters=FeebateParameters(
+            policy=FeebateParameters(
                 rate_schedule={},
                 pivot_point=0.0,
                 fee_rate=0.0,
@@ -317,10 +317,10 @@ class TestResolveReformDefinition:
             version="1.0",
         )
         resolved = resolve_reform_definition(reform, baseline)
-        assert isinstance(resolved.parameters, FeebateParameters)
-        assert resolved.parameters.pivot_point == 0.0
-        assert resolved.parameters.fee_rate == 0.0
-        assert resolved.parameters.rebate_rate == 0.0
+        assert isinstance(resolved.policy, FeebateParameters)
+        assert resolved.policy.pivot_point == 0.0
+        assert resolved.policy.fee_rate == 0.0
+        assert resolved.policy.rebate_rate == 0.0
 
     def test_resolve_feebate_zero_override_from_yaml(self, tmp_path: Path) -> None:
         """Loader preserves explicit zero feebate overrides from YAML."""
@@ -331,7 +331,7 @@ class TestResolveReformDefinition:
             year_schedule:
               start_year: 2026
               end_year: 2036
-            parameters:
+            policy:
               pivot_point: 120.0
               fee_rate: 50.0
               rebate_rate: 50.0
@@ -341,7 +341,7 @@ class TestResolveReformDefinition:
             name: "Zero Override Reform"
             policy_type: feebate
             baseline_ref: "baseline-feebate"
-            parameters:
+            policy:
               pivot_point: 0.0
               fee_rate: 0.0
               rebate_rate: 0.0
@@ -357,7 +357,7 @@ class TestResolveReformDefinition:
         assert isinstance(reform, ReformScenario)
 
         resolved = resolve_reform_definition(reform, baseline)
-        assert isinstance(resolved.parameters, FeebateParameters)
-        assert resolved.parameters.pivot_point == 0.0
-        assert resolved.parameters.fee_rate == 0.0
-        assert resolved.parameters.rebate_rate == 0.0
+        assert isinstance(resolved.policy, FeebateParameters)
+        assert resolved.policy.pivot_point == 0.0
+        assert resolved.policy.fee_rate == 0.0
+        assert resolved.policy.rebate_rate == 0.0

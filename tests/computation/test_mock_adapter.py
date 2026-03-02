@@ -87,7 +87,7 @@ class TestMockAdapter:
             metadata={},
         )
         adapter = MockAdapter(compute_fn=my_compute)
-        result = adapter.compute(pop, PolicyConfig(parameters={}), period=2025)
+        result = adapter.compute(pop, PolicyConfig(policy={}), period=2025)
 
         assert result.output_fields.column("doubled").to_pylist() == [2.0, 4.0, 6.0]
 
@@ -110,7 +110,7 @@ class TestMockAdapter:
         # Empty tables dict → compute_fn is called and handles fallback itself
         result = adapter.compute(
             PopulationData(tables={}, metadata={}),
-            PolicyConfig(parameters={}),
+            PolicyConfig(policy={}),
             period=2025,
         )
         assert call_count == 1

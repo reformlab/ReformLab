@@ -15,7 +15,7 @@ Public API:
     validate_lineage: Validate bidirectional lineage integrity
     capture_assumptions: Capture structured assumption entries
     capture_mappings: Capture mapping configuration
-    capture_parameters: Capture parameter snapshot
+    capture_policy: Capture policy snapshot
     capture_warnings: Capture warnings for manifest
     hash_file: Compute SHA-256 hash of a file
     hash_input_artifacts: Hash input data files
@@ -42,7 +42,7 @@ from reformlab.governance.capture import (
     TESTED_MAX_POPULATION_SIZE,
     capture_assumptions,
     capture_mappings,
-    capture_parameters,
+    capture_policy,
     capture_unsupported_config_warning,
     capture_unvalidated_mapping_warning,
     capture_unvalidated_template_warning,
@@ -90,7 +90,7 @@ __all__ = [
     "TESTED_MAX_POPULATION_SIZE",
     "capture_assumptions",
     "capture_mappings",
-    "capture_parameters",
+    "capture_policy",
     "capture_unsupported_config_warning",
     "capture_unvalidated_mapping_warning",
     "capture_unvalidated_template_warning",

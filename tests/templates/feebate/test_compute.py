@@ -89,7 +89,7 @@ class TestComputeFeebate:
         """Feebate computation returns correct result structure."""
         result = compute_feebate(
             population=small_population,
-            parameters=symmetric_feebate_params,
+            policy=symmetric_feebate_params,
             metric_column="vehicle_emissions_gkm",
             year=2026,
             template_name="test-feebate",
@@ -112,7 +112,7 @@ class TestComputeFeebate:
         """Correct fee and rebate amounts for each household."""
         result = compute_feebate(
             population=small_population,
-            parameters=symmetric_feebate_params,
+            policy=symmetric_feebate_params,
             metric_column="vehicle_emissions_gkm",
             year=2026,
             template_name="test",
@@ -141,7 +141,7 @@ class TestComputeFeebate:
         """Net impact = rebate - fee."""
         result = compute_feebate(
             population=small_population,
-            parameters=symmetric_feebate_params,
+            policy=symmetric_feebate_params,
             metric_column="vehicle_emissions_gkm",
             year=2026,
             template_name="test",
@@ -164,7 +164,7 @@ class TestComputeFeebate:
         """Net fiscal balance = total_fees - total_rebates."""
         result = compute_feebate(
             population=small_population,
-            parameters=symmetric_feebate_params,
+            policy=symmetric_feebate_params,
             metric_column="vehicle_emissions_gkm",
             year=2026,
             template_name="test",
@@ -184,7 +184,7 @@ class TestComputeFeebate:
         """Asymmetric rates produce different fee/rebate magnitudes."""
         result = compute_feebate(
             population=small_population,
-            parameters=asymmetric_feebate_params,
+            policy=asymmetric_feebate_params,
             metric_column="vehicle_emissions_gkm",
             year=2026,
             template_name="test",
@@ -210,7 +210,7 @@ class TestComputeFeebate:
         """Missing metric column treats everyone at pivot."""
         result = compute_feebate(
             population=small_population,
-            parameters=symmetric_feebate_params,
+            policy=symmetric_feebate_params,
             metric_column="nonexistent_column",
             year=2026,
             template_name="test",
@@ -236,7 +236,7 @@ class TestComputeFeebate:
         )
         result = compute_feebate(
             population=population,
-            parameters=symmetric_feebate_params,
+            policy=symmetric_feebate_params,
             metric_column="vehicle_emissions_gkm",
             year=2026,
             template_name="null-metric",
@@ -259,7 +259,7 @@ class TestComputeFeebate:
         )
         result = compute_feebate(
             population=empty_pop,
-            parameters=symmetric_feebate_params,
+            policy=symmetric_feebate_params,
             metric_column="vehicle_emissions_gkm",
             year=2026,
             template_name="empty",
@@ -326,7 +326,7 @@ class TestAggregateFeebateByDecile:
         """Aggregation produces correct decile structure."""
         result = compute_feebate(
             population=sample_population,
-            parameters=symmetric_feebate_params,
+            policy=symmetric_feebate_params,
             metric_column="vehicle_emissions_gkm",
             year=2026,
             template_name="test",
@@ -345,7 +345,7 @@ class TestAggregateFeebateByDecile:
         """Total fees/rebates across deciles equals total from result."""
         result = compute_feebate(
             population=sample_population,
-            parameters=symmetric_feebate_params,
+            policy=symmetric_feebate_params,
             metric_column="vehicle_emissions_gkm",
             year=2026,
             template_name="test",

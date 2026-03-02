@@ -35,7 +35,7 @@ def sample_population(sample_table: pa.Table) -> PopulationData:
 @pytest.fixture()
 def sample_policy() -> PolicyConfig:
     return PolicyConfig(
-        parameters={"carbon_tax_rate": 44.6},
+        policy={"carbon_tax_rate": 44.6},
         name="carbon-tax-baseline",
     )
 

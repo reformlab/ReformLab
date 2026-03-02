@@ -57,7 +57,7 @@ class SubsidyDecileResults:
 
 def compute_subsidy_eligibility(
     population: pa.Table,
-    parameters: SubsidyParameters,
+    policy: SubsidyParameters,
     year: int,
 ) -> pa.Array:
     """Compute subsidy eligibility for each household.
@@ -68,7 +68,7 @@ def compute_subsidy_eligibility(
 
     Args:
         population: Population table with household data.
-        parameters: Subsidy parameters including income_caps and eligible_categories.
+        policy: Subsidy parameters including income_caps and eligible_categories.
         year: Year for which to compute eligibility (determines income cap).
 
     Returns:
@@ -82,7 +82,7 @@ def compute_subsidy_eligibility(
     eligible = [True] * num_households
 
     # Apply income cap if specified for this year
-    income_cap = parameters.income_caps.get(year)
+    income_cap = policy.income_caps.get(year)
     if income_cap is not None:
         incomes = population.column("income")
         for i in range(num_households):
@@ -91,10 +91,10 @@ def compute_subsidy_eligibility(
                 eligible[i] = False
 
     # Apply category eligibility if specified
-    if parameters.eligible_categories:
+    if policy.eligible_categories:
         category_columns = [
             population.column(category)
-            for category in parameters.eligible_categories
+            for category in policy.eligible_categories
             if category in population.column_names
         ]
         # If template requires categories but none are available in data,
@@ -118,7 +118,7 @@ def compute_subsidy_eligibility(
 
 def compute_subsidy_amount(
     population: pa.Table,
-    parameters: SubsidyParameters,
+    policy: SubsidyParameters,
     eligibility: pa.Array,
     year: int,
 ) -> pa.Array:
@@ -129,7 +129,7 @@ def compute_subsidy_amount(
 
     Args:
         population: Population table with household data.
-        parameters: Subsidy parameters including rate_schedule.
+        policy: Subsidy parameters including rate_schedule.
         eligibility: Boolean array of eligibility per household.
         year: Year for which to compute subsidy amount.
 
@@ -146,7 +146,7 @@ def compute_subsidy_amount(
         )
 
     # Get subsidy amount for this year (default 0 if not specified)
-    subsidy_rate = parameters.rate_schedule.get(year, 0.0)
+    subsidy_rate = policy.rate_schedule.get(year, 0.0)
 
     eligibility_list = eligibility.to_pylist()
     amounts = []
@@ -161,7 +161,7 @@ def compute_subsidy_amount(
 
 def compute_subsidy(
     population: pa.Table,
-    parameters: SubsidyParameters,
+    policy: SubsidyParameters,
     year: int,
     template_name: str = "",
 ) -> SubsidyResult:
@@ -175,7 +175,7 @@ def compute_subsidy(
 
     Args:
         population: Population table with household data.
-        parameters: Subsidy parameters.
+        policy: Subsidy parameters.
         year: Year for computation.
         template_name: Name of the template being executed.
 
@@ -186,14 +186,14 @@ def compute_subsidy(
     household_ids = population.column("household_id")
 
     # Compute eligibility
-    eligibility = compute_subsidy_eligibility(population, parameters, year)
+    eligibility = compute_subsidy_eligibility(population, policy, year)
 
     # Assign income deciles
     incomes = population.column("income")
     income_deciles = assign_income_deciles(incomes)
 
     # Compute subsidy amounts
-    subsidy_amounts = compute_subsidy_amount(population, parameters, eligibility, year)
+    subsidy_amounts = compute_subsidy_amount(population, policy, eligibility, year)
 
     # Calculate total cost
     total_cost = _sum_array(subsidy_amounts)

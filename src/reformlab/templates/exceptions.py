@@ -3,6 +3,14 @@ from __future__ import annotations
 from pathlib import Path
 
 
+class TemplateError(Exception):
+    """Error raised when policy type inference fails.
+
+    Used for runtime errors in the template schema module where a file path
+    is not necessarily available (e.g., programmatic scenario construction).
+    """
+
+
 class ScenarioError(Exception):
     """Structured scenario error following IngestionError/MappingError pattern.
 

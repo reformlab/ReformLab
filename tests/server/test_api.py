@@ -170,7 +170,7 @@ class TestScenarioRoutes:
             json={
                 "name": "test-scenario-create",
                 "policy_type": "carbon_tax",
-                "parameters": {"rate_schedule": {"2025": 44.6}},
+                "policy": {"rate_schedule": {"2025": 44.6}},
                 "start_year": 2025,
                 "end_year": 2030,
                 "description": "Test scenario",
@@ -191,7 +191,7 @@ class TestScenarioRoutes:
             json={
                 "name": "test-bad-type",
                 "policy_type": "invalid_type",
-                "parameters": {},
+                "policy": {},
                 "start_year": 2025,
                 "end_year": 2030,
             },
@@ -207,9 +207,66 @@ class TestScenarioRoutes:
             json={
                 "name": "test-unknown-params",
                 "policy_type": "carbon_tax",
-                "parameters": {
+                "policy": {
                     "rate_schedule": {2025: 44.6},
                     "totally_fake_field": 999,
+                },
+                "start_year": 2025,
+                "end_year": 2030,
+            },
+        )
+        assert response.status_code == 422
+
+    def test_create_scenario_with_type_discriminator(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """policy_type inferred from _type discriminator in policy dict."""
+        response = client.post(
+            "/api/scenarios",
+            headers=auth_headers,
+            json={
+                "name": "test-type-discriminator",
+                "policy": {
+                    "_type": "carbon_tax",
+                    "rate_schedule": {"2025": 44.6},
+                },
+                "start_year": 2025,
+                "end_year": 2030,
+            },
+        )
+        # Must not be a 422 — _type discriminator provides the policy_type
+        assert response.status_code != 422
+
+    def test_create_scenario_no_policy_type_returns_422(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """Missing both policy_type and _type discriminator returns 422."""
+        response = client.post(
+            "/api/scenarios",
+            headers=auth_headers,
+            json={
+                "name": "test-no-type",
+                "policy": {"rate_schedule": {"2025": 44.6}},
+                "start_year": 2025,
+                "end_year": 2030,
+            },
+        )
+        assert response.status_code == 422
+        assert "policy_type is required" in response.json()["detail"]
+
+    def test_create_scenario_rejects_private_field_injection(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """Private _*_set fields in policy body are rejected as unknown."""
+        response = client.post(
+            "/api/scenarios",
+            headers=auth_headers,
+            json={
+                "name": "test-inject",
+                "policy_type": "feebate",
+                "policy": {
+                    "rate_schedule": {},
+                    "_pivot_point_set": True,
                 },
                 "start_year": 2025,
                 "end_year": 2030,

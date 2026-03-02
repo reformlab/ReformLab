@@ -35,7 +35,9 @@ def resolve_reform_definition(
     Raises:
         ScenarioError: If policy types don't match between reform and baseline.
     """
-    # Validate policy type match
+    # Validate policy type match (policy_type is always set after __post_init__)
+    assert reform.policy_type is not None
+    assert baseline.policy_type is not None
     if reform.policy_type != baseline.policy_type:
         raise ScenarioError(
             file_path=Path("<in-memory>"),
@@ -55,20 +57,20 @@ def resolve_reform_definition(
         year_schedule = baseline.year_schedule
 
     # Merge parameters
-    merged_params = _merge_parameters(reform.parameters, baseline.parameters)
+    merged_params = _merge_policy(reform.policy, baseline.policy)
 
     return BaselineScenario(
         name=reform.name,
         policy_type=reform.policy_type,
         year_schedule=year_schedule,
-        parameters=merged_params,
+        policy=merged_params,
         description=reform.description,
         version=reform.version,
         schema_ref=reform.schema_ref or baseline.schema_ref,
     )
 
 
-def _merge_parameters(
+def _merge_policy(
     reform_params: PolicyParameters,
     baseline_params: PolicyParameters,
 ) -> PolicyParameters:

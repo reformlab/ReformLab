@@ -45,7 +45,7 @@ def sample_population() -> PopulationData:
 def sample_policy() -> PolicyConfig:
     """Sample policy configuration for testing."""
     return PolicyConfig(
-        parameters={"carbon_tax_rate": 44.6},
+        policy={"carbon_tax_rate": 44.6},
         name="carbon-tax-baseline",
     )
 

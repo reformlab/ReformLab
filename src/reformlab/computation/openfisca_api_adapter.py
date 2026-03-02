@@ -414,11 +414,11 @@ class OpenFiscaApiAdapter:
 
     def _validate_policy_parameters(self, policy: PolicyConfig, tbs: Any) -> None:
         """Check that all policy parameter keys are valid input variables."""
-        if not policy.parameters:
+        if not policy.policy:
             return
 
         known_variables = set(tbs.variables.keys())
-        invalid = [k for k in policy.parameters if k not in known_variables]
+        invalid = [k for k in policy.policy if k not in known_variables]
 
         if not invalid:
             return
@@ -447,7 +447,7 @@ class OpenFiscaApiAdapter:
                 f"{', '.join(invalid)}"
             ),
             fix=(
-                "PolicyConfig.parameters keys must be valid OpenFisca variable names. "
+                "PolicyConfig.policy keys must be valid OpenFisca variable names. "
                 "Suggestions:\n" + "\n".join(suggestion_lines)
             ),
             invalid_names=tuple(invalid),
@@ -832,12 +832,12 @@ class OpenFiscaApiAdapter:
 
             # Inject policy parameters
             if (
-                policy.parameters
+                policy.policy
                 and person_entity_plural
                 and person_entity_plural in result
             ):
                 for instance_id in result[person_entity_plural]:
-                    for param_key, param_value in policy.parameters.items():
+                    for param_key, param_value in policy.policy.items():
                         result[person_entity_plural][instance_id][param_key] = {
                             period_str: param_value
                         }
@@ -1004,9 +1004,9 @@ class OpenFiscaApiAdapter:
                     result[group_plural][instance_id][col] = {period_str: value}
 
         # Step 5g: Inject policy parameters into person entity instances
-        if policy.parameters and person_entity_plural in result:
+        if policy.policy and person_entity_plural in result:
             for instance_id in result[person_entity_plural]:
-                for param_key, param_value in policy.parameters.items():
+                for param_key, param_value in policy.policy.items():
                     result[person_entity_plural][instance_id][param_key] = {
                         period_str: param_value
                     }
