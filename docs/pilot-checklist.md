@@ -233,7 +233,6 @@ config = RunConfig(
 adapter1 = create_quickstart_adapter(
     carbon_tax_rate=44.0,
     year=2025,
-    household_count=100,
 )
 
 result1 = run_scenario(config, adapter=adapter1)
@@ -242,7 +241,6 @@ result1 = run_scenario(config, adapter=adapter1)
 adapter2 = create_quickstart_adapter(
     carbon_tax_rate=44.0,
     year=2025,
-    household_count=100,
 )
 
 result2 = run_scenario(config, adapter=adapter2)
@@ -358,7 +356,7 @@ pip install matplotlib
 
 ### Issue: Performance is slow (multi-year runs take > 30 seconds)
 
-**Solution:** Ensure you have at least 16 GB RAM available. Close other memory-intensive applications. Consider reducing `household_count` in test runs.
+**Solution:** Ensure you have at least 16 GB RAM available. Close other memory-intensive applications. Consider using a smaller population CSV for test runs.
 
 ---
 
