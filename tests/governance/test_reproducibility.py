@@ -289,7 +289,7 @@ class TestCheckReproducibility:
             data_hashes={"input.csv": hash_file(input_file)},
             output_hashes={"output.csv": hash_file(output_file)},
             seeds={"master": 42, "year_2025": 2047},
-            parameters={"population": 1000},
+            policy={"population": 1000},
             step_pipeline=["prepare", "compute"],
             child_manifests={2025: "22345678-1234-1234-1234-123456789abc"},
         )
@@ -308,7 +308,7 @@ class TestCheckReproducibility:
 
         assert result.passed
         assert captured_context["seeds"] == {"master": 42, "year_2025": 2047}
-        assert captured_context["parameters"] == {"population": 1000}
+        assert captured_context["policy"] == {"population": 1000}
         assert captured_context["scenario_version"] == "scenario-v1"
         assert captured_context["step_pipeline"] == ["prepare", "compute"]
         assert captured_context["year_range"] == (2025, 2025)

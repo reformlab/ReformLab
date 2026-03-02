@@ -126,7 +126,7 @@ class TestMigrationChange:
     def test_immutable(self) -> None:
         """MigrationChange is immutable (frozen dataclass)."""
         change = MigrationChange(
-            field_path="parameters.rate_schedule",
+            field_path="policy.rate_schedule",
             old_value=None,
             new_value={},
             reason="Added default empty rate_schedule",
@@ -189,7 +189,7 @@ class TestMigrateScenarioDict:
             "name": "test-scenario",
             "version": "1.0",
             "policy_type": "carbon_tax",
-            "parameters": {"rate_schedule": {2025: 50.0}},
+            "policy": {"rate_schedule": {2025: 50.0}},
         }
         original_copy = copy.deepcopy(original)
 
@@ -203,7 +203,7 @@ class TestMigrateScenarioDict:
             "name": "test-scenario",
             "version": "1.0",
             "policy_type": "carbon_tax",
-            "parameters": {"rate_schedule": {2025: 50.0}},
+            "policy": {"rate_schedule": {2025: 50.0}},
         }
 
         result, report = migrate_scenario_dict(data, target_version="1.0")
@@ -218,7 +218,7 @@ class TestMigrateScenarioDict:
             "name": "test-scenario",
             "version": "1.0",
             "policy_type": "carbon_tax",
-            "parameters": {},
+            "policy": {},
         }
 
         with pytest.raises(ValueError, match="Breaking schema change"):
@@ -230,7 +230,7 @@ class TestMigrateScenarioDict:
             "name": "test-scenario",
             "version": "1.0",
             "policy_type": "carbon_tax",
-            "parameters": {},
+            "policy": {},
         }
 
         result, report = migrate_scenario_dict(data, target_version="1.1")
@@ -245,7 +245,7 @@ class TestMigrateScenarioDict:
             "name": "test-scenario",
             "version": "1.0",
             "policy_type": "carbon_tax",
-            "parameters": {},
+            "policy": {},
         }
 
         result, report = migrate_scenario_dict(data)
@@ -259,7 +259,7 @@ class TestMigrateScenarioDict:
             "name": "test-scenario",
             "version": "1.0",
             "policy_type": "carbon_tax",
-            "parameters": {},
+            "policy": {},
         }
 
         _, report = migrate_scenario_dict(data, target_version="1.1")
@@ -275,7 +275,7 @@ class TestMigrateScenarioDict:
         data = {
             "name": "test-scenario",
             "policy_type": "carbon_tax",
-            "parameters": {},
+            "policy": {},
         }
 
         result, report = migrate_scenario_dict(data, target_version="1.0")
@@ -289,7 +289,7 @@ class TestMigrateScenarioDict:
             "name": "test-scenario",
             "version": "1.0",
             "policy_type": "carbon_tax",
-            "parameters": {},
+            "policy": {},
         }
 
         result, _ = migrate_scenario_dict(data, target_version="1.0")
@@ -302,7 +302,7 @@ class TestMigrateScenarioDict:
             "name": "rebate-legacy",
             "version": "1.0",
             "policy_type": "rebate",
-            "parameters": {
+            "policy": {
                 "redistribution": {
                     "type": "progressive_dividend",
                     "income_weights": {"decile_1": 1.4},
@@ -313,13 +313,13 @@ class TestMigrateScenarioDict:
         result, report = migrate_scenario_dict(data, target_version="1.1")
 
         assert result["version"] == "1.1"
-        assert result["parameters"]["rebate_type"] == "progressive_dividend"
-        assert result["parameters"]["income_weights"] == {"decile_1": 1.4}
-        assert "redistribution" not in result["parameters"]
+        assert result["policy"]["rebate_type"] == "progressive_dividend"
+        assert result["policy"]["income_weights"] == {"decile_1": 1.4}
+        assert "redistribution" not in result["policy"]
         change_paths = {change.field_path for change in report.changes}
-        assert "parameters.rebate_type" in change_paths
-        assert "parameters.income_weights" in change_paths
-        assert "parameters.redistribution" in change_paths
+        assert "policy.rebate_type" in change_paths
+        assert "policy.income_weights" in change_paths
+        assert "policy.redistribution" in change_paths
         assert report.warnings
 
     def test_migration_inserts_default_schema_ref_when_missing(self) -> None:
@@ -328,7 +328,7 @@ class TestMigrateScenarioDict:
             "name": "test-scenario",
             "version": "1.0",
             "policy_type": "carbon_tax",
-            "parameters": {},
+            "policy": {},
         }
 
         result, report = migrate_scenario_dict(data, target_version="1.1")
@@ -344,7 +344,7 @@ class TestMigrateScenarioDict:
             "name": "future-scenario",
             "version": "1.2",
             "policy_type": "carbon_tax",
-            "parameters": {},
+            "policy": {},
         }
 
         result, report = migrate_scenario_dict(data, target_version="1.1")

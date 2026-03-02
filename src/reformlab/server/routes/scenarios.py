@@ -27,8 +27,8 @@ def _scenario_to_response(name: str, scenario: Any) -> ScenarioResponse:
     version = getattr(scenario, "version", "1.0")
     baseline_ref = getattr(scenario, "baseline_ref", None)
 
-    # Extract parameters as dict
-    params = scenario.parameters
+    # Extract policy as dict
+    params = scenario.policy
     if hasattr(params, "__dataclass_fields__"):
         from dataclasses import asdict
 
@@ -47,7 +47,7 @@ def _scenario_to_response(name: str, scenario: Any) -> ScenarioResponse:
         policy_type=policy_type,
         description=description,
         version=version,
-        parameters=params,
+        policy=params,
         year_schedule=year_schedule,
         baseline_ref=baseline_ref,
     )
@@ -91,17 +91,28 @@ async def create_scenario(body: CreateScenarioRequest) -> dict[str, str]:
         YearSchedule,
     )
 
+    # Resolve policy_type: explicit value or infer from policy._type discriminator
+    raw_policy_type = body.policy_type
+    if raw_policy_type is None:
+        raw_policy_type = body.policy.get("_type")
+    if raw_policy_type is None:
+        raise HTTPException(
+            status_code=422,
+            detail="policy_type is required. Provide it as a top-level field "
+            "or as a '_type' key inside the policy dict. "
+            f"Must be one of: {[e.value for e in PolicyType]}",
+        )
     try:
-        policy_type = PolicyType(body.policy_type)
+        policy_type = PolicyType(raw_policy_type)
     except ValueError:
         raise HTTPException(
             status_code=422,
-            detail=f"Invalid policy_type: '{body.policy_type}'. "
+            detail=f"Invalid policy_type: '{raw_policy_type}'. "
             f"Must be one of: {[e.value for e in PolicyType]}",
         )
     year_schedule = YearSchedule(body.start_year, body.end_year)
 
-    # Build typed parameters based on policy type
+    # Build typed policy based on policy type
     params_cls: type[PolicyParameters] = {
         PolicyType.CARBON_TAX: CarbonTaxParameters,
         PolicyType.SUBSIDY: SubsidyParameters,
@@ -110,7 +121,8 @@ async def create_scenario(body: CreateScenarioRequest) -> dict[str, str]:
     }.get(policy_type, PolicyParameters)
 
     # Extract common fields and policy-specific fields
-    raw = dict(body.parameters)
+    raw = dict(body.policy)
+    raw.pop("_type", None)  # Remove discriminator field if present
     rate_schedule = raw.pop("rate_schedule", {})
     exemptions = tuple(raw.pop("exemptions", ()))
     thresholds = tuple(raw.pop("thresholds", ()))
@@ -118,8 +130,9 @@ async def create_scenario(body: CreateScenarioRequest) -> dict[str, str]:
 
     # Validate remaining keys against the dataclass fields
     if hasattr(params_cls, "__dataclass_fields__"):
-        allowed = set(params_cls.__dataclass_fields__)
-        # Exclude common fields already extracted
+        # Exclude private implementation fields (e.g. _pivot_point_set) and
+        # common fields that were already extracted above.
+        allowed = {f for f in params_cls.__dataclass_fields__ if not f.startswith("_")}
         allowed -= {"rate_schedule", "exemptions", "thresholds", "covered_categories"}
         unknown = set(raw) - allowed
         if unknown:
@@ -142,7 +155,7 @@ async def create_scenario(body: CreateScenarioRequest) -> dict[str, str]:
             name=body.name,
             policy_type=policy_type,
             baseline_ref=body.baseline_ref,
-            parameters=params,
+            policy=params,
             description=body.description,
             year_schedule=year_schedule,
         )
@@ -151,7 +164,7 @@ async def create_scenario(body: CreateScenarioRequest) -> dict[str, str]:
             name=body.name,
             policy_type=policy_type,
             year_schedule=year_schedule,
-            parameters=params,
+            policy=params,
             description=body.description,
         )
 

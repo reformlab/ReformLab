@@ -32,8 +32,8 @@ def _template_to_list_item(name: str, template: Any) -> TemplateListItem:
     pt = template.policy_type
     policy_type = pt.value if hasattr(pt, "value") else str(pt)
 
-    # Count parameters
-    params = template.parameters
+    # Count policy fields
+    params = template.policy
     param_count = 0
     param_groups: list[str] = []
     if hasattr(params, "__dataclass_fields__"):
@@ -57,8 +57,8 @@ def _template_to_detail(name: str, template: Any) -> TemplateDetailResponse:
     """Convert a domain template to a TemplateDetailResponse."""
     list_item = _template_to_list_item(name, template)
 
-    # Extract default parameters as dict
-    params = template.parameters
+    # Extract default policy as dict
+    params = template.policy
     default_params: dict[str, Any] = {}
     if hasattr(params, "__dataclass_fields__"):
         from dataclasses import asdict
@@ -69,7 +69,7 @@ def _template_to_detail(name: str, template: Any) -> TemplateDetailResponse:
 
     return TemplateDetailResponse(
         **list_item.model_dump(),
-        default_parameters=default_params,
+        default_policy=default_params,
     )
 
 

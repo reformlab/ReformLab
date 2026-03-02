@@ -80,7 +80,7 @@ class TestPerformanceSmoke:
         start = time.perf_counter()
         result = compute_carbon_tax(
             population=large_population,
-            parameters=template.parameters,
+            policy=template.policy,
             emission_index=emission_index,
             year=2026,
             template_name=template.name,
@@ -105,7 +105,7 @@ class TestPerformanceSmoke:
 
         result = compute_carbon_tax(
             population=large_population,
-            parameters=template.parameters,
+            policy=template.policy,
             emission_index=emission_index,
             year=2026,
             template_name=template.name,

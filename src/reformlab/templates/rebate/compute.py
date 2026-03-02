@@ -124,7 +124,7 @@ def compute_progressive_rebate(
 
 def compute_rebate(
     population: pa.Table,
-    parameters: RebateParameters,
+    policy: RebateParameters,
     rebate_pool: float,
     year: int,
     template_name: str = "",
@@ -138,7 +138,7 @@ def compute_rebate(
 
     Args:
         population: Population table with household data.
-        parameters: Rebate parameters including rebate_type and income_weights.
+        policy: Rebate parameters including rebate_type and income_weights.
         rebate_pool: Total amount to distribute (can come from rate_schedule[year]
             multiplied by number of households, or from external source like tax revenue).
         year: Year for computation.
@@ -156,16 +156,16 @@ def compute_rebate(
     income_deciles = assign_income_deciles(incomes)
 
     # Compute rebate based on type
-    if parameters.rebate_type in ("", "lump_sum"):
+    if policy.rebate_type in ("", "lump_sum"):
         rebate_amounts = compute_lump_sum_rebate(rebate_pool, num_households)
-    elif parameters.rebate_type == "progressive_dividend":
+    elif policy.rebate_type == "progressive_dividend":
         rebate_amounts = compute_progressive_rebate(
-            rebate_pool, income_deciles, parameters.income_weights
+            rebate_pool, income_deciles, policy.income_weights
         )
     else:
         raise ValueError(
             "Unsupported rebate_type "
-            f"'{parameters.rebate_type}'. Supported values: '', "
+            f"'{policy.rebate_type}'. Supported values: '', "
             "'lump_sum', 'progressive_dividend'."
         )
 

@@ -124,7 +124,7 @@ class TestComputeRebate:
         rebate_pool = 10000.0
         result = compute_rebate(
             population=sample_population,
-            parameters=lump_sum_rebate_params,
+            policy=lump_sum_rebate_params,
             rebate_pool=rebate_pool,
             year=2026,
             template_name="test-lump-sum",
@@ -149,7 +149,7 @@ class TestComputeRebate:
         rebate_pool = 10000.0
         result = compute_rebate(
             population=sample_population,
-            parameters=progressive_rebate_params,
+            policy=progressive_rebate_params,
             rebate_pool=rebate_pool,
             year=2026,
             template_name="test-progressive",
@@ -171,7 +171,7 @@ class TestComputeRebate:
         rebate_pool = 15000.0
         result = compute_rebate(
             population=sample_population,
-            parameters=lump_sum_rebate_params,
+            policy=lump_sum_rebate_params,
             rebate_pool=rebate_pool,
             year=2026,
             template_name="test",
@@ -188,7 +188,7 @@ class TestComputeRebate:
         rebate_pool = 10000.0
         result = compute_rebate(
             population=sample_population,
-            parameters=no_type_rebate_params,
+            policy=no_type_rebate_params,
             rebate_pool=rebate_pool,
             year=2026,
             template_name="test",
@@ -210,7 +210,7 @@ class TestComputeRebate:
         with pytest.raises(ValueError, match="Unsupported rebate_type"):
             compute_rebate(
                 population=sample_population,
-                parameters=params,
+                policy=params,
                 rebate_pool=10000.0,
                 year=2026,
                 template_name="unsupported",
@@ -229,7 +229,7 @@ class TestComputeRebate:
         )
         result = compute_rebate(
             population=empty_pop,
-            parameters=lump_sum_rebate_params,
+            policy=lump_sum_rebate_params,
             rebate_pool=10000.0,
             year=2026,
             template_name="empty",
@@ -283,7 +283,7 @@ class TestAggregateRebateByDecile:
         """Aggregation produces correct decile structure."""
         result = compute_rebate(
             population=sample_population,
-            parameters=lump_sum_rebate_params,
+            policy=lump_sum_rebate_params,
             rebate_pool=10000.0,
             year=2026,
             template_name="test",
@@ -303,7 +303,7 @@ class TestAggregateRebateByDecile:
         rebate_pool = 25000.0
         result = compute_rebate(
             population=sample_population,
-            parameters=lump_sum_rebate_params,
+            policy=lump_sum_rebate_params,
             rebate_pool=rebate_pool,
             year=2026,
             template_name="test",

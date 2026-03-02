@@ -76,7 +76,7 @@ class TestGoldenTaxBurden:
 
         result = compute_carbon_tax(
             population=golden_population,
-            parameters=template.parameters,
+            policy=template.policy,
             emission_index=emission_index,
             year=2026,
             template_name=template.name,
@@ -114,7 +114,7 @@ class TestGoldenTaxBurden:
 
         result = compute_carbon_tax(
             population=golden_population,
-            parameters=template.parameters,
+            policy=template.policy,
             emission_index=emission_index,
             year=2026,
             template_name=template.name,
@@ -146,7 +146,7 @@ class TestGoldenTaxBurden:
 
         result = compute_carbon_tax(
             population=golden_population,
-            parameters=template.parameters,
+            policy=template.policy,
             emission_index=emission_index,
             year=2026,
             template_name=template.name,
@@ -269,7 +269,7 @@ class TestGoldenDecileAggregation:
 
         result = compute_carbon_tax(
             population=decile_population,
-            parameters=template.parameters,
+            policy=template.policy,
             emission_index=emission_index,
             year=2026,
             template_name=template.name,
@@ -306,7 +306,7 @@ class TestGoldenDecileAggregation:
 
         result = compute_carbon_tax(
             population=decile_population,
-            parameters=template.parameters,
+            policy=template.policy,
             emission_index=emission_index,
             year=2026,
             template_name=template.name,

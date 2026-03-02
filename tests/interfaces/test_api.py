@@ -400,7 +400,7 @@ class TestSimulationResult:
                 openfisca_version="2.0.0",
                 adapter_version="2.0.0",
                 scenario_version="1.0.0",
-                parameters={"rate_schedule": {"2025": 44.0}},
+                policy={"rate_schedule": {"2025": 44.0}},
                 seeds={"master": 42},
             ),
         )
@@ -416,7 +416,7 @@ class TestSimulationResult:
         loaded = json.loads(output_path.read_text(encoding="utf-8"))
         assert loaded["manifest_id"] == "manifest-456"
         assert loaded["engine_version"] == "1.0.0"
-        assert loaded["parameters"] == {"rate_schedule": {"2025": 44.0}}
+        assert loaded["policy"] == {"rate_schedule": {"2025": 44.0}}
         assert loaded["seeds"] == {"master": 42}
 
     def test_simulation_result_export_manifest_creates_parent_dirs(
@@ -492,7 +492,7 @@ class TestConfigurationTypes:
 
         config = ScenarioConfig(
             template_name="test",
-            parameters={},
+            policy={},
             start_year=2025,
             end_year=2030,
         )
@@ -507,7 +507,7 @@ class TestConfigurationTypes:
         config = RunConfig(
             scenario=ScenarioConfig(
                 template_name="test",
-                parameters={},
+                policy={},
                 start_year=2025,
                 end_year=2030,
             ),
@@ -527,7 +527,7 @@ class TestRunScenario:
         config = {
             "scenario": {
                 "template_name": "test-scenario",
-                "parameters": {"rate_schedule": {2025: 50.0}},
+                "policy": {"rate_schedule": {2025: 50.0}},
                 "start_year": 2025,
                 "end_year": 2026,
             },
@@ -547,7 +547,7 @@ class TestRunScenario:
 
         scenario = ScenarioConfig(
             template_name="carbon-tax",
-            parameters={"rate_schedule": {2025: 50.0}},
+            policy={"rate_schedule": {2025: 50.0}},
             start_year=2025,
             end_year=2027,
         )
@@ -568,7 +568,7 @@ class TestRunScenario:
         config = {
             "scenario": {
                 "template_name": "test",
-                "parameters": {},
+                "policy": {},
                 # Missing start_year
                 "end_year": 2030,
             },
@@ -591,7 +591,7 @@ class TestRunScenario:
 
         config = ScenarioConfig(
             template_name="test",
-            parameters={},
+            policy={},
             start_year=2030,
             end_year=2025,  # Invalid: before start_year
         )
@@ -613,7 +613,7 @@ class TestRunScenario:
 
         config = ScenarioConfig(
             template_name="test",
-            parameters={},
+            policy={},
             start_year=1800,  # Before 1900
             end_year=1850,
         )
@@ -635,7 +635,7 @@ class TestRunScenario:
 
         config = ScenarioConfig(
             template_name="test",
-            parameters={},
+            policy={},
             start_year=2025,
             end_year=2030,
             population_path=Path("/nonexistent/population.csv"),
@@ -664,7 +664,7 @@ class TestRunScenario:
         config = RunConfig(
             scenario=ScenarioConfig(
                 template_name="test",
-                parameters={},
+                policy={},
                 start_year=1800,  # Invalid: out of range
                 end_year=1700,  # Invalid: before start_year and out of range
                 population_path=tmp_path / "missing-population.csv",  # Invalid: missing
@@ -700,7 +700,7 @@ class TestRunScenario:
 
         config = ScenarioConfig(
             template_name="test",
-            parameters={},
+            policy={},
             start_year=2025,
             end_year=2026,
         )
@@ -742,7 +742,7 @@ class TestRunScenario:
 
         config = ScenarioConfig(
             template_name="test",
-            parameters={},
+            policy={},
             start_year=2025,
             end_year=2025,
         )
@@ -762,7 +762,7 @@ class TestRunScenario:
 
         config = ScenarioConfig(
             template_name="warning-check",
-            parameters={},
+            policy={},
             start_year=2025,
             end_year=2025,
         )
@@ -782,7 +782,7 @@ class TestRunScenario:
         config = RunConfig(
             scenario=ScenarioConfig(
                 template_name="test-scenario",
-                parameters={"rate_schedule": {2025: 50.0}},
+                policy={"rate_schedule": {2025: 50.0}},
                 start_year=2025,
                 end_year=2026,
             ),
@@ -809,7 +809,7 @@ class TestRunScenario:
                 {
                     "scenario": {
                         "template_name": "yaml-run-config",
-                        "parameters": {"rate_schedule": {2025: 50.0}},
+                        "policy": {"rate_schedule": {2025: 50.0}},
                         "start_year": 2025,
                         "end_year": 2026,
                     },
@@ -833,7 +833,7 @@ class TestRunScenario:
             yaml.safe_dump(
                 {
                     "template_name": "yaml-scenario",
-                    "parameters": {"rate_schedule": {2025: 60.0}},
+                    "policy": {"rate_schedule": {2025: 60.0}},
                     "start_year": 2025,
                     "end_year": 2027,
                 }
@@ -855,7 +855,7 @@ class TestRunScenario:
                 {
                     "scenario": {
                         "template_name": "seed-check",
-                        "parameters": {},
+                        "policy": {},
                         "start_year": 2025,
                         "end_year": 2026,
                     },
@@ -925,7 +925,7 @@ class TestQuickstartAdapter:
         adapter = create_quickstart_adapter(carbon_tax_rate=44.0, year=2025)
         result = adapter.compute(
             population=PopulationData(tables={}, metadata={}),
-            policy=PolicyConfig(name="carbon-tax", parameters={}),
+            policy=PolicyConfig(name="carbon-tax", policy={}),
             period=2025,
         )
 
@@ -953,7 +953,7 @@ class TestQuickstartAdapter:
         adapter = create_quickstart_adapter(carbon_tax_rate=44.0, year=2025)
         result = adapter.compute(
             population=population,
-            policy=PolicyConfig(name="carbon-tax", parameters={}),
+            policy=PolicyConfig(name="carbon-tax", policy={}),
             period=2025,
         )
 
@@ -996,7 +996,7 @@ class TestQuickstartAdapter:
         adapter = create_quickstart_adapter(carbon_tax_rate=88.0, year=2025)
         result = adapter.compute(
             population=population,
-            policy=PolicyConfig(name="carbon-tax", parameters={}),
+            policy=PolicyConfig(name="carbon-tax", policy={}),
             period=2025,
         )
 
@@ -1021,7 +1021,7 @@ class TestScenarioManagement:
             name="test-baseline",
             policy_type=PolicyType.CARBON_TAX,
             year_schedule=YearSchedule(2025, 2030),
-            parameters=CarbonTaxParameters(rate_schedule={2025: 50.0}),
+            policy=CarbonTaxParameters(rate_schedule={2025: 50.0}),
         )
 
         result = create_scenario(scenario, "test-baseline", register=False)
@@ -1047,7 +1047,7 @@ class TestScenarioManagement:
             name="test-baseline-reg",
             policy_type=PolicyType.CARBON_TAX,
             year_schedule=YearSchedule(2025, 2030),
-            parameters=CarbonTaxParameters(rate_schedule={2025: 50.0}),
+            policy=CarbonTaxParameters(rate_schedule={2025: 50.0}),
         )
 
         result = create_scenario(scenario, "test-baseline-reg", register=True)
@@ -1087,14 +1087,14 @@ class TestScenarioManagement:
             name="scenario-alpha",
             policy_type=PolicyType.CARBON_TAX,
             year_schedule=YearSchedule(2025, 2030),
-            parameters=CarbonTaxParameters(rate_schedule={2025: 50.0}),
+            policy=CarbonTaxParameters(rate_schedule={2025: 50.0}),
         )
 
         scenario2 = BaselineScenario(
             name="scenario-beta",
             policy_type=PolicyType.CARBON_TAX,
             year_schedule=YearSchedule(2025, 2030),
-            parameters=CarbonTaxParameters(rate_schedule={2025: 60.0}),
+            policy=CarbonTaxParameters(rate_schedule={2025: 60.0}),
         )
 
         create_scenario(scenario1, "scenario-alpha", register=True)
@@ -1140,7 +1140,7 @@ class TestScenarioManagement:
             name="test-get",
             policy_type=PolicyType.CARBON_TAX,
             year_schedule=YearSchedule(2025, 2030),
-            parameters=CarbonTaxParameters(rate_schedule={2025: 50.0}),
+            policy=CarbonTaxParameters(rate_schedule={2025: 50.0}),
         )
 
         create_scenario(scenario, "test-get", register=True)
@@ -1184,7 +1184,7 @@ class TestScenarioManagement:
             name="test-clone-source",
             policy_type=PolicyType.CARBON_TAX,
             year_schedule=YearSchedule(2025, 2030),
-            parameters=CarbonTaxParameters(rate_schedule={2025: 50.0}),
+            policy=CarbonTaxParameters(rate_schedule={2025: 50.0}),
         )
 
         create_scenario(scenario, "test-clone-source", register=True)
@@ -1194,7 +1194,7 @@ class TestScenarioManagement:
         assert clone.name == "test-clone-target"
         assert clone.policy_type == PolicyType.CARBON_TAX
         # Parameters should be identical
-        assert clone.parameters == scenario.parameters
+        assert clone.policy == scenario.policy
 
 
 class TestPublicAPIImports:
@@ -1364,7 +1364,7 @@ class TestErrorHandling:
         config = {
             "scenario": {
                 "template_name": "test",
-                "parameters": {},
+                "policy": {},
                 "start_year": 2030,
                 "end_year": 2025,  # Invalid
             },
@@ -1393,7 +1393,7 @@ class TestRunScenarioWithSteps:
         config = RunConfig(
             scenario=ScenarioConfig(
                 template_name="carbon-tax",
-                parameters={"rate_schedule": {2025: 50.0, 2026: 60.0}},
+                policy={"rate_schedule": {2025: 50.0, 2026: 60.0}},
                 start_year=2025,
                 end_year=2026,
             ),
@@ -1447,7 +1447,7 @@ class TestRunScenarioWithSteps:
         config = RunConfig(
             scenario=ScenarioConfig(
                 template_name="carbon-tax",
-                parameters={"rate_schedule": {2025: 50.0}},
+                policy={"rate_schedule": {2025: 50.0}},
                 start_year=2025,
                 end_year=2025,
             ),
@@ -1504,7 +1504,7 @@ class TestRunScenarioWithSteps:
         config = RunConfig(
             scenario=ScenarioConfig(
                 template_name="carbon-tax",
-                parameters={"rate_schedule": {2025: 50.0}},
+                policy={"rate_schedule": {2025: 50.0}},
                 start_year=2025,
                 end_year=2025,
             ),

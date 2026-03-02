@@ -73,12 +73,12 @@ class TestRunSubsidyBatch:
         self, sample_population: pa.Table
     ) -> None:
         """Batch run with multiple scenarios returns dict with all results."""
-        # Create two variants with different parameters
+        # Create two variants with different policy
         scenario1 = BaselineScenario(
             name="Subsidy A",
             policy_type=PolicyType.SUBSIDY,
             year_schedule=YearSchedule(2026, 2036),
-            parameters=SubsidyParameters(
+            policy=SubsidyParameters(
                 rate_schedule={2026: 5000.0},
                 income_caps={2026: 45000.0},
             ),
@@ -87,7 +87,7 @@ class TestRunSubsidyBatch:
             name="Subsidy B",
             policy_type=PolicyType.SUBSIDY,
             year_schedule=YearSchedule(2026, 2036),
-            parameters=SubsidyParameters(
+            policy=SubsidyParameters(
                 rate_schedule={2026: 3000.0},
                 income_caps={2026: 60000.0},
             ),
@@ -134,7 +134,7 @@ class TestCompareSubsidyDecileImpacts:
             name="Subsidy A",
             policy_type=PolicyType.SUBSIDY,
             year_schedule=YearSchedule(2026, 2036),
-            parameters=SubsidyParameters(
+            policy=SubsidyParameters(
                 rate_schedule={2026: 5000.0},
                 income_caps={2026: 45000.0},
             ),
@@ -143,7 +143,7 @@ class TestCompareSubsidyDecileImpacts:
             name="Subsidy B",
             policy_type=PolicyType.SUBSIDY,
             year_schedule=YearSchedule(2026, 2036),
-            parameters=SubsidyParameters(
+            policy=SubsidyParameters(
                 rate_schedule={2026: 3000.0},
                 income_caps={2026: 60000.0},
             ),

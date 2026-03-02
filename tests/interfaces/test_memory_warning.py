@@ -43,7 +43,7 @@ def small_population_config(tmp_path: Path) -> ScenarioConfig:
 
     return ScenarioConfig(
         template_name="test-scenario",
-        parameters={},
+        policy={},
         start_year=2025,
         end_year=2030,
         population_path=population_path,
@@ -67,7 +67,7 @@ def large_population_config(tmp_path: Path) -> ScenarioConfig:
 
     return ScenarioConfig(
         template_name="test-scenario",
-        parameters={},
+        policy={},
         start_year=2025,
         end_year=2035,  # 11 years
         population_path=population_path,
@@ -141,7 +141,7 @@ def test_check_memory_requirements_no_population_path():
     """No population path uses default population size."""
     config = ScenarioConfig(
         template_name="test-scenario",
-        parameters={},
+        policy={},
         start_year=2025,
         end_year=2030,
         population_path=None,

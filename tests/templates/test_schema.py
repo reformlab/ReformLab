@@ -4,6 +4,7 @@ from typing import Any
 
 import pytest
 
+from reformlab.templates.exceptions import TemplateError
 from reformlab.templates.schema import (
     BaselineScenario,
     CarbonTaxParameters,
@@ -15,6 +16,7 @@ from reformlab.templates.schema import (
     ScenarioTemplate,
     SubsidyParameters,
     YearSchedule,
+    infer_policy_type,
 )
 
 # ---------------------------------------------------------------------------
@@ -218,7 +220,7 @@ class TestBaselineScenario:
             name="French Carbon Tax 2026",
             policy_type=PolicyType.CARBON_TAX,
             year_schedule=year_schedule,
-            parameters=params,
+            policy=params,
             description="Baseline scenario",
             version="1.0",
         )
@@ -234,7 +236,7 @@ class TestBaselineScenario:
             name="test",
             policy_type=PolicyType.CARBON_TAX,
             year_schedule=YearSchedule(2026, 2036),
-            parameters=CarbonTaxParameters(rate_schedule={}),
+            policy=CarbonTaxParameters(rate_schedule={}),
         )
         with pytest.raises(AttributeError):
             scenario.name = "modified"  # type: ignore[misc]
@@ -245,7 +247,7 @@ class TestBaselineScenario:
             name="test",
             policy_type=PolicyType.CARBON_TAX,
             year_schedule=YearSchedule(2026, 2036),
-            parameters=CarbonTaxParameters(rate_schedule={}),
+            policy=CarbonTaxParameters(rate_schedule={}),
         )
         assert scenario.description == ""
         assert scenario.version == "1.0"
@@ -256,7 +258,7 @@ class TestBaselineScenario:
             name="test",
             policy_type=PolicyType.CARBON_TAX,
             year_schedule=YearSchedule(2026, 2036),
-            parameters=CarbonTaxParameters(rate_schedule={}),
+            policy=CarbonTaxParameters(rate_schedule={}),
         )
         assert isinstance(scenario, ScenarioTemplate)
 
@@ -275,7 +277,7 @@ class TestReformScenario:
             name="Progressive Carbon Dividend Reform",
             policy_type=PolicyType.CARBON_TAX,
             baseline_ref="french-carbon-tax-2026",
-            parameters=params,
+            policy=params,
             description="Reform with progressive redistribution",
             version="1.0",
         )
@@ -289,7 +291,7 @@ class TestReformScenario:
             name="test",
             policy_type=PolicyType.CARBON_TAX,
             baseline_ref="baseline",
-            parameters=RebateParameters(rate_schedule={}),
+            policy=RebateParameters(rate_schedule={}),
         )
         with pytest.raises(AttributeError):
             scenario.baseline_ref = "other"  # type: ignore[misc]
@@ -301,7 +303,7 @@ class TestReformScenario:
                 name="test",
                 policy_type=PolicyType.CARBON_TAX,
                 baseline_ref="",  # Empty string not allowed
-                parameters=RebateParameters(rate_schedule={}),
+                policy=RebateParameters(rate_schedule={}),
             )
 
     def test_reform_with_year_schedule_override(self) -> None:
@@ -311,7 +313,7 @@ class TestReformScenario:
             name="test",
             policy_type=PolicyType.CARBON_TAX,
             baseline_ref="baseline",
-            parameters=RebateParameters(rate_schedule={}),
+            policy=RebateParameters(rate_schedule={}),
             year_schedule=year_schedule,
         )
         assert scenario.year_schedule is not None
@@ -332,3 +334,147 @@ class TestPolicyType:
         """Policy type can be created from string."""
         assert PolicyType("carbon_tax") == PolicyType.CARBON_TAX
         assert PolicyType("subsidy") == PolicyType.SUBSIDY
+
+
+# ---------------------------------------------------------------------------
+# Story 10.2 tests: Policy type inference (AC #1, #2, #3, #4)
+# ---------------------------------------------------------------------------
+
+
+class TestInferPolicyType:
+    """Tests for infer_policy_type() function (Story 10.2, Task 6)."""
+
+    def test_infer_carbon_tax(self) -> None:
+        """AC#2: CarbonTaxParameters infers PolicyType.CARBON_TAX."""
+        params = CarbonTaxParameters(rate_schedule={2026: 44.60})
+        assert infer_policy_type(params) == PolicyType.CARBON_TAX
+
+    def test_infer_subsidy(self) -> None:
+        """AC#2: SubsidyParameters infers PolicyType.SUBSIDY."""
+        params = SubsidyParameters(rate_schedule={})
+        assert infer_policy_type(params) == PolicyType.SUBSIDY
+
+    def test_infer_rebate(self) -> None:
+        """AC#2: RebateParameters infers PolicyType.REBATE."""
+        params = RebateParameters(rate_schedule={})
+        assert infer_policy_type(params) == PolicyType.REBATE
+
+    def test_infer_feebate(self) -> None:
+        """AC#2: FeebateParameters infers PolicyType.FEEBATE."""
+        params = FeebateParameters(rate_schedule={})
+        assert infer_policy_type(params) == PolicyType.FEEBATE
+
+    def test_infer_base_policy_parameters_raises(self) -> None:
+        """AC#3: Base PolicyParameters raises TemplateError with guidance."""
+        params = PolicyParameters(rate_schedule={})
+        with pytest.raises(TemplateError, match="Cannot infer PolicyType"):
+            infer_policy_type(params)
+
+    def test_infer_error_includes_registration_guidance(self) -> None:
+        """AC#3: Error message explains how to register the mapping."""
+        params = PolicyParameters(rate_schedule={})
+        with pytest.raises(TemplateError, match="_PARAMETERS_TO_POLICY_TYPE"):
+            infer_policy_type(params)
+
+
+class TestBaselineScenarioInference:
+    """Tests for BaselineScenario policy_type inference (Story 10.2)."""
+
+    def test_baseline_infers_policy_type(self) -> None:
+        """AC#1: BaselineScenario without policy_type infers from policy."""
+        scenario = BaselineScenario(
+            name="test",
+            year_schedule=YearSchedule(2026, 2036),
+            policy=CarbonTaxParameters(rate_schedule={2026: 44.60}),
+        )
+        assert scenario.policy_type == PolicyType.CARBON_TAX
+
+    def test_baseline_explicit_policy_type_still_works(self) -> None:
+        """Existing callers with explicit policy_type still work."""
+        scenario = BaselineScenario(
+            name="test",
+            policy_type=PolicyType.CARBON_TAX,
+            year_schedule=YearSchedule(2026, 2036),
+            policy=CarbonTaxParameters(rate_schedule={}),
+        )
+        assert scenario.policy_type == PolicyType.CARBON_TAX
+
+    def test_baseline_mismatch_uses_explicit_with_warning(self, caplog: pytest.LogCaptureFixture) -> None:
+        """AC#4: Explicit policy_type overrides inferred type, with warning."""
+        import logging
+
+        with caplog.at_level(logging.WARNING):
+            scenario = BaselineScenario(
+                name="test",
+                policy_type=PolicyType.SUBSIDY,
+                year_schedule=YearSchedule(2026, 2036),
+                policy=CarbonTaxParameters(rate_schedule={}),
+            )
+        assert scenario.policy_type == PolicyType.SUBSIDY
+        assert "does not match inferred type" in caplog.text
+
+
+class TestReformScenarioInference:
+    """Tests for ReformScenario policy_type inference (Story 10.2)."""
+
+    def test_reform_infers_policy_type(self) -> None:
+        """AC#1: ReformScenario without policy_type infers from policy."""
+        scenario = ReformScenario(
+            name="test",
+            baseline_ref="baseline",
+            policy=RebateParameters(rate_schedule={}),
+        )
+        assert scenario.policy_type == PolicyType.REBATE
+
+    def test_reform_explicit_policy_type_still_works(self) -> None:
+        """Existing callers with explicit policy_type still work."""
+        scenario = ReformScenario(
+            name="test",
+            policy_type=PolicyType.CARBON_TAX,
+            baseline_ref="baseline",
+            policy=RebateParameters(rate_schedule={}),
+        )
+        assert scenario.policy_type == PolicyType.CARBON_TAX
+
+    def test_reform_mismatch_uses_explicit_with_warning(self, caplog: pytest.LogCaptureFixture) -> None:
+        """AC#4: Explicit policy_type overrides inferred type, with warning."""
+        import logging
+
+        with caplog.at_level(logging.WARNING):
+            scenario = ReformScenario(
+                name="test",
+                policy_type=PolicyType.SUBSIDY,
+                baseline_ref="baseline",
+                policy=FeebateParameters(rate_schedule={}),
+            )
+        assert scenario.policy_type == PolicyType.SUBSIDY
+        assert "does not match inferred type" in caplog.text
+
+
+class TestServerCreateScenarioInference:
+    """Tests for CreateScenarioRequest with policy_type=None (Story 10.2, Task 6.6)."""
+
+    def test_create_scenario_request_policy_type_optional(self) -> None:
+        """AC#1: CreateScenarioRequest accepts policy_type=None."""
+        from reformlab.server.models import CreateScenarioRequest
+
+        request = CreateScenarioRequest(
+            name="test",
+            policy={"rate_schedule": {2026: 44.60}},
+            start_year=2026,
+            end_year=2036,
+        )
+        assert request.policy_type is None
+
+    def test_create_scenario_request_with_explicit_policy_type(self) -> None:
+        """CreateScenarioRequest still accepts explicit policy_type."""
+        from reformlab.server.models import CreateScenarioRequest
+
+        request = CreateScenarioRequest(
+            name="test",
+            policy_type="carbon_tax",
+            policy={"rate_schedule": {2026: 44.60}},
+            start_year=2026,
+            end_year=2036,
+        )
+        assert request.policy_type == "carbon_tax"

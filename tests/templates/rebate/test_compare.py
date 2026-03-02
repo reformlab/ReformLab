@@ -70,7 +70,7 @@ class TestRunRebateBatch:
             name="Rebate Lump Sum",
             policy_type=PolicyType.REBATE,
             year_schedule=YearSchedule(2026, 2036),
-            parameters=RebateParameters(
+            policy=RebateParameters(
                 rate_schedule={2026: 100.0},
                 rebate_type="lump_sum",
             ),
@@ -79,7 +79,7 @@ class TestRunRebateBatch:
             name="Rebate Progressive",
             policy_type=PolicyType.REBATE,
             year_schedule=YearSchedule(2026, 2036),
-            parameters=RebateParameters(
+            policy=RebateParameters(
                 rate_schedule={2026: 100.0},
                 rebate_type="progressive_dividend",
                 income_weights={"decile_1": 2.0, "decile_10": 0.5},
@@ -132,7 +132,7 @@ class TestCompareRebateDecileImpacts:
             name="Rebate Lump Sum",
             policy_type=PolicyType.REBATE,
             year_schedule=YearSchedule(2026, 2036),
-            parameters=RebateParameters(
+            policy=RebateParameters(
                 rate_schedule={2026: 100.0},
                 rebate_type="lump_sum",
             ),
@@ -141,7 +141,7 @@ class TestCompareRebateDecileImpacts:
             name="Rebate Progressive",
             policy_type=PolicyType.REBATE,
             year_schedule=YearSchedule(2026, 2036),
-            parameters=RebateParameters(
+            policy=RebateParameters(
                 rate_schedule={2026: 100.0},
                 rebate_type="progressive_dividend",
                 income_weights={"decile_1": 2.0, "decile_10": 0.5},

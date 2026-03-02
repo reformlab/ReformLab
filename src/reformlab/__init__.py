@@ -36,7 +36,7 @@ Example usage:
     >>> config = RunConfig(
     ...     scenario=ScenarioConfig(
     ...         template_name="carbon-tax",
-    ...         parameters={"rate_schedule": {2025: 50.0}},
+    ...         policy={"rate_schedule": {2025: 50.0}},
     ...         start_year=2025,
     ...         end_year=2030,
     ...     ),

@@ -238,7 +238,7 @@ class TestDecileResultsToTable:
         emission_index = build_emission_factor_index(emission_factor_table)
         result = compute_carbon_tax(
             population=sample_population,
-            parameters=flat_rate_params,
+            policy=flat_rate_params,
             emission_index=emission_index,
             year=2026,
         )
@@ -261,7 +261,7 @@ class TestDecileResultsToTable:
         emission_index = build_emission_factor_index(emission_factor_table)
         result = compute_carbon_tax(
             population=sample_population,
-            parameters=flat_rate_params,
+            policy=flat_rate_params,
             emission_index=emission_index,
             year=2026,
         )

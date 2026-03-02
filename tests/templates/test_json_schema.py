@@ -41,13 +41,13 @@ class TestJSONSchemaFile:
         assert "$schema" in schema
         assert "properties" in schema
         assert "required" in schema
-        assert "parameters" in schema["required"]
+        assert "policy" in schema["required"]
 
     def test_json_schema_requires_non_empty_parameters(self) -> None:
         """Schema enforces at least one parameter key."""
         schema_path = get_schema_path()
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
-        params = schema["properties"]["parameters"]
+        params = schema["properties"]["policy"]
         assert params.get("minProperties") == 1
 
     def test_json_schema_has_field_descriptions(self) -> None:
@@ -64,7 +64,7 @@ class TestJSONSchemaFile:
         assert "description" in props.get("policy_type", {})
         assert "description" in props.get("version", {})
         assert "description" in props.get("year_schedule", {})
-        assert "description" in props.get("parameters", {})
+        assert "description" in props.get("policy", {})
 
     def test_json_schema_defines_policy_types(self) -> None:
         """JSON Schema enum matches Python PolicyType values."""
@@ -124,7 +124,7 @@ class TestSchemaVersionInTemplates:
             year_schedule:
               start_year: 2026
               end_year: 2036
-            parameters:
+            policy:
               rate_schedule:
                 2026: 44.60
         """)

@@ -71,12 +71,12 @@ def check_reproducibility(
     """Re-execute a run and verify outputs match original artifacts.
 
     Args:
-        manifest: Original run manifest with seeds, parameters, and hashes.
+        manifest: Original run manifest with seeds, policy, and hashes.
         input_paths: Mapping of data-hash keys to input file paths.
         output_paths: Mapping of output-hash keys to rerun output file paths.
         rerun_callable: Callable invoked to execute the rerun. It receives
             manifest-derived context:
-            seeds, parameters, scenario_version, step_pipeline, year_range,
+            seeds, policy, scenario_version, step_pipeline, year_range,
             and input_paths.
         tolerance: Floating-point tolerance for soft comparison. Defaults to
             strict, bit-identical verification.
@@ -100,7 +100,7 @@ def check_reproducibility(
 
     rerun_callable(
         seeds=dict(manifest.seeds),
-        parameters=dict(manifest.parameters),
+        policy=dict(manifest.policy),
         scenario_version=manifest.scenario_version,
         step_pipeline=list(manifest.step_pipeline),
         year_range=year_range,

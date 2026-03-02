@@ -11,7 +11,7 @@ This module provides:
 - Workflow configuration schema and execution handoff
 """
 
-from reformlab.templates.exceptions import ScenarioError
+from reformlab.templates.exceptions import ScenarioError, TemplateError
 from reformlab.templates.loader import (
     SCHEMA_VERSION,
     dump_scenario_template,
@@ -61,6 +61,7 @@ from reformlab.templates.schema import (
     ScenarioTemplate,
     SubsidyParameters,
     YearSchedule,
+    infer_policy_type,
 )
 from reformlab.templates.workflow import (
     WORKFLOW_SCHEMA_VERSION,
@@ -132,8 +133,11 @@ __all__ = [
     "get_feebate_pack_dir",
     "list_feebate_templates",
     "load_feebate_template",
+    # Inference
+    "infer_policy_type",
     # Exceptions
     "ScenarioError",
+    "TemplateError",
     # Constants
     "SCHEMA_VERSION",
     # Workflow types and functions

@@ -62,7 +62,7 @@ scenario = load_feebate_template("feebate-vehicle-emissions")
 from reformlab.templates.feebate import compute_feebate
 result = compute_feebate(
     population,
-    scenario.parameters,
+    scenario.policy,
     metric_column="vehicle_emissions_gkm",
     year=2026,
     template_name=scenario.name

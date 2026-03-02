@@ -52,7 +52,7 @@ from reformlab.templates.rebate import compute_rebate
 carbon_tax_revenue = 10_000_000  # EUR from carbon tax
 result = compute_rebate(
     population,
-    scenario.parameters,
+    scenario.policy,
     rebate_pool=carbon_tax_revenue,
     year=2026,
     template_name=scenario.name

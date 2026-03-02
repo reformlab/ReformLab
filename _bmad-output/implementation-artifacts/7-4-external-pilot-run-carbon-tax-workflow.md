@@ -246,7 +246,7 @@ uv run pytest --nbmake notebooks/quickstart.ipynb -v
 uv run pytest --nbmake notebooks/advanced.ipynb -v
 
 # Verify benchmarks
-python -c "from reformlab import run_scenario, run_benchmarks, ScenarioConfig, RunConfig, create_quickstart_adapter; adapter = create_quickstart_adapter(carbon_tax_rate=44.0, year=2025, household_count=100); config = RunConfig(scenario=ScenarioConfig(template_name='carbon-tax', parameters={'rate_schedule': {2025: 44.0}}, start_year=2025, end_year=2025), seed=42); result = run_scenario(config, adapter=adapter); benchmarks = run_benchmarks(result=result); print(benchmarks)"
+python -c "from reformlab import run_scenario, run_benchmarks, ScenarioConfig, RunConfig, create_quickstart_adapter; adapter = create_quickstart_adapter(carbon_tax_rate=44.0, year=2025); config = RunConfig(scenario=ScenarioConfig(template_name='carbon-tax', parameters={'rate_schedule': {2025: 44.0}}, start_year=2025, end_year=2025), seed=42); result = run_scenario(config, adapter=adapter); benchmarks = run_benchmarks(result=result); print(benchmarks)"
 ```
 
 ### Scope Guardrails

@@ -35,13 +35,13 @@ phase_models:
 
   # --- Validation phases: Sonnet (single reviewer) ---
   validate_story:
-    provider: claude
-    model: sonnet
+    - provider: claude
+      model: sonnet
 
   # --- Review phases: Sonnet (single reviewer) ---
   code_review:
-    provider: claude
-    model: sonnet
+    - provider: claude
+      model: sonnet
 
   # --- Retrospective: Sonnet ---
   retrospective:

@@ -17,7 +17,7 @@ class PopulationData:
 
 @dataclass(frozen=True)
 class PolicyConfig:
-    parameters: dict[str, Any]
+    policy: dict[str, Any]
     name: str = ...
     description: str = ...
 

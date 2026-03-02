@@ -59,14 +59,14 @@ def run_subsidy_batch(
 
     results = {}
     for scenario in scenarios:
-        if not isinstance(scenario.parameters, SubsidyParameters):
+        if not isinstance(scenario.policy, SubsidyParameters):
             raise TypeError(
                 f"Scenario '{scenario.name}' does not have SubsidyParameters"
             )
 
         result = compute_subsidy(
             population=population,
-            parameters=scenario.parameters,
+            policy=scenario.policy,
             year=year,
             template_name=scenario.name,
         )

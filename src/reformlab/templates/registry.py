@@ -22,7 +22,7 @@ from typing import Any
 
 import yaml
 
-from reformlab.templates.loader import SCHEMA_VERSION, _parameters_to_dict
+from reformlab.templates.loader import SCHEMA_VERSION, _policy_to_dict
 from reformlab.templates.migration import (
     CompatibilityStatus,
     MigrationReport,
@@ -174,6 +174,7 @@ def _scenario_to_dict_for_registry(
     data["name"] = scenario.name
     if scenario.description:
         data["description"] = scenario.description
+    assert scenario.policy_type is not None  # Always set after __post_init__
     data["policy_type"] = scenario.policy_type.value
 
     # Add baseline_ref for reforms
@@ -190,8 +191,8 @@ def _scenario_to_dict_for_registry(
             "end_year": scenario.year_schedule.end_year,
         }
 
-    # Serialize parameters
-    data["parameters"] = _parameters_to_dict(scenario.parameters)
+    # Serialize policy
+    data["policy"] = _policy_to_dict(scenario.policy)
 
     return data
 
@@ -1089,15 +1090,15 @@ class ScenarioRegistry:
                 end_year=int(ys["end_year"]),
             )
 
-        # Parse parameters
-        params = self._dict_to_parameters(policy_type, data.get("parameters", {}))
+        # Parse policy
+        params = self._dict_to_policy(policy_type, data.get("policy", {}))
 
         if baseline_ref:
             return ReformScenario(
                 name=name,
                 policy_type=policy_type,
                 baseline_ref=str(baseline_ref),
-                parameters=params,
+                policy=params,
                 description=description,
                 version=version,
                 schema_ref=schema_ref,
@@ -1115,13 +1116,13 @@ class ScenarioRegistry:
                 name=name,
                 policy_type=policy_type,
                 year_schedule=year_schedule,
-                parameters=params,
+                policy=params,
                 description=description,
                 version=version,
                 schema_ref=schema_ref,
             )
 
-    def _dict_to_parameters(
+    def _dict_to_policy(
         self,
         policy_type: PolicyType,
         raw: dict[str, Any],

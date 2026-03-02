@@ -97,7 +97,7 @@ class TestComputeTaxBurden:
         emission_index = build_emission_factor_index(emission_factor_table)
         tax_burden = compute_tax_burden(
             population=small_population,
-            parameters=flat_rate_params,
+            policy=flat_rate_params,
             emission_index=emission_index,
             year=2026,
         )
@@ -115,7 +115,7 @@ class TestComputeTaxBurden:
         emission_index = build_emission_factor_index(emission_factor_table)
         tax_burden = compute_tax_burden(
             population=small_population,
-            parameters=flat_rate_params,
+            policy=flat_rate_params,
             emission_index=emission_index,
             year=2026,
         )
@@ -148,7 +148,7 @@ class TestComputeTaxBurden:
         )
         tax_no_exemption = compute_tax_burden(
             population=small_population,
-            parameters=no_exemption_params,
+            policy=no_exemption_params,
             emission_index=emission_index,
             year=2026,
         )
@@ -156,7 +156,7 @@ class TestComputeTaxBurden:
         # Compute with 50% heating exemption
         tax_with_exemption = compute_tax_burden(
             population=small_population,
-            parameters=flat_rate_with_exemption_params,
+            policy=flat_rate_with_exemption_params,
             emission_index=emission_index,
             year=2026,
         )
@@ -207,7 +207,7 @@ class TestComputeTaxBurden:
         emission_index = build_emission_factor_index(emission_factor_table)
         tax_burden = compute_tax_burden(
             population=population,
-            parameters=flat_rate_params,
+            policy=flat_rate_params,
             emission_index=emission_index,
             year=2026,
         )
@@ -235,13 +235,13 @@ class TestComputeTaxBurden:
 
         flat_tax = compute_tax_burden(
             population=population,
-            parameters=flat.parameters,
+            policy=flat.policy,
             emission_index=emission_index,
             year=2026,
         ).to_pylist()
         progressive_tax = compute_tax_burden(
             population=population,
-            parameters=progressive.parameters,
+            policy=progressive.policy,
             emission_index=emission_index,
             year=2026,
         ).to_pylist()
@@ -277,13 +277,13 @@ class TestComputeTaxBurden:
 
         flat_tax = compute_tax_burden(
             population=population,
-            parameters=flat_progressive_dividend.parameters,
+            policy=flat_progressive_dividend.policy,
             emission_index=emission_index,
             year=2026,
         ).to_pylist()
         progressive_tax = compute_tax_burden(
             population=population,
-            parameters=progressive_progressive.parameters,
+            policy=progressive_progressive.policy,
             emission_index=emission_index,
             year=2026,
         ).to_pylist()

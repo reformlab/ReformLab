@@ -219,14 +219,14 @@ def sample_population() -> PopulationData:
 @pytest.fixture()
 def sample_policy() -> PolicyConfig:
     return PolicyConfig(
-        parameters={"salary": 35000.0},
+        policy={"salary": 35000.0},
         name="test-policy",
     )
 
 
 @pytest.fixture()
 def empty_policy() -> PolicyConfig:
-    return PolicyConfig(parameters={}, name="no-params")
+    return PolicyConfig(policy={}, name="no-params")
 
 
 # ---------------------------------------------------------------------------
@@ -749,7 +749,7 @@ class TestEntityMapping:
             },
         )
         bad_policy = PolicyConfig(
-            parameters={"nonexistent_param": 100.0},
+            policy={"nonexistent_param": 100.0},
             name="bad-policy",
         )
 
@@ -1163,7 +1163,7 @@ class TestCalculateVariable:
             {"date_naissance": np.array([19960101])}
         )
 
-        result = adapter._calculate_variable(sim, "date_naissance", "2024", "eternity")
+        adapter._calculate_variable(sim, "date_naissance", "2024", "eternity")
 
         sim.calculate.assert_called_once_with("date_naissance", "2024")
         sim.calculate_add.assert_not_called()
@@ -1178,7 +1178,7 @@ class TestCalculateVariable:
             {"daily_var": np.array([365.0])}
         )
 
-        result = adapter._calculate_variable(sim, "daily_var", "2024", "day")
+        adapter._calculate_variable(sim, "daily_var", "2024", "day")
 
         sim.calculate_add.assert_called_once_with("daily_var", "2024")
         sim.calculate.assert_not_called()
@@ -1193,7 +1193,7 @@ class TestCalculateVariable:
             {"weekly_var": np.array([52.0])}
         )
 
-        result = adapter._calculate_variable(sim, "weekly_var", "2024", "week")
+        adapter._calculate_variable(sim, "weekly_var", "2024", "week")
 
         sim.calculate_add.assert_called_once_with("weekly_var", "2024")
         sim.calculate.assert_not_called()
@@ -1208,7 +1208,7 @@ class TestCalculateVariable:
             {"weekday_var": np.array([260.0])}
         )
 
-        result = adapter._calculate_variable(sim, "weekday_var", "2024", "weekday")
+        adapter._calculate_variable(sim, "weekday_var", "2024", "weekday")
 
         sim.calculate_add.assert_called_once_with("weekday_var", "2024")
         sim.calculate.assert_not_called()
@@ -1421,7 +1421,7 @@ class TestPeriodicityMetadata:
 
         with _patch_simulation_builder(mock_builder_instance):
             result = adapter.compute(
-                population, PolicyConfig(parameters={}, name="test"), 2024
+                population, PolicyConfig(policy={}, name="test"), 2024
             )
 
         assert "variable_periodicities" in result.metadata
@@ -1467,7 +1467,7 @@ class TestPeriodicityMetadata:
 
         with _patch_simulation_builder(mock_builder_instance):
             result = adapter.compute(
-                population, PolicyConfig(parameters={}, name="test"), 2024
+                population, PolicyConfig(policy={}, name="test"), 2024
             )
 
         assert "calculation_methods" in result.metadata
@@ -1504,7 +1504,7 @@ class TestPeriodicityMetadata:
 
         with _patch_simulation_builder(mock_builder_instance):
             result = adapter.compute(
-                population, PolicyConfig(parameters={}, name="test"), 2024
+                population, PolicyConfig(policy={}, name="test"), 2024
             )
 
         assert result.metadata["variable_periodicities"]["date_naissance"] == "eternity"
@@ -1580,7 +1580,7 @@ class TestComputeMultiEntity:
 
         with _patch_simulation_builder(mock_builder_instance):
             result = adapter.compute(
-                population, PolicyConfig(parameters={}, name="test"), 2024
+                population, PolicyConfig(policy={}, name="test"), 2024
             )
 
         # Multi-entity: entity_tables populated
@@ -1630,7 +1630,7 @@ class TestComputeMultiEntity:
 
         with _patch_simulation_builder(mock_builder_instance):
             result = adapter.compute(
-                population, PolicyConfig(parameters={}, name="test"), 2024
+                population, PolicyConfig(policy={}, name="test"), 2024
             )
 
         assert "output_entities" in result.metadata
@@ -1665,7 +1665,7 @@ class TestComputeMultiEntity:
         # No SimulationBuilder mock needed; the error fires before simulation construction.
         with pytest.raises(ApiMappingError, match="Cannot determine entity"):
             adapter.compute(
-                population, PolicyConfig(parameters={}, name="test"), 2024
+                population, PolicyConfig(policy={}, name="test"), 2024
             )
 
 
@@ -2028,7 +2028,7 @@ class TestPopulationToEntityDict4Entity:
                 }),
             },
         )
-        policy = PolicyConfig(parameters={}, name="test")
+        policy = PolicyConfig(policy={}, name="test")
 
         entity_dict = adapter._population_to_entity_dict(
             population, policy, "2024", mock_tbs
@@ -2094,7 +2094,7 @@ class TestPopulationToEntityDict4Entity:
                 }),
             },
         )
-        policy = PolicyConfig(parameters={}, name="test")
+        policy = PolicyConfig(policy={}, name="test")
 
         entity_dict = adapter._population_to_entity_dict(
             population, policy, "2024", mock_tbs
@@ -2135,7 +2135,7 @@ class TestPopulationToEntityDict4Entity:
                 }),
             },
         )
-        policy = PolicyConfig(parameters={}, name="test")
+        policy = PolicyConfig(policy={}, name="test")
 
         entity_dict = adapter._population_to_entity_dict(
             population, policy, "2024", mock_tbs
@@ -2172,7 +2172,7 @@ class TestPopulationToEntityDict4Entity:
                 }),
             },
         )
-        policy = PolicyConfig(parameters={}, name="test")
+        policy = PolicyConfig(policy={}, name="test")
 
         entity_dict = adapter._population_to_entity_dict(
             population, policy, "2024", mock_tbs
@@ -2213,7 +2213,7 @@ class TestPopulationToEntityDict4Entity:
                 }),
             },
         )
-        policy = PolicyConfig(parameters={}, name="test")
+        policy = PolicyConfig(policy={}, name="test")
 
         entity_dict = adapter._population_to_entity_dict(
             population, policy, "2024", mock_tbs
@@ -2254,7 +2254,7 @@ class TestPopulationToEntityDict4Entity:
                 }),
             },
         )
-        policy = PolicyConfig(parameters={}, name="test")
+        policy = PolicyConfig(policy={}, name="test")
 
         entity_dict = adapter._population_to_entity_dict(
             population, policy, "2024", mock_tbs
@@ -2296,7 +2296,7 @@ class TestPopulationToEntityDict4Entity:
                 }),
             },
         )
-        policy = PolicyConfig(parameters={}, name="test")
+        policy = PolicyConfig(policy={}, name="test")
 
         with pytest.raises(ApiMappingError, match="Group entity table row count mismatch"):
             adapter._population_to_entity_dict(
@@ -2332,7 +2332,7 @@ class TestPopulationToEntityDict4Entity:
                 }),
             },
         )
-        policy = PolicyConfig(parameters={"custom_param": 42.0}, name="test")
+        policy = PolicyConfig(policy={"custom_param": 42.0}, name="test")
 
         entity_dict = adapter._population_to_entity_dict(
             population, policy, "2024", mock_tbs
@@ -2364,7 +2364,7 @@ class TestPopulationToEntityDict4Entity:
                 }),
             },
         )
-        policy = PolicyConfig(parameters={}, name="test")
+        policy = PolicyConfig(policy={}, name="test")
 
         entity_dict = adapter._population_to_entity_dict(
             population, policy, "2024", mock_tbs
@@ -2404,7 +2404,7 @@ class TestPopulationToEntityDict4Entity:
                 }),
             },
         )
-        policy = PolicyConfig(parameters={}, name="test")
+        policy = PolicyConfig(policy={}, name="test")
 
         entity_dict = adapter._population_to_entity_dict(
             population, policy, "2024", mock_tbs

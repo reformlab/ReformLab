@@ -30,7 +30,7 @@ class PopulationData:
 class PolicyConfig:
     """Scenario parameters for a single computation period."""
 
-    parameters: dict[str, Any]
+    policy: dict[str, Any]
     name: str = ""
     description: str = ""
 

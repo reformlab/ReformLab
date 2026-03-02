@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
+
+from reformlab.templates.exceptions import TemplateError
+
+logger = logging.getLogger(__name__)
 
 
 class PolicyType(Enum):
@@ -121,17 +126,90 @@ class FeebateParameters(PolicyParameters):
     _rebate_rate_set: bool = field(default=False, repr=False, compare=False)
 
 
+# ====================================================================
+# Policy type inference
+# ====================================================================
+
+_PARAMETERS_TO_POLICY_TYPE: dict[type[PolicyParameters], PolicyType] = {
+    CarbonTaxParameters: PolicyType.CARBON_TAX,
+    SubsidyParameters: PolicyType.SUBSIDY,
+    RebateParameters: PolicyType.REBATE,
+    FeebateParameters: PolicyType.FEEBATE,
+}
+
+
+def infer_policy_type(policy: PolicyParameters) -> PolicyType:
+    """Infer PolicyType from a policy parameters instance.
+
+    Uses isinstance checks to handle subclasses correctly.
+
+    Raises:
+        TemplateError: If the parameters class is not registered.
+    """
+    for cls, policy_type in _PARAMETERS_TO_POLICY_TYPE.items():
+        if isinstance(policy, cls):
+            return policy_type
+    msg = (
+        f"Cannot infer PolicyType from {type(policy).__name__}. "
+        f"Register the mapping in _PARAMETERS_TO_POLICY_TYPE in "
+        f"src/reformlab/templates/schema.py."
+    )
+    raise TemplateError(msg)
+
+
+# ====================================================================
+# Scenario templates
+# ====================================================================
+
+
+def _resolve_policy_type(
+    policy: PolicyParameters,
+    policy_type: PolicyType | None,
+) -> PolicyType:
+    """Resolve policy_type: infer from *policy* if None, validate if explicit.
+
+    When *policy_type* is ``None`` the type is inferred from the concrete
+    *policy* class.  When explicitly provided, a mismatch with the inferred
+    type logs a warning but the explicit value is kept.
+    """
+    if policy_type is None:
+        return infer_policy_type(policy)
+    try:
+        inferred = infer_policy_type(policy)
+    except TemplateError:
+        return policy_type
+    if policy_type != inferred:
+        logger.warning(
+            "Explicit policy_type=%s does not match inferred type %s "
+            "from %s. Using explicit value.",
+            policy_type.value,
+            inferred.value,
+            type(policy).__name__,
+        )
+    return policy_type
+
+
 @dataclass(frozen=True)
 class ScenarioTemplate:
-    """Base scenario template shape shared by baseline and reform variants."""
+    """Base scenario template shape shared by baseline and reform variants.
+
+    ``policy_type`` can be omitted when constructing instances with a typed
+    ``policy`` object — it will be inferred automatically from the parameter
+    class (e.g. ``CarbonTaxParameters`` → ``PolicyType.CARBON_TAX``).
+    """
 
     name: str
-    policy_type: PolicyType
     year_schedule: YearSchedule
-    parameters: PolicyParameters
+    policy: PolicyParameters
+    policy_type: PolicyType | None = None
     description: str = ""
     version: str = "1.0"
     schema_ref: str = ""
+
+    def __post_init__(self) -> None:
+        resolved = _resolve_policy_type(self.policy, self.policy_type)
+        if resolved is not self.policy_type:
+            object.__setattr__(self, "policy_type", resolved)
 
 
 @dataclass(frozen=True)
@@ -149,12 +227,15 @@ class ReformScenario:
 
     Reform scenarios inherit unspecified parameters from their baseline.
     The baseline_ref links to the baseline scenario ID.
+
+    ``policy_type`` can be omitted — it will be inferred from the ``policy``
+    parameter class.
     """
 
     name: str
-    policy_type: PolicyType
     baseline_ref: str
-    parameters: PolicyParameters
+    policy: PolicyParameters
+    policy_type: PolicyType | None = None
     description: str = ""
     version: str = "1.0"
     schema_ref: str = ""
@@ -163,3 +244,6 @@ class ReformScenario:
     def __post_init__(self) -> None:
         if not self.baseline_ref or not self.baseline_ref.strip():
             raise ValueError("baseline_ref is required for ReformScenario")
+        resolved = _resolve_policy_type(self.policy, self.policy_type)
+        if resolved is not self.policy_type:
+            object.__setattr__(self, "policy_type", resolved)

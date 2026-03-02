@@ -63,14 +63,14 @@ def run_carbon_tax_batch(
         # Extract parameters (must be CarbonTaxParameters for carbon_tax policy type)
         from reformlab.templates.schema import CarbonTaxParameters
 
-        if not isinstance(scenario.parameters, CarbonTaxParameters):
+        if not isinstance(scenario.policy, CarbonTaxParameters):
             raise TypeError(
                 f"Scenario '{scenario.name}' does not have CarbonTaxParameters"
             )
 
         result = compute_carbon_tax(
             population=population,
-            parameters=scenario.parameters,
+            policy=scenario.policy,
             emission_index=emission_index,
             year=year,
             template_name=scenario.name,

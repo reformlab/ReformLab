@@ -62,7 +62,7 @@ def run_rebate_batch(
 
     results = {}
     for scenario in scenarios:
-        if not isinstance(scenario.parameters, RebateParameters):
+        if not isinstance(scenario.policy, RebateParameters):
             raise TypeError(
                 f"Scenario '{scenario.name}' does not have RebateParameters"
             )
@@ -71,7 +71,7 @@ def run_rebate_batch(
 
         result = compute_rebate(
             population=population,
-            parameters=scenario.parameters,
+            policy=scenario.policy,
             rebate_pool=rebate_pool,
             year=year,
             template_name=scenario.name,

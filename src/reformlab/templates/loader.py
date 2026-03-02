@@ -25,7 +25,9 @@ logger = logging.getLogger(__name__)
 SCHEMA_VERSION = "1.0"
 _SCHEMA_MAJOR_VERSION = 1
 
-_REQUIRED_FIELDS = frozenset({"name", "policy_type", "version", "parameters"})
+# policy_type is intentionally required in YAML pack files for readability,
+# even though it is optional on the Python constructor (inferred from policy).
+_REQUIRED_FIELDS = frozenset({"name", "policy_type", "version", "policy"})
 _VALID_POLICY_TYPES = frozenset(pt.value for pt in PolicyType)
 _MIN_YEAR_SCHEDULE_DURATION = 10
 _SCHEMA_DIR = Path(__file__).parent / "schema"
@@ -146,33 +148,33 @@ def load_scenario_template(
     if "year_schedule" in data:
         year_schedule = _parse_year_schedule(file_path, data["year_schedule"], strict)
 
-    # Parse parameters
-    raw_params = data.get("parameters")
+    # Parse policy
+    raw_params = data.get("policy")
     if raw_params is None:
         raise ScenarioError(
             file_path=file_path,
             summary="Scenario validation failed",
-            reason="missing required field: parameters",
-            fix="Add a non-empty parameters mapping with policy parameter values",
-            invalid_fields=("parameters",),
+            reason="missing required field: policy",
+            fix="Add a non-empty policy mapping with policy parameter values",
+            invalid_fields=("policy",),
         )
     if not isinstance(raw_params, dict):
         raise ScenarioError(
             file_path=file_path,
             summary="Scenario validation failed",
-            reason="parameters must be a mapping (dict)",
-            fix="Define parameters as a YAML object with policy fields",
-            invalid_fields=("parameters",),
+            reason="policy must be a mapping (dict)",
+            fix="Define policy as a YAML object with policy fields",
+            invalid_fields=("policy",),
         )
     if not raw_params:
         raise ScenarioError(
             file_path=file_path,
             summary="Scenario validation failed",
-            reason="parameters must include at least one policy value",
-            fix="Add one or more parameter fields under parameters",
-            invalid_fields=("parameters",),
+            reason="policy must include at least one policy value",
+            fix="Add one or more parameter fields under policy",
+            invalid_fields=("policy",),
         )
-    parameters = _parse_parameters(file_path, policy_type, raw_params)
+    parsed_policy = _parse_policy(file_path, policy_type, raw_params)
 
     if baseline_ref:
         # Reform scenario
@@ -180,7 +182,7 @@ def load_scenario_template(
             name=name,
             policy_type=policy_type,
             baseline_ref=str(baseline_ref),
-            parameters=parameters,
+            policy=parsed_policy,
             description=description,
             version=version,
             schema_ref=schema_ref,
@@ -200,7 +202,7 @@ def load_scenario_template(
             name=name,
             policy_type=policy_type,
             year_schedule=year_schedule,
-            parameters=parameters,
+            policy=parsed_policy,
             description=description,
             version=version,
             schema_ref=schema_ref,
@@ -293,7 +295,7 @@ def _parse_year_schedule(
     return year_schedule
 
 
-def _parse_parameters(
+def _parse_policy(
     file_path: Path,
     policy_type: PolicyType,
     raw: dict[str, Any],
@@ -307,9 +309,9 @@ def _parse_parameters(
             raise ScenarioError(
                 file_path=file_path,
                 summary="Scenario validation failed",
-                reason="parameters.rate_schedule must be a mapping of year -> number",
+                reason="policy.rate_schedule must be a mapping of year -> number",
                 fix="Set rate_schedule as a YAML object with numeric values",
-                invalid_fields=("parameters.rate_schedule",),
+                invalid_fields=("policy.rate_schedule",),
             )
         try:
             for k, v in raw_rate_schedule.items():
@@ -318,9 +320,9 @@ def _parse_parameters(
             raise ScenarioError(
                 file_path=file_path,
                 summary="Scenario validation failed",
-                reason="parameters.rate_schedule contains non-numeric year or value",
+                reason="policy.rate_schedule contains non-numeric year or value",
                 fix="Use integer-like years and numeric rate values in rate_schedule",
-                invalid_fields=("parameters.rate_schedule",),
+                invalid_fields=("policy.rate_schedule",),
             ) from None
 
     # Parse common fields
@@ -339,9 +341,9 @@ def _parse_parameters(
                 raise ScenarioError(
                     file_path=file_path,
                     summary="Scenario validation failed",
-                    reason="parameters.redistribution must be a mapping",
+                    reason="policy.redistribution must be a mapping",
                     fix="Set redistribution as a YAML object with type/income_weights",
-                    invalid_fields=("parameters.redistribution",),
+                    invalid_fields=("policy.redistribution",),
                 )
             if "type" in redist:
                 redistribution_type = str(redist["type"])
@@ -351,9 +353,9 @@ def _parse_parameters(
                     raise ScenarioError(
                         file_path=file_path,
                         summary="Scenario validation failed",
-                        reason="parameters.redistribution.income_weights must be a mapping",
+                        reason="policy.redistribution.income_weights must be a mapping",
                         fix="Set income_weights as decile -> numeric weight pairs",
-                        invalid_fields=("parameters.redistribution.income_weights",),
+                        invalid_fields=("policy.redistribution.income_weights",),
                     )
                 try:
                     for k, v in raw_weights.items():
@@ -362,9 +364,9 @@ def _parse_parameters(
                     raise ScenarioError(
                         file_path=file_path,
                         summary="Scenario validation failed",
-                        reason="parameters.redistribution.income_weights has non-numeric values",
+                        reason="policy.redistribution.income_weights has non-numeric values",
                         fix="Use numeric values for all redistribution income_weights",
-                        invalid_fields=("parameters.redistribution.income_weights",),
+                        invalid_fields=("policy.redistribution.income_weights",),
                     ) from None
         return CarbonTaxParameters(
             rate_schedule=rate_schedule,
@@ -383,9 +385,9 @@ def _parse_parameters(
                 raise ScenarioError(
                     file_path=file_path,
                     summary="Scenario validation failed",
-                    reason="parameters.income_caps must be a mapping of year -> number",
+                    reason="policy.income_caps must be a mapping of year -> number",
                     fix="Set income_caps as a YAML object with numeric values",
-                    invalid_fields=("parameters.income_caps",),
+                    invalid_fields=("policy.income_caps",),
                 )
             try:
                 for k, v in raw_income_caps.items():
@@ -394,9 +396,9 @@ def _parse_parameters(
                 raise ScenarioError(
                     file_path=file_path,
                     summary="Scenario validation failed",
-                    reason="parameters.income_caps contains non-numeric year or value",
+                    reason="policy.income_caps contains non-numeric year or value",
                     fix="Use integer-like years and numeric values in income_caps",
-                    invalid_fields=("parameters.income_caps",),
+                    invalid_fields=("policy.income_caps",),
                 ) from None
         return SubsidyParameters(
             rate_schedule=rate_schedule,
@@ -415,9 +417,9 @@ def _parse_parameters(
                 raise ScenarioError(
                     file_path=file_path,
                     summary="Scenario validation failed",
-                    reason="parameters.income_weights must be a mapping",
+                    reason="policy.income_weights must be a mapping",
                     fix="Set income_weights as decile -> numeric weight pairs",
-                    invalid_fields=("parameters.income_weights",),
+                    invalid_fields=("policy.income_weights",),
                 )
             try:
                 for k, v in raw_weights.items():
@@ -426,9 +428,9 @@ def _parse_parameters(
                 raise ScenarioError(
                     file_path=file_path,
                     summary="Scenario validation failed",
-                    reason="parameters.income_weights has non-numeric values",
+                    reason="policy.income_weights has non-numeric values",
                     fix="Use numeric values for all income_weights",
-                    invalid_fields=("parameters.income_weights",),
+                    invalid_fields=("policy.income_weights",),
                 ) from None
         # Check in redistribution sub-dict too
         if "redistribution" in raw:
@@ -437,9 +439,9 @@ def _parse_parameters(
                 raise ScenarioError(
                     file_path=file_path,
                     summary="Scenario validation failed",
-                    reason="parameters.redistribution must be a mapping",
+                    reason="policy.redistribution must be a mapping",
                     fix="Set redistribution as a YAML object with type/income_weights",
-                    invalid_fields=("parameters.redistribution",),
+                    invalid_fields=("policy.redistribution",),
                 )
             if "type" in redist:
                 rebate_type = str(redist["type"])
@@ -449,9 +451,9 @@ def _parse_parameters(
                     raise ScenarioError(
                         file_path=file_path,
                         summary="Scenario validation failed",
-                        reason="parameters.redistribution.income_weights must be a mapping",
+                        reason="policy.redistribution.income_weights must be a mapping",
                         fix="Set income_weights as decile -> numeric weight pairs",
-                        invalid_fields=("parameters.redistribution.income_weights",),
+                        invalid_fields=("policy.redistribution.income_weights",),
                     )
                 try:
                     for k, v in raw_weights.items():
@@ -460,9 +462,9 @@ def _parse_parameters(
                     raise ScenarioError(
                         file_path=file_path,
                         summary="Scenario validation failed",
-                        reason="parameters.redistribution.income_weights has non-numeric values",
+                        reason="policy.redistribution.income_weights has non-numeric values",
                         fix="Use numeric values for all redistribution income_weights",
-                        invalid_fields=("parameters.redistribution.income_weights",),
+                        invalid_fields=("policy.redistribution.income_weights",),
                     ) from None
         return RebateParameters(
             rate_schedule=rate_schedule,
@@ -489,7 +491,7 @@ def _parse_parameters(
                     "pivot_point, fee_rate, rebate_rate"
                 ),
                 fix="Use numeric values for pivot_point, fee_rate, and rebate_rate",
-                invalid_fields=("parameters",),
+                invalid_fields=("policy",),
             ) from None
         return FeebateParameters(
             rate_schedule=rate_schedule,
@@ -527,6 +529,7 @@ def _scenario_to_dict(scenario: BaselineScenario | ReformScenario) -> dict[str, 
     data["name"] = scenario.name
     if scenario.description:
         data["description"] = scenario.description
+    assert scenario.policy_type is not None  # Always set after __post_init__
     data["policy_type"] = scenario.policy_type.value
 
     # Add baseline_ref for reforms
@@ -543,13 +546,13 @@ def _scenario_to_dict(scenario: BaselineScenario | ReformScenario) -> dict[str, 
             "end_year": scenario.year_schedule.end_year,
         }
 
-    # Serialize parameters
-    data["parameters"] = _parameters_to_dict(scenario.parameters)
+    # Serialize policy
+    data["policy"] = _policy_to_dict(scenario.policy)
 
     return data
 
 
-def _parameters_to_dict(params: PolicyParameters) -> dict[str, Any]:
+def _policy_to_dict(params: PolicyParameters) -> dict[str, Any]:
     """Convert PolicyParameters to a dict, omitting empty values."""
     result: dict[str, Any] = {}
 

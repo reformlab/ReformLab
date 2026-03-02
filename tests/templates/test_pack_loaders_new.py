@@ -41,7 +41,7 @@ class TestSubsidyPackLoader:
         """Load returns BaselineScenario with SubsidyParameters."""
         scenario = load_subsidy_template("subsidy-energy-retrofit")
         assert isinstance(scenario, BaselineScenario)
-        assert isinstance(scenario.parameters, SubsidyParameters)
+        assert isinstance(scenario.policy, SubsidyParameters)
         assert scenario.policy_type == PolicyType.SUBSIDY
 
     def test_subsidy_template_has_10_year_schedule(self) -> None:
@@ -52,7 +52,7 @@ class TestSubsidyPackLoader:
     def test_subsidy_template_has_required_fields(self) -> None:
         """Subsidy template has eligible_categories and income_caps."""
         scenario = load_subsidy_template("subsidy-energy-retrofit")
-        params = scenario.parameters
+        params = scenario.policy
         assert isinstance(params, SubsidyParameters)
         assert len(params.eligible_categories) > 0
         assert len(params.income_caps) > 0
@@ -88,7 +88,7 @@ class TestRebatePackLoader:
         """Load returns BaselineScenario with RebateParameters."""
         scenario = load_rebate_template("rebate-progressive-income")
         assert isinstance(scenario, BaselineScenario)
-        assert isinstance(scenario.parameters, RebateParameters)
+        assert isinstance(scenario.policy, RebateParameters)
         assert scenario.policy_type == PolicyType.REBATE
 
     def test_rebate_template_has_10_year_schedule(self) -> None:
@@ -99,7 +99,7 @@ class TestRebatePackLoader:
     def test_rebate_template_has_required_fields(self) -> None:
         """Rebate template has rebate_type and income_weights."""
         scenario = load_rebate_template("rebate-progressive-income")
-        params = scenario.parameters
+        params = scenario.policy
         assert isinstance(params, RebateParameters)
         assert params.rebate_type == "progressive_dividend"
         assert len(params.income_weights) > 0
@@ -135,7 +135,7 @@ class TestFeebatePackLoader:
         """Load returns BaselineScenario with FeebateParameters."""
         scenario = load_feebate_template("feebate-vehicle-emissions")
         assert isinstance(scenario, BaselineScenario)
-        assert isinstance(scenario.parameters, FeebateParameters)
+        assert isinstance(scenario.policy, FeebateParameters)
         assert scenario.policy_type == PolicyType.FEEBATE
 
     def test_feebate_template_has_10_year_schedule(self) -> None:
@@ -146,7 +146,7 @@ class TestFeebatePackLoader:
     def test_feebate_template_has_required_fields(self) -> None:
         """Feebate template has pivot_point, fee_rate, rebate_rate."""
         scenario = load_feebate_template("feebate-vehicle-emissions")
-        params = scenario.parameters
+        params = scenario.policy
         assert isinstance(params, FeebateParameters)
         assert params.pivot_point > 0
         assert params.fee_rate > 0

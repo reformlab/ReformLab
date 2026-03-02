@@ -183,7 +183,7 @@ class TestComputeSubsidy:
         """Subsidy computation returns correct result structure."""
         result = compute_subsidy(
             population=sample_population,
-            parameters=basic_subsidy_params,
+            policy=basic_subsidy_params,
             year=2026,
             template_name="test-subsidy",
         )
@@ -204,7 +204,7 @@ class TestComputeSubsidy:
         """Total cost equals sum of all subsidy amounts."""
         result = compute_subsidy(
             population=sample_population,
-            parameters=basic_subsidy_params,
+            policy=basic_subsidy_params,
             year=2026,
             template_name="test",
         )
@@ -220,7 +220,7 @@ class TestComputeSubsidy:
         """Correct number of households are eligible."""
         result = compute_subsidy(
             population=sample_population,
-            parameters=basic_subsidy_params,
+            policy=basic_subsidy_params,
             year=2026,
             template_name="test",
         )
@@ -242,7 +242,7 @@ class TestComputeSubsidy:
         )
         result = compute_subsidy(
             population=empty_pop,
-            parameters=basic_subsidy_params,
+            policy=basic_subsidy_params,
             year=2026,
             template_name="empty",
         )
@@ -298,7 +298,7 @@ class TestAggregateSubsidyByDecile:
         """Aggregation produces correct decile structure."""
         result = compute_subsidy(
             population=sample_population,
-            parameters=basic_subsidy_params,
+            policy=basic_subsidy_params,
             year=2026,
             template_name="test",
         )
@@ -316,7 +316,7 @@ class TestAggregateSubsidyByDecile:
         """Total subsidy across deciles equals total cost."""
         result = compute_subsidy(
             population=sample_population,
-            parameters=basic_subsidy_params,
+            policy=basic_subsidy_params,
             year=2026,
             template_name="test",
         )

@@ -56,7 +56,7 @@ def sample_population_for_adapter() -> PopulationData:
 
 @pytest.fixture()
 def sample_policy_for_adapter() -> PolicyConfig:
-    return PolicyConfig(parameters={"carbon_tax_rate": 44.6}, name="baseline")
+    return PolicyConfig(policy={"carbon_tax_rate": 44.6}, name="baseline")
 
 
 class TestIngestionRoundTrips:

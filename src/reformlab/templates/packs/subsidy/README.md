@@ -45,7 +45,7 @@ scenario = load_subsidy_template("subsidy-energy-retrofit")
 
 # Use with compute_subsidy
 from reformlab.templates.subsidy import compute_subsidy
-result = compute_subsidy(population, scenario.parameters, year=2026, template_name=scenario.name)
+result = compute_subsidy(population, scenario.policy, year=2026, template_name=scenario.name)
 ```
 
 ## Data Requirements

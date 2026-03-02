@@ -296,7 +296,7 @@ def _apply_1x_migrations(
     # 1.0 -> 1.1+: normalize rebate redistribution shape
     if source.minor < 1 <= target.minor:
         policy_type = data.get("policy_type")
-        raw_params = data.get("parameters")
+        raw_params = data.get("policy")
 
         if policy_type != "rebate" or not isinstance(raw_params, dict):
             return
@@ -310,7 +310,7 @@ def _apply_1x_migrations(
         )
         if unknown_legacy_keys:
             warnings.append(
-                "Legacy parameters.redistribution contains unrecognized keys "
+                "Legacy policy.redistribution contains unrecognized keys "
                 f"{unknown_legacy_keys}; preserving redistribution object."
             )
             return
@@ -321,21 +321,21 @@ def _apply_1x_migrations(
         if "type" in redistribution:
             if has_rebate_type:
                 warnings.append(
-                    "Both parameters.rebate_type and legacy "
-                    "parameters.redistribution.type exist; keeping "
-                    "parameters.rebate_type."
+                    "Both policy.rebate_type and legacy "
+                    "policy.redistribution.type exist; keeping "
+                    "policy.rebate_type."
                 )
             else:
                 old_value = redistribution["type"]
                 raw_params["rebate_type"] = old_value
                 changes.append(
                     MigrationChange(
-                        field_path="parameters.rebate_type",
+                        field_path="policy.rebate_type",
                         old_value=None,
                         new_value=old_value,
                         reason=(
-                            "Renamed legacy parameters.redistribution.type to "
-                            "parameters.rebate_type"
+                            "Renamed legacy policy.redistribution.type to "
+                            "policy.rebate_type"
                         ),
                     )
                 )
@@ -343,21 +343,21 @@ def _apply_1x_migrations(
         if "income_weights" in redistribution:
             if has_income_weights:
                 warnings.append(
-                    "Both parameters.income_weights and legacy "
-                    "parameters.redistribution.income_weights exist; keeping "
-                    "parameters.income_weights."
+                    "Both policy.income_weights and legacy "
+                    "policy.redistribution.income_weights exist; keeping "
+                    "policy.income_weights."
                 )
             else:
                 old_value = copy.deepcopy(redistribution["income_weights"])
                 raw_params["income_weights"] = old_value
                 changes.append(
                     MigrationChange(
-                        field_path="parameters.income_weights",
+                        field_path="policy.income_weights",
                         old_value=None,
                         new_value=old_value,
                         reason=(
-                            "Renamed legacy parameters.redistribution.income_weights "
-                            "to parameters.income_weights"
+                            "Renamed legacy policy.redistribution.income_weights "
+                            "to policy.income_weights"
                         ),
                     )
                 )
@@ -367,11 +367,11 @@ def _apply_1x_migrations(
             del raw_params["redistribution"]
             changes.append(
                 MigrationChange(
-                    field_path="parameters.redistribution",
+                    field_path="policy.redistribution",
                     old_value=old_value,
                     new_value=None,
                     reason=(
-                        "Removed legacy parameters.redistribution container "
+                        "Removed legacy policy.redistribution container "
                         "after normalization"
                     ),
                 )

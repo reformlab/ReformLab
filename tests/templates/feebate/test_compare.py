@@ -75,7 +75,7 @@ class TestRunFeebateBatch:
             name="Feebate Low Rates",
             policy_type=PolicyType.FEEBATE,
             year_schedule=YearSchedule(2026, 2036),
-            parameters=FeebateParameters(
+            policy=FeebateParameters(
                 rate_schedule={2026: 0.0},
                 pivot_point=120.0,
                 fee_rate=25.0,
@@ -86,7 +86,7 @@ class TestRunFeebateBatch:
             name="Feebate High Rates",
             policy_type=PolicyType.FEEBATE,
             year_schedule=YearSchedule(2026, 2036),
-            parameters=FeebateParameters(
+            policy=FeebateParameters(
                 rate_schedule={2026: 0.0},
                 pivot_point=120.0,
                 fee_rate=100.0,
@@ -141,7 +141,7 @@ class TestCompareFeebateDecileImpacts:
             name="Feebate Low Rates",
             policy_type=PolicyType.FEEBATE,
             year_schedule=YearSchedule(2026, 2036),
-            parameters=FeebateParameters(
+            policy=FeebateParameters(
                 rate_schedule={2026: 0.0},
                 pivot_point=120.0,
                 fee_rate=25.0,
@@ -152,7 +152,7 @@ class TestCompareFeebateDecileImpacts:
             name="Feebate High Rates",
             policy_type=PolicyType.FEEBATE,
             year_schedule=YearSchedule(2026, 2036),
-            parameters=FeebateParameters(
+            policy=FeebateParameters(
                 rate_schedule={2026: 0.0},
                 pivot_point=120.0,
                 fee_rate=100.0,

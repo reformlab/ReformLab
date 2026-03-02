@@ -46,7 +46,7 @@ REQUIRED_JSON_FIELDS = (
     "data_hashes",
     "output_hashes",
     "seeds",
-    "parameters",
+    "policy",
     "assumptions",
     "mappings",
     "warnings",
@@ -108,7 +108,7 @@ class RunManifest:
         data_hashes: SHA-256 hashes of input files, keyed by path reference.
         output_hashes: SHA-256 hashes of output artifacts, keyed by artifact key/path.
         seeds: All random seeds used (master seed + per-year seeds).
-        parameters: Complete parameter snapshot.
+        policy: Complete parameter snapshot.
         assumptions: Structured assumption entries (key/value/source/is_default).
         mappings: Variable mapping configuration used at runtime.
         warnings: List of warning messages from execution.
@@ -127,7 +127,7 @@ class RunManifest:
     data_hashes: dict[str, str] = field(default_factory=dict)
     output_hashes: dict[str, str] = field(default_factory=dict)
     seeds: dict[str, int] = field(default_factory=dict)
-    parameters: dict[str, Any] = field(default_factory=dict)
+    policy: dict[str, Any] = field(default_factory=dict)
     assumptions: list[AssumptionEntry] = field(default_factory=list)
     mappings: list[MappingEntry] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
@@ -222,10 +222,10 @@ class RunManifest:
                     f"expected int, got {type(seed_value).__name__}"
                 )
 
-        # Validate parameters dictionary.
-        if not isinstance(self.parameters, dict):
-            raise ManifestValidationError("Field 'parameters' must be a dictionary")
-        _validate_json_compatible(self.parameters, "parameters")
+        # Validate policy dictionary.
+        if not isinstance(self.policy, dict):
+            raise ManifestValidationError("Field 'policy' must be a dictionary")
+        _validate_json_compatible(self.policy, "policy")
 
         # Validate assumptions list.
         if not isinstance(self.assumptions, list):
@@ -346,7 +346,7 @@ class RunManifest:
         object.__setattr__(self, "data_hashes", dict(self.data_hashes))
         object.__setattr__(self, "output_hashes", dict(self.output_hashes))
         object.__setattr__(self, "seeds", dict(self.seeds))
-        object.__setattr__(self, "parameters", deepcopy(self.parameters))
+        object.__setattr__(self, "policy", deepcopy(self.policy))
         object.__setattr__(self, "assumptions", deepcopy(self.assumptions))
         object.__setattr__(self, "mappings", deepcopy(self.mappings))
         object.__setattr__(self, "warnings", list(self.warnings))
@@ -433,7 +433,7 @@ class RunManifest:
                 data_hashes=data["data_hashes"],
                 output_hashes=data["output_hashes"],
                 seeds=data["seeds"],
-                parameters=data["parameters"],
+                policy=data["policy"],
                 assumptions=data["assumptions"],
                 mappings=data["mappings"],
                 warnings=data["warnings"],
@@ -509,7 +509,7 @@ class RunManifest:
             data_hashes=self.data_hashes,
             output_hashes=self.output_hashes,
             seeds=self.seeds,
-            parameters=self.parameters,
+            policy=self.policy,
             assumptions=self.assumptions,
             mappings=self.mappings,
             warnings=self.warnings,

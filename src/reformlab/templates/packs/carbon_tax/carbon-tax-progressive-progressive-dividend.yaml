@@ -13,7 +13,7 @@ year_schedule:
   start_year: 2026
   end_year: 2036
 
-parameters:
+policy:
   rate_schedule:
     # Base EUR per tonne CO2 - effective rate varies by income
     2026: 44.60

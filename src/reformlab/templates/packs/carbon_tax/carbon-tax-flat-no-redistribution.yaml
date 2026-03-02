@@ -12,7 +12,7 @@ year_schedule:
   start_year: 2026
   end_year: 2036
 
-parameters:
+policy:
   rate_schedule:
     # EUR per tonne CO2 - based on EU ETS and French carbon tax trajectory
     2026: 44.60
