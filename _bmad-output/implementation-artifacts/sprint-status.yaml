@@ -88,6 +88,6 @@ development_status:
   9-4-define-population-data-4-entity-format: done
   9-5-openfisca-france-reference-test-suite: done
   # Epic 10
-  epic-10: in-progress
+  epic-10: done
   10-1-rename-parameters-to-policy-on-scenario-types: done
   10-2-infer-policy-type-from-parameters-class: done
