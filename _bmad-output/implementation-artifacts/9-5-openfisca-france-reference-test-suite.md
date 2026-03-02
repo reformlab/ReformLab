@@ -1,7 +1,7 @@
 
 # Story 9.5: OpenFisca-France Reference Test Suite
 
-Status: ready-for-dev
+Status: in-dev
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -47,77 +47,49 @@ However, the existing integration tests are **feature-validation tests** — the
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Define reference test scenarios and compute expected values (AC: #1, #3)
-  - [ ] 1.1 Create a script or notebook cell (NOT committed) to compute reference values using direct OpenFisca-France calls. Pin all reference values against openfisca-france 175.x / openfisca-core 44.2.2. Document the exact OpenFisca-France version in the test class docstring
-  - [ ] 1.2 Compute reference values for single-person scenarios at multiple income levels. Use `salaire_imposable` as the input variable (matching openfisca-france's own test format). Scenarios:
-      - **Zero income:** `salaire_imposable=0` → `irpp=0.0` (no tax)
-      - **Low income (near SMIC):** `salaire_imposable=15000` → expected irpp (decote may apply)
-      - **Mid income:** `salaire_imposable=30000` → known reference (existing tests use ~-1200 for `salaire_de_base=30000`, but `salaire_imposable` is a different variable — recompute)
-      - **Upper bracket:** `salaire_imposable=75000` → known reference
-      - **High income:** `salaire_imposable=100000` → known reference
-  - [ ] 1.3 Compute reference values for family scenarios:
-      - **Married couple, dual income:** `salaire_imposable` 40000+30000 → expected joint irpp
-      - **Family with 1 child:** 2 parents + 1 enfant, demonstrate `quotient_familial` 2.5 parts advantage
-      - **Family with 2 children:** 2 parents + 2 enfants, demonstrate 3 parts
-  - [ ] 1.4 Compute reference values for multi-entity output:
-      - **Single person multi-entity:** `salaire_net` (individu, monthly) + `impot_revenu_restant_a_payer` (foyer_fiscal, yearly) + `revenu_disponible` (menage, yearly) for a 30k earner
-  - [ ] 1.5 Record all reference values in a structured format within the test class docstring, including the exact OpenFisca-France version used, the date computed, and the tolerance
+- [x] Task 1: Define reference test scenarios and compute expected values (AC: #1, #3)
+  - [x] 1.1 Reference values computed analytically from OpenFisca-France 175.0.18 / openfisca-core 44.2.2 YAML parameters (barème, decote, QF plafonnement). Cross-verified against 3 existing test cases (20k→-150, 50k→-6665, couple 30k+25k→-2765) which all match exactly
+  - [x] 1.2 Single-person reference values: 0→0.0, 15000→0.0, 30000→-1588.0, 75000→-13415.0, 100000→-20845.0
+  - [x] 1.3 Family reference values: couple 40k+30k→-5231.0, family 1 child→-3768.0, family 2 children→-3085.0
+  - [x] 1.4 Multi-entity output: range/sign checks rather than pinned values (salaire_net, irpp, revenu_disponible)
+  - [x] 1.5 All values documented in class-level REFERENCE_VALUES dict with version, date, and tolerance
 
-- [ ] Task 2: Implement single-person income tax reference cases via `adapter.compute()` (AC: #1, #3, #4)
-  - [ ] 2.1 Create a new test class `TestAdapterReferenceSinglePerson` in `tests/computation/test_openfisca_integration.py`. Docstring must document: pinned OpenFisca-France version, date of reference value computation, tolerance, and purpose (regression detection)
-  - [ ] 2.2 Add class attribute `ABSOLUTE_ERROR_MARGIN = 0.5` and `REFERENCE_OPENFISCA_FRANCE_VERSION = "175.0.18"` (or current installed version)
-  - [ ] 2.3 For each single-person scenario, create a test method that: (a) constructs a `PopulationData` with a single individu table containing `salaire_imposable`, (b) calls `adapter.compute(population, empty_policy, 2024)`, (c) asserts the `impot_revenu_restant_a_payer` value matches the reference within tolerance, (d) uses a clear assertion message: `f"Expected {expected}, got {actual} (tolerance ±{margin}, ref: OpenFisca-France {version})"`
-  - [ ] 2.4 Add a test for **progressive tax monotonicity**: given the full set of reference income levels, assert that tax increases (becomes more negative) monotonically with income. This is a structural test that catches any reference value errors
-  - [ ] 2.5 Mark all tests with `@pytest.mark.integration`
+- [x] Task 2: Implement single-person income tax reference cases via `adapter.compute()` (AC: #1, #3, #4)
+  - [x] 2.1 Created `TestAdapterReferenceSinglePerson` class with full docstring
+  - [x] 2.2 Added ABSOLUTE_ERROR_MARGIN=0.5, REFERENCE_OPENFISCA_FRANCE_VERSION="175.0.18", REFERENCE_DATE="2026-03-02"
+  - [x] 2.3 Implemented 5 parametric test methods (zero_income, low_income_near_smic, mid_income, upper_bracket, high_income) with structured assertion messages
+  - [x] 2.4 Added progressive_tax_monotonicity structural test
+  - [x] 2.5 All tests marked with @pytest.mark.integration
 
-- [ ] Task 3: Implement family reference cases via `adapter.compute()` with 4-entity format (AC: #1, #3, #4, #5)
-  - [ ] 3.1 Create a new test class `TestAdapterReferenceFamilies` in `tests/computation/test_openfisca_integration.py`. Same docstring and class attributes as Task 2
-  - [ ] 3.2 **Married couple test:** construct a `PopulationData` with membership columns (famille_id, famille_role, foyer_fiscal_id, foyer_fiscal_role, menage_id, menage_role) for 2 persons in 1 foyer_fiscal. Use `salaire_imposable` as input. Assert joint irpp matches reference value. ⚠️ This tests the FULL 4-entity pipeline through `adapter.compute()`
-  - [ ] 3.3 **Family with child test:** 3 persons (2 parents + 1 enfant with age=10) with membership columns expressing correct roles in all 3 group entities. The child is `personnes_a_charge` in foyer_fiscal, `enfants` in famille and menage. Assert joint irpp with 2.5-part quotient
-  - [ ] 3.4 **Family with 2 children test:** 4 persons (2 parents + 2 enfants). Assert quotient familial advantage: family pays less tax than a couple with same total income
-  - [ ] 3.5 **Quotient familial structural test:** assert that a married couple with children pays LESS tax than a couple without children (when total income is the same). This is a structural invariant of French tax law
+- [x] Task 3: Implement family reference cases via `adapter.compute()` with 4-entity format (AC: #1, #3, #4, #5)
+  - [x] 3.1 Created `TestAdapterReferenceFamilies` class with full docstring and class attributes
+  - [x] 3.2 Married couple test: 2 persons with membership columns, joint irpp vs reference
+  - [x] 3.3 Family with 1 child: 3 persons, child as personnes_a_charge/enfants, 2.5 parts QF
+  - [x] 3.4 Family with 2 children: 4 persons, 3 parts QF
+  - [x] 3.5 Quotient familial structural invariant: family < couple at same income
 
-- [ ] Task 4: Implement 4-entity format cross-validation (AC: #5)
-  - [ ] 4.1 Create a test class `TestFourEntityCrossValidation` (or add to an existing appropriate class)
-  - [ ] 4.2 **Cross-validation test:** for the married couple scenario, run `adapter.compute()` twice: once with the 4-entity format (membership columns on person table) and once with a single-person-per-household setup (auto-created entities, legacy path). For the single-person case, run 2 separate single-person computes and compare the SUM of individual irpp values to the couple's joint irpp. Document that the difference demonstrates the quotient familial benefit (couple pays LESS than sum of singles)
-  - [ ] 4.3 **Alternative cross-validation**: For a SINGLE person, run `adapter.compute()` both with and without membership columns. Assert results are identical within tolerance. This directly validates that the 4-entity path produces the same result as the auto-creation path for the simplest case
-  - [ ] 4.4 ⚠️ Do NOT call `_build_simulation()` directly in cross-validation tests — the purpose is to validate the adapter pipeline, not to replicate the existing `TestOpenFiscaFranceReferenceCases` tests (which already use `_build_simulation()`)
+- [x] Task 4: Implement 4-entity format cross-validation (AC: #5)
+  - [x] 4.1 Created `TestFourEntityCrossValidation` class
+  - [x] 4.2 Couple vs two singles QF benefit cross-validation (80k+0k asymmetric)
+  - [x] 4.3 Single person with/without membership columns → identical results
+  - [x] 4.4 All tests use adapter.compute() exclusively
 
-- [ ] Task 5: Implement multi-entity output reference cases (AC: #4, #6)
-  - [ ] 5.1 Create a new test class `TestAdapterReferenceMultiEntity`
-  - [ ] 5.2 **Single-person multi-entity test:** Use adapter with `output_variables=("salaire_net", "impot_revenu_restant_a_payer", "revenu_disponible")`. Construct a single-person population (30k salary). Assert:
-      - `entity_tables` contains 3 entity keys: `"individus"`, `"foyers_fiscaux"`, `"menages"`
-      - `entity_tables["individus"].num_rows == 1` (1 person)
-      - `entity_tables["foyers_fiscaux"].num_rows == 1` (1 foyer)
-      - `entity_tables["menages"].num_rows == 1` (1 menage)
-      - `salaire_net > 0` and in reasonable range (20k-30k for 30k gross)
-      - `impot_revenu_restant_a_payer < 0` (tax owed)
-      - `revenu_disponible > 0` (positive disposable income)
-      - Metadata `calculation_methods` shows `"salaire_net": "calculate_add"` and `"impot_revenu_restant_a_payer": "calculate"`
-  - [ ] 5.3 **Married couple multi-entity test:** Use adapter with same 3 output variables. Construct couple via 4-entity format. Assert:
-      - `entity_tables["individus"].num_rows == 2` (2 persons)
-      - `entity_tables["foyers_fiscaux"].num_rows == 1` (1 foyer — joint filing)
-      - `entity_tables["menages"].num_rows == 1` (1 menage)
-      - Correct per-entity variable assignment (salaire_net on individus, irpp on foyers_fiscaux, revenu_disponible on menages)
-  - [ ] 5.4 **Two independent households multi-entity test:** 2 persons in separate foyers/menages. Assert all entity tables have 2 rows
+- [x] Task 5: Implement multi-entity output reference cases (AC: #4, #6)
+  - [x] 5.1 Created `TestAdapterReferenceMultiEntity` class
+  - [x] 5.2 Single-person multi-entity: 3 entity keys, array lengths, value ranges, calculation_methods metadata
+  - [x] 5.3 Married couple multi-entity: 2 individus, 1 foyer, 1 menage, correct variable assignment
+  - [x] 5.4 Two independent households: all entity tables have 2 rows, ordering invariants
 
-- [ ] Task 6: Add regression detection metadata (AC: #3)
-  - [ ] 6.1 Add a shared module-scope fixture `reference_adapter` with the multi-entity output variable configuration, cached like the existing `adapter` and `multi_entity_adapter` fixtures
-  - [ ] 6.2 Add a test `test_openfisca_france_version_documented` that asserts `adapter.version()` returns a version starting with `"44."` (openfisca-core 44.x). If the core version changes, this test forces explicit review of all reference values. Document in the docstring that this test is intentionally version-pinned for regression detection
-  - [ ] 6.3 Ensure ALL assertion messages in reference tests include: (a) expected value, (b) actual value, (c) tolerance, (d) a note pointing to the reference version. Use a consistent format:
-      ```python
-      assert abs(float(actual) - expected) <= self.ABSOLUTE_ERROR_MARGIN, (
-          f"Expected {expected}, got {actual} "
-          f"(tolerance ±{self.ABSOLUTE_ERROR_MARGIN}, "
-          f"ref: OpenFisca-France {self.REFERENCE_OPENFISCA_FRANCE_VERSION})"
-      )
-      ```
-  - [ ] 6.4 Add a class-level constant `REFERENCE_DATE = "2026-03-01"` documenting when reference values were computed. This helps during version upgrades to understand how stale the reference values are
+- [x] Task 6: Add regression detection metadata (AC: #3)
+  - [x] 6.1 Added `reference_irpp_adapter` and `reference_multi_entity_adapter` module-scope fixtures
+  - [x] 6.2 Added `test_openfisca_core_version_documented` (44.x) and `test_openfisca_france_version_documented` (175.x) version-pinned tests
+  - [x] 6.3 All assertion messages follow structured format: expected, actual, tolerance, ref version
+  - [x] 6.4 REFERENCE_DATE = "2026-03-02" on all reference test classes
 
 - [ ] Task 7: Verify backward compatibility (AC: #7)
   - [ ] 7.1 Run ALL existing integration tests unchanged: `uv run pytest tests/computation/test_openfisca_integration.py -m integration`
-  - [ ] 7.2 Verify no imports added or removed that could affect other test classes
-  - [ ] 7.3 Verify the existing `TestOpenFiscaFranceReferenceCases` class is NOT modified — it remains the direct-simulation reference. Story 9.5 adds the adapter-pipeline reference
+  - [x] 7.2 No imports added or removed — all new code uses existing imports
+  - [x] 7.3 Existing `TestOpenFiscaFranceReferenceCases` class NOT modified
 
 - [ ] Task 8: Run quality gates (all ACs)
   - [ ] 8.1 `uv run ruff check src/ tests/`
@@ -340,9 +312,13 @@ class TestAdapterReferenceSinglePerson:
 
 ### Agent Model Used
 
-Claude Opus 4.6 (via create-story workflow)
+Claude Opus 4.6 (via create-story and dev-story workflows)
 
 ### Debug Log References
+
+- Sandbox blocked all `uv run` and Python execution commands throughout implementation
+- Reference values computed analytically from YAML parameter files instead of running OpenFisca directly
+- Cross-verified analytical values against 3 existing test data points (all matched exactly)
 
 ### Completion Notes List
 
@@ -356,7 +332,22 @@ Claude Opus 4.6 (via create-story workflow)
 - Regression detection scaffolding designed: version pinning, reference date, structured assertion messages with expected/actual/tolerance/version
 - Cross-validation strategy defined: 4-entity format vs legacy path for equivalent populations
 - Edge cases documented: zero income, decote threshold, child age specification, quotient familial plafonnement
+- **Implementation complete (Tasks 1-6):** 5 new test classes with 17 test methods added to test_openfisca_integration.py (828 lines)
+- **Reference values analytically computed** from 2024 barème (11497/29315/83823/180294), 10% professional abattement (min 495, max 14171), decote (seuil_celib=889, seuil_couple=1470, taux=0.4525), and quotient familial (cap 1791/demi-part)
+- **Pending validation:** Tasks 7-8 (test execution, quality gates) require manual execution due to sandbox limitations. Reference values may need adjustment within ±0.5 tolerance if OpenFisca's internal rounding differs from analytical computation
+
+### Change Log
+
+- `tests/computation/test_openfisca_integration.py` — Added 828 lines:
+  - Module docstring updated (added Story 9.5 reference)
+  - `reference_irpp_adapter()` fixture (module scope, irpp-only output)
+  - `reference_multi_entity_adapter()` fixture (module scope, 3 output variables)
+  - `TestAdapterReferenceSinglePerson` — 6 test methods (zero/low/mid/upper/high income + monotonicity)
+  - `TestAdapterReferenceFamilies` — 4 test methods (couple, 1 child, 2 children, QF structural invariant)
+  - `TestFourEntityCrossValidation` — 2 test methods (single cross-val, couple vs singles QF benefit)
+  - `TestAdapterReferenceMultiEntity` — 3 test methods (single/couple/independent multi-entity output)
+  - `TestRegressionDetectionMetadata` — 2 test methods (core version, france version)
 
 ### File List
 
-- `tests/computation/test_openfisca_integration.py` — modify (add `TestAdapterReferenceSinglePerson`, `TestAdapterReferenceFamilies`, `TestFourEntityCrossValidation`, `TestAdapterReferenceMultiEntity` test classes; add `reference_adapter` and `reference_irpp_adapter` module-scope fixtures)
+- `tests/computation/test_openfisca_integration.py` — modified (added 5 test classes, 2 fixtures, 17 test methods, 828 lines)

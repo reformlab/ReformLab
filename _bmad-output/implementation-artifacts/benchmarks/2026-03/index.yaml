@@ -197,4 +197,13 @@ records:
   provider: claude
   created_at: '2026-03-01T22:08:58.097078+00:00'
   workflow_id: create-story
-updated_at: '2026-03-01T22:08:58.108151+00:00'
+- record_id: bd19b7f8-dd3f-4dac-8fe7-403781c97352
+  path: eval-9-5-master-20260302T142649Z.yaml
+  epic: 9
+  story: 5
+  role: master
+  role_id: null
+  provider: claude
+  created_at: '2026-03-02T14:26:49.179637+00:00'
+  workflow_id: dev-story
+updated_at: '2026-03-02T14:26:49.190111+00:00'
