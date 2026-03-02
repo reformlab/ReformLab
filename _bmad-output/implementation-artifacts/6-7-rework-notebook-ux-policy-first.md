@@ -1,6 +1,6 @@
 # Story 6.7: Rework Notebook UX — Policy-First Design
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -36,78 +36,78 @@ so that I **understand the policy abstraction** well enough to define my own pol
 
 ### Quickstart Notebook Rework (`notebooks/quickstart.ipynb`)
 
-- [ ] Task 1: Rewrite Section 1 — "Define a Policy" (AC: #1, #2, #4)
-  - [ ] 1.1: Replace adapter-first intro with markdown cell explaining policy objects and the `PolicyParameters` → `CarbonTaxParameters` hierarchy (include Mermaid class diagram)
-  - [ ] 1.2: Add code cell instantiating `CarbonTaxParameters(rate_schedule={2025: 44.0}, ...)` with print showing all fields
-  - [ ] 1.3: Add markdown + code cell wrapping policy in `BaselineScenario(name=..., parameters=policy, year_schedule=...)`
-  - [ ] 1.4: Add code cell showing the explicit bridge from typed policy → `ScenarioConfig` → `RunConfig` with inline comments explaining each mapping (use the canonical bridge pattern from Dev Notes below — reuse this exact pattern in all bridge cells across both notebooks)
+- [x] Task 1: Rewrite Section 1 — "Define a Policy" (AC: #1, #2, #4)
+  - [x] 1.1: Replace adapter-first intro with markdown cell explaining policy objects and the `PolicyParameters` → `CarbonTaxParameters` hierarchy (include Mermaid class diagram)
+  - [x] 1.2: Add code cell instantiating `CarbonTaxParameters(rate_schedule={2025: 44.0}, ...)` with print showing all fields
+  - [x] 1.3: Add markdown + code cell wrapping policy in `BaselineScenario(name=..., parameters=policy, year_schedule=...)`
+  - [x] 1.4: Add code cell showing the explicit bridge from typed policy → `ScenarioConfig` → `RunConfig` with inline comments explaining each mapping (use the canonical bridge pattern from Dev Notes below — reuse this exact pattern in all bridge cells across both notebooks)
 
-- [ ] Task 2: Rewrite Section 2 — "Load Population Data" (AC: #6)
-  - [ ] 2.1: Keep existing CSV load + `show()` logic, update markdown framing to reference the policy defined above
+- [x] Task 2: Rewrite Section 2 — "Load Population Data" (AC: #6)
+  - [x] 2.1: Keep existing CSV load + `show()` logic, update markdown framing to reference the policy defined above
 
-- [ ] Task 3: Rewrite Section 3 — "Run the Simulation" (AC: #3, #6)
-  - [ ] 3.1: Single markdown cell explaining the adapter pattern in one paragraph: "In production → OpenFisca, here → demo adapter, formula: `carbon_tax = emissions × (rate / 44.0)`"
-  - [ ] 3.2: Single code cell creating demo adapter (using `create_quickstart_adapter()` — but with a comment showing the formula it applies, not baking the rate into it as a policy concept)
-  - [ ] 3.3: Code cell calling `run_scenario(config, adapter=adapter)` and showing result. Note: `run_scenario()` full signature is `run_scenario(config: RunConfig, adapter: ComputationAdapter, *, steps: list[OrchestratorStep] | None = None, initial_state: dict | None = None) -> SimulationResult`. The quickstart uses only `config` + `adapter`; the advanced notebook's vintage section also uses `steps=` for `VintageTransitionStep`.
-  - [ ] 3.4: Code cell inspecting `result.panel_output.table`
+- [x] Task 3: Rewrite Section 3 — "Run the Simulation" (AC: #3, #6)
+  - [x] 3.1: Single markdown cell explaining the adapter pattern in one paragraph: "In production → OpenFisca, here → demo adapter, formula: `carbon_tax = emissions × (rate / 44.0)`"
+  - [x] 3.2: Single code cell creating demo adapter (using `create_quickstart_adapter()` — but with a comment showing the formula it applies, not baking the rate into it as a policy concept)
+  - [x] 3.3: Code cell calling `run_scenario(config, adapter=adapter)` and showing result. Note: `run_scenario()` full signature is `run_scenario(config: RunConfig, adapter: ComputationAdapter, *, steps: list[OrchestratorStep] | None = None, initial_state: dict | None = None) -> SimulationResult`. The quickstart uses only `config` + `adapter`; the advanced notebook's vintage section also uses `steps=` for `VintageTransitionStep`.
+  - [x] 3.4: Code cell inspecting `result.panel_output.table`
 
-- [ ] Task 4: Rewrite Section 4 — "Distributional Analysis" (AC: #6)
-  - [ ] 4.1: Keep existing indicator computation and decile plot, update narrative to reference the policy object
+- [x] Task 4: Rewrite Section 4 — "Distributional Analysis" (AC: #6)
+  - [x] 4.1: Keep existing indicator computation and decile plot, update narrative to reference the policy object
 
-- [ ] Task 5: Rewrite Section 5 — "Modify and Compare" (AC: #1, #4, #6)
-  - [ ] 5.1: Define a new `CarbonTaxParameters(rate_schedule={2025: 100.0})` — user sees modifying a typed object, not a raw dict
-  - [ ] 5.2: Wrap in new scenario, bridge to `ScenarioConfig`, run, plot comparison
-  - [ ] 5.3: Side-by-side chart using existing `SimulationResult.plot_comparison()` method (defined at `src/reformlab/interfaces/api.py` lines 332-379 — do NOT reimplement)
+- [x] Task 5: Rewrite Section 5 — "Modify and Compare" (AC: #1, #4, #6)
+  - [x] 5.1: Define a new `CarbonTaxParameters(rate_schedule={2025: 100.0})` — user sees modifying a typed object, not a raw dict
+  - [x] 5.2: Wrap in new scenario, bridge to `ScenarioConfig`, run, plot comparison
+  - [x] 5.3: Side-by-side chart using existing `SimulationResult.plot_comparison()` method (defined at `src/reformlab/interfaces/api.py` lines 332-379 — do NOT reimplement)
 
-- [ ] Task 6: Rewrite Section 6 — "Reproducibility" (AC: #6)
-  - [ ] 6.1: Keep manifest inspection and JSON export, trim verbosity
+- [x] Task 6: Rewrite Section 6 — "Reproducibility" (AC: #6)
+  - [x] 6.1: Keep manifest inspection and JSON export, trim verbosity
 
-- [ ] Task 7: Rewrite Section 7 — "Export and Next Steps" (AC: #10, #6)
-  - [ ] 7.1: Keep CSV/Parquet export cells and manifest export
-  - [ ] 7.2: Update "Next Steps" markdown to mention the 4 policy types (`CarbonTaxParameters`, `SubsidyParameters`, `RebateParameters`, `FeebateParameters`) and tease "subclass `PolicyParameters` in the advanced notebook"
+- [x] Task 7: Rewrite Section 7 — "Export and Next Steps" (AC: #10, #6)
+  - [x] 7.1: Keep CSV/Parquet export cells and manifest export
+  - [x] 7.2: Update "Next Steps" markdown to mention the 4 policy types (`CarbonTaxParameters`, `SubsidyParameters`, `RebateParameters`, `FeebateParameters`) and tease "subclass `PolicyParameters` in the advanced notebook"
 
 ### Advanced Notebook Rework (`notebooks/advanced.ipynb`)
 
-- [ ] Task 8: Rewrite Section 1 — "Multi-Year Escalating Policy" (AC: #4, #7)
-  - [ ] 8.1: Define `CarbonTaxParameters(rate_schedule={2025: 50.0, 2026: 60.0, ..., 2034: 100.0})` as typed object
-  - [ ] 8.2: Wrap in `BaselineScenario` with 2025-2034 year schedule
-  - [ ] 8.3: Bridge to `ScenarioConfig` → `RunConfig`, run, show panel, plot yearly progression
+- [x] Task 8: Rewrite Section 1 — "Multi-Year Escalating Policy" (AC: #4, #7)
+  - [x] 8.1: Define `CarbonTaxParameters(rate_schedule={2025: 50.0, 2026: 60.0, ..., 2034: 100.0})` as typed object
+  - [x] 8.2: Wrap in `BaselineScenario` with 2025-2034 year schedule
+  - [x] 8.3: Bridge to `ScenarioConfig` → `RunConfig`, run, show panel, plot yearly progression
 
-- [ ] Task 9: Rewrite Section 2 — "Vintage Tracking" (AC: #7)
-  - [ ] 9.1: Keep `VintageConfig`, `VintageTransitionStep`, initial fleet setup
-  - [ ] 9.2: Update narrative to reference the policy object from Section 1, not adapter config
-  - [ ] 9.3: Keep fleet evolution table and stacked area chart
+- [x] Task 9: Rewrite Section 2 — "Vintage Tracking" (AC: #7)
+  - [x] 9.1: Keep `VintageConfig`, `VintageTransitionStep`, initial fleet setup
+  - [x] 9.2: Update narrative to reference the policy object from Section 1, not adapter config
+  - [x] 9.3: Keep fleet evolution table and stacked area chart
 
-- [ ] Task 10: Rewrite Section 3 — "Baseline vs. Reform Comparison" (AC: #7)
-  - [ ] 10.1: Define baseline as `CarbonTaxParameters(rate_schedule={y: 44.0 for y in range(2025, 2035)})` — typed object
-  - [ ] 10.2: Run both scenarios, compute distributional + fiscal indicators, plot comparison
-  - [ ] 10.3: Keep fiscal comparison and per-year delta sections
+- [x] Task 10: Rewrite Section 3 — "Baseline vs. Reform Comparison" (AC: #7)
+  - [x] 10.1: Define baseline as `CarbonTaxParameters(rate_schedule={y: 44.0 for y in range(2025, 2035)})` — typed object
+  - [x] 10.2: Run both scenarios, compute distributional + fiscal indicators, plot comparison
+  - [x] 10.3: Keep fiscal comparison and per-year delta sections
 
-- [ ] Task 11: **CREATE** new Section 4 — "Build Your Own Policy Type" (AC: #5, #7). This section does NOT exist in the current advanced notebook — it must be inserted as a new section between the current comparison section and the lineage section. All cells below are net-new.
-  - [ ] 11.1: Markdown cell explaining that all built-in policies subclass `PolicyParameters`, and users can do the same
-  - [ ] 11.2: Code cell defining a custom `SimpleFeebateParameters(PolicyParameters)` with `pivot_point`, `fee_rate`, `rebate_rate` fields
-  - [ ] 11.3: Wrap in `BaselineScenario`, bridge to `ScenarioConfig`, create a demo adapter that handles the feebate formula
-  - [ ] 11.4: Run and compare with carbon tax scenario from Section 1
-  - [ ] 11.5: Markdown cell summarizing the pattern: "subclass → instantiate → wrap in scenario → run"
+- [x] Task 11: **CREATE** new Section 4 — "Build Your Own Policy Type" (AC: #5, #7). This section does NOT exist in the current advanced notebook — it must be inserted as a new section between the current comparison section and the lineage section. All cells below are net-new.
+  - [x] 11.1: Markdown cell explaining that all built-in policies subclass `PolicyParameters`, and users can do the same
+  - [x] 11.2: Code cell defining a custom `SimpleFeebateParameters(PolicyParameters)` with `pivot_point`, `fee_rate`, `rebate_rate` fields
+  - [x] 11.3: Wrap in `BaselineScenario`, bridge to `ScenarioConfig`, create a demo adapter that handles the feebate formula
+  - [x] 11.4: Run and compare with carbon tax scenario from Section 1
+  - [x] 11.5: Markdown cell summarizing the pattern: "subclass → instantiate → wrap in scenario → run"
 
-- [ ] Task 12: Rewrite Section 5 — "Lineage and Reproducibility" (AC: #7)
-  - [ ] 12.1: Keep manifest inspection, cross-scenario lineage, deterministic rerun verification
-  - [ ] 12.2: Update narrative to reference typed policy objects
+- [x] Task 12: Rewrite Section 5 — "Lineage and Reproducibility" (AC: #7)
+  - [x] 12.1: Keep manifest inspection, cross-scenario lineage, deterministic rerun verification
+  - [x] 12.2: Update narrative to reference typed policy objects
 
-- [ ] Task 13: Rewrite Section 6 — "Exports and Next Steps" (AC: #7, #10)
-  - [ ] 13.1: Keep Parquet/CSV export cells, comparison table export, round-trip verification
-  - [ ] 13.2: Update "Next Steps" to reference custom policy types as a demonstrated capability
+- [x] Task 13: Rewrite Section 6 — "Exports and Next Steps" (AC: #7, #10)
+  - [x] 13.1: Keep Parquet/CSV export cells, comparison table export, round-trip verification
+  - [x] 13.2: Update "Next Steps" to reference custom policy types as a demonstrated capability
 
 ### Cross-Cutting
 
-- [ ] Task 14: Verify CI (AC: #9)
-  - [ ] 14.1: Verify `pyproject.toml` pytest config — `testpaths` is currently `["tests"]` only. Notebook tests must be run explicitly via `pytest --nbmake notebooks/quickstart.ipynb notebooks/advanced.ipynb` (not bare `pytest`). Confirm this command is documented or add a `[tool.pytest.ini_options]` marker/alias if desired.
-  - [ ] 14.2: Run `pytest --nbmake notebooks/quickstart.ipynb notebooks/advanced.ipynb` and fix any failures
-  - [ ] 14.3: Ensure all cells execute without errors in clean kernel restart
+- [x] Task 14: Verify CI (AC: #9)
+  - [x] 14.1: Verify `pyproject.toml` pytest config — `testpaths` is currently `["tests"]` only. Notebook tests must be run explicitly via `pytest --nbmake notebooks/quickstart.ipynb notebooks/advanced.ipynb` (not bare `pytest`). Confirm this command is documented or add a `[tool.pytest.ini_options]` marker/alias if desired.
+  - [x] 14.2: Run `pytest --nbmake notebooks/quickstart.ipynb notebooks/advanced.ipynb` and fix any failures
+  - [x] 14.3: Ensure all cells execute without errors in clean kernel restart
 
-- [ ] Task 15: Verify no API changes (AC: #8)
-  - [ ] 15.1: Run full test suite `pytest tests/` to confirm no regressions
-  - [ ] 15.2: Verify no files changed under `src/reformlab/`
+- [x] Task 15: Verify no API changes (AC: #8)
+  - [x] 15.1: Run full test suite `pytest tests/` to confirm no regressions
+  - [x] 15.2: Verify no files changed under `src/reformlab/`
 
 ## Dev Notes
 
@@ -272,8 +272,48 @@ This story was added post-retrospective via a Party Mode UX analysis session (20
 
 ### Agent Model Used
 
+Claude Opus 4.6
+
 ### Debug Log References
+
+- nbmake tests passed on both notebooks (quickstart: 4.54s, advanced: 4.78s)
+- Full test suite: 1521 passed, 0 failed (18.50s)
+- Existing notebook structural tests updated to match new section headings
+- No files changed under `src/reformlab/` (verified via `git diff`)
 
 ### Completion Notes List
 
+- Quickstart notebook rewritten with policy-first flow: Define → Load → Run → Analyze → Modify/Compare → Reproducibility → Export/Next Steps
+- First code interaction is now `CarbonTaxParameters` instantiation (AC-1), with Mermaid class diagram showing inheritance hierarchy (AC-2)
+- Adapter introduced in Section 3 as a single-paragraph explanation with transparent formula (AC-3)
+- All `ScenarioConfig` construction uses explicit bridge pattern from typed policy objects (AC-4)
+- Advanced notebook Section 4 created from scratch: `SimpleFeebateParameters` custom policy type, wrap in scenario, run, compare (AC-5)
+- Quickstart narrative: sections 1-7 match AC-6 exactly
+- Advanced narrative: sections 1-6 match AC-7 exactly (Multi-year → Vintage → Compare → Custom policy → Lineage → Exports)
+- No API changes: zero modifications to `src/reformlab/` (AC-8)
+- Both notebooks execute cleanly with `pytest --nbmake` (AC-9)
+- Export section preserved in quickstart with CSV/Parquet/manifest export (AC-10)
+- Notebook structural tests updated in `tests/notebooks/` to reflect new section headings
+
 ### File List
+
+- `notebooks/quickstart.ipynb` — Rewritten: policy-first flow, 28 cells
+- `notebooks/advanced.ipynb` — Rewritten: policy-first flow + new Section 4 ("Build Your Own Policy Type"), 48 cells
+- `tests/notebooks/test_quickstart_notebook.py` — Updated: section heading assertions to match story 6.7 structure
+- `tests/notebooks/test_advanced_notebook.py` — Updated: section heading assertions to match story 6.7 structure
+
+### Change Log
+
+- 2026-03-02: Story 6.7 implemented — Reworked both notebooks to policy-first design, added custom policy creation section to advanced notebook, updated structural tests
+- 2026-03-02: Code review fixes applied — Added population_path to advanced notebook, added adapter transparency disclaimers, fixed feebate time period mismatch, renamed Section 6, added POPULATION_PATH comment in quickstart
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-02
+
+- **Reviewer:** AI Code Review Engine
+- **Evidence Score:** 6.2 → MAJOR REWORK
+- **Issues Found:** 11
+- **Issues Fixed:** 7
+- **Action Items Created:** 0
+- **Post-Fix Verdict:** APPROVED (all CRITICAL and HIGH issues resolved)
