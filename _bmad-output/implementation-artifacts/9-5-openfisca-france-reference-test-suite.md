@@ -98,6 +98,8 @@ However, the existing integration tests are **feature-validation tests** — the
   - [ ] 8.4 `uv run pytest tests/computation/ -m "not integration"` (all unit tests still pass)
   - [ ] 8.5 `uv run pytest tests/orchestrator/` (no orchestrator regressions)
 
+**Note (synthesis agent, 2026-03-02):** Tasks 7-8 require manual execution — see synthesis completion notes below.
+
 ## Dev Notes
 
 ### This is a TEST-ONLY Story
@@ -335,19 +337,21 @@ Claude Opus 4.6 (via create-story and dev-story workflows)
 - **Implementation complete (Tasks 1-6):** 5 new test classes with 17 test methods added to test_openfisca_integration.py (828 lines)
 - **Reference values analytically computed** from 2024 barème (11497/29315/83823/180294), 10% professional abattement (min 495, max 14171), decote (seuil_celib=889, seuil_couple=1470, taux=0.4525), and quotient familial (cap 1791/demi-part)
 - **Pending validation:** Tasks 7-8 (test execution, quality gates) require manual execution due to sandbox limitations. Reference values may need adjustment within ±0.5 tolerance if OpenFisca's internal rounding differs from analytical computation
+- **Code review synthesis (2026-03-02):** Applied 4 fixes from 2-reviewer synthesis: (1) extracted `_assert_irpp` to module-level function (eliminates DRY violation between TestAdapterReferenceSinglePerson and TestAdapterReferenceFamilies; also adds REFERENCE_DATE to AC-3 failure messages); (2) converted `_build_single_person_population` to `@staticmethod`; (3) tightened version pin from `startswith("175.")` to `startswith("175.0.")`; (4) replaced inline OpenFiscaApiAdapter construction in TestFourEntityCrossValidation with module-scoped `reference_irpp_adapter` fixture (eliminates 3 extra TBS loads per test run).
 
 ### Change Log
 
-- `tests/computation/test_openfisca_integration.py` — Added 828 lines:
+- `tests/computation/test_openfisca_integration.py` — Added 828 lines (Tasks 1-6), then synthesis fixes:
   - Module docstring updated (added Story 9.5 reference)
+  - `_assert_irpp()` module-level helper function (Story 9.5 section header; replaces duplicated instance methods; adds REFERENCE_DATE to AC-3 failure messages)
   - `reference_irpp_adapter()` fixture (module scope, irpp-only output)
   - `reference_multi_entity_adapter()` fixture (module scope, 3 output variables)
-  - `TestAdapterReferenceSinglePerson` — 6 test methods (zero/low/mid/upper/high income + monotonicity)
-  - `TestAdapterReferenceFamilies` — 4 test methods (couple, 1 child, 2 children, QF structural invariant)
-  - `TestFourEntityCrossValidation` — 2 test methods (single cross-val, couple vs singles QF benefit)
+  - `TestAdapterReferenceSinglePerson` — 6 test methods (zero/low/mid/upper/high income + monotonicity); `_build_single_person_population` converted to `@staticmethod`
+  - `TestAdapterReferenceFamilies` — 4 test methods (couple, 1 child, 2 children, QF structural invariant); `_assert_irpp` instance method removed (replaced by module-level function)
+  - `TestFourEntityCrossValidation` — 2 test methods (single cross-val, couple vs singles QF benefit); inline adapter constructions replaced with `reference_irpp_adapter` fixture
   - `TestAdapterReferenceMultiEntity` — 3 test methods (single/couple/independent multi-entity output)
-  - `TestRegressionDetectionMetadata` — 2 test methods (core version, france version)
+  - `TestRegressionDetectionMetadata` — 2 test methods; france version pin tightened from `"175."` to `"175.0."`
 
 ### File List
 
-- `tests/computation/test_openfisca_integration.py` — modified (added 5 test classes, 2 fixtures, 17 test methods, 828 lines)
+- `tests/computation/test_openfisca_integration.py` — modified (added 5 test classes, 2 fixtures, 17 test methods, 828 lines; synthesis fixes applied 2026-03-02)

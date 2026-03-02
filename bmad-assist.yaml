@@ -11,9 +11,7 @@ timeouts:
   default: 600
   retries: 2
   create_story: 900
-  validate_story_synthesis: 900
   dev_story: 3600
-  code_review_synthesis: 1200
 
 providers:
   master:
@@ -35,23 +33,13 @@ phase_models:
     provider: claude
     model: opus
 
-  # --- Validation phases: Sonnet + Haiku (2 required) ---
+  # --- Validation phases: Sonnet (single reviewer) ---
   validate_story:
-    - provider: claude
-      model: sonnet
-    - provider: claude
-      model: haiku
-  validate_story_synthesis:
     provider: claude
     model: sonnet
 
-  # --- Review phases: Sonnet + Haiku (2 required) ---
+  # --- Review phases: Sonnet (single reviewer) ---
   code_review:
-    - provider: claude
-      model: sonnet
-    - provider: claude
-      model: haiku
-  code_review_synthesis:
     provider: claude
     model: sonnet
 
@@ -67,10 +55,8 @@ compiler:
     budgets:
       create_story: 30000    # was 60000 — story creation needs less code
       validate_story: 10000  # was 15000
-      validate_story_synthesis: 10000  # was 15000
       dev_story: 15000       # unchanged — dev needs code context most
       code_review: 20000     # was 30000
-      code_review_synthesis: 15000  # was 30000
       default: 15000         # was 30000
 
   strategic_context:
@@ -91,10 +77,8 @@ loop:
   story:
     - create_story
     - validate_story
-    - validate_story_synthesis
     - dev_story
     - code_review
-    - code_review_synthesis
   epic_teardown:
     - retrospective
 

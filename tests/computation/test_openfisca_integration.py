@@ -1300,6 +1300,29 @@ class TestFourEntityPopulationFormat:
 # ===========================================================================
 
 
+def _assert_irpp(
+    actual: float,
+    expected: float,
+    scenario: str,
+    *,
+    margin: float,
+    version: str,
+    date: str,
+) -> None:
+    """Assert irpp matches reference within tolerance with full regression context.
+
+    Story 9.5 AC-3: Failure message includes expected, actual, tolerance, the
+    pinned OpenFisca-France version, and the reference computation date — all
+    information needed to decide whether a change is a regression or an
+    expected parameter update.
+    """
+    assert abs(actual - expected) <= margin, (
+        f"{scenario}: Expected {expected}, got {actual} "
+        f"(tolerance ±{margin}, "
+        f"ref: OpenFisca-France {version} on {date})"
+    )
+
+
 @pytest.fixture(scope="module")
 def reference_irpp_adapter() -> OpenFiscaApiAdapter:
     """Adapter for IRPP reference tests via adapter.compute().
@@ -1372,9 +1395,8 @@ class TestAdapterReferenceSinglePerson:
         100000.0: -20845.0, # High income → 41% marginal, no decote
     }
 
-    def _build_single_person_population(
-        self, salaire_imposable: float,
-    ) -> PopulationData:
+    @staticmethod
+    def _build_single_person_population(salaire_imposable: float) -> PopulationData:
         """Build a single-person PopulationData with salaire_imposable."""
         return PopulationData(
             tables={
@@ -1382,16 +1404,6 @@ class TestAdapterReferenceSinglePerson:
                     "salaire_imposable": pa.array([salaire_imposable]),
                 }),
             },
-        )
-
-    def _assert_irpp(
-        self, actual: float, expected: float, scenario: str,
-    ) -> None:
-        """Assert irpp matches reference within tolerance with diagnostic message."""
-        assert abs(actual - expected) <= self.ABSOLUTE_ERROR_MARGIN, (
-            f"{scenario}: Expected {expected}, got {actual} "
-            f"(tolerance ±{self.ABSOLUTE_ERROR_MARGIN}, "
-            f"ref: OpenFisca-France {self.REFERENCE_OPENFISCA_FRANCE_VERSION})"
         )
 
     def test_zero_income(
@@ -1406,7 +1418,12 @@ class TestAdapterReferenceSinglePerson:
         irpp = float(result.output_fields.column(
             "impot_revenu_restant_a_payer"
         )[0].as_py())
-        self._assert_irpp(irpp, self.REFERENCE_VALUES[0.0], "zero income")
+        _assert_irpp(
+            irpp, self.REFERENCE_VALUES[0.0], "zero income",
+            margin=self.ABSOLUTE_ERROR_MARGIN,
+            version=self.REFERENCE_OPENFISCA_FRANCE_VERSION,
+            date=self.REFERENCE_DATE,
+        )
 
     def test_low_income_near_smic(
         self, reference_irpp_adapter: OpenFiscaApiAdapter,
@@ -1420,7 +1437,12 @@ class TestAdapterReferenceSinglePerson:
         irpp = float(result.output_fields.column(
             "impot_revenu_restant_a_payer"
         )[0].as_py())
-        self._assert_irpp(irpp, self.REFERENCE_VALUES[15000.0], "low income 15k")
+        _assert_irpp(
+            irpp, self.REFERENCE_VALUES[15000.0], "low income 15k",
+            margin=self.ABSOLUTE_ERROR_MARGIN,
+            version=self.REFERENCE_OPENFISCA_FRANCE_VERSION,
+            date=self.REFERENCE_DATE,
+        )
 
     def test_mid_income(
         self, reference_irpp_adapter: OpenFiscaApiAdapter,
@@ -1434,7 +1456,12 @@ class TestAdapterReferenceSinglePerson:
         irpp = float(result.output_fields.column(
             "impot_revenu_restant_a_payer"
         )[0].as_py())
-        self._assert_irpp(irpp, self.REFERENCE_VALUES[30000.0], "mid income 30k")
+        _assert_irpp(
+            irpp, self.REFERENCE_VALUES[30000.0], "mid income 30k",
+            margin=self.ABSOLUTE_ERROR_MARGIN,
+            version=self.REFERENCE_OPENFISCA_FRANCE_VERSION,
+            date=self.REFERENCE_DATE,
+        )
 
     def test_upper_bracket(
         self, reference_irpp_adapter: OpenFiscaApiAdapter,
@@ -1448,7 +1475,12 @@ class TestAdapterReferenceSinglePerson:
         irpp = float(result.output_fields.column(
             "impot_revenu_restant_a_payer"
         )[0].as_py())
-        self._assert_irpp(irpp, self.REFERENCE_VALUES[75000.0], "upper bracket 75k")
+        _assert_irpp(
+            irpp, self.REFERENCE_VALUES[75000.0], "upper bracket 75k",
+            margin=self.ABSOLUTE_ERROR_MARGIN,
+            version=self.REFERENCE_OPENFISCA_FRANCE_VERSION,
+            date=self.REFERENCE_DATE,
+        )
 
     def test_high_income(
         self, reference_irpp_adapter: OpenFiscaApiAdapter,
@@ -1462,7 +1494,12 @@ class TestAdapterReferenceSinglePerson:
         irpp = float(result.output_fields.column(
             "impot_revenu_restant_a_payer"
         )[0].as_py())
-        self._assert_irpp(irpp, self.REFERENCE_VALUES[100000.0], "high income 100k")
+        _assert_irpp(
+            irpp, self.REFERENCE_VALUES[100000.0], "high income 100k",
+            margin=self.ABSOLUTE_ERROR_MARGIN,
+            version=self.REFERENCE_OPENFISCA_FRANCE_VERSION,
+            date=self.REFERENCE_DATE,
+        )
 
     def test_progressive_tax_monotonicity(
         self, reference_irpp_adapter: OpenFiscaApiAdapter,
@@ -1527,16 +1564,6 @@ class TestAdapterReferenceFamilies:
     REFERENCE_FAMILY_1_CHILD = -3768.0     # 2 parents + 1 child, 2.5 parts
     REFERENCE_FAMILY_2_CHILDREN = -3085.0  # 2 parents + 2 children, 3 parts
 
-    def _assert_irpp(
-        self, actual: float, expected: float, scenario: str,
-    ) -> None:
-        """Assert irpp matches reference within tolerance with diagnostic message."""
-        assert abs(actual - expected) <= self.ABSOLUTE_ERROR_MARGIN, (
-            f"{scenario}: Expected {expected}, got {actual} "
-            f"(tolerance ±{self.ABSOLUTE_ERROR_MARGIN}, "
-            f"ref: OpenFisca-France {self.REFERENCE_OPENFISCA_FRANCE_VERSION})"
-        )
-
     def test_married_couple_dual_income(
         self, reference_irpp_adapter: OpenFiscaApiAdapter,
     ) -> None:
@@ -1567,8 +1594,11 @@ class TestAdapterReferenceFamilies:
         irpp = float(result.output_fields.column(
             "impot_revenu_restant_a_payer"
         )[0].as_py())
-        self._assert_irpp(
+        _assert_irpp(
             irpp, self.REFERENCE_COUPLE_40K_30K, "couple 40k+30k",
+            margin=self.ABSOLUTE_ERROR_MARGIN,
+            version=self.REFERENCE_OPENFISCA_FRANCE_VERSION,
+            date=self.REFERENCE_DATE,
         )
 
     def test_family_with_one_child(
@@ -1604,8 +1634,11 @@ class TestAdapterReferenceFamilies:
         irpp = float(result.output_fields.column(
             "impot_revenu_restant_a_payer"
         )[0].as_py())
-        self._assert_irpp(
+        _assert_irpp(
             irpp, self.REFERENCE_FAMILY_1_CHILD, "family 1 child",
+            margin=self.ABSOLUTE_ERROR_MARGIN,
+            version=self.REFERENCE_OPENFISCA_FRANCE_VERSION,
+            date=self.REFERENCE_DATE,
         )
 
     def test_family_with_two_children(
@@ -1644,8 +1677,11 @@ class TestAdapterReferenceFamilies:
         irpp = float(result.output_fields.column(
             "impot_revenu_restant_a_payer"
         )[0].as_py())
-        self._assert_irpp(
+        _assert_irpp(
             irpp, self.REFERENCE_FAMILY_2_CHILDREN, "family 2 children",
+            margin=self.ABSOLUTE_ERROR_MARGIN,
+            version=self.REFERENCE_OPENFISCA_FRANCE_VERSION,
+            date=self.REFERENCE_DATE,
         )
 
     def test_quotient_familial_structural_invariant(
@@ -1735,17 +1771,15 @@ class TestFourEntityCrossValidation:
     ABSOLUTE_ERROR_MARGIN = 0.5
     REFERENCE_OPENFISCA_FRANCE_VERSION = "175.0.18"
 
-    def test_single_person_cross_validation(self) -> None:
+    def test_single_person_cross_validation(
+        self, reference_irpp_adapter: OpenFiscaApiAdapter,
+    ) -> None:
         """AC-5: Single person with and without membership columns → identical results.
 
         The most direct cross-validation: same person, same income, same adapter.
         With membership columns explicitly specifying group assignment vs.
         without membership columns relying on auto-creation.
         """
-        adapter = OpenFiscaApiAdapter(
-            country_package="openfisca_france",
-            output_variables=("impot_revenu_restant_a_payer",),
-        )
         policy = PolicyConfig(parameters={}, name="cross-val-single")
 
         # With membership columns (4-entity explicit)
@@ -1772,8 +1806,8 @@ class TestFourEntityCrossValidation:
             },
         )
 
-        result_with = adapter.compute(pop_with, policy, 2024)
-        result_without = adapter.compute(pop_without, policy, 2024)
+        result_with = reference_irpp_adapter.compute(pop_with, policy, 2024)
+        result_without = reference_irpp_adapter.compute(pop_without, policy, 2024)
 
         irpp_with = float(result_with.output_fields.column(
             "impot_revenu_restant_a_payer"
@@ -1790,7 +1824,9 @@ class TestFourEntityCrossValidation:
             f"ref: OpenFisca-France {self.REFERENCE_OPENFISCA_FRANCE_VERSION})"
         )
 
-    def test_couple_vs_two_singles_quotient_benefit(self) -> None:
+    def test_couple_vs_two_singles_quotient_benefit(
+        self, reference_irpp_adapter: OpenFiscaApiAdapter,
+    ) -> None:
         """AC-5: Couple joint taxation vs sum of singles demonstrates QF benefit.
 
         Run adapter.compute() three times:
@@ -1807,10 +1843,6 @@ class TestFourEntityCrossValidation:
         policy = PolicyConfig(parameters={}, name="cross-val-qf")
 
         # Couple via 4-entity format
-        adapter_couple = OpenFiscaApiAdapter(
-            country_package="openfisca_france",
-            output_variables=("impot_revenu_restant_a_payer",),
-        )
         pop_couple = PopulationData(
             tables={
                 "individu": pa.table({
@@ -1828,16 +1860,12 @@ class TestFourEntityCrossValidation:
                 }),
             },
         )
-        result_couple = adapter_couple.compute(pop_couple, policy, 2024)
+        result_couple = reference_irpp_adapter.compute(pop_couple, policy, 2024)
         irpp_couple = float(result_couple.output_fields.column(
             "impot_revenu_restant_a_payer"
         )[0].as_py())
 
         # Single person A (80k) via auto-creation
-        adapter_single = OpenFiscaApiAdapter(
-            country_package="openfisca_france",
-            output_variables=("impot_revenu_restant_a_payer",),
-        )
         pop_a = PopulationData(
             tables={
                 "individu": pa.table({
@@ -1845,7 +1873,7 @@ class TestFourEntityCrossValidation:
                 }),
             },
         )
-        result_a = adapter_single.compute(pop_a, policy, 2024)
+        result_a = reference_irpp_adapter.compute(pop_a, policy, 2024)
         irpp_a = float(result_a.output_fields.column(
             "impot_revenu_restant_a_payer"
         )[0].as_py())
@@ -1858,7 +1886,7 @@ class TestFourEntityCrossValidation:
                 }),
             },
         )
-        result_b = adapter_single.compute(pop_b, policy, 2024)
+        result_b = reference_irpp_adapter.compute(pop_b, policy, 2024)
         irpp_b = float(result_b.output_fields.column(
             "impot_revenu_restant_a_payer"
         )[0].as_py())
@@ -2113,8 +2141,8 @@ class TestRegressionDetectionMetadata:
         import importlib.metadata
 
         of_version = importlib.metadata.version("openfisca-france")
-        assert of_version.startswith("175."), (
-            f"OpenFisca-France version changed from 175.x to {of_version}. "
+        assert of_version.startswith("175.0."), (
+            f"OpenFisca-France version changed from 175.0.x to {of_version}. "
             f"Reference values were computed against 175.0.18. "
             f"Re-run the reference value computation script and update "
             f"all pinned values in TestAdapterReferenceSinglePerson and "
