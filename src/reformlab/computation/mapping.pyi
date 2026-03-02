@@ -21,10 +21,12 @@ class FieldMapping:
 class MappingConfig:
     mappings: tuple[FieldMapping, ...]
     source_path: Path | None
+    is_validated: bool
     def __init__(
         self,
         mappings: tuple[FieldMapping, ...],
         source_path: Path | None = None,
+        is_validated: bool = False,
     ) -> None: ...
     def by_openfisca_name(self, name: str) -> FieldMapping | None: ...
     def by_project_name(self, name: str) -> FieldMapping | None: ...

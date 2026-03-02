@@ -1375,8 +1375,8 @@ def _execute_orchestration(
         scenario_version="1.0.0",
         policy=normalized_params,
         seeds={"master": seed} if seed is not None else {},
-        assumptions=_coerce_dict_list(workflow_result.metadata.get("assumptions")),
-        mappings=_coerce_dict_list(workflow_result.metadata.get("mappings")),
+        assumptions=_coerce_dict_list(workflow_result.metadata.get("assumptions")),  # type: ignore[arg-type]
+        mappings=_coerce_dict_list(workflow_result.metadata.get("mappings")),  # type: ignore[arg-type]
         warnings=_coerce_string_list(workflow_result.metadata.get("warnings")),
         step_pipeline=_coerce_string_list(workflow_result.metadata.get("step_pipeline")),
         parent_manifest_id=parent_manifest_id,
