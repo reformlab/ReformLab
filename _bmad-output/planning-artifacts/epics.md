@@ -26,8 +26,8 @@ Single source of truth for all epics and stories across the project. For detaile
 | EPIC-6 | Interfaces (Python API, Notebooks, Early No-Code GUI) | done | 7 |
 | EPIC-7 | Trusted Outputs and External Pilot Validation | done | 5 |
 | EPIC-8 | Post-Phase-1 Validation Spikes | done | 2 |
-| EPIC-9 | OpenFisca Adapter Hardening | backlog | 5 |
-| EPIC-10 | API Ergonomics and Developer Experience | backlog | 2 |
+| EPIC-9 | OpenFisca Adapter Hardening | done | 5 |
+| EPIC-10 | API Ergonomics and Developer Experience | done | 2 |
 
 ## Conventions
 
@@ -506,7 +506,7 @@ Priority and SP are not assigned for post-Phase-1 spikes.
 
 **User outcome:** Adapter handles real-world OpenFisca entity models, variable periodicities, and multi-entity outputs correctly.
 
-**Status:** backlog (follow-ups from spike 8-1 findings)
+**Status:** done
 
 ### Epic-Level Acceptance Criteria
 
@@ -532,7 +532,7 @@ Fixed during 8-1 code review.
 
 ### Story 9.2: Handle multi-entity output arrays
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 5
 
@@ -548,7 +548,7 @@ Fixed during 8-1 code review.
 
 ### Story 9.3: Add variable periodicity handling
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 5
 
@@ -564,7 +564,7 @@ Fixed during 8-1 code review.
 
 ### Story 9.4: Define population data 4-entity format
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 8
 
@@ -580,7 +580,7 @@ Fixed during 8-1 code review.
 
 ### Story 9.5: OpenFisca-France reference test suite
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 5
 
@@ -598,12 +598,12 @@ Fixed during 8-1 code review.
 
 **User outcome:** Analyst experiences a clean, intuitive API where naming is consistent, redundancy is eliminated, and the type system guides correct usage.
 
-**Status:** backlog
+**Status:** done
 
 | ID | Type | Pri | SP | Title | Status | PRD Refs |
 |------|------|-----|----|-------|--------|----------|
-| BKL-1001 | Story | P1 | 5 | Rename `parameters` to `policy` on `ScenarioTemplate`/`BaselineScenario` and update YAML schema | backlog | FR7, NFR4 |
-| BKL-1002 | Story | P1 | 5 | Infer `policy_type` from parameters class, making it optional on scenario construction | backlog | FR7, NFR4 |
+| BKL-1001 | Story | P1 | 5 | Rename `parameters` to `policy` on `ScenarioTemplate`/`BaselineScenario` and update YAML schema | done | FR7, NFR4 |
+| BKL-1002 | Story | P1 | 5 | Infer `policy_type` from parameters class, making it optional on scenario construction | done | FR7, NFR4 |
 
 ### Epic-Level Acceptance Criteria
 
@@ -617,7 +617,7 @@ Fixed during 8-1 code review.
 
 ### Story 10.1: Rename `parameters` to `policy` on scenario types
 
-**Status:** backlog
+**Status:** done
 **Priority:** P1
 **Estimate:** 5
 
@@ -634,7 +634,7 @@ Fixed during 8-1 code review.
 
 ### Story 10.2: Infer `policy_type` from parameters class
 
-**Status:** backlog
+**Status:** done
 **Priority:** P1
 **Estimate:** 5
 
