@@ -2,11 +2,13 @@
 title: ReformLab — Epics and Stories
 project: ReformLab
 description: Single source of truth for all epics, stories, and acceptance criteria
-date: 2026-03-01
+date: 2026-03-02
 source_documents:
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/architecture.md
   - _bmad-output/planning-artifacts/phase-1-implementation-backlog-2026-02-25.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-03-02.md
+  - _bmad-output/planning-artifacts/phase-2-design-note-discrete-choice-household-decisions.md
   - _bmad-output/implementation-artifacts/sprint-status.yaml
 ---
 
@@ -16,18 +18,25 @@ Single source of truth for all epics and stories across the project. For detaile
 
 ## Epic Index
 
-| Epic | Title | Status | Stories |
-|------|-------|--------|---------|
-| EPIC-1 | Computation Adapter and Data Layer | done | 8 |
-| EPIC-2 | Scenario Templates and Registry | done | 7 |
-| EPIC-3 | Step-Pluggable Dynamic Orchestrator and Vintage Tracking | done | 7 |
-| EPIC-4 | Indicators and Scenario Comparison | done | 6 |
-| EPIC-5 | Governance and Reproducibility | done | 6 |
-| EPIC-6 | Interfaces (Python API, Notebooks, Early No-Code GUI) | done | 7 |
-| EPIC-7 | Trusted Outputs and External Pilot Validation | done | 5 |
-| EPIC-8 | Post-Phase-1 Validation Spikes | done | 2 |
-| EPIC-9 | OpenFisca Adapter Hardening | done | 5 |
-| EPIC-10 | API Ergonomics and Developer Experience | done | 2 |
+| Epic | Title | Phase | Status | Stories |
+|------|-------|-------|--------|---------|
+| EPIC-1 | Computation Adapter and Data Layer | 1 | done | 8 |
+| EPIC-2 | Scenario Templates and Registry | 1 | done | 7 |
+| EPIC-3 | Step-Pluggable Dynamic Orchestrator and Vintage Tracking | 1 | done | 7 |
+| EPIC-4 | Indicators and Scenario Comparison | 1 | done | 6 |
+| EPIC-5 | Governance and Reproducibility | 1 | done | 6 |
+| EPIC-6 | Interfaces (Python API, Notebooks, Early No-Code GUI) | 1 | done | 7 |
+| EPIC-7 | Trusted Outputs and External Pilot Validation | 1 | done | 5 |
+| EPIC-8 | Post-Phase-1 Validation Spikes | 1 | done | 2 |
+| EPIC-9 | OpenFisca Adapter Hardening | 1 | done | 5 |
+| EPIC-10 | API Ergonomics and Developer Experience | 1 | done | 2 |
+| EPIC-11 | Realistic Population Generation Library | 2 | backlog | TBD |
+| EPIC-12 | Policy Portfolio Model | 2 | backlog | TBD |
+| EPIC-13 | Additional Policy Templates + Extensibility | 2 | backlog | TBD |
+| EPIC-14 | Discrete Choice Model for Household Decisions | 2 | backlog | TBD |
+| EPIC-15 | Calibration Engine | 2 | backlog | TBD |
+| EPIC-16 | Replication Package Export | 2 | backlog | TBD |
+| EPIC-17 | GUI Showcase Product | 2 | backlog | TBD |
 
 ## Conventions
 
@@ -646,3 +655,215 @@ Fixed during 8-1 code review.
 - Given all four built-in parameter types, when used without explicit `policy_type`, then the correct `PolicyType` is inferred.
 - Given a custom `PolicyParameters` subclass without a registered mapping, when used without explicit `policy_type`, then a clear error is raised explaining how to register the mapping.
 - Given an explicit `policy_type` that contradicts the parameters class, when constructed, then the explicit value is used (with a warning).
+
+---
+
+# Phase 2 Epics
+
+Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 tests). Each epic delivers a notebook demo that previews the eventual GUI workflow. See [Sprint Change Proposal 2026-03-02](sprint-change-proposal-2026-03-02.md) for full rationale.
+
+**Implementation order:** EPIC-11 → 12 → 13 → 14 → 15 → 16 → 17
+
+---
+
+## EPIC-11: Realistic Population Generation Library
+
+**User outcome:** Analyst can build a credible French household population from real public data sources, choosing merge methods with transparent assumptions, and producing a population with all attributes needed for policy simulation.
+
+**Status:** backlog
+
+**Builds on:** EPIC-1 (data layer), EPIC-5 (governance)
+
+**PRD Refs:** FR36–FR42
+
+### Epic-Level Acceptance Criteria
+
+- At least 4 institutional data source loaders are functional (download, cache, schema-validate): INSEE, Eurostat, ADEME, SDES.
+- At least 3 statistical merge methods are implemented with `MergeMethod` protocol: uniform distribution, IPF, conditional sampling.
+- The French example pipeline produces a population with at least: household_id, income, household_size, region, housing_type, heating_type, vehicle_type, vehicle_age, energy_consumption, carbon_emissions.
+- Every merge step records an assumption in the governance layer.
+- Generated population validates against source marginals within documented tolerances.
+- Methods library docstrings include plain-language explanations of what each method assumes.
+- Pedagogical notebook runs end-to-end in CI.
+
+### Scope Notes
+
+- **Start with uniform distribution** as the simplest method (equal probability assumption), then layer IPF and conditional sampling.
+- **One complete French household example** is the primary deliverable — proving end-to-end pipeline with real INSEE data.
+- **Pedagogical notebook** teaches by doing: real data source names, plain-language assumption statements before each merge, summary charts after.
+- **Data download/cache infrastructure** — module handles fetching and caching public datasets from institutional APIs/downloads.
+
+---
+
+## EPIC-12: Policy Portfolio Model
+
+**User outcome:** Analyst can compose multiple individual policy templates into a named portfolio and run simulations with bundled policies applied together.
+
+**Status:** backlog
+
+**Builds on:** EPIC-2 (templates, registry), EPIC-3 (orchestrator)
+
+**PRD Refs:** FR43–FR46
+
+### Epic-Level Acceptance Criteria
+
+- Analyst can create a portfolio from 2+ individual policy templates.
+- Orchestrator executes a portfolio, applying all bundled policies at each yearly step.
+- Portfolio is versioned in the scenario registry alongside individual scenarios.
+- Portfolio comparison produces side-by-side indicator tables.
+- Custom policy templates participate in portfolios alongside built-in templates.
+- Notebook demo runs end-to-end in CI.
+
+### Scope Notes
+
+- **Portfolios are compositions** of existing individual policy templates — no new policy type concept.
+- **Conflict resolution** — when two policies in a portfolio affect the same parameter, the composition layer resolves or raises an explicit error.
+- **Naming example:** Portfolio "Green Transition 2030" = carbon tax (€100/tCO2) + vehicle bonus (€5k EV subsidy) + MaPrimeRénov' (renovation aid) + feebate (vehicle malus).
+
+---
+
+## EPIC-13: Additional Policy Templates + Extensibility
+
+**User outcome:** Analyst can define custom policy templates and use new built-in templates beyond the Phase 1 set, with all templates portfolio-ready.
+
+**Status:** backlog
+
+**Builds on:** EPIC-2 (templates), EPIC-12 (portfolios)
+
+**PRD Refs:** FR46
+
+### Epic-Level Acceptance Criteria
+
+- At least 2 new built-in templates are shipped (candidates: vehicle malus, energy poverty aid, building energy performance standards — to be determined during sprint planning).
+- Analyst can author a custom template from Python and register it.
+- Custom templates participate in portfolios alongside built-in templates.
+- Template schema validation accepts custom templates.
+- Notebook demo runs end-to-end in CI.
+
+### Scope Notes
+
+- **Extensibility is the primary goal** — the template system must be open for analyst-defined policies, not just the shipped templates.
+- **New templates should be policy-relevant** to French environmental policy context.
+
+---
+
+## EPIC-14: Discrete Choice Model for Household Decisions
+
+**User outcome:** Analyst can run multi-year simulations where households make investment decisions (vehicle, heating, renovation) in response to policy signals, with decisions feeding back into subsequent years.
+
+**Status:** backlog
+
+**Builds on:** EPIC-3 (orchestrator, step protocol), EPIC-11 (realistic population with asset attributes), EPIC-12 (policy portfolios)
+
+**PRD Refs:** FR47–FR51
+
+**Reference:** [Phase 2 Design Note: Discrete Choice Model](phase-2-design-note-discrete-choice-household-decisions.md)
+
+### Epic-Level Acceptance Criteria
+
+- `DiscreteChoiceStep` registers via standard step protocol without modifying orchestrator core.
+- Population expansion pattern works: clone households × alternatives, evaluate via OpenFisca, reshape to cost matrix.
+- Conditional logit model produces realistic choice distributions for vehicle and heating domains.
+- 10-year run with 100k households completes within acceptable time on laptop.
+- Identical seeds produce identical household decisions across runs.
+- Panel output records every decision for every household every year (chosen alternative, probabilities, utilities).
+- Taste parameters (β coefficients) appear in run manifests.
+- Eligibility filtering reduces expanded population for performance (only eligible households face choices).
+- Notebook demo runs end-to-end in CI.
+
+### Scope Notes
+
+- **Two decision domains in scope:** vehicle investment, heating system. Energy renovation is a stretch goal.
+- **Conditional logit first**, nested logit as extension.
+- **Performance:** ~11x scaling factor (100k × 5 alternatives × 2 domains). Eligibility filtering mitigates.
+- **Myopic decisions:** households decide based on current-year costs, not discounted future streams.
+- **No peer effects:** household decisions are independent.
+
+---
+
+## EPIC-15: Calibration Engine
+
+**User outcome:** Analyst can calibrate discrete choice taste parameters against observed data so that simulated transition rates match reality.
+
+**Status:** backlog
+
+**Builds on:** EPIC-14 (discrete choice model), EPIC-11 (population generation)
+
+**PRD Refs:** FR52–FR53
+
+### Epic-Level Acceptance Criteria
+
+- Calibration engine produces β parameters that reduce simulation-vs-observed gap below documented threshold.
+- Calibrated parameters are reproducible (deterministic optimization).
+- Validation step confirms calibrated model on holdout data or known aggregates.
+- Calibrated parameters are recorded in run manifests.
+- Notebook demo runs end-to-end in CI.
+
+### Scope Notes
+
+- **Calibration targets** — observed vehicle adoption rates, heating system transition rates from public data (ADEME, SDES).
+- **Objective function** — MSE or likelihood-based, to be determined during sprint planning.
+- **This epic naturally follows discrete choice** — it calibrates the model that EPIC-14 builds.
+
+---
+
+## EPIC-16: Replication Package Export
+
+**User outcome:** Researcher can export a self-contained package that reproduces any simulation on a clean environment.
+
+**Status:** backlog
+
+**Builds on:** EPIC-5 (governance, manifests), all prior Phase 2 epics
+
+**PRD Refs:** FR54–FR55
+
+### Epic-Level Acceptance Criteria
+
+- Export produces a self-contained directory/archive with all artifacts needed for reproduction.
+- Package contents: population data or generation config, scenario/portfolio config, template definitions, run manifests, seeds, results.
+- Import on a clean environment with `pip install reformlab` reproduces results within documented tolerances.
+- Package includes all assumption records from population generation.
+- Manifest integrity checks pass on reimport.
+- Notebook demo runs end-to-end in CI.
+
+### Scope Notes
+
+- **Cross-machine reproducibility** — this epic validates TD-17 from Phase 1 retro.
+- **Package format** — directory structure with a manifest index, optionally compressed as archive.
+- **Marco's journey** — this is the key deliverable for the researcher persona (share YAML + notebook + manifest, co-author reproduces).
+
+---
+
+## EPIC-17: GUI Showcase Product
+
+**User outcome:** Non-coding analyst can operate the complete Phase 2 workflow through a web GUI: build populations from real data, design policy portfolios, run simulations, browse persistent results, and compare across portfolios.
+
+**Status:** backlog
+
+**Builds on:** All Phase 2 epics (EPIC-11 through EPIC-16), EPIC-6 (Phase 1 GUI prototype and FastAPI backend)
+
+**PRD Refs:** FR32, FR37, FR39, FR43, FR45
+
+### Epic-Level Acceptance Criteria
+
+- Analyst can build a population from real data sources through the GUI without writing code.
+- Analyst can choose merge methods with plain-language explanations in the GUI.
+- Analyst can compose and run a policy portfolio through the GUI.
+- Completed simulation results persist across browser sessions — no need to re-run.
+- Analyst can compare multiple portfolio results side-by-side.
+- GUI displays behavioral decision outcomes (discrete choice results) per household group.
+- All GUI operations map to API endpoints tested independently.
+- Frontend tests cover core workflows (data fusion, portfolio creation, simulation, comparison).
+
+### Scope Notes
+
+- **Built last, shown first** — the GUI integrates all backend capabilities from EPIC-11 through EPIC-16.
+- **Notebook demos from prior epics** directly inform GUI screen design — each notebook workflow maps to a GUI screen.
+- **Tech stack:** React + TypeScript + Shadcn/ui + Tailwind v4 (same as Phase 1 prototype).
+- **Key new GUI sections:**
+  - **Data Fusion Workbench** — browse datasets, select sources, choose merge methods, preview population, validate against marginals
+  - **Policy Portfolio Designer** — browse templates, compose portfolios, configure parameters per policy
+  - **Simulation Runner** — run with configured population + portfolio, show progress
+  - **Persistent Results** — completed simulations stored and browsable
+  - **Comparison Dashboard** — side-by-side across portfolios with distributional/welfare/fiscal indicators
+  - **Behavioral Decision Viewer** — explore household decisions from discrete choice model

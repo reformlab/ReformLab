@@ -157,20 +157,23 @@ Since ReformLab is an open-source project, "business" success means adoption, cr
 
 **Phase 2 (Growth):**
 
-| Feature | Trigger |
-|---------|---------|
-| Automated sensitivity sweeps | After MVP scenario flows are stable |
-| Replication package export | After run-governance schema is validated with external users |
-| Reduced-form behavioral module | After static dynamic loop is benchmarked |
-| Additional policy templates | After carbon-tax + subsidy templates are externally piloted |
-| GUI expansion | After MVP no-code workflow proves analyst value |
-| OpenFisca direct API orchestration hardening | After CSV/Parquet contract is stable in production workflows |
-| Calibration engine | After benchmark datasets and acceptance tolerances are finalized |
+| Feature | Trigger | Epic |
+|---------|---------|------|
+| Realistic population generation library | After Phase 1 data layer is stable | EPIC-11 |
+| Policy portfolio model | After template system is proven | EPIC-12 |
+| Additional policy templates + extensibility | After portfolio model is stable | EPIC-13 |
+| Discrete choice model for household decisions | After population + portfolio foundations exist | EPIC-14 |
+| Calibration engine | After discrete choice model is benchmarked | EPIC-15 |
+| Replication package export | After governance schema is validated | EPIC-16 |
+| GUI showcase product (data fusion + portfolio + simulation + comparison) | After all backend capabilities are proven | EPIC-17 |
+
+See [Sprint Change Proposal 2026-03-02](sprint-change-proposal-2026-03-02.md) for full rationale. Changes from original Phase 2 plan: "Reduced-form behavioral module" replaced by discrete choice model (EPIC-14). Population generation library (EPIC-11) and policy portfolio model (EPIC-12) added as new foundational features. OpenFisca API hardening absorbed into EPIC-14. Sensitivity sweeps deferred to Phase 3. GUI elevated to showcase product.
 
 **Phase 3 (Expansion):**
 
 | Feature | Trigger |
 |---------|---------|
+| Automated sensitivity sweeps | After calibration engine and discrete choice are stable |
 | Public-facing web app | Non-technical user access with guardrails |
 | Election showcase application | Compare candidate proposals side-by-side |
 | Advanced dynamic module | Lifecycle and transition modeling beyond MVP orchestrator |

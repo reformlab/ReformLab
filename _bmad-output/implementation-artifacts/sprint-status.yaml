@@ -135,3 +135,28 @@ development_status:
   10-1-rename-parameters-to-policy-on-scenario-types: done
   10-2-infer-policy-type-from-parameters-class: done
   epic-10-retrospective: optional
+
+  # ===================================================================
+  # PHASE 2 — Approved via sprint-change-proposal-2026-03-02.md
+  # ===================================================================
+
+  # Epic 11: Realistic Population Generation Library
+  epic-11: backlog
+
+  # Epic 12: Policy Portfolio Model
+  epic-12: backlog
+
+  # Epic 13: Additional Policy Templates + Extensibility
+  epic-13: backlog
+
+  # Epic 14: Discrete Choice Model for Household Decisions
+  epic-14: backlog
+
+  # Epic 15: Calibration Engine
+  epic-15: backlog
+
+  # Epic 16: Replication Package Export
+  epic-16: backlog
+
+  # Epic 17: GUI Showcase Product
+  epic-17: backlog
