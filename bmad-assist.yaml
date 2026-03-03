@@ -81,8 +81,10 @@ loop:
   story:
     - create_story
     - validate_story
+    - validate_story_synthesis
     - dev_story
     - code_review
+    - code_review_synthesis
   epic_teardown:
     - retrospective
 
