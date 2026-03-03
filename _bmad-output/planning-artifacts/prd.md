@@ -542,6 +542,41 @@ ReformLab is a Python library distributed via PyPI (`pip install reformlab`) wit
 - FR34: User can run an OpenFisca-plus-environment quickstart in under 30 minutes.
 - FR35: User can access template authoring and dynamic-run documentation with reproducible examples.
 
+### Phase 2: Realistic Population Generation (EPIC-11)
+
+- FR36: Analyst can download and cache public datasets from institutional sources (INSEE, Eurostat, ADEME, SDES).
+- FR37: Analyst can browse available datasets and select which to include in a population.
+- FR38: System provides a library of statistical methods for merging datasets that do not share the same sample (uniform distribution, IPF, conditional sampling, statistical matching).
+- FR39: Analyst can choose which merge method to apply at each dataset join, with plain-language explanation of the assumption.
+- FR40: System produces a complete synthetic population with household-level attributes sufficient for policy simulation (income, household composition, housing, vehicle, heating, energy, geography).
+- FR41: Every merge, imputation, and extrapolation is recorded as an explicit assumption in the governance layer.
+- FR42: System validates generated populations against known marginal distributions from source data.
+
+### Phase 2: Policy Portfolios (EPIC-12, EPIC-13)
+
+- FR43: Analyst can compose multiple individual policy templates into a named policy portfolio.
+- FR44: System executes a simulation with a policy portfolio, applying all bundled policies together.
+- FR45: Analyst can compare results across different policy portfolios side-by-side.
+- FR46: Analyst can define custom policy templates that participate in portfolios alongside built-in templates.
+
+### Phase 2: Discrete Choice and Behavioral Modeling (EPIC-14)
+
+- FR47: System models household investment decisions (vehicle, heating, renovation) as discrete choice problems using logit functions.
+- FR48: System expands population by alternatives and evaluates each alternative through OpenFisca for household-specific cost calculations.
+- FR49: Logit draws use seed-controlled randomness for reproducibility.
+- FR50: Panel output records which decision each household made in each domain for each year.
+- FR51: Taste parameters (β coefficients) are recorded in run manifests.
+
+### Phase 2: Calibration (EPIC-15)
+
+- FR52: Analyst can calibrate discrete choice taste parameters against observed transition rates.
+- FR53: System validates calibrated parameters against known marginal distributions.
+
+### Phase 2: Replication Package Export (EPIC-16)
+
+- FR54: Analyst can export a self-contained replication package including data, configuration, manifests, and results.
+- FR55: Replication package is reproducible on a clean environment with only `pip install reformlab` and the package contents.
+
 ## Non-Functional Requirements
 
 ### Performance
