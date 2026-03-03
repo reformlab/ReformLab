@@ -40,10 +40,11 @@ packages = ["src/reformlab"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
-addopts = "-m 'not integration and not scale'"
+addopts = "-m 'not integration and not scale and not network'"
 markers = [
     "benchmark: marks tests as benchmark validation tests (deselect with '-m \"not benchmark\"')",
     "integration: marks tests as integration tests requiring openfisca-france (run with '-m integration')",
+    "network: marks tests requiring real network access to institutional APIs (opt-in with '-m network')",
     "scale: marks tests as scale validation tests (100k-500k population, may be slow)",
 ]
 

@@ -1,5 +1,5 @@
 # bmad-assist configuration for ReformLab
-# Strategy: Claude-only (Opus creates/devs, Sonnet validates/reviews)
+# Strategy: Opus creates/devs, Codex + Sonnet validate/review
 
 project_name: ReformLab
 user_name: Lucas
@@ -15,11 +15,11 @@ timeouts:
 
 providers:
   master:
-    provider: claude
+    provider: claude-subprocess
     model: opus
 
   helper:
-    provider: claude
+    provider: claude-subprocess
     model: haiku
 
 # Per-phase model assignment
@@ -27,25 +27,29 @@ providers:
 phase_models:
   # --- Creative phases: Opus ---
   create_story:
-    provider: claude
+    provider: claude-subprocess
     model: opus
   dev_story:
-    provider: claude
+    provider: claude-subprocess
     model: opus
 
-  # --- Validation phases: Sonnet (single reviewer) ---
+  # --- Validation phases: Codex + Sonnet (two reviewers for synthesis) ---
   validate_story:
-    - provider: claude
+    - provider: codex
+      model: gpt-5.1-codex-max
+    - provider: claude-subprocess
       model: sonnet
 
-  # --- Review phases: Sonnet (single reviewer) ---
+  # --- Review phases: Codex + Sonnet (two reviewers for synthesis) ---
   code_review:
-    - provider: claude
+    - provider: codex
+      model: gpt-5.1-codex-max
+    - provider: claude-subprocess
       model: sonnet
 
   # --- Retrospective: Sonnet ---
   retrospective:
-    provider: claude
+    provider: claude-subprocess
     model: sonnet
 
 # Compiler configuration — moderate token optimization
