@@ -8,6 +8,27 @@ import pytest
 from reformlab.population.loaders.base import CachedLoader, SourceConfig
 from reformlab.population.loaders.cache import SourceCache
 
+# Path to INSEE fixture files
+_FIXTURE_DIR = Path(__file__).resolve().parent.parent.parent / "fixtures" / "insee"
+
+
+@pytest.fixture()
+def insee_fixture_dir() -> Path:
+    """Path to the INSEE test fixture directory."""
+    return _FIXTURE_DIR
+
+
+@pytest.fixture()
+def filosofi_commune_csv_path(insee_fixture_dir: Path) -> Path:
+    """Path to the Filosofi commune-level CSV fixture."""
+    return insee_fixture_dir / "filosofi_2021_commune.csv"
+
+
+@pytest.fixture()
+def filosofi_commune_csv_bytes(filosofi_commune_csv_path: Path) -> bytes:
+    """Raw bytes of the Filosofi commune-level CSV fixture."""
+    return filosofi_commune_csv_path.read_bytes()
+
 
 @pytest.fixture()
 def cache_root(tmp_path: Path) -> Path:
