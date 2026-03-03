@@ -141,8 +141,11 @@ INSEE_CATALOG: dict[str, INSEEDataset] = {
     ),
 }
 
-AVAILABLE_DATASETS: tuple[str, ...] = tuple(sorted(INSEE_CATALOG.keys()))
+INSEE_AVAILABLE_DATASETS: tuple[str, ...] = tuple(sorted(INSEE_CATALOG.keys()))
 """Available INSEE dataset identifiers for discovery."""
+
+AVAILABLE_DATASETS = INSEE_AVAILABLE_DATASETS
+"""Backward-compatible alias for ``INSEE_AVAILABLE_DATASETS``."""
 
 
 # ====================================================================
@@ -409,7 +412,7 @@ def get_insee_loader(
         raise DataSourceValidationError(
             summary="Unknown INSEE dataset",
             reason=f"Requested dataset '{dataset_id}' is not in the INSEE catalog",
-            fix=f"Available datasets: {', '.join(AVAILABLE_DATASETS)}",
+            fix=f"Available datasets: {', '.join(INSEE_AVAILABLE_DATASETS)}",
         )
     if logger is None:
         logger = logging.getLogger("reformlab.population.loaders.insee")
@@ -439,7 +442,7 @@ def make_insee_config(dataset_id: str, **params: str) -> SourceConfig:
         raise DataSourceValidationError(
             summary="Unknown INSEE dataset",
             reason=f"Requested dataset '{dataset_id}' is not in the INSEE catalog",
-            fix=f"Available datasets: {', '.join(AVAILABLE_DATASETS)}",
+            fix=f"Available datasets: {', '.join(INSEE_AVAILABLE_DATASETS)}",
         )
     ds = INSEE_CATALOG[dataset_id]
     return SourceConfig(

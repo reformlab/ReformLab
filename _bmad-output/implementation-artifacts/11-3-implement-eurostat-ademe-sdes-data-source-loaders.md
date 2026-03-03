@@ -1,7 +1,7 @@
 
 # Story 11.3: Implement Eurostat, ADEME, and SDES data source loaders
 
-Status: ready-for-dev
+Status: dev-complete
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -15,73 +15,75 @@ so that downstream merge methods (Stories 11.4–11.6) can consume real European
 
 1. Given the Eurostat loader, when called with a valid dataset code, then EU-level household data is returned as a schema-validated `pa.Table`.
 2. Given the ADEME loader, when called, then energy consumption and emission factor datasets are returned with documented schemas.
-3. Given the SDES loader, when called, then vehicle fleet composition and age distribution data is returned.
+3. Given the SDES loader, when called, then vehicle fleet composition data (including vehicle age classification) is returned as a schema-validated `pa.Table`.
 4. Given all three loaders, when run, then each follows the `DataSourceLoader` protocol and integrates with the caching infrastructure from BKL-1101.
 5. Given CI tests for all loaders, then they use fixture files and do not require network access.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create Eurostat loader — `eurostat.py` (AC: #1, #4)
-  - [ ] 1.1 Create `src/reformlab/population/loaders/eurostat.py` with module docstring referencing Story 11.3, FR36, FR37
-  - [ ] 1.2 Define `EurostatDataset` frozen dataclass with fields: `dataset_id: str`, `description: str`, `url: str`, `columns: tuple[tuple[str, str], ...] = ()` where each inner tuple is `(raw_sdmx_column_name, project_column_name)` — serves as both documentation and rename mapping
-  - [ ] 1.3 Define `EUROSTAT_CATALOG` as module-level `dict[str, EurostatDataset]` with at minimum:
+- [x] Task 1: Create Eurostat loader — `eurostat.py` (AC: #1, #4)
+  - [x]1.1 Create `src/reformlab/population/loaders/eurostat.py` with module docstring referencing Story 11.3, FR36, FR37
+  - [x]1.2 Define `EurostatDataset` frozen dataclass with fields: `dataset_id: str`, `description: str`, `url: str`, `encoding: str = "utf-8"`, `separator: str = ","`, `null_markers: tuple[str, ...] = ("", ":")`, `columns: tuple[tuple[str, str], ...] = ()` where each inner tuple is `(raw_sdmx_column_name, project_column_name)` — consistent with `INSEEDataset`/`ADEMEDataset`/`SDESDataset` pattern where the dataclass is the single source of truth for parsing configuration
+  - [x]1.3 Define `EUROSTAT_CATALOG` as module-level `dict[str, EurostatDataset]` with at minimum:
     - `"ilc_di01"` — Income distribution by quantile (EU-SILC deciles D1–D10, shares/EUR)
     - `"nrg_d_hhq"` — Disaggregated final energy consumption in households
-  - [ ] 1.4 Define per-dataset `pa.Schema` objects for the output columns each dataset produces (after column selection and renaming)
-  - [ ] 1.5 Add `EUROSTAT_AVAILABLE_DATASETS` module-level constant
-  - [ ] 1.6 Implement `EurostatLoader(CachedLoader)` with `__init__(self, *, cache, logger, dataset)` — store dataset reference, call `super().__init__()`
-  - [ ] 1.7 Implement `schema(self) -> pa.Schema` — return schema for this loader's dataset
-  - [ ] 1.8 Implement `_fetch(self, config: SourceConfig) -> pa.Table` — download gzip-compressed SDMX-CSV via `urllib.request`, decompress with `gzip.decompress()`, parse with `pyarrow.csv.read_csv()`, select and rename columns, cast types, return `pa.Table`
-  - [ ] 1.9 On any network error, re-raise as `OSError` for stale-cache fallback
-  - [ ] 1.10 Add structured logging: `event=fetch_start`, `event=fetch_complete` with `provider=eurostat dataset_id=... rows=... columns=...`
-  - [ ] 1.11 Implement `get_eurostat_loader(dataset_id, *, cache, logger=None)` factory function with catalog validation
-  - [ ] 1.12 Implement `make_eurostat_config(dataset_id, **params)` helper function
+  - [x]1.4 Define per-dataset `pa.Schema` objects for the output columns each dataset produces (after column selection and renaming)
+  - [x]1.5 Add `EUROSTAT_AVAILABLE_DATASETS` module-level constant
+  - [x]1.6 Implement `EurostatLoader(CachedLoader)` with `__init__(self, *, cache, logger, dataset)` — store dataset reference, call `super().__init__()`
+  - [x]1.7 Implement `schema(self) -> pa.Schema` — return schema for this loader's dataset
+  - [x]1.8 Implement `_fetch(self, config: SourceConfig) -> pa.Table` — download gzip-compressed SDMX-CSV via `urllib.request`, decompress with `gzip.decompress()`, parse with `pyarrow.csv.read_csv()`, select and rename columns, cast types, return `pa.Table`
+  - [x]1.9 On any network error, re-raise as `OSError` for stale-cache fallback
+  - [x]1.10 Add structured logging: `event=fetch_start`, `event=fetch_complete` with `provider=eurostat dataset_id=... rows=... columns=...`
+  - [x]1.11 Implement `get_eurostat_loader(dataset_id, *, cache, logger=None)` factory function with catalog validation
+  - [x]1.12 Implement `make_eurostat_config(dataset_id, **params)` helper function
 
-- [ ] Task 2: Create ADEME loader — `ademe.py` (AC: #2, #4)
-  - [ ] 2.1 Create `src/reformlab/population/loaders/ademe.py` with module docstring referencing Story 11.3, FR36, FR37
-  - [ ] 2.2 Define `ADEMEDataset` frozen dataclass with fields: `dataset_id: str`, `description: str`, `url: str`, `encoding: str = "windows-1252"`, `separator: str = ";"`, `null_markers: tuple[str, ...] = ("",)`, `columns: tuple[tuple[str, str], ...] = ()` — raw-to-project column rename mapping
-  - [ ] 2.3 Define `ADEME_CATALOG` with at minimum:
+- [x] Task 2: Create ADEME loader — `ademe.py` (AC: #2, #4)
+  - [x]2.1 Create `src/reformlab/population/loaders/ademe.py` with module docstring referencing Story 11.3, FR36, FR37
+  - [x]2.2 Define `ADEMEDataset` frozen dataclass with fields: `dataset_id: str`, `description: str`, `url: str`, `encoding: str = "windows-1252"`, `separator: str = ";"`, `null_markers: tuple[str, ...] = ("",)`, `columns: tuple[tuple[str, str], ...] = ()` — raw-to-project column rename mapping
+  - [x]2.3 Define `ADEME_CATALOG` with at minimum:
     - `"base_carbone"` — Base Carbone V23.6 emission factors (CSV from data.gouv.fr)
-  - [ ] 2.4 Define per-dataset `pa.Schema` for the output columns (subset of the 60+ raw columns, focused on emission factors relevant to carbon tax simulation)
-  - [ ] 2.5 Add `ADEME_AVAILABLE_DATASETS` module-level constant
-  - [ ] 2.6 Implement `ADEMELoader(CachedLoader)` with dataset-specific parsing — handle Windows-1252 encoding (primary), UTF-8 fallback, semicolon separator
-  - [ ] 2.7 Implement `get_ademe_loader(dataset_id, *, cache, logger=None)` factory function
-  - [ ] 2.8 Implement `make_ademe_config(dataset_id, **params)` helper function
+  - [x]2.4 Define per-dataset `pa.Schema` for the output columns (subset of the 60+ raw columns, focused on emission factors relevant to carbon tax simulation)
+  - [x]2.5 Add `ADEME_AVAILABLE_DATASETS` module-level constant
+  - [x]2.6 Implement `ADEMELoader(CachedLoader)` with dataset-specific parsing — handle Windows-1252 encoding (primary), UTF-8 fallback, semicolon separator
+  - [x]2.7 Implement `get_ademe_loader(dataset_id, *, cache, logger=None)` factory function
+  - [x]2.8 Implement `make_ademe_config(dataset_id, **params)` helper function
 
-- [ ] Task 3: Create SDES loader — `sdes.py` (AC: #3, #4)
-  - [ ] 3.1 Create `src/reformlab/population/loaders/sdes.py` with module docstring referencing Story 11.3, FR36, FR37
-  - [ ] 3.2 Define `SDESDataset` frozen dataclass with fields: `dataset_id: str`, `description: str`, `url: str`, `encoding: str = "utf-8"`, `separator: str = ";"`, `null_markers: tuple[str, ...] = ("",)`, `columns: tuple[tuple[str, str], ...] = ()`, `skip_rows: int = 0` — number of header rows to skip before the column name row (DiDo CSVs may have description rows)
-  - [ ] 3.3 Define `SDES_CATALOG` with at minimum:
+- [x] Task 3: Create SDES loader — `sdes.py` (AC: #3, #4)
+  - [x]3.1 Create `src/reformlab/population/loaders/sdes.py` with module docstring referencing Story 11.3, FR36, FR37
+  - [x]3.2 Define `SDESDataset` frozen dataclass with fields: `dataset_id: str`, `description: str`, `url: str`, `encoding: str = "utf-8"`, `separator: str = ";"`, `null_markers: tuple[str, ...] = ("",)`, `columns: tuple[tuple[str, str], ...] = ()`, `skip_rows: int = 0` — number of header rows to skip before the column name row (DiDo CSVs may have description rows)
+  - [x]3.3 Define `SDES_CATALOG` with at minimum:
     - `"vehicle_fleet"` — Vehicle fleet composition by fuel type, age, Crit'Air, region (communal-level data from data.gouv.fr)
-  - [ ] 3.4 Define per-dataset `pa.Schema` for the output columns (fleet counts by year, fuel type, region)
-  - [ ] 3.5 Add `SDES_AVAILABLE_DATASETS` module-level constant
-  - [ ] 3.6 Implement `SDESLoader(CachedLoader)` with DiDo CSV parsing — UTF-8 encoding, semicolon separator
-  - [ ] 3.7 Implement `get_sdes_loader(dataset_id, *, cache, logger=None)` factory function
-  - [ ] 3.8 Implement `make_sdes_config(dataset_id, **params)` helper function
+  - [x]3.4 Define per-dataset `pa.Schema` for the output columns (fleet counts by year, fuel type, region)
+  - [x]3.5 Add `SDES_AVAILABLE_DATASETS` module-level constant
+  - [x]3.6 Implement `SDESLoader(CachedLoader)` with DiDo CSV parsing — UTF-8 encoding, semicolon separator; wire `SDESDataset.skip_rows` into `ReadOptions(skip_rows=self._dataset.skip_rows)`
+  - [x]3.7 Implement `get_sdes_loader(dataset_id, *, cache, logger=None)` factory function
+  - [x]3.8 Implement `make_sdes_config(dataset_id, **params)` helper function
 
-- [ ] Task 4: Update `__init__.py` exports (AC: #4)
-  - [ ] 4.1 Add all Eurostat exports to `src/reformlab/population/loaders/__init__.py`
-  - [ ] 4.2 Add all ADEME exports to `src/reformlab/population/loaders/__init__.py`
-  - [ ] 4.3 Add all SDES exports to `src/reformlab/population/loaders/__init__.py`
-  - [ ] 4.4 Add the same exports to `src/reformlab/population/__init__.py`
+- [x] Task 4: Update `__init__.py` exports (AC: #4)
+  - [x]4.1 Rename `AVAILABLE_DATASETS` → `INSEE_AVAILABLE_DATASETS` in `src/reformlab/population/loaders/insee.py` and update all references (factory functions, `__init__.py`, tests). Keep a `AVAILABLE_DATASETS = INSEE_AVAILABLE_DATASETS` alias for backward compatibility until all existing code is updated.
+  - [x]4.2 Add all Eurostat exports to `src/reformlab/population/loaders/__init__.py`: `EurostatDataset`, `EurostatLoader`, `EUROSTAT_AVAILABLE_DATASETS`, `get_eurostat_loader`, `make_eurostat_config`
+  - [x]4.3 Add all ADEME exports to `src/reformlab/population/loaders/__init__.py`: `ADEMEDataset`, `ADEMELoader`, `ADEME_AVAILABLE_DATASETS`, `get_ademe_loader`, `make_ademe_config`
+  - [x]4.4 Add all SDES exports to `src/reformlab/population/loaders/__init__.py`: `SDESDataset`, `SDESLoader`, `SDES_AVAILABLE_DATASETS`, `get_sdes_loader`, `make_sdes_config`
+  - [x]4.5 Add the same exports to `src/reformlab/population/__init__.py`
 
-- [ ] Task 5: Create test fixtures (AC: #5)
-  - [ ] 5.1 Create `tests/fixtures/eurostat/` directory with small SDMX-CSV fixtures mimicking `ilc_di01` and `nrg_d_hhq` format (5–10 rows each, comma-separated, UTF-8)
-  - [ ] 5.2 Create `tests/fixtures/ademe/` directory with small CSV fixture mimicking Base Carbone format (5–10 rows, semicolon-separated, Windows-1252 encoded)
-  - [ ] 5.3 Create `tests/fixtures/sdes/` directory with small CSV fixture mimicking DiDo vehicle fleet format (5–10 rows, semicolon-separated, UTF-8)
-  - [ ] 5.4 Add fixture helpers in `tests/population/loaders/conftest.py`: paths and byte-reading fixtures for each provider
+- [x] Task 5: Create test fixtures (AC: #5)
+  - [x]5.1 Create `tests/fixtures/eurostat/` directory with small SDMX-CSV fixtures mimicking `ilc_di01` and `nrg_d_hhq` format (5–10 rows each, comma-separated, UTF-8)
+  - [x]5.2 Create `tests/fixtures/ademe/` directory with small CSV fixture mimicking Base Carbone format (5–10 rows, semicolon-separated, Windows-1252 encoded)
+  - [x]5.3 Create `tests/fixtures/sdes/` directory with small CSV fixture mimicking DiDo vehicle fleet format (5–10 rows, semicolon-separated, UTF-8)
+  - [x]5.4 Add fixture helpers in `tests/population/loaders/conftest.py`: paths and byte-reading fixtures for each provider
 
-- [ ] Task 6: Write comprehensive tests (AC: all)
-  - [ ] 6.1 `tests/population/loaders/test_eurostat.py`:
+- [x] Task 6: Write comprehensive tests (AC: all)
+  - [x]6.1 `tests/population/loaders/test_eurostat.py`:
     - `TestEurostatLoaderProtocol`: `isinstance()` check against `DataSourceLoader`
     - `TestEurostatLoaderSchema`: `schema()` returns valid `pa.Schema` for each dataset
     - `TestEurostatLoaderFetch`: monkeypatch `urllib.request.urlopen` to return gzip-compressed fixture; verify `_fetch()` returns correctly-parsed `pa.Table`
     - `TestEurostatLoaderFetchMissingValues`: verify `:` and empty cells produce nulls
+    - `TestEurostatLoaderFetchBadGzip`: verify `gzip.BadGzipFile` on corrupt gzip content raises `DataSourceValidationError` (not `OSError`) — prevents wrong stale-cache fallback since `BadGzipFile` inherits from `OSError`
     - `TestEurostatLoaderFetchHTTPError`: verify network errors re-raised as `OSError`
     - `TestEurostatLoaderDownloadIntegration`: full `download()` lifecycle via `CachedLoader`
     - `TestEurostatLoaderCatalog`: catalog completeness, factory function, invalid ID error
     - `TestMakeEurostatConfig`: config construction for each catalog entry
-  - [ ] 6.2 `tests/population/loaders/test_ademe.py`:
+  - [x]6.2 `tests/population/loaders/test_ademe.py`:
     - `TestADEMELoaderProtocol`: protocol compliance
     - `TestADEMELoaderSchema`: schema correctness
     - `TestADEMELoaderFetch`: monkeypatch fetch with Windows-1252 fixture; verify parsing
@@ -90,24 +92,25 @@ so that downstream merge methods (Stories 11.4–11.6) can consume real European
     - `TestADEMELoaderDownloadIntegration`: full download lifecycle
     - `TestADEMELoaderCatalog`: catalog and factory
     - `TestMakeAdemeConfig`: config construction
-  - [ ] 6.3 `tests/population/loaders/test_sdes.py`:
+  - [x]6.3 `tests/population/loaders/test_sdes.py`:
     - `TestSDESLoaderProtocol`: protocol compliance
     - `TestSDESLoaderSchema`: schema correctness
     - `TestSDESLoaderFetch`: monkeypatch fetch with fixture; verify parsing
+    - `TestSDESLoaderFetchSkipRows`: fixture with leading description rows; verify `skip_rows > 0` correctly skips to the header row
     - `TestSDESLoaderFetchHTTPError`: network error handling
     - `TestSDESLoaderDownloadIntegration`: full download lifecycle
     - `TestSDESLoaderCatalog`: catalog and factory
     - `TestMakeSDESConfig`: config construction
 
-- [ ] Task 7: Network integration tests (AC: #5)
-  - [ ] 7.1 `tests/population/loaders/test_eurostat_network.py` — `@pytest.mark.network` real download of `ilc_di01` (small dataset)
-  - [ ] 7.2 `tests/population/loaders/test_ademe_network.py` — `@pytest.mark.network` real download of Base Carbone CSV
-  - [ ] 7.3 `tests/population/loaders/test_sdes_network.py` — `@pytest.mark.network` real download of vehicle fleet data
+- [x] Task 7: Network integration tests (AC: #5)
+  - [x]7.1 `tests/population/loaders/test_eurostat_network.py` — `@pytest.mark.network` real download of `ilc_di01` (small dataset)
+  - [x]7.2 `tests/population/loaders/test_ademe_network.py` — `@pytest.mark.network` real download of Base Carbone CSV
+  - [x]7.3 `tests/population/loaders/test_sdes_network.py` — `@pytest.mark.network` real download of vehicle fleet data
 
-- [ ] Task 8: Run full test suite and lint (AC: all)
-  - [ ] 8.1 `uv run pytest tests/population/` — all tests pass
-  - [ ] 8.2 `uv run ruff check src/reformlab/population/ tests/population/` — no lint errors
-  - [ ] 8.3 `uv run mypy src/reformlab/population/` — no mypy errors (strict mode)
+- [x] Task 8: Run full test suite and lint (AC: all)
+  - [x]8.1 `uv run pytest tests/population/` — all tests pass
+  - [x]8.2 `uv run ruff check src/reformlab/population/ tests/population/` — no lint errors
+  - [x]8.3 `uv run mypy src/reformlab/population/` — no mypy errors (strict mode)
 
 ## Dev Notes
 
@@ -311,24 +314,36 @@ def _fetch(self, config: SourceConfig) -> pa.Table:
     raw_bytes = ...  # urllib.request.urlopen(config.url)
 
     # 2. Decompress gzip (file-level, NOT http-level)
-    csv_bytes = gzip.decompress(raw_bytes)
+    #    CRITICAL: gzip.BadGzipFile inherits from OSError. If not caught
+    #    explicitly here, it propagates as OSError and CachedLoader.download()
+    #    triggers stale-cache fallback instead of raising a validation error.
+    try:
+        csv_bytes = gzip.decompress(raw_bytes)
+    except (OSError, gzip.BadGzipFile) as exc:
+        raise DataSourceValidationError(
+            summary="Gzip decompression failed",
+            reason=f"Downloaded content for eurostat/{self._dataset.dataset_id} "
+                   f"is not valid gzip: {exc}",
+            fix="Check the Eurostat API URL and compressed=true parameter",
+        ) from exc
 
     # 3. Parse with pyarrow.csv
-    raw_names = [col[0] for col in self._dataset.columns]
-    project_names = [col[1] for col in self._dataset.columns]
+    ds = self._dataset
+    raw_names = [col[0] for col in ds.columns]
+    project_names = [col[1] for col in ds.columns]
     schema = self.schema()
 
     column_types: dict[str, pa.DataType] = {}
-    for raw_name, proj_name in self._dataset.columns:
+    for raw_name, proj_name in ds.columns:
         column_types[raw_name] = schema.field(proj_name).type
 
     convert_options = pcsv.ConvertOptions(
-        null_values=["", ":"],
+        null_values=list(ds.null_markers),
         column_types=column_types,
         include_columns=raw_names,
     )
-    parse_options = pcsv.ParseOptions(delimiter=",")
-    read_options = pcsv.ReadOptions(encoding="utf-8")
+    parse_options = pcsv.ParseOptions(delimiter=ds.separator)
+    read_options = pcsv.ReadOptions(encoding=ds.encoding)
 
     table = pcsv.read_csv(
         io.BytesIO(csv_bytes),
@@ -419,7 +434,7 @@ _BASE_CARBONE_COLUMNS: tuple[tuple[str, str], ...] = (
 )
 ```
 
-**Note on column names:** The exact raw column names in the CSV must be verified against the fixture file. ADEME may use slightly different names across versions. The fixture should use the real column names from a recent download (V23.6). If the dev agent runs the network integration test and finds column name differences, update the mapping accordingly.
+**Note on column names:** See "Column Name Verification Strategy" section below for the approach to handling column name drift across data vintages.
 
 **`base_carbone` output schema:**
 ```python
@@ -442,7 +457,7 @@ pa.schema([
 ])
 ```
 
-**IMPORTANT:** The exact raw column names may vary. Before finalizing the column mapping, run the network integration test to download a real Base Carbone file and check the actual headers. If column names differ from the above, adjust the `_BASE_CARBONE_COLUMNS` mapping. The fixture must use the same column names as the real file.
+**IMPORTANT:** See "Column Name Verification Strategy" section for handling column name drift. Run the network integration test early to verify ADEME headers match the mapping above.
 
 ### ADEME Fixture Design
 
@@ -458,12 +473,25 @@ Identifiant de l'élément;Nom base français;Nom attribut français;Type Ligne;
 9012;Électricité;Mix moyen;Elément;kgCO2e/kWh;0.0569;0.0479;0;0;0.009;0;0;France métropolitaine;;ADEME
 ```
 
-**The fixture MUST be saved as Windows-1252 encoding**, not UTF-8. Use Python to create it:
+**The fixture MUST be saved as Windows-1252 encoding**, not UTF-8. The `Write` tool outputs UTF-8, so the fixture must be generated programmatically. Add a fixture helper to `tests/population/loaders/conftest.py`:
+
 ```python
-content.encode("windows-1252")
+@pytest.fixture()
+def ademe_base_carbone_csv_bytes() -> bytes:
+    """Windows-1252 encoded ADEME Base Carbone CSV fixture."""
+    content = (
+        "Identifiant de l'élément;Nom base français;Nom attribut français;"
+        "Type Ligne;Unité français;Total poste non décomposé;CO2f;CH4f;"
+        "CH4b;N2O;CO2b;Autre GES;Localisation géographique;"
+        "Sous-localisation géographique français;Contributeur\r\n"
+        "1234;Gaz naturel;PCI;Elément;kgCO2e/kWh PCI;0.227;0.205;0.004;"
+        "0;0.018;0;0;France métropolitaine;;ADEME\r\n"
+        # ... more rows with French characters (é, è, ê) ...
+    )
+    return content.encode("windows-1252")
 ```
 
-Or use the `Write` tool with careful byte handling. Alternatively, if the fixture uses only ASCII-compatible characters, both encodings produce the same bytes — include at least one non-ASCII French character to test encoding.
+Tests that monkeypatch `_fetch` should use these bytes directly. The on-disk fixture file at `tests/fixtures/ademe/base_carbone.csv` should be created by a one-time setup script writing `content.encode("windows-1252")` to disk, NOT by the `Write` tool. Include at least one non-ASCII French character (e.g., `é` in `métropolitaine`, `è` in `Elément`) to verify encoding — these differ between UTF-8 (multi-byte) and Windows-1252 (single-byte).
 
 ---
 
@@ -483,7 +511,7 @@ https://www.data.gouv.fr/api/1/datasets/r/2f9fd9c8-e6e1-450e-8548-f479b8a401cd
 https://data.statistiques.developpement-durable.gouv.fr/dido/api/v1/datafiles/3750a580-f249-42d3-b488-5cf8acb767b7/csv?millesime=2023-05&withColumnName=true&withColumnDescription=false&withColumnUnit=false
 ```
 
-**Recommendation:** Use the data.gouv.fr URL for simplicity (single GET, no query params needed). It returns the same CSV data.
+**Decision:** Use the data.gouv.fr URL in `SDES_CATALOG["vehicle_fleet"].url` for simplicity (single GET, no query params needed). The DiDo API URL above is informational only — do not use it in the catalog.
 
 **Note:** The data.gouv.fr resource ID (`2f9fd9c8-...`) may change when new data vintages are published. The URL is stored in the catalog constant and can be updated easily.
 
@@ -542,7 +570,7 @@ pa.schema([
 
 **Note:** Fleet counts use `float64` (not `int64`) to handle potential null values, following the same pattern as INSEE's `nb_fiscal_households`.
 
-**IMPORTANT:** Column names must be verified against the actual data. Run the network integration test first to confirm exact column names. SDES may use different names than documented. If column names differ, update the mapping in the catalog.
+**IMPORTANT:** See "Column Name Verification Strategy" section for handling column name drift. Run the network integration test early to verify SDES headers match the mapping above.
 
 ### SDES Fixture Design
 
@@ -565,7 +593,12 @@ Include at least one row with empty fleet count to test null handling.
 
 Follow the exact test structure from `tests/population/loaders/test_insee.py`:
 
-1. **Test helpers** at top of file: `_make_gzip()` (for Eurostat), `_mock_urlopen()` (reuse from INSEE pattern)
+1. **Test helpers** at top of file: `_make_gzip()` (for Eurostat), `_mock_urlopen()` (reuse from INSEE pattern):
+   ```python
+   def _make_gzip(csv_bytes: bytes) -> bytes:
+       """Create gzip-compressed bytes from CSV content."""
+       return gzip.compress(csv_bytes)
+   ```
 2. **Protocol compliance class**: verify `isinstance(loader, DataSourceLoader)`
 3. **Schema class**: verify field names and types for each dataset
 4. **Fetch class**: monkeypatch `urllib.request.urlopen` to return fixture data; for Eurostat, wrap fixture in gzip first
@@ -663,12 +696,46 @@ For all three data sources, the exact raw column names may vary across data vint
 
 ### Agent Model Used
 
+claude-opus-4-6
+
 ### Debug Log References
+
+None — clean implementation with one test fix (ADEME encoding fallback needed `ArrowKeyError` in addition to `ArrowInvalid`).
 
 ### Completion Notes List
 
+- All 3 loaders (Eurostat, ADEME, SDES) implemented following the INSEE pattern exactly
+- `AVAILABLE_DATASETS` renamed to `INSEE_AVAILABLE_DATASETS` with backward-compatible alias
+- ADEME encoding fallback catches both `pa.ArrowInvalid` and `pa.lib.ArrowKeyError` (UTF-8 bytes decoded as Windows-1252 garble column names, producing `ArrowKeyError` not `ArrowInvalid`)
+- Eurostat gzip decompression errors correctly raise `DataSourceValidationError` (not `OSError`) to prevent wrong stale-cache fallback
+- ADEME fixture written as Windows-1252 via Python script (Write tool outputs UTF-8)
+- 87 new tests + 1723 total pass, 0 regressions
+- ruff, mypy strict: all clean
+
 ### File List
+
+**New files:**
+- `src/reformlab/population/loaders/eurostat.py`
+- `src/reformlab/population/loaders/ademe.py`
+- `src/reformlab/population/loaders/sdes.py`
+- `tests/population/loaders/test_eurostat.py`
+- `tests/population/loaders/test_ademe.py`
+- `tests/population/loaders/test_sdes.py`
+- `tests/population/loaders/test_eurostat_network.py`
+- `tests/population/loaders/test_ademe_network.py`
+- `tests/population/loaders/test_sdes_network.py`
+- `tests/fixtures/eurostat/ilc_di01.csv`
+- `tests/fixtures/eurostat/nrg_d_hhq.csv`
+- `tests/fixtures/ademe/base_carbone.csv`
+- `tests/fixtures/sdes/vehicle_fleet.csv`
+
+**Modified files:**
+- `src/reformlab/population/loaders/insee.py` — renamed `AVAILABLE_DATASETS` → `INSEE_AVAILABLE_DATASETS` + alias
+- `src/reformlab/population/loaders/__init__.py` — added all new exports
+- `src/reformlab/population/__init__.py` — added all new exports
+- `tests/population/loaders/conftest.py` — added Eurostat, ADEME, SDES fixture helpers
 
 ## Change Log
 
 - 2026-03-03: Story created by create-story workflow — comprehensive developer context with Eurostat SDMX-CSV parsing, ADEME Windows-1252 handling, SDES DiDo CSV format, test fixture designs, and verified download URLs.
+- 2026-03-03: Story implemented — all 3 loaders, 87 new tests, full CI validation (ruff + mypy strict + 1723 tests pass).

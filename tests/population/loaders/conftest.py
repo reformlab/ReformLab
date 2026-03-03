@@ -8,8 +8,12 @@ import pytest
 from reformlab.population.loaders.base import CachedLoader, SourceConfig
 from reformlab.population.loaders.cache import SourceCache
 
-# Path to INSEE fixture files
-_FIXTURE_DIR = Path(__file__).resolve().parent.parent.parent / "fixtures" / "insee"
+# Paths to fixture directories
+_FIXTURES_ROOT = Path(__file__).resolve().parent.parent.parent / "fixtures"
+_FIXTURE_DIR = _FIXTURES_ROOT / "insee"
+_EUROSTAT_FIXTURE_DIR = _FIXTURES_ROOT / "eurostat"
+_ADEME_FIXTURE_DIR = _FIXTURES_ROOT / "ademe"
+_SDES_FIXTURE_DIR = _FIXTURES_ROOT / "sdes"
 
 
 @pytest.fixture()
@@ -64,6 +68,68 @@ def mock_table(mock_schema: pa.Schema) -> pa.Table:
             "decile": pa.array([2, 5, 8], type=pa.int32()),
         }
     )
+
+
+# ====================================================================
+# Eurostat fixtures
+# ====================================================================
+
+
+@pytest.fixture()
+def eurostat_fixture_dir() -> Path:
+    """Path to the Eurostat test fixture directory."""
+    return _EUROSTAT_FIXTURE_DIR
+
+
+@pytest.fixture()
+def eurostat_ilc_di01_csv_bytes(eurostat_fixture_dir: Path) -> bytes:
+    """Raw bytes of the Eurostat ilc_di01 CSV fixture (plain, not gzipped)."""
+    return (eurostat_fixture_dir / "ilc_di01.csv").read_bytes()
+
+
+@pytest.fixture()
+def eurostat_nrg_d_hhq_csv_bytes(eurostat_fixture_dir: Path) -> bytes:
+    """Raw bytes of the Eurostat nrg_d_hhq CSV fixture (plain, not gzipped)."""
+    return (eurostat_fixture_dir / "nrg_d_hhq.csv").read_bytes()
+
+
+# ====================================================================
+# ADEME fixtures
+# ====================================================================
+
+
+@pytest.fixture()
+def ademe_fixture_dir() -> Path:
+    """Path to the ADEME test fixture directory."""
+    return _ADEME_FIXTURE_DIR
+
+
+@pytest.fixture()
+def ademe_base_carbone_csv_bytes(ademe_fixture_dir: Path) -> bytes:
+    """Raw bytes of the ADEME Base Carbone CSV fixture (Windows-1252 encoded)."""
+    return (ademe_fixture_dir / "base_carbone.csv").read_bytes()
+
+
+# ====================================================================
+# SDES fixtures
+# ====================================================================
+
+
+@pytest.fixture()
+def sdes_fixture_dir() -> Path:
+    """Path to the SDES test fixture directory."""
+    return _SDES_FIXTURE_DIR
+
+
+@pytest.fixture()
+def sdes_vehicle_fleet_csv_bytes(sdes_fixture_dir: Path) -> bytes:
+    """Raw bytes of the SDES vehicle fleet CSV fixture."""
+    return (sdes_fixture_dir / "vehicle_fleet.csv").read_bytes()
+
+
+# ====================================================================
+# Mock loader
+# ====================================================================
 
 
 class MockCachedLoader(CachedLoader):
