@@ -148,6 +148,16 @@ class IPFMergeMethod:
             present = set(constraint.targets.keys()) & col_categories
             missing = set(constraint.targets.keys()) - col_categories
             if not present:
+                # Detect likely type mismatch: targets are str-keyed but
+                # column may contain non-string values (int, float)
+                sample = next(iter(col_categories), None)
+                type_hint = ""
+                if sample is not None and not isinstance(sample, str):
+                    type_hint = (
+                        f" Column contains {type(sample).__name__} values "
+                        f"but IPFConstraint targets use str keys — "
+                        f"cast the column to utf8 before constraining."
+                    )
                 _logger.warning(
                     "event=merge_error method=ipf error=all_categories_missing dimension=%s",
                     constraint.dimension,
@@ -157,9 +167,13 @@ class IPFMergeMethod:
                     reason=(
                         f"None of the target categories {sorted(constraint.targets.keys())} "
                         f"exist in column {constraint.dimension!r}. "
-                        f"Column contains: {sorted(str(v) for v in col_categories)}"
+                        f"Column contains: {sorted(str(v) for v in col_categories)}.{type_hint}"
                     ),
-                    fix="Check that target category values match the column values",
+                    fix=(
+                        "Check that target category values match the column values"
+                        if not type_hint
+                        else "Cast the column to utf8: pa.compute.cast(col, pa.utf8())"
+                    ),
                 )
             if missing:
                 _logger.warning(
@@ -168,6 +182,14 @@ class IPFMergeMethod:
                     sorted(missing),
                 )
             constraint_cols.append(col_values)
+
+        # Pre-build category→row-indices maps (O(N) per constraint, once)
+        constraint_cat_indices: list[dict[object, list[int]]] = []
+        for col_values in constraint_cols:
+            cat_to_indices: dict[object, list[int]] = {}
+            for k, cat in enumerate(col_values):
+                cat_to_indices.setdefault(cat, []).append(k)
+            constraint_cat_indices.append(cat_to_indices)
 
         # IPF iteration loop
         converged = False
@@ -178,13 +200,12 @@ class IPFMergeMethod:
             max_deviation = 0.0
 
             for c_idx, constraint in enumerate(self._constraints):
-                col_values = constraint_cols[c_idx]
+                cat_indices = constraint_cat_indices[c_idx]
 
                 # Compute current weighted totals per category
                 current_totals: dict[object, float] = {}
-                for k in range(n):
-                    cat = col_values[k]
-                    current_totals[cat] = current_totals.get(cat, 0.0) + weights[k]
+                for cat, indices in cat_indices.items():
+                    current_totals[cat] = sum(weights[k] for k in indices)
 
                 # Compute and apply adjustment factors
                 for cat, target in constraint.targets.items():
@@ -197,9 +218,8 @@ class IPFMergeMethod:
                         max_deviation = max(max_deviation, target)
 
                     # Apply factor to all rows in this category
-                    for k in range(n):
-                        if col_values[k] == cat:
-                            weights[k] *= factor
+                    for k in cat_indices.get(cat, ()):
+                        weights[k] *= factor
 
             _logger.debug(
                 "event=ipf_iteration iteration=%d max_deviation=%s",
@@ -386,9 +406,16 @@ class IPFMergeMethod:
                 ),
             )
 
+        # Derive independent RNG streams from a parent seeded with config.seed.
+        # This avoids cross-scenario correlation that seed+1 would create
+        # (two scenarios with adjacent seeds no longer share any RNG stream).
+        parent_rng = random.Random(config.seed)
+        rng_integerize = random.Random(parent_rng.getrandbits(64))
+        rng_match = random.Random(parent_rng.getrandbits(64))
+
         # Integerize weights
         int_weights = self._integerize_weights(
-            ipf_result.weights, table_a.num_rows, random.Random(config.seed)
+            ipf_result.weights, table_a.num_rows, rng_integerize
         )
 
         # Expand table_a by repeating rows per integer weight
@@ -414,8 +441,7 @@ class IPFMergeMethod:
 
         expanded_a = table_a.take(pa.array(expanded_indices))
 
-        # Random matching with replacement (different seed stream)
-        rng_match = random.Random(config.seed + 1)
+        # Random matching with replacement (independent stream from parent)
         m = right_table.num_rows
         b_indices = pa.array(
             [rng_match.randrange(m) for _ in range(expanded_a.num_rows)]

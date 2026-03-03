@@ -245,8 +245,11 @@ class ConditionalSamplingMethod:
             table_b.column(c).to_pylist() for c in self._strata_columns
         ]
 
+        # Build strata groups and save per-row keys (avoids recomputation)
+        a_keys: list[tuple[object, ...]] = []
         for k in range(n):
             key = tuple(col[k] for col in a_strata_cols)
+            a_keys.append(key)
             strata_a.setdefault(key, []).append(k)
 
         for k in range(m):
@@ -283,12 +286,8 @@ class ConditionalSamplingMethod:
                 ),
             )
 
-        # Random matching within strata
+        # Random matching within strata (a_keys already computed above)
         rng = random.Random(config.seed)
-        # Build key for each row of table_a in order
-        a_keys = [
-            tuple(col[k] for col in a_strata_cols) for k in range(n)
-        ]
         matched_b_indices = [
             rng.choice(strata_b[key]) for key in a_keys
         ]
@@ -317,8 +316,12 @@ class ConditionalSamplingMethod:
         merged = pa.table(all_columns)
 
         # Build strata sizes for assumption details
+        # Use JSON-safe list representation to avoid ambiguity when
+        # stratum values contain separator characters
+        import json as _json
+
         strata_sizes = {
-            "|".join(str(x) for x in key): {
+            _json.dumps([str(x) for x in key], ensure_ascii=False): {
                 "table_a": len(strata_a[key]),
                 "table_b": len(strata_b.get(key, [])),
             }
@@ -342,7 +345,8 @@ class ConditionalSamplingMethod:
                 "strata_columns": list(self._strata_columns),
                 "strata_count": len(strata_a),
                 "strata_sizes": strata_sizes,
-                "dropped_right_columns": list(effective_drop),
+                "dropped_strata_columns": list(self._strata_columns),
+                "dropped_right_columns": list(config.drop_right_columns),
             },
         )
 

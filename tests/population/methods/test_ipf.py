@@ -519,6 +519,33 @@ class TestIPFMergeMethodMissingCategory:
         assert result.table.num_rows > 0
         assert "ipf_missing_categories" in caplog.text
 
+    def test_missing_category_with_nonzero_target_raises_convergence_error(
+        self,
+        region_income_table: pa.Table,
+        vehicle_table: pa.Table,
+    ) -> None:
+        """Non-zero target for absent category prevents convergence."""
+        constraints = (
+            IPFConstraint(
+                dimension="income_bracket",
+                targets={
+                    "low": 4.0,
+                    "medium": 3.0,
+                    "high": 3.0,
+                    "extra": 2.0,
+                },
+            ),
+        )
+        method = IPFMergeMethod(
+            constraints=constraints, max_iterations=50, tolerance=1e-6
+        )
+        with pytest.raises(
+            MergeConvergenceError, match="IPF did not converge"
+        ):
+            method.merge(
+                region_income_table, vehicle_table, MergeConfig(seed=42)
+            )
+
     def test_all_categories_missing_raises(
         self,
         region_income_table: pa.Table,
@@ -537,6 +564,22 @@ class TestIPFMergeMethodMissingCategory:
             method.merge(
                 region_income_table, vehicle_table, MergeConfig(seed=42)
             )
+
+    def test_type_mismatch_error_mentions_cast(self) -> None:
+        """Constraint on non-string column gives helpful error about type."""
+        table_a = pa.table({
+            "id": pa.array([1, 2, 3], type=pa.int64()),
+            "val": pa.array([10.0, 20.0, 30.0], type=pa.float64()),
+        })
+        table_b = pa.table({
+            "other": pa.array([1.0, 2.0], type=pa.float64()),
+        })
+        constraints = (
+            IPFConstraint(dimension="id", targets={"1": 2.0, "2": 1.0}),
+        )
+        method = IPFMergeMethod(constraints=constraints)
+        with pytest.raises(MergeValidationError, match="utf8"):
+            method.merge(table_a, table_b, MergeConfig(seed=42))
 
 
 # ====================================================================

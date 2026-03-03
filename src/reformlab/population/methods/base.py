@@ -86,7 +86,7 @@ class IPFConstraint:
             if val < 0:
                 msg = f"target for {cat!r} must be >= 0, got {val}"
                 raise ValueError(msg)
-        # Deep-copy targets dict to prevent external mutation
+        # Shallow copy — safe because target values are floats (immutable)
         object.__setattr__(self, "targets", dict(self.targets))
 
 
