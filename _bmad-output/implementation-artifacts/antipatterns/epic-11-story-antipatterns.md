@@ -32,3 +32,18 @@
 | medium | AC#2 lacks determinism and replacement wording | Amended AC#2 to specify "with replacement, using the provided `MergeConfig.seed` to guarantee reproducibility." |
 | medium | Column ordering not documented as contract | Added ordering statement to Algorithm Detail step 3. |
 | medium | Import notes for pyarrow runtime vs TYPE_CHECKING | Added import notes section under No New Dependencies. |
+
+## Story 11-5 (2026-03-03)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | `inconsistent_constraints` fixture missing concrete code | Added complete Python fixture with 3x grand-total mismatch between dimensions to reliably trigger non-convergence |
+| critical | `strata_info` undefined variable in Task 4.4 | Replaced with explicit dict comprehension iterating over `strata_a` keys, using `"\|".join()` for multi-column strata key serialization |
+| critical | `_run_ipf` unused `config` parameter | Removed `config` from signature in Task 3.4 and updated call site in Task 3.6 |
+| high | AC1 tolerance ambiguity | Added parenthetical clarification to AC1 specifying both convergence-level (1e-6) and post-integerization (±1 row) tolerances |
+| high | Conditional sampling drop-list deduplication missing from pseudocode | Updated both Task 4.4 step 3 (explicit `dict.fromkeys()` deduplication) and algorithm pseudocode step 5 (iterative `remove_column()` matching uniform.py pattern) |
+| high | Empty expansion guard missing from Task 3.6 | Added step 8 guard raising `MergeValidationError` when all weights integerize to 0, re-numbered subsequent steps |
+| medium | File count "Modified files (6)" lists 7 files | Corrected count to (7) |
+| medium | Convergence test lacks constructor parameter specification | Added explicit `IPFMergeMethod(constraints=inconsistent_constraints, max_iterations=100, tolerance=1e-6)` to test description |
+| medium | No test for warning on absent constraint category | Added `TestIPFMergeMethodMissingCategory` with `caplog` fixture requirement |
+| medium | No test for conditional sampling drop-list deduplication | Added test case to `TestConditionalSamplingMethodDropRightColumns` |

@@ -2,7 +2,7 @@
 
 # Story 11.5: Implement IPF and conditional sampling merge methods
 
-Status: ready-for-dev
+Status: complete
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -14,7 +14,7 @@ so that the population pipeline can produce merged populations that respect know
 
 ## Acceptance Criteria
 
-1. Given two tables and a set of known marginal constraints, when IPF is applied, then the merged population matches the target marginals within documented tolerances.
+1. Given two tables and a set of known marginal constraints, when IPF is applied, then the merged population matches the target marginals within documented tolerances (IPF convergence tolerance is `1e-6` at the weight level; after integerization, per-category row counts match targets within ±1).
 2. Given IPF output, when the assumption record is inspected, then it lists all marginal constraints used and the convergence status.
 3. Given two tables with a conditioning variable (e.g., income bracket), when conditional sampling is applied, then matches are drawn within strata defined by the conditioning variable.
 4. Given conditional sampling output, when the assumption record is inspected, then it states the conditioning variable and explains the conditional independence assumption.
@@ -22,20 +22,20 @@ so that the population pipeline can produce merged populations that respect know
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Define IPF supporting types in `base.py` (AC: #1, #2)
-  - [ ] 1.1 Add `IPFConstraint` frozen dataclass to `src/reformlab/population/methods/base.py` with fields: `dimension: str` (column name in table_a to constrain), `targets: dict[str, float]` (category value -> target count/weight). Validate in `__post_init__` that `dimension` is a non-empty string and `targets` is non-empty with all values >= 0. Deep-copy `targets` dict via `object.__setattr__`.
-  - [ ] 1.2 Add `IPFResult` frozen dataclass to `base.py` with fields: `weights: tuple[float, ...]` (per-row IPF weights), `iterations: int` (iterations until convergence), `converged: bool`, `max_deviation: float` (maximum absolute deviation at termination). This captures convergence diagnostics for the assumption record.
+- [x] Task 1: Define IPF supporting types in `base.py` (AC: #1, #2)
+  - [x] 1.1 Add `IPFConstraint` frozen dataclass to `src/reformlab/population/methods/base.py` with fields: `dimension: str` (column name in table_a to constrain), `targets: dict[str, float]` (category value -> target count/weight). Validate in `__post_init__` that `dimension` is a non-empty string and `targets` is non-empty with all values >= 0. Deep-copy `targets` dict via `object.__setattr__`.
+  - [x] 1.2 Add `IPFResult` frozen dataclass to `base.py` with fields: `weights: tuple[float, ...]` (per-row IPF weights), `iterations: int` (iterations until convergence), `converged: bool`, `max_deviation: float` (maximum absolute deviation at termination). This captures convergence diagnostics for the assumption record.
 
-- [ ] Task 2: Add `MergeConvergenceError` to error hierarchy (AC: #1)
-  - [ ] 2.1 Add `MergeConvergenceError(MergeError)` to `src/reformlab/population/methods/errors.py` — raised when IPF fails to converge within `max_iterations`. Docstring: "Raised when an iterative merge method fails to converge within the configured iteration limit."
+- [x] Task 2: Add `MergeConvergenceError` to error hierarchy (AC: #1)
+  - [x] 2.1 Add `MergeConvergenceError(MergeError)` to `src/reformlab/population/methods/errors.py` — raised when IPF fails to converge within `max_iterations`. Docstring: "Raised when an iterative merge method fails to converge within the configured iteration limit."
 
-- [ ] Task 3: Implement `IPFMergeMethod` — `ipf.py` (AC: #1, #2, #5)
-  - [ ] 3.1 Create `src/reformlab/population/methods/ipf.py` with module docstring referencing Story 11.5, FR38, FR39 — include pedagogical docstring explaining IPF in plain language:
+- [x] Task 3: Implement `IPFMergeMethod` — `ipf.py` (AC: #1, #2, #5)
+  - [x] 3.1 Create `src/reformlab/population/methods/ipf.py` with module docstring referencing Story 11.5, FR38, FR39 — include pedagogical docstring explaining IPF in plain language:
     - What IPF does: adjusts row weights so that the merged population's marginal distributions match known targets (e.g., census totals by region, income distribution by bracket)
     - The assumption: the joint distribution between unconstrained variables follows the pattern in the seed data (table_a), adjusted only to match the specified marginals. This is a "minimum information" / maximum entropy approach
     - When appropriate: when you have reliable marginal distributions from census or administrative data that the merged population must respect
     - When problematic: when the seed data has structural zeros (categories with no observations) that should have non-zero representation, or when marginal targets are mutually inconsistent (different grand totals)
-  - [ ] 3.2 Implement `IPFMergeMethod` class with constructor:
+  - [x] 3.2 Implement `IPFMergeMethod` class with constructor:
     ```python
     def __init__(
         self,
@@ -45,8 +45,8 @@ so that the population pipeline can produce merged populations that respect know
     ) -> None:
     ```
     Validate: `constraints` must be non-empty tuple, `max_iterations >= 1`, `tolerance > 0`. Store as instance attributes. No frozen dataclass for the method itself (it's a service object, not a value object).
-  - [ ] 3.3 Implement `name` property returning `"ipf"`
-  - [ ] 3.4 Implement private `_run_ipf(self, table_a: pa.Table, config: MergeConfig) -> IPFResult` with this algorithm:
+  - [x] 3.3 Implement `name` property returning `"ipf"`
+  - [x] 3.4 Implement private `_run_ipf(self, table_a: pa.Table) -> IPFResult` with this algorithm:
     1. Initialize weights: `[1.0] * table_a.num_rows`
     2. Validate constraint dimensions exist as columns in table_a — raise `MergeValidationError` if not
     3. Validate constraint targets: each target category must exist in the column values — log warning for categories not present (they cannot be satisfied), raise `MergeValidationError` if **all** categories in a constraint are missing
@@ -59,37 +59,38 @@ so that the population pipeline can produce merged populations that respect know
        b. Compute max absolute deviation: `max(|current[cat] - target[cat]|)` across all constraints and categories
        c. If `max_deviation < tolerance`: converged = True, break
     5. Return `IPFResult(weights=tuple(weights), iterations=i+1, converged=converged, max_deviation=max_deviation)`
-  - [ ] 3.5 Implement private `_integerize_weights(self, weights: tuple[float, ...], target_count: int, rng: random.Random) -> list[int]` with this algorithm:
+  - [x] 3.5 Implement private `_integerize_weights(self, weights: tuple[float, ...], target_count: int, rng: random.Random) -> list[int]` with this algorithm:
     1. Normalize weights so they sum to `target_count` (= `table_a.num_rows`, preserving original count)
     2. For each weight: `integer_part = floor(weight)`, `fractional = weight - integer_part`
     3. Deterministic probabilistic rounding: if `rng.random() < fractional`, add 1
     4. Return list of integer weights (each >= 0)
-  - [ ] 3.6 Implement `merge(self, table_a, table_b, config)` with this logic:
+  - [x] 3.6 Implement `merge(self, table_a, table_b, config)` with this logic:
     1. Validate inputs: both tables must have `num_rows > 0` — raise `MergeValidationError` (same pattern as uniform)
     2. Apply `config.drop_right_columns` to table_b (same pattern as uniform)
     3. Check column name conflicts (same pattern as uniform)
-    4. Run IPF: `ipf_result = self._run_ipf(table_a, config)`
+    4. Run IPF: `ipf_result = self._run_ipf(table_a)`
     5. If not converged: raise `MergeConvergenceError` with summary="IPF did not converge", reason with iterations and max_deviation, fix suggesting increasing max_iterations or checking marginal consistency
     6. Integerize weights: `int_weights = self._integerize_weights(ipf_result.weights, table_a.num_rows, random.Random(config.seed))`
     7. Expand table_a: for each row `k`, repeat it `int_weights[k]` times. Build expanded row indices: `expanded_indices = [k for k, w in enumerate(int_weights) for _ in range(w)]`
-    8. Create expanded table_a: `expanded_a = table_a.take(pa.array(expanded_indices))`
-    9. Random matching: use `random.Random(config.seed + 1)` (different seed stream from integerization) to generate `expanded_a.num_rows` random indices into table_b (same pattern as uniform)
-    10. Select matched rows: `matched_b = right_table.take(pa.array(b_indices))`
-    11. Combine columns: same pattern as uniform (table_a columns first, then table_b columns)
-    12. Build `MergeAssumption` with:
+    8. Guard: if `len(expanded_indices) == 0`, raise `MergeValidationError` with summary="IPF produced empty expansion", reason="All row weights integerized to 0 — no rows survive expansion", fix="Check constraint targets for extreme values or structural zeros"
+    9. Create expanded table_a: `expanded_a = table_a.take(pa.array(expanded_indices))`
+    10. Random matching: use `random.Random(config.seed + 1)` (different seed stream from integerization) to generate `expanded_a.num_rows` random indices into table_b (same pattern as uniform)
+    11. Select matched rows: `matched_b = right_table.take(pa.array(b_indices))`
+    12. Combine columns: same pattern as uniform (table_a columns first, then table_b columns)
+    13. Build `MergeAssumption` with:
         - `method_name="ipf"`
         - `statement="The merged population is reweighted using Iterative Proportional Fitting so that marginal distributions match the specified targets — this assumes the joint distribution between unconstrained variables follows the seed pattern, adjusted only to match target marginals."`
         - `details={"table_a_rows": table_a.num_rows, "table_b_rows": table_b.num_rows, "expanded_rows": expanded_a.num_rows, "seed": config.seed, "constraints": [{"dimension": c.dimension, "targets": dict(c.targets)} for c in self._constraints], "iterations": ipf_result.iterations, "converged": ipf_result.converged, "max_deviation": ipf_result.max_deviation, "tolerance": self._tolerance, "dropped_right_columns": list(config.drop_right_columns)}`
-    13. Return `MergeResult(table=merged, assumption=assumption)`
-  - [ ] 3.7 Use `logging.getLogger(__name__)` with structured `event=ipf_start`, `event=ipf_iteration`, `event=ipf_converged`/`event=ipf_not_converged`, `event=merge_start`, `event=merge_complete` log entries
+    14. Return `MergeResult(table=merged, assumption=assumption)`
+  - [x] 3.7 Use `logging.getLogger(__name__)` with structured `event=ipf_start`, `event=ipf_iteration`, `event=ipf_converged`/`event=ipf_not_converged`, `event=merge_start`, `event=merge_complete` log entries
 
-- [ ] Task 4: Implement `ConditionalSamplingMethod` — `conditional.py` (AC: #3, #4, #5)
-  - [ ] 4.1 Create `src/reformlab/population/methods/conditional.py` with module docstring referencing Story 11.5, FR38, FR39 — include pedagogical docstring explaining conditional sampling in plain language:
+- [x] Task 4: Implement `ConditionalSamplingMethod` — `conditional.py` (AC: #3, #4, #5)
+  - [x] 4.1 Create `src/reformlab/population/methods/conditional.py` with module docstring referencing Story 11.5, FR38, FR39 — include pedagogical docstring explaining conditional sampling in plain language:
     - What it does: groups both tables by shared variable(s) (strata), then randomly matches rows only within the same group. This preserves the correlation between the stratification variable and all other variables
     - The assumption: conditional independence — within each stratum, the unique variables from table_a and table_b are assumed independent. The correlation between them is captured entirely by the stratification variable
     - When appropriate: when both datasets share a variable that is correlated with the unique variables in each dataset (e.g., income bracket correlates with both energy consumption and vehicle ownership)
     - When problematic: when the strata are too coarse (residual correlation within strata is large) or when some strata have very few observations in one table (small sample noise)
-  - [ ] 4.2 Implement `ConditionalSamplingMethod` class with constructor:
+  - [x] 4.2 Implement `ConditionalSamplingMethod` class with constructor:
     ```python
     def __init__(
         self,
@@ -97,11 +98,11 @@ so that the population pipeline can produce merged populations that respect know
     ) -> None:
     ```
     Validate: `strata_columns` must be a non-empty tuple of non-empty strings. Store as instance attribute.
-  - [ ] 4.3 Implement `name` property returning `"conditional"`
-  - [ ] 4.4 Implement `merge(self, table_a, table_b, config)` with this logic:
+  - [x] 4.3 Implement `name` property returning `"conditional"`
+  - [x] 4.4 Implement `merge(self, table_a, table_b, config)` with this logic:
     1. Validate inputs: both tables must have `num_rows > 0` — raise `MergeValidationError`
     2. Validate strata columns exist in BOTH tables — raise `MergeValidationError` listing missing columns and which table they're missing from
-    3. Apply `config.drop_right_columns` to table_b (same pattern as uniform). Note: strata columns in table_b will be dropped from the merged output to avoid duplication (they already exist in table_a). Add strata column names to the effective drop list automatically (unless already in `drop_right_columns`)
+    3. Compute effective drop list: `effective_drop = tuple(dict.fromkeys(self._strata_columns + config.drop_right_columns))` to deduplicate (a strata column may also appear in `drop_right_columns`). Remove effective_drop columns from table_b using iterative `remove_column()` (same pattern as uniform.py). Validate each column exists before removal — raise `MergeValidationError` for any `drop_right_columns` entry not found (strata columns are guaranteed present by step 2)
     4. Check column name conflicts on remaining columns (same pattern as uniform)
     5. Build stratum keys: for each row in table_a and table_b, compute a stratum key as a tuple of values from `strata_columns`
     6. Group table_a row indices by stratum: `strata_a: dict[tuple, list[int]]`
@@ -113,24 +114,24 @@ so that the population pipeline can produce merged populations that respect know
     12. Build `MergeAssumption` with:
         - `method_name="conditional"`
         - `statement="Rows are matched within strata defined by [{strata_column_list}] — this assumes that, within each stratum, the unique variables from each source are independent (conditional independence given the stratification variables)."`
-        - `details={"table_a_rows": n, "table_b_rows": m, "seed": config.seed, "strata_columns": list(self._strata_columns), "strata_count": len(unique_strata), "strata_sizes": {str(k): {"table_a": len(v_a), "table_b": len(v_b)} for k, v_a, v_b in strata_info}, "dropped_right_columns": list(effective_drop_columns)}`
+        - `details={"table_a_rows": n, "table_b_rows": m, "seed": config.seed, "strata_columns": list(self._strata_columns), "strata_count": len(strata_a), "strata_sizes": {"|".join(str(x) for x in key): {"table_a": len(strata_a[key]), "table_b": len(strata_b[key])} for key in strata_a}, "dropped_right_columns": list(effective_drop_columns)}`
     13. Return `MergeResult(table=merged, assumption=assumption)`
-  - [ ] 4.5 Use `logging.getLogger(__name__)` with structured log entries: `event=merge_start method=conditional`, `event=strata_built strata_count=...`, `event=merge_complete`
+  - [x] 4.5 Use `logging.getLogger(__name__)` with structured log entries: `event=merge_start method=conditional`, `event=strata_built strata_count=...`, `event=merge_complete`
 
-- [ ] Task 5: Update `__init__.py` exports (AC: all)
-  - [ ] 5.1 Export from `src/reformlab/population/methods/__init__.py`: add `IPFConstraint`, `IPFResult`, `IPFMergeMethod`, `ConditionalSamplingMethod`, `MergeConvergenceError` — update `__all__` listing
-  - [ ] 5.2 Export from `src/reformlab/population/__init__.py`: add same names — update `__all__` listing
+- [x] Task 5: Update `__init__.py` exports (AC: all)
+  - [x] 5.1 Export from `src/reformlab/population/methods/__init__.py`: add `IPFConstraint`, `IPFResult`, `IPFMergeMethod`, `ConditionalSamplingMethod`, `MergeConvergenceError` — update `__all__` listing
+  - [x] 5.2 Export from `src/reformlab/population/__init__.py`: add same names — update `__all__` listing
 
-- [ ] Task 6: Create test fixtures for IPF and conditional sampling (AC: all)
-  - [ ] 6.1 Add to `tests/population/methods/conftest.py`:
+- [x] Task 6: Create test fixtures for IPF and conditional sampling (AC: all)
+  - [x] 6.1 Add to `tests/population/methods/conftest.py`:
     - `region_income_table` — `pa.Table` with columns: `household_id` (int64), `income_bracket` (utf8: "low"/"medium"/"high"), `region_code` (utf8: "84"/"11"/"75") — 10 rows, with known distribution: 3 low, 4 medium, 3 high; 4 region 84, 3 region 11, 3 region 75
     - `energy_vehicle_table` — `pa.Table` with columns: `income_bracket` (utf8), `vehicle_type` (utf8), `energy_kwh` (float64) — 12 rows, covering all 3 income brackets with known distribution
     - `simple_constraints` — `tuple[IPFConstraint, ...]` with one constraint: `IPFConstraint(dimension="income_bracket", targets={"low": 4.0, "medium": 3.0, "high": 3.0})` — shifts distribution from 3/4/3 to 4/3/3
     - `multi_constraints` — `tuple[IPFConstraint, ...]` with two constraints: income_bracket + region_code targets
     - `inconsistent_constraints` — constraints where totals across dimensions don't match (for convergence failure testing)
 
-- [ ] Task 7: Write comprehensive IPF tests (AC: #1, #2, #5)
-  - [ ] 7.1 `tests/population/methods/test_ipf.py`:
+- [x] Task 7: Write comprehensive IPF tests (AC: #1, #2, #5)
+  - [x] 7.1 `tests/population/methods/test_ipf.py`:
     - `TestIPFConstraint`: frozen, `__post_init__` validation (empty dimension raises ValueError, empty targets raises ValueError, negative target raises ValueError), targets deep-copied
     - `TestIPFResult`: frozen, holds weights + convergence diagnostics
     - `TestIPFMergeMethodProtocol`: `isinstance(IPFMergeMethod(...), MergeMethod)` passes
@@ -145,7 +146,7 @@ so that the population pipeline can produce merged populations that respect know
       - Multi-constraint merge: both income_bracket AND region_code distributions match targets
     - `TestIPFMergeMethodConvergence`:
       - Convergent case: assumption.details contains `converged: True`, `iterations` < max_iterations
-      - Non-convergent case (inconsistent constraints): raises `MergeConvergenceError`
+      - Non-convergent case: use `IPFMergeMethod(constraints=inconsistent_constraints, max_iterations=100, tolerance=1e-6)` — raises `MergeConvergenceError`
     - `TestIPFMergeMethodDeterminism`:
       - Same seed → identical merged table
       - Different seed → different row matching (at least one row differs)
@@ -163,12 +164,14 @@ so that the population pipeline can produce merged populations that respect know
       - `drop_right_columns` works correctly
     - `TestIPFMergeMethodInvalidConstraintDimension`:
       - Constraint dimension not in table_a → `MergeValidationError`
+    - `TestIPFMergeMethodMissingCategory`:
+      - Constraint has a target category not present in table_a (but at least one IS present): merge completes successfully and a warning is logged (use `caplog` fixture)
     - `TestIPFMergeMethodDocstring`:
       - Class docstring non-empty, mentions "marginal" or "reweight"
       - Module docstring mentions "appropriate" and "problematic"
 
-- [ ] Task 8: Write comprehensive conditional sampling tests (AC: #3, #4, #5)
-  - [ ] 8.1 `tests/population/methods/test_conditional.py`:
+- [x] Task 8: Write comprehensive conditional sampling tests (AC: #3, #4, #5)
+  - [x] 8.1 `tests/population/methods/test_conditional.py`:
     - `TestConditionalSamplingMethodProtocol`: `isinstance(ConditionalSamplingMethod(...), MergeMethod)` passes
     - `TestConditionalSamplingMethodName`: `name` property returns `"conditional"`
     - `TestConditionalSamplingMethodConstructorValidation`: empty strata_columns raises ValueError, empty string in strata_columns raises ValueError
@@ -186,6 +189,7 @@ so that the population pipeline can produce merged populations that respect know
     - `TestConditionalSamplingMethodDropRightColumns`:
       - `drop_right_columns` works correctly
       - Strata columns in table_b are auto-dropped (not duplicated in output)
+      - When a strata column name also appears in `config.drop_right_columns`, no error is raised (deduplication)
     - `TestConditionalSamplingMethodEmptyTable`:
       - Empty table_a → `MergeValidationError`
       - Empty table_b → `MergeValidationError`
@@ -205,18 +209,18 @@ so that the population pipeline can produce merged populations that respect know
       - Class docstring non-empty, mentions "conditional independence" or "strata"
       - Module docstring mentions "appropriate" and "problematic"
 
-- [ ] Task 9: Write tests for new error types and base types (AC: #1, #2)
-  - [ ] 9.1 Add to `tests/population/methods/test_errors.py`:
+- [x] Task 9: Write tests for new error types and base types (AC: #1, #2)
+  - [x] 9.1 Add to `tests/population/methods/test_errors.py`:
     - `TestMergeConvergenceError`: inherits `MergeError`, summary-reason-fix pattern, catchable as `MergeError`
-  - [ ] 9.2 Add to `tests/population/methods/test_base.py`:
+  - [x] 9.2 Add to `tests/population/methods/test_base.py`:
     - `TestIPFConstraint`: frozen, validation, targets deep-copied
     - `TestIPFResult`: frozen, holds convergence diagnostics
 
-- [ ] Task 10: Run full test suite and lint (AC: all)
-  - [ ] 10.1 `uv run pytest tests/population/methods/` — all new tests pass
-  - [ ] 10.2 `uv run pytest tests/population/` — no regressions in loader or uniform merge tests
-  - [ ] 10.3 `uv run ruff check src/reformlab/population/methods/ tests/population/methods/` — no lint errors
-  - [ ] 10.4 `uv run mypy src/reformlab/population/methods/` — no mypy errors (strict mode)
+- [x] Task 10: Run full test suite and lint (AC: all)
+  - [x] 10.1 `uv run pytest tests/population/methods/` — all new tests pass
+  - [x] 10.2 `uv run pytest tests/population/` — no regressions in loader or uniform merge tests
+  - [x] 10.3 `uv run ruff check src/reformlab/population/methods/ tests/population/methods/` — no lint errors
+  - [x] 10.4 `uv run mypy src/reformlab/population/methods/` — no mypy errors (strict mode)
 
 ## Dev Notes
 
@@ -362,8 +366,9 @@ Input: table_a (N rows), table_b (M rows), strata_columns, seed
          matched_b_indices.append(rng.choice(donor_pool))
 
 5. Build right table:
-     Remove strata columns from table_b (they're already in table_a)
-     right_table = table_b.drop(strata_columns + drop_right_columns)
+     Compute effective_drop = tuple(dict.fromkeys(strata_columns + config.drop_right_columns))
+     Remove effective_drop columns from table_b using iterative remove_column() (same pattern as uniform.py)
+     right_table = table_b with effective_drop columns removed
      matched_right = right_table.take(pa.array(matched_b_indices))
 
 6. Combine: table_a columns + matched_right columns
@@ -528,6 +533,26 @@ def multi_constraints() -> tuple[IPFConstraint, ...]:
             targets={"84": 3.0, "11": 4.0, "75": 3.0},
         ),
     )
+
+
+@pytest.fixture()
+def inconsistent_constraints() -> tuple[IPFConstraint, ...]:
+    """Two constraints with mismatched grand totals — reliably causes non-convergence.
+
+    income_bracket targets sum to 10 (matches 10-row table).
+    region_code targets sum to 30 (3x mismatch forces perpetual oscillation).
+    With 100 iterations at tolerance=1e-6, IPF cannot converge.
+    """
+    return (
+        IPFConstraint(
+            dimension="income_bracket",
+            targets={"low": 4.0, "medium": 3.0, "high": 3.0},
+        ),
+        IPFConstraint(
+            dimension="region_code",
+            targets={"84": 10.0, "11": 10.0, "75": 10.0},
+        ),
+    )
 ```
 
 ### Test Pattern to Follow (from Story 11.4)
@@ -579,7 +604,7 @@ Story 11.5 is consumed by:
 - `tests/population/methods/test_ipf.py`
 - `tests/population/methods/test_conditional.py`
 
-**Modified files (6):**
+**Modified files (7):**
 - `src/reformlab/population/methods/base.py` — add `IPFConstraint`, `IPFResult`
 - `src/reformlab/population/methods/errors.py` — add `MergeConvergenceError`
 - `src/reformlab/population/methods/__init__.py` — add new exports, update `__all__`
@@ -641,8 +666,33 @@ All rules from `project-context.md` apply:
 
 ## Dev Agent Record
 
+### Implementation Plan
+
+Implemented all 10 tasks in sequence following the story spec exactly:
+
+1. Added `IPFConstraint` and `IPFResult` frozen dataclasses to `base.py` with validation
+2. Added `MergeConvergenceError` to error hierarchy in `errors.py`
+3. Implemented `IPFMergeMethod` in `ipf.py` — record-level IPF algorithm with weight integerization and seed-stream separation
+4. Implemented `ConditionalSamplingMethod` in `conditional.py` — stratum-based matching with auto-drop of strata columns from table_b
+5. Updated both `__init__.py` files with new exports
+6. Created test fixtures (region_income_table, energy_vehicle_table, simple/multi/inconsistent constraints)
+7. Wrote 24 IPF tests covering protocol, name, constructor validation, merge, marginal matching, convergence, determinism, assumptions, empty tables, column conflicts, drop_right_columns, invalid dimensions, missing categories, docstrings
+8. Wrote 28 conditional sampling tests covering protocol, name, constructor validation, merge, strata respected, determinism, column conflicts, drop_right_columns (auto-drop + dedup), empty tables, missing strata columns, empty strata, assumptions, multiple strata columns, docstrings
+9. Added `TestMergeConvergenceError` (4 tests), `TestIPFConstraint` (7 tests), `TestIPFResult` (3 tests) to existing test files
+10. All 122 method tests pass, 307 total population tests pass, ruff clean, mypy strict clean
+
 ### Completion Notes
+
+All 5 acceptance criteria satisfied:
+- AC #1: IPF matches marginals within ±1 (integerization tolerance), convergence at 1e-6
+- AC #2: Assumption record lists all constraints, iterations, convergence status, max_deviation
+- AC #3: Conditional sampling matches within strata — verified via row-level coherence tests
+- AC #4: Assumption record states conditioning variable and conditional independence assumption
+- AC #5: Both module and class docstrings include plain-language explanations with "appropriate"/"problematic" sections
+
+No new dependencies. No changes to pyproject.toml. Both methods follow the exact same patterns as UniformMergeMethod (validation order, error hierarchy, logging, assumption records).
 
 ## Change Log
 
 - 2026-03-03: Story created by create-story workflow — comprehensive developer context with IPF algorithm specification (record-level reweighting + integerization + matching), conditional sampling algorithm (stratum-based matching with auto-drop), new supporting types (IPFConstraint, IPFResult, MergeConvergenceError), test fixture designs, downstream dependency mapping, and plain-language pedagogical explanations for both methods.
+- 2026-03-03: Story implemented — all 10 tasks complete, 122 tests passing, ruff/mypy clean. 4 new files, 7 modified files.

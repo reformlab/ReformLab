@@ -5,6 +5,7 @@ plus immutable value objects for configuration, assumption records,
 and merge results.
 
 Implements Story 11.4 (MergeMethod protocol and uniform distribution).
+Extended by Story 11.5 (IPF and conditional sampling types).
 References FR38 (statistical methods library).
 """
 
@@ -51,6 +52,59 @@ class MergeConfig:
         object.__setattr__(
             self, "drop_right_columns", tuple(self.drop_right_columns)
         )
+
+
+# ====================================================================
+# IPF supporting types
+# ====================================================================
+
+
+@dataclass(frozen=True)
+class IPFConstraint:
+    """A marginal constraint for Iterative Proportional Fitting.
+
+    Specifies that the weighted count of rows where ``dimension``
+    equals each category key should match the corresponding target value.
+
+    Attributes:
+        dimension: Column name in table_a to constrain.
+        targets: Mapping from category value to target count/weight.
+            All values must be >= 0.
+    """
+
+    dimension: str
+    targets: dict[str, float]
+
+    def __post_init__(self) -> None:
+        if not self.dimension:
+            msg = "dimension must be a non-empty string"
+            raise ValueError(msg)
+        if not self.targets:
+            msg = "targets must be a non-empty dict"
+            raise ValueError(msg)
+        for cat, val in self.targets.items():
+            if val < 0:
+                msg = f"target for {cat!r} must be >= 0, got {val}"
+                raise ValueError(msg)
+        # Deep-copy targets dict to prevent external mutation
+        object.__setattr__(self, "targets", dict(self.targets))
+
+
+@dataclass(frozen=True)
+class IPFResult:
+    """Convergence diagnostics from an IPF run.
+
+    Attributes:
+        weights: Per-row weights after IPF adjustment.
+        iterations: Number of iterations performed.
+        converged: Whether convergence was reached within tolerance.
+        max_deviation: Maximum absolute deviation at termination.
+    """
+
+    weights: tuple[float, ...]
+    iterations: int
+    converged: bool
+    max_deviation: float
 
 
 # ====================================================================

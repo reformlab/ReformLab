@@ -30,6 +30,14 @@ MergeResult : dataclass
     Immutable result of a merge operation.
 UniformMergeMethod : class
     Uniform random matching with replacement.
+IPFMergeMethod : class
+    Iterative Proportional Fitting reweighting and matching.
+IPFConstraint : dataclass
+    A marginal constraint for IPF.
+IPFResult : dataclass
+    Convergence diagnostics from an IPF run.
+ConditionalSamplingMethod : class
+    Stratum-based conditional sampling merge.
 """
 
 from __future__ import annotations
@@ -81,15 +89,20 @@ from reformlab.population.loaders.sdes import (
     make_sdes_config,
 )
 from reformlab.population.methods.base import (
+    IPFConstraint,
+    IPFResult,
     MergeAssumption,
     MergeConfig,
     MergeMethod,
     MergeResult,
 )
+from reformlab.population.methods.conditional import ConditionalSamplingMethod
 from reformlab.population.methods.errors import (
+    MergeConvergenceError,
     MergeError,
     MergeValidationError,
 )
+from reformlab.population.methods.ipf import IPFMergeMethod
 from reformlab.population.methods.uniform import UniformMergeMethod
 
 __all__ = [
@@ -123,8 +136,13 @@ __all__ = [
     "get_eurostat_loader",
     "get_insee_loader",
     "get_sdes_loader",
+    "ConditionalSamplingMethod",
+    "IPFConstraint",
+    "IPFMergeMethod",
+    "IPFResult",
     "MergeAssumption",
     "MergeConfig",
+    "MergeConvergenceError",
     "MergeError",
     "MergeMethod",
     "MergeResult",

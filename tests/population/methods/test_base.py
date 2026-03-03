@@ -3,6 +3,7 @@
 Story 11.4 — AC #1: MergeMethod protocol accepts two pa.Table inputs
 plus a config, returns merged table plus assumption record.
 AC #3: Assumption record includes governance-compatible entry.
+Story 11.5 — AC #1, #2: IPFConstraint and IPFResult types.
 """
 
 from __future__ import annotations
@@ -13,6 +14,8 @@ import pyarrow as pa
 import pytest
 
 from reformlab.population.methods.base import (
+    IPFConstraint,
+    IPFResult,
     MergeAssumption,
     MergeConfig,
     MergeMethod,
@@ -186,3 +189,90 @@ class TestMergeMethodProtocol:
                 return "partial"
 
         assert not isinstance(OnlyName(), MergeMethod)
+
+
+# ====================================================================
+# IPFConstraint tests (Story 11.5)
+# ====================================================================
+
+
+class TestIPFConstraint:
+    """Story 11.5 AC #1: IPFConstraint frozen dataclass with validation."""
+
+    def test_frozen(self) -> None:
+        c = IPFConstraint(dimension="col", targets={"a": 1.0})
+        with pytest.raises(AttributeError):
+            c.dimension = "other"  # type: ignore[misc]
+
+    def test_basic_creation(self) -> None:
+        c = IPFConstraint(
+            dimension="income_bracket",
+            targets={"low": 4.0, "medium": 3.0, "high": 3.0},
+        )
+        assert c.dimension == "income_bracket"
+        assert c.targets == {"low": 4.0, "medium": 3.0, "high": 3.0}
+
+    def test_empty_dimension_raises(self) -> None:
+        with pytest.raises(ValueError, match="non-empty string"):
+            IPFConstraint(dimension="", targets={"a": 1.0})
+
+    def test_empty_targets_raises(self) -> None:
+        with pytest.raises(ValueError, match="non-empty dict"):
+            IPFConstraint(dimension="col", targets={})
+
+    def test_negative_target_raises(self) -> None:
+        with pytest.raises(ValueError, match="must be >= 0"):
+            IPFConstraint(
+                dimension="col", targets={"a": -1.0}
+            )
+
+    def test_zero_target_allowed(self) -> None:
+        c = IPFConstraint(dimension="col", targets={"a": 0.0})
+        assert c.targets["a"] == 0.0
+
+    def test_targets_deep_copied(self) -> None:
+        original = {"a": 1.0, "b": 2.0}
+        c = IPFConstraint(dimension="col", targets=original)
+        original["c"] = 3.0
+        assert "c" not in c.targets
+
+
+# ====================================================================
+# IPFResult tests (Story 11.5)
+# ====================================================================
+
+
+class TestIPFResult:
+    """Story 11.5 AC #1, #2: IPFResult holds convergence diagnostics."""
+
+    def test_frozen(self) -> None:
+        r = IPFResult(
+            weights=(1.0, 2.0),
+            iterations=5,
+            converged=True,
+            max_deviation=0.001,
+        )
+        with pytest.raises(AttributeError):
+            r.converged = False  # type: ignore[misc]
+
+    def test_holds_diagnostics(self) -> None:
+        r = IPFResult(
+            weights=(1.0, 1.5, 0.5),
+            iterations=10,
+            converged=True,
+            max_deviation=1e-7,
+        )
+        assert r.weights == (1.0, 1.5, 0.5)
+        assert r.iterations == 10
+        assert r.converged is True
+        assert r.max_deviation == 1e-7
+
+    def test_non_converged_result(self) -> None:
+        r = IPFResult(
+            weights=(1.0,),
+            iterations=100,
+            converged=False,
+            max_deviation=0.5,
+        )
+        assert r.converged is False
+        assert r.iterations == 100

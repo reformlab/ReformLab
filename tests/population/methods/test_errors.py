@@ -2,13 +2,18 @@
 
 Story 11.4 — AC #1: MergeError hierarchy follows the
 ``summary - reason - fix`` pattern from DataSourceError.
+Story 11.5 — AC #1: MergeConvergenceError for IPF non-convergence.
 """
 
 from __future__ import annotations
 
 import pytest
 
-from reformlab.population.methods.errors import MergeError, MergeValidationError
+from reformlab.population.methods.errors import (
+    MergeConvergenceError,
+    MergeError,
+    MergeValidationError,
+)
 
 
 class TestMergeError:
@@ -61,3 +66,36 @@ class TestMergeValidationError:
         assert "Column conflict" in str(err)
         assert "overlapping names" in str(err)
         assert "drop_right_columns" in str(err)
+
+
+class TestMergeConvergenceError:
+    """Story 11.5: MergeConvergenceError for IPF non-convergence."""
+
+    def test_inherits_merge_error(self) -> None:
+        assert issubclass(MergeConvergenceError, MergeError)
+
+    def test_catchable_as_merge_error(self) -> None:
+        with pytest.raises(MergeError):
+            raise MergeConvergenceError(
+                summary="IPF did not converge",
+                reason="max iterations exceeded",
+                fix="increase max_iterations",
+            )
+
+    def test_message_format(self) -> None:
+        err = MergeConvergenceError(
+            summary="IPF did not converge",
+            reason="100 iterations, deviation 0.5",
+            fix="increase max_iterations or relax tolerance",
+        )
+        assert "IPF did not converge" in str(err)
+        assert "100 iterations" in str(err)
+        assert "max_iterations" in str(err)
+
+    def test_attributes_accessible(self) -> None:
+        err = MergeConvergenceError(
+            summary="sum", reason="rea", fix="fix"
+        )
+        assert err.summary == "sum"
+        assert err.reason == "rea"
+        assert err.fix == "fix"
