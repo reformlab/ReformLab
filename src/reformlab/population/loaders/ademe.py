@@ -232,12 +232,21 @@ class ADEMELoader(CachedLoader):
                 ds.encoding,
             )
             fallback_options = pcsv.ReadOptions(encoding="utf-8")
-            table = pcsv.read_csv(
-                io.BytesIO(csv_bytes),
-                read_options=fallback_options,
-                parse_options=parse_options,
-                convert_options=convert_options,
-            )
+            try:
+                table = pcsv.read_csv(
+                    io.BytesIO(csv_bytes),
+                    read_options=fallback_options,
+                    parse_options=parse_options,
+                    convert_options=convert_options,
+                )
+            except (pa.ArrowInvalid, pa.lib.ArrowKeyError) as exc2:
+                raise DataSourceValidationError(
+                    summary="CSV parsing failed",
+                    reason=f"ademe/{ds.dataset_id} could not be decoded as "
+                    f"{ds.encoding} or utf-8: {exc2}",
+                    fix="Check the ADEME source URL — the file encoding "
+                    "may have changed",
+                ) from exc2
 
         # Rename columns from raw French names to project names
         table = table.rename_columns(project_names)
@@ -294,7 +303,9 @@ def make_ademe_config(dataset_id: str, **params: str) -> SourceConfig:
     dataset_id : str
         A key from ``ADEME_AVAILABLE_DATASETS``.
     **params : str
-        Additional query parameters for the download request.
+        Additional parameters used to differentiate cache slots only.
+        These are NOT appended to the download URL — the full dataset is
+        always downloaded from the catalog URL regardless of params values.
 
     Raises
     ------

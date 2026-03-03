@@ -267,7 +267,9 @@ def make_sdes_config(dataset_id: str, **params: str) -> SourceConfig:
     dataset_id : str
         A key from ``SDES_AVAILABLE_DATASETS``.
     **params : str
-        Additional query parameters for the download request.
+        Additional parameters used to differentiate cache slots only.
+        These are NOT appended to the download URL — the full dataset is
+        always downloaded from the catalog URL regardless of params values.
 
     Raises
     ------

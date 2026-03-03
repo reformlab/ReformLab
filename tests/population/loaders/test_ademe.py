@@ -175,6 +175,9 @@ class TestADEMELoaderFetchEncodingFallback:
         assert table.num_rows == 1
         name = table.column("name_fr").to_pylist()[0]
         assert name == "Gaz naturel"
+        # Verify non-ASCII content decoded correctly via UTF-8 fallback
+        geo = table.column("geography").to_pylist()[0]
+        assert "m\xe9tropolitaine" in geo  # métropolitaine
 
 
 # ====================================================================

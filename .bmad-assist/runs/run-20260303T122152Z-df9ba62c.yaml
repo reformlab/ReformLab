@@ -216,6 +216,46 @@ phase_events:
   status: success
   story: '11.3'
   timestamp: '2026-03-03T13:57:26.711395Z'
+- duration_ms: null
+  epic: 11
+  error_type: null
+  event_type: started
+  model: opus
+  phase: CODE_REVIEW
+  provider: claude-subprocess
+  status: null
+  story: '11.3'
+  timestamp: '2026-03-03T13:57:26.934993Z'
+- duration_ms: 361148
+  epic: 11
+  error_type: null
+  event_type: completed
+  model: opus
+  phase: CODE_REVIEW
+  provider: claude-subprocess
+  status: success
+  story: '11.3'
+  timestamp: '2026-03-03T14:03:28.083317Z'
+- duration_ms: null
+  epic: 11
+  error_type: null
+  event_type: started
+  model: opus
+  phase: CODE_REVIEW_SYNTHESIS
+  provider: claude-subprocess
+  status: null
+  story: '11.3'
+  timestamp: '2026-03-03T14:03:28.118981Z'
+- duration_ms: 326176
+  epic: 11
+  error_type: null
+  event_type: completed
+  model: opus
+  phase: CODE_REVIEW_SYNTHESIS
+  provider: claude-subprocess
+  status: success
+  story: '11.3'
+  timestamp: '2026-03-03T14:08:54.295544Z'
 phases:
 - duration_ms: 446209
   ended_at: '2026-03-03T12:29:18.273916Z'
@@ -296,6 +336,22 @@ phases:
   phase: DEV_STORY
   provider: claude-subprocess
   started_at: '2026-03-03T13:45:23.048541Z'
+  status: success
+- duration_ms: 361148
+  ended_at: '2026-03-03T14:03:28.083317Z'
+  error_type: null
+  model: opus
+  phase: CODE_REVIEW
+  provider: claude-subprocess
+  started_at: '2026-03-03T13:57:26.934993Z'
+  status: success
+- duration_ms: 326176
+  ended_at: '2026-03-03T14:08:54.295544Z'
+  error_type: null
+  model: opus
+  phase: CODE_REVIEW_SYNTHESIS
+  provider: claude-subprocess
+  started_at: '2026-03-03T14:03:28.118981Z'
   status: success
 project_path: /Users/lucas/Workspace/reformlab
 run_id: df9ba62c

@@ -130,8 +130,8 @@ class TestSDESLoaderFetch:
         assert regions[3] == "11"
 
         region_names = table.column("region_name").to_pylist()
-        assert "Auvergne" in region_names[0]
-        assert "le-de-France" in region_names[3]
+        assert region_names[0] == "Auvergne-Rh\xf4ne-Alpes"  # Auvergne-Rhône-Alpes
+        assert region_names[3] == "\xcele-de-France"  # Île-de-France
 
         # Check fuel types
         fuels = table.column("fuel_type").to_pylist()

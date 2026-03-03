@@ -254,15 +254,33 @@ class TestEurostatLoaderFetchBadGzip:
             with pytest.raises(DataSourceValidationError, match="Gzip decompression failed"):
                 loader._fetch(config)
 
-    def test_bad_gzip_does_not_trigger_stale_fallback(self, source_cache: SourceCache) -> None:
-        """Corrupt gzip should NOT be caught as OSError by CachedLoader."""
+    def test_bad_gzip_does_not_trigger_stale_fallback(
+        self,
+        source_cache: SourceCache,
+        eurostat_ilc_di01_csv_bytes: bytes,
+    ) -> None:
+        """Corrupt gzip raises DataSourceValidationError through download(), not stale fallback."""
         loader = get_eurostat_loader("ilc_di01", cache=source_cache)
         config = make_eurostat_config("ilc_di01")
 
-        # Verify it raises DataSourceValidationError, not OSError
+        # Pre-seed a cache entry via normal download
+        gz_good = _make_gzip(eurostat_ilc_di01_csv_bytes)
+        with patch("urllib.request.urlopen", return_value=_mock_urlopen(gz_good)):
+            loader.download(config)
+
+        # Make the cache entry stale by renaming files to a different key
+        cache_dir = source_cache.cache_path(config).parent
+        current_key = source_cache.cache_key(config)
+        for f in cache_dir.iterdir():
+            new_name = f.name.replace(current_key, "stale_0000000000")
+            f.rename(cache_dir / new_name)
+
+        # download() finds stale cache, tries fetch, gets bad gzip.
+        # _fetch() raises DataSourceValidationError (not OSError),
+        # so stale-cache fallback must NOT be triggered.
         with patch("urllib.request.urlopen", return_value=_mock_urlopen(b"corrupt")):
-            with pytest.raises(DataSourceValidationError):
-                loader._fetch(config)
+            with pytest.raises(DataSourceValidationError, match="Gzip decompression failed"):
+                loader.download(config)
 
 
 # ====================================================================
