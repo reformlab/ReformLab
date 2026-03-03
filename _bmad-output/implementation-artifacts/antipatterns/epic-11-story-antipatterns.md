@@ -18,3 +18,17 @@
 | medium | AC#3 "age distribution" ambiguity | Reworded to "vehicle fleet composition data (including vehicle age classification)" — clarifies that age is a field within `vehicle_fleet`, not a separate dataset. |
 | medium | SDES URL ambiguity | Changed "Recommendation" to "Decision" and explicitly stated the DiDo URL is "informational only — do not use it in the catalog." |
 | medium | Column name verification caveat repeated 3 times | Consolidated ADEME and SDES per-section caveats into one-line references to the "Column Name Verification Strategy" section. |
+
+## Story 11-4 (2026-03-03)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | `capture_assumptions()` API mismatch in Downstream Dependencies | Rewrote Story 11.6 description to correctly state that `to_governance_entry()` dicts are appended directly to `RunManifest.assumptions`, NOT passed to `capture_assumptions()`. Verified against `governance/capture.py:19-24` — function takes flat `dict[str, Any]` key-value pairs, incompatible with structured merge assumptions. |
+| high | `bool` not rejected in `MergeConfig.seed` validation | Added `isinstance(self.seed, bool)` check to `__post_init__` spec, matching `manifest.py:219` pattern. Updated Task 2.2 description and test spec. |
+| high | `**self.details` key collision in `to_governance_entry()` | Reversed dict merge order so `**self.details` unpacks first, then `method`/`statement` override. Updated Task 2.3 to document constraint. |
+| high | File count mismatch | Corrected "New files (6)" to "New files (9)" and "Modified files (2)" to "Modified files (1)". |
+| high | `from copy import deepcopy` local import | Removed local import from `__post_init__` spec; added import notes section clarifying `deepcopy` must be at module level (following `manifest.py:22`). |
+| high | `methods/__init__.py` missing `__all__` | Updated Task 4.1 to require explicit `__all__` definition following `population/loaders/__init__.py` pattern. |
+| medium | AC#2 lacks determinism and replacement wording | Amended AC#2 to specify "with replacement, using the provided `MergeConfig.seed` to guarantee reproducibility." |
+| medium | Column ordering not documented as contract | Added ordering statement to Algorithm Detail step 3. |
+| medium | Import notes for pyarrow runtime vs TYPE_CHECKING | Added import notes section under No New Dependencies. |

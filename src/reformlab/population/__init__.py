@@ -20,6 +20,16 @@ SourceCache : class
     Disk-based caching infrastructure for downloaded data.
 CachedLoader : class
     Base class wrapping protocol + cache logic.
+MergeMethod : Protocol
+    Interface for statistical dataset fusion methods.
+MergeConfig : dataclass
+    Immutable configuration for a merge operation.
+MergeAssumption : dataclass
+    Structured assumption record from a merge operation.
+MergeResult : dataclass
+    Immutable result of a merge operation.
+UniformMergeMethod : class
+    Uniform random matching with replacement.
 """
 
 from __future__ import annotations
@@ -70,6 +80,17 @@ from reformlab.population.loaders.sdes import (
     get_sdes_loader,
     make_sdes_config,
 )
+from reformlab.population.methods.base import (
+    MergeAssumption,
+    MergeConfig,
+    MergeMethod,
+    MergeResult,
+)
+from reformlab.population.methods.errors import (
+    MergeError,
+    MergeValidationError,
+)
+from reformlab.population.methods.uniform import UniformMergeMethod
 
 __all__ = [
     "ADEME_AVAILABLE_DATASETS",
@@ -102,6 +123,13 @@ __all__ = [
     "get_eurostat_loader",
     "get_insee_loader",
     "get_sdes_loader",
+    "MergeAssumption",
+    "MergeConfig",
+    "MergeError",
+    "MergeMethod",
+    "MergeResult",
+    "MergeValidationError",
+    "UniformMergeMethod",
     "make_ademe_config",
     "make_eurostat_config",
     "make_insee_config",
