@@ -142,28 +142,69 @@ development_status:
 
   # Epic 11: Realistic Population Generation Library
   epic-11: backlog
+  11-1-define-datasourceloader-protocol-and-caching-infrastructure: backlog
+  11-2-implement-insee-data-source-loader: backlog
+  11-3-implement-eurostat-ademe-sdes-data-source-loaders: backlog
+  11-4-define-mergemethod-protocol-and-uniform-distribution-method: backlog
+  11-5-implement-ipf-and-conditional-sampling-merge-methods: backlog
+  11-6-build-populationpipeline-builder-with-assumption-recording: backlog
+  11-7-implement-population-validation-against-known-marginals: backlog
+  11-8-build-french-household-example-pipeline-and-pedagogical-notebook: backlog
   epic-11-retrospective: optional
 
   # Epic 12: Policy Portfolio Model
   epic-12: backlog
+  12-1-define-policyportfolio-dataclass-and-composition-logic: backlog
+  12-2-implement-portfolio-compatibility-validation-and-conflict-resolution: backlog
+  12-3-extend-orchestrator-to-execute-policy-portfolios: backlog
+  12-4-extend-scenario-registry-with-portfolio-versioning: backlog
+  12-5-implement-multi-portfolio-comparison-and-notebook-demo: backlog
   epic-12-retrospective: optional
 
   # Epic 13: Additional Policy Templates + Extensibility
   epic-13: backlog
+  13-1-define-custom-template-authoring-api-and-registration: backlog
+  13-2-implement-vehicle-malus-template: backlog
+  13-3-implement-energy-poverty-aid-template: backlog
+  13-4-validate-custom-templates-in-portfolios-and-build-notebook-demo: backlog
   epic-13-retrospective: optional
 
   # Epic 14: Discrete Choice Model for Household Decisions
   epic-14: backlog
+  14-1-implement-discretechoicestep-with-population-expansion-pattern: backlog
+  14-2-implement-conditional-logit-model-with-seed-controlled-draws: backlog
+  14-3-implement-vehicle-investment-decision-domain: backlog
+  14-4-implement-heating-system-decision-domain: backlog
+  14-5-implement-eligibility-filtering-for-performance-optimization: backlog
+  14-6-extend-panel-output-and-manifests-with-decision-records: backlog
+  14-7-build-10-year-behavioral-simulation-notebook-demo: backlog
   epic-14-retrospective: optional
 
   # Epic 15: Calibration Engine
   epic-15: backlog
+  15-1-define-calibration-target-format-and-load-observed-transition-rates: backlog
+  15-2-implement-calibrationengine-with-objective-function-optimization: backlog
+  15-3-implement-calibration-validation-against-holdout-data: backlog
+  15-4-record-calibrated-parameters-in-run-manifests: backlog
+  15-5-build-calibration-workflow-notebook-demo: backlog
   epic-15-retrospective: optional
 
   # Epic 16: Replication Package Export
   epic-16: backlog
+  16-1-implement-replication-package-export-with-manifest-index: backlog
+  16-2-implement-replication-package-import-and-reproduction: backlog
+  16-3-include-population-generation-assumptions-and-calibration-provenance: backlog
+  16-4-build-replication-workflow-notebook-demo: backlog
   epic-16-retrospective: optional
 
   # Epic 17: GUI Showcase Product
   epic-17: backlog
+  17-1-build-data-fusion-workbench-gui: backlog
+  17-2-build-policy-portfolio-designer-gui: backlog
+  17-3-build-simulation-runner-with-progress-and-persistent-results: backlog
+  17-4-build-comparison-dashboard-with-multi-portfolio-side-by-side: backlog
+  17-5-build-behavioral-decision-viewer: backlog
+  17-6-implement-fastapi-endpoints-for-phase-2-gui-operations: backlog
+  17-7-implement-persistent-result-storage-and-retrieval: backlog
+  17-8-build-end-to-end-gui-workflow-tests: backlog
   epic-17-retrospective: optional

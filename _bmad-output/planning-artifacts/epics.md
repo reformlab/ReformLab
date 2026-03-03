@@ -30,13 +30,13 @@ Single source of truth for all epics and stories across the project. For detaile
 | EPIC-8 | Post-Phase-1 Validation Spikes | 1 | done | 2 |
 | EPIC-9 | OpenFisca Adapter Hardening | 1 | done | 5 |
 | EPIC-10 | API Ergonomics and Developer Experience | 1 | done | 2 |
-| EPIC-11 | Realistic Population Generation Library | 2 | backlog | TBD |
-| EPIC-12 | Policy Portfolio Model | 2 | backlog | TBD |
-| EPIC-13 | Additional Policy Templates + Extensibility | 2 | backlog | TBD |
-| EPIC-14 | Discrete Choice Model for Household Decisions | 2 | backlog | TBD |
-| EPIC-15 | Calibration Engine | 2 | backlog | TBD |
-| EPIC-16 | Replication Package Export | 2 | backlog | TBD |
-| EPIC-17 | GUI Showcase Product | 2 | backlog | TBD |
+| EPIC-11 | Realistic Population Generation Library | 2 | backlog | 8 |
+| EPIC-12 | Policy Portfolio Model | 2 | backlog | 5 |
+| EPIC-13 | Additional Policy Templates + Extensibility | 2 | backlog | 4 |
+| EPIC-14 | Discrete Choice Model for Household Decisions | 2 | backlog | 7 |
+| EPIC-15 | Calibration Engine | 2 | backlog | 5 |
+| EPIC-16 | Replication Package Export | 2 | backlog | 4 |
+| EPIC-17 | GUI Showcase Product | 2 | backlog | 8 |
 
 ## Conventions
 
@@ -676,6 +676,17 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 **PRD Refs:** FR36–FR42
 
+| ID | Type | Pri | SP | Title | Status | PRD Refs |
+|------|------|-----|----|-------|--------|----------|
+| BKL-1101 | Story | P0 | 5 | Define DataSourceLoader protocol and caching infrastructure | backlog | FR36 |
+| BKL-1102 | Story | P0 | 5 | Implement INSEE data source loader | backlog | FR36, FR37 |
+| BKL-1103 | Story | P0 | 5 | Implement Eurostat, ADEME, and SDES data source loaders | backlog | FR36, FR37 |
+| BKL-1104 | Story | P0 | 5 | Define MergeMethod protocol and implement uniform distribution method | backlog | FR38, FR39 |
+| BKL-1105 | Story | P0 | 8 | Implement IPF and conditional sampling merge methods | backlog | FR38, FR39 |
+| BKL-1106 | Story | P0 | 8 | Build PopulationPipeline builder with assumption recording | backlog | FR40, FR41 |
+| BKL-1107 | Story | P0 | 5 | Implement population validation against known marginals | backlog | FR42 |
+| BKL-1108 | Story | P0 | 5 | Build French household example pipeline and pedagogical notebook | backlog | FR40, FR37 |
+
 ### Epic-Level Acceptance Criteria
 
 - At least 4 institutional data source loaders are functional (download, cache, schema-validate): INSEE, Eurostat, ADEME, SDES.
@@ -685,6 +696,69 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 - Generated population validates against source marginals within documented tolerances.
 - Methods library docstrings include plain-language explanations of what each method assumes.
 - Pedagogical notebook runs end-to-end in CI.
+
+### Story-Level Acceptance Criteria
+
+**BKL-1101: Define DataSourceLoader protocol and caching infrastructure**
+
+- Given the `DataSourceLoader` protocol, when a new loader is implemented, then it must provide `download()`, `status()`, and `schema()` methods.
+- Given a dataset downloaded for the first time, when cached, then the cache stores a schema-validated Parquet file with SHA-256 hash in `~/.reformlab/cache/sources/{provider}/{dataset_id}/`.
+- Given a previously cached dataset, when the loader is called again, then the cache is used without network access.
+- Given a network failure with an existing cache, when the loader is called, then the stale cache is used with a governance warning logged.
+- Given `REFORMLAB_OFFLINE=1` environment variable, when a loader is called and cache misses, then it fails explicitly without attempting network access.
+- Given the cache, when `status()` is called, then it returns `CacheStatus` with cached flag, path, download timestamp, hash, and staleness indicator.
+
+**BKL-1102: Implement INSEE data source loader**
+
+- Given a valid INSEE dataset identifier, when the loader downloads it, then a schema-validated `pa.Table` is returned with documented columns.
+- Given the INSEE loader, when queried for available datasets, then at least household income distribution and household composition tables are available.
+- Given an invalid or unavailable INSEE dataset ID, when requested, then a clear error identifies the specific dataset and suggests alternatives.
+- Given the INSEE loader, when run in CI, then tests use fixture files (no real network calls) marked with `pytest -m network` for opt-in integration tests.
+
+**BKL-1103: Implement Eurostat, ADEME, and SDES data source loaders**
+
+- Given the Eurostat loader, when called with a valid dataset code, then EU-level household data is returned as a schema-validated `pa.Table`.
+- Given the ADEME loader, when called, then energy consumption and emission factor datasets are returned with documented schemas.
+- Given the SDES loader, when called, then vehicle fleet composition and age distribution data is returned.
+- Given all three loaders, when run, then each follows the `DataSourceLoader` protocol and integrates with the caching infrastructure from BKL-1101.
+- Given CI tests for all loaders, then they use fixture files and do not require network access.
+
+**BKL-1104: Define MergeMethod protocol and implement uniform distribution method**
+
+- Given the `MergeMethod` protocol, when a new method is implemented, then it must accept two `pa.Table` inputs plus a config, and return a merged table plus an assumption record.
+- Given two tables with no shared sample, when merged using uniform distribution, then each row from Table A is matched with a randomly drawn row from Table B with equal probability.
+- Given a uniform merge, when the assumption record is inspected, then it states: "Each household in source A is matched to a household in source B with uniform probability — this assumes no correlation between the variables in the two sources."
+- Given the uniform method docstring, when read, then it includes a plain-language explanation of the independence assumption and when this is appropriate vs. problematic.
+
+**BKL-1105: Implement IPF and conditional sampling merge methods**
+
+- Given two tables and a set of known marginal constraints, when IPF is applied, then the merged population matches the target marginals within documented tolerances.
+- Given IPF output, when the assumption record is inspected, then it lists all marginal constraints used and the convergence status.
+- Given two tables with a conditioning variable (e.g., income bracket), when conditional sampling is applied, then matches are drawn within strata defined by the conditioning variable.
+- Given conditional sampling output, when the assumption record is inspected, then it states the conditioning variable and explains the conditional independence assumption.
+- Given both methods, when docstrings are read, then each includes a plain-language explanation suitable for a policy analyst (not just a statistician).
+
+**BKL-1106: Build PopulationPipeline builder with assumption recording**
+
+- Given a sequence of loaders and merge methods, when composed into a `PopulationPipeline`, then the pipeline executes each step in order and produces a final merged population.
+- Given a pipeline execution, when completed, then every merge step's assumption record is captured in the governance layer via the existing `capture.py` integration.
+- Given a pipeline, when inspected after execution, then the full chain of steps is visible: which source → which method → which output, for every merge.
+- Given a pipeline step that fails (e.g., schema mismatch between two tables), when executed, then the error identifies the exact step, the two tables involved, and the mismatched columns.
+- Given a population produced by the pipeline, when its governance record is queried, then all assumption records from all merge steps are retrievable.
+
+**BKL-1107: Implement population validation against known marginals**
+
+- Given a generated population and a set of reference marginal distributions (e.g., income distribution by decile from INSEE), when validation is run, then each marginal is compared with a documented distance metric.
+- Given validation results, when a marginal exceeds the tolerance threshold, then a warning identifies the specific marginal, expected vs. actual values, and the tolerance used.
+- Given validation results, when all marginals pass, then a validation summary is produced confirming the population matches reference distributions.
+- Given validation output, when recorded in governance, then the validation status and per-marginal results are part of the population's assumption chain.
+
+**BKL-1108: Build French household example pipeline and pedagogical notebook**
+
+- Given the example pipeline, when executed, then it produces a French household population with at least: household_id, income, household_size, region, housing_type, heating_type, vehicle_type, vehicle_age, energy_consumption, carbon_emissions.
+- Given the pedagogical notebook, when run cell by cell, then each merge step is preceded by a plain-language explanation of the method and its assumption, followed by a summary chart showing the result.
+- Given the notebook, when run in CI, then it completes without errors.
+- Given the notebook, when read by an analyst unfamiliar with statistical matching, then the plain-language explanations make each methodological choice understandable without consulting external references.
 
 ### Scope Notes
 
@@ -705,6 +779,14 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 **PRD Refs:** FR43–FR46
 
+| ID | Type | Pri | SP | Title | Status | PRD Refs |
+|------|------|-----|----|-------|--------|----------|
+| BKL-1201 | Story | P0 | 5 | Define PolicyPortfolio dataclass and composition logic | backlog | FR43 |
+| BKL-1202 | Story | P0 | 5 | Implement portfolio compatibility validation and conflict resolution | backlog | FR43, FR44 |
+| BKL-1203 | Story | P0 | 5 | Extend orchestrator to execute policy portfolios | backlog | FR44 |
+| BKL-1204 | Story | P0 | 5 | Extend scenario registry with portfolio versioning | backlog | FR43 |
+| BKL-1205 | Story | P0 | 5 | Implement multi-portfolio comparison and notebook demo | backlog | FR45 |
+
 ### Epic-Level Acceptance Criteria
 
 - Analyst can create a portfolio from 2+ individual policy templates.
@@ -713,6 +795,41 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 - Portfolio comparison produces side-by-side indicator tables.
 - Custom policy templates participate in portfolios alongside built-in templates.
 - Notebook demo runs end-to-end in CI.
+
+### Story-Level Acceptance Criteria
+
+**BKL-1201: Define PolicyPortfolio dataclass and composition logic**
+
+- Given 2+ individual `PolicyConfig` objects, when composed into a `PolicyPortfolio`, then the portfolio is a named, frozen dataclass containing all policies.
+- Given a portfolio, when inspected, then it lists all constituent policies with their types and parameter summaries.
+- Given a portfolio, when serialized to YAML, then it round-trips correctly (save and reload produces identical object).
+
+**BKL-1202: Implement portfolio compatibility validation and conflict resolution**
+
+- Given two policies in a portfolio that affect the same household attribute (e.g., two different carbon tax rates), when validated, then a conflict is detected and reported with the exact parameter names.
+- Given a portfolio with non-conflicting policies (e.g., carbon tax + vehicle subsidy), when validated, then validation passes.
+- Given a conflict, when the analyst provides an explicit resolution rule (e.g., "sum" or "first wins"), then the conflict is resolved and recorded in the portfolio metadata.
+- Given an unresolvable conflict with no resolution rule, when the portfolio is executed, then it fails before computation with a clear error listing the conflicting policies and parameters.
+
+**BKL-1203: Extend orchestrator to execute policy portfolios**
+
+- Given a portfolio with 3 policies, when the orchestrator runs a yearly step, then all 3 policies are applied to the population for that year.
+- Given a portfolio execution, when completed over 10 years, then yearly panel output reflects the combined effect of all policies.
+- Given the orchestrator receiving a portfolio instead of a single policy, when run, then no changes to `ComputationAdapter` interface or orchestrator core logic are required (portfolio is unwrapped in the template application layer).
+- Given a single-policy scenario (backward compatibility), when run through the portfolio-aware orchestrator, then it behaves identically to pre-portfolio execution.
+
+**BKL-1204: Extend scenario registry with portfolio versioning**
+
+- Given a portfolio saved to the registry, when retrieved by version ID, then the returned portfolio is identical to what was saved, including all constituent policies.
+- Given a portfolio, when a constituent policy is modified and the portfolio is re-saved, then a new version ID is assigned.
+- Given the registry, when queried, then portfolios and individual scenarios are both listable and distinguishable by type.
+
+**BKL-1205: Implement multi-portfolio comparison and notebook demo**
+
+- Given 3 completed portfolio runs (each against the same baseline), when comparison is invoked, then a side-by-side table shows all indicator types per portfolio.
+- Given multi-portfolio comparison, when cross-comparison metrics are computed, then aggregate metrics are available (e.g., "which portfolio maximizes welfare?", "which has lowest fiscal cost?").
+- Given the pairwise comparison API from Phase 1, when used with portfolios, then it works as a convenience alias (N=1 case).
+- Given the notebook demo, when run in CI, then it demonstrates portfolio creation, execution, comparison, and cross-comparison metrics end-to-end.
 
 ### Scope Notes
 
@@ -732,6 +849,13 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 **PRD Refs:** FR46
 
+| ID | Type | Pri | SP | Title | Status | PRD Refs |
+|------|------|-----|----|-------|--------|----------|
+| BKL-1301 | Story | P0 | 5 | Define custom template authoring API and registration | backlog | FR46 |
+| BKL-1302 | Story | P0 | 5 | Implement vehicle malus template (new built-in) | backlog | FR46 |
+| BKL-1303 | Story | P0 | 5 | Implement energy poverty aid template (new built-in) | backlog | FR46 |
+| BKL-1304 | Story | P0 | 3 | Validate custom templates in portfolios and build notebook demo | backlog | FR46 |
+
 ### Epic-Level Acceptance Criteria
 
 - At least 2 new built-in templates are shipped (candidates: vehicle malus, energy poverty aid, building energy performance standards — to be determined during sprint planning).
@@ -739,6 +863,33 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 - Custom templates participate in portfolios alongside built-in templates.
 - Template schema validation accepts custom templates.
 - Notebook demo runs end-to-end in CI.
+
+### Story-Level Acceptance Criteria
+
+**BKL-1301: Define custom template authoring API and registration**
+
+- Given a Python class implementing the template interface (parameters dataclass + apply function), when registered with the template system, then it is available for use in scenarios and portfolios.
+- Given a custom template, when validated, then the schema validation accepts it if it conforms to the template protocol.
+- Given a custom template with a missing required method, when registered, then a clear error identifies the missing method or signature mismatch.
+- Given a registered custom template, when used in a YAML scenario configuration, then it loads and executes like a built-in template.
+
+**BKL-1302: Implement vehicle malus template (new built-in)**
+
+- Given the vehicle malus template, when applied to a population with vehicle attributes, then a malus (penalty) is computed for high-emission vehicles based on configurable emission thresholds.
+- Given the vehicle malus template with year-indexed schedules, when run over 10 years, then malus rates follow the configured yearly schedule.
+- Given the vehicle malus template, when composed into a portfolio with a carbon tax and vehicle subsidy, then all three policies apply without conflict.
+
+**BKL-1303: Implement energy poverty aid template (new built-in)**
+
+- Given the energy poverty aid template, when applied to a population, then households below a configurable income threshold and above a configurable energy expenditure share receive aid.
+- Given the template with income-conditioned parameters, when executed, then aid amounts vary by income group and energy burden.
+- Given the template, when composed into a portfolio with a carbon tax, then the aid offsets carbon tax burden for eligible households.
+
+**BKL-1304: Validate custom templates in portfolios and build notebook demo**
+
+- Given a custom template authored by an analyst, when added to a portfolio alongside built-in templates, then the portfolio executes correctly with all templates applied.
+- Given the notebook demo, when run in CI, then it demonstrates: custom template authoring, registration, portfolio inclusion, execution, and comparison against a portfolio using only built-in templates.
+- Given the custom template authoring guide in the notebook, when read by an analyst, then the steps to create and register a new template are clear without consulting external documentation.
 
 ### Scope Notes
 
@@ -759,6 +910,16 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 **Reference:** [Phase 2 Design Note: Discrete Choice Model](phase-2-design-note-discrete-choice-household-decisions.md)
 
+| ID | Type | Pri | SP | Title | Status | PRD Refs |
+|------|------|-----|----|-------|--------|----------|
+| BKL-1401 | Story | P0 | 8 | Implement DiscreteChoiceStep with population expansion pattern | backlog | FR47, FR48 |
+| BKL-1402 | Story | P0 | 5 | Implement conditional logit model with seed-controlled draws | backlog | FR47, FR49 |
+| BKL-1403 | Story | P0 | 8 | Implement vehicle investment decision domain | backlog | FR47, FR50 |
+| BKL-1404 | Story | P0 | 8 | Implement heating system decision domain | backlog | FR47, FR50 |
+| BKL-1405 | Story | P0 | 5 | Implement eligibility filtering for performance optimization | backlog | FR48 |
+| BKL-1406 | Task | P0 | 3 | Extend panel output and manifests with decision records | backlog | FR50, FR51 |
+| BKL-1407 | Story | P0 | 5 | Build 10-year behavioral simulation notebook demo | backlog | FR47 |
+
 ### Epic-Level Acceptance Criteria
 
 - `DiscreteChoiceStep` registers via standard step protocol without modifying orchestrator core.
@@ -770,6 +931,58 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 - Taste parameters (β coefficients) appear in run manifests.
 - Eligibility filtering reduces expanded population for performance (only eligible households face choices).
 - Notebook demo runs end-to-end in CI.
+
+### Story-Level Acceptance Criteria
+
+**BKL-1401: Implement DiscreteChoiceStep with population expansion pattern**
+
+- Given the `DiscreteChoiceStep`, when registered with the orchestrator, then it implements the `OrchestratorStep` protocol and executes at the correct position in the yearly pipeline (after vintage transitions, before state carry-forward).
+- Given a population of N households and a choice set of M alternatives, when expansion runs, then M copies of each household are created with attributes modified per alternative.
+- Given an expanded population, when passed to `ComputationAdapter.compute()`, then OpenFisca evaluates all N×M rows in one vectorized batch call.
+- Given OpenFisca results for the expanded population, when reshaped, then an N×M cost matrix is produced with one cost per household per alternative.
+- Given the orchestrator core, when `DiscreteChoiceStep` is added, then no modifications to `ComputationAdapter` interface or orchestrator loop logic are required.
+
+**BKL-1402: Implement conditional logit model with seed-controlled draws**
+
+- Given an N×M cost matrix and taste parameters (β coefficients), when the logit model computes, then choice probabilities are `P(j|C_i) = exp(V_ij) / Σ_k exp(V_ik)` for each household.
+- Given choice probabilities and a random seed, when draws are made, then each household is assigned exactly one chosen alternative per decision domain.
+- Given identical cost matrices and identical seeds, when draws are made twice, then the chosen alternatives are identical across runs.
+- Given a different seed, when draws are made, then the household-level choices differ but the aggregate distribution remains statistically consistent.
+- Given the logit model, when probabilities are computed, then all probability vectors sum to 1.0 (within floating-point tolerance) for each household.
+
+**BKL-1403: Implement vehicle investment decision domain**
+
+- Given the vehicle decision domain, when configured, then the choice set includes at minimum: keep current vehicle, buy petrol, buy diesel, buy hybrid, buy EV, buy no vehicle.
+- Given a household with vehicle attributes, when the domain evaluates alternatives, then utility inputs include: purchase cost (net of subsidy), annual fuel/electricity cost, annual carbon tax, maintenance.
+- Given a household that chooses a new vehicle, when the state is updated, then the household's vehicle attributes change and a new vintage cohort entry is created (age=0).
+- Given a household that keeps their current vehicle, when the state is updated, then vehicle attributes are unchanged.
+
+**BKL-1404: Implement heating system decision domain**
+
+- Given the heating system domain, when configured, then the choice set includes at minimum: keep current, gas boiler, heat pump, electric, wood/pellet.
+- Given a household with heating attributes, when the domain evaluates alternatives, then utility inputs include: equipment cost (net of subsidy), annual energy cost by fuel type, annual carbon tax by fuel type, maintenance.
+- Given a household that switches heating systems, when the state is updated, then `heating_type`, `energy_consumption`, and related attributes change, and a new vintage entry is created.
+- Given both vehicle and heating domains configured, when the orchestrator runs a year, then domains execute sequentially (vehicle first, then heating) and the second domain sees the state updated by the first.
+
+**BKL-1405: Implement eligibility filtering for performance optimization**
+
+- Given eligibility rules (e.g., only households whose vehicle is older than 10 years face the vehicle choice), when the population is expanded, then only eligible households are cloned × alternatives.
+- Given a population of 100k households where 30k are eligible for vehicle choice, when expanded with 5 alternatives, then the expanded population is 150k rows (not 500k).
+- Given eligibility filtering, when a 10-year run with 100k households and 2 domains completes, then execution time is within the performance budget documented in the design note.
+- Given a household that is not eligible for a decision domain, when the step runs, then the household retains its current state without evaluation.
+- Given eligibility rules, when recorded in the run manifest, then the rules and the count of eligible vs. ineligible households per domain per year are documented.
+
+**BKL-1406: Extend panel output and manifests with decision records**
+
+- Given a completed discrete choice run, when panel output is inspected, then each household-year row includes: `decision_domain`, `chosen_alternative`, `choice_probabilities` (array), and `utility_values` (array).
+- Given a run with discrete choice, when the manifest is inspected, then taste parameters (β coefficients) for each domain are recorded.
+- Given panel output with decision records, when exported to Parquet, then decision columns are correctly typed and readable by pandas/polars.
+
+**BKL-1407: Build 10-year behavioral simulation notebook demo**
+
+- Given the notebook, when run end-to-end, then it demonstrates: population with asset attributes, policy portfolio configuration, 10-year dynamic run with discrete choice, year-by-year fleet composition changes, and distributional indicators.
+- Given the notebook, when run in CI, then it completes without errors.
+- Given the notebook output, when inspected, then it shows: aggregate vehicle fleet turnover charts (EV adoption over time), heating system transition charts, and distributional impact by income decile accounting for behavioral responses.
 
 ### Scope Notes
 
@@ -791,6 +1004,14 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 **PRD Refs:** FR52–FR53
 
+| ID | Type | Pri | SP | Title | Status | PRD Refs |
+|------|------|-----|----|-------|--------|----------|
+| BKL-1501 | Story | P0 | 5 | Define calibration target format and load observed transition rates | backlog | FR52 |
+| BKL-1502 | Story | P0 | 8 | Implement CalibrationEngine with objective function optimization | backlog | FR52 |
+| BKL-1503 | Story | P0 | 5 | Implement calibration validation against holdout data | backlog | FR53 |
+| BKL-1504 | Task | P0 | 3 | Record calibrated parameters in run manifests | backlog | FR52 |
+| BKL-1505 | Story | P0 | 5 | Build calibration workflow notebook demo | backlog | FR52, FR53 |
+
 ### Epic-Level Acceptance Criteria
 
 - Calibration engine produces β parameters that reduce simulation-vs-observed gap below documented threshold.
@@ -798,6 +1019,42 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 - Validation step confirms calibrated model on holdout data or known aggregates.
 - Calibrated parameters are recorded in run manifests.
 - Notebook demo runs end-to-end in CI.
+
+### Story-Level Acceptance Criteria
+
+**BKL-1501: Define calibration target format and load observed transition rates**
+
+- Given observed transition rate data (e.g., vehicle adoption rates from ADEME/SDES), when formatted as calibration targets, then the format specifies: decision domain, time period, transition type (from → to), observed rate, and source metadata.
+- Given a calibration target file (CSV or YAML), when loaded by the calibration engine, then targets are validated for completeness (all required fields present) and consistency (rates sum to ≤1.0 per origin state).
+- Given calibration targets for multiple decision domains, when loaded, then each domain's targets are accessible independently.
+- Given a calibration target with a missing or malformed field, when loaded, then a clear error message identifies the field and row.
+
+**BKL-1502: Implement CalibrationEngine with objective function optimization**
+
+- Given calibration targets and an initial set of β coefficients, when the calibration engine runs, then it executes the discrete choice model repeatedly with different β values to minimize the gap between simulated and observed transition rates.
+- Given the calibration engine, when optimizing, then the objective function computes the distance (MSE or log-likelihood) between simulated aggregate transition rates and observed targets.
+- Given the optimization process, when run with a fixed seed and initial parameters, then it converges to the same β values across runs (deterministic optimization).
+- Given the calibration engine, when it completes, then it returns: optimized β coefficients per domain, final objective function value, convergence diagnostics (iterations, gradient norm, convergence flag).
+- Given the calibration engine, when β coefficients produce simulated rates, then the gap between simulated and observed rates is below the documented threshold for each calibration target.
+
+**BKL-1503: Implement calibration validation against holdout data**
+
+- Given calibrated β parameters and a holdout dataset (different time period or population subset), when validation runs, then the discrete choice model is executed with the calibrated parameters on the holdout data.
+- Given validation results, when compared to holdout observed rates, then the gap metrics (MSE, mean absolute error) are computed and reported.
+- Given validation metrics, when inspected, then the analyst can assess whether calibrated parameters generalize beyond the training data.
+- Given calibration and validation results, when reported, then both in-sample (training) and out-of-sample (holdout) fit metrics are presented side by side.
+
+**BKL-1504: Record calibrated parameters in run manifests**
+
+- Given a completed calibration run, when the manifest is inspected, then it includes: calibrated β coefficients per domain, objective function type and final value, convergence diagnostics, calibration target source metadata, and holdout validation metrics.
+- Given a simulation run that uses calibrated parameters, when the manifest is inspected, then it references the calibration run that produced the parameters (calibration run ID or manifest hash).
+- Given calibrated parameters recorded in a manifest, when loaded for a subsequent simulation, then the exact same β values are used.
+
+**BKL-1505: Build calibration workflow notebook demo**
+
+- Given the notebook, when run end-to-end, then it demonstrates: loading observed transition rates, running the calibration engine, inspecting convergence diagnostics, validating against holdout data, and using calibrated parameters in a simulation.
+- Given the notebook, when run in CI, then it completes without errors.
+- Given the notebook output, when inspected, then it shows: training vs. observed rate comparison charts, convergence trajectory plots, holdout validation metrics, and a final simulation using calibrated parameters with fleet composition outcomes.
 
 ### Scope Notes
 
@@ -817,6 +1074,13 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 **PRD Refs:** FR54–FR55
 
+| ID | Type | Pri | SP | Title | Status | PRD Refs |
+|------|------|-----|----|-------|--------|----------|
+| BKL-1601 | Story | P0 | 5 | Implement replication package export with manifest index | backlog | FR54 |
+| BKL-1602 | Story | P0 | 5 | Implement replication package import and reproduction | backlog | FR54, FR55 |
+| BKL-1603 | Task | P0 | 3 | Include population generation assumptions and calibration provenance | backlog | FR54 |
+| BKL-1604 | Story | P0 | 5 | Build replication workflow notebook demo | backlog | FR54, FR55 |
+
 ### Epic-Level Acceptance Criteria
 
 - Export produces a self-contained directory/archive with all artifacts needed for reproduction.
@@ -825,6 +1089,37 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 - Package includes all assumption records from population generation.
 - Manifest integrity checks pass on reimport.
 - Notebook demo runs end-to-end in CI.
+
+### Story-Level Acceptance Criteria
+
+**BKL-1601: Implement replication package export with manifest index**
+
+- Given a completed simulation run, when the analyst exports a replication package, then a self-contained directory is created with a manifest index file listing all included artifacts.
+- Given the exported package, when its contents are inspected, then it includes: population data (or generation config + seed), scenario/portfolio configuration (YAML), template definitions used, run manifests with all parameters and seeds, and simulation results.
+- Given the export, when optionally compressed, then the package is a single archive file (zip or tar.gz) that can be shared.
+- Given a run that used calibrated parameters, when exported, then the package includes the calibrated β coefficients and references the calibration run metadata.
+- Given the manifest index, when parsed, then it lists every artifact with its role (input/config/output), hash for integrity verification, and relative path within the package.
+
+**BKL-1602: Implement replication package import and reproduction**
+
+- Given a replication package, when imported on a clean environment with `pip install reformlab`, then all configuration and data artifacts are restored to the correct locations.
+- Given an imported package, when the simulation is re-executed, then results match the original within documented floating-point tolerances.
+- Given an imported package, when manifest integrity checks run, then all artifact hashes match the recorded values (no corruption or tampering).
+- Given a package with a missing or corrupted artifact, when imported, then a clear error identifies which artifact failed integrity checks.
+- Given an imported package, when the reproduction run completes, then a comparison report is generated showing original vs. reproduced results with any discrepancies flagged.
+
+**BKL-1603: Include population generation assumptions and calibration provenance**
+
+- Given a run that used a generated population (EPIC-11), when the replication package is exported, then it includes the population generation configuration: data sources used, merge methods, statistical assumptions, and the generation seed.
+- Given a run that used calibrated parameters (EPIC-15), when exported, then the package includes calibration targets, objective function type, convergence diagnostics, and the final β values.
+- Given a package with population generation config, when imported and regenerated on a different machine, then the population is identical (deterministic generation from seed + config).
+- Given the assumption records in the package, when inspected by a reviewer, then every methodological choice in the pipeline is traceable from data source to final result.
+
+**BKL-1604: Build replication workflow notebook demo**
+
+- Given the notebook, when run end-to-end, then it demonstrates: running a simulation, exporting a replication package, clearing local state, importing the package, reproducing the simulation, and comparing original vs. reproduced results.
+- Given the notebook, when run in CI, then it completes without errors.
+- Given the notebook output, when inspected, then it shows: package contents listing, integrity check results, reproduction comparison (matching results), and the researcher sharing workflow (Marco's journey from UX spec).
 
 ### Scope Notes
 
@@ -844,6 +1139,17 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 **PRD Refs:** FR32, FR37, FR39, FR43, FR45
 
+| ID | Type | Pri | SP | Title | Status | PRD Refs |
+|------|------|-----|----|-------|--------|----------|
+| BKL-1701 | Story | P0 | 8 | Build Data Fusion Workbench GUI | backlog | FR37, FR39 |
+| BKL-1702 | Story | P0 | 5 | Build Policy Portfolio Designer GUI | backlog | FR43 |
+| BKL-1703 | Story | P0 | 5 | Build Simulation Runner with progress and persistent results | backlog | FR32, FR45 |
+| BKL-1704 | Story | P0 | 8 | Build Comparison Dashboard with multi-portfolio side-by-side | backlog | FR32, FR45 |
+| BKL-1705 | Story | P0 | 5 | Build Behavioral Decision Viewer | backlog | FR45 |
+| BKL-1706 | Task | P0 | 5 | Implement FastAPI endpoints for Phase 2 GUI operations | backlog | FR32 |
+| BKL-1707 | Task | P0 | 3 | Implement persistent result storage and retrieval | backlog | FR45 |
+| BKL-1708 | Story | P0 | 5 | Build end-to-end GUI workflow tests | backlog | FR32 |
+
 ### Epic-Level Acceptance Criteria
 
 - Analyst can build a population from real data sources through the GUI without writing code.
@@ -854,6 +1160,68 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 - GUI displays behavioral decision outcomes (discrete choice results) per household group.
 - All GUI operations map to API endpoints tested independently.
 - Frontend tests cover core workflows (data fusion, portfolio creation, simulation, comparison).
+
+### Story-Level Acceptance Criteria
+
+**BKL-1701: Build Data Fusion Workbench GUI**
+
+- Given the Data Fusion Workbench screen, when the analyst opens it, then available data sources are listed with metadata (name, description, variables, record count, source URL).
+- Given the source browser, when the analyst selects two or more data sources, then the GUI shows overlapping and unique variables and prompts merge method selection.
+- Given merge method selection, when the analyst chooses a method (e.g., statistical matching, calibration weighting), then a plain-language explanation of the method's assumptions and trade-offs is displayed.
+- Given a configured merge, when the analyst clicks "Generate Population", then the population generation pipeline runs and the GUI shows progress.
+- Given a generated population, when previewed, then the GUI displays summary statistics (record count, variable distributions, key demographics) and validation results against known marginals.
+- Given the workbench, when the analyst adjusts merge parameters and regenerates, then the new population reflects the changed configuration.
+
+**BKL-1702: Build Policy Portfolio Designer GUI**
+
+- Given the Portfolio Designer screen, when the analyst opens it, then available policy templates are listed with descriptions, configurable parameters, and category tags.
+- Given the template browser, when the analyst selects templates, then they are added to a portfolio composition panel where parameters can be configured per template.
+- Given a portfolio with multiple templates, when the analyst reorders or removes templates, then the portfolio updates accordingly.
+- Given template parameters, when the analyst configures year-indexed schedules (e.g., carbon tax trajectory), then a visual timeline editor allows setting values per year.
+- Given a complete portfolio configuration, when saved, then the portfolio is persisted as a named configuration that can be loaded, cloned, or edited later.
+
+**BKL-1703: Build Simulation Runner with progress and persistent results**
+
+- Given a configured population and policy portfolio, when the analyst clicks "Run Simulation", then the simulation starts and a progress indicator shows current year, estimated remaining time, and completion percentage.
+- Given a running simulation, when it completes, then results are automatically saved to persistent storage with a unique run ID, timestamp, and configuration summary.
+- Given persistent results, when the analyst returns to the application (even after closing the browser), then all previously completed runs are listed and browsable.
+- Given a completed run in the results list, when the analyst clicks it, then the full result detail view opens with indicators, panel data summary, and run manifest.
+
+**BKL-1704: Build Comparison Dashboard with multi-portfolio side-by-side**
+
+- Given two or more completed simulation runs, when the analyst selects them for comparison, then a side-by-side dashboard displays key indicators (distributional, welfare, fiscal, environmental) for each run.
+- Given the comparison view, when the analyst inspects distributional indicators, then charts show impact by income decile for each portfolio with clear visual differentiation.
+- Given the comparison view, when the analyst hovers over or selects a specific indicator, then a detail panel shows the breakdown and methodology.
+- Given the comparison dashboard, when the analyst toggles between absolute and relative views, then the charts and tables update to show the selected representation.
+- Given the comparison dashboard, when populated with runs that include behavioral responses (discrete choice), then indicators reflect post-behavioral-response outcomes (not just static impacts).
+
+**BKL-1705: Build Behavioral Decision Viewer**
+
+- Given a completed run with discrete choice results, when the analyst opens the Behavioral Decision Viewer, then aggregate decision outcomes are displayed per domain (vehicle fleet composition, heating system mix over time).
+- Given the decision viewer, when the analyst selects a decision domain (e.g., vehicle), then year-by-year transition charts show the evolution of the fleet (e.g., EV adoption curve, diesel phase-out).
+- Given the decision viewer, when the analyst filters by household group (e.g., income decile, location), then the decision outcomes update to show group-specific transition patterns.
+- Given the decision viewer, when the analyst clicks on a specific year, then a detail panel shows choice probabilities and the distribution of chosen alternatives for that year.
+
+**BKL-1706: Implement FastAPI endpoints for Phase 2 GUI operations**
+
+- Given the Phase 2 backend capabilities, when the GUI needs them, then FastAPI endpoints exist for: population generation (start, status, result), portfolio CRUD (create, read, update, delete, list), simulation execution (start, progress, result), result listing and retrieval, and comparison queries.
+- Given each API endpoint, when called with valid parameters, then it returns correctly typed JSON responses matching documented schemas.
+- Given each API endpoint, when called with invalid parameters, then it returns appropriate error codes (400, 404, 422) with descriptive error messages.
+- Given API endpoints, when tested independently (without the GUI), then all endpoints pass integration tests.
+
+**BKL-1707: Implement persistent result storage and retrieval**
+
+- Given a completed simulation, when results are stored, then all outputs (indicators, panel summary, manifest, configuration) are persisted to disk in a structured directory per run.
+- Given stored results, when listed via API, then the response includes: run ID, timestamp, population summary, portfolio name, and status.
+- Given a stored result, when retrieved by run ID, then all artifacts are returned (indicators, panel data, manifest, configuration used).
+- Given stored results, when the application restarts, then all previously stored results remain accessible.
+
+**BKL-1708: Build end-to-end GUI workflow tests**
+
+- Given the frontend test suite, when run, then it covers the core analyst workflow: open Data Fusion Workbench → configure and generate population → open Portfolio Designer → compose portfolio → run simulation → view results → compare two runs.
+- Given the test suite, when run in CI, then all tests pass.
+- Given the test suite, when a GUI component changes, then relevant tests fail and identify the broken workflow step.
+- Given the test suite, when inspected, then it covers: data fusion (source selection, merge method, generation), portfolio design (template selection, parameter configuration, save), simulation (run, progress, completion), results (persistence, retrieval, browsing), and comparison (multi-run selection, side-by-side display).
 
 ### Scope Notes
 
