@@ -101,12 +101,21 @@ class TestUniformMergeMethodMerge:
         vehicle_table: pa.Table,
         default_config: MergeConfig,
     ) -> None:
+        """Verify row-level coherence: matched rows must exist in table_b."""
         method = UniformMergeMethod()
         result = method.merge(income_table, vehicle_table, default_config)
-        valid_types = set(vehicle_table.column("vehicle_type").to_pylist())
-        merged_types = result.table.column("vehicle_type").to_pylist()
-        for val in merged_types:
-            assert val in valid_types
+        right_col_names = vehicle_table.schema.names
+        valid_row_combos = set(
+            zip(*(vehicle_table.column(c).to_pylist() for c in right_col_names))
+        )
+        for i in range(result.table.num_rows):
+            combo = tuple(
+                result.table.column(c)[i].as_py() for c in right_col_names
+            )
+            assert combo in valid_row_combos, (
+                f"Row {i} {combo!r} is not a row from vehicle_table — "
+                "merge is not preserving row-level coherence"
+            )
 
 
 # ====================================================================
@@ -140,10 +149,12 @@ class TestUniformMergeMethodDeterminism:
         result_2 = method.merge(
             income_table, vehicle_table, MergeConfig(seed=2)
         )
-        # With 5 rows drawn from 8 options, P(identical) is (1/8)^5 ≈ 0.003%
-        rows_1 = result_1.table.to_pydict()
-        rows_2 = result_2.table.to_pydict()
-        assert rows_1 != rows_2
+        # Deterministic: seeds 1 and 2 produce different PRNG sequences,
+        # so the right-table columns must differ between the two results.
+        right_cols = vehicle_table.schema.names
+        matched_1 = {c: result_1.table.column(c).to_pylist() for c in right_cols}
+        matched_2 = {c: result_2.table.column(c).to_pylist() for c in right_cols}
+        assert matched_1 != matched_2
 
 
 # ====================================================================

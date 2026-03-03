@@ -115,12 +115,18 @@ class UniformMergeMethod:
 
         # Validate non-empty inputs
         if table_a.num_rows == 0:
+            _logger.warning(
+                "event=merge_error method=uniform error=empty_table_a"
+            )
             raise MergeValidationError(
                 summary="Empty left table",
                 reason="table_a has 0 rows — cannot merge an empty table",
                 fix="Provide a table_a with at least one row",
             )
         if table_b.num_rows == 0:
+            _logger.warning(
+                "event=merge_error method=uniform error=empty_table_b"
+            )
             raise MergeValidationError(
                 summary="Empty right table",
                 reason="table_b has 0 rows — cannot sample from an empty table",
@@ -131,6 +137,10 @@ class UniformMergeMethod:
         right_table = table_b
         for col in config.drop_right_columns:
             if col not in right_table.schema.names:
+                _logger.warning(
+                    "event=merge_error method=uniform error=invalid_drop_column column=%s",
+                    col,
+                )
                 raise MergeValidationError(
                     summary="Invalid drop_right_columns",
                     reason=(
@@ -145,6 +155,10 @@ class UniformMergeMethod:
         # Check column name conflicts
         overlap = set(table_a.schema.names) & set(right_table.schema.names)
         if overlap:
+            _logger.warning(
+                "event=merge_error method=uniform error=column_conflict columns=%s",
+                sorted(overlap),
+            )
             raise MergeValidationError(
                 summary="Column name conflict",
                 reason=(
@@ -165,10 +179,22 @@ class UniformMergeMethod:
         matched_b = right_table.take(indices)
 
         # Combine columns: table_a first, then matched table_b
-        all_columns: dict[str, pa.Array] = {}
+        all_columns: dict[str, pa.ChunkedArray] = {}
         for col_name in table_a.schema.names:
+            if col_name in all_columns:
+                raise MergeValidationError(
+                    summary="Duplicate column in left table",
+                    reason=f"column {col_name!r} appears multiple times in table_a",
+                    fix="Ensure column names are unique before merging",
+                )
             all_columns[col_name] = table_a.column(col_name)
         for col_name in matched_b.schema.names:
+            if col_name in all_columns:
+                raise MergeValidationError(
+                    summary="Duplicate column after merge",
+                    reason=f"column {col_name!r} exists in both tables after assembly",
+                    fix="Rename or drop duplicate columns before merging",
+                )
             all_columns[col_name] = matched_b.column(col_name)
         merged = pa.table(all_columns)
 

@@ -27,3 +27,16 @@
 | medium | `make_*_config(**params)` docstrings claim params are "query parameters for the download request" but params are never applied to the URL — they only differentiate cache slots. | Updated all three docstrings to accurately state params differentiate cache slots only and are not appended to the download URL. |
 | medium | SDES test assertions use pure-ASCII substrings (`"Auvergne"`, `"le-de-France"`) that match even if non-ASCII characters (`ô`, `Î`) are decoded incorrectly. | Changed to exact equality assertions: `region_names[0] == "Auvergne-Rhône-Alpes"` and `region_names[3] == "Île-de-France"`. |
 | low | ADEME UTF-8 fallback test only asserts pure-ASCII value `"Gaz naturel"`, never verifying non-ASCII content decoded correctly via fallback path. | Added assertion checking `"métropolitaine"` in the geography column after UTF-8 fallback. |
+
+## Story 11-4 (2026-03-03)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| high | `test_table_b_values_from_actual_rows` only checks one column's values, not row-level coherence — an implementation shuffling columns independently would pass | Rewrote test to verify every matched row combination exists as an actual row in `vehicle_table`. |
+| high | Type annotation `dict[str, pa.Array]` is wrong — `pa.Table.column()` returns `pa.ChunkedArray` | Changed to `dict[str, pa.ChunkedArray]`. |
+| medium | Duplicate column names within an input table silently overwrite in dict-based column assembly | Added duplicate-column guard in both assembly loops raising `MergeValidationError`. |
+| medium | No `event=merge_error` logging on validation failure paths — only success instrumented | Added `_logger.warning("event=merge_error ...")` before each `MergeValidationError` raise. |
+| medium | Misleading probability comment on `test_different_seed_different_result` — test is deterministic, not probabilistic | Replaced comment with accurate explanation; narrowed comparison to right-table columns only. |
+| medium | Misleading "deep-copy" comment on `MergeConfig.__post_init__` — it's a type coercion | Changed comment to "Coerce to tuple to ensure immutability". |
+| low | Missing `from __future__ import annotations` in `tests/population/methods/__init__.py` | Added the import. |
+| low | `to_governance_entry()` return type `dict[str, Any]` will require explicit cast in Story 11.6 | Added documentation note about required `cast(AssumptionEntry, ...)` at the call site. |

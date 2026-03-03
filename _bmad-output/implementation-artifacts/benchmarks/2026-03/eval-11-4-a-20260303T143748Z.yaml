@@ -1,0 +1,114 @@
+record_id: 73b59e37-efd1-4355-8fa6-9ccde5728350
+created_at: '2026-03-03T14:37:48.621336+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 11
+  story_num: '4'
+  title: Story 11.4
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: codex
+  model: gpt-5.1-codex-max
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-03-03T14:31:54.707700Z'
+  end_time: '2026-03-03T14:33:18.350700Z'
+  duration_ms: 83643
+  input_tokens: 0
+  output_tokens: 1621
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 6486
+  heading_count: 14
+  list_depth_max: 2
+  code_block_count: 3
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: 2.0'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes & Readability
+  - ⚡ Performance & Scalability
+  - 🐛 Correctness & Safety
+  - 🔧 Maintainability Issues
+  - 🛠️ Suggested Fixes
+  - 1. Validate `drop_right_columns` elements
+  - 2. Prevent silent data loss on duplicate column names
+  - 3. Ensure `pyarrow` available for type introspection
+  - 4. Deflake determinism test
+  - 5. Reconcile story file list with actual changes
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.31
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 2ef97cd4d002
+findings:
+  total_count: 5
+  by_severity:
+    critical: 3
+    major: 2
+    minor: 0
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 3
+    completeness: 1
+    clarity: 0
+    testability: 1
+  has_fix_count: 5
+  has_location_count: 5
+  has_evidence_count: 5
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: false
+  uses_conditionals: true
+  uncertainty_phrases_count: 0
+  confidence_phrases_count: 1
+linguistic:
+  avg_sentence_length: 20.864864864864863
+  vocabulary_richness: 0.4520725388601036
+  flesch_reading_ease: 4.277761355932228
+  vague_terms_count: 0
+  formality_score: 0.55
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.95
+  evidence_quality: 0.75
+  follows_template: true
+  internal_consistency: 0.95
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 10
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

@@ -47,7 +47,7 @@ class MergeConfig:
         if self.seed < 0:
             msg = f"seed must be a non-negative integer, got {self.seed!r}"
             raise ValueError(msg)
-        # Deep-copy mutable-origin field to prevent aliasing
+        # Coerce to tuple to ensure immutability (caller may pass a list)
         object.__setattr__(
             self, "drop_right_columns", tuple(self.drop_right_columns)
         )
@@ -92,6 +92,12 @@ class MergeAssumption:
 
         The ``value`` field unpacks ``details`` first, then overrides
         with ``method`` and ``statement`` keys to prevent collision.
+
+        Note: When appending to ``RunManifest.assumptions``
+        (typed ``list[AssumptionEntry]``), mypy strict requires an
+        explicit ``cast(AssumptionEntry, ...)`` at the call site.
+        Cross-subsystem import of ``AssumptionEntry`` here is
+        intentionally avoided to prevent coupling.
         """
         return {
             "key": f"merge_{self.method_name}",
