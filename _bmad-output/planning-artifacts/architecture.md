@@ -16,6 +16,7 @@ date: '2026-02-25'
 # Architecture Decision Document
 
 _Updated 2026-02-25: Legacy custom engine sections removed per Sprint Change Proposal. See sprint-change-proposal-2026-02-25.md._
+_Updated 2026-03-03: Phase 2 Architecture Extensions added per Sprint Change Proposal 2026-03-02. New subsystems (population, calibration), policy portfolios, discrete choice model, unified job execution, adaptive UI, external data caching, multi-portfolio comparison. See sprint-change-proposal-2026-03-02.md._
 
 ## Strategic Direction Update (2026-02-25)
 
@@ -46,7 +47,7 @@ The **dynamic orchestrator is the core product** — not a computation engine.
 
 ### Requirements Overview
 
-**Functional focus (35 FRs):**
+**Functional focus (55 FRs — 35 Phase 1, 20 Phase 2):**
 
 - OpenFisca integration and data contracts.
 - Environmental scenario templates and batch comparison.
@@ -54,6 +55,11 @@ The **dynamic orchestrator is the core product** — not a computation engine.
 - Indicator computation and extensibility.
 - Governance, reproducibility, and lineage.
 - Notebook/API + early no-code GUI workflows.
+- _Phase 2:_ Population generation and data fusion (FR36-FR42).
+- _Phase 2:_ Policy portfolios (FR43-FR46).
+- _Phase 2:_ Behavioral responses via discrete choice (FR47-FR51).
+- _Phase 2:_ Calibration engine (FR52-FR53).
+- _Phase 2:_ Replication package export (FR54-FR55).
 
 **Non-functional focus (21 NFRs):**
 
@@ -68,7 +74,7 @@ The **dynamic orchestrator is the core product** — not a computation engine.
 - Python 3.13+.
 - OpenFisca as the core rules engine dependency.
 - CSV/Parquet as interoperability contracts.
-- Fully offline operation in user environment.
+- Fully offline operation in user environment (Phase 1). Phase 2 introduces optional network dependencies for institutional data downloads (INSEE, Eurostat, ADEME, SDES) with offline fallback — see External Data Caching section.
 - Single-machine target (16GB laptop) for MVP.
 
 ### Cross-Cutting Concerns
@@ -88,25 +94,31 @@ ReformLab does NOT build a policy computation engine. OpenFisca is the tax-benef
 ### Layered Architecture
 
 ```
-┌─────────────────────────────────────────────────┐
-│  Interfaces (Python API, Notebooks, No-Code GUI)│
-├─────────────────────────────────────────────────┤
-│  Indicator Engine (distributional/welfare/fiscal)│
-├─────────────────────────────────────────────────┤
-│  Governance (manifests, assumptions, lineage)    │
-├─────────────────────────────────────────────────┤
-│  Dynamic Orchestrator (year loop + step pipeline)│
-│  ├── Vintage Transitions                         │
-│  ├── State Carry-Forward                         │
-│  └── [Phase 2: Behavioral Response Steps]        │
-├─────────────────────────────────────────────────┤
-│  Scenario Template Layer (environmental policies)│
-├─────────────────────────────────────────────────┤
-│  Data Layer (ingestion, open data, synthetic pop)│
-├─────────────────────────────────────────────────┤
-│  Computation Adapter Interface                   │
-│  └── OpenFiscaAdapter (primary implementation)   │
-└─────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────┐
+│  Interfaces (Python API, Notebooks, GUI Showcase)    │
+│  └── Job Dashboard (submit, monitor, browse results) │
+├─────────────────────────────────────────────────────┤
+│  Indicator Engine (distributional/welfare/fiscal)    │
+│  └── Multi-Portfolio Comparison                      │
+├─────────────────────────────────────────────────────┤
+│  Governance (manifests, assumptions, lineage)        │
+├─────────────────────────────────────────────────────┤
+│  Calibration Engine (β parameter optimization)       │
+├─────────────────────────────────────────────────────┤
+│  Dynamic Orchestrator (year loop + step pipeline)    │
+│  ├── Vintage Transitions                             │
+│  ├── State Carry-Forward                             │
+│  └── DiscreteChoiceStep (logit-based decisions)      │
+├─────────────────────────────────────────────────────┤
+│  Scenario Template Layer (policies + portfolios)     │
+│  └── Policy Portfolio Composition                    │
+├─────────────────────────────────────────────────────┤
+│  Data Layer (ingestion, open data, populations)      │
+│  └── Population Generation Library (data fusion)     │
+├─────────────────────────────────────────────────────┤
+│  Computation Adapter Interface                       │
+│  └── OpenFiscaAdapter (primary implementation)       │
+└─────────────────────────────────────────────────────┘
 ```
 
 ### Computation Adapter Pattern
@@ -150,6 +162,8 @@ Steps are registered as plugins. Phase 1 ships vintage transitions and state car
 
 ### Subsystems
 
+**Phase 1 (delivered):**
+
 1. `computation/`: Adapter interface + OpenFiscaAdapter implementation. Handles CSV/Parquet ingestion of OpenFisca outputs and optional direct API orchestration. Version-pinned contracts.
 2. `data/`: Open data ingestion, synthetic population generation, data transformation pipelines. Prepares inputs for the computation adapter.
 3. `templates/`: Environmental policy templates (carbon tax, subsidies, rebates, feebates) and scenario registry with versioned definitions.
@@ -158,6 +172,15 @@ Steps are registered as plugins. Phase 1 ships vintage transitions and state car
 6. `indicators/`: Distributional, welfare, fiscal, and custom indicator computation. Aggregation by decile, geography, and custom groupings.
 7. `governance/`: Run manifests, assumption logs, run lineage, output hashes. Tracks OpenFisca version, adapter version, scenario version.
 8. `interfaces/`: Python API, notebook workflows, early no-code GUI.
+
+**Phase 2 (new + extended):**
+
+1. `population/`: Realistic population generation library. Institutional data source loaders (INSEE, Eurostat, ADEME, SDES), statistical methods library (uniform, IPF, conditional sampling, statistical matching), population pipeline builder, assumption recording, validation against known marginals.
+2. `templates/portfolios/`: Policy portfolio composition. Named, versioned collections of policy configs. Portfolio execution through orchestrator, compatibility validation, conflict resolution.
+3. `orchestrator/steps/discrete_choice.py`: DiscreteChoiceStep registered as standard OrchestratorStep. Population expansion, logit model, seed-controlled draws, panel decision records.
+4. `calibration/`: Calibration engine for discrete choice taste parameters. Objective function optimization against observed transition rates, validation against holdout data.
+5. `server/jobs/`: Unified job execution system. File-based job store, background worker, progress reporting, persistent results. Replaces synchronous run model.
+6. `frontend/`: GUI showcase product — data fusion workbench, policy portfolio designer, simulation dashboard, persistent results, multi-portfolio comparison, behavioral decision viewer.
 
 ### Starter & Tooling Decisions
 
@@ -196,11 +219,203 @@ Steps are registered as plugins. Phase 1 ships vintage transitions and state car
 4. Indicator layer and manifest lineage hardening.
 5. Early no-code GUI workflow for analyst scenario operations.
 
-### Phase 2+ Architecture Extensions
+### Phase 2 Architecture Extensions (2026-03-03)
 
-- **Behavioral responses:** New orchestrator step that applies elasticities between yearly computation runs (proven pattern from PolicyEngine).
-- **System dynamics bridge:** Aggregate stock-flow outputs derived from microsimulation vintage tracking results.
-- **Alternative computation backends:** Swap adapter implementations without changing orchestrator or indicator layers.
+#### New Subsystem: Population Generation (`population/`)
+
+```
+src/reformlab/population/
+├── __init__.py
+├── loaders/           ← Institutional data source downloaders/cachers
+│   ├── __init__.py
+│   ├── base.py        ← DataSourceLoader protocol
+│   ├── insee.py       ← INSEE data loader
+│   ├── eurostat.py    ← Eurostat data loader
+│   ├── ademe.py       ← ADEME energy data loader
+│   └── sdes.py        ← SDES vehicle fleet data loader
+├── methods/           ← Statistical fusion methods library
+│   ├── __init__.py
+│   ├── base.py        ← MergeMethod protocol
+│   ├── uniform.py     ← Uniform distribution assumption
+│   ├── ipf.py         ← Iterative Proportional Fitting
+│   ├── conditional.py ← Conditional distribution sampling
+│   └── matching.py    ← Statistical matching / data fusion
+├── pipeline.py        ← PopulationPipeline builder (compose loaders + methods)
+├── assumptions.py     ← Assumption recording for governance integration
+└── validation.py      ← Validate against known marginals
+```
+
+Design principles:
+
+- Each loader implements `DataSourceLoader` protocol (download, cache, schema-validate, return `pa.Table`)
+- Each method implements `MergeMethod` protocol (takes two tables + config, returns merged table + assumption record)
+- Pipeline is composable: chain loaders and methods, record every step
+- Assumption records integrate with existing governance `capture.py`
+- Methods library includes pedagogical docstrings explaining assumptions in plain language
+
+#### External Data Caching & Offline Strategy
+
+Phase 1 had zero network dependencies at runtime. Phase 2 introduces optional HTTP downloads from institutional sources (INSEE, Eurostat, ADEME, SDES). The caching strategy ensures offline-first operation:
+
+**Two-layer cache:**
+
+```
+~/.reformlab/cache/
+  sources/
+    insee/
+      {dataset_id}/{hash}.parquet    ← downloaded + schema-validated
+    eurostat/
+      ...
+```
+
+- **First run:** Loader downloads, validates schema, writes to local cache. Hash-based freshness (SHA256 of URL + params + date).
+- **Subsequent runs:** Cache hit → no network. Cache miss → download. Network failure + cache exists → use stale cache with governance warning logged.
+- **Fully offline mode:** Environment variable `REFORMLAB_OFFLINE=1` — loaders only read cache, never attempt network. Fail explicitly if cache miss.
+- **CI/CD:** Tests ship with small fixture files, never hit real APIs. Integration tests for real downloads are opt-in (`pytest -m network`).
+
+**Loader protocol includes cache status reporting:**
+
+```python
+class CacheStatus:
+    """Status of a cached data source."""
+    cached: bool
+    path: Path | None
+    downloaded_at: datetime | None
+    hash: str | None
+    stale: bool
+
+class DataSourceLoader(Protocol):
+    def download(self, config: SourceConfig) -> pa.Table: ...
+    def status(self, config: SourceConfig) -> CacheStatus: ...
+    def schema(self) -> pa.Schema: ...
+```
+
+The GUI Data Fusion Workbench displays cache status per dataset so analysts know which sources are available offline.
+
+#### Extension: Policy Portfolio Layer (`templates/portfolios/`)
+
+```
+src/reformlab/templates/
+├── portfolios/
+│   ├── __init__.py
+│   ├── portfolio.py     ← PolicyPortfolio frozen dataclass (list of policy configs)
+│   ├── composition.py   ← Compose templates, validate compatibility, resolve conflicts
+│   └── execution.py     ← Execute portfolio through orchestrator (apply all policies per year)
+```
+
+Design: A `PolicyPortfolio` is a named, versioned collection of `PolicyConfig` objects. The orchestrator receives a portfolio instead of a single policy, and applies each policy in the portfolio at each yearly step. The scenario registry stores portfolios alongside individual scenarios.
+
+#### New Orchestrator Step: `DiscreteChoiceStep`
+
+Registers as a standard `OrchestratorStep` via existing protocol. Implementation follows the design note (`phase-2-design-note-discrete-choice-household-decisions.md`):
+
+- Population expansion: clone households × N alternatives, modify attributes per alternative
+- OpenFisca batch evaluation: call `adapter.compute()` on expanded population
+- Reshape to cost matrix: N households × M alternatives
+- Logit probability computation: `P(j|C_i) = exp(V_ij) / Σ_k exp(V_ik)`
+- Seed-controlled draw: deterministic choice per household
+- State update: modify household attributes + create vintage entries
+
+No changes to `ComputationAdapter` interface or orchestrator core needed.
+
+**Performance budget:** Discrete choice introduces ~11x computation scaling (100k households × 5 alternatives × 2 domains). Target: 10-year discrete choice run with 100k households completes in <60s on laptop. Eligibility filtering is mandatory — only eligible households face choices (a household without a car does not face a vehicle investment decision). This is both a performance requirement and a model correctness requirement.
+
+#### New Subsystem: Calibration (`calibration/`)
+
+```
+src/reformlab/calibration/
+├── __init__.py
+├── engine.py          ← CalibrationEngine (optimize β parameters)
+├── targets.py         ← Observed transition rates as calibration targets
+├── objective.py       ← Objective function (minimize distance to observed rates)
+└── validation.py      ← Validate calibrated parameters against holdout data
+```
+
+#### Unified Job Execution Model
+
+Phase 1 used synchronous `POST /api/runs` (blocking until completion). Phase 2 replaces this with a **unified job queue** that handles both fast static runs and long-running discrete choice simulations through a single execution path.
+
+**Design: Submit → Persist → Execute → Results Available**
+
+Every simulation is a job. The backend does not distinguish between "fast" and "slow" runs. The frontend adapts:
+
+- **Fast completion (<~5s):** UI auto-navigates to results. Feels instant to the analyst.
+- **Slow completion:** UI shows progress, informs analyst they can leave. Job keeps running.
+- **Analyst leaves and returns:** Completed jobs are browsable in the simulation dashboard.
+
+**Job store on disk:**
+
+```
+/data/reformlab/jobs/
+  {job_id}/
+    job.json             ← submitted config, status, timestamps
+    progress.json        ← last reported progress (year, step, pct)
+    result/
+      manifest.json      ← run governance manifest
+      panel.parquet      ← full panel output
+      decisions.parquet  ← discrete choice decision records (Phase 2)
+```
+
+**Job lifecycle:**
+
+1. On submit: write `job.json` with status `queued`, return `job_id`
+2. Worker thread picks up queued jobs, updates status to `running`, writes `progress.json` as it goes
+3. On completion: writes results to `result/`, updates status to `completed`
+4. On server restart: scan `/jobs/` directory, resume or mark interrupted jobs as `failed`
+
+**Implementation:** Single background worker thread with `ThreadPoolExecutor(max_workers=1)` for MVP. No Celery, no Redis. Upgrade to thread pool for parallelism if needed.
+
+```python
+class JobRunner:
+    def __init__(self, store: JobStore, max_workers: int = 1):
+        self._store = store
+        self._executor = ThreadPoolExecutor(max_workers=max_workers)
+
+    def submit(self, config: JobConfig) -> str:
+        job_id = self._store.create(config)  # persists to disk
+        self._executor.submit(self._run, job_id)
+        return job_id
+```
+
+**Progress reporting:** Orchestrator callbacks `on_year_start(year)` and `on_step_progress(step_name, pct)` write to `progress.json`. Frontend polls for updates.
+
+**Result access:** In-memory `ResultCache` (LRU, max 10) sits on top of the file-based job store. Cache miss → load from disk. Cache hit → serve from memory.
+
+#### Extension: Multi-Portfolio Comparison
+
+Phase 1 comparison was pairwise (one baseline vs one reform). Phase 2 extends to N-way comparison for policy portfolio analysis:
+
+- Every reform is compared against the same baseline — standard policy analysis pattern
+- Cross-comparison adds aggregate metrics: "which portfolio maximizes welfare?", "which has lowest fiscal cost?"
+- The pairwise comparison API remains as a convenience alias (N=1 case)
+
+#### Extension: Server Routes
+
+New API route groups for Phase 2:
+
+- `/api/populations` — CRUD + generation pipeline execution + cache status
+- `/api/portfolios` — CRUD + composition + versioning
+- `/api/calibration` — run calibration + retrieve results
+- `/api/jobs` — submit, status, result, cancel, list (replaces synchronous `/api/runs`)
+- `/api/comparison` — extended to support multi-portfolio comparison
+
+#### Extension: Frontend
+
+Major new GUI sections for EPIC-17:
+
+- **Data Fusion Workbench:** Browse available datasets with cache status, select sources, choose merge methods with plain-language explanations, preview populations, validate against marginals
+- **Policy Portfolio Designer:** Browse templates, compose portfolios, configure parameters per policy, name and version portfolios
+- **Simulation Dashboard:** Submit jobs, monitor progress, browse completed simulations — all jobs listed with status, timestamps, and results access
+- **Persistent Results:** Completed simulations stored on disk, browsable across browser sessions, no re-runs needed
+- **Comparison Dashboard:** Side-by-side comparison across N policy portfolios with distributional, welfare, and fiscal indicators
+- **Behavioral Decision Viewer:** Explore household decisions from discrete choice model (who switched vehicles, by decile, by year)
+
+### Phase 3+ Architecture Extensions
+
+- **Automated sensitivity sweeps:** Parameter variation automation over calibrated discrete choice models
+- **System dynamics bridge:** Aggregate stock-flow outputs derived from microsimulation vintage tracking results
+- **Alternative computation backends:** Swap adapter implementations without changing orchestrator or indicator layers
+- **Public-facing web app:** Citizen-facing UI with guided questionnaire and candidate comparison
 
 ## Deployment & GUI Architecture (2026-02-27)
 
@@ -304,7 +519,7 @@ Served as a static build by an nginx container. Calls the backend API via HTTPS.
 - **GitHub Actions** — CI/CD trigger on push to master, calls `kamal deploy`
 - **GitHub Container Registry (ghcr.io)** — Docker image storage
 
-### Data Storage (MVP)
+### Data Storage
 
 File-based, no database:
 
@@ -312,6 +527,9 @@ File-based, no database:
 - **Run outputs:** CSV/Parquet on server disk
 - **Run manifests:** JSON on server disk
 - **Scenario registry:** File-based (already implemented in EPIC-2)
+- **Job store (Phase 2):** `/data/reformlab/jobs/{job_id}/` directories with `job.json`, `progress.json`, and `result/` subdirectory containing `manifest.json`, `panel.parquet`, `decisions.parquet`
+- **Population cache (Phase 2):** `~/.reformlab/cache/sources/` — downloaded institutional datasets, hash-based freshness
+- **Portfolio configs (Phase 2):** YAML/JSON in scenario registry, versioned alongside individual scenarios
 
 Docker volume mount maps `/data/reformlab` on the host to `/app/data` in the backend container. Data persists across deployments and container restarts. Sufficient for 2-10 users working with open/public data. If multi-user concurrent writes become an issue in Phase 3, migrate to SQLite or PostgreSQL — the file-based contract layer makes this a contained change.
 
@@ -361,21 +579,26 @@ The FastAPI server is a **thin HTTP facade** over the existing Python API in `sr
 
 ### Package Structure
 
-```
+```text
 src/reformlab/server/
 ├── __init__.py
 ├── app.py              ← FastAPI app factory (create_app())
 ├── auth.py             ← Shared-password middleware
 ├── models.py           ← Pydantic v2 request/response models
-├── dependencies.py     ← Dependency injection (adapter, result cache)
+├── dependencies.py     ← Dependency injection (adapter, job runner, result cache)
+├── jobs.py             ← JobStore + JobRunner (Phase 2: unified job execution)
 └── routes/
     ├── __init__.py
     ├── scenarios.py    ← Scenario CRUD
-    ├── runs.py         ← Simulation execution
+    ├── jobs.py         ← Job submission, status, results (Phase 2: replaces runs.py)
+    ├── runs.py         ← Simulation execution (Phase 1: synchronous, kept for backwards compat)
     ├── indicators.py   ← Indicator computation
+    ├── comparison.py   ← Multi-portfolio comparison (Phase 2)
     ├── exports.py      ← File export/download
     ├── templates.py    ← Template listing
-    └── populations.py  ← Population dataset listing
+    ├── populations.py  ← Population CRUD + generation + cache status (Phase 2: extended)
+    ├── portfolios.py   ← Portfolio CRUD + composition (Phase 2)
+    └── calibration.py  ← Calibration run + results (Phase 2)
 ```
 
 ### Dependencies
@@ -420,11 +643,15 @@ def create_app() -> FastAPI:
     # Register route groups
     app.include_router(auth_router,        prefix="/api/auth")
     app.include_router(scenarios_router,   prefix="/api/scenarios")
-    app.include_router(runs_router,        prefix="/api/runs")
+    app.include_router(jobs_router,        prefix="/api/jobs")         # Phase 2: unified job execution
+    app.include_router(runs_router,        prefix="/api/runs")         # Phase 1: kept for backwards compat
     app.include_router(indicators_router,  prefix="/api/indicators")
+    app.include_router(comparison_router,  prefix="/api/comparison")   # Phase 2: multi-portfolio
     app.include_router(exports_router,     prefix="/api/exports")
     app.include_router(templates_router,   prefix="/api/templates")
     app.include_router(populations_router, prefix="/api/populations")
+    app.include_router(portfolios_router,  prefix="/api/portfolios")   # Phase 2
+    app.include_router(calibration_router, prefix="/api/calibration")  # Phase 2
 
     return app
 ```
@@ -457,32 +684,47 @@ Dev mode: `uvicorn src.reformlab.server.app:create_app --factory --reload --port
 
 Delegates to: `list_scenarios()`, `get_scenario(name)`, `create_scenario(scenario, name, register=True)`, `clone_scenario(name, new_name=new_name)`.
 
-#### Simulation Runs
+#### Simulation Runs (Phase 1 — synchronous, kept for backwards compatibility)
 
 | Method | Path | Request Body | Response | Status |
 |--------|------|-------------|----------|--------|
 | `POST` | `/api/runs` | `RunRequest` | `RunResponse` | 200 or 422/500 |
 | `POST` | `/api/runs/memory-check` | `MemoryCheckRequest` | `MemoryCheckResponse` | 200 |
 
-**Execution model (MVP):** `POST /api/runs` is **synchronous** — it blocks until the simulation completes and returns the full result. This is acceptable because:
-- Target run time is <10s for 100k households (NFR1).
-- MVP serves 2-10 users, not concurrent load.
-- Frontend shows a loading spinner during the request.
+Phase 1 synchronous endpoint remains available for simple, fast runs. Internally delegates to the job system and waits for completion.
 
-**Upgrade path:** If runs exceed 10s, switch to polling: `POST /api/runs` returns `{ "run_id": "..." }` immediately, `GET /api/runs/{run_id}/status` returns progress, `GET /api/runs/{run_id}/result` returns the completed result.
+#### Jobs (Phase 2 — unified job execution)
+
+| Method | Path | Request Body | Response | Status |
+|--------|------|-------------|----------|--------|
+| `POST` | `/api/jobs` | `JobSubmitRequest` | `{ "job_id": "string" }` | 202 |
+| `GET` | `/api/jobs` | — | `{ "jobs": [JobSummary, ...] }` | 200 |
+| `GET` | `/api/jobs/{job_id}` | — | `JobStatusResponse` | 200 or 404 |
+| `GET` | `/api/jobs/{job_id}/result` | — | `JobResultResponse` | 200 or 404/409 |
+| `DELETE` | `/api/jobs/{job_id}` | — | — | 204 or 404 |
+
+**Execution model:** Every simulation is a job. `POST /api/jobs` persists the job config to disk and returns immediately with a `job_id`. A background worker thread picks up queued jobs and executes them. Results are persisted to disk and survive server restarts.
+
+**Frontend adaptive UI:** The frontend polls `GET /api/jobs/{job_id}` after submission. If the job completes within ~5s, the UI auto-navigates to results (feels instant). If it takes longer, the UI shows progress and informs the analyst they can leave. All jobs are browsable in the simulation dashboard regardless of completion time.
 
 #### Indicators
 
 | Method | Path | Request Body | Response | Status |
 |--------|------|-------------|----------|--------|
 | `POST` | `/api/indicators/{type}` | `IndicatorRequest` | `IndicatorResponse` | 200 or 422 |
-| `POST` | `/api/comparison` | `ComparisonRequest` | `IndicatorResponse` | 200 or 422 |
 
 `{type}` is one of: `distributional`, `geographic`, `welfare`, `fiscal`.
 
 Delegates to: `cached_result.indicators(type, **kwargs)`.
 
-For welfare indicators and comparison, the request must reference both a baseline and reform `run_id` from the result cache.
+#### Comparison (Phase 2 — multi-portfolio)
+
+| Method | Path | Request Body | Response | Status |
+|--------|------|-------------|----------|--------|
+| `POST` | `/api/comparison` | `ComparisonRequest` | `IndicatorResponse` | 200 or 422 |
+| `POST` | `/api/comparison/multi` | `MultiComparisonRequest` | `MultiComparisonResponse` | 200 or 422 |
+
+Phase 1 pairwise comparison (`ComparisonRequest` with `baseline_run_id` + `reform_run_id`) remains as a convenience. Phase 2 adds N-way comparison: one baseline vs multiple reform portfolios, with cross-comparison aggregate metrics.
 
 #### Exports
 
@@ -504,13 +746,38 @@ Returns file as `StreamingResponse` with appropriate `Content-Disposition` heade
 
 Lists available policy templates (carbon tax, subsidy, rebate, feebate) with their default parameters and parameter groups.
 
-#### Populations
+#### Populations (Phase 2 — extended with generation + cache status)
 
 | Method | Path | Request Body | Response | Status |
 |--------|------|-------------|----------|--------|
 | `GET` | `/api/populations` | — | `{ "populations": [PopulationItem, ...] }` | 200 |
+| `GET` | `/api/populations/{id}` | — | `PopulationDetailResponse` | 200 or 404 |
+| `POST` | `/api/populations/generate` | `PopulationGenerateRequest` | `{ "job_id": "string" }` | 202 |
+| `GET` | `/api/populations/sources` | — | `{ "sources": [DataSourceStatus, ...] }` | 200 |
+| `GET` | `/api/populations/sources/{name}/cache` | — | `CacheStatusResponse` | 200 or 404 |
 
-Lists available population datasets by scanning the data directory for CSV/Parquet files.
+Phase 1 listing remains. Phase 2 adds population generation (submitted as a job), data source browsing, and cache status reporting for the Data Fusion Workbench.
+
+#### Portfolios (Phase 2)
+
+| Method | Path | Request Body | Response | Status |
+|--------|------|-------------|----------|--------|
+| `GET` | `/api/portfolios` | — | `{ "portfolios": [PortfolioSummary, ...] }` | 200 |
+| `GET` | `/api/portfolios/{name}` | — | `PortfolioDetailResponse` | 200 or 404 |
+| `POST` | `/api/portfolios` | `PortfolioCreateRequest` | `PortfolioDetailResponse` | 201 or 422 |
+| `PUT` | `/api/portfolios/{name}` | `PortfolioUpdateRequest` | `PortfolioDetailResponse` | 200 or 404/422 |
+| `DELETE` | `/api/portfolios/{name}` | — | — | 204 or 404 |
+
+CRUD for policy portfolios. Portfolios are named, versioned collections of policy configs stored in the scenario registry.
+
+#### Calibration (Phase 2)
+
+| Method | Path | Request Body | Response | Status |
+|--------|------|-------------|----------|--------|
+| `POST` | `/api/calibration/run` | `CalibrationRunRequest` | `{ "job_id": "string" }` | 202 |
+| `GET` | `/api/calibration/{job_id}` | — | `CalibrationResultResponse` | 200 or 404/409 |
+
+Calibration runs are submitted as jobs (same as simulations). Results include optimized taste parameters and validation metrics.
 
 ### Pydantic v2 Request/Response Models
 
@@ -565,6 +832,46 @@ class CreateScenarioRequest(BaseModel):
 
 class CloneRequest(BaseModel):
     new_name: str
+
+# Phase 2 request models
+
+class JobSubmitRequest(BaseModel):
+    template_name: str | None = None       # single policy run
+    portfolio_name: str | None = None      # portfolio run (Phase 2)
+    parameters: dict[str, Any] = {}
+    start_year: int
+    end_year: int
+    population_id: str | None = None
+    seed: int | None = None
+    baseline_id: str | None = None
+    name: str = ""                         # human-readable job name
+
+class PopulationGenerateRequest(BaseModel):
+    name: str
+    sources: list[str]                     # data source loader names
+    merge_steps: list[dict[str, Any]]      # [{method: "ipf", left: ..., right: ..., config: ...}]
+    validate_marginals: bool = True
+
+class PortfolioCreateRequest(BaseModel):
+    name: str
+    description: str = ""
+    policies: list[dict[str, Any]]         # [{template_name: ..., parameters: ...}]
+
+class PortfolioUpdateRequest(BaseModel):
+    description: str | None = None
+    policies: list[dict[str, Any]] | None = None
+
+class MultiComparisonRequest(BaseModel):
+    baseline_run_id: str
+    reform_run_ids: list[str]
+    indicator_types: list[str] = ["distributional", "welfare", "fiscal"]
+
+class CalibrationRunRequest(BaseModel):
+    population_id: str
+    domain: str                            # "vehicle" | "heating"
+    observed_rates: dict[str, float]       # calibration targets
+    initial_betas: dict[str, float] = {}
+    method: str = "mse"                    # "mse" | "likelihood"
 ```
 
 ```python
@@ -627,6 +934,62 @@ class ErrorResponse(BaseModel):
     why: str
     fix: str
     status_code: int
+
+# Phase 2 response models
+
+class JobSummary(BaseModel):
+    job_id: str
+    name: str
+    state: str                             # "queued" | "running" | "completed" | "failed" | "cancelled"
+    submitted_at: str                      # ISO 8601
+    completed_at: str | None = None
+    portfolio_name: str | None = None
+    template_name: str | None = None
+    population_id: str | None = None
+
+class JobStatusResponse(JobSummary):
+    progress: dict[str, Any] | None = None  # {"year": 2028, "step": "discrete_choice", "pct": 45}
+
+class JobResultResponse(BaseModel):
+    job_id: str
+    success: bool
+    years: list[int]
+    row_count: int
+    manifest_id: str
+    has_decisions: bool                    # True if discrete choice ran
+
+class PortfolioSummary(BaseModel):
+    name: str
+    description: str
+    version: str
+    policy_count: int
+
+class PortfolioDetailResponse(PortfolioSummary):
+    policies: list[dict[str, Any]]
+
+class DataSourceStatus(BaseModel):
+    name: str
+    description: str
+    cache: CacheStatusResponse | None = None
+
+class CacheStatusResponse(BaseModel):
+    cached: bool
+    downloaded_at: str | None = None
+    hash: str | None = None
+    stale: bool = False
+
+class MultiComparisonResponse(BaseModel):
+    baseline: JobSummary
+    reforms: dict[str, dict[str, Any]]     # run_id → indicators + deltas vs baseline
+    cross_comparison: dict[str, Any]       # aggregate cross-portfolio metrics
+
+class CalibrationResultResponse(BaseModel):
+    job_id: str
+    state: str
+    domain: str
+    optimized_betas: dict[str, float] | None = None
+    objective_value: float | None = None
+    validation_metrics: dict[str, Any] | None = None
 ```
 
 ### Serialization Rules
@@ -636,33 +999,79 @@ class ErrorResponse(BaseModel):
 - **`datetime` objects:** Serialize as ISO 8601 strings.
 - **Frozen dataclasses:** Converted to Pydantic models at the route handler boundary. No `dataclasses.asdict()` in responses — explicit Pydantic field mapping.
 
-### Result Cache
+### Job Store & Result Cache (Phase 2)
 
-Simulation results contain large PyArrow tables. Re-serializing on every indicator/export request is wasteful.
+Phase 2 replaces the ephemeral in-memory result cache with a two-tier architecture: persistent file-based `JobStore` + in-memory `ResultCache` for hot access.
+
+**JobStore** — persistent, file-based, survives server restarts:
+
+```python
+class JobStore:
+    """File-based job persistence. Each job is a directory on disk."""
+
+    def __init__(self, base_path: Path):
+        self._base = base_path  # /data/reformlab/jobs/
+
+    def create(self, config: JobConfig) -> str:
+        """Persist job config to disk, return job_id."""
+        ...
+
+    def update_status(self, job_id: str, state: str) -> None:
+        """Update job.json status field."""
+        ...
+
+    def update_progress(self, job_id: str, progress: dict) -> None:
+        """Write progress.json (year, step, pct)."""
+        ...
+
+    def save_result(self, job_id: str, result: SimulationResult) -> None:
+        """Write panel.parquet + manifest.json + decisions.parquet to result/."""
+        ...
+
+    def load_result(self, job_id: str) -> SimulationResult:
+        """Load result from disk."""
+        ...
+
+    def list_jobs(self) -> list[JobSummary]:
+        """Scan job directories, return summaries."""
+        ...
+
+    def delete(self, job_id: str) -> None:
+        """Remove job directory."""
+        ...
+```
+
+**ResultCache** — in-memory LRU, wraps JobStore for hot access:
 
 ```python
 class ResultCache:
-    """In-memory LRU cache for SimulationResult objects."""
+    """In-memory LRU cache backed by JobStore."""
 
-    def __init__(self, max_size: int = 10):
+    def __init__(self, store: JobStore, max_size: int = 10):
+        self._store = store
         self._cache: OrderedDict[str, SimulationResult] = OrderedDict()
         self._max_size = max_size
 
-    def store(self, run_id: str, result: SimulationResult) -> None:
-        if len(self._cache) >= self._max_size:
-            self._cache.popitem(last=False)  # Evict oldest
-        self._cache[run_id] = result
-
-    def get(self, run_id: str) -> SimulationResult | None:
-        result = self._cache.get(run_id)
+    def get(self, job_id: str) -> SimulationResult | None:
+        # Check memory first
+        if job_id in self._cache:
+            self._cache.move_to_end(job_id)
+            return self._cache[job_id]
+        # Fall back to disk
+        result = self._store.load_result(job_id)
         if result is not None:
-            self._cache.move_to_end(run_id)  # Mark as recently used
+            self._put(job_id, result)
         return result
+
+    def _put(self, job_id: str, result: SimulationResult) -> None:
+        if len(self._cache) >= self._max_size:
+            self._cache.popitem(last=False)
+        self._cache[job_id] = result
 ```
 
-- `POST /api/runs` stores the result under a generated `run_id` (UUID4).
-- `POST /api/indicators/{type}` and `POST /api/exports/*` reference `run_id` to retrieve cached results.
-- Max 10 entries. LRU eviction. No disk persistence — results are ephemeral across server restarts.
+- `POST /api/jobs` creates a job via `JobStore.create()`. Background worker executes and calls `JobStore.save_result()`.
+- `GET /api/jobs/{job_id}/result`, `POST /api/indicators/{type}`, and `POST /api/exports/*` retrieve results via `ResultCache.get()` (memory first, disk fallback).
+- Max 10 entries in memory. LRU eviction. Disk store has no size limit (manual cleanup via `DELETE /api/jobs/{job_id}`).
 
 ### Dependency Injection
 
@@ -670,21 +1079,37 @@ class ResultCache:
 # src/reformlab/server/dependencies.py
 
 # Global singletons (created once in app factory, injected via Depends)
-_result_cache = ResultCache(max_size=10)
+_job_store: JobStore | None = None
+_job_runner: JobRunner | None = None
+_result_cache: ResultCache | None = None
 _adapter: ComputationAdapter | None = None
 
+def get_job_store() -> JobStore:
+    global _job_store
+    if _job_store is None:
+        _job_store = JobStore(base_path=_data_path() / "jobs")
+    return _job_store
+
+def get_job_runner() -> JobRunner:
+    global _job_runner
+    if _job_runner is None:
+        _job_runner = JobRunner(store=get_job_store(), max_workers=1)
+    return _job_runner
+
 def get_result_cache() -> ResultCache:
+    global _result_cache
+    if _result_cache is None:
+        _result_cache = ResultCache(store=get_job_store(), max_size=10)
     return _result_cache
 
 def get_adapter() -> ComputationAdapter:
     global _adapter
     if _adapter is None:
-        # Initialize default adapter (MockAdapter in dev, OpenFiscaAdapter in prod)
         _adapter = _create_adapter()
     return _adapter
 ```
 
-Route handlers use `Depends(get_result_cache)` and `Depends(get_adapter)`.
+Route handlers use `Depends(get_job_runner)`, `Depends(get_result_cache)`, and `Depends(get_adapter)`.
 
 ### Authentication Middleware
 
@@ -769,34 +1194,49 @@ Frontend calls `/api/scenarios` (relative) in development. Vite proxies to the F
 
 ### Data Flow Summary
 
-```
+**Phase 2 (job-based):**
+
+```text
 Frontend (React)
     │
-    ├─ POST /api/runs { template, params, years }
+    ├─ POST /api/jobs { template|portfolio, params, years }
     │       ↓
-    │  RunRequest → ScenarioConfig → run_scenario(config, adapter)
+    │  JobSubmitRequest → JobStore.create() → job.json persisted to disk
     │       ↓
-    │  SimulationResult stored in ResultCache[run_id]
+    │  { "job_id": "..." } returned immediately (202)
     │       ↓
-    │  RunResponse { run_id, success, years, row_count }
+    │  Background worker: JobRunner picks up job → run_scenario() → JobStore.save_result()
+    │
+    ├─ GET /api/jobs/{job_id} (frontend polls every 2s)
+    │       ↓
+    │  JobStore reads job.json + progress.json
+    │       ↓
+    │  JobStatusResponse { state, progress: { year, step, pct } }
+    │       ↓
+    │  Frontend: if completed in <~5s → auto-navigate to results
+    │            if still running     → show progress, "you can leave"
+    │
+    ├─ GET /api/jobs/{job_id}/result
+    │       ↓
+    │  ResultCache.get(job_id) → memory hit or disk load
+    │       ↓
+    │  JobResultResponse { success, years, row_count, has_decisions }
     │
     ├─ POST /api/indicators/distributional { run_id }
     │       ↓
     │  ResultCache.get(run_id) → result.indicators("distributional")
     │       ↓
-    │  IndicatorResult.to_table().to_pydict() → IndicatorResponse
-    │
-    ├─ POST /api/comparison { baseline_run_id, reform_run_id }
-    │       ↓
-    │  baseline = cache.get(baseline_run_id)
-    │  reform = cache.get(reform_run_id)
-    │  baseline.indicators("welfare", reform_result=reform)
-    │       ↓
     │  IndicatorResponse
+    │
+    ├─ POST /api/comparison/multi { baseline_run_id, reform_run_ids }
+    │       ↓
+    │  For each reform: ResultCache.get() → indicators vs baseline
+    │       ↓
+    │  MultiComparisonResponse { reforms, cross_comparison }
     │
     └─ POST /api/exports/csv { run_id }
             ↓
-        result.export_csv(tmp) → StreamingResponse
+        ResultCache.get(run_id) → result.export_csv(tmp) → StreamingResponse
 ```
 
 ### Code Quality Standards
