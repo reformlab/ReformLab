@@ -659,7 +659,7 @@ _Status: done_
 **PRD Refs:** FR30, FR35
 **Original ID:** BKL-603
 
-### Story 6.4: Build static GUI prototype
+### Story 6.4a: Build static GUI prototype
 
 **Status:** done
 **Priority:** P0
@@ -668,7 +668,7 @@ _Status: done_
 **PRD Refs:** FR32
 **Original ID:** BKL-604a
 
-### Story 6.4: Wire GUI prototype to FastAPI backend
+### Story 6.4b: Wire GUI prototype to FastAPI backend
 
 **Status:** done
 **Priority:** P0

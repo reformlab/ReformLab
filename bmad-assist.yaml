@@ -52,19 +52,22 @@ phase_models:
     provider: claude-subprocess
     model: sonnet
 
-# Compiler configuration — moderate token optimization
-# Reduced budgets to cut prompt size ~40% without losing critical context
+# Compiler configuration — balanced budgets
+# Restored closer to defaults after synthesis starvation warnings (2026-03-03).
+# Architecture doc alone is ~14k tokens; 8k strategic budget was truncating it to 47%.
 compiler:
   source_context:
     budgets:
-      create_story: 30000    # was 60000 — story creation needs less code
-      validate_story: 10000  # was 15000
-      dev_story: 15000       # unchanged — dev needs code context most
-      code_review: 20000     # was 30000
-      default: 15000         # was 30000
+      create_story: 60000               # restored — needs full context from docs
+      validate_story: 15000             # restored default
+      validate_story_synthesis: 15000   # was missing (fell back to default)
+      dev_story: 15000                  # unchanged — dev needs code context most
+      code_review: 30000                # restored default
+      code_review_synthesis: 30000      # was missing — synthesis starved at old default
+      default: 30000                    # restored default
 
   strategic_context:
-    budget: 8000             # was 15000 — most docs are partially redundant
+    budget: 15000            # restored — architecture alone is ~14k tokens
     tree_budget: 0
     defaults:
       include: [project-tree, project-context, architecture]
