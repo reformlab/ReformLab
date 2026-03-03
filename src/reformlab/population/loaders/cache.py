@@ -26,22 +26,11 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from reformlab.governance.hashing import hash_file
 from reformlab.population.loaders.base import CacheStatus, SourceConfig
 
 # Default cache root under user home directory
 _DEFAULT_CACHE_ROOT = Path.home() / ".reformlab" / "cache" / "sources"
-
-# 64KB chunks for memory-efficient hashing (matches governance/hashing.py)
-_CHUNK_SIZE = 65536
-
-
-def _hash_file(path: Path) -> str:
-    """Compute SHA-256 hex digest of a file using streaming reads."""
-    sha256 = hashlib.sha256()
-    with path.open("rb") as f:
-        while chunk := f.read(_CHUNK_SIZE):
-            sha256.update(chunk)
-    return sha256.hexdigest()
 
 
 class SourceCache:
@@ -107,38 +96,27 @@ class SourceCache:
     def get(self, config: SourceConfig) -> tuple[pa.Table, CacheStatus] | None:
         """Retrieve a cached table and its status.
 
-        Looks for any cached Parquet file for this provider/dataset_id.
+        Looks for a cache entry matching the requested URL + params.
         If the current-month key matches, the cache is fresh.
-        If a different key is found, the cache is stale but returned.
+        If an older matching key is found, the cache is stale but returned.
 
         Returns
         -------
         tuple[pa.Table, CacheStatus] | None
             Cached table and status if a cache file exists, ``None`` if miss.
         """
-        current_key = self.cache_key(config)
-        dataset_dir = self._cache_root / config.provider / config.dataset_id
-
-        if not dataset_dir.exists():
-            return None
-
-        # Check for current (fresh) cache first
-        current_path = dataset_dir / f"{current_key}.parquet"
-        current_meta = Path(str(current_path) + ".meta.json")
-
+        current_path, current_meta = self._fresh_entry_paths(config)
         if current_path.exists() and current_meta.exists():
             table = pq.read_table(current_path)
             status = self._read_metadata(current_meta, current_path, stale=False)
             return table, status
 
-        # Check for any stale cache
-        parquet_files = sorted(dataset_dir.glob("*.parquet"))
-        for pf in parquet_files:
-            meta_file = Path(str(pf) + ".meta.json")
-            if meta_file.exists():
-                table = pq.read_table(pf)
-                status = self._read_metadata(meta_file, pf, stale=True)
-                return table, status
+        stale_entry = self._find_stale_entry(config)
+        if stale_entry is not None:
+            stale_path, stale_meta = stale_entry
+            table = pq.read_table(stale_path)
+            status = self._read_metadata(stale_meta, stale_path, stale=True)
+            return table, status
 
         return None
 
@@ -158,12 +136,13 @@ class SourceCache:
 
         # Create directories on first write
         path.parent.mkdir(parents=True, exist_ok=True)
+        self._prune_matching_entries(config, keep_path=path)
 
         # Write Parquet
         pq.write_table(table, path)
 
         # Compute content hash
-        content_hash = _hash_file(path)
+        content_hash = hash_file(path)
 
         # Write metadata
         now = datetime.now(UTC)
@@ -195,25 +174,14 @@ class SourceCache:
         CacheStatus
             Current cache state for the given config.
         """
-        current_key = self.cache_key(config)
-        dataset_dir = self._cache_root / config.provider / config.dataset_id
-
-        if not dataset_dir.exists():
-            return CacheStatus(cached=False, path=None, downloaded_at=None, hash=None, stale=False)
-
-        # Check fresh cache
-        current_path = dataset_dir / f"{current_key}.parquet"
-        current_meta = Path(str(current_path) + ".meta.json")
-
+        current_path, current_meta = self._fresh_entry_paths(config)
         if current_path.exists() and current_meta.exists():
             return self._read_metadata(current_meta, current_path, stale=False)
 
-        # Check stale cache
-        parquet_files = sorted(dataset_dir.glob("*.parquet"))
-        for pf in parquet_files:
-            meta_file = Path(str(pf) + ".meta.json")
-            if meta_file.exists():
-                return self._read_metadata(meta_file, pf, stale=True)
+        stale_entry = self._find_stale_entry(config)
+        if stale_entry is not None:
+            stale_path, stale_meta = stale_entry
+            return self._read_metadata(stale_meta, stale_path, stale=True)
 
         return CacheStatus(cached=False, path=None, downloaded_at=None, hash=None, stale=False)
 
@@ -227,15 +195,106 @@ class SourceCache:
 
     def _read_metadata(self, meta_path: Path, cache_path: Path, *, stale: bool) -> CacheStatus:
         """Read metadata JSON and build a CacheStatus."""
-        raw = json.loads(meta_path.read_text(encoding="utf-8"))
-        downloaded_at_str = raw.get("downloaded_at")
-        downloaded_at = (
-            datetime.fromisoformat(downloaded_at_str) if downloaded_at_str else None
-        )
+        raw = self._load_metadata_dict(meta_path) or {}
+        downloaded_at = self._parse_downloaded_at(raw)
+        content_hash = raw.get("content_hash")
         return CacheStatus(
             cached=True,
             path=cache_path,
             downloaded_at=downloaded_at,
-            hash=raw.get("content_hash"),
+            hash=content_hash if isinstance(content_hash, str) else None,
             stale=stale,
         )
+
+    def _fresh_entry_paths(self, config: SourceConfig) -> tuple[Path, Path]:
+        """Compute the expected fresh cache + metadata paths for a config."""
+        cache_path = self.cache_path(config)
+        return cache_path, Path(str(cache_path) + ".meta.json")
+
+    def _find_stale_entry(self, config: SourceConfig) -> tuple[Path, Path] | None:
+        """Find the newest stale entry matching URL and params for a config."""
+        dataset_dir = self._cache_root / config.provider / config.dataset_id
+        if not dataset_dir.exists():
+            return None
+
+        candidates: list[tuple[float, Path, Path]] = []
+        for meta_path in dataset_dir.glob("*.parquet.meta.json"):
+            cache_path = Path(str(meta_path).removesuffix(".meta.json"))
+            if not cache_path.exists():
+                continue
+
+            metadata = self._load_metadata_dict(meta_path)
+            if metadata is None or not self._metadata_matches_config(metadata, config):
+                continue
+
+            downloaded_at = self._parse_downloaded_at(metadata)
+            if downloaded_at is not None:
+                sort_key = downloaded_at.timestamp()
+            else:
+                try:
+                    sort_key = cache_path.stat().st_mtime
+                except OSError:
+                    sort_key = 0.0
+
+            candidates.append((sort_key, cache_path, meta_path))
+
+        if not candidates:
+            return None
+
+        _sort_key, selected_path, selected_meta = max(candidates, key=lambda item: item[0])
+        return selected_path, selected_meta
+
+    def _prune_matching_entries(self, config: SourceConfig, *, keep_path: Path) -> None:
+        """Remove older cache entries for the same URL + params."""
+        dataset_dir = keep_path.parent
+        if not dataset_dir.exists():
+            return
+
+        for meta_path in dataset_dir.glob("*.parquet.meta.json"):
+            cache_path = Path(str(meta_path).removesuffix(".meta.json"))
+            if cache_path == keep_path:
+                continue
+
+            metadata = self._load_metadata_dict(meta_path)
+            if metadata is None or not self._metadata_matches_config(metadata, config):
+                continue
+
+            try:
+                cache_path.unlink(missing_ok=True)
+                meta_path.unlink(missing_ok=True)
+            except OSError:
+                continue
+
+    def _load_metadata_dict(self, meta_path: Path) -> dict[str, object] | None:
+        """Best-effort JSON metadata read."""
+        try:
+            payload = json.loads(meta_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return None
+        if not isinstance(payload, dict):
+            return None
+        return payload
+
+    def _metadata_matches_config(self, metadata: dict[str, object], config: SourceConfig) -> bool:
+        """Ensure stale fallback reuses only the same source URL + params."""
+        params = metadata.get("params")
+        return (
+            metadata.get("provider") == config.provider
+            and metadata.get("dataset_id") == config.dataset_id
+            and metadata.get("url") == config.url
+            and isinstance(params, dict)
+            and params == config.params
+        )
+
+    def _parse_downloaded_at(self, metadata: dict[str, object]) -> datetime | None:
+        """Parse metadata timestamp while tolerating legacy/invalid payloads."""
+        downloaded_at_str = metadata.get("downloaded_at")
+        if not isinstance(downloaded_at_str, str) or not downloaded_at_str:
+            return None
+        try:
+            parsed = datetime.fromisoformat(downloaded_at_str)
+        except ValueError:
+            return None
+        if parsed.tzinfo is None:
+            return parsed.replace(tzinfo=UTC)
+        return parsed

@@ -1,6 +1,6 @@
 # Story 11.1: Define DataSourceLoader protocol and caching infrastructure
 
-Status: dev-complete
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -402,7 +402,34 @@ No issues encountered during implementation. All code passed on first attempt.
 **Modified files:**
 - `pyproject.toml` — added `network` pytest marker and updated `addopts`
 
+## Senior Developer Review (AI)
+
+### Review: 2026-03-03
+- **Reviewer:** AI Code Review Engine
+- **Evidence Score:** 1.0 -> APPROVED
+- **Issues Found:** 12
+- **Issues Fixed:** 12
+- **Action Items Created:** 0
+
+### Fixes Applied
+
+- Tightened stale-cache matching: stale fallback now only considers entries with matching `provider`, `dataset_id`, `url`, and `params`.
+- Made stale-cache selection deterministic by choosing the newest matching entry based on metadata `downloaded_at`.
+- Avoided eager stale-table loading: `CachedLoader.download()` now checks `status()` first and only loads stale tables when fallback is actually needed.
+- Fixed exception handling so stale fallback is only used for `OSError` network failures; non-network errors now propagate instead of being masked.
+- Reused shared hashing utility (`reformlab.governance.hashing.hash_file`) instead of local duplicate hashing logic.
+- Added stronger `SourceConfig` validation for empty `url` and path-separator safety on `provider`/`dataset_id`.
+- Added runtime guard in `CachedLoader.__init__` to reject subclasses that fail to implement `schema()` or `_fetch()`.
+- Added missing `from __future__ import annotations` to empty package initializers in `tests/population/` and `tests/population/loaders/`.
+- Expanded tests to cover stale status reporting, stale candidate matching/selection, stale-entry pruning, non-network exception behavior, and constructor guard behavior.
+
+### Verification
+
+- `uv run ruff check src/reformlab/population tests/population` -> pass
+- `uv run pytest tests/population/loaders -q` -> 62 passed
+
 ## Change Log
 
 - 2026-03-03: Story created by create-story workflow — comprehensive developer context with caching architecture, protocol patterns, and testing strategy.
 - 2026-03-03: Story implemented — all 10 tasks complete, 52 tests passing, ruff clean, mypy strict clean.
+- 2026-03-03: Senior code review fixes applied — stale-cache matching/selection corrected, error handling hardened, shared hashing utility reused, and test suite extended to 62 passing tests.

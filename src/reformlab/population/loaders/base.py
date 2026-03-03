@@ -22,6 +22,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+from reformlab.population.loaders.errors import (
+    DataSourceDownloadError,
+    DataSourceOfflineError,
+    DataSourceValidationError,
+)
+
 if TYPE_CHECKING:
     import pyarrow as pa
 
@@ -62,6 +68,12 @@ class SourceConfig:
             raise ValueError("provider must be a non-empty string")
         if not self.dataset_id.strip():
             raise ValueError("dataset_id must be a non-empty string")
+        if not self.url.strip():
+            raise ValueError("url must be a non-empty string")
+        if "/" in self.provider or "\\" in self.provider:
+            raise ValueError("provider must not contain path separators")
+        if "/" in self.dataset_id or "\\" in self.dataset_id:
+            raise ValueError("dataset_id must not contain path separators")
         # Deep-copy mutable container (frozen dataclass pattern)
         object.__setattr__(self, "params", dict(self.params))
 
@@ -166,6 +178,10 @@ class CachedLoader:
     """
 
     def __init__(self, *, cache: SourceCache, logger: logging.Logger) -> None:
+        if self.__class__.schema is CachedLoader.schema:
+            raise TypeError(f"{self.__class__.__name__} must override schema()")
+        if self.__class__._fetch is CachedLoader._fetch:
+            raise TypeError(f"{self.__class__.__name__} must override _fetch()")
         self._cache = cache
         self._logger = logger
 
@@ -181,28 +197,25 @@ class CachedLoader:
         6. Validate fetched data against ``schema()``.
         7. Store in cache and return.
         """
-        from reformlab.population.loaders.errors import (
-            DataSourceDownloadError,
-            DataSourceOfflineError,
-            DataSourceValidationError,
-        )
-
-        # 1. Check cache
-        cached = self._cache.get(config)
-        if cached is not None:
-            table, cache_status = cached
-            if not cache_status.stale:
-                return table
+        # 1. Check cache status first to avoid loading stale tables eagerly
+        cache_status = self._cache.status(config)
+        if cache_status.cached and not cache_status.stale:
+            fresh_result = self._cache.get(config)
+            if fresh_result is not None:
+                fresh_table, _ = fresh_result
+                return fresh_table
 
         # At this point: either no cache, or cache is stale
-        stale_result = cached  # May be None or (table, status)
+        stale_available = cache_status.cached and cache_status.stale
 
         # 2. Check offline mode
         if self._cache.is_offline():
-            if stale_result is not None:
-                stale_table, stale_status = stale_result
-                self._log_stale_warning(config, stale_status)
-                return stale_table
+            if stale_available:
+                stale_result = self._cache.get(config)
+                if stale_result is not None:
+                    stale_table, stale_status = stale_result
+                    self._log_stale_warning(config, stale_status)
+                    return stale_table
             raise DataSourceOfflineError(
                 summary="Offline mode cache miss",
                 reason=f"no cached data for {config.provider}/{config.dataset_id} "
@@ -214,21 +227,21 @@ class CachedLoader:
         # 3. Attempt network fetch
         try:
             table = self._fetch(config)
-        except (OSError, Exception) as exc:
+        except OSError as exc:
             # 4. Network failure with stale cache — use stale
-            if stale_result is not None:
-                stale_table, stale_status = stale_result
-                self._log_stale_warning(config, stale_status)
-                return stale_table
+            if stale_available:
+                stale_result = self._cache.get(config)
+                if stale_result is not None:
+                    stale_table, stale_status = stale_result
+                    self._log_stale_warning(config, stale_status)
+                    return stale_table
             # 5. Network failure without cache
-            if isinstance(exc, OSError):
-                raise DataSourceDownloadError(
-                    summary="Download failed",
-                    reason=f"network error for {config.provider}/{config.dataset_id}: {exc}",
-                    fix="Check network connectivity and retry, "
-                    "or populate the cache manually",
-                ) from exc
-            raise
+            raise DataSourceDownloadError(
+                summary="Download failed",
+                reason=f"network error for {config.provider}/{config.dataset_id}: {exc}",
+                fix="Check network connectivity and retry, "
+                "or populate the cache manually",
+            ) from exc
 
         # 6. Validate schema
         expected_schema = self.schema()

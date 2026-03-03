@@ -117,7 +117,7 @@ class TestCachedLoaderStaleFallback:
         monkeypatch.setattr(
             source_cache,
             "cache_key",
-            lambda config: "different_key_123",  # noqa: ARG005
+            lambda _config: "different_key_123",
         )
 
         loader = MockCachedLoader(
@@ -133,6 +133,29 @@ class TestCachedLoaderStaleFallback:
 
         assert result.equals(mock_table)
         assert "stale_cache_used" in caplog.text
+
+    def test_non_network_error_with_stale_cache_is_not_swallowed(
+        self,
+        source_cache: SourceCache,
+        mock_table: pa.Table,
+        mock_schema: pa.Schema,
+        sample_source_config: SourceConfig,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Given stale cache, non-network fetch errors propagate instead of returning stale data."""
+        source_cache.put(sample_source_config, mock_table)
+        monkeypatch.setattr(source_cache, "cache_key", lambda _config: "different_key_123")
+
+        loader = MockCachedLoader(
+            source_cache,
+            mock_table,
+            mock_schema,
+            fail_fetch=True,
+            fail_with=ValueError,
+        )
+
+        with pytest.raises(ValueError, match="Simulated network failure"):
+            loader.download(sample_source_config)
 
 
 # ====================================================================

@@ -5,6 +5,7 @@ Story 11.1 — AC #1 (protocol), AC #2/#3 (SourceConfig), AC #6 (CacheStatus).
 
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -12,10 +13,12 @@ import pyarrow as pa
 import pytest
 
 from reformlab.population.loaders.base import (
+    CachedLoader,
     CacheStatus,
     DataSourceLoader,
     SourceConfig,
 )
+from reformlab.population.loaders.cache import SourceCache
 
 # ====================================================================
 # SourceConfig tests (Task 9.2)
@@ -69,6 +72,21 @@ class TestSourceConfig:
         """Given whitespace-only dataset_id, ValueError is raised."""
         with pytest.raises(ValueError, match="dataset_id must be a non-empty string"):
             SourceConfig(provider="insee", dataset_id="  ", url="https://example.com")
+
+    def test_empty_url_rejected(self) -> None:
+        """Given empty URL, ValueError is raised."""
+        with pytest.raises(ValueError, match="url must be a non-empty string"):
+            SourceConfig(provider="insee", dataset_id="x", url="")
+
+    def test_provider_with_path_separator_rejected(self) -> None:
+        """Given provider containing path separators, ValueError is raised."""
+        with pytest.raises(ValueError, match="provider must not contain path separators"):
+            SourceConfig(provider="in/see", dataset_id="x", url="https://example.com")
+
+    def test_dataset_id_with_path_separator_rejected(self) -> None:
+        """Given dataset_id containing path separators, ValueError is raised."""
+        with pytest.raises(ValueError, match="dataset_id must not contain path separators"):
+            SourceConfig(provider="insee", dataset_id="household/income", url="https://example.com")
 
     def test_frozen_immutability(self) -> None:
         """Given a SourceConfig, attribute assignment raises FrozenInstanceError."""
@@ -171,3 +189,32 @@ class TestDataSourceLoaderProtocol:
     def test_isinstance_check_with_unrelated_class(self) -> None:
         """Given an unrelated class, isinstance returns False."""
         assert not isinstance("not a loader", DataSourceLoader)
+
+
+# ====================================================================
+# CachedLoader construction checks
+# ====================================================================
+
+
+class TestCachedLoaderConstruction:
+    """CachedLoader subclasses must implement schema() and _fetch()."""
+
+    def test_missing_schema_override_rejected(self, source_cache: SourceCache) -> None:
+        """Given a subclass without schema(), constructor raises TypeError."""
+
+        class MissingSchemaLoader(CachedLoader):
+            def _fetch(self, config: SourceConfig) -> pa.Table:
+                return pa.table({})
+
+        with pytest.raises(TypeError, match="must override schema"):
+            MissingSchemaLoader(cache=source_cache, logger=logging.getLogger("test"))
+
+    def test_missing_fetch_override_rejected(self, source_cache: SourceCache) -> None:
+        """Given a subclass without _fetch(), constructor raises TypeError."""
+
+        class MissingFetchLoader(CachedLoader):
+            def schema(self) -> pa.Schema:
+                return pa.schema([])
+
+        with pytest.raises(TypeError, match="must override _fetch"):
+            MissingFetchLoader(cache=source_cache, logger=logging.getLogger("test"))
