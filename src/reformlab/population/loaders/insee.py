@@ -14,11 +14,14 @@ available datasets).
 
 from __future__ import annotations
 
+import http.client
 import io
 import logging
+import urllib.error
+import urllib.request
 import zipfile
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import pyarrow as pa
 import pyarrow.csv as pcsv
@@ -46,7 +49,7 @@ class INSEEDataset:
     dataset_id: str
     description: str
     url: str
-    file_format: str  # "csv" or "zip"
+    file_format: Literal["csv", "zip"]
     encoding: str = "utf-8"
     separator: str = ";"
     null_markers: tuple[str, ...] = ("s", "nd", "")
@@ -78,16 +81,16 @@ _FILOSOFI_2021_IRIS_DECLARED_COLUMNS: tuple[tuple[str, str], ...] = (
     ("LIBIRIS", "iris_name"),
     ("COM", "commune_code"),
     ("LIBCOM", "commune_name"),
-    ("DISP_MED21", "median_declared_income"),
-    ("DISP_D121", "decile_1"),
-    ("DISP_D221", "decile_2"),
-    ("DISP_D321", "decile_3"),
-    ("DISP_D421", "decile_4"),
-    ("DISP_D521", "decile_5"),
-    ("DISP_D621", "decile_6"),
-    ("DISP_D721", "decile_7"),
-    ("DISP_D821", "decile_8"),
-    ("DISP_D921", "decile_9"),
+    ("DEC_MED21", "median_declared_income"),
+    ("DEC_D121", "decile_1"),
+    ("DEC_D221", "decile_2"),
+    ("DEC_D321", "decile_3"),
+    ("DEC_D421", "decile_4"),
+    ("DEC_D521", "decile_5"),
+    ("DEC_D621", "decile_6"),
+    ("DEC_D721", "decile_7"),
+    ("DEC_D821", "decile_8"),
+    ("DEC_D921", "decile_9"),
 )
 
 _FILOSOFI_2021_IRIS_DISPOSABLE_COLUMNS: tuple[tuple[str, str], ...] = (
@@ -121,7 +124,7 @@ INSEE_CATALOG: dict[str, INSEEDataset] = {
     "filosofi_2021_iris_declared": INSEEDataset(
         dataset_id="filosofi_2021_iris_declared",
         description="Filosofi 2021 IRIS-level declared income (quartiles/deciles)",
-        url="https://www.insee.fr/fr/statistiques/fichier/8229323/BASE_TD_FILO_DISP_IRIS_2021.zip",
+        url="https://www.insee.fr/fr/statistiques/fichier/8229323/BASE_TD_FILO_IRIS_2021_DEC_CSV.zip",
         file_format="zip",
         encoding="utf-8",
         separator=";",
@@ -130,7 +133,7 @@ INSEE_CATALOG: dict[str, INSEEDataset] = {
     "filosofi_2021_iris_disposable": INSEEDataset(
         dataset_id="filosofi_2021_iris_disposable",
         description="Filosofi 2021 IRIS-level disposable income (quartiles/deciles)",
-        url="https://www.insee.fr/fr/statistiques/fichier/8229323/BASE_TD_FILO_DISP_IRIS_2021.zip",
+        url="https://www.insee.fr/fr/statistiques/fichier/8229323/BASE_TD_FILO_IRIS_2021_DISP_CSV.zip",
         file_format="zip",
         encoding="utf-8",
         separator=";",
@@ -215,14 +218,14 @@ _DATASET_SCHEMAS: dict[str, pa.Schema] = {
 # ====================================================================
 
 # Network-error types caught in _fetch and re-raised as OSError
-_NETWORK_ERRORS: tuple[type[Exception], ...] = ()
-try:
-    import http.client
-    import urllib.error
+_NETWORK_ERRORS: tuple[type[Exception], ...] = (
+    urllib.error.URLError,
+    OSError,
+    http.client.HTTPException,
+)
 
-    _NETWORK_ERRORS = (urllib.error.URLError, OSError, http.client.HTTPException)
-except ImportError:  # pragma: no cover
-    pass
+_HTTP_TIMEOUT_SECONDS = 300
+"""Timeout for INSEE HTTP downloads (5 minutes, accommodates large IRIS files)."""
 
 
 class INSEELoader(CachedLoader):
@@ -257,8 +260,6 @@ class INSEELoader(CachedLoader):
         Re-raises all network errors as ``OSError`` so ``CachedLoader.download()``
         can handle stale-cache fallback.
         """
-        import urllib.request
-
         self._logger.debug(
             "event=fetch_start provider=%s dataset_id=%s url=%s",
             config.provider,
@@ -267,7 +268,7 @@ class INSEELoader(CachedLoader):
         )
 
         try:
-            with urllib.request.urlopen(config.url, timeout=300) as response:  # noqa: S310
+            with urllib.request.urlopen(config.url, timeout=_HTTP_TIMEOUT_SECONDS) as response:  # noqa: S310
                 raw_bytes = response.read()
         except _NETWORK_ERRORS as exc:
             raise OSError(
@@ -348,31 +349,29 @@ class INSEELoader(CachedLoader):
         )
         parse_options = pcsv.ParseOptions(delimiter=ds.separator)
 
-        # Try primary encoding, fallback to latin-1
-        for encoding in (ds.encoding, "latin-1"):
-            read_options = pcsv.ReadOptions(encoding=encoding)
-            try:
-                table = pcsv.read_csv(
-                    io.BytesIO(csv_bytes),
-                    read_options=read_options,
-                    parse_options=parse_options,
-                    convert_options=convert_options,
-                )
-                break
-            except pa.ArrowInvalid:
-                if encoding == "latin-1":
-                    raise
-                self._logger.debug(
-                    "event=encoding_fallback provider=insee dataset_id=%s "
-                    "primary=%s fallback=latin-1",
-                    ds.dataset_id,
-                    ds.encoding,
-                )
-                continue
-        else:
-            # Should not reach here, but satisfy type checker
-            msg = f"Failed to parse CSV for insee/{ds.dataset_id}"
-            raise DataSourceValidationError(summary="CSV parse error", reason=msg, fix="Check file encoding")
+        # Try primary encoding, fallback to latin-1 on decode error
+        read_options = pcsv.ReadOptions(encoding=ds.encoding)
+        try:
+            table = pcsv.read_csv(
+                io.BytesIO(csv_bytes),
+                read_options=read_options,
+                parse_options=parse_options,
+                convert_options=convert_options,
+            )
+        except pa.ArrowInvalid:
+            self._logger.debug(
+                "event=encoding_fallback provider=insee dataset_id=%s "
+                "primary=%s fallback=latin-1",
+                ds.dataset_id,
+                ds.encoding,
+            )
+            fallback_options = pcsv.ReadOptions(encoding="latin-1")
+            table = pcsv.read_csv(
+                io.BytesIO(csv_bytes),
+                read_options=fallback_options,
+                parse_options=parse_options,
+                convert_options=convert_options,
+            )
 
         # Rename columns from raw INSEE names to project names
         table = table.rename_columns(project_names)

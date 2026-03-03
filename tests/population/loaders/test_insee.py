@@ -183,7 +183,7 @@ class TestINSEELoaderFetch:
         loader = get_insee_loader("filosofi_2021_iris_declared", cache=source_cache)
         config = make_insee_config("filosofi_2021_iris_declared")
         csv_bytes = (insee_fixture_dir / "filosofi_2021_iris_declared.csv").read_bytes()
-        zip_bytes = _make_zip(csv_bytes, "BASE_TD_FILO_DISP_IRIS_2021.csv")
+        zip_bytes = _make_zip(csv_bytes, "BASE_TD_FILO_IRIS_2021_DEC.csv")
 
         with patch("urllib.request.urlopen", return_value=_mock_urlopen(zip_bytes)):
             table = loader._fetch(config)
@@ -192,6 +192,26 @@ class TestINSEELoaderFetch:
         assert "iris_code" in table.schema.names
         assert "median_declared_income" in table.schema.names
         assert table.column("iris_code").to_pylist()[0] == "010040101"
+
+    def test_iris_disposable_csv_parsing(
+        self,
+        source_cache: SourceCache,
+        insee_fixture_dir: Path,
+    ) -> None:
+        """Given IRIS disposable fixture CSV, _fetch returns correctly parsed pa.Table."""
+        loader = get_insee_loader("filosofi_2021_iris_disposable", cache=source_cache)
+        config = make_insee_config("filosofi_2021_iris_disposable")
+        csv_bytes = (insee_fixture_dir / "filosofi_2021_iris_disposable.csv").read_bytes()
+        zip_bytes = _make_zip(csv_bytes, "BASE_TD_FILO_IRIS_2021_DISP.csv")
+
+        with patch("urllib.request.urlopen", return_value=_mock_urlopen(zip_bytes)):
+            table = loader._fetch(config)
+
+        assert table.num_rows == 3
+        assert "iris_code" in table.schema.names
+        assert "median_disposable_income" in table.schema.names
+        # Verify disposable values differ from declared fixture values
+        assert table.column("median_disposable_income").to_pylist()[0] == 19200.0
 
 
 # ====================================================================
