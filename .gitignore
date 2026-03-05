@@ -39,7 +39,13 @@ yarn-error.log*
 _bmad/
 _bmad-output/
 .bmad-assist/
+.bmad-assist/cache/
 bmad-assist.yaml
+bmad-assist-test.yaml
+bmad-assist.legacy.yaml
+
+# === Local scripts ===
+scripts/
 
 overnight-build.sh
 
