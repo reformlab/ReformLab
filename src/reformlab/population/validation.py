@@ -147,21 +147,27 @@ class MarginalResult:
     passed: bool
 
     def __post_init__(self) -> None:
-        # Validate all category keys match
+        # Validate all expected category keys are present in observed
         constraint_keys = set(self.constraint.distribution.keys())
         observed_keys = set(self.observed.keys())
+        missing_expected = constraint_keys - observed_keys
+
+        if missing_expected:
+            msg = f"observed missing expected keys: {missing_expected}"
+            raise ValueError(msg)
+
+        # Validate deviations keys match constraint keys (only expected categories)
         deviations_keys = set(self.deviations.keys())
 
-        if constraint_keys != observed_keys:
-            msg = f"observed keys {observed_keys} do not match constraint keys {constraint_keys}"
-            raise ValueError(msg)
-        if constraint_keys != deviations_keys:
+        if deviations_keys != constraint_keys:
             msg = f"deviations keys {deviations_keys} do not match constraint keys {constraint_keys}"
             raise ValueError(msg)
+
         # Validate passed is boolean
         if not isinstance(self.passed, bool):
             msg = f"passed must be bool, got {type(self.passed).__name__}"
             raise ValueError(msg)
+
         # Validate max_deviation >= 0
         if self.max_deviation < 0:
             msg = f"max_deviation must be >= 0, got {self.max_deviation}"
