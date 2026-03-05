@@ -305,4 +305,13 @@ records:
   provider: opencode
   created_at: '2026-03-05T19:52:19.226002+00:00'
   workflow_id: code-review-synthesis
-updated_at: '2026-03-05T19:52:19.243656+00:00'
+- record_id: 70971cac-a37f-4f09-83f1-2fb56e3bbe8d
+  path: eval-12-2-master-20260305T195602Z.yaml
+  epic: 12
+  story: 2
+  role: master
+  role_id: null
+  provider: opencode
+  created_at: '2026-03-05T19:56:02.345672+00:00'
+  workflow_id: create-story
+updated_at: '2026-03-05T19:56:02.360879+00:00'
