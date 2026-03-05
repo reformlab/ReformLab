@@ -12,11 +12,15 @@ so that I can run simulations with bundled policies applied together and compare
 
 ## Acceptance Criteria
 
-1. **AC1: Frozen dataclass composition** — Given 2+ individual `PolicyConfig` objects, when composed into a `PolicyPortfolio`, then the portfolio is a named, frozen dataclass containing all policies.
+1. **AC1: Frozen dataclass composition** — Given 2+ individual `PolicyConfig` objects, when composed into a `PolicyPortfolio`, then the portfolio is a named, frozen dataclass containing all policies in the order provided.
    
-2. **AC2: Policy inspection** — Given a portfolio, when inspected, then it lists all constituent policies with their types and parameter summaries.
+2. **AC2: Policy inspection** — Given a portfolio, when inspected, then it lists all constituent policies with their types and parameter summaries in deterministic order.
 
-3. **AC3: YAML round-trip** — Given a portfolio, when serialized to YAML and reloaded, then the round-trip produces an identical object (save and reload produces identical object).
+3. **AC3: YAML round-trip** — Given a portfolio, when serialized to YAML and reloaded, then the round-trip produces an identical object using dataclass equality, with preserved policy order and default field values.
+
+4. **AC4: Validation error handling** — Given invalid portfolio inputs (fewer than 2 policies, invalid YAML structure, missing required fields), when construction or loading is attempted, then clear `PortfolioError` exceptions are raised with field-level error messages.
+
+5. **AC5: Deterministic serialization** — Given two identical portfolios, when serialized to YAML, then the output is byte-for-byte identical (canonical ordering, stable key order, deterministic formatting).
 
 ## Tasks / Subtasks
 
@@ -31,10 +35,11 @@ so that I can run simulations with bundled policies applied together and compare
 
 - [ ] **Task 2: Define PolicyConfig wrapper type** (AC: #1, #2)
   - [ ] 2.1 Analyze existing `PolicyParameters` and `ScenarioTemplate` structures
-  - [ ] 2.2 Decide if `PolicyConfig` is an alias or a new dataclass
-  - [ ] 2.3 If new dataclass, define with: `policy_type: PolicyType`, `policy: PolicyParameters`, optional `name: str`
-  - [ ] 2.4 Add helper method to extract policy type and parameter summary
-  - [ ] 2.5 Ensure `PolicyConfig` integrates with existing `BaselineScenario` and `ReformScenario`
+  - [ ] 2.2 Create `PolicyConfig` as a new frozen dataclass (NOT an alias)
+  - [ ] 2.3 Define fields: `policy_type: PolicyType`, `policy: PolicyParameters`, `name: str = ""`
+  - [ ] 2.4 Add `get_summary() -> dict[str, Any]` method to extract policy type and parameter summary
+  - [ ] 2.5 Add `__post_init__` to validate `policy` matches declared `policy_type`
+  - [ ] 2.6 Ensure `PolicyConfig` integrates with existing `BaselineScenario` and `ReformScenario`
 
 - [ ] **Task 3: Implement portfolio inspection methods** (AC: #2)
   - [ ] 3.1 Add `list_policies() -> list[dict[str, Any]]` method
@@ -43,32 +48,34 @@ so that I can run simulations with bundled policies applied together and compare
   - [ ] 3.4 Add `has_policy_type(policy_type: PolicyType) -> bool`
   - [ ] 3.5 Ensure methods work with frozen dataclass (no mutation, return new values)
 
-- [ ] **Task 4: Implement YAML serialization** (AC: #3)
+- [ ] **Task 4: Implement YAML serialization** (AC: #3, #5)
   - [ ] 4.1 Create `composition.py` module in `portfolios/` directory
-  - [ ] 4.2 Implement `portfolio_to_dict(portfolio: PolicyPortfolio) -> dict[str, Any]`
+  - [ ] 4.2 Implement `portfolio_to_dict(portfolio: PolicyPortfolio) -> dict[str, Any]` with deterministic key ordering
   - [ ] 4.3 Implement `dict_to_portfolio(data: dict[str, Any]) -> PolicyPortfolio`
-  - [ ] 4.4 Add `dump_portfolio(portfolio: PolicyPortfolio, path: Path) -> None`
-  - [ ] 4.5 Add `load_portfolio(path: Path) -> PolicyPortfolio`
-  - [ ] 4.6 Define YAML schema with `version` field for future migrations
-  - [ ] 4.7 Include `$schema` reference for IDE validation support
+  - [ ] 4.4 Add `dump_portfolio(portfolio: PolicyPortfolio, path: Path) -> None` with canonical YAML formatting
+  - [ ] 4.5 Add `load_portfolio(path: Path) -> PolicyPortfolio` with jsonschema validation
+  - [ ] 4.6 Create schema file at `src/reformlab/templates/schema/portfolio.schema.json` with `version` field
+  - [ ] 4.7 Include `$schema` reference in dumped YAML files for IDE validation support
 
-- [ ] **Task 5: Add validation and error handling** (AC: #1, #2, #3)
+- [ ] **Task 5: Add validation and error handling** (AC: #1, #2, #3, #4)
   - [ ] 5.1 Validate portfolio has at least 2 policies on construction
-  - [ ] 5.2 Validate all policy configs have consistent year schedules (or decide if this is Story 12.2)
-  - [ ] 5.3 Create `PortfolioError` exception in `exceptions.py`
-  - [ ] 5.4 Add clear error messages for invalid portfolios (missing policies, duplicate policies, etc.)
-  - [ ] 5.5 Validate YAML structure on load with field-level error messages
+  - [ ] 5.2 OUT OF SCOPE: Cross-policy year schedule compatibility validation (deferred to future story)
+  - [ ] 5.3 Create `PortfolioError` exception in `exceptions.py` with subclasses for validation vs serialization errors
+  - [ ] 5.4 Add clear error messages for invalid portfolios (missing policies, missing required fields)
+  - [ ] 5.5 Validate YAML structure on load with field-level error messages using `jsonschema` library
+  - [ ] 5.6 Create schema file at `src/reformlab/templates/schema/portfolio.schema.json`
 
-- [ ] **Task 6: Write comprehensive tests** (AC: #1, #2, #3)
+- [ ] **Task 6: Write comprehensive tests** (AC: #1, #2, #3, #4, #5)
   - [ ] 6.1 Create `tests/templates/portfolios/` directory
   - [ ] 6.2 Create `conftest.py` with portfolio fixtures
   - [ ] 6.3 Create `test_portfolio.py` for dataclass tests
   - [ ] 6.4 Create `test_composition.py` for YAML serialization tests
   - [ ] 6.5 Test frozen dataclass immutability
-  - [ ] 6.6 Test inspection methods return correct summaries
-  - [ ] 6.7 Test YAML round-trip produces identical objects
-  - [ ] 6.8 Test error cases: <2 policies, invalid YAML, missing fields
-  - [ ] 6.9 Achieve high test coverage (>90%)
+  - [ ] 6.6 Test inspection methods return correct summaries in deterministic order
+  - [ ] 6.7 Test YAML round-trip produces identical objects using dataclass equality
+  - [ ] 6.8 Test error cases: <2 policies raises PortfolioError, invalid YAML structure, missing required fields
+  - [ ] 6.9 Test deterministic serialization: identical portfolios produce byte-identical YAML
+  - [ ] 6.10 Run `uv run pytest tests/templates/portfolios/ --cov=src/reformlab/templates/portfolios --cov-report=term-missing` to verify >90% coverage
 
 - [ ] **Task 7: Update module exports** (AC: #1, #2, #3)
   - [ ] 7.1 Update `src/reformlab/templates/portfolios/__init__.py` exports
@@ -86,10 +93,25 @@ so that I can run simulations with bundled policies applied together and compare
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from reformlab.templates.schema import PolicyParameters
+    from reformlab.templates.schema import PolicyParameters, PolicyType
+
+@dataclass(frozen=True)
+class PolicyConfig:
+    """Wrapper for policy parameters with metadata for portfolio composition."""
+    policy_type: PolicyType
+    policy: PolicyParameters
+    name: str = ""
+    
+    def get_summary(self) -> dict[str, Any]:
+        """Extract policy type and key parameter summary."""
+        return {
+            "name": self.name,
+            "type": self.policy_type.value,
+            "rate_schedule_years": sorted(self.policy.rate_schedule.keys()),
+        }
 
 @dataclass(frozen=True)
 class PolicyPortfolio:
@@ -108,6 +130,8 @@ class PolicyPortfolio:
 
 **Current `PolicyParameters` hierarchy** [Source: src/reformlab/templates/schema.py]:
 ```python
+from dataclasses import dataclass, field
+
 @dataclass(frozen=True)
 class PolicyParameters:
     """Base class for policy-specific parameters."""
@@ -138,12 +162,12 @@ class ScenarioTemplate:
     schema_ref: str = ""
 ```
 
-**Design decision needed:** Is `PolicyConfig`:
-1. An alias for `PolicyParameters`? (simplest)
-2. A new wrapper containing `PolicyParameters` + metadata? (more flexible)
-3. A reference to `ScenarioTemplate`? (reuses existing structure)
+**Design decision: `PolicyConfig` is a new frozen dataclass wrapper** — Option 2 from the list below is required. This allows naming individual policies within a portfolio and extracting summaries without modifying existing scenario templates. Aliases are NOT acceptable.
 
-**Recommendation:** Start with option 2 — a lightweight wrapper that allows naming individual policies within a portfolio and extracting summaries. This gives flexibility for future portfolio-specific metadata without modifying existing scenario templates.
+**Previous design options considered:**
+1. An alias for `PolicyParameters`? (REJECTED - insufficient for portfolio needs)
+2. A new wrapper containing `PolicyParameters` + metadata? (REQUIRED - provides needed flexibility)
+3. A reference to `ScenarioTemplate`? (REJECTED - creates unnecessary coupling)
 
 ### YAML Serialization Pattern
 
@@ -153,6 +177,13 @@ class ScenarioTemplate:
 - `load_portfolio(path: Path) -> PolicyPortfolio`
 - `dump_portfolio(portfolio: PolicyPortfolio, path: Path) -> None`
 - Clear `ScenarioError` or `PortfolioError` on validation failures
+
+**Deterministic serialization requirements** [Source: project-context.md#critical-dont-miss-rules]:
+- Use `jsonschema` library for YAML validation on load (consistent with project stack)
+- Sort dictionary keys alphabetically in output
+- Use canonical YAML formatting (consistent indentation, no trailing spaces)
+- Preserve policy order from tuple (do not reorder)
+- Round-trip equality must include order preservation
 
 **Example YAML structure** (proposed):
 ```yaml
@@ -228,7 +259,22 @@ src/reformlab/templates/
 │   ├── __init__.py
 │   ├── portfolio.py     ← PolicyPortfolio frozen dataclass
 │   ├── composition.py   ← YAML serialization, validation
-│   └── exceptions.py    ← PortfolioError (or add to existing exceptions.py)
+│   └── exceptions.py    ← PortfolioError hierarchy
+```
+
+**Exception taxonomy** — Create exception hierarchy consistent with project patterns:
+```python
+class PortfolioError(Exception):
+    """Base exception for portfolio-related errors."""
+    pass
+
+class PortfolioValidationError(PortfolioError):
+    """Raised when portfolio structure or policy configuration is invalid."""
+    pass
+
+class PortfolioSerializationError(PortfolioError):
+    """Raised when YAML serialization or deserialization fails."""
+    pass
 ```
 
 **Update exports** in:
@@ -236,6 +282,12 @@ src/reformlab/templates/
 - `src/reformlab/templates/__init__.py` (add portfolio types to `__all__`)
 
 ### Integration with Existing Code
+
+**Scope boundaries** — This story focuses on data structure and serialization ONLY:
+- ✅ IN SCOPE: PolicyPortfolio frozen dataclass, PolicyConfig wrapper, YAML serialization, basic validation
+- ❌ OUT OF SCOPE: Cross-policy year schedule compatibility checks (future story)
+- ❌ OUT OF SCOPE: Orchestrator integration (Story 12.3)
+- ❌ OUT OF SCOPE: Conflict resolution or policy compatibility logic
 
 **Scenario Registry compatibility** — Portfolios will eventually be stored in the scenario registry alongside individual scenarios [Source: architecture.md#extension-policy-portfolio-layer]. Design `PolicyPortfolio` to be registry-friendly:
 - Include `version` field for versioning

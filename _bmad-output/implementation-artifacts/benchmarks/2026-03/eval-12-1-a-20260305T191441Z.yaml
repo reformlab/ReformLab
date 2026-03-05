@@ -1,0 +1,125 @@
+record_id: 79075241-3b15-49a3-bc10-0885148f8e87
+created_at: '2026-03-05T19:14:41.844605+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 12
+  story_num: 1
+  title: Story 12.1
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: gemini
+  model: gemini-2.5-flash
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-03-05T19:10:47.336495Z'
+  end_time: '2026-03-05T19:13:36.918495Z'
+  duration_ms: 169582
+  input_tokens: 0
+  output_tokens: 3377
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 13511
+  heading_count: 29
+  list_depth_max: 2
+  code_block_count: 4
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 6.6'
+  - 🎯 Ruthless Story Validation 12.1
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 6.6 → MAJOR REWORK'
+  - 🚨 Critical Issues (Must Fix)
+  - '1. LLM Parsing Error: Redundant Path in Dataclass Decorator (PolicyPortfolio)'
+  - '2. LLM Parsing Error: Redundant Path in Dataclass Decorator (PolicyParameters Hierarchy)'
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Explicit `jsonschema` usage for YAML validation
+  - 2. Clarity on Year Schedule Consistency Validation Scope
+  - ✨ Optimizations (Nice to Have)
+  - 1. Ensure `field` import in `PolicyPortfolio` code snippet
+  - 🤖 LLM Optimization Improvements
+  - 1. Remove Redundant Path in `PolicyPortfolio` Dataclass Decorator
+  - 2. Remove Redundant Path in `PolicyParameters` Hierarchy Dataclass Decorator
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.31
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 0dc7106e7f78
+findings:
+  total_count: 7
+  by_severity:
+    critical: 2
+    major: 3
+    minor: 2
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 3
+    completeness: 2
+    clarity: 2
+    testability: 0
+  has_fix_count: 7
+  has_location_count: 7
+  has_evidence_count: 7
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 5
+  confidence_phrases_count: 4
+linguistic:
+  avg_sentence_length: 22.506493506493506
+  vocabulary_richness: 0.32025389497980383
+  flesch_reading_ease: -0.29426595957571067
+  vague_terms_count: 0
+  formality_score: 0.8
+  sentiment: mixed
+quality:
+  actionable_ratio: 0.95
+  specificity_score: 0.85
+  evidence_quality: 0.8
+  follows_template: true
+  internal_consistency: 0.85
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false

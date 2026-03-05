@@ -242,4 +242,40 @@ records:
   provider: opencode
   created_at: '2026-03-05T19:09:02.382362+00:00'
   workflow_id: create-story
-updated_at: '2026-03-05T19:09:02.397519+00:00'
+- record_id: 79075241-3b15-49a3-bc10-0885148f8e87
+  path: eval-12-1-a-20260305T191441Z.yaml
+  epic: 12
+  story: 1
+  role: validator
+  role_id: a
+  provider: gemini
+  created_at: '2026-03-05T19:14:41.844605+00:00'
+  workflow_id: validate-story
+- record_id: 2f5b9647-8772-4ff6-809e-f74e74557dd0
+  path: eval-12-1-b-20260305T191441Z.yaml
+  epic: 12
+  story: 1
+  role: validator
+  role_id: b
+  provider: codex
+  created_at: '2026-03-05T19:14:41.860712+00:00'
+  workflow_id: validate-story
+- record_id: aff99920-47ca-4348-b2b0-5d4523f9a5bd
+  path: eval-12-1-synthesizer-20260305T191919Z.yaml
+  epic: 12
+  story: 1
+  role: synthesizer
+  role_id: null
+  provider: opencode
+  created_at: '2026-03-05T19:19:19.927464+00:00'
+  workflow_id: validate-story-synthesis
+- record_id: 6309bb6a-b695-4898-b874-a90684e769ad
+  path: eval-12-1-master-20260305T193825Z.yaml
+  epic: 12
+  story: 1
+  role: master
+  role_id: null
+  provider: opencode
+  created_at: '2026-03-05T19:38:25.846595+00:00'
+  workflow_id: dev-story
+updated_at: '2026-03-05T19:38:25.865003+00:00'
