@@ -11,7 +11,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-import yaml
 
 from reformlab.templates.portfolios.composition import (
     dict_to_portfolio,
@@ -80,7 +79,9 @@ class TestPortfolioYAMLSerialization:
                     "policy_type": "carbon_tax",
                     "policy": {
                         "rate_schedule": {2026: 44.6, 2027: 50.0},
-                        "redistribution_type": "lump_sum",
+                        "redistribution": {
+                            "type": "lump_sum",
+                        },
                     },
                 },
                 {
@@ -244,7 +245,6 @@ class TestPortfolioYAMLSerialization:
         file_path = temp_portfolio_dir / "test-canonical.yaml"
         dump_portfolio(portfolio, file_path)
         content = file_path.read_text()
-        lines = content.strip().split("\n")
 
         # Check that keys are in alphabetical order (this is the best we can do with yaml.dump)
         # Just verify the output is deterministic and well-formed

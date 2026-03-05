@@ -1,0 +1,56 @@
+record_id: 2b7731c4-109e-488d-80ed-bfa77a87f804
+created_at: '2026-03-05T19:52:19.226002+00:00'
+workflow:
+  id: code-review-synthesis
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: true
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 12
+  story_num: '1'
+  title: '12.1'
+  complexity_flags: {}
+evaluator:
+  provider: opencode
+  model: zai-coding-plan/glm-5
+  role: synthesizer
+  role_id: null
+  session_id: f93c5393-fee7-4c54-b48d-41463b7ce1dd
+execution:
+  start_time: '2026-03-05T19:45:30.959346Z'
+  end_time: '2026-03-05T19:52:19.189034Z'
+  duration_ms: 408229
+  input_tokens: 0
+  output_tokens: 4160
+  retries: 0
+  sequence_position: 2
+output:
+  char_count: 16641
+  heading_count: 32
+  list_depth_max: 0
+  code_block_count: 44
+  sections_detected: []
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.31
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 4ab70ea53c92
+findings: null
+reasoning: null
+linguistic: null
+quality: null
+consensus: null
+ground_truth: null
+custom:
+  phase: code-review-synthesis
+  reviewer_count: 2
+  compression_steps_applied: []
+  original_token_estimate: 31558
+  compressed_token_estimate: 31558
+  extraction_llm_calls: 0
+  extraction_duration_ms: 0

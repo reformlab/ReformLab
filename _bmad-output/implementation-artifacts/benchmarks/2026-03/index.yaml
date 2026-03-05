@@ -278,4 +278,31 @@ records:
   provider: opencode
   created_at: '2026-03-05T19:38:25.846595+00:00'
   workflow_id: dev-story
-updated_at: '2026-03-05T19:38:25.865003+00:00'
+- record_id: cbc79f10-30c4-4a9a-a8fe-8639b61409c8
+  path: eval-12-1-b-20260305T194530Z.yaml
+  epic: 12
+  story: '1'
+  role: validator
+  role_id: b
+  provider: gemini
+  created_at: '2026-03-05T19:45:30.473427+00:00'
+  workflow_id: code-review
+- record_id: 4ac9ce8a-d56a-45aa-aa21-1af04da3c3c3
+  path: eval-12-1-a-20260305T194530Z.yaml
+  epic: 12
+  story: '1'
+  role: validator
+  role_id: a
+  provider: codex
+  created_at: '2026-03-05T19:45:30.488791+00:00'
+  workflow_id: code-review
+- record_id: 2b7731c4-109e-488d-80ed-bfa77a87f804
+  path: eval-12-1-synthesizer-20260305T195219Z.yaml
+  epic: 12
+  story: '1'
+  role: synthesizer
+  role_id: null
+  provider: opencode
+  created_at: '2026-03-05T19:52:19.226002+00:00'
+  workflow_id: code-review-synthesis
+updated_at: '2026-03-05T19:52:19.243656+00:00'

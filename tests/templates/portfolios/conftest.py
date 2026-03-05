@@ -11,7 +11,6 @@ import pytest
 
 from reformlab.templates.schema import (
     CarbonTaxParameters,
-    PolicyType,
     SubsidyParameters,
     YearSchedule,
 )

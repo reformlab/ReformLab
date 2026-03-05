@@ -63,6 +63,13 @@ from reformlab.templates.schema import (
     YearSchedule,
     infer_policy_type,
 )
+from reformlab.templates.portfolios import (
+    PolicyConfig,
+    PolicyPortfolio,
+    PortfolioError,
+    PortfolioSerializationError,
+    PortfolioValidationError,
+)
 from reformlab.templates.workflow import (
     WORKFLOW_SCHEMA_VERSION,
     DataSourceConfig,
@@ -86,6 +93,12 @@ from reformlab.templates.workflow import (
 )
 
 __all__ = [
+    # Portfolio types
+    "PolicyConfig",
+    "PolicyPortfolio",
+    "PortfolioError",
+    "PortfolioSerializationError",
+    "PortfolioValidationError",
     # Migration types and functions
     "CompatibilityStatus",
     "MigrationChange",

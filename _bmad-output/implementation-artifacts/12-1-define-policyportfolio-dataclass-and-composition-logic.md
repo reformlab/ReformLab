@@ -338,16 +338,47 @@ class PortfolioSerializationError(PortfolioError):
 
 ### Agent Model Used
 
-(To be filled during implementation)
+GLM-5 (zai-coding-plan/glm-5)
 
 ### Debug Log References
 
-(To be filled during implementation)
+Code review synthesis performed on 2026-03-05. Fixed critical immutability breach and high-priority integration/validation issues.
 
 ### Completion Notes List
 
-(To be filled during implementation)
+**Code Review Synthesis (2026-03-05):**
+- Fixed CRITICAL immutability breach: `list_policies()` now returns defensive copy of rate_schedule dict instead of direct reference
+- Fixed HIGH package integration: Added PolicyConfig, PolicyPortfolio, and portfolio exceptions to templates/__init__.py exports
+- Fixed HIGH schema validation: Added `additionalProperties: false` to portfolio.schema.json (root, policy item, policy.parameters) to prevent typos/unknown fields from being silently accepted
+- Fixed HIGH test data format: Updated test_dict_to_portfolio_basic to use canonical nested `redistribution` format instead of legacy flat format
+- Fixed MEDIUM lint issues: Removed unused `yaml` import from test_composition.py, removed unused `PolicyType` import from conftest.py, removed unused `lines` variable from test_deterministic_key_ordering
+- All ruff checks pass
+- 41/47 tests pass (6 pre-existing failures in TestPortfolioErrorHandling - these expect field-specific error messages but jsonschema provides generic type errors; validation IS working, just error message format differs)
+
+**Deferred items:**
+- Story task checkboxes not updated (outside scope of code fixes - would require modifying story file context)
+- 6 error handling tests failing (pre-existing issue - validation works but error message format doesn't match test expectations)
+- Type checker warning at test_composition.py:472 (pre-existing - accessing income_weights on PolicyParameters base class)
 
 ### File List
 
-(To be filled during implementation)
+**Source code files modified:**
+- src/reformlab/templates/portfolios/portfolio.py (immutability fix)
+- src/reformlab/templates/__init__.py (export additions)
+- src/reformlab/templates/schema/portfolio.schema.json (strict validation)
+- tests/templates/portfolios/test_composition.py (format fix, lint fixes)
+- tests/templates/portfolios/conftest.py (lint fix)
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-05
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 7.2 → REJECT
+- **Issues Found:** 8
+- **Issues Fixed:** 5
+- **Action Items Created:** 3
+
+#### Review Follow-ups (AI)
+- [ ] [AI-Review] MEDIUM: Improve error handling tests - update test expectations to match jsonschema error message format or use field-specific error extraction from jsonschema.ValidationError (tests/templates/portfolios/test_composition.py:497,516,536,558,578,598)
+- [ ] [AI-Review] MEDIUM: Fix type checker warning - add type assertion or cast for income_weights access on RebateParameters (tests/templates/portfolios/test_composition.py:472)
+- [ ] [AI-Review] LOW: Consider strengthening test_deterministic_key_ordering to validate actual key ordering, not just presence (tests/templates/portfolios/test_composition.py:249-254)

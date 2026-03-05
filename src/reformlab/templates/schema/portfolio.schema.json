@@ -5,6 +5,7 @@
   "description": "Schema for policy portfolio YAML files",
   "type": "object",
   "required": ["name", "version", "policies"],
+  "additionalProperties": false,
   "properties": {
     "$schema": {
       "type": "string",
@@ -33,6 +34,7 @@
       "items": {
         "type": "object",
         "required": ["policy_type", "policy"],
+        "additionalProperties": false,
         "properties": {
           "name": {
             "type": "string",
@@ -47,6 +49,7 @@
           "policy": {
             "type": "object",
             "description": "Policy parameters",
+            "additionalProperties": false,
             "properties": {
               "rate_schedule": {
                 "type": "object",

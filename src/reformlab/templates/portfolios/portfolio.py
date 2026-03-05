@@ -113,7 +113,7 @@ class PolicyPortfolio:
             policy_dict: dict[str, Any] = {
                 "name": config.name,
                 "type": config.policy_type.value,
-                "rate_schedule": config.policy.rate_schedule,
+                "rate_schedule": dict(config.policy.rate_schedule),  # Defensive copy
             }
             result.append(policy_dict)
         return result

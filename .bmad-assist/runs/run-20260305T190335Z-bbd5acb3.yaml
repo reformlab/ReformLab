@@ -118,6 +118,50 @@ phase_events:
       total_calls: 100
     termination_reason: null
   timestamp: '2026-03-05T19:38:25.875762Z'
+- duration_ms: null
+  epic: 12
+  error_type: null
+  event_type: started
+  model: zai-coding-plan/glm-5
+  phase: CODE_REVIEW
+  provider: opencode
+  status: null
+  story: '12.1'
+  termination_metadata: null
+  timestamp: '2026-03-05T19:38:26.080853Z'
+- duration_ms: 424465
+  epic: 12
+  error_type: null
+  event_type: completed
+  model: zai-coding-plan/glm-5
+  phase: CODE_REVIEW
+  provider: opencode
+  status: success
+  story: '12.1'
+  termination_metadata: null
+  timestamp: '2026-03-05T19:45:30.545900Z'
+- duration_ms: null
+  epic: 12
+  error_type: null
+  event_type: started
+  model: zai-coding-plan/glm-5
+  phase: CODE_REVIEW_SYNTHESIS
+  provider: opencode
+  status: null
+  story: '12.1'
+  termination_metadata: null
+  timestamp: '2026-03-05T19:45:30.575030Z'
+- duration_ms: 408678
+  epic: 12
+  error_type: null
+  event_type: completed
+  model: zai-coding-plan/glm-5
+  phase: CODE_REVIEW_SYNTHESIS
+  provider: opencode
+  status: success
+  story: '12.1'
+  termination_metadata: null
+  timestamp: '2026-03-05T19:52:19.253510Z'
 phases:
 - duration_ms: 326399
   ended_at: '2026-03-05T19:09:02.405188Z'
@@ -154,6 +198,24 @@ phases:
   provider: opencode
   provider_count: 1
   started_at: '2026-03-05T19:19:19.980570Z'
+  status: success
+- duration_ms: 424465
+  ended_at: '2026-03-05T19:45:30.545900Z'
+  error_type: null
+  model: zai-coding-plan/glm-5
+  phase: CODE_REVIEW
+  provider: opencode
+  provider_count: 1
+  started_at: '2026-03-05T19:38:26.080853Z'
+  status: success
+- duration_ms: 408678
+  ended_at: '2026-03-05T19:52:19.253510Z'
+  error_type: null
+  model: zai-coding-plan/glm-5
+  phase: CODE_REVIEW_SYNTHESIS
+  provider: opencode
+  provider_count: 1
+  started_at: '2026-03-05T19:45:30.575030Z'
   status: success
 project_path: /Users/lucas/Workspace/reformlab
 run_id: bbd5acb3
