@@ -27,6 +27,12 @@
       "description": "Human-readable description of the portfolio",
       "default": ""
     },
+    "resolution_strategy": {
+      "type": "string",
+      "description": "Strategy for resolving conflicts between policies",
+      "enum": ["error", "sum", "first_wins", "last_wins", "max"],
+      "default": "error"
+    },
     "policies": {
       "type": "array",
       "description": "List of policy configurations",

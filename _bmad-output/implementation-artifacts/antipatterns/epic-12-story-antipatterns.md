@@ -20,3 +20,19 @@
 | high | Clarify Exception Taxonomy | Added exception hierarchy example in File Structure section with `PortfolioError`, `PortfolioValidationError`, `PortfolioSerializationError` subclasses. |
 | medium | Ensure `field` import in code snippets | Added `from dataclasses import dataclass, field` import to PolicyParameters hierarchy example. |
 | medium | Add test coverage measurement scope/command | Changed Task 6.10 to explicit command: `uv run pytest tests/templates/portfolios/ --cov=src/reformlab/templates/portfolios --cov-report=term-missing`. |
+
+## Story 12-2 (2026-03-05)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | AC4 execution-time language contradicts scope boundaries | Changed AC4 from "when the portfolio is executed, then it fails before computation" to "when the portfolio is loaded with validation enabled, then `load_portfolio()` raises `PortfolioValidationError`". Also updated scope boundaries section to clarify validation-time vs execution-time behavior. |
+| high | AC1 "conflicting parameters" is ambiguous for SAME_POLICY_TYPE | Changed AC1 from "reported with the exact policy names and conflicting parameters" to "reported with the exact policy names/indices and the duplicate `policy_type` as the conflicting parameter". |
+| high | Task 4.8/AC3 "metadata" recording is ambiguous | Changed AC3 from "recorded in portfolio metadata" to "appended to the portfolio's `description` field with a deterministic format". Changed Task 4.8 from "Record resolution metadata in description or new metadata field" to "Record resolution metadata by appending to description field: 'Resolved {count} conflicts using '{strategy}' strategy.'" |
+| medium | Story scope may be large | Acknowledged in synthesis but determined manageable due to granular tasks and comprehensive Dev Notes. Added performance considerations section to address scaling concerns. |
+| medium | "Same household attribute" not fully operationalized | Added clarification in Story section: "This story uses metadata-based proxies (rate_schedule years, covered_categories, policy_type) to detect potential conflicts. These proxies identify overlapping policy effects without requiring explicit household-attribute mapping." |
+| medium | Multi-way (3+ policy) conflict behavior undefined | Added new section "Multi-policy conflicts (3+ policies)" in Dev Notes explaining pairwise conflict generation and resolution application across all conflicts. |
+| medium | Error payload determinism could be more explicit | Added new section "Error Message Determinism" specifying structured error fields, sorting rules, and byte-identical guarantees for testability. |
+| medium | Backward compatibility for portfolios without resolution_strategy | Added new AC6: "Given a portfolio YAML file without a `resolution_strategy` field (from Story 12.1), when loaded, then it defaults to 'error' strategy and behaves identically to portfolios created in Story 12.1." Added test task 6.15. |
+| medium | validate=False behavior needs test | Added test task 6.16: "Test validate=False parameter skips conflict detection and emits no warnings/errors." |
+| medium | Warning log format should follow project standards | Updated Task 5.4 from "log warning with conflict summary" to "log warning with structured format: `event=portfolio_conflicts strategy=<strategy> conflict_count=<n> portfolio=<name>`". Added test task 6.17. |
+| low | Performance considerations for large policy definitions | Added new section "Performance Considerations" with expected portfolio sizes, complexity analysis (O(n²)), and future optimization notes for 50+ policies or 1000+ rate_schedule entries. |

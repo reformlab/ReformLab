@@ -1,0 +1,56 @@
+record_id: d6b0deac-83d9-4bfd-973f-f1d834e5f4cc
+created_at: '2026-03-05T20:04:27.649985+00:00'
+workflow:
+  id: validate-story-synthesis
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: true
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 12
+  story_num: 2
+  title: '12.2'
+  complexity_flags: {}
+evaluator:
+  provider: opencode
+  model: zai-coding-plan/glm-5
+  role: synthesizer
+  role_id: null
+  session_id: 0f6423e3-ab1b-4ad5-b6f5-17db0801118c
+execution:
+  start_time: '2026-03-05T19:59:37.374808Z'
+  end_time: '2026-03-05T20:04:27.611191Z'
+  duration_ms: 290236
+  input_tokens: 0
+  output_tokens: 3995
+  retries: 0
+  sequence_position: 2
+output:
+  char_count: 15980
+  heading_count: 22
+  list_depth_max: 0
+  code_block_count: 50
+  sections_detected: []
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.31
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 70fdf0845472
+findings: null
+reasoning: null
+linguistic: null
+quality: null
+consensus: null
+ground_truth: null
+custom:
+  phase: validate-story-synthesis
+  validator_count: 2
+  compression_steps_applied: []
+  original_token_estimate: 20322
+  compressed_token_estimate: 20322
+  extraction_llm_calls: 0
+  extraction_duration_ms: 0

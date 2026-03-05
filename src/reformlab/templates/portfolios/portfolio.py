@@ -70,21 +70,35 @@ class PolicyPortfolio:
         policies: Tuple of PolicyConfig objects (at least 2 required)
         version: Schema version (defaults to "1.0")
         description: Human-readable description
+        resolution_strategy: Strategy for resolving conflicts (default: "error")
     """
 
     name: str
     policies: tuple[PolicyConfig, ...]
     version: str = "1.0"
     description: str = ""
+    resolution_strategy: str = "error"
 
     def __post_init__(self) -> None:
-        """Validate portfolio has at least 2 policies."""
+        """Validate portfolio has at least 2 policies and valid resolution_strategy."""
         if len(self.policies) < 2:
             raise PortfolioValidationError(
                 summary="Invalid portfolio",
                 reason=f"Portfolio must have at least 2 policies, got {len(self.policies)}",
                 fix="Add at least 2 PolicyConfig objects to the portfolio",
                 invalid_fields=("policies",),
+            )
+
+        # Validate resolution_strategy is a valid enum value
+        valid_strategies = {"error", "sum", "first_wins", "last_wins", "max"}
+        if self.resolution_strategy not in valid_strategies:
+            raise PortfolioValidationError(
+                summary="Invalid resolution strategy",
+                reason=(
+                    f"resolution_strategy must be one of {valid_strategies}, got {self.resolution_strategy!r}"
+                ),
+                fix=f"Use one of: {', '.join(sorted(valid_strategies))}",
+                invalid_fields=("resolution_strategy",),
             )
 
     @property

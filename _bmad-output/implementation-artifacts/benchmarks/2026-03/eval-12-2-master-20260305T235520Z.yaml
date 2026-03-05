@@ -1,0 +1,51 @@
+record_id: 09550539-6285-482b-9e40-d82ce2272b3b
+created_at: '2026-03-05T23:55:20.458937+00:00'
+workflow:
+  id: dev-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 12
+  story_num: 2
+  title: Story 12.2
+  complexity_flags: {}
+evaluator:
+  provider: opencode
+  model: zai-coding-plan/glm-5
+  role: master
+  role_id: null
+  session_id: b4e89a47-602a-4f0c-9fe9-770e7c287547
+execution:
+  start_time: '2026-03-05T22:25:44.412538Z'
+  end_time: '2026-03-05T23:55:20.425733Z'
+  duration_ms: 5376013
+  input_tokens: 0
+  output_tokens: 0
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 890
+  heading_count: 2
+  list_depth_max: 1
+  code_block_count: 0
+  sections_detected:
+  - 'Step 1: Review Continuation Check'
+  - 'Step 2-5: Implement Tasks'
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.31
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 70fdf0845472
+findings: null
+reasoning: null
+linguistic: null
+quality: null
+consensus: null
+ground_truth: null
+custom: null

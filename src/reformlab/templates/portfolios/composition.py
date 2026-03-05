@@ -1,16 +1,17 @@
-"""Portfolio YAML serialization and deserialization.
+"""Portfolio YAML serialization, deserialization, and conflict detection.
 
 Story 12.1: Define PolicyPortfolio dataclass and composition logic
+Story 12.2: Implement portfolio compatibility validation and conflict resolution
 """
 
 from __future__ import annotations
 
-import json
 import logging
+from dataclasses import dataclass, replace
+from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import jsonschema
 import yaml
 
 from reformlab.templates.portfolios.exceptions import (
@@ -18,108 +19,147 @@ from reformlab.templates.portfolios.exceptions import (
     PortfolioValidationError,
 )
 from reformlab.templates.portfolios.portfolio import PolicyConfig, PolicyPortfolio
-from reformlab.templates.schema import (
-    CarbonTaxParameters,
-    FeebateParameters,
-    PolicyParameters,
-    PolicyType,
-    RebateParameters,
-    SubsidyParameters,
-)
+from reformlab.templates.schema import PolicyType
+
+if TYPE_CHECKING:
+    pass
 
 logger = logging.getLogger(__name__)
 
-_SCHEMA_VERSION = "1.0"
-_SCHEMA_DIR = Path(__file__).parent.parent / "schema"
+
+class ConflictType(Enum):
+    """Types of conflicts that can occur in a portfolio."""
+
+    SAME_POLICY_TYPE = "same_policy_type"
+    OVERLAPPING_CATEGORIES = "overlapping_categories"
+    OVERLAPPING_YEARS = "overlapping_years"
+    PARAMETER_MISMATCH = "parameter_mismatch"
 
 
-def get_portfolio_schema_path() -> Path:
-    """Return path to portfolio JSON Schema."""
-    return _SCHEMA_DIR / "portfolio.schema.json"
+class ResolutionStrategy(Enum):
+    """Strategies for resolving portfolio conflicts."""
+
+    ERROR = "error"
+    SUM = "sum"
+    FIRST_WINS = "first_wins"
+    LAST_WINS = "last_wins"
+    MAX = "max"
 
 
-def _load_schema() -> dict[str, Any]:
-    """Load portfolio JSON Schema from disk."""
-    schema_path = get_portfolio_schema_path()
-    with open(schema_path, encoding="utf-8") as f:
-        return json.load(f)  # type: ignore[no-any-return]
+@dataclass(frozen=True)
+class Conflict:
+    """Represents a detected conflict between policies in a portfolio.
+
+    Attributes:
+        conflict_type: Type of conflict detected
+        policy_indices: Indices of conflicting policies in the portfolio
+        parameter_name: Name of the conflicting parameter (e.g., "policy_type", "rate_schedule")
+        conflicting_values: The actual conflicting values
+        description: Human-readable description of the conflict
+    """
+
+    conflict_type: ConflictType
+    policy_indices: tuple[int, ...]
+    parameter_name: str
+    conflicting_values: tuple[Any, ...]
+    description: str
+
+    def __repr__(self) -> str:
+        """Readable representation of the conflict."""
+        return (
+            f"Conflict({self.conflict_type.value}, "
+            f"indices={self.policy_indices}, "
+            f"parameter={self.parameter_name})"
+        )
 
 
 def portfolio_to_dict(portfolio: PolicyPortfolio) -> dict[str, Any]:
-    """Convert PolicyPortfolio to dictionary with deterministic ordering.
-
-    Keys are sorted alphabetically for canonical output.
+    """Convert PolicyPortfolio to dictionary for YAML serialization.
 
     Args:
         portfolio: The portfolio to convert
 
     Returns:
-        Dictionary with canonical key ordering
+        Dictionary with canonical structure for YAML serialization
     """
-    data: dict[str, Any] = {}
-
-    data["$schema"] = "./schema/portfolio.schema.json"
-    data["version"] = portfolio.version
-    data["name"] = portfolio.name
-
-    if portfolio.description:
-        data["description"] = portfolio.description
-
-    policies_list = []
+    schema_path = Path(__file__).parent.parent / "schema" / "portfolio.schema.json"
+    policies_data = []
     for config in portfolio.policies:
-        policy_dict: dict[str, Any] = {}
-        if config.name:
-            policy_dict["name"] = config.name
-        policy_dict["policy_type"] = config.policy_type.value
-        policy_dict["policy"] = _policy_params_to_dict(config.policy)
-        policies_list.append(policy_dict)
+        policy_dict: dict[str, Any] = {
+            "name": config.name,
+            "policy_type": config.policy_type.value,
+            "policy": _policy_parameters_to_dict(config.policy),
+        }
+        policies_data.append(policy_dict)
 
-    data["policies"] = policies_list
+    return {
+        "$schema": str(schema_path),
+        "name": portfolio.name,
+        "version": portfolio.version,
+        "description": portfolio.description,
+        "policies": policies_data,
+        "resolution_strategy": portfolio.resolution_strategy,
+    }
 
-    return data
 
+def _policy_parameters_to_dict(policy: Any) -> dict[str, Any]:
+    """Convert PolicyParameters to dictionary.
 
-def _policy_params_to_dict(params: PolicyParameters) -> dict[str, Any]:
-    """Convert PolicyParameters to dictionary for YAML serialization."""
+    Args:
+        policy: PolicyParameters instance
+
+    Returns:
+        Dictionary representation
+    """
     result: dict[str, Any] = {}
 
-    if params.rate_schedule:
-        result["rate_schedule"] = params.rate_schedule
+    # Common fields
+    if hasattr(policy, "rate_schedule") and policy.rate_schedule:
+        result["rate_schedule"] = dict(policy.rate_schedule)
 
-    if params.exemptions:
-        result["exemptions"] = list(params.exemptions)
+    if hasattr(policy, "exemptions") and policy.exemptions:
+        result["exemptions"] = list(policy.exemptions)
 
-    if params.thresholds:
-        result["thresholds"] = list(params.thresholds)
+    if hasattr(policy, "thresholds") and policy.thresholds:
+        result["thresholds"] = list(policy.thresholds)
 
-    if params.covered_categories:
-        result["covered_categories"] = list(params.covered_categories)
+    if hasattr(policy, "covered_categories") and policy.covered_categories:
+        result["covered_categories"] = list(policy.covered_categories)
 
-    if isinstance(params, CarbonTaxParameters):
-        if params.redistribution_type or params.income_weights:
-            redistribution: dict[str, Any] = {}
-            if params.redistribution_type:
-                redistribution["type"] = params.redistribution_type
-            if params.income_weights:
-                redistribution["income_weights"] = params.income_weights
-            result["redistribution"] = redistribution
-    elif isinstance(params, SubsidyParameters):
-        if params.eligible_categories:
-            result["eligible_categories"] = list(params.eligible_categories)
-        if params.income_caps:
-            result["income_caps"] = params.income_caps
-    elif isinstance(params, RebateParameters):
-        if params.rebate_type:
-            result["rebate_type"] = params.rebate_type
-        if params.income_weights:
-            result["income_weights"] = params.income_weights
-    elif isinstance(params, FeebateParameters):
-        if params._pivot_point_set or params.pivot_point != 0.0:
-            result["pivot_point"] = params.pivot_point
-        if params._fee_rate_set or params.fee_rate != 0.0:
-            result["fee_rate"] = params.fee_rate
-        if params._rebate_rate_set or params.rebate_rate != 0.0:
-            result["rebate_rate"] = params.rebate_rate
+    # Carbon tax specific
+    if hasattr(policy, "redistribution_type") and policy.redistribution_type:
+        result["redistribution"] = {"type": policy.redistribution_type}
+        if hasattr(policy, "income_weights") and policy.income_weights:
+            result["redistribution"]["income_weights"] = dict(policy.income_weights)
+
+    # Subsidy specific
+    if hasattr(policy, "eligible_categories") and policy.eligible_categories:
+        result["eligible_categories"] = list(policy.eligible_categories)
+
+    if hasattr(policy, "income_caps") and policy.income_caps:
+        result["income_caps"] = dict(policy.income_caps)
+
+    # Rebate specific
+    if hasattr(policy, "rebate_type") and policy.rebate_type:
+        result["rebate_type"] = policy.rebate_type
+
+    # Rebate income_weights (top-level field, not inside redistribution)
+    if (
+        hasattr(policy, "income_weights")
+        and policy.income_weights
+        and not hasattr(policy, "redistribution_type")
+    ):
+        result["income_weights"] = dict(policy.income_weights)
+
+    # Feebate specific
+    if hasattr(policy, "pivot_point") and policy.pivot_point is not None:
+        result["pivot_point"] = policy.pivot_point
+
+    if hasattr(policy, "fee_rate") and policy.fee_rate is not None:
+        result["fee_rate"] = policy.fee_rate
+
+    if hasattr(policy, "rebate_rate") and policy.rebate_rate is not None:
+        result["rebate_rate"] = policy.rebate_rate
 
     return result
 
@@ -136,215 +176,553 @@ def dict_to_portfolio(data: dict[str, Any]) -> PolicyPortfolio:
     Raises:
         PortfolioValidationError: If data is invalid
     """
-    try:
-        schema = _load_schema()
-        jsonschema.validate(data, schema)
-    except jsonschema.ValidationError as e:
+    from reformlab.templates.schema import (
+        PolicyType,
+    )
+
+    # Validate required fields
+    if "name" not in data:
         raise PortfolioValidationError(
             summary="Portfolio validation failed",
-            reason=f"Schema validation error: {e.message}",
-            fix="Ensure portfolio YAML follows the schema structure",
-            invalid_fields=(e.json_path,),
-        ) from None
-    except jsonschema.SchemaError as e:
-        logger.error("Schema error: %s", e)
+            reason="missing required field: name",
+            fix="Add 'name' field to portfolio YAML",
+            invalid_fields=("name",),
+        )
+
+    if "policies" not in data:
         raise PortfolioValidationError(
             summary="Portfolio validation failed",
-            reason=f"Invalid schema: {e}",
-            fix="Check portfolio.schema.json file",
-        ) from None
+            reason="missing required field: policies",
+            fix="Add 'policies' field to portfolio YAML",
+            invalid_fields=("policies",),
+        )
 
-    name = str(data["name"])
-    version = str(data.get("version", _SCHEMA_VERSION))
-    description = str(data.get("description", ""))
+    policies_data = data.get("policies", [])
+    if not isinstance(policies_data, list):
+        raise PortfolioValidationError(
+            summary="Portfolio validation failed",
+            reason="'policies' must be a list",
+            fix="Ensure 'policies' is a YAML list",
+            invalid_fields=("policies",),
+        )
 
-    policies_list = []
-    for idx, policy_data in enumerate(data["policies"]):
-        policy_name = str(policy_data.get("name", ""))
-        policy_type_str = str(policy_data["policy_type"])
-        policy_type = PolicyType(policy_type_str)
-        policy_params_data = policy_data["policy"]
+    policies = []
+    for idx, policy_data in enumerate(policies_data):
+        if not isinstance(policy_data, dict):
+            raise PortfolioValidationError(
+                summary="Portfolio validation failed",
+                reason=f"policies[{idx}] must be a mapping",
+                fix=f"Ensure policies[{idx}] is a YAML mapping",
+                invalid_fields=(f"policies[{idx}]",),
+            )
 
-        policy_params = _dict_to_policy_params(policy_type, policy_params_data)
+        if "policy_type" not in policy_data:
+            raise PortfolioValidationError(
+                summary="Portfolio validation failed",
+                reason=f"policies[{idx}] missing required field: policy_type",
+                fix=f"Add 'policy_type' to policies[{idx}]",
+                invalid_fields=(f"policies[{idx}].policy_type",),
+            )
+
+        if "policy" not in policy_data:
+            raise PortfolioValidationError(
+                summary="Portfolio validation failed",
+                reason=f"policies[{idx}] missing required field: policy",
+                fix=f"Add 'policy' to policies[{idx}]",
+                invalid_fields=(f"policies[{idx}].policy",),
+            )
+
+        policy_type_str = policy_data["policy_type"]
+        try:
+            policy_type = PolicyType(policy_type_str)
+        except ValueError:
+            raise PortfolioValidationError(
+                summary="Portfolio validation failed",
+                reason=f"policies[{idx}] has invalid policy_type: {policy_type_str}",
+                fix="Use one of: carbon_tax, subsidy, rebate, feebate",
+                invalid_fields=(f"policies[{idx}].policy_type",),
+            ) from None
+
+        policy_params = _dict_to_policy_parameters(
+            policy_data["policy"], policy_type, f"policies[{idx}].policy"
+        )
+
         config = PolicyConfig(
             policy_type=policy_type,
             policy=policy_params,
-            name=policy_name,
+            name=policy_data.get("name", ""),
         )
-        policies_list.append(config)
+        policies.append(config)
 
-    portfolio = PolicyPortfolio(
-        name=name,
-        policies=tuple(policies_list),
-        version=version,
-        description=description,
+    return PolicyPortfolio(
+        name=data["name"],
+        policies=tuple(policies),
+        version=data.get("version", "1.0"),
+        description=data.get("description", ""),
+        resolution_strategy=data.get("resolution_strategy", "error"),
     )
 
-    return portfolio
 
+def _dict_to_policy_parameters(data: dict[str, Any], policy_type: PolicyType, field_path: str) -> Any:
+    """Convert dictionary to appropriate PolicyParameters subclass.
 
-def _dict_to_policy_params(policy_type: PolicyType, raw: dict[str, Any]) -> PolicyParameters:
-    """Parse policy parameters from dict based on policy type."""
-    rate_schedule: dict[int, float] = {}
-    if "rate_schedule" in raw:
-        raw_rate = raw["rate_schedule"]
-        if not isinstance(raw_rate, dict):
+    Args:
+        data: Policy parameters dictionary
+        policy_type: Type of policy
+        field_path: Field path for error messages
+
+    Returns:
+        PolicyParameters instance
+
+    Raises:
+        PortfolioValidationError: If data is invalid
+    """
+    from reformlab.templates.schema import (
+        CarbonTaxParameters,
+        FeebateParameters,
+        RebateParameters,
+        SubsidyParameters,
+    )
+
+    # Extract rate_schedule
+    rate_schedule_data = data.get("rate_schedule", {})
+    if not isinstance(rate_schedule_data, dict):
+        raise PortfolioValidationError(
+            summary="Portfolio validation failed",
+            reason=f"{field_path}.rate_schedule must be a mapping",
+            fix=f"Ensure {field_path}.rate_schedule is a YAML mapping",
+            invalid_fields=(f"{field_path}.rate_schedule",),
+        )
+
+    try:
+        rate_schedule = {int(k): float(v) for k, v in rate_schedule_data.items()}
+    except (ValueError, TypeError) as exc:
+        raise PortfolioValidationError(
+            summary="Portfolio validation failed",
+            reason=f"{field_path}.rate_schedule has invalid year/rate values: {exc}",
+            fix=f"Ensure {field_path}.rate_schedule has integer years and numeric rates",
+            invalid_fields=(f"{field_path}.rate_schedule",),
+        ) from None
+
+    # Build parameters based on policy type
+    if policy_type == PolicyType.CARBON_TAX:
+        redistribution_data = data.get("redistribution", {})
+        if not isinstance(redistribution_data, dict):
             raise PortfolioValidationError(
-                summary="Policy validation failed",
-                reason="policy.rate_schedule must be a mapping",
-                fix="Set rate_schedule as a YAML object with numeric values",
-                invalid_fields=("policy.rate_schedule",),
+                summary="Portfolio validation failed",
+                reason=f"{field_path}.redistribution must be a mapping",
+                fix=f"Ensure {field_path}.redistribution is a YAML mapping",
+                invalid_fields=(f"{field_path}.redistribution",),
             )
-        try:
-            for k, v in raw_rate.items():
-                rate_schedule[int(k)] = float(v)
-        except (TypeError, ValueError):
+
+        redistribution_type = redistribution_data.get("type", "lump_sum")
+        income_weights_data = redistribution_data.get("income_weights", {})
+        if not isinstance(income_weights_data, dict):
             raise PortfolioValidationError(
-                summary="Policy validation failed",
-                reason="policy.rate_schedule contains non-numeric year or value",
-                fix="Use integer-like years and numeric rate values in rate_schedule",
-                invalid_fields=("policy.rate_schedule",),
+                summary="Portfolio validation failed",
+                reason=f"{field_path}.redistribution.income_weights must be a mapping",
+                fix=f"Ensure {field_path}.redistribution.income_weights is a YAML mapping",
+                invalid_fields=(f"{field_path}.redistribution.income_weights",),
+            )
+
+        try:
+            income_weights = {k: float(v) for k, v in income_weights_data.items()}
+        except (ValueError, TypeError) as exc:
+            raise PortfolioValidationError(
+                summary="Portfolio validation failed",
+                reason=f"{field_path}.redistribution.income_weights has invalid values: {exc}",
+                fix=f"Ensure {field_path}.redistribution.income_weights has numeric values",
+                invalid_fields=(f"{field_path}.redistribution.income_weights",),
             ) from None
 
-    exemptions = tuple(raw.get("exemptions", []))
-    thresholds = tuple(raw.get("thresholds", []))
-    covered_categories = tuple(raw.get("covered_categories", []))
-
-    if policy_type == PolicyType.CARBON_TAX:
-        redistribution_type = ""
-        income_weights: dict[str, float] = {}
-        if "redistribution" in raw:
-            redist = raw["redistribution"]
-            if not isinstance(redist, dict):
-                raise PortfolioValidationError(
-                    summary="Policy validation failed",
-                    reason="policy.redistribution must be a mapping",
-                    fix="Set redistribution as a YAML object with type/income_weights",
-                    invalid_fields=("policy.redistribution",),
-                )
-            if "type" in redist:
-                redistribution_type = str(redist["type"])
-            if "income_weights" in redist:
-                raw_weights = redist["income_weights"]
-                if not isinstance(raw_weights, dict):
-                    raise PortfolioValidationError(
-                        summary="Policy validation failed",
-                        reason="policy.redistribution.income_weights must be a mapping",
-                        fix="Set income_weights as decile -> numeric weight pairs",
-                        invalid_fields=("policy.redistribution.income_weights",),
-                    )
-                try:
-                    for k, v in raw_weights.items():
-                        income_weights[str(k)] = float(v)
-                except (TypeError, ValueError):
-                    raise PortfolioValidationError(
-                        summary="Policy validation failed",
-                        reason="policy.redistribution.income_weights has non-numeric values",
-                        fix="Use numeric values for all redistribution income_weights",
-                        invalid_fields=("policy.redistribution.income_weights",),
-                    ) from None
         return CarbonTaxParameters(
             rate_schedule=rate_schedule,
-            exemptions=exemptions,
-            thresholds=thresholds,
-            covered_categories=covered_categories,
+            exemptions=tuple(data.get("exemptions", [])),
+            thresholds=tuple(data.get("thresholds", [])),
+            covered_categories=tuple(data.get("covered_categories", [])),
             redistribution_type=redistribution_type,
             income_weights=income_weights,
         )
+
     elif policy_type == PolicyType.SUBSIDY:
-        eligible_categories = tuple(raw.get("eligible_categories", []))
-        income_caps: dict[int, float] = {}
-        if "income_caps" in raw:
-            raw_caps = raw["income_caps"]
-            if not isinstance(raw_caps, dict):
-                raise PortfolioValidationError(
-                    summary="Policy validation failed",
-                    reason="policy.income_caps must be a mapping",
-                    fix="Set income_caps as a YAML object with numeric values",
-                    invalid_fields=("policy.income_caps",),
-                )
-            try:
-                for k, v in raw_caps.items():
-                    income_caps[int(k)] = float(v)
-            except (TypeError, ValueError):
-                raise PortfolioValidationError(
-                    summary="Policy validation failed",
-                    reason="policy.income_caps contains non-numeric year or value",
-                    fix="Use integer-like years and numeric values in income_caps",
-                    invalid_fields=("policy.income_caps",),
-                ) from None
+        eligible_categories_data = data.get("eligible_categories", [])
+        if not isinstance(eligible_categories_data, list):
+            raise PortfolioValidationError(
+                summary="Portfolio validation failed",
+                reason=f"{field_path}.eligible_categories must be a list",
+                fix=f"Ensure {field_path}.eligible_categories is a YAML list",
+                invalid_fields=(f"{field_path}.eligible_categories",),
+            )
+
+        income_caps_data = data.get("income_caps", {})
+        if not isinstance(income_caps_data, dict):
+            raise PortfolioValidationError(
+                summary="Portfolio validation failed",
+                reason=f"{field_path}.income_caps must be a mapping",
+                fix=f"Ensure {field_path}.income_caps is a YAML mapping",
+                invalid_fields=(f"{field_path}.income_caps",),
+            )
+
+        try:
+            income_caps = {k: float(v) for k, v in income_caps_data.items()}
+        except (ValueError, TypeError) as exc:
+            raise PortfolioValidationError(
+                summary="Portfolio validation failed",
+                reason=f"{field_path}.income_caps has invalid values: {exc}",
+                fix=f"Ensure {field_path}.income_caps has numeric values",
+                invalid_fields=(f"{field_path}.income_caps",),
+            ) from None
+
         return SubsidyParameters(
             rate_schedule=rate_schedule,
-            exemptions=exemptions,
-            thresholds=thresholds,
-            covered_categories=covered_categories,
-            eligible_categories=eligible_categories,
+            exemptions=tuple(data.get("exemptions", [])),
+            thresholds=tuple(data.get("thresholds", [])),
+            covered_categories=tuple(data.get("covered_categories", [])),
+            eligible_categories=tuple(eligible_categories_data),
             income_caps=income_caps,
         )
+
     elif policy_type == PolicyType.REBATE:
-        rebate_type = str(raw.get("rebate_type", ""))
-        rebate_weights: dict[str, float] = {}
-        if "income_weights" in raw:
-            raw_weights = raw["income_weights"]
-            if not isinstance(raw_weights, dict):
-                raise PortfolioValidationError(
-                    summary="Policy validation failed",
-                    reason="policy.income_weights must be a mapping",
-                    fix="Set income_weights as decile -> numeric weight pairs",
-                    invalid_fields=("policy.income_weights",),
-                )
-            try:
-                for k, v in raw_weights.items():
-                    rebate_weights[str(k)] = float(v)
-            except (TypeError, ValueError):
-                raise PortfolioValidationError(
-                    summary="Policy validation failed",
-                    reason="policy.income_weights has non-numeric values",
-                    fix="Use numeric values for all income_weights",
-                    invalid_fields=("policy.income_weights",),
-                ) from None
+        rebate_type = data.get("rebate_type", "lump_sum")
+        income_weights_data = data.get("income_weights", {})
+        if not isinstance(income_weights_data, dict):
+            raise PortfolioValidationError(
+                summary="Portfolio validation failed",
+                reason=f"{field_path}.income_weights must be a mapping",
+                fix=f"Ensure {field_path}.income_weights is a YAML mapping",
+                invalid_fields=(f"{field_path}.income_weights",),
+            )
+
+        try:
+            income_weights = {k: float(v) for k, v in income_weights_data.items()}
+        except (ValueError, TypeError) as exc:
+            raise PortfolioValidationError(
+                summary="Portfolio validation failed",
+                reason=f"{field_path}.income_weights has invalid values: {exc}",
+                fix=f"Ensure {field_path}.income_weights has numeric values",
+                invalid_fields=(f"{field_path}.income_weights",),
+            ) from None
+
         return RebateParameters(
             rate_schedule=rate_schedule,
-            exemptions=exemptions,
-            thresholds=thresholds,
-            covered_categories=covered_categories,
+            exemptions=tuple(data.get("exemptions", [])),
+            thresholds=tuple(data.get("thresholds", [])),
+            covered_categories=tuple(data.get("covered_categories", [])),
             rebate_type=rebate_type,
-            income_weights=rebate_weights,
+            income_weights=income_weights,
         )
+
     elif policy_type == PolicyType.FEEBATE:
-        pivot_point_set = "pivot_point" in raw
-        fee_rate_set = "fee_rate" in raw
-        rebate_rate_set = "rebate_rate" in raw
         try:
-            pivot_point = float(raw.get("pivot_point", 0.0))
-            fee_rate = float(raw.get("fee_rate", 0.0))
-            rebate_rate = float(raw.get("rebate_rate", 0.0))
-        except (TypeError, ValueError):
+            pivot_point = float(data["pivot_point"]) if "pivot_point" in data else 0.0
+            fee_rate = float(data["fee_rate"]) if "fee_rate" in data else 0.0
+            rebate_rate = float(data["rebate_rate"]) if "rebate_rate" in data else 0.0
+        except (ValueError, TypeError) as exc:
             raise PortfolioValidationError(
-                summary="Policy validation failed",
-                reason="feebate numeric fields must be numbers",
-                fix="Use numeric values for pivot_point, fee_rate, and rebate_rate",
-                invalid_fields=("policy",),
+                summary="Portfolio validation failed",
+                reason=f"{field_path} has invalid feebate numeric values: {exc}",
+                fix=f"Ensure {field_path} pivot_point, fee_rate, and rebate_rate are numeric",
+                invalid_fields=(
+                    f"{field_path}.pivot_point",
+                    f"{field_path}.fee_rate",
+                    f"{field_path}.rebate_rate",
+                ),
             ) from None
+
         return FeebateParameters(
             rate_schedule=rate_schedule,
-            exemptions=exemptions,
-            thresholds=thresholds,
-            covered_categories=covered_categories,
+            exemptions=tuple(data.get("exemptions", [])),
+            thresholds=tuple(data.get("thresholds", [])),
+            covered_categories=tuple(data.get("covered_categories", [])),
             pivot_point=pivot_point,
             fee_rate=fee_rate,
             rebate_rate=rebate_rate,
-            _pivot_point_set=pivot_point_set,
-            _fee_rate_set=fee_rate_set,
-            _rebate_rate_set=rebate_rate_set,
         )
+
     else:
-        return PolicyParameters(
-            rate_schedule=rate_schedule,
-            exemptions=exemptions,
-            thresholds=thresholds,
-            covered_categories=covered_categories,
+        raise PortfolioValidationError(
+            summary="Portfolio validation failed",
+            reason=f"Unsupported policy_type: {policy_type.value}",
+            fix="Use one of: carbon_tax, subsidy, rebate, feebate",
+            invalid_fields=(f"{field_path}.policy_type",),
         )
+
+
+def validate_compatibility(portfolio: PolicyPortfolio) -> tuple[Conflict, ...]:
+    """Validate portfolio for compatibility conflicts.
+
+    Args:
+        portfolio: The portfolio to validate
+
+    Returns:
+        Tuple of detected conflicts (empty if no conflicts)
+    """
+    conflicts: list[Conflict] = []
+
+    # Detect same policy type conflicts
+    for i in range(len(portfolio.policies)):
+        for j in range(i + 1, len(portfolio.policies)):
+            if i >= j:
+                continue
+            if portfolio.policies[i].policy_type == portfolio.policies[j].policy_type:
+                conflict = Conflict(
+                    conflict_type=ConflictType.SAME_POLICY_TYPE,
+                    policy_indices=(i, j),
+                    parameter_name="policy_type",
+                    conflicting_values=(
+                        portfolio.policies[i].policy_type.value,
+                        portfolio.policies[j].policy_type.value,
+                    ),
+                    description=f"Both policies[{i}] and [{j}] are {portfolio.policies[i].policy_type.value}",
+                )
+                conflicts.append(conflict)
+
+    # Detect overlapping years conflicts
+    for i in range(len(portfolio.policies)):
+        for j in range(i + 1, len(portfolio.policies)):
+            if i >= j:
+                continue
+            policy_i_years = set(portfolio.policies[i].policy.rate_schedule.keys())
+            policy_j_years = set(portfolio.policies[j].policy.rate_schedule.keys())
+            overlap = policy_i_years & policy_j_years
+            if overlap:
+                conflict = Conflict(
+                    conflict_type=ConflictType.OVERLAPPING_YEARS,
+                    policy_indices=(i, j),
+                    parameter_name="rate_schedule",
+                    conflicting_values=(
+                        tuple(sorted(policy_i_years)),
+                        tuple(sorted(policy_j_years)),
+                    ),
+                    description=f"rate_schedule years overlap: {overlap}",
+                )
+                conflicts.append(conflict)
+
+    # Detect overlapping categories conflicts
+    for i in range(len(portfolio.policies)):
+        for j in range(i + 1, len(portfolio.policies)):
+            if i >= j:
+                continue
+            policy_i_cats = getattr(portfolio.policies[i].policy, "covered_categories", ())
+            policy_j_cats = getattr(portfolio.policies[j].policy, "eligible_categories", ())
+            overlap = set(policy_i_cats) & set(policy_j_cats)
+            if overlap:
+                conflict = Conflict(
+                    conflict_type=ConflictType.OVERLAPPING_CATEGORIES,
+                    policy_indices=(i, j),
+                    parameter_name="categories",
+                    conflicting_values=(
+                        tuple(sorted(policy_i_cats)),
+                        tuple(sorted(policy_j_cats)),
+                    ),
+                    description=f"categories overlap: {overlap}",
+                )
+                conflicts.append(conflict)
+
+    # Sort conflicts by policy indices, then parameter name for deterministic ordering
+    conflicts.sort(key=lambda c: (c.policy_indices[0], c.parameter_name))
+
+    return tuple(conflicts)
+
+
+def resolve_conflicts(portfolio: PolicyPortfolio, conflicts: tuple[Conflict, ...]) -> PolicyPortfolio:
+    """Resolve conflicts according to portfolio's resolution strategy.
+
+    Args:
+        portfolio: The portfolio with conflicts
+        conflicts: Detected conflicts
+
+    Returns:
+        New portfolio with resolved conflicts (if strategy != "error")
+
+    Raises:
+        PortfolioValidationError: If strategy is "error" and conflicts exist
+    """
+    if not conflicts:
+        return portfolio
+
+    if portfolio.resolution_strategy == "error":
+        conflict_details = "\n".join(f"  - {c.description}" for c in conflicts)
+        raise PortfolioValidationError(
+            summary="Portfolio has unresolved conflicts",
+            reason=f"{len(conflicts)} conflicts detected:\n{conflict_details}",
+            fix="Set resolution_strategy to 'sum', 'first_wins', 'last_wins', or 'max' "
+            "to automatically resolve conflicts",
+            invalid_fields=tuple(f"policies[{i}]" for c in conflicts for i in c.policy_indices),
+        )
+
+    # Log warning for non-error strategies
+    logger.warning(
+        "event=portfolio_conflicts strategy=%s conflict_count=%d portfolio=%s",
+        portfolio.resolution_strategy,
+        len(conflicts),
+        portfolio.name,
+    )
+
+    # Apply resolution strategy
+    if portfolio.resolution_strategy == "sum":
+        resolved_policies = _apply_sum_strategy(portfolio.policies, conflicts)
+    elif portfolio.resolution_strategy == "first_wins":
+        resolved_policies = _apply_first_wins_strategy(portfolio.policies, conflicts)
+    elif portfolio.resolution_strategy == "last_wins":
+        resolved_policies = _apply_last_wins_strategy(portfolio.policies, conflicts)
+    elif portfolio.resolution_strategy == "max":
+        resolved_policies = _apply_max_strategy(portfolio.policies, conflicts)
+    else:
+        # Unknown strategy - treat as error
+        raise PortfolioValidationError(
+            summary="Invalid resolution strategy",
+            reason=f"Unknown resolution_strategy: {portfolio.resolution_strategy}",
+            fix="Use one of: error, sum, first_wins, last_wins, max",
+            invalid_fields=("resolution_strategy",),
+        )
+
+    # Create description suffix
+    description_suffix = (
+        f"\n\nResolved {len(conflicts)} conflicts using '{portfolio.resolution_strategy}' strategy."
+    )
+
+    # Return new portfolio with resolved policies
+    return PolicyPortfolio(
+        name=portfolio.name,
+        policies=resolved_policies,
+        version=portfolio.version,
+        description=portfolio.description + description_suffix,
+        resolution_strategy=portfolio.resolution_strategy,
+    )
+
+
+def _apply_sum_strategy(policies: tuple[Any, ...], conflicts: tuple[Conflict, ...]) -> tuple[Any, ...]:
+    """Apply sum resolution strategy - add rates for overlapping years.
+
+    Args:
+        policies: Original policies
+        conflicts: Detected conflicts
+
+    Returns:
+        New tuple of policies with resolved rate schedules
+    """
+
+    resolved = list(policies)
+
+    # Group conflicts by overlapping years
+    year_conflicts = [c for c in conflicts if c.conflict_type == ConflictType.OVERLAPPING_YEARS]
+
+    # For each overlapping year conflict, add the rates
+    for conflict in year_conflicts:
+        i, j = conflict.policy_indices[0], conflict.policy_indices[1]
+        policy_i = resolved[i]
+        policy_j = resolved[j]
+
+        # Get overlapping years
+        years_i = set(policy_i.policy.rate_schedule.keys())
+        years_j = set(policy_j.policy.rate_schedule.keys())
+        overlap_years = years_i & years_j
+
+        # Add rates for overlapping years (apply to policy with lower index)
+        new_rate_schedule = dict(policy_i.policy.rate_schedule)
+        for year in overlap_years:
+            new_rate_schedule[year] = (
+                policy_i.policy.rate_schedule[year] + policy_j.policy.rate_schedule[year]
+            )
+
+        # Create new policy with merged rate schedule
+        new_policy = replace(policy_i.policy, rate_schedule=new_rate_schedule)
+        resolved[i] = replace(policy_i, policy=new_policy)
+
+    return tuple(resolved)
+
+
+def _apply_first_wins_strategy(policies: tuple[Any, ...], conflicts: tuple[Conflict, ...]) -> tuple[Any, ...]:
+    """Apply first_wins resolution strategy - use first policy's values.
+
+    Args:
+        policies: Original policies
+        conflicts: Detected conflicts
+
+    Returns:
+        Original policies tuple (first policy already wins by definition)
+    """
+    # First policy wins by definition - no changes needed
+    return policies
+
+
+def _apply_last_wins_strategy(policies: tuple[Any, ...], conflicts: tuple[Conflict, ...]) -> tuple[Any, ...]:
+    """Apply last_wins resolution strategy - use last policy's values.
+
+    Args:
+        policies: Original policies
+        conflicts: Detected conflicts
+
+    Returns:
+        New tuple with last conflicting policy values
+    """
+
+    resolved = list(policies)
+
+    # For overlapping years, use last policy's rates
+    year_conflicts = [c for c in conflicts if c.conflict_type == ConflictType.OVERLAPPING_YEARS]
+
+    for conflict in year_conflicts:
+        i, j = conflict.policy_indices[0], conflict.policy_indices[1]
+        policy_i = resolved[i]
+        policy_j = resolved[j]
+
+        # Get overlapping years
+        years_i = set(policy_i.policy.rate_schedule.keys())
+        years_j = set(policy_j.policy.rate_schedule.keys())
+        overlap_years = years_i & years_j
+
+        # Use last policy's rates for overlapping years
+        new_rate_schedule = dict(policy_i.policy.rate_schedule)
+        for year in overlap_years:
+            new_rate_schedule[year] = policy_j.policy.rate_schedule[year]
+
+        # Create new policy with updated rate schedule
+        new_policy = replace(policy_i.policy, rate_schedule=new_rate_schedule)
+        resolved[i] = replace(policy_i, policy=new_policy)
+
+    return tuple(resolved)
+
+
+def _apply_max_strategy(policies: tuple[Any, ...], conflicts: tuple[Conflict, ...]) -> tuple[Any, ...]:
+    """Apply max resolution strategy - use maximum rate for overlapping years.
+
+    Args:
+        policies: Original policies
+        conflicts: Detected conflicts
+
+    Returns:
+        New tuple of policies with maximum rates applied
+    """
+
+    resolved = list(policies)
+
+    # For overlapping years, use maximum rate
+    year_conflicts = [c for c in conflicts if c.conflict_type == ConflictType.OVERLAPPING_YEARS]
+
+    for conflict in year_conflicts:
+        i, j = conflict.policy_indices[0], conflict.policy_indices[1]
+        policy_i = resolved[i]
+        policy_j = resolved[j]
+
+        # Get overlapping years
+        years_i = set(policy_i.policy.rate_schedule.keys())
+        years_j = set(policy_j.policy.rate_schedule.keys())
+        overlap_years = years_i & years_j
+
+        # Use maximum rate for overlapping years
+        new_rate_schedule = dict(policy_i.policy.rate_schedule)
+        for year in overlap_years:
+            new_rate_schedule[year] = max(
+                policy_i.policy.rate_schedule[year], policy_j.policy.rate_schedule[year]
+            )
+
+        # Create new policy with updated rate schedule
+        new_policy = replace(policy_i.policy, rate_schedule=new_rate_schedule)
+        resolved[i] = replace(policy_i, policy=new_policy)
+
+    return tuple(resolved)
 
 
 def dump_portfolio(portfolio: PolicyPortfolio, path: Path | str) -> None:
@@ -361,18 +739,19 @@ def dump_portfolio(portfolio: PolicyPortfolio, path: Path | str) -> None:
         yaml.safe_dump(data, f, default_flow_style=False, sort_keys=True)
 
 
-def load_portfolio(path: Path | str) -> PolicyPortfolio:
+def load_portfolio(path: Path | str, validate: bool = True) -> PolicyPortfolio:
     """Load portfolio from YAML file.
 
     Args:
         path: Path to YAML file
+        validate: Whether to validate for conflicts (default: True)
 
     Returns:
         PolicyPortfolio instance
 
     Raises:
         PortfolioSerializationError: If file not found or invalid YAML
-        PortfolioValidationError: If data is invalid
+        PortfolioValidationError: If data is invalid or conflicts detected
     """
     file_path = Path(path)
 
@@ -404,4 +783,10 @@ def load_portfolio(path: Path | str) -> PolicyPortfolio:
         )
 
     portfolio = dict_to_portfolio(data)
+
+    # Validate for conflicts if requested
+    if validate:
+        conflicts = validate_compatibility(portfolio)
+        portfolio = resolve_conflicts(portfolio, conflicts)
+
     return portfolio

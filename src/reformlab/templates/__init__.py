@@ -64,11 +64,18 @@ from reformlab.templates.schema import (
     infer_policy_type,
 )
 from reformlab.templates.portfolios import (
+    Conflict,
+    ConflictType,
     PolicyConfig,
     PolicyPortfolio,
     PortfolioError,
     PortfolioSerializationError,
     PortfolioValidationError,
+    ResolutionStrategy,
+    dump_portfolio,
+    load_portfolio,
+    resolve_conflicts,
+    validate_compatibility,
 )
 from reformlab.templates.workflow import (
     WORKFLOW_SCHEMA_VERSION,
@@ -99,6 +106,13 @@ __all__ = [
     "PortfolioError",
     "PortfolioSerializationError",
     "PortfolioValidationError",
+    "Conflict",
+    "ConflictType",
+    "ResolutionStrategy",
+    "validate_compatibility",
+    "resolve_conflicts",
+    "dump_portfolio",
+    "load_portfolio",
     # Migration types and functions
     "CompatibilityStatus",
     "MigrationChange",

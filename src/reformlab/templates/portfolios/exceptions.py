@@ -33,7 +33,10 @@ class PortfolioError(Exception):
         parts = [self.summary]
         if self.file_path:
             parts.insert(0, f"[{self.file_path}]")
-        return f"{': '.join(parts)} - {self.reason}"
+        message = f"{': '.join(parts)} - {self.reason}"
+        if self.fix:
+            message += f"\nFix: {self.fix}"
+        return message
 
 
 class PortfolioValidationError(PortfolioError):

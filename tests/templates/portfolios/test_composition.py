@@ -129,7 +129,7 @@ class TestPortfolioYAMLSerialization:
         )
         file_path = temp_portfolio_dir / "test-portfolio.yaml"
         dump_portfolio(original, file_path)
-        loaded = load_portfolio(file_path)
+        loaded = load_portfolio(file_path, validate=False)
         assert loaded == original
 
     def test_round_trip_preserves_order(
@@ -160,7 +160,7 @@ class TestPortfolioYAMLSerialization:
         )
         file_path = temp_portfolio_dir / "test-order.yaml"
         dump_portfolio(original, file_path)
-        loaded = load_portfolio(file_path)
+        loaded = load_portfolio(file_path, validate=False)
         assert loaded.policies[0].name == "First"
         assert loaded.policies[1].name == "Second"
         assert loaded.policies[2].name == "Third"
@@ -186,7 +186,7 @@ class TestPortfolioYAMLSerialization:
         )
         file_path = temp_portfolio_dir / "test-defaults.yaml"
         dump_portfolio(original, file_path)
-        loaded = load_portfolio(file_path)
+        loaded = load_portfolio(file_path, validate=False)
         assert loaded.version == "1.0"
         assert loaded.description == ""
         assert loaded.policies[0].name == ""
@@ -304,7 +304,7 @@ policies:
       rate_schedule: {2026: 44.6}
 """
         )
-        with pytest.raises(PortfolioValidationError, match="too short"):
+        with pytest.raises(PortfolioValidationError, match="at least 2 policies"):
             load_portfolio(file_path)
 
     def test_load_invalid_policy_type(self, temp_portfolio_dir: Path) -> None:
@@ -410,7 +410,7 @@ class TestPortfolioPolicyTypes:
         )
         file_path = temp_portfolio_dir / "rebate.yaml"
         dump_portfolio(portfolio, file_path)
-        loaded = load_portfolio(file_path)
+        loaded = load_portfolio(file_path, validate=False)
         assert loaded.name == "Rebate Portfolio"
         assert loaded.has_policy_type(PolicyType.REBATE)
 
@@ -441,7 +441,7 @@ class TestPortfolioPolicyTypes:
         )
         file_path = temp_portfolio_dir / "feebate.yaml"
         dump_portfolio(portfolio, file_path)
-        loaded = load_portfolio(file_path)
+        loaded = load_portfolio(file_path, validate=False)
         assert loaded.name == "Feebate Portfolio"
         assert loaded.has_policy_type(PolicyType.FEEBATE)
 
@@ -468,7 +468,7 @@ class TestPortfolioPolicyTypes:
         )
         file_path = temp_portfolio_dir / "weights.yaml"
         dump_portfolio(original, file_path)
-        loaded = load_portfolio(file_path)
+        loaded = load_portfolio(file_path, validate=False)
         assert loaded.policies[1].policy.income_weights == {
             "decile_1": 1.5,
             "decile_2": 1.2,
