@@ -1,0 +1,127 @@
+record_id: 1713ea0a-62d4-4fd0-9e97-2c289a69a4f0
+created_at: '2026-03-03T18:28:35.539026+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 11
+  story_num: '5'
+  title: Story 11.5
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: true
+    requires_migration: true
+evaluator:
+  provider: claude-subprocess
+  model: sonnet
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-03-03T18:19:57.063053Z'
+  end_time: '2026-03-03T18:27:42.161053Z'
+  duration_ms: 465098
+  input_tokens: 0
+  output_tokens: 4047
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 16189
+  heading_count: 27
+  list_depth_max: 2
+  code_block_count: 14
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: **2.4**'
+  - 🏛️ Architectural Sins
+  - 🐛 Correctness & Safety
+  - '🐛 Bug 1: Silent type mismatch — `IPFConstraint.targets` keys are always `str`, but column values may be `int` or `float`'
+  - '🎭 Lying Test: `test_missing_category_logs_warning` — tests a degenerate zero-target case'
+  - ⚡ Performance & Scalability
+  - 'Performance Issue 1: IPF inner loop is O(N × **C** × D × I), not O(N × D × I)'
+  - Build category→indices map once per constraint (O(N) setup)
+  - Apply factors in O(C + total_rows_adjusted) instead of O(N×C)
+  - 'Performance Issue 2: `ConditionalSamplingMethod.merge()` computes table_a stratum keys twice'
+  - First computation — O(N × len(strata_columns))
+  - '... 40 lines later ...'
+  - Second identical computation — wasted work
+  - 🔧 Maintainability Issues
+  - '💣 Tech Debt 1: `seed + 1` derived RNG stream creates cross-scenario correlation'
+  - '💣 Tech Debt 2: Stratum key formatting collision in `strata_sizes` assumption record'
+  - '💣 Tech Debt 3: Inconsistent semantics for `dropped_right_columns` across methods'
+  - '💣 Tech Debt 4: Docstring says "deep-copy" for a shallow copy operation'
+  - Deep-copy targets dict to prevent external mutation
+  - '💣 Tech Debt 5: Unreachable duplicate-column guard in assembly loop'
+  - 🛠️ Suggested Fixes
+  - 1. Silent type mismatch in `_run_ipf` — add column type guard
+  - 2. Fix double stratum key computation in `ConditionalSamplingMethod`
+  - 3. Fix strata_sizes key collision for multi-column strata
+  - 📋 Issue Priority Checklist for Story 11.6 Integration
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.31
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: fc7ad943d0dc
+findings:
+  total_count: 10
+  by_severity:
+    critical: 1
+    major: 1
+    minor: 8
+    nit: 0
+  by_category:
+    security: 0
+    performance: 2
+    correctness: 5
+    completeness: 1
+    clarity: 3
+    testability: 1
+  has_fix_count: 10
+  has_location_count: 10
+  has_evidence_count: 10
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: false
+  uses_conditionals: true
+  uncertainty_phrases_count: 1
+  confidence_phrases_count: 6
+linguistic:
+  avg_sentence_length: 32.875
+  vocabulary_richness: 0.310361216730038
+  flesch_reading_ease: 29.744594758064522
+  vague_terms_count: 1
+  formality_score: 0.7
+  sentiment: positive
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.95
+  evidence_quality: 0.85
+  follows_template: true
+  internal_consistency: 0.98
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: true
+    requires_migration: true
+  phase: code-review
+  file_count: 11
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

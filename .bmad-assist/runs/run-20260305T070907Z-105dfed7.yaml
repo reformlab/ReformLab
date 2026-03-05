@@ -1,0 +1,45 @@
+cli_args:
+- run
+- -c
+- bmad-assist-test.yaml
+- -e
+- '11'
+- -v
+- --debug
+- --full-stream
+- --plain
+cli_args_masked:
+- run
+- -c
+- bmad-assist-test.yaml
+- -e
+- '11'
+- -v
+- --debug
+- --full-stream
+- --plain
+current_phase:
+  model: opus
+  phase: DEV_STORY
+  provider: claude-subprocess
+  started_at: '2026-03-05T07:09:07.992391Z'
+ended_at: null
+epic: 11
+phase_events:
+- duration_ms: null
+  epic: 11
+  error_type: null
+  event_type: started
+  model: opus
+  phase: DEV_STORY
+  provider: claude-subprocess
+  status: null
+  story: '11.6'
+  termination_metadata: null
+  timestamp: '2026-03-05T07:09:07.992391Z'
+phases: []
+project_path: /Users/lucas/Workspace/reformlab
+run_id: 105dfed7
+started_at: '2026-03-05T07:09:07.972406Z'
+status: running
+story: '11.6'

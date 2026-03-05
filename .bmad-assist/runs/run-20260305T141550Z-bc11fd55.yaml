@@ -1,0 +1,39 @@
+cli_args:
+- run
+- -e
+- '11'
+- -g
+- -v
+- --skip-story-prompts
+cli_args_masked:
+- run
+- -e
+- '11'
+- -g
+- -v
+- --skip-story-prompts
+current_phase:
+  model: zai-coding-plan/glm-4.7
+  phase: DEV_STORY
+  provider: opencode
+  started_at: '2026-03-05T14:15:50.323556Z'
+ended_at: null
+epic: 11
+phase_events:
+- duration_ms: null
+  epic: 11
+  error_type: null
+  event_type: started
+  model: zai-coding-plan/glm-4.7
+  phase: DEV_STORY
+  provider: opencode
+  status: null
+  story: '11.6'
+  termination_metadata: null
+  timestamp: '2026-03-05T14:15:50.323556Z'
+phases: []
+project_path: /Users/lucas/Workspace/reformlab
+run_id: bc11fd55
+started_at: '2026-03-05T14:15:50.289455Z'
+status: running
+story: '11.6'

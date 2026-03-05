@@ -1,0 +1,61 @@
+cli_args:
+- run
+- -e
+- '11'
+- -g
+- -v
+- --debug
+- --full-stream
+- --plain
+- --skip-story-prompts
+cli_args_masked:
+- run
+- -e
+- '11'
+- -g
+- -v
+- --debug
+- --full-stream
+- --plain
+- --skip-story-prompts
+current_phase: null
+ended_at: '2026-03-05T15:35:54.714652Z'
+epic: 11
+phase_events:
+- duration_ms: null
+  epic: 11
+  error_type: null
+  event_type: started
+  model: zai-coding-plan/glm-4.7-flashx
+  phase: CREATE_STORY
+  provider: opencode
+  status: null
+  story: '11.6'
+  termination_metadata: null
+  timestamp: '2026-03-05T15:35:54.063225Z'
+- duration_ms: 563
+  epic: 11
+  error_type: 'Handler error: OpenCode CLI not found. Is ''opencode'' in PATH?'
+  event_type: completed
+  model: zai-coding-plan/glm-4.7-flashx
+  phase: CREATE_STORY
+  provider: opencode
+  status: error
+  story: '11.6'
+  termination_metadata: null
+  timestamp: '2026-03-05T15:35:54.626895Z'
+phases:
+- duration_ms: 563
+  ended_at: '2026-03-05T15:35:54.626895Z'
+  error_type: 'Handler error: OpenCode CLI not found. Is ''opencode'' in PATH?'
+  model: zai-coding-plan/glm-4.7-flashx
+  phase: CREATE_STORY
+  provider: opencode
+  provider_count: 1
+  started_at: '2026-03-05T15:35:54.063225Z'
+  status: error
+project_path: /Users/lucas/Workspace/reformlab
+run_id: 1cd8fd44
+started_at: '2026-03-05T15:35:54.028292Z'
+status: completed
+story: '11.6'

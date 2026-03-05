@@ -1,5 +1,5 @@
 # bmad-assist configuration for ReformLab
-# Strategy: Claude-only (Opus creates/devs, Sonnet validates/reviews)
+# Strategy: GLM-5 creates/devs/synth/retro, Gemini+GLM-5+Codex validate/review
 
 project_name: ReformLab
 user_name: Lucas
@@ -15,52 +15,67 @@ timeouts:
 
 providers:
   master:
-    provider: claude
-    model: opus
+    provider: opencode
+    model: zai-coding-plan/glm-5
 
   helper:
-    provider: claude
-    model: haiku
-
-# Per-phase model assignment
-# Opus creates/devs, Sonnet validates/reviews (different model = less bias)
-phase_models:
-  # --- Creative phases: Opus ---
-  create_story:
-    provider: claude
-    model: opus
-  dev_story:
-    provider: claude
-    model: opus
-
-  # --- Validation phases: Sonnet (single reviewer) ---
-  validate_story:
-    - provider: claude
-      model: sonnet
-
-  # --- Review phases: Sonnet (single reviewer) ---
-  code_review:
-    - provider: claude
-      model: sonnet
-
-  # --- Retrospective: Sonnet ---
-  retrospective:
-    provider: claude
+    provider: claude-subprocess
     model: sonnet
 
-# Compiler configuration — moderate token optimization
-# Reduced budgets to cut prompt size ~40% without losing critical context
+# Per-phase model assignment
+# GLM-5 creates/devs/synth/retro, Gemini+GLM-5+Codex validate/review
+phase_models:
+  # --- Creative phases: GLM-5 ---
+  create_story:
+    provider: opencode
+    model: zai-coding-plan/glm-5
+  dev_story:
+    provider: opencode
+    model: zai-coding-plan/glm-5
+
+  # --- Validation phases: Gemini + GLM-5 + Codex (three reviewers for synthesis) ---
+  validate_story:
+    - provider: gemini
+      model: gemini-2.5-flash
+    - provider: codex
+      model: gpt-5.3-codex
+      reasoning_effort: high
+  validate_story_synthesis:
+    provider: opencode
+    model: zai-coding-plan/glm-5
+
+  # --- Review phases: Gemini + GLM-5 + Codex (three reviewers for synthesis) ---
+  code_review:
+    - provider: gemini
+      model: gemini-2.5-flash
+    - provider: codex
+      model: gpt-5.3-codex
+      reasoning_effort: high
+  code_review_synthesis:
+    provider: opencode
+    model: zai-coding-plan/glm-5
+
+  # --- Retrospective: GLM-5 ---
+  retrospective:
+    provider: opencode
+    model: zai-coding-plan/glm-5
+
+# Compiler configuration — balanced budgets
+# Restored closer to defaults after synthesis starvation warnings (2026-03-03).
+# Architecture doc alone is ~14k tokens; 8k strategic budget was truncating it to 47%.
 compiler:
   source_context:
     budgets:
-      create_story: 30000    # was 60000 — story creation needs less code
-      validate_story: 10000  # was 15000
-      dev_story: 15000       # unchanged — dev needs code context most
-      code_review: 20000     # was 30000
-      default: 15000         # was 30000
+      create_story: 60000
+      validate_story: 15000
+      validate_story_synthesis: 15000
+      dev_story: 15000
+      code_review: 30000
+      code_review_synthesis: 30000
+      default: 30000
 
   strategic_context:
-    budget: 8000             # was 15000 — most docs are partially redundant
+    budget: 15000
     tree_budget: 0
     defaults:
       include: [project-tree, project-context, architecture]
@@ -68,17 +83,19 @@ compiler:
     create_story:
       include: [project-tree, project-context, architecture, prd]
     dev_story:
-      include: [project-tree, project-context, architecture]  # removed prd — dev doesn't need product spec
+      include: [project-tree, project-context, architecture]
     code_review:
-      include: [project-tree, project-context, architecture]  # removed prd — reviewer needs code, not product spec
+      include: [project-tree, project-context, architecture]
 
-# Loop: standard cycle, no TEA
+# Loop: standard cycle with synthesis, no TEA
 loop:
   story:
     - create_story
     - validate_story
+    - validate_story_synthesis
     - dev_story
     - code_review
+    - code_review_synthesis
   epic_teardown:
     - retrospective
 

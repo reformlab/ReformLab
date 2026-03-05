@@ -1,0 +1,49 @@
+record_id: 62f0ff71-0383-4803-b480-067ffb9e19dc
+created_at: '2026-03-05T16:16:06.080103+00:00'
+workflow:
+  id: create-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 11
+  story_num: 7
+  title: Story 11.7
+  complexity_flags: {}
+evaluator:
+  provider: opencode
+  model: zai-coding-plan/glm-4.7
+  role: master
+  role_id: null
+  session_id: 28cd2415-540f-46d8-8cce-dc9094ccadac
+execution:
+  start_time: '2026-03-05T16:10:41.237780Z'
+  end_time: '2026-03-05T16:16:06.049432Z'
+  duration_ms: 324811
+  input_tokens: 0
+  output_tokens: 0
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 1440
+  heading_count: 0
+  list_depth_max: 1
+  code_block_count: 0
+  sections_detected: []
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.31
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: e4f9b17dac65
+findings: null
+reasoning: null
+linguistic: null
+quality: null
+consensus: null
+ground_truth: null
+custom: null

@@ -1,0 +1,41 @@
+cli_args:
+- run
+- -e
+- '11'
+- -v
+- --debug
+- --full-stream
+- --plain
+cli_args_masked:
+- run
+- -e
+- '11'
+- -v
+- --debug
+- --full-stream
+- --plain
+current_phase:
+  model: haiku
+  phase: DEV_STORY
+  provider: claude-subprocess
+  started_at: '2026-03-05T07:12:47.292674Z'
+ended_at: null
+epic: 11
+phase_events:
+- duration_ms: null
+  epic: 11
+  error_type: null
+  event_type: started
+  model: haiku
+  phase: DEV_STORY
+  provider: claude-subprocess
+  status: null
+  story: '11.6'
+  termination_metadata: null
+  timestamp: '2026-03-05T07:12:47.292674Z'
+phases: []
+project_path: /Users/lucas/Workspace/reformlab
+run_id: 4accb204
+started_at: '2026-03-05T07:12:47.273103Z'
+status: running
+story: '11.6'

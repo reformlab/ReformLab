@@ -1,0 +1,82 @@
+cli_args:
+- run
+- -e
+- '11'
+- -g
+- -v
+- --skip-story-prompts
+cli_args_masked:
+- run
+- -e
+- '11'
+- -g
+- -v
+- --skip-story-prompts
+current_phase: null
+ended_at: '2026-03-03T10:12:54.238390Z'
+epic: 11
+phase_events:
+- duration_ms: null
+  epic: 11
+  error_type: null
+  event_type: started
+  model: opus
+  phase: CREATE_STORY
+  provider: claude
+  status: null
+  story: '11.1'
+  timestamp: '2026-03-03T09:53:10.253677Z'
+- duration_ms: 698273
+  epic: 11
+  error_type: null
+  event_type: completed
+  model: opus
+  phase: CREATE_STORY
+  provider: claude
+  status: success
+  story: '11.1'
+  timestamp: '2026-03-03T10:04:48.527428Z'
+- duration_ms: null
+  epic: 11
+  error_type: null
+  event_type: started
+  model: opus
+  phase: VALIDATE_STORY
+  provider: claude
+  status: null
+  story: '11.1'
+  timestamp: '2026-03-03T10:04:48.718475Z'
+- duration_ms: 485491
+  epic: 11
+  error_type: 'Insufficient validations: 1/2 required. Check provider configuration
+    and network connectivity.'
+  event_type: completed
+  model: opus
+  phase: VALIDATE_STORY
+  provider: claude
+  status: error
+  story: '11.1'
+  timestamp: '2026-03-03T10:12:54.210274Z'
+phases:
+- duration_ms: 698273
+  ended_at: '2026-03-03T10:04:48.527428Z'
+  error_type: null
+  model: opus
+  phase: CREATE_STORY
+  provider: claude
+  started_at: '2026-03-03T09:53:10.253677Z'
+  status: success
+- duration_ms: 485491
+  ended_at: '2026-03-03T10:12:54.210274Z'
+  error_type: 'Insufficient validations: 1/2 required. Check provider configuration
+    and network connectivity.'
+  model: opus
+  phase: VALIDATE_STORY
+  provider: claude
+  started_at: '2026-03-03T10:04:48.718475Z'
+  status: error
+project_path: /Users/lucas/Workspace/reformlab
+run_id: 6fd8b3a3
+started_at: '2026-03-03T09:53:10.224853Z'
+status: completed
+story: '11.1'

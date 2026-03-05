@@ -1,0 +1,127 @@
+record_id: 88ee79b8-4c29-4a49-a1b1-88e055e1eeb2
+created_at: '2026-03-03T11:00:10.727647+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 11
+  story_num: '1'
+  title: Story 11.1
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: sonnet
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-03-03T10:49:44.958008Z'
+  end_time: '2026-03-03T10:54:28.155008Z'
+  duration_ms: 283197
+  input_tokens: 0
+  output_tokens: 4715
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 18860
+  heading_count: 27
+  list_depth_max: 2
+  code_block_count: 12
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: **7.2** → Verdict: **REJECT**'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes & Readability
+  - '1. Dead `# noqa: ARG005` annotation in test'
+  - ⚡ Performance & Scalability
+  - 🐛 Correctness & Safety
+  - 'Issue 1 — 🔴 CRITICAL: `except (OSError, Exception)` Swallows All Exceptions'
+  - 'Issue 2 — 🟠 IMPORTANT: Cache Files Accumulate Indefinitely'
+  - 'Issue 3 — 🟠 IMPORTANT: `CachedLoader.schema()` and `_fetch()` Are Not Abstract'
+  - 🔧 Maintainability Issues
+  - 'Issue 4 — 🟠 IMPORTANT: `_hash_file()` Duplicates `governance/hashing.py:hash_file()` Verbatim'
+  - 'Issue 5 — 🟠 IMPORTANT: Errors Imported Lazily Inside Hot-Path `download()` With No Justification'
+  - 'Issue 6 — 🟡 MINOR: `SourceConfig.url` Not Validated'
+  - 🎭 Test Quality Issues
+  - Issue 7 — AC#6 Staleness Not Directly Tested via `status()`
+  - Issue 8 — Missing Test for Non-`OSError` Network Failure Without Stale Cache
+  - Issue 9 — `test_no_directory_created_on_init` Asserts Fixture Path, Not Cache Path
+  - 🛠️ Suggested Fixes
+  - 1. Fix Exception Swallowing in `CachedLoader.download()`
+  - 2. Replace `_hash_file()` with `governance/hashing.hash_file()`
+  - 3. Add `@abstractmethod` to `CachedLoader.schema()` and `_fetch()`
+  - 4. Promote Error Imports to Module Level
+  - 5. Add Cache Eviction in `put()`
+  - 6. Add Missing Test Coverage
+  - Final Verdict
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.31
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: a85049b4e611
+findings:
+  total_count: 10
+  by_severity:
+    critical: 1
+    major: 4
+    minor: 5
+    nit: 0
+  by_category:
+    security: 0
+    performance: 2
+    correctness: 6
+    completeness: 2
+    clarity: 2
+    testability: 4
+  has_fix_count: 9
+  has_location_count: 10
+  has_evidence_count: 10
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: false
+  uses_conditionals: true
+  uncertainty_phrases_count: 0
+  confidence_phrases_count: 6
+linguistic:
+  avg_sentence_length: 26.453488372093023
+  vocabulary_richness: 0.30241758241758243
+  flesch_reading_ease: 21.722553409423455
+  vague_terms_count: 1
+  formality_score: 0.8
+  sentiment: mixed
+quality:
+  actionable_ratio: 0.95
+  specificity_score: 0.95
+  evidence_quality: 0.95
+  follows_template: true
+  internal_consistency: 0.95
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 14
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

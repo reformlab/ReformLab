@@ -1,0 +1,112 @@
+record_id: 63ba9253-1be9-46df-82c3-324b56969cd3
+created_at: '2026-03-03T14:03:27.978206+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 11
+  story_num: '3'
+  title: Story 11.3
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: codex
+  model: gpt-5.1-codex-max
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-03-03T13:57:26.944949Z'
+  end_time: '2026-03-03T13:58:25.899949Z'
+  duration_ms: 58955
+  input_tokens: 0
+  output_tokens: 1006
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 4027
+  heading_count: 12
+  list_depth_max: 2
+  code_block_count: 0
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: 4.0'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes & Readability
+  - ⚡ Performance & Scalability
+  - 🐛 Correctness & Safety
+  - 🔧 Maintainability Issues
+  - 🛠️ Suggested Fixes
+  - 1. Repair SDES test suite
+  - 2. Repair Eurostat test suite
+  - 3. Re-run AC coverage audit
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.31
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: f4558a8edcc8
+findings:
+  total_count: 4
+  by_severity:
+    critical: 2
+    major: 2
+    minor: 0
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 2
+    completeness: 2
+    clarity: 0
+    testability: 4
+  has_fix_count: 4
+  has_location_count: 4
+  has_evidence_count: 2
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: true
+  uses_conditionals: false
+  uncertainty_phrases_count: 0
+  confidence_phrases_count: 0
+linguistic:
+  avg_sentence_length: 22.727272727272727
+  vocabulary_richness: 0.464
+  flesch_reading_ease: 7.230000000000018
+  vague_terms_count: 0
+  formality_score: 0.65
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.95
+  evidence_quality: 0.65
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 17
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

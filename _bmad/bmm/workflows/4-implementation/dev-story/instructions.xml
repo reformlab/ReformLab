@@ -78,7 +78,7 @@
 
     <!-- Non-sprint story discovery -->
     <check if="{{sprint_status}} file does NOT exist">
-      <action>Search {implementation_artifacts} for stories directly</action>
+      <action>Search {story_dir} for stories directly</action>
       <action>Find stories with "ready-for-dev" status in files</action>
       <action>Look for story files matching pattern: *-*-*.md</action>
       <action>Read each candidate story file to check Status section</action>
@@ -114,7 +114,7 @@
     </check>
 
     <action>Store the found story_key (e.g., "1-2-user-authentication") for later status updates</action>
-    <action>Find matching story file in {implementation_artifacts} using story_key pattern: {{story_key}}.md</action>
+    <action>Find matching story file in {story_dir} using story_key pattern: {{story_key}}.md</action>
     <action>Read COMPLETE story file from discovered path</action>
 
     <anchor id="task_check" />
@@ -228,7 +228,13 @@
     <action>Plan implementation following red-green-refactor cycle</action>
 
     <!-- RED PHASE -->
-    <action>Write FAILING tests first for the task/subtask functionality</action>
+    <critical>BEFORE writing any new tests, search for existing test.fixme() tests:
+      1. Check story Dev Notes for ATDD test file paths
+      2. Search project test directories (tests/**) for files containing test.fixme()
+      If test.fixme() tests are found for this story, you MUST convert them to test() — do NOT write new tests that duplicate ATDD coverage.</critical>
+    <action>If test.fixme() tests exist: convert matching test.fixme() calls to regular test() calls to activate them</action>
+    <action>If test.fixme() tests exist: run activated tests to confirm they FAIL (RED phase verified)</action>
+    <action>If NO test.fixme() tests found: write FAILING tests first for the task/subtask functionality</action>
     <action>Confirm tests fail before implementation - this validates test correctness</action>
 
     <!-- GREEN PHASE -->
@@ -277,6 +283,8 @@
     <action>Confirm implementation matches EXACTLY what the task/subtask specifies - no extra features</action>
     <action>Validate that ALL acceptance criteria related to this task are satisfied</action>
     <action>Run full test suite to ensure NO regressions introduced</action>
+    <action>Verify no test.fixme() calls remain in test files for tasks already marked complete in this story</action>
+    <critical>FAILURE CONDITION: test.fixme() calls remain for completed tasks. Convert them to test() and ensure they pass before marking task complete. Do NOT proceed until this is resolved.</critical>
 
     <!-- REVIEW FOLLOW-UP HANDLING -->
     <check if="task is review follow-up (has [AI-Review] prefix)">
@@ -339,6 +347,7 @@
       - File List includes every new/modified/deleted file (relative paths)
       - Dev Agent Record contains implementation notes
       - Change Log includes summary of changes
+      - No test.fixme() calls remain for completed tasks (all ATDD RED-phase tests activated and passing)
       - Only permitted story sections were modified
     </action>
 
@@ -397,7 +406,6 @@
       - Verify all acceptance criteria are met
       - Ensure deployment readiness if applicable
       - Run `code-review` workflow for peer review
-      - Optional: If Test Architect module installed, run `/bmad:tea:automate` to expand guardrail tests
     </action>
 
     <output>💡 **Tip:** For best results, run `code-review` using a **different** LLM than the one that implemented this story.</output>

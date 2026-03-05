@@ -1,0 +1,122 @@
+record_id: ce4a24c8-d306-4f1b-bf83-26217720c433
+created_at: '2026-03-05T14:57:40.468695+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 11
+  story_num: '6'
+  title: Story 11.6
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: haiku
+  role: validator
+  role_id: a
+  session_id: 4172da68-3a8d-4eea-b6ad-f3fc1888b490
+execution:
+  start_time: '2026-03-05T14:54:19.869398Z'
+  end_time: '2026-03-05T14:55:47.985398Z'
+  duration_ms: 88116
+  input_tokens: 0
+  output_tokens: 2521
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 10087
+  heading_count: 22
+  list_depth_max: 2
+  code_block_count: 11
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - '**Evidence Score: 1.4 → APPROVED** ✅'
+  - 🐛 Critical Findings
+  - '1. **🟠 LYING TEST: Incomplete assertion in test_all_step_logs_have_valid_attributes**'
+  - 'or for merge steps:'
+  - '2. **🟠 CODE DUPLICATION: Identical mock classes in two files**'
+  - conftest.py
+  - test_pipeline.py
+  - 🔍 Code Quality Issues
+  - '3. **Incomplete Test Coverage: to_governance_entries() with empty records**'
+  - '4. **Misleading Docstring: Dead TYPE_CHECKING code**'
+  - '5. **Logging Inconsistency: Error path missing context**'
+  - '6. **Documentation Clarity: Undocumented edge case**'
+  - 'No mention of: what if add_source() is called after add_merge()?'
+  - '7. **Missing Validation: PipelineExecutionError.step_type**'
+  - '8. **Missing Test: Pipeline Idempotency**'
+  - 'Missing test:'
+  - 9. **Unused Test Fixtures**
+  - ✅ What Passed Review
+  - 🎯 Recommendations
+  - Summary
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.31
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 6491dd43dff0
+findings:
+  total_count: 9
+  by_severity:
+    critical: 0
+    major: 2
+    minor: 7
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 3
+    completeness: 2
+    clarity: 3
+    testability: 1
+  has_fix_count: 9
+  has_location_count: 9
+  has_evidence_count: 9
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: false
+  uses_conditionals: true
+  uncertainty_phrases_count: 6
+  confidence_phrases_count: 1
+linguistic:
+  avg_sentence_length: 27.533333333333335
+  vocabulary_richness: 0.3309120258272801
+  flesch_reading_ease: 22.65534049324515
+  vague_terms_count: 0
+  formality_score: 0.5
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.95
+  evidence_quality: 0.65
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 6
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

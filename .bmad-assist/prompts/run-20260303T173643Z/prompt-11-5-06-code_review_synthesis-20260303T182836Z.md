@@ -1,0 +1,3970 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- BMAD Prompt Run Metadata -->
+<!-- Epic: 11 -->
+<!-- Story: 5 -->
+<!-- Phase: code-review-synthesis -->
+<!-- Timestamp: 20260303T182836Z -->
+<compiled-workflow>
+<mission><![CDATA[
+
+Master Code Review Synthesis: Story 11.5
+
+You are synthesizing 2 independent code review findings.
+
+Your mission:
+1. VERIFY each issue raised by reviewers
+   - Cross-reference with project_context.md (ground truth)
+   - Cross-reference with git diff and source files
+   - Identify false positives (issues that aren't real problems)
+   - Confirm valid issues with evidence
+
+2. PRIORITIZE real issues by severity
+   - Critical: Security vulnerabilities, data corruption risks
+   - High: Bugs, logic errors, missing error handling
+   - Medium: Code quality issues, performance concerns
+   - Low: Style issues, minor improvements
+
+3. SYNTHESIZE findings
+   - Merge duplicate issues from different reviewers
+   - Note reviewer consensus (if 3+ agree, high confidence)
+   - Highlight unique insights from individual reviewers
+
+4. APPLY source code fixes
+   - You have WRITE PERMISSION to modify SOURCE CODE files
+   - CRITICAL: Before using Edit tool, ALWAYS Read the target file first
+   - Use EXACT content from Read tool output as old_string, NOT content from this prompt
+   - If Read output is truncated, use offset/limit parameters to locate the target section
+   - Apply fixes for verified issues
+   - Do NOT modify the story file (only Dev Agent Record if needed)
+   - Document what you changed and why
+
+Output format:
+## Synthesis Summary
+## Issues Verified (by severity)
+## Issues Dismissed (false positives with reasoning)
+## Source Code Fixes Applied
+
+]]></mission>
+<context>
+<file id="b5c6fe32" path="_bmad-output/project-context.md" label="PROJECT CONTEXT"><![CDATA[
+
+---
+project_name: 'ReformLab'
+user_name: 'Lucas'
+date: '2026-02-27'
+status: 'complete'
+sections_completed: ['technology_stack', 'language_rules', 'framework_rules', 'testing_rules', 'code_quality', 'workflow_rules', 'critical_rules']
+rule_count: 38
+optimized_for_llm: true
+---
+
+# Project Context for AI Agents
+
+_This file contains critical rules and patterns that AI agents must follow when implementing code in this project. Focus on unobvious details that agents might otherwise miss._
+
+---
+
+## Technology Stack & Versions
+
+- **Python 3.13+** — `target-version = "py313"` (ruff), `python_version = "3.13"` (mypy strict)
+- **uv** — package manager, **hatchling** — build backend
+- **pyarrow >= 18.0.0** — canonical data type (`pa.Table`), CSV/Parquet I/O
+- **pyyaml >= 6.0.2** — YAML template/config loading
+- **jsonschema >= 4.23.0** — JSON Schema validation for templates
+- **openfisca-core >= 44.0.0** — optional dependency (`[openfisca]` extra); never import outside adapter modules
+- **pytest >= 8.3.3, ruff >= 0.15.0, mypy >= 1.19.0** — dev tooling
+- **Planned frontend:** React 18+ / TypeScript / Vite / Shadcn/ui / Tailwind v4
+- **Planned backend API:** FastAPI + uvicorn
+- **Planned deployment:** Kamal 2 on Hetzner CX22
+
+### Version Constraints
+
+- mypy runs in **strict mode** with explicit `ignore_missing_imports` overrides for openfisca, pyarrow, jsonschema, yaml
+- OpenFisca is optional — core library must function without it installed
+
+## Critical Implementation Rules
+
+### Python Language Rules
+
+- **Every file starts with** `from __future__ import annotations` — no exceptions
+- **Use `if TYPE_CHECKING:` guards** for imports that are only needed for annotations or would create circular dependencies; do the runtime import locally where needed
+- **Frozen dataclasses are the default** — all domain types use `@dataclass(frozen=True)`; mutate via `dataclasses.replace()`, never by assignment
+- **Protocols, not ABCs** — interfaces are `Protocol` + `@runtime_checkable`; no abstract base classes; structural (duck) typing only
+- **Subsystem-specific exceptions** — each module defines its own error hierarchy; never raise bare `Exception` or `ValueError` for domain errors
+- **Metadata bags** use `dict[str, Any]` with **stable string-constant keys** defined at module level (e.g., `STEP_EXECUTION_LOG_KEY`)
+- **Union syntax** — use `X | None` not `Optional[X]`; use `dict[str, int]` not `Dict[str, int]` (modern generics, no `typing` aliases)
+- **`tuple[...]` for immutable sequences** — function parameters and return types that are ordered-and-fixed use `tuple`, not `list`
+
+### Architecture & Framework Rules
+
+- **Adapter isolation is absolute** — only `computation/openfisca_adapter.py` and `openfisca_api_adapter.py` may import OpenFisca; all other code uses the `ComputationAdapter` protocol
+- **Step pipeline contract** — steps implement `OrchestratorStep` protocol (`name` + `execute(year, state) -> YearState`); bare callables accepted via `adapt_callable()`; registration via `StepRegistry` with topological sort on `depends_on`
+- **Template packs are YAML** — live in `src/reformlab/templates/packs/{policy_type}/`; validated against JSON Schemas in `templates/schema/`; each policy type has its own subpackage with `compute.py` + `compare.py`
+- **Data flows through PyArrow** — `PopulationData` (dict of `pa.Table` by entity) → adapter → `ComputationResult` (`pa.Table`) → `YearState.data` → `PanelOutput` (stacked table) → indicators
+- **`YearState` is the state token** — passed between steps and years; immutable (frozen dataclass); updated via `replace()`
+- **Orchestrator is the core product** — never build custom policy engines, formula compilers, or entity graph engines; OpenFisca handles computation, this project handles orchestration
+
+### Testing Rules
+
+- **Mirror source structure** — `tests/{subsystem}/` matches `src/reformlab/{subsystem}/`; each has `__init__.py` and `conftest.py`
+- **Class-based test grouping** — group tests by feature or acceptance criterion (e.g., `TestOrchestratorBasicExecution`); reference story/AC IDs in comments and docstrings
+- **Fixtures in conftest.py** — subsystem-specific fixtures per `conftest.py`; build PyArrow tables inline, use `tmp_path` for I/O, golden YAML files in `tests/fixtures/`
+- **Direct assertions** — use plain `assert`; no custom assertion helpers; use `pytest.raises(ExceptionClass, match=...)` for errors
+- **Test helpers are explicit** — import shared callables from conftest directly (`from tests.orchestrator.conftest import ...`); no hidden magic
+- **Golden file tests** — YAML fixtures in `tests/fixtures/templates/`; test load → validate → round-trip cycle
+- **MockAdapter for unit tests** — never use real OpenFisca in orchestrator/template/indicator unit tests; `MockAdapter` is the standard test double
+
+### Code Quality & Style Rules
+
+- **ruff** enforces `E`, `F`, `I`, `W` rule sets; `src = ["src"]`; target Python 3.13
+- **mypy strict** — all code must pass `mypy --strict`; new modules need `ignore_missing_imports` overrides in `pyproject.toml` only for third-party libs without stubs
+- **File naming** — `snake_case.py` throughout; no PascalCase or kebab-case files
+- **Class naming** — PascalCase for classes (`OrchestratorStep`, `CarbonTaxParameters`); no suffixes like `Impl` or `Base`
+- **Module-level docstrings** — every module has a docstring explaining its role, referencing relevant story/FR
+- **Section separators** — use `# ====...====` comment blocks to separate major sections within longer modules (see `step.py`)
+- **No wildcard imports** — always import specific names; `from reformlab.orchestrator import Orchestrator, OrchestratorConfig`
+- **Logging** — use `logging.getLogger(__name__)`; structured key=value format for parseable log lines (e.g., `year=%d seed=%s event=year_start`)
+
+### Development Workflow Rules
+
+- **Package manager is uv** — use `uv pip install`, `uv run pytest`, etc.; not `pip` directly
+- **Test command** — `uv run pytest tests/` (or specific subsystem path)
+- **Lint command** — `uv run ruff check src/ tests/` and `uv run mypy src/`
+- **Source layout** — `src/reformlab/` is the installable package; `tests/` is separate; `pythonpath = ["src"]` in pytest config
+- **Build system** — hatchling with `packages = ["src/reformlab"]`
+- **No auto-formatting on save assumed** — agents must produce ruff-compliant code; run `ruff check --fix` if needed
+
+### Critical Don't-Miss Rules
+
+- **Never import OpenFisca outside adapter modules** — this is the single most important architectural boundary; violation couples the entire codebase to one backend
+- **All domain types are frozen** — never add a mutable dataclass; if you need mutation, use `dataclasses.replace()` and return a new instance
+- **Determinism is non-negotiable** — every run must be reproducible; seeds are explicit, logged in manifests, derived deterministically (`master_seed XOR year`)
+- **Data contracts fail loudly** — contract validation at ingestion boundaries is field-level and blocking; never silently coerce or drop data
+- **Assumption transparency** — every run produces a manifest (JSON); assumptions, versions, seeds, data hashes are all recorded
+- **PyArrow is the canonical data type** — do not use pandas DataFrames in core logic; `pa.Table` is the standard; pandas only at display/export boundaries if needed
+- **No custom formula compiler** — environmental policy logic is Python code in template `compute.py` modules, not YAML formula strings or DSLs
+- **France/Europe first** — initial scenarios use French policy parameters (EUR, INSEE deciles, French carbon tax rates); European data sources (Eurostat, EU-SILC)
+
+---
+
+## Usage Guidelines
+
+**For AI Agents:**
+
+- Read this file before implementing any code
+- Follow ALL rules exactly as documented
+- When in doubt, prefer the more restrictive option
+- Update this file if new patterns emerge
+
+**For Humans:**
+
+- Keep this file lean and focused on agent needs
+- Update when technology stack changes
+- Review quarterly for outdated rules
+- Remove rules that become obvious over time
+
+Last Updated: 2026-02-27
+
+
+]]></file>
+<file id="1456c4bb" path="_bmad-output/planning-artifacts/architecture.md" label="ARCHITECTURE"><![CDATA[
+
+---
+stepsCompleted: [1, 2, 3, 4, 5]
+inputDocuments:
+  - _bmad-output/planning-artifacts/prd.md
+  - _bmad-output/planning-artifacts/product-brief-ReformLab-2026-02-23.md
+  - _bmad-output/planning-artifacts/stakeholder-review-brief-ReformLab-2026-02-24.md
+  - _bmad-output/planning-artifacts/ux-design-specification.md
+  - _bmad-output/planning-artifacts/research/technical-entity-graph-data-modeling-and-vectorized-simulation-engines-research-2026-02-23.md
+  - _bmad-output/planning-artifacts/research/domain-generic-microsimulation-frameworks-research-2026-02-23.md
+workflowType: 'architecture'
+project_name: 'ReformLab'
+user_name: 'Lucas'
+date: '2026-02-25'
+---
+
+# Architecture Decision Document
+
+_Updated 2026-02-25: Legacy custom engine sections removed per Sprint Change Proposal. See sprint-change-proposal-2026-02-25.md._
+_Updated 2026-03-03: Phase 2 Architecture Extensions added per Sprint Change Proposal 2026-03-02. New subsystems (population, calibration), policy portfolios, discrete choice model, unified job execution, adaptive UI, external data caching, multi-portfolio comparison. See sprint-change-proposal-2026-03-02.md._
+
+## Strategic Direction Update (2026-02-25)
+
+### Decision
+
+ReformLab will **not** build a replacement tax-benefit microsimulation core.
+OpenFisca is the policy-calculation foundation, accessed through a clean adapter interface. This project builds differentiated layers above it: data preparation, environmental policy orchestration, multi-year projection with vintage tracking, indicators, governance, and user interfaces.
+
+The **dynamic orchestrator is the core product** — not a computation engine.
+
+### Active Scope
+
+- Data ingestion and harmonization (OpenFisca outputs, synthetic population inputs, environmental datasets).
+- Scenario/template layer for environmental policies (carbon tax, subsidies, rebates, feebates).
+- Step-pluggable dynamic orchestrator for multi-year execution (10+ years) with vintage/cohort tracking.
+- Indicator layer (distributional, welfare, fiscal, custom metrics).
+- Run governance (manifests, assumption logs, lineage).
+- No-code analyst GUI for scenario setup, execution, and comparison.
+
+### Out Of Scope (MVP)
+
+- Reimplementing OpenFisca internals.
+- Custom formula compiler or policy engine.
+- Endogenous market-clearing/equilibrium simulation.
+- Physical system loop simulation (climate/energy stock-flow engines).
+
+## Project Context Analysis (Active Baseline)
+
+### Requirements Overview
+
+**Functional focus (55 FRs — 35 Phase 1, 20 Phase 2):**
+
+- OpenFisca integration and data contracts.
+- Environmental scenario templates and batch comparison.
+- Dynamic yearly orchestration with vintage tracking.
+- Indicator computation and extensibility.
+- Governance, reproducibility, and lineage.
+- Notebook/API + early no-code GUI workflows.
+- _Phase 2:_ Population generation and data fusion (FR36-FR42).
+- _Phase 2:_ Policy portfolios (FR43-FR46).
+- _Phase 2:_ Behavioral responses via discrete choice (FR47-FR51).
+- _Phase 2:_ Calibration engine (FR52-FR53).
+- _Phase 2:_ Replication package export (FR54-FR55).
+
+**Non-functional focus (21 NFRs):**
+
+- Deterministic and reproducible outputs.
+- Laptop-scale performance for common workloads.
+- Strict data privacy and offline execution.
+- Versioned adapter compatibility with OpenFisca.
+- CI-enforced quality on adapters, orchestration, and templates.
+
+### Technical Constraints
+
+- Python 3.13+.
+- OpenFisca as the core rules engine dependency.
+- CSV/Parquet as interoperability contracts.
+- Fully offline operation in user environment (Phase 1). Phase 2 introduces optional network dependencies for institutional data downloads (INSEE, Eurostat, ADEME, SDES) with offline fallback — see External Data Caching section.
+- Single-machine target (16GB laptop) for MVP.
+
+### Cross-Cutting Concerns
+
+1. Assumption transparency and manifest lineage across all runs.
+2. Deterministic sequencing in multi-year iterative execution.
+3. Adapter/version governance for OpenFisca compatibility.
+4. Clear data-contract validation at every ingestion boundary.
+5. Scenario/template versioning for auditability and collaboration.
+
+## Active Architecture Blueprint
+
+### Core Design Principle
+
+ReformLab does NOT build a policy computation engine. OpenFisca is the tax-benefit computation layer. This project builds everything around it: data preparation, environmental policy orchestration, multi-year projection, vintage tracking, indicators, governance, and user interfaces.
+
+### Layered Architecture
+
+```
+┌─────────────────────────────────────────────────────┐
+│  Interfaces (Python API, Notebooks, GUI Showcase)    │
+│  └── Job Dashboard (submit, monitor, browse results) │
+├─────────────────────────────────────────────────────┤
+│  Indicator Engine (distributional/welfare/fiscal)    │
+│  └── Multi-Portfolio Comparison                      │
+├─────────────────────────────────────────────────────┤
+│  Governance (manifests, assumptions, lineage)        │
+├─────────────────────────────────────────────────────┤
+│  Calibration Engine (β parameter optimization)       │
+├─────────────────────────────────────────────────────┤
+│  Dynamic Orchestrator (year loop + step pipeline)    │
+│  ├── Vintage Transitions                             │
+│  ├── State Carry-Forward                             │
+│  └── DiscreteChoiceStep (logit-based decisions)      │
+├─────────────────────────────────────────────────────┤
+│  Scenario Template Layer (policies + portfolios)     │
+│  └── Policy Portfolio Composition                    │
+├─────────────────────────────────────────────────────┤
+│  Data Layer (ingestion, open data, populations)      │
+│  └── Population Generation Library (data fusion)     │
+├─────────────────────────────────────────────────────┤
+│  Computation Adapter Interface                       │
+│  └── OpenFiscaAdapter (primary implementation)       │
+└─────────────────────────────────────────────────────┘
+```
+
+### Computation Adapter Pattern
+
+The orchestrator never calls OpenFisca directly. All tax-benefit computation goes through a clean adapter interface:
+
+```python
+class ComputationAdapter(Protocol):
+    """Interface for tax-benefit computation backends."""
+    def compute(self, population: PopulationData, policy: PolicyConfig,
+                period: int) -> ComputationResult: ...
+    def version(self) -> str: ...
+
+class OpenFiscaAdapter(ComputationAdapter):
+    """Primary implementation wrapping OpenFisca."""
+    ...
+```
+
+This allows:
+- Swapping OpenFisca for PolicyEngine or other backends in the future
+- Mocking the computation layer for orchestrator testing
+- Version-pinning OpenFisca without coupling the core codebase
+
+### Step-Pluggable Dynamic Orchestrator
+
+The orchestrator runs a yearly loop (t → t+n) where each year executes a pipeline of pluggable steps:
+
+```
+For each year t in [start_year .. end_year]:
+  1. Run ComputationAdapter (OpenFisca tax-benefit for year t)
+  2. Apply environmental policy templates (carbon tax, subsidies)
+  3. Execute transition steps (pluggable pipeline):
+     a. Vintage transitions (asset cohort aging, fleet turnover)
+     b. State carry-forward (income updates, demographic changes)
+     c. [Phase 2: Behavioral response adjustments]
+  4. Record year-t results and manifest entry
+  5. Feed updated state into year t+1
+```
+
+Steps are registered as plugins. Phase 1 ships vintage transitions and state carry-forward. Phase 2 adds behavioral response steps without modifying the orchestrator core.
+
+### Subsystems
+
+**Phase 1 (delivered):**
+
+1. `computation/`: Adapter interface + OpenFiscaAdapter implementation. Handles CSV/Parquet ingestion of OpenFisca outputs and optional direct API orchestration. Version-pinned contracts.
+2. `data/`: Open data ingestion, synthetic population generation, data transformation pipelines. Prepares inputs for the computation adapter.
+3. `templates/`: Environmental policy templates (carbon tax, subsidies, rebates, feebates) and scenario registry with versioned definitions.
+4. `orchestrator/`: Dynamic yearly loop with step-pluggable pipeline. Manages deterministic sequencing, seed control, and state transitions.
+5. `vintage/`: Cohort/vintage state management. Registered as orchestrator step. Tracks asset classes (vehicles, heating) through time.
+6. `indicators/`: Distributional, welfare, fiscal, and custom indicator computation. Aggregation by decile, geography, and custom groupings.
+7. `governance/`: Run manifests, assumption logs, run lineage, output hashes. Tracks OpenFisca version, adapter version, scenario version.
+8. `interfaces/`: Python API, notebook workflows, early no-code GUI.
+
+**Phase 2 (new + extended):**
+
+1. `population/`: Realistic population generation library. Institutional data source loaders (INSEE, Eurostat, ADEME, SDES), statistical methods library (uniform, IPF, conditional sampling, statistical matching), population pipeline builder, assumption recording, validation against known marginals.
+2. `templates/portfolios/`: Policy portfolio composition. Named, versioned collections of policy configs. Portfolio execution through orchestrator, compatibility validation, conflict resolution.
+3. `orchestrator/steps/discrete_choice.py`: DiscreteChoiceStep registered as standard OrchestratorStep. Population expansion, logit model, seed-controlled draws, panel decision records.
+4. `calibration/`: Calibration engine for discrete choice taste parameters. Objective function optimization against observed transition rates, validation against holdout data.
+5. `server/jobs/`: Unified job execution system. File-based job store, background worker, progress reporting, persistent results. Replaces synchronous run model.
+6. `frontend/`: GUI showcase product — data fusion workbench, policy portfolio designer, simulation dashboard, persistent results, multi-portfolio comparison, behavioral decision viewer.
+
+### Starter & Tooling Decisions
+
+- Scientific Python packaging: `pyproject.toml`, `uv`, `pytest`, `ruff`, `mypy`
+- CI split: fast adapter/unit tests and slower integration/regression runs
+- Coverage focus: adapter contracts, orchestrator determinism, vintage transitions, template correctness
+- No custom formula compiler — environmental policy logic is Python code in template modules, not YAML formula strings
+
+### Data Contracts
+
+- Input: OpenFisca outputs (CSV/Parquet), synthetic populations, environmental datasets (emission factors, energy consumption)
+- Output: yearly panel datasets, scenario comparison tables, indicator exports
+- Contract failures are explicit, field-level, and blocking
+- Adapter interface defines the computation contract boundary
+
+### Dynamic Execution Semantics
+
+- Baseline and reform scenarios run over 10+ years.
+- Each year is explicit (`t`, `t+1`, ..., `t+n`), with deterministic carry-forward rules.
+- Vintage states are updated through registered transition step functions.
+- Randomness is seed-controlled and logged in manifests.
+- Orchestrator step pipeline is the extension point for Phase 2+ capabilities.
+
+### Reproducibility & Governance
+
+- Every run records: OpenFisca version, adapter version, scenario version, data hashes, seeds, assumptions, step pipeline configuration.
+- Cross-machine reproducibility uses documented tolerances where floating point differs.
+- Lineage links yearly sub-runs to parent scenario runs.
+- Manifests are JSON, machine-readable, Git-diffable.
+
+### Delivery Sequence
+
+1. Computation adapter + OpenFisca integration (simplified EPIC-1).
+2. Carbon-tax + subsidy templates with baseline/reform comparison.
+3. Dynamic orchestrator (pluggable step pipeline) + vintage module MVP.
+4. Indicator layer and manifest lineage hardening.
+5. Early no-code GUI workflow for analyst scenario operations.
+
+### Phase 2 Architecture Extensions (2026-03-03)
+
+#### New Subsystem: Population Generation (`population/`)
+
+```
+src/reformlab/population/
+├── __init__.py
+├── loaders/           ← Institutional data source downloaders/cachers
+│   ├── __init__.py
+│   ├── base.py        ← DataSourceLoader protocol
+│   ├── insee.py       ← INSEE data loader
+│   ├── eurostat.py    ← Eurostat data loader
+│   ├── ademe.py       ← ADEME energy data loader
+│   └── sdes.py        ← SDES vehicle fleet data loader
+├── methods/           ← Statistical fusion methods library
+│   ├── __init__.py
+│   ├── base.py        ← MergeMethod protocol
+│   ├── uniform.py     ← Uniform distribution assumption
+│   ├── ipf.py         ← Iterative Proportional Fitting
+│   ├── conditional.py ← Conditional distribution sampling
+│   └── matching.py    ← Statistical matching / data fusion
+├── pipeline.py        ← PopulationPipeline builder (compose loaders + methods)
+├── assumptions.py     ← Assumption recording for governance integration
+└── validation.py      ← Validate against known marginals
+```
+
+Design principles:
+
+- Each loader implements `DataSourceLoader` protocol (download, cache, schema-validate, return `pa.Table`)
+- Each method implements `MergeMethod` protocol (takes two tables + config, returns merged table + assumption record)
+- Pipeline is composable: chain loaders and methods, record every step
+- Assumption records integrate with existing governance `capture.py`
+- Methods library includes pedagogical docstrings explaining assumptions in plain language
+
+#### External Data Caching & Offline Strategy
+
+Phase 1 had zero network dependencies at runtime. Phase 2 introduces optional HTTP downloads from institutional sources (INSEE, Eurostat, ADEME, SDES). The caching strategy ensures offline-first operation:
+
+**Two-layer cache:**
+
+```
+~/.reformlab/cache/
+  sources/
+    insee/
+      {dataset_id}/{hash}.parquet    ← downloaded + schema-validated
+    eurostat/
+      ...
+```
+
+- **First run:** Loader downloads, validates schema, writes to local cache. Hash-based freshness (SHA256 of URL + params + date).
+- **Subsequent runs:** Cache hit → no network. Cache miss → download. Network failure + cache exists → use stale cache with governance warning logged.
+- **Fully offline mode:** Environment variable `REFORMLAB_OFFLINE=1` — loaders only read cache, never attempt network. Fail explicitly if cache miss.
+- **CI/CD:** Tests ship with small fixture files, never hit real APIs. Integration tests for real downloads are opt-in (`pytest -m network`).
+
+**Loader protocol includes cache status reporting:**
+
+```python
+class CacheStatus:
+    """Status of a cached data source."""
+    cached: bool
+    path: Path | None
+    downloaded_at: datetime | None
+    hash: str | None
+    stale: bool
+
+class DataSourceLoader(Protocol):
+    def download(self, config: SourceConfig) -> pa.Table: ...
+    def status(self, config: SourceConfig) -> CacheStatus: ...
+    def schema(self) -> pa.Schema: ...
+```
+
+The GUI Data Fusion Workbench displays cache status per dataset so analysts know which sources are available offline.
+
+#### Extension: Policy Portfolio Layer (`templates/portfolios/`)
+
+```
+src/reformlab/templates/
+├── portfolios/
+│   ├── __init__.py
+│   ├── portfolio.py     ← PolicyPortfolio frozen dataclass (list of policy configs)
+│   ├── composition.py   ← Compose templates, validate compatibility, resolve conflicts
+│   └── execution.py     ← Execute portfolio through orchestrator (apply all policies per year)
+```
+
+Design: A `PolicyPortfolio` is a named, versioned collection of `PolicyConfig` objects. The orchestrator receives a portfolio instead of a single policy, and applies each policy in the portfolio at each yearly step. The scenario registry stores portfolios alongside individual scenarios.
+
+#### New Orchestrator Step: `DiscreteChoiceStep`
+
+Registers as a standard `OrchestratorStep` via existing protocol. Implementation follows the design note (`phase-2-design-note-discrete-choice-household-decisions.md`):
+
+- Population expansion: clone households × N alternatives, modify attributes per alternative
+- OpenFisca batch evaluation: call `adapter.compute()` on expanded population
+- Reshape to cost matrix: N households × M alternatives
+- Logit probability computation: `P(j|C_i) = exp(V_ij) / Σ_k exp(V_ik)`
+- Seed-controlled draw: deterministic choice per household
+- State update: modify household attributes + create vintage entries
+
+No changes to `ComputationAdapter` interface or orchestrator core needed.
+
+**Performance budget:** Discrete choice introduces ~11x computation scaling (100k households × 5 alternatives × 2 domains). Target: 10-year discrete choice run with 100k households completes in <60s on laptop. Eligibility filtering is mandatory — only eligible households face choices (a household without a car does not face a vehicle investment decision). This is both a performance requirement and a model correctness requirement.
+
+#### New Subsystem: Calibration (`calibration/`)
+
+```
+src/reformlab/calibration/
+├── __init__.py
+├── engine.py          ← CalibrationEngine (optimize β parameters)
+├── targets.py         ← Observed transition rates as calibration targets
+├── objective.py       ← Objective function (minimize distance to observed rates)
+└── validation.py      ← Validate calibrated parameters against holdout data
+```
+
+#### Unified Job Execution Model
+
+Phase 1 used synchronous `POST /api/runs` (blocking until completion). Phase 2 replaces this with a **unified job queue** that handles both fast static runs and long-running discrete choice simulations through a single execution path.
+
+**Design: Submit → Persist → Execute → Results Available**
+
+Every simulation is a job. The backend does not distinguish between "fast" and "slow" runs. The frontend adapts:
+
+- **Fast completion (<~5s):** UI auto-navigates to results. Feels instant to the analyst.
+- **Slow completion:** UI shows progress, informs analyst they can leave. Job keeps running.
+- **Analyst leaves and returns:** Completed jobs are browsable in the simulation dashboard.
+
+**Job store on disk:**
+
+```
+/data/reformlab/jobs/
+  {job_id}/
+    job.json             ← submitted config, status, timestamps
+    progress.json        ← last reported progress (year, step, pct)
+    result/
+      manifest.json      ← run governance manifest
+      panel.parquet      ← full panel output
+      decisions.parquet  ← discrete choice decision records (Phase 2)
+```
+
+**Job lifecycle:**
+
+1. On submit: write `job.json` with status `queued`, return `job_id`
+2. Worker thread picks up queued jobs, updates status to `running`, writes `progress.json` as it goes
+3. On completion: writes results to `result/`, updates status to `completed`
+4. On server restart: scan `/jobs/` directory, resume or mark interrupted jobs as `failed`
+
+**Implementation:** Single background worker thread with `ThreadPoolExecutor(max_workers=1)` for MVP. No Celery, no Redis. Upgrade to thread pool for parallelism if needed.
+
+```python
+class JobRunner:
+    def __init__(self, store: JobStore, max_workers: int = 1):
+        self._store = store
+        self._executor = ThreadPoolExecutor(max_workers=max_workers)
+
+    def submit(self, config: JobConfig) -> str:
+        job_id = self._store.create(config)  # persists to disk
+        self._executor.submit(self._run, job_id)
+        return job_id
+```
+
+**Progress reporting:** Orchestrator callbacks `on_year_start(year)` and `on_step_progress(step_name, pct)` write to `progress.json`. Frontend polls for updates.
+
+**Result access:** In-memory `ResultCache` (LRU, max 10) sits on top of the file-based job store. Cache miss → load from disk. Cache hit → serve from memory.
+
+#### Extension: Multi-Portfolio Comparison
+
+Phase 1 comparison was pairwise (one baseline vs one reform). Phase 2 extends to N-way comparison for policy portfolio analysis:
+
+- Every reform is compared against the same baseline — standard policy analysis pattern
+- Cross-comparison adds aggregate metrics: "which portfolio maximizes welfare?", "which has lowest fiscal cost?"
+- The pairwise comparison API remains as a convenience alias (N=1 case)
+
+#### Extension: Server Routes
+
+New API route groups for Phase 2:
+
+- `/api/populations` — CRUD + generation pipeline execution + cache status
+- `/api/portfolios` — CRUD + composition + versioning
+- `/api/calibration` — run calibration + retrieve results
+- `/api/jobs` — submit, status, result, cancel, list (replaces synchronous `/api/runs`)
+- `/api/comparison` — extended to support multi-portfolio comparison
+
+#### Extension: Frontend
+
+Major new GUI sections for EPIC-17:
+
+- **Data Fusion Workbench:** Browse available datasets with cache status, select sources, choose merge methods with plain-language explanations, preview populations, validate against marginals
+- **Policy Portfolio Designer:** Browse templates, compose portfolios, configure parameters per policy, name and version portfolios
+- **Simulation Dashboard:** Submit jobs, monitor progress, browse completed simulations — all jobs listed with status, timestamps, and results access
+- **Persistent Results:** Completed simulations stored on disk, browsable across browser sessions, no re-runs needed
+- **Comparison Dashboard:** Side-by-side comparison across N policy portfolios with distributional, welfare, and fiscal indicators
+- **Behavioral Decision Viewer:** Explore household decisions from discrete choice model (who switched vehicles, by decile, by year)
+
+### Phase 3+ Architecture Extensions
+
+- **Automated sensitivity sweeps:** Parameter variation automation over calibrated discrete choice models
+- **System dynamics bridge:** Aggregate stock-flow outputs derived from microsimulation vintage tracking results
+- **Alternative computation backends:** Swap adapter implementations without changing orchestrator or indicator layers
+- **Public-facing web app:** Citizen-facing UI with guided questionnaire and candidate comparison
+
+## Deployment & GUI Architecture (2026-02-27)
+
+### Deployment Decision
+
+The no-code GUI (EPIC-6) will be a web application with a React/TypeScript frontend and a FastAPI Python backend, deployed on a Hetzner VPS using Kamal 2 (Docker-based deployment tool). The MVP is deployed from day one to enable sharing with colleagues (2-10 users).
+
+### Rationale
+
+- **Same stack for MVP and future phases** — no throwaway prototype. The MVP GUI uses the same React + Shadcn/ui + Tailwind + FastAPI stack specified in the UX design document. Phase 3 (public web app) extends rather than replaces.
+- **Hetzner** chosen for: best price/performance in Europe (~3.29 EUR/month for CX22), EU datacenter (Germany), GDPR compliance, not subject to US Cloud Act.
+- **Kamal 2** chosen for: zero-downtime Docker deployments via SSH, built-in Traefik reverse proxy with automatic HTTPS, single YAML config file, language-agnostic (works with Python, Node, any Docker image), rollback in one command. Created by DHH (Rails creator), standard in Rails 8, but fully framework-agnostic.
+- **Provider-agnostic** — Kamal deploys to any Linux server via SSH. Migrating to a different host (Scaleway, OVH, or a SecNumCloud provider) means changing one IP address in the config.
+- **File-based storage works natively** — real persistent disk on the VPS, no need to adapt code for S3/object storage. Standard `open()` / `pd.read_parquet()` calls work as-is.
+
+### Monorepo Structure
+
+```
+reformlab/
+  src/                        ← Python backend (FastAPI API + core library)
+  frontend/                   ← React/TypeScript (Vite + Shadcn/ui + Tailwind)
+  tests/
+  Dockerfile                  ← Backend container definition
+  frontend/Dockerfile         ← Frontend container (nginx serving build)
+  config/
+    deploy.yml                ← Kamal deployment configuration
+  .github/workflows/
+    deploy.yml                ← GitHub Actions auto-deploy on push
+  .kamal/
+    secrets                   ← Encrypted secrets for Kamal
+  pyproject.toml
+```
+
+Both frontend and backend live in the same repository. Kamal manages both as separate services on the same Hetzner server.
+
+### Deployment Topology
+
+```
+┌─────────────────────────────────────────────────────┐
+│  GitHub Repository (monorepo)                       │
+│  push to master                                     │
+└──────────────────────┬──────────────────────────────┘
+                       │
+                GitHub Actions
+                runs: kamal deploy
+                       │
+                    SSH + Docker
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────┐
+│  Hetzner CX22 (Germany)                             │
+│  2 vCPU, 4 GB RAM, 40 GB SSD                       │
+│                                                     │
+│  ┌───────────────────────────────────────────┐      │
+│  │  Traefik (reverse proxy, auto HTTPS)      │      │
+│  │  api.reformlab.fr → backend:8000          │      │
+│  │  app.reformlab.fr → frontend:8080         │      │
+│  └───────────────────────────────────────────┘      │
+│                                                     │
+│  ┌─────────────────┐   ┌──────────────────┐         │
+│  │  FastAPI         │   │  nginx + React   │         │
+│  │  (backend)       │   │  (frontend)      │         │
+│  │  :8000           │   │  :8080           │         │
+│  └────────┬────────┘   └──────────────────┘         │
+│           │                                         │
+│           ▼                                         │
+│  ┌──────────────────┐                               │
+│  │  /data/reformlab  │                               │
+│  │  (CSV/Parquet/    │                               │
+│  │   YAML/JSON)      │                               │
+│  └──────────────────┘                               │
+└─────────────────────────────────────────────────────┘
+```
+
+### Frontend Stack
+
+As specified in the UX design document:
+
+- React 18+ with TypeScript
+- Vite (build tooling)
+- Shadcn/ui + Radix UI (component library)
+- Tailwind CSS v4 (styling with design tokens)
+- Recharts/Nivo (simulation charts)
+- React Flow (lineage DAG visualization)
+- React Hook Form + Zod (form handling)
+
+Served as a static build by an nginx container. Calls the backend API via HTTPS.
+
+### Backend Stack
+
+- FastAPI (REST API)
+- Python 3.13+ (same as core library)
+- uvicorn (ASGI server)
+- The FastAPI layer exposes the existing Python API (orchestrator, scenarios, indicators, governance) as HTTP endpoints
+
+### Deployment Stack
+
+- **Kamal 2** — Docker-based deployment tool (SSH + Docker, no Kubernetes)
+- **Traefik** — reverse proxy with automatic Let's Encrypt HTTPS certificates (managed by Kamal)
+- **Docker** — containerization for both frontend and backend
+- **GitHub Actions** — CI/CD trigger on push to master, calls `kamal deploy`
+- **GitHub Container Registry (ghcr.io)** — Docker image storage
+
+### Data Storage
+
+File-based, no database:
+
+- **Scenario configs:** YAML/JSON files on server disk (`/data/reformlab/`)
+- **Run outputs:** CSV/Parquet on server disk
+- **Run manifests:** JSON on server disk
+- **Scenario registry:** File-based (already implemented in EPIC-2)
+- **Job store (Phase 2):** `/data/reformlab/jobs/{job_id}/` directories with `job.json`, `progress.json`, and `result/` subdirectory containing `manifest.json`, `panel.parquet`, `decisions.parquet`
+- **Population cache (Phase 2):** `~/.reformlab/cache/sources/` — downloaded institutional datasets, hash-based freshness
+- **Portfolio configs (Phase 2):** YAML/JSON in scenario registry, versioned alongside individual scenarios
+
+Docker volume mount maps `/data/reformlab` on the host to `/app/data` in the backend container. Data persists across deployments and container restarts. Sufficient for 2-10 users working with open/public data. If multi-user concurrent writes become an issue in Phase 3, migrate to SQLite or PostgreSQL — the file-based contract layer makes this a contained change.
+
+### Authentication (MVP)
+
+Simple shared-password authentication via FastAPI middleware:
+
+- Single shared password stored as a Kamal secret (encrypted in `.kamal/secrets`, injected as environment variable)
+- FastAPI middleware checks password on every API request
+- Frontend shows a password prompt on first access, stores the token in browser session
+- No user accounts, no OAuth, no database — appropriate for 2-10 trusted colleagues
+
+Phase 3 (public web app with Claire persona) will require proper user authentication (OAuth or similar). This is a separate architectural decision at that point.
+
+### Cost Estimate
+
+| Service | Monthly Cost |
+| --- | --- |
+| Hetzner CX22 (2 vCPU, 4 GB RAM, 40 GB SSD) | 3.29 EUR |
+| Domain name (annual, amortized) | ~1 EUR |
+| **Total** | **~4.29 EUR/month** |
+
+### Sovereignty & Compliance Positioning
+
+- Hosted on Hetzner, European provider (Germany), EU datacenter
+- GDPR compliant, data stays in EU, no transfer outside EU
+- Not subject to US Cloud Act or other extra-territorial legislation
+- Application uses exclusively open public data (INSEE, Eurostat, synthetic populations)
+- SecNumCloud is not required for open public data under the French "Cloud au Centre" doctrine
+- If SecNumCloud becomes required (e.g., restricted microdata handling), Kamal deploys to any Linux server via SSH — migrate by changing the target IP to a SecNumCloud-qualified provider (Scalingo on Outscale `osc-secnum-fr1`, or Clever Cloud on Cloud Temple SecNumCloud zone). Application code unchanged.
+
+### Migration Path to Phase 3
+
+Kamal is provider-agnostic. All migrations below require zero application code changes:
+
+1. **More users / more power:** Upgrade Hetzner server (CX32 at 5.39 EUR, CX42 at 17.49 EUR). Change server spec in Hetzner console, redeploy.
+2. **French sovereignty required:** Move to Scaleway or OVH VPS in Paris. Change one IP in `config/deploy.yml`, run `kamal setup && kamal deploy`.
+3. **SecNumCloud required:** Deploy to a server on Scalingo/Outscale `osc-secnum-fr1` or Clever Cloud on Cloud Temple SecNumCloud zone. Same Kamal config, different target.
+4. **User accounts:** Replace shared-password middleware with OAuth/OIDC. Add user table (SQLite or PostgreSQL).
+5. **Horizontal scaling:** Kamal supports multi-server deployment. Add server IPs to `config/deploy.yml` and Kamal load-balances across them via Traefik.
+
+## API Design — FastAPI Server Layer (2026-02-28)
+
+### Design Principle
+
+The FastAPI server is a **thin HTTP facade** over the existing Python API in `src/reformlab/interfaces/api.py`. No business logic lives in the server layer. Every route handler delegates to functions that already work: `run_scenario()`, `create_scenario()`, `list_scenarios()`, `get_scenario()`, `clone_scenario()`, `check_memory_requirements()`, and `SimulationResult` methods (`indicators()`, `export_csv()`, `export_parquet()`).
+
+### Package Structure
+
+```text
+src/reformlab/server/
+├── __init__.py
+├── app.py              ← FastAPI app factory (create_app())
+├── auth.py             ← Shared-password middleware
+├── models.py           ← Pydantic v2 request/response models
+├── dependencies.py     ← Dependency injection (adapter, job runner, result cache)
+├── jobs.py             ← JobStore + JobRunner (Phase 2: unified job execution)
+└── routes/
+    ├── __init__.py
+    ├── scenarios.py    ← Scenario CRUD
+    ├── jobs.py         ← Job submission, status, results (Phase 2: replaces runs.py)
+    ├── runs.py         ← Simulation execution (Phase 1: synchronous, kept for backwards compat)
+    ├── indicators.py   ← Indicator computation
+    ├── comparison.py   ← Multi-portfolio comparison (Phase 2)
+    ├── exports.py      ← File export/download
+    ├── templates.py    ← Template listing
+    ├── populations.py  ← Population CRUD + generation + cache status (Phase 2: extended)
+    ├── portfolios.py   ← Portfolio CRUD + composition (Phase 2)
+    └── calibration.py  ← Calibration run + results (Phase 2)
+```
+
+### Dependencies
+
+Add as optional extra in `pyproject.toml`:
+
+```toml
+[project.optional-dependencies]
+server = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+    "python-multipart>=0.0.9",
+]
+```
+
+Install with `uv sync --extra server`. Pydantic v2 is already a transitive dependency of FastAPI.
+
+### App Factory
+
+`src/reformlab/server/app.py` exposes `create_app() -> FastAPI`:
+
+```python
+def create_app() -> FastAPI:
+    app = FastAPI(
+        title="ReformLab API",
+        version=reformlab.__version__,
+        docs_url="/api/docs",
+        openapi_url="/api/openapi.json",
+    )
+
+    # CORS must be added BEFORE auth middleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_cors_origins(),  # localhost:5173 + production
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # Auth middleware (skips /api/auth/login and /api/docs)
+    app.add_middleware(AuthMiddleware)
+
+    # Register route groups
+    app.include_router(auth_router,        prefix="/api/auth")
+    app.include_router(scenarios_router,   prefix="/api/scenarios")
+    app.include_router(jobs_router,        prefix="/api/jobs")         # Phase 2: unified job execution
+    app.include_router(runs_router,        prefix="/api/runs")         # Phase 1: kept for backwards compat
+    app.include_router(indicators_router,  prefix="/api/indicators")
+    app.include_router(comparison_router,  prefix="/api/comparison")   # Phase 2: multi-portfolio
+    app.include_router(exports_router,     prefix="/api/exports")
+    app.include_router(templates_router,   prefix="/api/templates")
+    app.include_router(populations_router, prefix="/api/populations")
+    app.include_router(portfolios_router,  prefix="/api/portfolios")   # Phase 2
+    app.include_router(calibration_router, prefix="/api/calibration")  # Phase 2
+
+    return app
+```
+
+Run with: `uvicorn src.reformlab.server.app:create_app --factory --host 0.0.0.0 --port 8000`
+
+Dev mode: `uvicorn src.reformlab.server.app:create_app --factory --reload --port 8000`
+
+### Route Contracts
+
+#### Authentication
+
+| Method | Path | Request Body | Response | Status |
+|--------|------|-------------|----------|--------|
+| `POST` | `/api/auth/login` | `{ "password": "string" }` | `{ "token": "string" }` | 200 or 401 |
+
+- Password validated against `REFORMLAB_PASSWORD` env var.
+- Token is a random hex string stored server-side in a session set.
+- Subsequent requests pass token via `Authorization: Bearer <token>` header.
+- No expiry for MVP. Phase 3 replaces with OAuth/OIDC.
+
+#### Scenarios
+
+| Method | Path | Request Body | Response | Status |
+|--------|------|-------------|----------|--------|
+| `GET` | `/api/scenarios` | — | `{ "scenarios": ["name1", ...] }` | 200 |
+| `GET` | `/api/scenarios/{name}` | — | `ScenarioResponse` | 200 or 404 |
+| `POST` | `/api/scenarios` | `CreateScenarioRequest` | `{ "version_id": "string" }` | 201 or 422 |
+| `POST` | `/api/scenarios/{name}/clone` | `{ "new_name": "string" }` | `ScenarioResponse` | 201 or 404 |
+
+Delegates to: `list_scenarios()`, `get_scenario(name)`, `create_scenario(scenario, name, register=True)`, `clone_scenario(name, new_name=new_name)`.
+
+#### Simulation Runs (Phase 1 — synchronous, kept for backwards compatibility)
+
+| Method | Path | Request Body | Response | Status |
+|--------|------|-------------|----------|--------|
+| `POST` | `/api/runs` | `RunRequest` | `RunResponse` | 200 or 422/500 |
+| `POST` | `/api/runs/memory-check` | `MemoryCheckRequest` | `MemoryCheckResponse` | 200 |
+
+Phase 1 synchronous endpoint remains available for simple, fast runs. Internally delegates to the job system and waits for completion.
+
+#### Jobs (Phase 2 — unified job execution)
+
+| Method | Path | Request Body | Response | Status |
+|--------|------|-------------|----------|--------|
+| `POST` | `/api/jobs` | `JobSubmitRequest` | `{ "job_id": "string" }` | 202 |
+| `GET` | `/api/jobs` | — | `{ "jobs": [JobSummary, ...] }` | 200 |
+| `GET` | `/api/jobs/{job_id}` | — | `JobStatusResponse` | 200 or 404 |
+| `GET` | `/api/jobs/{job_id}/result` | — | `JobResultResponse` | 200 or 404/409 |
+| `DELETE` | `/api/jobs/{job_id}` | — | — | 204 or 404 |
+
+**Execution model:** Every simulation is a job. `POST /api/jobs` persists the job config to disk and returns immediately with a `job_id`. A background worker thread picks up queued jobs and executes them. Results are persisted to disk and survive server restarts.
+
+**Frontend adaptive UI:** The frontend polls `GET /api/jobs/{job_id}` after submission. If the job completes within ~5s, the UI auto-navigates to results (feels instant). If it takes longer, the UI shows progress and informs the analyst they can leave. All jobs are browsable in the simulation dashboard regardless of completion time.
+
+#### Indicators
+
+| Method | Path | Request Body | Response | Status |
+|--------|------|-------------|----------|--------|
+| `POST` | `/api/indicators/{type}` | `IndicatorRequest` | `IndicatorResponse` | 200 or 422 |
+
+`{type}` is one of: `distributional`, `geographic`, `welfare`, `fiscal`.
+
+Delegates to: `cached_result.indicators(type, **kwargs)`.
+
+#### Comparison (Phase 2 — multi-portfolio)
+
+| Method | Path | Request Body | Response | Status |
+|--------|------|-------------|----------|--------|
+| `POST` | `/api/comparison` | `ComparisonRequest` | `IndicatorResponse` | 200 or 422 |
+| `POST` | `/api/comparison/multi` | `MultiComparisonRequest` | `MultiComparisonResponse` | 200 or 422 |
+
+Phase 1 pairwise comparison (`ComparisonRequest` with `baseline_run_id` + `reform_run_id`) remains as a convenience. Phase 2 adds N-way comparison: one baseline vs multiple reform portfolios, with cross-comparison aggregate metrics.
+
+#### Exports
+
+| Method | Path | Request Body | Response | Status |
+|--------|------|-------------|----------|--------|
+| `POST` | `/api/exports/csv` | `{ "run_id": "string" }` | `StreamingResponse` (file download) | 200 or 404 |
+| `POST` | `/api/exports/parquet` | `{ "run_id": "string" }` | `StreamingResponse` (file download) | 200 or 404 |
+
+Delegates to: `cached_result.export_csv(tmp_path)` and `cached_result.export_parquet(tmp_path)`.
+
+Returns file as `StreamingResponse` with appropriate `Content-Disposition` header.
+
+#### Templates
+
+| Method | Path | Request Body | Response | Status |
+|--------|------|-------------|----------|--------|
+| `GET` | `/api/templates` | — | `{ "templates": [TemplateListItem, ...] }` | 200 |
+| `GET` | `/api/templates/{name}` | — | `TemplateDetailResponse` | 200 or 404 |
+
+Lists available policy templates (carbon tax, subsidy, rebate, feebate) with their default parameters and parameter groups.
+
+#### Populations (Phase 2 — extended with generation + cache status)
+
+| Method | Path | Request Body | Response | Status |
+|--------|------|-------------|----------|--------|
+| `GET` | `/api/populations` | — | `{ "populations": [PopulationItem, ...] }` | 200 |
+| `GET` | `/api/populations/{id}` | — | `PopulationDetailResponse` | 200 or 404 |
+| `POST` | `/api/populations/generate` | `PopulationGenerateRequest` | `{ "job_id": "string" }` | 202 |
+| `GET` | `/api/populations/sources` | — | `{ "sources": [DataSourceStatus, ...] }` | 200 |
+| `GET` | `/api/populations/sources/{name}/cache` | — | `CacheStatusResponse` | 200 or 404 |
+
+Phase 1 listing remains. Phase 2 adds population generation (submitted as a job), data source browsing, and cache status reporting for the Data Fusion Workbench.
+
+#### Portfolios (Phase 2)
+
+| Method | Path | Request Body | Response | Status |
+|--------|------|-------------|----------|--------|
+| `GET` | `/api/portfolios` | — | `{ "portfolios": [PortfolioSummary, ...] }` | 200 |
+| `GET` | `/api/portfolios/{name}` | — | `PortfolioDetailResponse` | 200 or 404 |
+| `POST` | `/api/portfolios` | `PortfolioCreateRequest` | `PortfolioDetailResponse` | 201 or 422 |
+| `PUT` | `/api/portfolios/{name}` | `PortfolioUpdateRequest` | `PortfolioDetailResponse` | 200 or 404/422 |
+| `DELETE` | `/api/portfolios/{name}` | — | — | 204 or 404 |
+
+CRUD for policy portfolios. Portfolios are named, versioned collections of policy configs stored in the scenario registry.
+
+#### Calibration (Phase 2)
+
+| Method | Path | Request Body | Response | Status |
+|--------|------|-------------|----------|--------|
+| `POST` | `/api/calibration/run` | `CalibrationRunRequest` | `{ "job_id": "string" }` | 202 |
+| `GET` | `/api/calibration/{job_id}` | — | `CalibrationResultResponse` | 200 or 404/409 |
+
+Calibration runs are submitted as jobs (same as simulations). Results include optimized taste parameters and validation metrics.
+
+### Pydantic v2 Request/Response Models
+
+All models in `src/reformlab/server/models.py`. Key patterns:
+
+**Frozen dataclass → Pydantic model translation:** The domain layer uses frozen dataclasses (`ScenarioConfig`, `SimulationResult`). The server layer creates parallel Pydantic models for HTTP serialization. Route handlers translate between them.
+
+```python
+# Request models
+
+class LoginRequest(BaseModel):
+    password: str
+
+class RunRequest(BaseModel):
+    template_name: str
+    parameters: dict[str, Any]
+    start_year: int
+    end_year: int
+    population_id: str | None = None
+    seed: int | None = None
+    baseline_id: str | None = None
+
+class MemoryCheckRequest(BaseModel):
+    template_name: str
+    parameters: dict[str, Any] = {}
+    start_year: int
+    end_year: int
+    population_id: str | None = None
+
+class IndicatorRequest(BaseModel):
+    run_id: str
+    income_field: str = "income"
+    by_year: bool = False
+
+class ComparisonRequest(BaseModel):
+    baseline_run_id: str
+    reform_run_id: str
+    welfare_field: str = "disposable_income"
+    threshold: float = 0.0
+
+class ExportRequest(BaseModel):
+    run_id: str
+
+class CreateScenarioRequest(BaseModel):
+    name: str
+    policy_type: str           # "carbon_tax" | "subsidy" | "rebate" | "feebate"
+    parameters: dict[str, Any]
+    start_year: int
+    end_year: int
+    description: str = ""
+    baseline_ref: str | None = None
+
+class CloneRequest(BaseModel):
+    new_name: str
+
+# Phase 2 request models
+
+class JobSubmitRequest(BaseModel):
+    template_name: str | None = None       # single policy run
+    portfolio_name: str | None = None      # portfolio run (Phase 2)
+    parameters: dict[str, Any] = {}
+    start_year: int
+    end_year: int
+    population_id: str | None = None
+    seed: int | None = None
+    baseline_id: str | None = None
+    name: str = ""                         # human-readable job name
+
+class PopulationGenerateRequest(BaseModel):
+    name: str
+    sources: list[str]                     # data source loader names
+    merge_steps: list[dict[str, Any]]      # [{method: "ipf", left: ..., right: ..., config: ...}]
+    validate_marginals: bool = True
+
+class PortfolioCreateRequest(BaseModel):
+    name: str
+    description: str = ""
+    policies: list[dict[str, Any]]         # [{template_name: ..., parameters: ...}]
+
+class PortfolioUpdateRequest(BaseModel):
+    description: str | None = None
+    policies: list[dict[str, Any]] | None = None
+
+class MultiComparisonRequest(BaseModel):
+    baseline_run_id: str
+    reform_run_ids: list[str]
+    indicator_types: list[str] = ["distributional", "welfare", "fiscal"]
+
+class CalibrationRunRequest(BaseModel):
+    population_id: str
+    domain: str                            # "vehicle" | "heating"
+    observed_rates: dict[str, float]       # calibration targets
+    initial_betas: dict[str, float] = {}
+    method: str = "mse"                    # "mse" | "likelihood"
+```
+
+```python
+# Response models
+
+class LoginResponse(BaseModel):
+    token: str
+
+class RunResponse(BaseModel):
+    run_id: str
+    success: bool
+    scenario_id: str
+    years: list[int]
+    row_count: int
+    manifest_id: str
+
+class MemoryCheckResponse(BaseModel):
+    should_warn: bool
+    estimated_gb: float
+    available_gb: float
+    message: str
+
+class IndicatorResponse(BaseModel):
+    indicator_type: str
+    data: dict[str, list[Any]]     # PyArrow table.to_pydict()
+    metadata: dict[str, Any]
+    warnings: list[str]
+    excluded_count: int
+
+class ScenarioResponse(BaseModel):
+    name: str
+    policy_type: str
+    description: str
+    version: str
+    parameters: dict[str, Any]
+    year_schedule: dict[str, int]  # {"start_year": N, "end_year": M}
+    baseline_ref: str | None = None
+
+class TemplateListItem(BaseModel):
+    id: str
+    name: str
+    type: str
+    parameter_count: int
+    description: str
+    parameter_groups: list[str]
+
+class TemplateDetailResponse(TemplateListItem):
+    default_parameters: dict[str, Any]
+
+class PopulationItem(BaseModel):
+    id: str
+    name: str
+    households: int
+    source: str
+    year: int
+
+class ErrorResponse(BaseModel):
+    error: str
+    what: str
+    why: str
+    fix: str
+    status_code: int
+
+# Phase 2 response models
+
+class JobSummary(BaseModel):
+    job_id: str
+    name: str
+    state: str                             # "queued" | "running" | "completed" | "failed" | "cancelled"
+    submitted_at: str                      # ISO 8601
+    completed_at: str | None = None
+    portfolio_name: str | None = None
+    template_name: str | None = None
+    population_id: str | None = None
+
+class JobStatusResponse(JobSummary):
+    progress: dict[str, Any] | None = None  # {"year": 2028, "step": "discrete_choice", "pct": 45}
+
+class JobResultResponse(BaseModel):
+    job_id: str
+    success: bool
+    years: list[int]
+    row_count: int
+    manifest_id: str
+    has_decisions: bool                    # True if discrete choice ran
+
+class PortfolioSummary(BaseModel):
+    name: str
+    description: str
+    version: str
+    policy_count: int
+
+class PortfolioDetailResponse(PortfolioSummary):
+    policies: list[dict[str, Any]]
+
+class DataSourceStatus(BaseModel):
+    name: str
+    description: str
+    cache: CacheStatusResponse | None = None
+
+class CacheStatusResponse(BaseModel):
+    cached: bool
+    downloaded_at: str | None = None
+    hash: str | None = None
+    stale: bool = False
+
+class MultiComparisonResponse(BaseModel):
+    baseline: JobSummary
+    reforms: dict[str, dict[str, Any]]     # run_id → indicators + deltas vs baseline
+    cross_comparison: dict[str, Any]       # aggregate cross-portfolio metrics
+
+class CalibrationResultResponse(BaseModel):
+    job_id: str
+    state: str
+    domain: str
+    optimized_betas: dict[str, float] | None = None
+    objective_value: float | None = None
+    validation_metrics: dict[str, Any] | None = None
+```
+
+### Serialization Rules
+
+- **PyArrow `pa.Table` → JSON:** `table.to_pydict()` produces `dict[str, list]`. This is the canonical wire format for panel data and indicator tables.
+- **`Path` objects:** Serialize as strings via Pydantic `model_serializer`.
+- **`datetime` objects:** Serialize as ISO 8601 strings.
+- **Frozen dataclasses:** Converted to Pydantic models at the route handler boundary. No `dataclasses.asdict()` in responses — explicit Pydantic field mapping.
+
+### Job Store & Result Cache (Phase 2)
+
+Phase 2 replaces the ephemeral in-memory result cache with a two-tier architecture: persistent file-based `JobStore` + in-memory `ResultCache` for hot access.
+
+**JobStore** — persistent, file-based, survives server restarts:
+
+```python
+class JobStore:
+    """File-based job persistence. Each job is a directory on disk."""
+
+    def __init__(self, base_path: Path):
+        self._base = base_path  # /data/reformlab/jobs/
+
+    def create(self, config: JobConfig) -> str:
+        """Persist job config to disk, return job_id."""
+        ...
+
+    def update_status(self, job_id: str, state: str) -> None:
+        """Update job.json status field."""
+        ...
+
+    def update_progress(self, job_id: str, progress: dict) -> None:
+        """Write progress.json (year, step, pct)."""
+        ...
+
+    def save_result(self, job_id: str, result: SimulationResult) -> None:
+        """Write panel.parquet + manifest.json + decisions.parquet to result/."""
+        ...
+
+    def load_result(self, job_id: str) -> SimulationResult:
+        """Load result from disk."""
+        ...
+
+    def list_jobs(self) -> list[JobSummary]:
+        """Scan job directories, return summaries."""
+        ...
+
+    def delete(self, job_id: str) -> None:
+        """Remove job directory."""
+        ...
+```
+
+**ResultCache** — in-memory LRU, wraps JobStore for hot access:
+
+```python
+class ResultCache:
+    """In-memory LRU cache backed by JobStore."""
+
+    def __init__(self, store: JobStore, max_size: int = 10):
+        self._store = store
+        self._cache: OrderedDict[str, SimulationResult] = OrderedDict()
+        self._max_size = max_size
+
+    def get(self, job_id: str) -> SimulationResult | None:
+        # Check memory first
+        if job_id in self._cache:
+            self._cache.move_to_end(job_id)
+            return self._cache[job_id]
+        # Fall back to disk
+        result = self._store.load_result(job_id)
+        if result is not None:
+            self._put(job_id, result)
+        return result
+
+    def _put(self, job_id: str, result: SimulationResult) -> None:
+        if len(self._cache) >= self._max_size:
+            self._cache.popitem(last=False)
+        self._cache[job_id] = result
+```
+
+- `POST /api/jobs` creates a job via `JobStore.create()`. Background worker executes and calls `JobStore.save_result()`.
+- `GET /api/jobs/{job_id}/result`, `POST /api/indicators/{type}`, and `POST /api/exports/*` retrieve results via `ResultCache.get()` (memory first, disk fallback).
+- Max 10 entries in memory. LRU eviction. Disk store has no size limit (manual cleanup via `DELETE /api/jobs/{job_id}`).
+
+### Dependency Injection
+
+```python
+# src/reformlab/server/dependencies.py
+
+# Global singletons (created once in app factory, injected via Depends)
+_job_store: JobStore | None = None
+_job_runner: JobRunner | None = None
+_result_cache: ResultCache | None = None
+_adapter: ComputationAdapter | None = None
+
+def get_job_store() -> JobStore:
+    global _job_store
+    if _job_store is None:
+        _job_store = JobStore(base_path=_data_path() / "jobs")
+    return _job_store
+
+def get_job_runner() -> JobRunner:
+    global _job_runner
+    if _job_runner is None:
+        _job_runner = JobRunner(store=get_job_store(), max_workers=1)
+    return _job_runner
+
+def get_result_cache() -> ResultCache:
+    global _result_cache
+    if _result_cache is None:
+        _result_cache = ResultCache(store=get_job_store(), max_size=10)
+    return _result_cache
+
+def get_adapter() -> ComputationAdapter:
+    global _adapter
+    if _adapter is None:
+        _adapter = _create_adapter()
+    return _adapter
+```
+
+Route handlers use `Depends(get_job_runner)`, `Depends(get_result_cache)`, and `Depends(get_adapter)`.
+
+### Authentication Middleware
+
+```python
+# src/reformlab/server/auth.py
+
+class AuthMiddleware(BaseHTTPMiddleware):
+    """Shared-password auth for MVP (2-10 trusted colleagues)."""
+
+    SKIP_PATHS = {"/api/auth/login", "/api/docs", "/api/openapi.json"}
+
+    async def dispatch(self, request, call_next):
+        if request.url.path in self.SKIP_PATHS:
+            return await call_next(request)
+
+        token = request.headers.get("Authorization", "").removeprefix("Bearer ")
+        if not token or token not in _active_sessions:
+            return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+
+        return await call_next(request)
+```
+
+- `_active_sessions` is a `set[str]` stored in-memory.
+- `POST /api/auth/login` validates password against `os.environ["REFORMLAB_PASSWORD"]`, generates a random token via `secrets.token_hex(32)`, adds it to `_active_sessions`, returns it.
+- No expiry for MVP. Server restart clears all sessions (users re-enter password).
+
+### Error Mapping
+
+Python API exceptions map to HTTP responses:
+
+| Python Exception | HTTP Status | Error Response |
+|-----------------|-------------|----------------|
+| `ConfigurationError` | 422 Unprocessable Entity | `{ "error": "Configuration error", "what": field_path, "why": expected vs actual, "fix": guidance }` |
+| `ValidationErrors` | 422 Unprocessable Entity | `{ "error": "Validation failed", "what": "N issues found", "why": issues list, "fix": per-issue guidance }` |
+| `SimulationError` | 500 Internal Server Error | `{ "error": "Simulation error", "what": message, "why": cause, "fix": guidance }` |
+| `RegistryError` | 404 Not Found | `{ "error": "Not found", "what": summary, "why": reason, "fix": guidance }` |
+| `MemoryWarning` | 200 (with `should_warn: true`) | Not an error — returned as data in `MemoryCheckResponse` |
+
+Implement via FastAPI exception handlers registered in `create_app()`:
+
+```python
+@app.exception_handler(ConfigurationError)
+async def configuration_error_handler(request, exc):
+    return JSONResponse(status_code=422, content={
+        "error": "Configuration error",
+        "what": exc.field_path,
+        "why": f"Expected {exc.expected}, got {exc.actual!r}",
+        "fix": exc.fix or f"Provide a valid {exc.expected}",
+        "status_code": 422,
+    })
+```
+
+### CORS Configuration
+
+```python
+def _cors_origins() -> list[str]:
+    origins = ["http://localhost:5173"]  # Vite dev server
+    extra = os.environ.get("REFORMLAB_CORS_ORIGINS", "")
+    if extra:
+        origins.extend(o.strip() for o in extra.split(",") if o.strip())
+    return origins
+```
+
+Production adds `https://app.reformlab.fr` via `REFORMLAB_CORS_ORIGINS` env var.
+
+### Vite Dev Proxy
+
+Add to `frontend/vite.config.ts`:
+
+```typescript
+server: {
+  proxy: {
+    "/api": {
+      target: "http://localhost:8000",
+      changeOrigin: true,
+    },
+  },
+}
+```
+
+Frontend calls `/api/scenarios` (relative) in development. Vite proxies to the FastAPI backend. In production, Traefik routes by subdomain (`api.reformlab.fr` vs `app.reformlab.fr`).
+
+### Data Flow Summary
+
+**Phase 2 (job-based):**
+
+```text
+Frontend (React)
+    │
+    ├─ POST /api/jobs { template|portfolio, params, years }
+    │       ↓
+    │  JobSubmitRequest → JobStore.create() → job.json persisted to disk
+    │       ↓
+    │  { "job_id": "..." } returned immediately (202)
+    │       ↓
+    │  Background worker: JobRunner picks up job → run_scenario() → JobStore.save_result()
+    │
+    ├─ GET /api/jobs/{job_id} (frontend polls every 2s)
+    │       ↓
+    │  JobStore reads job.json + progress.json
+    │       ↓
+    │  JobStatusResponse { state, progress: { year, step, pct } }
+    │       ↓
+    │  Frontend: if completed in <~5s → auto-navigate to results
+    │            if still running     → show progress, "you can leave"
+    │
+    ├─ GET /api/jobs/{job_id}/result
+    │       ↓
+    │  ResultCache.get(job_id) → memory hit or disk load
+    │       ↓
+    │  JobResultResponse { success, years, row_count, has_decisions }
+    │
+    ├─ POST /api/indicators/distributional { run_id }
+    │       ↓
+    │  ResultCache.get(run_id) → result.indicators("distributional")
+    │       ↓
+    │  IndicatorResponse
+    │
+    ├─ POST /api/comparison/multi { baseline_run_id, reform_run_ids }
+    │       ↓
+    │  For each reform: ResultCache.get() → indicators vs baseline
+    │       ↓
+    │  MultiComparisonResponse { reforms, cross_comparison }
+    │
+    └─ POST /api/exports/csv { run_id }
+            ↓
+        ResultCache.get(run_id) → result.export_csv(tmp) → StreamingResponse
+```
+
+### Code Quality Standards
+
+- `from __future__ import annotations` at top of every server module.
+- Pydantic v2 conventions: `model_validate()`, `model_dump()`, `ConfigDict`.
+- `mypy --strict` must pass on all server code.
+- `ruff` compliance (E, F, I, W rules).
+- No direct OpenFisca imports in server code — adapter protocol only.
+- Structured logging with `logging.getLogger(__name__)`.
+
+
+]]></file>
+<file id="bca11243" path="_bmad-output/implementation-artifacts/11-5-implement-ipf-and-conditional-sampling-merge-methods.md" label="STORY FILE"><![CDATA[
+
+
+
+# Story 11.5: Implement IPF and conditional sampling merge methods
+
+Status: complete
+
+<!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
+
+## Story
+
+As a platform developer building the French household population pipeline,
+I want IPF (Iterative Proportional Fitting) and conditional sampling merge methods implementing the existing `MergeMethod` protocol,
+so that the population pipeline can produce merged populations that respect known marginal distributions (IPF) or leverage shared stratification variables (conditional sampling), enabling more realistic synthetic populations than uniform random matching alone.
+
+## Acceptance Criteria
+
+1. Given two tables and a set of known marginal constraints, when IPF is applied, then the merged population matches the target marginals within documented tolerances (IPF convergence tolerance is `1e-6` at the weight level; after integerization, per-category row counts match targets within ±1).
+2. Given IPF output, when the assumption record is inspected, then it lists all marginal constraints used and the convergence status.
+3. Given two tables with a conditioning variable (e.g., income bracket), when conditional sampling is applied, then matches are drawn within strata defined by the conditioning variable.
+4. Given conditional sampling output, when the assumption record is inspected, then it states the conditioning variable and explains the conditional independence assumption.
+5. Given both methods, when docstrings are read, then each includes a plain-language explanation suitable for a policy analyst (not just a statistician).
+
+## Tasks / Subtasks
+
+- [x] Task 1: Define IPF supporting types in `base.py` (AC: #1, #2)
+  - [x] 1.1 Add `IPFConstraint` frozen dataclass to `src/reformlab/population/methods/base.py` with fields: `dimension: str` (column name in table_a to constrain), `targets: dict[str, float]` (category value -> target count/weight). Validate in `__post_init__` that `dimension` is a non-empty string and `targets` is non-empty with all values >= 0. Deep-copy `targets` dict via `object.__setattr__`.
+  - [x] 1.2 Add `IPFResult` frozen dataclass to `base.py` with fields: `weights: tuple[float, ...]` (per-row IPF weights), `iterations: int` (iterations until convergence), `converged: bool`, `max_deviation: float` (maximum absolute deviation at termination). This captures convergence diagnostics for the assumption record.
+
+- [x] Task 2: Add `MergeConvergenceError` to error hierarchy (AC: #1)
+  - [x] 2.1 Add `MergeConvergenceError(MergeError)` to `src/reformlab/population/methods/errors.py` — raised when IPF fails to converge within `max_iterations`. Docstring: "Raised when an iterative merge method fails to converge within the configured iteration limit."
+
+- [x] Task 3: Implement `IPFMergeMethod` — `ipf.py` (AC: #1, #2, #5)
+  - [x] 3.1 Create `src/reformlab/population/methods/ipf.py` with module docstring referencing Story 11.5, FR38, FR39 — include pedagogical docstring explaining IPF in plain language:
+    - What IPF does: adjusts row weights so that the merged population's marginal distributions match known targets (e.g., census totals by region, income distribution by bracket)
+    - The assumption: the joint distribution between unconstrained variables follows the pattern in the seed data (table_a), adjusted only to match the specified marginals. This is a "minimum information" / maximum entropy approach
+    - When appropriate: when you have reliable marginal distributions from census or administrative data that the merged population must respect
+    - When problematic: when the seed data has structural zeros (categories with no observations) that should have non-zero representation, or when marginal targets are mutually inconsistent (different grand totals)
+  - [x] 3.2 Implement `IPFMergeMethod` class with constructor:
+    ```python
+    def __init__(
+        self,
+        constraints: tuple[IPFConstraint, ...],
+        max_iterations: int = 100,
+        tolerance: float = 1e-6,
+    ) -> None:
+    ```
+    Validate: `constraints` must be non-empty tuple, `max_iterations >= 1`, `tolerance > 0`. Store as instance attributes. No frozen dataclass for the method itself (it's a service object, not a value object).
+  - [x] 3.3 Implement `name` property returning `"ipf"`
+  - [x] 3.4 Implement private `_run_ipf(self, table_a: pa.Table) -> IPFResult` with this algorithm:
+    1. Initialize weights: `[1.0] * table_a.num_rows`
+    2. Validate constraint dimensions exist as columns in table_a — raise `MergeValidationError` if not
+    3. Validate constraint targets: each target category must exist in the column values — log warning for categories not present (they cannot be satisfied), raise `MergeValidationError` if **all** categories in a constraint are missing
+    4. IPF iteration loop (up to `max_iterations`):
+       a. For each constraint `(dimension, targets)`:
+          - Extract column values: `table_a.column(dimension).to_pylist()`
+          - Compute current weighted totals per category: `current[cat] = sum(weights[k] for k where col[k] == cat)`
+          - Compute adjustment factors: `factor[cat] = target[cat] / current[cat]` (if `current[cat] > 0`, else `factor = 1.0`)
+          - Apply factors: `weights[k] *= factor[col[k]]`
+       b. Compute max absolute deviation: `max(|current[cat] - target[cat]|)` across all constraints and categories
+       c. If `max_deviation < tolerance`: converged = True, break
+    5. Return `IPFResult(weights=tuple(weights), iterations=i+1, converged=converged, max_deviation=max_deviation)`
+  - [x] 3.5 Implement private `_integerize_weights(self, weights: tuple[float, ...], target_count: int, rng: random.Random) -> list[int]` with this algorithm:
+    1. Normalize weights so they sum to `target_count` (= `table_a.num_rows`, preserving original count)
+    2. For each weight: `integer_part = floor(weight)`, `fractional = weight - integer_part`
+    3. Deterministic probabilistic rounding: if `rng.random() < fractional`, add 1
+    4. Return list of integer weights (each >= 0)
+  - [x] 3.6 Implement `merge(self, table_a, table_b, config)` with this logic:
+    1. Validate inputs: both tables must have `num_rows > 0` — raise `MergeValidationError` (same pattern as uniform)
+    2. Apply `config.drop_right_columns` to table_b (same pattern as uniform)
+    3. Check column name conflicts (same pattern as uniform)
+    4. Run IPF: `ipf_result = self._run_ipf(table_a)`
+    5. If not converged: raise `MergeConvergenceError` with summary="IPF did not converge", reason with iterations and max_deviation, fix suggesting increasing max_iterations or checking marginal consistency
+    6. Integerize weights: `int_weights = self._integerize_weights(ipf_result.weights, table_a.num_rows, random.Random(config.seed))`
+    7. Expand table_a: for each row `k`, repeat it `int_weights[k]` times. Build expanded row indices: `expanded_indices = [k for k, w in enumerate(int_weights) for _ in range(w)]`
+    8. Guard: if `len(expanded_indices) == 0`, raise `MergeValidationError` with summary="IPF produced empty expansion", reason="All row weights integerized to 0 — no rows survive expansion", fix="Check constraint targets for extreme values or structural zeros"
+    9. Create expanded table_a: `expanded_a = table_a.take(pa.array(expanded_indices))`
+    10. Random matching: use `random.Random(config.seed + 1)` (different seed stream from integerization) to generate `expanded_a.num_rows` random indices into table_b (same pattern as uniform)
+    11. Select matched rows: `matched_b = right_table.take(pa.array(b_indices))`
+    12. Combine columns: same pattern as uniform (table_a columns first, then table_b columns)
+    13. Build `MergeAssumption` with:
+        - `method_name="ipf"`
+        - `statement="The merged population is reweighted using Iterative Proportional Fitting so that marginal distributions match the specified targets — this assumes the joint distribution between unconstrained variables follows the seed pattern, adjusted only to match target marginals."`
+        - `details={"table_a_rows": table_a.num_rows, "table_b_rows": table_b.num_rows, "expanded_rows": expanded_a.num_rows, "seed": config.seed, "constraints": [{"dimension": c.dimension, "targets": dict(c.targets)} for c in self._constraints], "iterations": ipf_result.iterations, "converged": ipf_result.converged, "max_deviation": ipf_result.max_deviation, "tolerance": self._tolerance, "dropped_right_columns": list(config.drop_right_columns)}`
+    14. Return `MergeResult(table=merged, assumption=assumption)`
+  - [x] 3.7 Use `logging.getLogger(__name__)` with structured `event=ipf_start`, `event=ipf_iteration`, `event=ipf_converged`/`event=ipf_not_converged`, `event=merge_start`, `event=merge_complete` log entries
+
+- [x] Task 4: Implement `ConditionalSamplingMethod` — `conditional.py` (AC: #3, #4, #5)
+  - [x] 4.1 Create `src/reformlab/population/methods/conditional.py` with module docstring referencing Story 11.5, FR38, FR39 — include pedagogical docstring explaining conditional sampling in plain language:
+    - What it does: groups both tables by shared variable(s) (strata), then randomly matches rows only within the same group. This preserves the correlation between the stratification variable and all other variables
+    - The assumption: conditional independence — within each stratum, the unique variables from table_a and table_b are assumed independent. The correlation between them is captured entirely by the stratification variable
+    - When appropriate: when both datasets share a variable that is correlated with the unique variables in each dataset (e.g., income bracket correlates with both energy consumption and vehicle ownership)
+    - When problematic: when the strata are too coarse (residual correlation within strata is large) or when some strata have very few observations in one table (small sample noise)
+  - [x] 4.2 Implement `ConditionalSamplingMethod` class with constructor:
+    ```python
+    def __init__(
+        self,
+        strata_columns: tuple[str, ...],
+    ) -> None:
+    ```
+    Validate: `strata_columns` must be a non-empty tuple of non-empty strings. Store as instance attribute.
+  - [x] 4.3 Implement `name` property returning `"conditional"`
+  - [x] 4.4 Implement `merge(self, table_a, table_b, config)` with this logic:
+    1. Validate inputs: both tables must have `num_rows > 0` — raise `MergeValidationError`
+    2. Validate strata columns exist in BOTH tables — raise `MergeValidationError` listing missing columns and which table they're missing from
+    3. Compute effective drop list: `effective_drop = tuple(dict.fromkeys(self._strata_columns + config.drop_right_columns))` to deduplicate (a strata column may also appear in `drop_right_columns`). Remove effective_drop columns from table_b using iterative `remove_column()` (same pattern as uniform.py). Validate each column exists before removal — raise `MergeValidationError` for any `drop_right_columns` entry not found (strata columns are guaranteed present by step 2)
+    4. Check column name conflicts on remaining columns (same pattern as uniform)
+    5. Build stratum keys: for each row in table_a and table_b, compute a stratum key as a tuple of values from `strata_columns`
+    6. Group table_a row indices by stratum: `strata_a: dict[tuple, list[int]]`
+    7. Group table_b row indices by stratum: `strata_b: dict[tuple, list[int]]`
+    8. Validate coverage: for each stratum present in table_a, check it exists in table_b — raise `MergeValidationError` if any table_a stratum has zero table_b donors (list the empty strata in the error message)
+    9. Random matching within strata: `rng = random.Random(config.seed)`. For each stratum, for each table_a row index in that stratum: draw a random index from the table_b row indices in the same stratum (`rng.choice(strata_b[key])`)
+    10. Collect all matched (a_idx, b_idx) pairs in original table_a row order
+    11. Build merged table: table_a rows (in order) + matched table_b rows (strata columns removed from table_b side)
+    12. Build `MergeAssumption` with:
+        - `method_name="conditional"`
+        - `statement="Rows are matched within strata defined by [{strata_column_list}] — this assumes that, within each stratum, the unique variables from each source are independent (conditional independence given the stratification variables)."`
+        - `details={"table_a_rows": n, "table_b_rows": m, "seed": config.seed, "strata_columns": list(self._strata_columns), "strata_count": len(strata_a), "strata_sizes": {"|".join(str(x) for x in key): {"table_a": len(strata_a[key]), "table_b": len(strata_b[key])} for key in strata_a}, "dropped_right_columns": list(effective_drop_columns)}`
+    13. Return `MergeResult(table=merged, assumption=assumption)`
+  - [x] 4.5 Use `logging.getLogger(__name__)` with structured log entries: `event=merge_start method=conditional`, `event=strata_built strata_count=...`, `event=merge_complete`
+
+- [x] Task 5: Update `__init__.py` exports (AC: all)
+  - [x] 5.1 Export from `src/reformlab/population/methods/__init__.py`: add `IPFConstraint`, `IPFResult`, `IPFMergeMethod`, `ConditionalSamplingMethod`, `MergeConvergenceError` — update `__all__` listing
+  - [x] 5.2 Export from `src/reformlab/population/__init__.py`: add same names — update `__all__` listing
+
+- [x] Task 6: Create test fixtures for IPF and conditional sampling (AC: all)
+  - [x] 6.1 Add to `tests/population/methods/conftest.py`:
+    - `region_income_table` — `pa.Table` with columns: `household_id` (int64), `income_bracket` (utf8: "low"/"medium"/"high"), `region_code` (utf8: "84"/"11"/"75") — 10 rows, with known distribution: 3 low, 4 medium, 3 high; 4 region 84, 3 region 11, 3 region 75
+    - `energy_vehicle_table` — `pa.Table` with columns: `income_bracket` (utf8), `vehicle_type` (utf8), `energy_kwh` (float64) — 12 rows, covering all 3 income brackets with known distribution
+    - `simple_constraints` — `tuple[IPFConstraint, ...]` with one constraint: `IPFConstraint(dimension="income_bracket", targets={"low": 4.0, "medium": 3.0, "high": 3.0})` — shifts distribution from 3/4/3 to 4/3/3
+    - `multi_constraints` — `tuple[IPFConstraint, ...]` with two constraints: income_bracket + region_code targets
+    - `inconsistent_constraints` — constraints where totals across dimensions don't match (for convergence failure testing)
+
+- [x] Task 7: Write comprehensive IPF tests (AC: #1, #2, #5)
+  - [x] 7.1 `tests/population/methods/test_ipf.py`:
+    - `TestIPFConstraint`: frozen, `__post_init__` validation (empty dimension raises ValueError, empty targets raises ValueError, negative target raises ValueError), targets deep-copied
+    - `TestIPFResult`: frozen, holds weights + convergence diagnostics
+    - `TestIPFMergeMethodProtocol`: `isinstance(IPFMergeMethod(...), MergeMethod)` passes
+    - `TestIPFMergeMethodName`: `name` property returns `"ipf"`
+    - `TestIPFMergeMethodConstructorValidation`: empty constraints raises ValueError, max_iterations < 1 raises ValueError, tolerance <= 0 raises ValueError
+    - `TestIPFMergeMethodMerge`:
+      - Basic merge with single constraint: region_income_table (10 rows) + vehicle_table → merged table with IPF-adjusted row counts, income_bracket distribution matches target within tolerance
+      - Merged table has correct columns (table_a + table_b minus dropped)
+      - Values from table_b come from actual rows in table_b (row-level coherence)
+    - `TestIPFMergeMethodMarginalMatch`:
+      - After merge, count rows per income_bracket → matches targets within tolerance (may differ by ±1 due to integerization)
+      - Multi-constraint merge: both income_bracket AND region_code distributions match targets
+    - `TestIPFMergeMethodConvergence`:
+      - Convergent case: assumption.details contains `converged: True`, `iterations` < max_iterations
+      - Non-convergent case: use `IPFMergeMethod(constraints=inconsistent_constraints, max_iterations=100, tolerance=1e-6)` — raises `MergeConvergenceError`
+    - `TestIPFMergeMethodDeterminism`:
+      - Same seed → identical merged table
+      - Different seed → different row matching (at least one row differs)
+    - `TestIPFMergeMethodAssumption`:
+      - `assumption.method_name == "ipf"`
+      - `assumption.statement` contains "Iterative Proportional Fitting" and "marginal"
+      - `assumption.details` contains `constraints`, `iterations`, `converged`, `max_deviation`, `tolerance`, `expanded_rows`
+      - `assumption.to_governance_entry()` returns correct structure
+    - `TestIPFMergeMethodEmptyTable`:
+      - Empty table_a → `MergeValidationError`
+      - Empty table_b → `MergeValidationError`
+    - `TestIPFMergeMethodColumnConflict`:
+      - Overlapping columns → `MergeValidationError`
+    - `TestIPFMergeMethodDropRightColumns`:
+      - `drop_right_columns` works correctly
+    - `TestIPFMergeMethodInvalidConstraintDimension`:
+      - Constraint dimension not in table_a → `MergeValidationError`
+    - `TestIPFMergeMethodMissingCategory`:
+      - Constraint has a target category not present in table_a (but at least one IS present): merge completes successfully and a warning is logged (use `caplog` fixture)
+    - `TestIPFMergeMethodDocstring`:
+      - Class docstring non-empty, mentions "marginal" or "reweight"
+      - Module docstring mentions "appropriate" and "problematic"
+
+- [x] Task 8: Write comprehensive conditional sampling tests (AC: #3, #4, #5)
+  - [x] 8.1 `tests/population/methods/test_conditional.py`:
+    - `TestConditionalSamplingMethodProtocol`: `isinstance(ConditionalSamplingMethod(...), MergeMethod)` passes
+    - `TestConditionalSamplingMethodName`: `name` property returns `"conditional"`
+    - `TestConditionalSamplingMethodConstructorValidation`: empty strata_columns raises ValueError, empty string in strata_columns raises ValueError
+    - `TestConditionalSamplingMethodMerge`:
+      - Basic merge with single stratum column ("income_bracket"): region_income_table + energy_vehicle_table → merged table with same row count as table_a
+      - All columns from both tables present (minus duplicated strata columns from table_b)
+      - Row count equals table_a.num_rows
+    - `TestConditionalSamplingMethodStrataRespected`:
+      - For each row in merged table, the strata column value matches between the table_a side and the original table_b donor row — i.e., a "low" income household is matched with a "low" income vehicle/energy record
+    - `TestConditionalSamplingMethodDeterminism`:
+      - Same seed → identical merged table
+      - Different seed → different row matching
+    - `TestConditionalSamplingMethodColumnConflict`:
+      - Overlapping non-strata columns → `MergeValidationError`
+    - `TestConditionalSamplingMethodDropRightColumns`:
+      - `drop_right_columns` works correctly
+      - Strata columns in table_b are auto-dropped (not duplicated in output)
+      - When a strata column name also appears in `config.drop_right_columns`, no error is raised (deduplication)
+    - `TestConditionalSamplingMethodEmptyTable`:
+      - Empty table_a → `MergeValidationError`
+      - Empty table_b → `MergeValidationError`
+    - `TestConditionalSamplingMethodMissingStrataColumn`:
+      - Strata column not in table_a → `MergeValidationError` mentioning which table and column
+      - Strata column not in table_b → `MergeValidationError`
+    - `TestConditionalSamplingMethodEmptyStratum`:
+      - table_a has stratum value "X" but table_b has no rows with "X" → `MergeValidationError` listing the empty stratum
+    - `TestConditionalSamplingMethodAssumption`:
+      - `assumption.method_name == "conditional"`
+      - `assumption.statement` contains "conditional independence" and strata column names
+      - `assumption.details` contains `strata_columns`, `strata_count`, `strata_sizes`, `seed`
+      - `assumption.to_governance_entry()` returns correct structure
+    - `TestConditionalSamplingMethodMultipleStrataColumns`:
+      - Merge with 2 strata columns: matching respects both dimensions simultaneously
+    - `TestConditionalSamplingMethodDocstring`:
+      - Class docstring non-empty, mentions "conditional independence" or "strata"
+      - Module docstring mentions "appropriate" and "problematic"
+
+- [x] Task 9: Write tests for new error types and base types (AC: #1, #2)
+  - [x] 9.1 Add to `tests/population/methods/test_errors.py`:
+    - `TestMergeConvergenceError`: inherits `MergeError`, summary-reason-fix pattern, catchable as `MergeError`
+  - [x] 9.2 Add to `tests/population/methods/test_base.py`:
+    - `TestIPFConstraint`: frozen, validation, targets deep-copied
+    - `TestIPFResult`: frozen, holds convergence diagnostics
+
+- [x] Task 10: Run full test suite and lint (AC: all)
+  - [x] 10.1 `uv run pytest tests/population/methods/` — all new tests pass
+  - [x] 10.2 `uv run pytest tests/population/` — no regressions in loader or uniform merge tests
+  - [x] 10.3 `uv run ruff check src/reformlab/population/methods/ tests/population/methods/` — no lint errors
+  - [x] 10.4 `uv run mypy src/reformlab/population/methods/` — no mypy errors (strict mode)
+
+## Dev Notes
+
+### Architecture Context: Methods Library Extension
+
+This story extends the `src/reformlab/population/methods/` subsystem created in Story 11.4. Two new files are added:
+
+```
+src/reformlab/population/methods/
+├── __init__.py     ← Updated: add new exports
+├── base.py         ← Updated: add IPFConstraint, IPFResult
+├── errors.py       ← Updated: add MergeConvergenceError
+├── uniform.py      ← UNCHANGED (Story 11.4)
+├── ipf.py          ← NEW (this story)
+└── conditional.py  ← NEW (this story)
+```
+
+### Protocol Compliance: Both Methods Follow Existing Pattern
+
+Both `IPFMergeMethod` and `ConditionalSamplingMethod` implement the `MergeMethod` protocol established in Story 11.4 via duck typing (no inheritance). They follow the **exact same patterns** as `UniformMergeMethod`:
+
+1. **`name` property** — returns short identifier (`"ipf"` or `"conditional"`)
+2. **`merge(table_a, table_b, config)` signature** — identical to protocol
+3. **Same validation order**: empty tables → drop_right_columns → column conflicts → method-specific logic
+4. **Same assumption record pattern**: `MergeAssumption(method_name=..., statement=..., details=...)`
+5. **Same error hierarchy**: `MergeValidationError` for input issues, `MergeConvergenceError` (new) for IPF non-convergence
+6. **Same logging pattern**: `_logger = logging.getLogger(__name__)` with structured key=value events
+
+### Method-Specific Configuration: Constructor Parameters
+
+The `MergeConfig` dataclass is generic (seed, description, drop_right_columns). Method-specific configuration is passed via constructor parameters:
+
+```python
+# IPF: constraints and convergence parameters in constructor
+ipf = IPFMergeMethod(
+    constraints=(
+        IPFConstraint(dimension="income_bracket", targets={"low": 4000, "medium": 3000, "high": 3000}),
+        IPFConstraint(dimension="region_code", targets={"84": 3500, "11": 3000, "75": 3500}),
+    ),
+    max_iterations=100,
+    tolerance=1e-6,
+)
+result = ipf.merge(table_a, table_b, MergeConfig(seed=42))
+
+# Conditional: strata columns in constructor
+cond = ConditionalSamplingMethod(strata_columns=("income_bracket",))
+result = cond.merge(table_a, table_b, MergeConfig(seed=42))
+```
+
+This preserves the `MergeMethod` protocol signature while allowing method-specific parameterization.
+
+### IPF Algorithm — Detailed Specification
+
+**Purpose:** Iterative Proportional Fitting (raking) adjusts per-row weights in table_a so that weighted marginal distributions match target values. The reweighted rows are then integerized and matched with table_b rows.
+
+**Algorithm (record-level IPF):**
+
+```
+Input: table_a (N rows), constraints [(dimension, {cat: target}), ...]
+Output: weights[0..N-1]
+
+1. weights = [1.0, 1.0, ..., 1.0]  (length N)
+
+2. For iteration = 0 to max_iterations - 1:
+     max_deviation = 0.0
+     For each constraint (dimension, targets):
+       col_values = table_a.column(dimension).to_pylist()
+
+       # Compute current weighted totals
+       current_totals = {}
+       for k in range(N):
+           cat = col_values[k]
+           current_totals[cat] = current_totals.get(cat, 0.0) + weights[k]
+
+       # Compute and apply adjustment factors
+       for cat, target in targets.items():
+           current = current_totals.get(cat, 0.0)
+           if current > 0:
+               factor = target / current
+               max_deviation = max(max_deviation, abs(current - target))
+           else:
+               factor = 1.0
+               max_deviation = max(max_deviation, target)
+           # Apply factor to all rows in this category
+           for k in range(N):
+               if col_values[k] == cat:
+                   weights[k] *= factor
+
+     If max_deviation < tolerance:
+       return IPFResult(weights, iteration+1, converged=True, max_deviation)
+
+3. Return IPFResult(weights, max_iterations, converged=False, max_deviation)
+```
+
+**Integerization (controlled probabilistic rounding):**
+
+```
+Input: weights (floats summing to ~total), target_count, rng
+Output: int_weights (integers summing to ~target_count)
+
+1. scale = target_count / sum(weights)
+2. scaled = [w * scale for w in weights]
+3. For each scaled weight:
+     integer_part = floor(scaled_w)
+     fractional = scaled_w - integer_part
+     if rng.random() < fractional:
+         int_weight = integer_part + 1
+     else:
+         int_weight = integer_part
+4. Return int_weights
+```
+
+**Seed stream separation:** The `config.seed` is used for integerization rounding. A derived seed `config.seed + 1` is used for table_b matching. This prevents correlation between the rounding decisions and the matching decisions. Use `random.Random(seed)` for each stream (stdlib, no numpy).
+
+**Performance note:** The IPF loop is O(N * D * I) where N = rows, D = constraint dimensions, I = iterations. For 10,000 rows, 3 dimensions, 50 iterations = 1.5M operations. Pure Python is sufficient for laptop-scale data.
+
+### Conditional Sampling Algorithm — Detailed Specification
+
+**Purpose:** Groups both tables by shared column(s), then performs uniform random matching within each group (stratum). This preserves the correlation between the stratification variable and all other variables.
+
+**Algorithm:**
+
+```
+Input: table_a (N rows), table_b (M rows), strata_columns, seed
+
+1. Compute stratum keys for each row:
+     key_a[k] = tuple(table_a.column(c)[k] for c in strata_columns)
+     key_b[k] = tuple(table_b.column(c)[k] for c in strata_columns)
+
+2. Group row indices by stratum:
+     strata_a = {key: [row_indices...]} for each unique key in key_a
+     strata_b = {key: [row_indices...]} for each unique key in key_b
+
+3. Validate: for each key in strata_a, key must exist in strata_b
+     (raise MergeValidationError if not)
+
+4. Match within strata:
+     rng = random.Random(seed)
+     matched_b_indices = []
+     for k in range(N):
+         key = key_a[k]
+         donor_pool = strata_b[key]
+         matched_b_indices.append(rng.choice(donor_pool))
+
+5. Build right table:
+     Compute effective_drop = tuple(dict.fromkeys(strata_columns + config.drop_right_columns))
+     Remove effective_drop columns from table_b using iterative remove_column() (same pattern as uniform.py)
+     right_table = table_b with effective_drop columns removed
+     matched_right = right_table.take(pa.array(matched_b_indices))
+
+6. Combine: table_a columns + matched_right columns
+```
+
+**Auto-dropping strata columns from table_b:** Strata columns exist in both tables by definition. To avoid duplicate columns in the output, the method automatically adds strata column names to the effective drop list (in addition to `config.drop_right_columns`). If a strata column is already in `drop_right_columns`, it is not dropped twice.
+
+**Stratum key computation:** Use `tuple(table.column(c)[k].as_py() for c in strata_columns)` to build hashable stratum keys. This works for any column type (utf8, int64, etc.).
+
+### IPFConstraint and IPFResult — Exact Specifications
+
+```python
+@dataclass(frozen=True)
+class IPFConstraint:
+    """A marginal constraint for IPF.
+
+    Specifies that the weighted count of rows where ``dimension``
+    equals each category key should match the corresponding target value.
+
+    Attributes:
+        dimension: Column name in table_a to constrain.
+        targets: Mapping from category value to target count/weight.
+            All values must be >= 0.
+    """
+
+    dimension: str
+    targets: dict[str, float]
+
+    def __post_init__(self) -> None:
+        if not self.dimension:
+            msg = "dimension must be a non-empty string"
+            raise ValueError(msg)
+        if not self.targets:
+            msg = "targets must be a non-empty dict"
+            raise ValueError(msg)
+        for cat, val in self.targets.items():
+            if val < 0:
+                msg = f"target for {cat!r} must be >= 0, got {val}"
+                raise ValueError(msg)
+        object.__setattr__(self, "targets", dict(self.targets))
+
+
+@dataclass(frozen=True)
+class IPFResult:
+    """Convergence diagnostics from an IPF run.
+
+    Attributes:
+        weights: Per-row weights after IPF adjustment.
+        iterations: Number of iterations performed.
+        converged: Whether convergence was reached within tolerance.
+        max_deviation: Maximum absolute deviation at termination.
+    """
+
+    weights: tuple[float, ...]
+    iterations: int
+    converged: bool
+    max_deviation: float
+```
+
+### Error Hierarchy Extension
+
+```python
+# Added to src/reformlab/population/methods/errors.py
+
+class MergeConvergenceError(MergeError):
+    """Raised when an iterative merge method fails to converge.
+
+    Triggered by: IPF exceeding max_iterations without reaching
+    the tolerance threshold. Often caused by inconsistent marginal
+    constraints (target totals that cannot be simultaneously satisfied).
+    """
+```
+
+### No New Dependencies Required
+
+All implementation uses existing dependencies and stdlib:
+
+- `random` — deterministic random number generation (stdlib)
+- `math` — `floor()` for integerization (stdlib)
+- `pyarrow` — table operations, `take()` for row selection (existing dependency)
+- `logging` — structured logging (stdlib)
+
+Do **not** introduce `numpy`, `scipy`, `pandas`, or any new dependency.
+
+**Import pattern:** `import pyarrow as pa` at module level in `ipf.py` and `conditional.py` (runtime dependency, same as `uniform.py`). In `base.py`, `pyarrow` stays under `TYPE_CHECKING` guard.
+
+### Test Fixtures — Concrete Data
+
+```python
+# Additional fixtures in tests/population/methods/conftest.py
+
+@pytest.fixture()
+def region_income_table() -> pa.Table:
+    """Table with known income_bracket and region_code distributions (10 rows).
+
+    Distribution: income_bracket: low=3, medium=4, high=3
+                  region_code: 84=4, 11=3, 75=3
+    """
+    return pa.table({
+        "household_id": pa.array(list(range(1, 11)), type=pa.int64()),
+        "income_bracket": pa.array(
+            ["low", "low", "low", "medium", "medium", "medium", "medium",
+             "high", "high", "high"],
+            type=pa.utf8(),
+        ),
+        "region_code": pa.array(
+            ["84", "84", "11", "84", "11", "75", "84", "11", "75", "75"],
+            type=pa.utf8(),
+        ),
+    })
+
+
+@pytest.fixture()
+def energy_vehicle_table() -> pa.Table:
+    """Table with income_bracket (shared), vehicle_type, energy_kwh (12 rows).
+
+    Covers all 3 income brackets: low=4, medium=4, high=4.
+    """
+    return pa.table({
+        "income_bracket": pa.array(
+            ["low", "low", "low", "low",
+             "medium", "medium", "medium", "medium",
+             "high", "high", "high", "high"],
+            type=pa.utf8(),
+        ),
+        "vehicle_type": pa.array(
+            ["diesel", "diesel", "essence", "ev",
+             "essence", "hybrid", "ev", "diesel",
+             "ev", "ev", "hybrid", "essence"],
+            type=pa.utf8(),
+        ),
+        "energy_kwh": pa.array(
+            [8500.0, 9200.0, 7800.0, 3200.0,
+             7200.0, 5100.0, 3000.0, 8800.0,
+             2800.0, 3100.0, 4900.0, 6500.0],
+            type=pa.float64(),
+        ),
+    })
+
+
+@pytest.fixture()
+def simple_constraints() -> tuple[IPFConstraint, ...]:
+    """Single IPF constraint shifting income_bracket distribution."""
+    return (
+        IPFConstraint(
+            dimension="income_bracket",
+            targets={"low": 4.0, "medium": 3.0, "high": 3.0},
+        ),
+    )
+
+
+@pytest.fixture()
+def multi_constraints() -> tuple[IPFConstraint, ...]:
+    """Two IPF constraints: income_bracket + region_code."""
+    return (
+        IPFConstraint(
+            dimension="income_bracket",
+            targets={"low": 4.0, "medium": 3.0, "high": 3.0},
+        ),
+        IPFConstraint(
+            dimension="region_code",
+            targets={"84": 3.0, "11": 4.0, "75": 3.0},
+        ),
+    )
+
+
+@pytest.fixture()
+def inconsistent_constraints() -> tuple[IPFConstraint, ...]:
+    """Two constraints with mismatched grand totals — reliably causes non-convergence.
+
+    income_bracket targets sum to 10 (matches 10-row table).
+    region_code targets sum to 30 (3x mismatch forces perpetual oscillation).
+    With 100 iterations at tolerance=1e-6, IPF cannot converge.
+    """
+    return (
+        IPFConstraint(
+            dimension="income_bracket",
+            targets={"low": 4.0, "medium": 3.0, "high": 3.0},
+        ),
+        IPFConstraint(
+            dimension="region_code",
+            targets={"84": 10.0, "11": 10.0, "75": 10.0},
+        ),
+    )
+```
+
+### Test Pattern to Follow (from Story 11.4)
+
+Follow the exact test structure from `tests/population/methods/test_uniform.py`:
+
+1. **Class-based grouping** by feature/responsibility
+2. **AC references in class docstrings**
+3. **Direct assertions** — `assert` statements, `pytest.raises(ExceptionClass, match=...)` for errors
+4. **Fixtures via conftest** — injected by parameter name
+5. **Frozen dataclass tests** — verify immutability with `pytest.raises(AttributeError)`
+6. **Determinism tests** — same seed → identical result, different seed → different
+7. **Docstring tests** — verify pedagogical content is present
+
+### IPF Marginal Matching Tolerance in Tests
+
+Due to integerization (probabilistic rounding of fractional weights), the output row counts per category will not match targets exactly. Tests should allow ±1 tolerance:
+
+```python
+# Example test pattern for marginal matching
+counts = {}
+for val in result.table.column("income_bracket").to_pylist():
+    counts[val] = counts.get(val, 0) + 1
+# Target was {"low": 4.0, "medium": 3.0, "high": 3.0}
+assert abs(counts.get("low", 0) - 4) <= 1
+assert abs(counts.get("medium", 0) - 3) <= 1
+assert abs(counts.get("high", 0) - 3) <= 1
+```
+
+### Conditional Sampling: Strata Column Auto-Drop Behavior
+
+The conditional sampling method automatically removes strata columns from the table_b side of the merge to prevent column name conflicts. This is a semantic decision: the strata columns already exist in table_a, so duplicating them would be redundant and would trigger the column conflict check.
+
+The auto-drop is **in addition to** any `config.drop_right_columns` specified by the caller. The effective drop list is the union of both.
+
+### Downstream Dependencies
+
+Story 11.5 is consumed by:
+
+- **Story 11.6** (PopulationPipeline) — composes loaders + methods, calls `merge()` in sequence, collects `MergeAssumption` records
+- **Story 11.7** (Validation) — validates merged population against marginals (IPF output should pass validation by construction)
+- **Story 11.8** (Notebook) — demonstrates all three merge methods with plain-language explanations, showing progressive improvement from uniform → conditional → IPF
+
+### Project Structure Notes
+
+**New files (4):**
+- `src/reformlab/population/methods/ipf.py`
+- `src/reformlab/population/methods/conditional.py`
+- `tests/population/methods/test_ipf.py`
+- `tests/population/methods/test_conditional.py`
+
+**Modified files (7):**
+- `src/reformlab/population/methods/base.py` — add `IPFConstraint`, `IPFResult`
+- `src/reformlab/population/methods/errors.py` — add `MergeConvergenceError`
+- `src/reformlab/population/methods/__init__.py` — add new exports, update `__all__`
+- `src/reformlab/population/__init__.py` — add new exports, update `__all__`
+- `tests/population/methods/conftest.py` — add new fixtures
+- `tests/population/methods/test_base.py` — add `TestIPFConstraint`, `TestIPFResult`
+- `tests/population/methods/test_errors.py` — add `TestMergeConvergenceError`
+
+**No changes** to `pyproject.toml` (no new dependencies, no new markers needed)
+
+### Alignment with Project Conventions
+
+All rules from `project-context.md` apply:
+
+- Every file starts with `from __future__ import annotations`
+- `if TYPE_CHECKING:` guards for annotation-only imports (in `base.py` only — `ipf.py` and `conditional.py` use `pyarrow` at runtime)
+- Frozen dataclasses as default (`@dataclass(frozen=True)`) for `IPFConstraint`, `IPFResult`
+- Protocols, not ABCs — new methods satisfy `MergeMethod` protocol via duck typing
+- Subsystem-specific exceptions (`MergeConvergenceError`, not bare `Exception`)
+- `dict[str, Any]` for metadata bags with stable string-constant keys
+- `tuple[...]` for immutable sequences (`IPFConstraint.targets` stored as dict but deep-copied; `IPFResult.weights` as tuple)
+- `X | None` union syntax, not `Optional[X]`
+- Module-level docstrings referencing story/FR
+- `logging.getLogger(__name__)` with structured key=value format
+- `# ====...====` section separators for major sections within longer modules
+
+### References
+
+- [Source: _bmad-output/planning-artifacts/architecture.md#New-Subsystem-Population-Generation] — Directory structure, MergeMethod protocol specification
+- [Source: _bmad-output/planning-artifacts/epics.md#BKL-1105] — Story definition and acceptance criteria
+- [Source: _bmad-output/planning-artifacts/prd.md#FR38] — "System provides a library of statistical methods for merging datasets that do not share the same sample (uniform distribution, IPF, conditional sampling, statistical matching)"
+- [Source: _bmad-output/planning-artifacts/prd.md#FR39] — "Analyst can choose which merge method to apply at each dataset join, with plain-language explanation of the assumption"
+- [Source: _bmad-output/project-context.md#Python-Language-Rules] — Frozen dataclasses, Protocols, `from __future__ import annotations`
+- [Source: _bmad-output/project-context.md#Critical-Implementation-Rules] — PyArrow canonical data type, no pandas in core logic
+- [Source: src/reformlab/population/methods/base.py] — MergeMethod protocol, MergeConfig, MergeAssumption, MergeResult (Story 11.4)
+- [Source: src/reformlab/population/methods/uniform.py] — UniformMergeMethod implementation pattern to follow
+- [Source: src/reformlab/population/methods/errors.py] — MergeError hierarchy pattern (summary-reason-fix)
+- [Source: src/reformlab/governance/manifest.py#AssumptionEntry] — TypedDict with key/value/source/is_default; JSON-compatibility validation
+- [Source: tests/population/methods/test_uniform.py] — Test patterns: class-based grouping, fixture injection, direct assertions
+- [Source: tests/population/methods/conftest.py] — Existing test fixtures
+- [Source: _bmad-output/implementation-artifacts/11-4-define-mergemethod-protocol-and-uniform-distribution-method.md] — Previous story (protocol reference, implementation patterns)
+
+## File List
+
+**New files (4):**
+- `src/reformlab/population/methods/ipf.py`
+- `src/reformlab/population/methods/conditional.py`
+- `tests/population/methods/test_ipf.py`
+- `tests/population/methods/test_conditional.py`
+
+**Modified files (7):**
+- `src/reformlab/population/methods/base.py` — add `IPFConstraint`, `IPFResult`
+- `src/reformlab/population/methods/errors.py` — add `MergeConvergenceError`
+- `src/reformlab/population/methods/__init__.py` — add new exports
+- `src/reformlab/population/__init__.py` — add new exports
+- `tests/population/methods/conftest.py` — add new fixtures
+- `tests/population/methods/test_base.py` — add new type tests
+- `tests/population/methods/test_errors.py` — add convergence error tests
+
+## Dev Agent Record
+
+### Implementation Plan
+
+Implemented all 10 tasks in sequence following the story spec exactly:
+
+1. Added `IPFConstraint` and `IPFResult` frozen dataclasses to `base.py` with validation
+2. Added `MergeConvergenceError` to error hierarchy in `errors.py`
+3. Implemented `IPFMergeMethod` in `ipf.py` — record-level IPF algorithm with weight integerization and seed-stream separation
+4. Implemented `ConditionalSamplingMethod` in `conditional.py` — stratum-based matching with auto-drop of strata columns from table_b
+5. Updated both `__init__.py` files with new exports
+6. Created test fixtures (region_income_table, energy_vehicle_table, simple/multi/inconsistent constraints)
+7. Wrote 24 IPF tests covering protocol, name, constructor validation, merge, marginal matching, convergence, determinism, assumptions, empty tables, column conflicts, drop_right_columns, invalid dimensions, missing categories, docstrings
+8. Wrote 28 conditional sampling tests covering protocol, name, constructor validation, merge, strata respected, determinism, column conflicts, drop_right_columns (auto-drop + dedup), empty tables, missing strata columns, empty strata, assumptions, multiple strata columns, docstrings
+9. Added `TestMergeConvergenceError` (4 tests), `TestIPFConstraint` (7 tests), `TestIPFResult` (3 tests) to existing test files
+10. All 122 method tests pass, 307 total population tests pass, ruff clean, mypy strict clean
+
+### Completion Notes
+
+All 5 acceptance criteria satisfied:
+- AC #1: IPF matches marginals within ±1 (integerization tolerance), convergence at 1e-6
+- AC #2: Assumption record lists all constraints, iterations, convergence status, max_deviation
+- AC #3: Conditional sampling matches within strata — verified via row-level coherence tests
+- AC #4: Assumption record states conditioning variable and conditional independence assumption
+- AC #5: Both module and class docstrings include plain-language explanations with "appropriate"/"problematic" sections
+
+No new dependencies. No changes to pyproject.toml. Both methods follow the exact same patterns as UniformMergeMethod (validation order, error hierarchy, logging, assumption records).
+
+## Change Log
+
+- 2026-03-03: Story created by create-story workflow — comprehensive developer context with IPF algorithm specification (record-level reweighting + integerization + matching), conditional sampling algorithm (stratum-based matching with auto-drop), new supporting types (IPFConstraint, IPFResult, MergeConvergenceError), test fixture designs, downstream dependency mapping, and plain-language pedagogical explanations for both methods.
+- 2026-03-03: Story implemented — all 10 tasks complete, 122 tests passing, ruff/mypy clean. 4 new files, 7 modified files.
+
+
+]]></file>
+<file id="173799eb" path="src/reformlab/population/__init__.py" label="SOURCE CODE"><![CDATA[
+
+"""Realistic population generation library for ReformLab.
+
+Provides institutional data source loaders, statistical fusion methods,
+and population pipeline composition for building synthetic populations
+from open data sources (INSEE, Eurostat, ADEME, SDES).
+
+This module implements EPIC-11 (Realistic Population Generation Library).
+Phase 2 introduces optional network dependencies for data downloads,
+with offline-first caching semantics.
+
+Public API
+----------
+DataSourceLoader : Protocol
+    Interface for institutional data source loaders.
+SourceConfig : dataclass
+    Immutable configuration for a data source download.
+CacheStatus : dataclass
+    Status of a cached data source.
+SourceCache : class
+    Disk-based caching infrastructure for downloaded data.
+CachedLoader : class
+    Base class wrapping protocol + cache logic.
+MergeMethod : Protocol
+    Interface for statistical dataset fusion methods.
+MergeConfig : dataclass
+    Immutable configuration for a merge operation.
+MergeAssumption : dataclass
+    Structured assumption record from a merge operation.
+MergeResult : dataclass
+    Immutable result of a merge operation.
+UniformMergeMethod : class
+    Uniform random matching with replacement.
+IPFMergeMethod : class
+    Iterative Proportional Fitting reweighting and matching.
+IPFConstraint : dataclass
+    A marginal constraint for IPF.
+IPFResult : dataclass
+    Convergence diagnostics from an IPF run.
+ConditionalSamplingMethod : class
+    Stratum-based conditional sampling merge.
+"""
+
+from __future__ import annotations
+
+from reformlab.population.loaders.ademe import (
+    ADEME_AVAILABLE_DATASETS,
+    ADEME_CATALOG,
+    ADEMEDataset,
+    ADEMELoader,
+    get_ademe_loader,
+    make_ademe_config,
+)
+from reformlab.population.loaders.base import (
+    CachedLoader,
+    CacheStatus,
+    DataSourceLoader,
+    SourceConfig,
+)
+from reformlab.population.loaders.cache import SourceCache
+from reformlab.population.loaders.errors import (
+    DataSourceDownloadError,
+    DataSourceError,
+    DataSourceOfflineError,
+    DataSourceValidationError,
+)
+from reformlab.population.loaders.eurostat import (
+    EUROSTAT_AVAILABLE_DATASETS,
+    EUROSTAT_CATALOG,
+    EurostatDataset,
+    EurostatLoader,
+    get_eurostat_loader,
+    make_eurostat_config,
+)
+from reformlab.population.loaders.insee import (
+    AVAILABLE_DATASETS,
+    INSEE_AVAILABLE_DATASETS,
+    INSEE_CATALOG,
+    INSEEDataset,
+    INSEELoader,
+    get_insee_loader,
+    make_insee_config,
+)
+from reformlab.population.loaders.sdes import (
+    SDES_AVAILABLE_DATASETS,
+    SDES_CATALOG,
+    SDESDataset,
+    SDESLoader,
+    get_sdes_loader,
+    make_sdes_config,
+)
+from reformlab.population.methods.base import (
+    IPFConstraint,
+    IPFResult,
+    MergeAssumption,
+    MergeConfig,
+    MergeMethod,
+    MergeResult,
+)
+from reformlab.population.methods.conditional import ConditionalSamplingMethod
+from reformlab.population.methods.errors import (
+    MergeConvergenceError,
+    MergeError,
+    MergeValidationError,
+)
+from reformlab.population.methods.ipf import IPFMergeMethod
+from reformlab.population.methods.uniform import UniformMergeMethod
+
+__all__ = [
+    "ADEME_AVAILABLE_DATASETS",
+    "ADEME_CATALOG",
+    "ADEMEDataset",
+    "ADEMELoader",
+    "AVAILABLE_DATASETS",
+    "CachedLoader",
+    "CacheStatus",
+    "DataSourceDownloadError",
+    "DataSourceError",
+    "DataSourceLoader",
+    "DataSourceOfflineError",
+    "DataSourceValidationError",
+    "EUROSTAT_AVAILABLE_DATASETS",
+    "EUROSTAT_CATALOG",
+    "EurostatDataset",
+    "EurostatLoader",
+    "INSEE_AVAILABLE_DATASETS",
+    "INSEE_CATALOG",
+    "INSEEDataset",
+    "INSEELoader",
+    "SDES_AVAILABLE_DATASETS",
+    "SDES_CATALOG",
+    "SDESDataset",
+    "SDESLoader",
+    "SourceCache",
+    "SourceConfig",
+    "get_ademe_loader",
+    "get_eurostat_loader",
+    "get_insee_loader",
+    "get_sdes_loader",
+    "ConditionalSamplingMethod",
+    "IPFConstraint",
+    "IPFMergeMethod",
+    "IPFResult",
+    "MergeAssumption",
+    "MergeConfig",
+    "MergeConvergenceError",
+    "MergeError",
+    "MergeMethod",
+    "MergeResult",
+    "MergeValidationError",
+    "UniformMergeMethod",
+    "make_ademe_config",
+    "make_eurostat_config",
+    "make_insee_config",
+    "make_sdes_config",
+]
+
+
+]]></file>
+<file id="f2467725" path="src/reformlab/population/methods/__init__.py" label="SOURCE CODE"><![CDATA[
+
+"""Statistical fusion methods library for population generation.
+
+Provides the ``MergeMethod`` protocol for dataset fusion, supporting
+types (``MergeConfig``, ``MergeAssumption``, ``MergeResult``), and
+concrete implementations: ``UniformMergeMethod``, ``IPFMergeMethod``,
+and ``ConditionalSamplingMethod``.
+
+Implements Story 11.4 (MergeMethod protocol and uniform distribution)
+and Story 11.5 (IPF and conditional sampling merge methods).
+References FR38 (statistical methods library) and FR39 (merge method
+selection with plain-language explanations).
+"""
+
+from __future__ import annotations
+
+from reformlab.population.methods.base import (
+    IPFConstraint,
+    IPFResult,
+    MergeAssumption,
+    MergeConfig,
+    MergeMethod,
+    MergeResult,
+)
+from reformlab.population.methods.conditional import ConditionalSamplingMethod
+from reformlab.population.methods.errors import (
+    MergeConvergenceError,
+    MergeError,
+    MergeValidationError,
+)
+from reformlab.population.methods.ipf import IPFMergeMethod
+from reformlab.population.methods.uniform import UniformMergeMethod
+
+__all__ = [
+    "ConditionalSamplingMethod",
+    "IPFConstraint",
+    "IPFMergeMethod",
+    "IPFResult",
+    "MergeAssumption",
+    "MergeConfig",
+    "MergeConvergenceError",
+    "MergeError",
+    "MergeMethod",
+    "MergeResult",
+    "MergeValidationError",
+    "UniformMergeMethod",
+]
+
+
+]]></file>
+<file id="63a021f4" path="src/reformlab/population/methods/base.py" label="SOURCE CODE"><![CDATA[
+
+"""MergeMethod protocol and supporting types for statistical dataset fusion.
+
+Defines the structural interface that all merge methods must satisfy,
+plus immutable value objects for configuration, assumption records,
+and merge results.
+
+Implements Story 11.4 (MergeMethod protocol and uniform distribution).
+Extended by Story 11.5 (IPF and conditional sampling types).
+References FR38 (statistical methods library).
+"""
+
+from __future__ import annotations
+
+from copy import deepcopy
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+
+if TYPE_CHECKING:
+    import pyarrow as pa
+
+
+# ====================================================================
+# Configuration
+# ====================================================================
+
+
+@dataclass(frozen=True)
+class MergeConfig:
+    """Immutable configuration for a merge operation.
+
+    Attributes:
+        seed: Random seed for deterministic merge operations. Must be >= 0.
+        description: Optional human-readable description for governance.
+        drop_right_columns: Column names to remove from table_b before
+            merging. Use this to remove shared key columns (e.g.,
+            ``"region_code"``) that exist in both tables but should only
+            appear once in the result.
+    """
+
+    seed: int
+    description: str = ""
+    drop_right_columns: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        if isinstance(self.seed, bool) or not isinstance(self.seed, int):
+            msg = f"seed must be a non-negative integer, got {self.seed!r}"
+            raise ValueError(msg)
+        if self.seed < 0:
+            msg = f"seed must be a non-negative integer, got {self.seed!r}"
+            raise ValueError(msg)
+        # Coerce to tuple to ensure immutability (caller may pass a list)
+        object.__setattr__(
+            self, "drop_right_columns", tuple(self.drop_right_columns)
+        )
+
+
+# ====================================================================
+# IPF supporting types
+# ====================================================================
+
+
+@dataclass(frozen=True)
+class IPFConstraint:
+    """A marginal constraint for Iterative Proportional Fitting.
+
+    Specifies that the weighted count of rows where ``dimension``
+    equals each category key should match the corresponding target value.
+
+    Attributes:
+        dimension: Column name in table_a to constrain.
+        targets: Mapping from category value to target count/weight.
+            All values must be >= 0.
+    """
+
+    dimension: str
+    targets: dict[str, float]
+
+    def __post_init__(self) -> None:
+        if not self.dimension:
+            msg = "dimension must be a non-empty string"
+            raise ValueError(msg)
+        if not self.targets:
+            msg = "targets must be a non-empty dict"
+            raise ValueError(msg)
+        for cat, val in self.targets.items():
+            if val < 0:
+                msg = f"target for {cat!r} must be >= 0, got {val}"
+                raise ValueError(msg)
+        # Deep-copy targets dict to prevent external mutation
+        object.__setattr__(self, "targets", dict(self.targets))
+
+
+@dataclass(frozen=True)
+class IPFResult:
+    """Convergence diagnostics from an IPF run.
+
+    Attributes:
+        weights: Per-row weights after IPF adjustment.
+        iterations: Number of iterations performed.
+        converged: Whether convergence was reached within tolerance.
+        max_deviation: Maximum absolute deviation at termination.
+    """
+
+    weights: tuple[float, ...]
+    iterations: int
+    converged: bool
+    max_deviation: float
+
+
+# ====================================================================
+# Assumption record
+# ====================================================================
+
+
+@dataclass(frozen=True)
+class MergeAssumption:
+    """Structured assumption record from a merge operation.
+
+    Records the method name, a plain-language assumption statement,
+    and method-specific details. Can be converted to governance
+    ``AssumptionEntry`` format via ``to_governance_entry()``.
+
+    Attributes:
+        method_name: Short identifier for the method (e.g., ``"uniform"``).
+        statement: Plain-language description of the assumption made.
+        details: Method-specific metadata. Values must be JSON-compatible
+            (``str``, ``int``, ``float``, ``bool``, ``None``, ``list``,
+            ``dict``). Never put ``pa.Table``, ``pa.Schema``, ``Path``,
+            or custom objects in details.
+    """
+
+    method_name: str
+    statement: str
+    details: dict[str, Any]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "details", deepcopy(self.details))
+
+    def to_governance_entry(
+        self, *, source_label: str = "merge_step"
+    ) -> dict[str, Any]:
+        """Convert to governance-compatible assumption entry.
+
+        Returns a dict matching ``governance.manifest.AssumptionEntry``
+        structure: ``key``, ``value``, ``source``, ``is_default``.
+
+        The ``value`` field unpacks ``details`` first, then overrides
+        with ``method`` and ``statement`` keys to prevent collision.
+
+        Note: When appending to ``RunManifest.assumptions``
+        (typed ``list[AssumptionEntry]``), mypy strict requires an
+        explicit ``cast(AssumptionEntry, ...)`` at the call site.
+        Cross-subsystem import of ``AssumptionEntry`` here is
+        intentionally avoided to prevent coupling.
+        """
+        return {
+            "key": f"merge_{self.method_name}",
+            "value": {
+                **self.details,
+                "method": self.method_name,
+                "statement": self.statement,
+            },
+            "source": source_label,
+            "is_default": False,
+        }
+
+
+# ====================================================================
+# Merge result
+# ====================================================================
+
+
+@dataclass(frozen=True)
+class MergeResult:
+    """Immutable result of a merge operation.
+
+    Attributes:
+        table: The merged PyArrow table.
+        assumption: Structured assumption record documenting the merge.
+    """
+
+    table: pa.Table
+    assumption: MergeAssumption
+
+
+# ====================================================================
+# MergeMethod protocol
+# ====================================================================
+
+
+@runtime_checkable
+class MergeMethod(Protocol):
+    """Interface for statistical dataset fusion methods.
+
+    Structural (duck-typed) protocol: any class that implements
+    ``merge()`` and the ``name`` property with the correct signatures
+    satisfies the contract — no explicit inheritance required.
+
+    Each method merges two ``pa.Table`` objects using a specific
+    statistical approach, returning the merged table and an assumption
+    record documenting the methodological choice.
+    """
+
+    @property
+    def name(self) -> str:
+        """Short identifier for this method (e.g., ``"uniform"``, ``"ipf"``)."""
+        ...
+
+    def merge(
+        self,
+        table_a: pa.Table,
+        table_b: pa.Table,
+        config: MergeConfig,
+    ) -> MergeResult:
+        """Merge two tables using this method's statistical approach."""
+        ...
+
+
+]]></file>
+<file id="90dfc412" path="[ANTIPATTERNS - DO NOT REPEAT]" label="VIRTUAL CONTENT"><![CDATA[
+
+# Epic 11 - Code Antipatterns
+
+> **WARNING: ANTI-PATTERNS**
+> The issues below were MISTAKES found during code review of previous stories.
+> DO NOT repeat these patterns. Learn from them and avoid similar errors.
+> These represent implementation mistakes (race conditions, missing tests, weak assertions, etc.)
+
+## Story 11-2 (2026-03-03)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | `filosofi_2021_iris_declared` mapped `DISP_*` columns (disposable income) to `median_declared_income` — served factually wrong data. Both datasets also shared the same URL, making them produce identical outputs. | Changed column mapping to use `DEC_*` prefix (DEC_MED21, DEC_D121...DEC_D921), updated declared URL to `BASE_TD_FILO_IRIS_2021_DEC_CSV.zip`, updated disposable URL to `BASE_TD_FILO_IRIS_2021_DISP_CSV.zip` (correct filenames per INSEE page). |
+| critical | Test fixture `filosofi_2021_iris_declared.csv` used `DISP_*` column headers, validating the wrong data identity. | Updated fixture headers to use `DEC_*` prefix. |
+| high | Unreachable `else` branch in `_parse_csv` for/else loop — dead code that suggests misunderstanding of Python's for/else semantics. | Replaced for/else pattern with explicit try/except: try UTF-8, on `ArrowInvalid` fallback to Latin-1. |
+| medium | `_NETWORK_ERRORS` built via `try/except ImportError` for stdlib modules that cannot fail to import (`urllib.error`, `http.client`). Misleading defensive code. | Removed try/except, defined `_NETWORK_ERRORS` tuple directly at module level. |
+| medium | `urllib.request` imported inside `_fetch()` method body while `urllib.error` and `http.client` imported at module level — inconsistent. | Moved all three stdlib imports to module level. |
+| medium | `timeout=300` magic number with no documentation or named constant. | Extracted to `_HTTP_TIMEOUT_SECONDS = 300` with docstring. |
+| medium | `INSEEDataset.file_format: str` accepts any string value; only `"csv"` and `"zip"` are valid. | Changed to `Literal["csv", "zip"]`. |
+| medium | No `_fetch()` test for `filosofi_2021_iris_disposable` dataset. | Added `test_iris_disposable_csv_parsing` test with value assertion (19200.0) to differentiate from declared fixture. |
+
+## Story 11-3 (2026-03-03)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| high | `test_bad_gzip_does_not_trigger_stale_fallback` calls `_fetch()` directly, never exercising the stale-cache fallback path in `download()`. Test name claims to verify stale-fallback prevention but is a duplicate of the preceding test. | Rewrote test to pre-seed a stale cache entry via `download()`, rename files to simulate staleness, then call `download()` with corrupt gzip data — now actually verifies `DataSourceValidationError` propagates through `download()` without triggering stale fallback. |
+| medium | ADEME UTF-8 fallback failure propagates raw `pa.ArrowInvalid` — if both Windows-1252 and UTF-8 parsing fail, the second `pcsv.read_csv()` raises unhandled, bypassing error hierarchy and stale-cache fallback. | Wrapped fallback `read_csv()` in `try/except (pa.ArrowInvalid, pa.lib.ArrowKeyError)` that raises `DataSourceValidationError` with descriptive message. |
+| medium | `make_*_config(**params)` docstrings claim params are "query parameters for the download request" but params are never applied to the URL — they only differentiate cache slots. | Updated all three docstrings to accurately state params differentiate cache slots only and are not appended to the download URL. |
+| medium | SDES test assertions use pure-ASCII substrings (`"Auvergne"`, `"le-de-France"`) that match even if non-ASCII characters (`ô`, `Î`) are decoded incorrectly. | Changed to exact equality assertions: `region_names[0] == "Auvergne-Rhône-Alpes"` and `region_names[3] == "Île-de-France"`. |
+| low | ADEME UTF-8 fallback test only asserts pure-ASCII value `"Gaz naturel"`, never verifying non-ASCII content decoded correctly via fallback path. | Added assertion checking `"métropolitaine"` in the geography column after UTF-8 fallback. |
+
+## Story 11-4 (2026-03-03)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| high | `test_table_b_values_from_actual_rows` only checks one column's values, not row-level coherence — an implementation shuffling columns independently would pass | Rewrote test to verify every matched row combination exists as an actual row in `vehicle_table`. |
+| high | Type annotation `dict[str, pa.Array]` is wrong — `pa.Table.column()` returns `pa.ChunkedArray` | Changed to `dict[str, pa.ChunkedArray]`. |
+| medium | Duplicate column names within an input table silently overwrite in dict-based column assembly | Added duplicate-column guard in both assembly loops raising `MergeValidationError`. |
+| medium | No `event=merge_error` logging on validation failure paths — only success instrumented | Added `_logger.warning("event=merge_error ...")` before each `MergeValidationError` raise. |
+| medium | Misleading probability comment on `test_different_seed_different_result` — test is deterministic, not probabilistic | Replaced comment with accurate explanation; narrowed comparison to right-table columns only. |
+| medium | Misleading "deep-copy" comment on `MergeConfig.__post_init__` — it's a type coercion | Changed comment to "Coerce to tuple to ensure immutability". |
+| low | Missing `from __future__ import annotations` in `tests/population/methods/__init__.py` | Added the import. |
+| low | `to_governance_entry()` return type `dict[str, Any]` will require explicit cast in Story 11.6 | Added documentation note about required `cast(AssumptionEntry, ...)` at the call site. |
+
+
+]]></file>
+<file id="1d910d88" path="[Validator A]" label="VALIDATION OUTPUT"><![CDATA[
+
+**🔥 ADVERSARIAL CODE REVIEW COMPLETE, Lucas!**
+
+**Story:** `_bmad-output/implementation-artifacts/11-5-implement-ipf-and-conditional-sampling-merge-methods.md`
+
+---
+
+## 📊 Review Summary
+
+| Category | Issues Found |
+|----------|--------------|
+| Git vs Story Discrepancies | 0 |
+| AC Implementation Gaps | 0 |
+| Task Completion Lies | 0 |
+| SOLID Violations | 0 |
+| Hidden Bugs | 2 |
+| Performance Footguns | 2 |
+| Lying Tests | 1 |
+| Tech Debt / Design Smells | 5 |
+| **Total Issues** | **10** |
+
+---
+
+## Evidence Score Summary
+
+| Severity | Description | Source | Score |
+|----------|-------------|--------|-------|
+| 🟠 IMPORTANT | Silent type mismatch: `IPFConstraint.targets` requires `str` keys but non-string Arrow columns silently never match | `ipf.py:190-202` | +1 |
+| 🟠 IMPORTANT | Lying test: `test_missing_category_logs_warning` uses `"extra": 0.0` — zero target makes convergence trivially unaffected | `test_ipf.py:496-520` | +1 |
+| 🟡 MINOR | No proactive error when non-zero target has no matching rows — user waits 100 iterations for a generic `MergeConvergenceError` | `ipf.py:164-170` | +0.3 |
+| 🟡 MINOR | Documented O(N×D×I) is actually O(N×**C**×D×I) — the inner category loop doubles the factor | `ipf.py:190-202` | +0.3 |
+| 🟡 MINOR | `seed + 1` derived stream creates cross-scenario RNG correlation between adjacent seeds | `ipf.py:418` | +0.3 |
+| 🟡 MINOR | `ConditionalSamplingMethod.merge()` computes table_a stratum keys twice — `strata_a` build + `a_keys` list comprehension | `conditional.py:248-291` | +0.3 |
+| 🟡 MINOR | Stratum key collision in `strata_sizes` assumption detail — `"\|".join(str(x))` produces identical strings for different multi-column strata | `conditional.py:321` | +0.3 |
+| 🟡 MINOR | `dropped_right_columns` field means different things in IPF vs conditional assumption records | `ipf.py:471`, `conditional.py:345` | +0.3 |
+| 🟡 MINOR | `IPFConstraint.__post_init__` docstring says "deep-copy" but performs a shallow copy | `base.py:90` | +0.3 |
+| 🟡 MINOR | Unreachable duplicate-column guard in column assembly loop — PyArrow dict API enforces unique names before this can trigger | `ipf.py:427-433`, `conditional.py:301-307` | +0.3 |
+| 🟢 CLEAN | No security vulnerabilities | — | -0.5 |
+| 🟢 CLEAN | No SOLID principle violations | — | -0.5 |
+| 🟢 CLEAN | All 5 ACs fully implemented | — | -0.5 |
+
+### Evidence Score: **2.4**
+
+| Score | Verdict |
+|-------|---------|
+| **2.4** | **✅ APPROVED — with 10 issues to address before Story 11.6 integration** |
+
+---
+
+## 🏛️ Architectural Sins
+
+✅ No significant architectural violations detected. Both methods follow the `MergeMethod` protocol via duck typing exactly as specified. Adapter isolation is respected. `from __future__ import annotations` is present on all files. Frozen dataclasses used correctly.
+
+---
+
+## 🐛 Correctness & Safety
+
+### 🐛 Bug 1: Silent type mismatch — `IPFConstraint.targets` keys are always `str`, but column values may be `int` or `float`
+
+- 📍 `src/reformlab/population/methods/ipf.py:187-202`
+- 🔄 Reproduction: Create a constraint on an `int64` column — `IPFConstraint(dimension="household_id", targets={"1": 2.0, "2": 3.0})`. `table.column("household_id").to_pylist()` returns Python `int` objects. `current_totals.get("1", 0.0)` always returns `0.0` since the dict maps `int` keys, never `str`. `factor = 1.0` for every category. IPF runs silently without reweighting anything. Convergence is immediately declared (all deviations are non-zero but `factor = 1.0` means nothing changes, and the `else` branch sets `max_deviation = max(max_deviation, target)` which stays ≥ tolerance forever). Result: `MergeConvergenceError` after 100 iterations with no explanation that the root cause is a type mismatch.
+
+No validation in `IPFConstraint.__post_init__` catches this. No test exercises a non-`utf8` constraint column. The annotation `dict[str, float]` is easy to misread as "any string representation of the value."
+
+**Fix:** Add a runtime check in `_run_ipf` immediately after extracting `col_values`:
+```python
+col_sample = col_values[0] if col_values else None
+if col_sample is not None and not isinstance(col_sample, str):
+    raise MergeValidationError(
+        summary="IPF constraint dimension must be a string-typed column",
+        reason=(
+            f"Column {constraint.dimension!r} contains "
+            f"{type(col_sample).__name__!r} values, but IPFConstraint "
+            f"targets only support str-keyed lookups. "
+            f"Cast the column to utf8 before constraining."
+        ),
+        fix="Use pa.compute.cast(table.column(dim), pa.utf8()) to convert",
+    )
+```
+
+---
+
+### 🎭 Lying Test: `test_missing_category_logs_warning` — tests a degenerate zero-target case
+
+- 📍 `tests/population/methods/test_ipf.py:496-520`
+
+The fixture specifies:
+```python
+targets={"low": 4.0, "medium": 3.0, "high": 3.0, "extra": 0.0}
+```
+
+With `"extra": 0.0`, the algorithm never encounters `current > 0` for "extra" (the category doesn't exist in the data). In the `else` branch: `factor = 1.0` and `max_deviation = max(max_deviation, 0.0)` — the zero target for the missing category contributes **nothing** to `max_deviation`. The remaining three categories converge in ≤2 iterations. The warning IS logged, but the claim "merge completes successfully" is trivially true because the missing category's zero target is already satisfied.
+
+**The test doesn't cover the actually problematic case**: `"extra": 2.0` (non-zero target for absent category). In that case, `max_deviation = max(max_deviation, 2.0)` stays non-zero forever, `factor = 1.0` never adjusts, and `MergeConvergenceError` is raised after 100 iterations. The test's pass gives false confidence that the "missing category" path is handled gracefully.
+
+**Fix:** Add a second parametrized case or a separate test `test_missing_category_with_nonzero_target_fails_with_clear_error` that verifies `MergeConvergenceError` is raised promptly (not after 100 wasted iterations) with a message identifying the culprit category.
+
+---
+
+## ⚡ Performance & Scalability
+
+### Performance Issue 1: IPF inner loop is O(N × **C** × D × I), not O(N × D × I)
+
+- 📍 `src/reformlab/population/methods/ipf.py:190-202`
+
+The story comment (`Dev Notes`) documents the complexity as O(N × D × I). But the actual code is:
+```python
+for cat, target in constraint.targets.items():   # O(C) per constraint
+    ...
+    for k in range(n):                            # O(N) per category
+        if col_values[k] == cat:
+            weights[k] *= factor
+```
+
+This is O(N × C) per constraint per iteration, where C = number of target categories. Total: O(N × C × D × I). With typical income × region × vehicle_type constraints (10 categories each), this is 10× worse than advertised. The canonical implementation pre-builds a `{category: [row_indices]}` map once, then applies factors in O(C) per constraint — making the per-iteration cost O(N + C × D) instead of O(N × C × D).
+
+The fix is to restructure:
+```python
+# Build category→indices map once per constraint (O(N) setup)
+cat_to_indices: dict[object, list[int]] = {}
+for k, cat in enumerate(col_values):
+    cat_to_indices.setdefault(cat, []).append(k)
+
+# Apply factors in O(C + total_rows_adjusted) instead of O(N×C)
+for cat, target in constraint.targets.items():
+    row_ids = cat_to_indices.get(cat, [])
+    ...
+    for k in row_ids:
+        weights[k] *= factor
+```
+
+### Performance Issue 2: `ConditionalSamplingMethod.merge()` computes table_a stratum keys twice
+
+- 📍 `src/reformlab/population/methods/conditional.py:248-250, 289-291`
+
+Stratum keys for table_a rows are constructed once for the `strata_a` dict (lines 248-250) and then rebuilt identically for `a_keys` (lines 289-291):
+
+```python
+# First computation — O(N × len(strata_columns))
+for k in range(n):
+    key = tuple(col[k] for col in a_strata_cols)
+    strata_a.setdefault(key, []).append(k)
+
+# ... 40 lines later ...
+
+# Second identical computation — wasted work
+a_keys = [tuple(col[k] for col in a_strata_cols) for k in range(n)]
+matched_b_indices = [rng.choice(strata_b[key]) for key in a_keys]
+```
+
+The keys computed in the first loop are never saved. For 100k rows with 3 strata columns, this is 300k redundant `tuple()` constructions. Fix: accumulate `a_keys` in the first loop alongside `strata_a`.
+
+---
+
+## 🔧 Maintainability Issues
+
+### 💣 Tech Debt 1: `seed + 1` derived RNG stream creates cross-scenario correlation
+
+- 📍 `src/reformlab/population/methods/ipf.py:391, 418`
+
+```python
+int_weights = self._integerize_weights(
+    ipf_result.weights, table_a.num_rows, random.Random(config.seed)   # stream 1
+)
+rng_match = random.Random(config.seed + 1)                              # stream 2
+```
+
+Two analysts running scenarios with `seed=42` and `seed=43` respectively will find that analyst 43's integerization stream is the same RNG as analyst 42's matching stream. These scenarios are therefore not statistically independent — a subtle correlation that violates the reproducibility contract. The canonical fix is to use a string-based key derivation: `random.Random(hash((config.seed, "ipf_integerize")))` and `random.Random(hash((config.seed, "ipf_match")))`, which produces orthogonal streams for all integer seeds.
+
+### 💣 Tech Debt 2: Stratum key formatting collision in `strata_sizes` assumption record
+
+- 📍 `src/reformlab/population/methods/conditional.py:320-326`
+
+```python
+strata_sizes = {
+    "|".join(str(x) for x in key): {...}
+    for key in strata_a
+}
+```
+
+For multi-column strata (2+ columns), stratum tuples `("a|b", "c")` and `("a", "b|c")` produce identical string keys `"a|b|c"`, causing one stratum to silently overwrite the other in `strata_sizes`. This corrupts the governance record for any dataset where stratum values contain the pipe character — e.g., region codes in some European datasets use `|`-delimited hierarchical codes. Fix: use a safer separator (e.g., `"__"`) or a structured format like `json.dumps(list(key))`.
+
+### 💣 Tech Debt 3: Inconsistent semantics for `dropped_right_columns` across methods
+
+- 📍 `src/reformlab/population/methods/ipf.py:471` vs `conditional.py:345`
+
+IPF records:
+```python
+"dropped_right_columns": list(config.drop_right_columns)  # only explicit drops
+```
+
+Conditional records:
+```python
+"dropped_right_columns": list(effective_drop)              # strata + explicit drops
+```
+
+The `effective_drop` in conditional includes the auto-dropped strata columns. A downstream consumer (Story 11.6's `PopulationPipeline`) reading `assumption.details["dropped_right_columns"]` will get fundamentally different information from IPF vs conditional for the same `drop_right_columns=()` config. Story 11.8's notebook will have to special-case this. Fix: either always record both `dropped_strata_columns` and `dropped_user_columns` as separate keys, or consistently record only the explicit user drops.
+
+### 💣 Tech Debt 4: Docstring says "deep-copy" for a shallow copy operation
+
+- 📍 `src/reformlab/population/methods/base.py:89-90`
+
+```python
+# Deep-copy targets dict to prevent external mutation
+object.__setattr__(self, "targets", dict(self.targets))
+```
+
+`dict(self.targets)` is a **shallow copy**, not a deep copy. For `dict[str, float]` this is functionally equivalent (floats are immutable), but the comment will mislead the next developer who adds a mutable value type to `targets` (e.g., `dict[str, list[float]]` for multi-dimensional targets). Fix: use `copy.deepcopy(self.targets)` or correct the comment to "Shallow copy — safe because target values are floats (immutable)."
+
+### 💣 Tech Debt 5: Unreachable duplicate-column guard in assembly loop
+
+- 📍 `src/reformlab/population/methods/ipf.py:427-433`, `conditional.py:301-307`
+
+```python
+for col_name in expanded_a.schema.names:
+    if col_name in all_columns:       # ← unreachable via any legal pa.Table
+        raise MergeValidationError(
+            summary="Duplicate column in left table", ...
+        )
+```
+
+PyArrow tables constructed via the standard dict API (`pa.table({"a": [...], "a": [...]})`) enforce unique column names at construction time — Python dict semantics prevent duplicate keys. The only way to reach this guard is via low-level `pa.Table.from_arrays()` with explicit duplicate field names, which is not how any caller in this subsystem constructs tables. This is dead code copied from `uniform.py` (Story 11.4 antipattern). The check belongs in a separate input validation step or not at all.
+
+---
+
+## 🛠️ Suggested Fixes
+
+### 1. Silent type mismatch in `_run_ipf` — add column type guard
+
+**File:** `src/reformlab/population/methods/ipf.py`
+**Issue:** `IPFConstraint.targets` keys are `str` but `to_pylist()` on `int64`/`float64` columns returns Python `int`/`float`, causing silent no-op reweighting.
+
+```diff
+         col_values = table_a.column(constraint.dimension).to_pylist()
++        # Guard: targets are keyed by str; non-string columns silently
++        # never match. Detect this early with a concrete error.
++        if col_values:
++            col_sample = col_values[0]
++            if not isinstance(col_sample, str):
++                raise MergeValidationError(
++                    summary="IPF constraint dimension must be a string-typed column",
++                    reason=(
++                        f"Column {constraint.dimension!r} contains "
++                        f"{type(col_sample).__name__!r} values, but "
++                        f"IPFConstraint.targets only supports str keys. "
++                    ),
++                    fix=(
++                        "Cast the column to utf8 first: "
++                        "table.set_column(idx, name, "
++                        "pa.compute.cast(col, pa.utf8()))"
++                    ),
++                )
+         col_categories = set(col_values)
+```
+
+### 2. Fix double stratum key computation in `ConditionalSamplingMethod`
+
+**File:** `src/reformlab/population/methods/conditional.py`
+**Issue:** O(N×len(strata_columns)) stratum key tuples constructed twice.
+
+```diff
+-        for k in range(n):
+-            key = tuple(col[k] for col in a_strata_cols)
+-            strata_a.setdefault(key, []).append(k)
++        a_keys: list[tuple[object, ...]] = []
++        for k in range(n):
++            key = tuple(col[k] for col in a_strata_cols)
++            a_keys.append(key)
++            strata_a.setdefault(key, []).append(k)
+
+         # ... (strata_b build unchanged) ...
+
+-        a_keys = [
+-            tuple(col[k] for col in a_strata_cols) for k in range(n)
+-        ]
+         matched_b_indices = [
+             rng.choice(strata_b[key]) for key in a_keys
+         ]
+```
+
+### 3. Fix strata_sizes key collision for multi-column strata
+
+**File:** `src/reformlab/population/methods/conditional.py`
+**Issue:** `"|".join(str(x))` is ambiguous when values contain `|`.
+
+```diff
+-        strata_sizes = {
+-            "|".join(str(x) for x in key): {
+-                "table_a": len(strata_a[key]),
+-                "table_b": len(strata_b.get(key, [])),
+-            }
+-            for key in strata_a
+-        }
++        import json as _json
++        strata_sizes = {
++            _json.dumps(list(key), ensure_ascii=False): {
++                "table_a": len(strata_a[key]),
++                "table_b": len(strata_b.get(key, [])),
++            }
++            for key in strata_a
++        }
+```
+
+---
+
+## 📋 Issue Priority Checklist for Story 11.6 Integration
+
+Before `PopulationPipeline` (Story 11.6) consumes these methods, the following **must** be addressed:
+
+| Priority | Issue | Risk if Skipped |
+|----------|-------|-----------------|
+| 🔴 P0 | Bug 1: `IPFConstraint` type mismatch for non-string columns | Silent wrong results in pipeline |
+| 🟠 P1 | Lying test: add test for non-zero target on absent category → `MergeConvergenceError` | False confidence in warning path |
+| 🟡 P2 | Inconsistent `dropped_right_columns` semantics | Breaks pipeline assumption parsing |
+| 🟡 P2 | Stratum key collision in `strata_sizes` | Governance record corruption for `|`-valued strata |
+| ⚪ P3 | Performance refactor (O(N×C×D×I) → O(N×D×I)) | Matters at 100k+ rows in Story 11.8 demo |
+| ⚪ P3 | Seed stream derivation via `hash((seed, label))` | Cross-scenario correlation in sensitivity analysis |
+
+]]></file>
+<file id="557aedd2" path="[Validator B]" label="VALIDATION OUTPUT"><![CDATA[
+
+**🔥 ADVERSARIAL CODE REVIEW COMPLETE, Lucas!**
+
+**Story:** /Users/lucas/Workspace/reformlab/_bmad-output/implementation-artifacts/11-5-implement-ipf-and-conditional-sampling-merge-methods.md
+
+---
+
+## 📊 Review Summary
+
+| Category | Issues Found |
+|----------|--------------|
+| Git vs Story Discrepancies | 0 |
+| AC Implementation Gaps | 0 |
+| Task Completion Lies | 0 |
+| SOLID Violations | 0 |
+| Hidden Bugs | 2 |
+| Performance Footguns | 1 |
+| Security Vulnerabilities | 0 |
+| **Total Issues** | **4** |
+
+---
+
+## Evidence Score Summary
+
+| Severity | Description | Source | Score |
+|----------|-------------|--------|-------|
+| 🔴 CRITICAL | IPF integerization always rescales weights back to the original `table_a.num_rows`, so if target marginals sum to a different total (common in raking to external controls) the integerized table will systematically violate the targets and AC#1 cannot hold. | src/reformlab/population/methods/ipf.py:187-205 | +3 |
+| 🟠 IMPORTANT | Missing target categories with positive target values can never converge: `_run_ipf` sets `factor=1.0` but keeps `max_deviation` at the target, guaranteeing a `MergeConvergenceError` instead of the intended warning+continue path. | src/reformlab/population/methods/ipf.py:94-118 | +1 |
+| 🟠 IMPORTANT | IPF expansion builds `expanded_indices` by repeating each row `int_weight` times; for large raked totals this is O(total_weight) memory and can explode beyond laptop limits, conflicting with the Phase‑2 performance budget. | src/reformlab/population/methods/ipf.py:222-246 | +1 |
+| 🟠 IMPORTANT | Test suite never exercises the positive-missing-category path (only tests missing targets with value 0), so the non-convergence/exception bug above is invisible to tests — a lying test gap. | tests/population/methods/test_ipf.py:199-236 | +1 |
+| 🟢 CLEAN PASS | 6 categories with no issues (SOLID, Abstraction, Tech Debt, Style, Type Safety, Security) |  | -3.0 |
+
+### Evidence Score: 3.0
+
+| Score | Verdict |
+|-------|---------|
+| **3.0** | **MAJOR REWORK** |
+
+---
+
+## 🏛️ Architectural Sins
+
+✅ No significant architectural violations detected.
+
+---
+
+## 🐍 Pythonic Crimes & Readability
+
+✅ Code follows style guidelines and is readable.
+
+---
+
+## ⚡ Performance & Scalability
+
+- **[High] Memory blow-up risk:** IPF builds `expanded_indices` by duplicating rows per integer weight (`ipf.py:222-246`), so raked totals above the original sample size create proportional memory growth and can exceed laptop RAM.  
+  - 💡 Fix: stream the expansion with `pa.repeat`/`ListArray` or sample-with-weights without materializing full duplication.
+
+---
+
+## 🐛 Correctness & Safety
+
+- **🐛 Bug:** Integerization rescales to `table_a.num_rows` regardless of target totals (`ipf.py:187-205`), breaking marginal matches whenever external totals differ.  
+  - 🔄 Reproduction: use targets summing to 15 on a 10-row table; weights converge to sum≈15, integerization rescales to 10, final counts miss targets by 33%.
+- **🐛 Bug:** Missing positive target categories never converge and always raise `MergeConvergenceError` despite spec saying “log warning and proceed” (`ipf.py:94-118`).  
+  - 🔄 Reproduction: constraint targets include `{"extra": 5.0}` with no such category in data; max_deviation stays 5.0 forever → exception.
+
+---
+
+## 🔧 Maintainability Issues
+
+- **💣 Tech Debt:** Test suite masks the missing-category failure by only asserting the zero-target case (`test_ipf.py:199-236`), giving false confidence and leaving the real bug unguarded.  
+  - 💥 Explosion radius: future datasets with incomplete strata will start throwing convergence errors in production with no test signal.
+
+---
+
+## 🛠️ Suggested Fixes
+
+### 1. Respect external totals during integerization
+**File:** `src/reformlab/population/methods/ipf.py`
+**Issue:** Integerization forces weights to sum to original row count, violating external marginal totals.
+
+**Diff:**
+```diff
+@@
+-    def _integerize_weights(
+-        self,
+-        weights: tuple[float, ...],
+-        target_count: int,
+-        rng: random.Random,
+-    ) -> list[int]:
+-        """Convert float weights to integer counts via probabilistic rounding.
+-
+-        Normalizes weights to sum to target_count, then rounds each
+-        weight using deterministic probabilistic rounding: the fractional
+-        part is the probability of rounding up.
+-        """
+-        total = sum(weights)
+-        if total == 0:
+-            return [0] * len(weights)
+-        scale = target_count / total
++    def _integerize_weights(
++        self,
++        weights: tuple[float, ...],
++        target_total: float,
++        rng: random.Random,
++    ) -> list[int]:
++        """Convert float weights to integer counts via probabilistic rounding.
++
++        Normalizes weights to the *constraint total* (sum of targets), then rounds
++        each weight using deterministic probabilistic rounding: the fractional part
++        is the probability of rounding up.
++        """
++        total = sum(weights)
++        if total == 0:
++            return [0] * len(weights)
++        scale = target_total / total
+```
+
+### 2. Allow warning-only behavior for missing categories
+**File:** `src/reformlab/population/methods/ipf.py`
+**Issue:** Missing positive target categories never converge and raise errors.
+
+**Diff:**
+```diff
+@@
+-            if not present:
+-                _logger.warning(
+-                    "event=merge_error method=ipf error=all_categories_missing dimension=%s",
+-                    constraint.dimension,
+-                )
+-                raise MergeValidationError(
+-                    summary="All IPF target categories missing",
+-                    reason=(
+-                        f"None of the target categories {sorted(constraint.targets.keys())} "
+-                        f"exist in column {constraint.dimension!r}. "
+-                        f"Column contains: {sorted(str(v) for v in col_categories)}"
+-                    ),
+-                    fix="Check that target category values match the column values",
+-                )
+-            if missing:
+-                _logger.warning(
+-                    "event=ipf_missing_categories dimension=%s missing=%s",
+-                    constraint.dimension,
+-                    sorted(missing),
+-                )
++            if not present:
++                _logger.warning(
++                    "event=ipf_missing_categories dimension=%s missing_all=%s",
++                    constraint.dimension,
++                    sorted(constraint.targets.keys()),
++                )
++                # Allow run to proceed but set targets for absent cats to 0 to permit convergence
++                constraint = IPFConstraint(
++                    dimension=constraint.dimension,
++                    targets={k: v for k, v in constraint.targets.items() if k in col_categories},
++                )
++            elif missing:
++                _logger.warning(
++                    "event=ipf_missing_categories dimension=%s missing=%s",
++                    constraint.dimension,
++                    sorted(missing),
++                )
+```
+
+### 3. Avoid materializing massive expanded_indices
+**File:** `src/reformlab/population/methods/ipf.py`
+**Issue:** Row replication is O(total_weight) memory.
+
+**Diff:**
+```diff
+@@
+-        expanded_indices = [
+-            k for k, w in enumerate(int_weights) for _ in range(w)
+-        ]
++        # Stream expansion without holding full index list in memory
++        expanded_indices_iter = (
++            k for k, w in enumerate(int_weights) for _ in range(w)
++        )
++        expanded_indices = pa.array(list(expanded_indices_iter))
+@@
+-        expanded_a = table_a.take(pa.array(expanded_indices))
++        expanded_a = table_a.take(expanded_indices)
+```
+
+### 4. Add test for missing positive category
+**File:** `tests/population/methods/test_ipf.py`
+**Issue:** Tests never cover missing categories with positive targets.
+
+**Corrected code:**
+```python
+def test_missing_positive_category_warns_and_succeeds(
+    region_income_table: pa.Table,
+    vehicle_table: pa.Table,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    constraints = (
+        IPFConstraint(
+            dimension="income_bracket",
+            targets={"low": 4.0, "medium": 3.0, "high": 3.0, "extra": 2.0},
+        ),
+    )
+    method = IPFMergeMethod(constraints=constraints, max_iterations=50)
+    with caplog.at_level(logging.WARNING):
+        result = method.merge(region_income_table, vehicle_table, MergeConfig(seed=7))
+    assert result.table.num_rows > 0
+    assert "ipf_missing_categories" in caplog.text
+```
+
+]]></file>
+<file id="dc422a86" path="[git-diff]" label="VIRTUAL CONTENT"><![CDATA[
+
+<!-- GIT_DIFF_START -->
+ .../4-implementation/code-review/instructions.xml  | 413 ++++++++++++--
+ .../4-implementation/code-review/workflow.yaml     |  15 +-
+ .../4-implementation/create-story/instructions.xml |   6 +-
+ .../4-implementation/create-story/workflow.yaml    |  27 +-
+ .../4-implementation/dev-story/instructions.xml    |   7 +-
+ .../4-implementation/dev-story/workflow.yaml       |   7 +-
+ .../4-implementation/retrospective/workflow.yaml   |   9 +-
+ bmad-assist.yaml                                   |  45 +-
+ pyproject.toml                                     |   3 +-
+ src/reformlab/population/__init__.py               | 155 ++++++
+ src/reformlab/population/loaders/__init__.py       |  96 ++++
+ src/reformlab/population/loaders/ademe.py          | 328 +++++++++++
+ src/reformlab/population/loaders/base.py           | 296 ++++++++++
+ src/reformlab/population/loaders/cache.py          | 300 ++++++++++
+ src/reformlab/population/loaders/errors.py         |  47 ++
+ src/reformlab/population/loaders/eurostat.py       | 327 +++++++++++
+ src/reformlab/population/loaders/insee.py          | 454 +++++++++++++++
+ src/reformlab/population/loaders/sdes.py           | 292 ++++++++++
+ src/reformlab/population/methods/__init__.py       |  46 ++
+ src/reformlab/population/methods/base.py           | 216 ++++++++
+ src/reformlab/population/methods/conditional.py    | 356 ++++++++++++
+ src/reformlab/population/methods/errors.py         |  41 ++
+ src/reformlab/population/methods/ipf.py            | 483 ++++++++++++++++
+ src/reformlab/population/methods/uniform.py        | 224 ++++++++
+ tests/fixtures/ademe/base_carbone.csv              |   5 +
+ tests/fixtures/eurostat/ilc_di01.csv               |   6 +
+ tests/fixtures/eurostat/nrg_d_hhq.csv              |   6 +
+ tests/fixtures/insee/filosofi_2021_commune.csv     |   6 +
+ .../fixtures/insee/filosofi_2021_iris_declared.csv |   4 +
+ .../insee/filosofi_2021_iris_disposable.csv        |   4 +
+ tests/fixtures/sdes/vehicle_fleet.csv              |   6 +
+ tests/governance/test_memory.py                    |   4 +-
+ tests/population/__init__.py                       |   1 +
+ tests/population/conftest.py                       |  42 ++
+ tests/population/loaders/__init__.py               |   1 +
+ tests/population/loaders/conftest.py               | 163 ++++++
+ tests/population/loaders/test_ademe.py             | 351 ++++++++++++
+ tests/population/loaders/test_ademe_network.py     |  38 ++
+ tests/population/loaders/test_base.py              | 220 ++++++++
+ tests/population/loaders/test_cache.py             | 393 +++++++++++++
+ tests/population/loaders/test_cached_loader.py     | 311 +++++++++++
+ tests/population/loaders/test_errors.py            |  62 +++
+ tests/population/loaders/test_eurostat.py          | 460 ++++++++++++++++
+ tests/population/loaders/test_eurostat_network.py  |  48 ++
+ tests/population/loaders/test_insee.py             | 545 ++++++++++++++++++
+ tests/population/loaders/test_insee_network.py     |  35 ++
+ tests/population/loaders/test_sdes.py              | 385 +++++++++++++
+ tests/population/loaders/test_sdes_network.py      |  38 ++
+ tests/population/methods/__init__.py               |   3 +
+ tests/population/methods/conftest.py               | 217 ++++++++
+ tests/population/methods/test_base.py              | 278 ++++++++++
+ tests/population/methods/test_conditional.py       | 607 +++++++++++++++++++++
+ tests/population/methods/test_errors.py            | 101 ++++
+ tests/population/methods/test_ipf.py               | 565 +++++++++++++++++++
+ tests/population/methods/test_uniform.py           | 368 +++++++++++++
+ 55 files changed, 9374 insertions(+), 92 deletions(-)
+
+diff --git a/src/reformlab/population/__init__.py b/src/reformlab/population/__init__.py
+new file mode 100644
+index 0000000..b8141a7
+--- /dev/null
++++ b/src/reformlab/population/__init__.py
+@@ -0,0 +1,155 @@
++"""Realistic population generation library for ReformLab.
++
++Provides institutional data source loaders, statistical fusion methods,
++and population pipeline composition for building synthetic populations
++from open data sources (INSEE, Eurostat, ADEME, SDES).
++
++This module implements EPIC-11 (Realistic Population Generation Library).
++Phase 2 introduces optional network dependencies for data downloads,
++with offline-first caching semantics.
++
++Public API
++----------
++DataSourceLoader : Protocol
++    Interface for institutional data source loaders.
++SourceConfig : dataclass
++    Immutable configuration for a data source download.
++CacheStatus : dataclass
++    Status of a cached data source.
++SourceCache : class
++    Disk-based caching infrastructure for downloaded data.
++CachedLoader : class
++    Base class wrapping protocol + cache logic.
++MergeMethod : Protocol
++    Interface for statistical dataset fusion methods.
++MergeConfig : dataclass
++    Immutable configuration for a merge operation.
++MergeAssumption : dataclass
++    Structured assumption record from a merge operation.
++MergeResult : dataclass
++    Immutable result of a merge operation.
++UniformMergeMethod : class
++    Uniform random matching with replacement.
++IPFMergeMethod : class
++    Iterative Proportional Fitting reweighting and matching.
++IPFConstraint : dataclass
++    A marginal constraint for IPF.
++IPFResult : dataclass
++    Convergence diagnostics from an IPF run.
++ConditionalSamplingMethod : class
++    Stratum-based conditional sampling merge.
++"""
++
++from __future__ import annotations
++
++from reformlab.population.loaders.ademe import (
++    ADEME_AVAILABLE_DATASETS,
++    ADEME_CATALOG,
++    ADEMEDataset,
++    ADEMELoader,
++    get_ademe_loader,
++    make_ademe_config,
++)
++from reformlab.population.loaders.base import (
++    CachedLoader,
++    CacheStatus,
++    DataSourceLoader,
++    SourceConfig,
++)
++from reformlab.population.loaders.cache import SourceCache
++from reformlab.population.loaders.errors import (
++    DataSourceDownloadError,
++    DataSourceError,
++    DataSourceOfflineError,
++    DataSourceValidationError,
++)
++from reformlab.population.loaders.eurostat import (
++    EUROSTAT_AVAILABLE_DATASETS,
++    EUROSTAT_CATALOG,
++    EurostatDataset,
++    EurostatLoader,
++    get_eurostat_loader,
++    make_eurostat_config,
++)
++from reformlab.population.loaders.insee import (
++    AVAILABLE_DATASETS,
++    INSEE_AVAILABLE_DATASETS,
++    INSEE_CATALOG,
++    INSEEDataset,
++    INSEELoader,
++    get_insee_loader,
++    make_insee_config,
++)
++from reformlab.population.loaders.sdes import (
++    SDES_AVAILABLE_DATASETS,
++    SDES_CATALOG,
++    SDESDataset,
++    SDESLoader,
++    get_sdes_loader,
++    make_sdes_config,
++)
++from reformlab.population.methods.base import (
++    IPFConstraint,
++    IPFResult,
++    MergeAssumption,
++    MergeConfig,
++    MergeMethod,
++    MergeResult,
++)
++from reformlab.population.methods.conditional import ConditionalSamplingMethod
++from reformlab.population.methods.errors import (
++    MergeConvergenceError,
++    MergeError,
++    MergeValidationError,
++)
++from reformlab.population.methods.ipf import IPFMergeMethod
++from reformlab.population.methods.uniform import UniformMergeMethod
++
++__all__ = [
++    "ADEME_AVAILABLE_DATASETS",
++    "ADEME_CATALOG",
++    "ADEMEDataset",
++    "ADEMELoader",
++    "AVAILABLE_DATASETS",
++    "CachedLoader",
++    "CacheStatus",
++    "DataSourceDownloadError",
++    "DataSourceError",
++    "DataSourceLoader",
++    "DataSourceOfflineError",
++    "DataSourceValidationError",
++    "EUROSTAT_AVAILABLE_DATASETS",
++    "EUROSTAT_CATALOG",
++    "EurostatDataset",
++    "EurostatLoader",
++    "INSEE_AVAILABLE_DATASETS",
++    "INSEE_CATALOG",
++    "INSEEDataset",
++    "INSEELoader",
++    "SDES_AVAILABLE_DATASETS",
++    "SDES_CATALOG",
++    "SDESDataset",
++    "SDESLoader",
++    "SourceCache",
++    "SourceConfig",
++    "get_ademe_loader",
++    "get_eurostat_loader",
++    "get_insee_loader",
++    "get_sdes_loader",
++    "ConditionalSamplingMethod",
++    "IPFConstraint",
++    "IPFMergeMethod",
++    "IPFResult",
++    "MergeAssumption",
++    "MergeConfig",
++    "MergeConvergenceError",
++    "MergeError",
++    "MergeMethod",
++    "MergeResult",
++    "MergeValidationError",
++    "UniformMergeMethod",
++    "make_ademe_config",
++    "make_eurostat_config",
++    "make_insee_config",
++    "make_sdes_config",
++]
+diff --git a/src/reformlab/population/loaders/__init__.py b/src/reformlab/population/loaders/__init__.py
+new file mode 100644
+index 0000000..0660cdc
+--- /dev/null
++++ b/src/reformlab/population/loaders/__init__.py
+@@ -0,0 +1,96 @@
++"""Institutional data source loaders with disk-based caching.
++
++Provides the ``DataSourceLoader`` protocol, ``SourceCache`` for
++offline-first caching, and ``CachedLoader`` base class for building
++concrete loaders (INSEE, Eurostat, ADEME, SDES).
++
++Implements Story 11.1 (DataSourceLoader protocol and caching infrastructure).
++Implements Story 11.2 (INSEE data source loader).
++Implements Story 11.3 (Eurostat, ADEME, SDES data source loaders).
++"""
++
++from __future__ import annotations
++
++from reformlab.population.loaders.ademe import (
++    ADEME_AVAILABLE_DATASETS,
++    ADEME_CATALOG,
++    ADEMEDataset,
++    ADEMELoader,
++    get_ademe_loader,
++    make_ademe_config,
++)
++from reformlab.population.loaders.base import (
++    CachedLoader,
++    CacheStatus,
++    DataSourceLoader,
++    SourceConfig,
++)
++from reformlab.population.loaders.cache import SourceCache
++from reformlab.population.loaders.errors import (
++    DataSourceDownloadError,
++    DataSourceError,
++    DataSourceOfflineError,
++    DataSourceValidationError,
++)
++from reformlab.population.loaders.eurostat import (
++    EUROSTAT_AVAILABLE_DATASETS,
++    EUROSTAT_CATALOG,
++    EurostatDataset,
++    EurostatLoader,
++    get_eurostat_loader,
++    make_eurostat_config,
++)
++from reformlab.population.loaders.insee import (
++    AVAILABLE_DATASETS,
++    INSEE_AVAILABLE_DATASETS,
++    INSEE_CATALOG,
++    INSEEDataset,
++    INSEELoader,
++    get_insee_loader,
++    make_insee_config,
++)
++from reformlab.population.loaders.sdes import (
++    SDES_AVAILABLE_DATASETS,
++    SDES_CATALOG,
++    SDESDataset,
++    SDESLoader,
++    get_sdes_loader,
++    make_sdes_config,
++)
++
++__all__ = [
++    "ADEME_AVAILABLE_DATASETS",
++    "ADEME_CATALOG",
++    "ADEMEDataset",
++    "ADEMELoader",
++    "AVAILABLE_DATASETS",
++    "CachedLoader",
++    "CacheStatus",
++    "DataSourceDownloadError",
++    "DataSourceError",
++    "DataSourceLoader",
++    "DataSourceOfflineError",
++    "DataSourceValidationError",
++    "EUROSTAT_AVAILABLE_DATASETS",
++    "EUROSTAT_CATALOG",
++    "EurostatDataset",
++    "EurostatLoader",
++    "INSEE_AVAILABLE_DATASETS",
++    "INSEE_CATALOG",
++    "INSEEDataset",
++    "INSEELoader",
++    "SDES_AVAILABLE_DATASETS",
++    "SDES_CATALOG",
++    "SDESDataset",
++    "SDESLoader",
++    "SourceCache",
++    "SourceConfig",
++    "get_ademe_loader",
++    "get_eurostat_loader",
++    "get_insee_loader",
++    "get_sdes_loader",
++    "make_ademe_config",
++    "make_eurostat_config",
++    "make_insee_config",
++    "make_sdes_config",
++]
+diff --git a/src/reformlab/population/loaders/ademe.py b/src/reformlab/population/loaders/ademe.py
+new file mode 100644
+index 0000000..1420edb
+--- /dev/null
++++ b/src/reformlab/population/loaders/ademe.py
+@@ -0,0 +1,328 @@
++"""ADEME institutional data source loader.
++
++Downloads, caches, and schema-validates ADEME Base Carbone emission factor
++datasets. Concrete implementation of the ``DataSourceLoader`` protocol via
++``CachedLoader``.
++
++Handles Windows-1252 encoding (primary) with UTF-8 fallback, semicolon
++separator, and French-language column names with accents.
++
++Implements Story 11.3 (Implement Eurostat, ADEME, SDES data source loaders).
++References: FR36 (download and cache public datasets), FR37 (browse
++available datasets).
++"""
++
++from __future__ import annotations
++
++import http.client
++import io
++import logging
++import urllib.error
++import urllib.request
++from dataclasses import dataclass
++from typing import TYPE_CHECKING
++
++import pyarrow as pa
++import pyarrow.csv as pcsv
++
++from reformlab.population.loaders.base import CachedLoader, SourceConfig
++from reformlab.population.loaders.errors import DataSourceValidationError
++
++if TYPE_CHECKING:
++    from reformlab.population.loaders.cache import SourceCache
++
++
++# ====================================================================
++# ADEME dataset metadata
++# ====================================================================
++
++
++@dataclass(frozen=True)
++class ADEMEDataset:
++    """Metadata for a known ADEME dataset.
++
++    The ``columns`` field defines the raw-to-project column rename mapping.
++    Each inner tuple is ``(raw_column_name, project_column_name)``.
++    """
++
++    dataset_id: str
++    description: str
++    url: str
++    encoding: str = "windows-1252"
++    separator: str = ";"
++    null_markers: tuple[str, ...] = ("",)
++    columns: tuple[tuple[str, str], ...] = ()
++
++
++# ====================================================================
++# Dataset catalog
++# ====================================================================
++
++_BASE_CARBONE_COLUMNS: tuple[tuple[str, str], ...] = (
++    ("Identifiant de l'\xe9l\xe9ment", "element_id"),
++    ("Nom base fran\xe7ais", "name_fr"),
++    ("Nom attribut fran\xe7ais", "attribute_name_fr"),
++    ("Type Ligne", "line_type"),
++    ("Unit\xe9 fran\xe7ais", "unit_fr"),
++    ("Total poste non d\xe9compos\xe9", "total_co2e"),
++    ("CO2f", "co2_fossil"),
++    ("CH4f", "ch4_fossil"),
++    ("CH4b", "ch4_biogenic"),
++    ("N2O", "n2o"),
++    ("CO2b", "co2_biogenic"),
++    ("Autre GES", "other_ghg"),
++    ("Localisation g\xe9ographique", "geography"),
++    ("Sous-localisation g\xe9ographique fran\xe7ais", "sub_geography"),
++    ("Contributeur", "contributor"),
++)
++
++ADEME_CATALOG: dict[str, ADEMEDataset] = {
++    "base_carbone": ADEMEDataset(
++        dataset_id="base_carbone",
++        description="Base Carbone V23.6 emission factors (CSV from data.gouv.fr)",
++        url="https://www.data.gouv.fr/api/1/datasets/r/ac6a3044-459c-4520-b85a-7e1740f7cd1f",
++        columns=_BASE_CARBONE_COLUMNS,
++    ),
++}
++
++ADEME_AVAILABLE_DATASETS: tuple[str, ...] = tuple(sorted(ADEME_CATALOG.keys()))
++"""Available ADEME dataset identifiers for discovery."""
++
++
++# ====================================================================
++# Per-dataset PyArrow schemas
++# ====================================================================
++
++
++def _base_carbone_schema() -> pa.Schema:
++    return pa.schema([
++        pa.field("element_id", pa.int64()),
++        pa.field("name_fr", pa.utf8()),
++        pa.field("attribute_name_fr", pa.utf8()),
++        pa.field("line_type", pa.utf8()),
++        pa.field("unit_fr", pa.utf8()),
++        pa.field("total_co2e", pa.float64()),
++        pa.field("co2_fossil", pa.float64()),
++        pa.field("ch4_fossil", pa.float64()),
++        pa.field("ch4_biogenic", pa.float64()),
++        pa.field("n2o", pa.float64()),
++        pa.field("co2_biogenic", pa.float64()),
++        pa.field("other_ghg", pa.float64()),
++        pa.field("geography", pa.utf8()),
++        pa.field("sub_geography", pa.utf8()),
++        pa.field("contributor", pa.utf8()),
++    ])
++
++
++_DATASET_SCHEMAS: dict[str, pa.Schema] = {
++    "base_carbone": _base_carbone_schema(),
++}
++
++
++# ====================================================================
++# ADEMELoader
++# ====================================================================
++
++_NETWORK_ERRORS: tuple[type[Exception], ...] = (
++    urllib.error.URLError,
++    OSError,
++    http.client.HTTPException,
++)
++
++_HTTP_TIMEOUT_SECONDS = 300
++"""Timeout for ADEME HTTP downloads (5 minutes)."""
++
++
++class ADEMELoader(CachedLoader):
++    """Concrete loader for ADEME institutional data sources.
++
++    Extends ``CachedLoader`` with ADEME-specific CSV parsing, Windows-1252
++    encoding (primary) with UTF-8 fallback, semicolon separator, and
++    French-language column names.
++
++    Each loader instance handles one ``ADEMEDataset``. Use
++    ``get_ademe_loader`` factory to construct from a catalog dataset ID.
++    """
++
++    def __init__(
++        self,
++        *,
++        cache: SourceCache,
++        logger: logging.Logger,
++        dataset: ADEMEDataset,
++    ) -> None:
++        self._dataset = dataset
++        super().__init__(cache=cache, logger=logger)
++
++    def schema(self) -> pa.Schema:
++        """Return the expected PyArrow schema for this loader's dataset."""
++        return _DATASET_SCHEMAS[self._dataset.dataset_id]
++
++    def _fetch(self, config: SourceConfig) -> pa.Table:
++        """Download and parse an ADEME dataset from its URL.
++
++        Handles Windows-1252 encoding with UTF-8 fallback and semicolon
++        separator. Re-raises all network errors as ``OSError`` so
++        ``CachedLoader.download()`` can handle stale-cache fallback.
++        """
++        self._logger.debug(
++            "event=fetch_start provider=ademe dataset_id=%s url=%s",
++            self._dataset.dataset_id,
++            config.url,
++        )
++
++        try:
++            with urllib.request.urlopen(config.url, timeout=_HTTP_TIMEOUT_SECONDS) as response:  # noqa: S310
++                raw_bytes = response.read()
++        except _NETWORK_ERRORS as exc:
++            raise OSError(
++                f"Failed to download ademe/{self._dataset.dataset_id} "
++                f"from {config.url}: {exc}"
++            ) from exc
++
++        table = self._parse_csv(raw_bytes)
++
++        self._logger.debug(
++            "event=fetch_complete provider=ademe dataset_id=%s rows=%d columns=%d",
++            self._dataset.dataset_id,
++            table.num_rows,
++            table.num_columns,
++        )
++        return table
++
++    def _parse_csv(self, csv_bytes: bytes) -> pa.Table:
++        """Parse CSV bytes into a pa.Table with schema enforcement.
++
++        Tries Windows-1252 first, falls back to UTF-8 on decode error.
++        """
++        ds = self._dataset
++        raw_names = [col[0] for col in ds.columns]
++        project_names = [col[1] for col in ds.columns]
++        expected_schema = self.schema()
++
++        # Build column_types mapping using RAW column names
++        column_types: dict[str, pa.DataType] = {}
++        for raw_name, proj_name in ds.columns:
++            column_types[raw_name] = expected_schema.field(proj_name).type
++
++        convert_options = pcsv.ConvertOptions(
++            null_values=list(ds.null_markers),
++            column_types=column_types,
++            include_columns=raw_names,
++        )
++        parse_options = pcsv.ParseOptions(delimiter=ds.separator)
++
++        # Try primary encoding (Windows-1252), fallback to UTF-8 on decode error.
++        # ArrowInvalid: byte sequence invalid for the encoding.
++        # ArrowKeyError: decoding succeeded but column names are garbled
++        # (UTF-8 multi-byte chars decoded as Windows-1252 produce different names).
++        read_options = pcsv.ReadOptions(encoding=ds.encoding)
++        try:
++            table = pcsv.read_csv(
++                io.BytesIO(csv_bytes),
++                read_options=read_options,
++                parse_options=parse_options,
++                convert_options=convert_options,
++            )
++        except (pa.ArrowInvalid, pa.lib.ArrowKeyError):
++            self._logger.debug(
++                "event=encoding_fallback provider=ademe dataset_id=%s "
++                "primary=%s fallback=utf-8",
++                ds.dataset_id,
++                ds.encoding,
++            )
++            fallback_options = pcsv.ReadOptions(encoding="utf-8")
++            try:
++                table = pcsv.read_csv(
++                    io.BytesIO(csv_bytes),
++                    read_options=fallback_options,
++                    parse_options=parse_options,
++                    convert_options=convert_options,
++                )
++            except (pa.ArrowInvalid, pa.lib.ArrowKeyError) as exc2:
++                raise DataSourceValidationError(
++                    summary="CSV parsing failed",
+
+[... Git diff truncated due to size - see full diff with git command ...]
+
+]]></file>
+</context>
+<variables>
+<var name="author">BMad</var>
+<var name="communication_language">English</var>
+<var name="date">2026-03-03</var>
+<var name="description">Master synthesizes code review findings and applies fixes to source code</var>
+<var name="document_output_language">English</var>
+<var name="epic_num">11</var>
+<var name="implementation_artifacts">_bmad-output/implementation-artifacts</var>
+<var name="installed_path">_bmad/bmm/workflows/4-implementation/code-review-synthesis</var>
+<var name="instructions">/Users/lucas/Workspace/bmad-assist/src/bmad_assist/workflows/code-review-synthesis/instructions.xml</var>
+<var name="name">code-review-synthesis</var>
+<var name="output_folder">_bmad-output</var>
+<var name="planning_artifacts">_bmad-output/planning-artifacts</var>
+<var name="project_context" file_id="b5c6fe32" load_strategy="EMBEDDED" token_approx="2024">embedded in prompt, file id: b5c6fe32</var>
+<var name="project_knowledge">docs</var>
+<var name="project_name">ReformLab</var>
+<var name="reviewer_count">2</var>
+<var name="session_id">50c95fee-2162-499d-9e0c-4d1ce3dde8ad</var>
+<var name="sprint_status">_bmad-output/implementation-artifacts/sprint-status.yaml</var>
+<var name="story_file" file_id="bca11243">embedded in prompt, file id: bca11243</var>
+<var name="story_id">11.5</var>
+<var name="story_key">11-5-implement-ipf-and-conditional-sampling-merge-methods</var>
+<var name="story_num">5</var>
+<var name="story_title">implement-ipf-and-conditional-sampling-merge-methods</var>
+<var name="template">False</var>
+<var name="timestamp">20260303_1928</var>
+<var name="user_name">Lucas</var>
+<var name="user_skill_level">expert</var>
+<var name="validator_count"></var>
+</variables>
+<instructions><workflow>
+  <critical>Communicate all responses in English and generate all documents in English</critical>
+  <critical>You are the MASTER SYNTHESIS agent for CODE REVIEW findings.</critical>
+  <critical>You have WRITE PERMISSION to modify SOURCE CODE files and story Dev Agent Record section.</critical>
+  <critical>DO NOT modify story context (AC, Dev Notes content) - only Dev Agent Record (task checkboxes, completion notes, file list).</critical>
+  <critical>All context (project_context.md, story file, anonymized reviews) is EMBEDDED below - do NOT attempt to read files.</critical>
+
+  <step n="1" goal="Analyze reviewer findings">
+    <action>Read all anonymized reviewer outputs (Reviewer A, B, C, D, etc.)</action>
+    <action>For each issue raised:
+      - Cross-reference with embedded project_context.md and story file
+      - Cross-reference with source code snippets provided in reviews
+      - Determine if issue is valid or false positive
+      - Note reviewer consensus (if 3+ reviewers agree, high confidence issue)
+    </action>
+    <action>Issues with low reviewer agreement (1-2 reviewers) require extra scrutiny</action>
+    <action>Group related findings that address the same underlying problem</action>
+  </step>
+
+  <step n="1.5" goal="Review Deep Verify code analysis" conditional="[Deep Verify Findings] section present">
+    <critical>Deep Verify analyzed the actual source code files for this story.
+      DV findings are based on static analysis patterns and may identify issues reviewers missed.</critical>
+
+    <action>Review each DV finding:
+      - CRITICAL findings: Security vulnerabilities, race conditions, resource leaks - must address
+      - ERROR findings: Bugs, missing error handling, boundary issues - should address
+      - WARNING findings: Code quality concerns - consider addressing
+    </action>
+
+    <action>Cross-reference DV findings with reviewer findings:
+      - DV + Reviewers agree: High confidence issue, prioritize in fix order
+      - Only DV flags: Verify in source code - DV has precise line numbers
+      - Only reviewers flag: May be design/logic issues DV can't detect
+    </action>
+
+    <action>DV findings may include evidence with:
+      - Code quotes (exact text from source)
+      - Line numbers (precise location, when available)
+      - Pattern IDs (known antipattern reference)
+      Use this evidence when applying fixes.</action>
+
+    <action>DV patterns reference:
+      - CC-*: Concurrency issues (race conditions, deadlocks)
+      - SEC-*: Security vulnerabilities
+      - DB-*: Database/storage issues
+      - DT-*: Data transformation issues
+      - GEN-*: General code quality (null handling, resource cleanup)
+    </action>
+  </step>
+
+  <step n="2" goal="Verify issues and identify false positives">
+    <action>For each issue, verify against embedded code context:
+      - Does the issue actually exist in the current code?
+      - Is the suggested fix appropriate for the codebase patterns?
+      - Would the fix introduce new issues or regressions?
+    </action>
+    <action>Document false positives with clear reasoning:
+      - Why the reviewer was wrong
+      - What evidence contradicts the finding
+      - Reference specific code or project_context.md patterns
+    </action>
+  </step>
+
+  <step n="3" goal="Prioritize by severity">
+    <action>For verified issues, assign severity:
+      - Critical: Security vulnerabilities, data corruption, crashes
+      - High: Bugs that break functionality, performance issues
+      - Medium: Code quality issues, missing error handling
+      - Low: Style issues, minor improvements, documentation
+    </action>
+    <action>Order fixes by severity - Critical first, then High, Medium, Low</action>
+    <action>For disputed issues (reviewers disagree), note for manual resolution</action>
+  </step>
+
+  <step n="4" goal="Apply fixes to source code">
+    <critical>This is SOURCE CODE modification, not story file modification</critical>
+    <critical>Use Edit tool for all code changes - preserve surrounding code</critical>
+    <critical>After applying each fix group, run: pytest -q --tb=line --no-header</critical>
+    <critical>NEVER proceed to next fix if tests are broken - either revert or adjust</critical>
+
+    <action>For each verified issue (starting with Critical):
+      1. Identify the source file(s) from reviewer findings
+      2. Apply fix using Edit tool - change ONLY the identified issue
+      3. Preserve code style, indentation, and surrounding context
+      4. Log the change for synthesis report
+    </action>
+
+    <action>After each logical fix group (related changes):
+      - Run: pytest -q --tb=line --no-header
+      - If tests pass, continue to next fix
+      - If tests fail:
+        a. Analyze which fix caused the failure
+        b. Either revert the problematic fix OR adjust implementation
+        c. Run tests again to confirm green state
+        d. Log partial fix failure in synthesis report
+    </action>
+
+    <action>Atomic commit guidance (for user reference):
+      - Commit message format: fix(component): brief description (synthesis-11.5)
+      - Group fixes by severity and affected component
+      - Never commit unrelated changes together
+      - User may batch or split commits as preferred
+    </action>
+  </step>
+
+  <step n="5" goal="Refactor if needed">
+    <critical>Only refactor code directly related to applied fixes</critical>
+    <critical>Maximum scope: files already modified in Step 4</critical>
+
+    <action>Review applied fixes for duplication patterns:
+      - Same fix applied 2+ times across files = candidate for refactor
+      - Only if duplication is in files already modified
+    </action>
+
+    <action>If refactoring:
+      - Extract common logic to shared function/module
+      - Update all call sites in modified files
+      - Run tests after refactoring: pytest -q --tb=line --no-header
+      - Log refactoring in synthesis report
+    </action>
+
+    <action>Do NOT refactor:
+      - Unrelated code that "could be improved"
+      - Files not touched in Step 4
+      - Patterns that work but are just "not ideal"
+    </action>
+
+    <action>If broader refactoring needed:
+      - Note it in synthesis report as "Suggested future improvement"
+      - Do not apply - leave for dedicated refactoring story
+    </action>
+  </step>
+
+  <step n="6" goal="Generate synthesis report">
+    <critical>When updating story file, use atomic write pattern (temp file + rename).</critical>
+    <action>Update story file Dev Agent Record section ONLY:
+      - Mark completed tasks with [x] if fixes address them
+      - Append to "Completion Notes List" subsection summarizing changes applied
+      - Update file list with all modified files
+    </action>
+
+    <critical>Your synthesis report MUST be wrapped in HTML comment markers for extraction:</critical>
+    <action>Produce structured output in this exact format (including the markers):</action>
+    <output-format>
+&lt;!-- CODE_REVIEW_SYNTHESIS_START --&gt;
+## Synthesis Summary
+[Brief overview: X issues verified, Y false positives dismissed, Z fixes applied to source files]
+
+## Validations Quality
+[For each reviewer: ID (A, B, C...), score (1-10), brief assessment]
+[Note: Reviewers are anonymized - do not attempt to identify providers]
+
+## Issues Verified (by severity)
+
+### Critical
+[Issues that required immediate fixes - list with evidence and fixes applied]
+[Format: "- **Issue**: Description | **Source**: Reviewer(s) | **File**: path | **Fix**: What was changed"]
+[If none: "No critical issues identified."]
+
+### High
+[Bugs and significant problems - same format]
+
+### Medium
+[Code quality issues - same format]
+
+### Low
+[Minor improvements - same format, note any deferred items]
+
+## Issues Dismissed
+[False positives with reasoning for each dismissal]
+[Format: "- **Claimed Issue**: Description | **Raised by**: Reviewer(s) | **Dismissal Reason**: Why this is incorrect"]
+[If none: "No false positives identified."]
+
+## Changes Applied
+[Complete list of modifications made to source files]
+[Format for each change:
+  **File**: [path/to/file.py]
+  **Change**: [Brief description]
+  **Before**:
+  ```
+  [2-3 lines of original code]
+  ```
+  **After**:
+  ```
+  [2-3 lines of updated code]
+  ```
+]
+[If no changes: "No source code changes required."]
+
+## Deep Verify Integration
+[If DV findings were present, document how they were handled]
+
+### DV Findings Fixed
+[List DV findings that resulted in code changes]
+[Format: "- **{ID}** [{SEVERITY}]: {Title} | **File**: {path} | **Fix**: {What was changed}"]
+
+### DV Findings Dismissed
+[List DV findings determined to be false positives]
+[Format: "- **{ID}** [{SEVERITY}]: {Title} | **Reason**: {Why this is not an issue}"]
+
+### DV-Reviewer Overlap
+[Note findings flagged by both DV and reviewers - highest confidence fixes]
+[If no DV findings: "Deep Verify did not produce findings for this story."]
+
+## Files Modified
+[Simple list of all files that were modified]
+- path/to/file1.py
+- path/to/file2.py
+[If none: "No files modified."]
+
+## Suggested Future Improvements
+[Broader refactorings or improvements identified in Step 5 but not applied]
+[Format: "- **Scope**: Description | **Rationale**: Why deferred | **Effort**: Estimated complexity"]
+[If none: "No future improvements identified."]
+
+## Test Results
+[Final test run output summary]
+- Tests passed: X
+- Tests failed: 0 (required for completion)
+&lt;!-- CODE_REVIEW_SYNTHESIS_END --&gt;
+    </output-format>
+
+  </step>
+
+  </workflow></instructions>
+<output-template></output-template>
+</compiled-workflow>

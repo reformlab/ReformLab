@@ -1,0 +1,30 @@
+cli_args:
+- run
+- -e
+- '11'
+- -g
+- -v
+- --debug
+- --full-stream
+- --plain
+- --skip-story-prompts
+cli_args_masked:
+- run
+- -e
+- '11'
+- -g
+- -v
+- --debug
+- --full-stream
+- --plain
+- --skip-story-prompts
+current_phase: null
+ended_at: null
+epic: null
+phase_events: []
+phases: []
+project_path: /Users/lucas/Workspace/reformlab
+run_id: 0c1f3be3
+started_at: '2026-03-05T15:33:27.729245Z'
+status: running
+story: null
