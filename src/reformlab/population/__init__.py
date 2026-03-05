@@ -54,6 +54,20 @@ PipelineConfigError : PipelineError
     Raised for invalid pipeline configuration.
 PipelineExecutionError : PipelineError
     Raised when a pipeline step fails during execution.
+PopulationValidator : class
+    Validates synthetic populations against known marginal distributions.
+MarginalConstraint : dataclass
+    A reference marginal distribution for validation.
+MarginalResult : dataclass
+    Result of validating a single marginal constraint.
+ValidationResult : dataclass
+    Overall result of population validation against marginals.
+ValidationAssumption : dataclass
+    Structured assumption record from population validation.
+PopulationValidationError : Exception
+    Base exception for population validation operations.
+MarginalConstraintMismatch : PopulationValidationError
+    Raised when a marginal constraint exceeds tolerance.
 """
 
 from __future__ import annotations
@@ -132,6 +146,15 @@ from reformlab.population.pipeline import (
     PipelineStepLog,
     PopulationPipeline,
 )
+from reformlab.population.validation import (
+    MarginalConstraint,
+    MarginalConstraintMismatch,
+    MarginalResult,
+    PopulationValidationError,
+    PopulationValidator,
+    ValidationAssumption,
+    ValidationResult,
+)
 
 __all__ = [
     "ADEME_AVAILABLE_DATASETS",
@@ -188,4 +211,11 @@ __all__ = [
     "make_eurostat_config",
     "make_insee_config",
     "make_sdes_config",
+    "MarginalConstraint",
+    "MarginalConstraintMismatch",
+    "MarginalResult",
+    "PopulationValidationError",
+    "PopulationValidator",
+    "ValidationAssumption",
+    "ValidationResult",
 ]
