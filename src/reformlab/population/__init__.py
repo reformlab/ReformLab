@@ -38,10 +38,30 @@ IPFResult : dataclass
     Convergence diagnostics from an IPF run.
 ConditionalSamplingMethod : class
     Stratum-based conditional sampling merge.
+PopulationPipeline : class
+    Composable builder for population generation pipelines.
+PipelineResult : dataclass
+    Immutable result of a pipeline execution.
+PipelineStepLog : dataclass
+    Log entry for a completed pipeline step.
+PipelineAssumptionChain : dataclass
+    Complete assumption chain from a pipeline execution.
+PipelineAssumptionRecord : dataclass
+    Records a single assumption from a pipeline step.
+PipelineError : Exception
+    Base exception for population pipeline operations.
+PipelineConfigError : PipelineError
+    Raised for invalid pipeline configuration.
+PipelineExecutionError : PipelineError
+    Raised when a pipeline step fails during execution.
 """
 
 from __future__ import annotations
 
+from reformlab.population.assumptions import (
+    PipelineAssumptionChain,
+    PipelineAssumptionRecord,
+)
 from reformlab.population.loaders.ademe import (
     ADEME_AVAILABLE_DATASETS,
     ADEME_CATALOG,
@@ -104,6 +124,14 @@ from reformlab.population.methods.errors import (
 )
 from reformlab.population.methods.ipf import IPFMergeMethod
 from reformlab.population.methods.uniform import UniformMergeMethod
+from reformlab.population.pipeline import (
+    PipelineConfigError,
+    PipelineError,
+    PipelineExecutionError,
+    PipelineResult,
+    PipelineStepLog,
+    PopulationPipeline,
+)
 
 __all__ = [
     "ADEME_AVAILABLE_DATASETS",
@@ -132,6 +160,14 @@ __all__ = [
     "SDESLoader",
     "SourceCache",
     "SourceConfig",
+    "PipelineAssumptionChain",
+    "PipelineAssumptionRecord",
+    "PipelineConfigError",
+    "PipelineError",
+    "PipelineExecutionError",
+    "PipelineResult",
+    "PipelineStepLog",
+    "PopulationPipeline",
     "get_ademe_loader",
     "get_eurostat_loader",
     "get_insee_loader",
