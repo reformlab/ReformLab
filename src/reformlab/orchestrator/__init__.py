@@ -32,6 +32,10 @@ Public API:
 - PanelOutput: Household-by-year panel dataset from orchestrator run (Story 3-7)
 - compare_panels: Helper to compare baseline and reform panels (Story 3-7)
 - PANEL_VERSION: Panel format version for metadata (Story 3-7)
+- PortfolioComputationStep: Portfolio execution step (Story 12-3)
+- PortfolioComputationStepError: Error during portfolio step execution (Story 12-3)
+- PORTFOLIO_METADATA_KEY: Stable key for portfolio metadata (Story 12-3)
+- PORTFOLIO_RESULTS_KEY: Stable key for per-policy results (Story 12-3)
 """
 
 from reformlab.orchestrator.carry_forward import (
@@ -49,6 +53,12 @@ from reformlab.orchestrator.computation_step import (
 )
 from reformlab.orchestrator.errors import OrchestratorError
 from reformlab.orchestrator.panel import PANEL_VERSION, PanelOutput, compare_panels
+from reformlab.orchestrator.portfolio_step import (
+    PORTFOLIO_METADATA_KEY,
+    PORTFOLIO_RESULTS_KEY,
+    PortfolioComputationStep,
+    PortfolioComputationStepError,
+)
 from reformlab.orchestrator.runner import (
     SEED_LOG_KEY,
     STEP_EXECUTION_LOG_KEY,
@@ -113,4 +123,9 @@ __all__ = [
     "PanelOutput",
     "compare_panels",
     "PANEL_VERSION",
+    # Portfolio step (Story 12-3)
+    "PortfolioComputationStep",
+    "PortfolioComputationStepError",
+    "PORTFOLIO_METADATA_KEY",
+    "PORTFOLIO_RESULTS_KEY",
 ]

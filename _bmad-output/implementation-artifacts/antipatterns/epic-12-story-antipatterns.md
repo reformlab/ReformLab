@@ -36,3 +36,14 @@
 | medium | validate=False behavior needs test | Added test task 6.16: "Test validate=False parameter skips conflict detection and emits no warnings/errors." |
 | medium | Warning log format should follow project standards | Updated Task 5.4 from "log warning with conflict summary" to "log warning with structured format: `event=portfolio_conflicts strategy=<strategy> conflict_count=<n> portfolio=<name>`". Added test task 6.17. |
 | low | Performance considerations for large policy definitions | Added new section "Performance Considerations" with expected portfolio sizes, complexity analysis (O(n²)), and future optimization notes for 50+ policies or 1000+ rate_schedule entries. |
+
+## Story 12-3 (2026-03-06)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | AC5 error contract missing `policy_name`**: AC5 explicitly requires "index, **name**, type" in failure context, but Task 1.4 error class only had `policy_index`, `policy_type` (no `policy_name`). Task 5.2 error format and Test 7.8 assertions also omitted it. | Added `policy_name` to Task 1.4, Task 5.2, and Test 7.8. |
+| critical | Merge row-index fallback violates fail-loud data-contract rule**: Task 4.3 originally said "use row-index alignment as fallback" when `household_id` is missing. Verified against `project-context.md`: "Data contracts fail loudly — contract validation at ingestion boundaries is field-level and blocking; never silently coerce or drop data." The panel.py fallback (line 233-235) is designed for single-policy output display, NOT for cross-policy merging where silent row alignment risks merging different households. | Changed Task 4.3 to require `household_id` and raise `PortfolioComputationStepError` if missing. |
+| high | Missing explicit dependency on Story 12.1/12.2**: Story consumed `PolicyPortfolio` and `PolicyConfig` from Story 12.1 and assumed conflict resolution from Story 12.2 but never declared these dependencies. | Added `Dependencies:` line after Status header. |
+| high | Merged `ComputationResult` fields underspecified**: Task 3.8 only said "create a single `ComputationResult` with the merged output table" without specifying `adapter_version`, `period`, `metadata`, or `entity_tables`. Verified that `ComputationResult` has 5 required/optional fields. | Expanded Task 3.8 with explicit values for all `ComputationResult` fields. |
+| medium | Task 2.3 "non-empty" vs >=2 inconsistency**: Task 2.3 said "non-empty" but `PolicyPortfolio.__post_init__` enforces `len(policies) < 2`. Defensive check should match the actual invariant. | Changed to "at least 2 entries" with reference to the >=2 invariant. |
+| medium | Brittle line-number references**: References to "line 342-346" (runner.py) and "line 233-235" (panel.py) are fragile. | Replaced with behavior-based references (`_execute_step()`, `from_orchestrator_result()`). |
