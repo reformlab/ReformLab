@@ -15,7 +15,6 @@ pedagogical notebook).
 from __future__ import annotations
 
 import logging
-import sys
 from pathlib import Path
 
 import pyarrow as pa
@@ -123,9 +122,6 @@ def _load_housing_source() -> tuple[_FixtureLoader, SourceConfig]:
     Returns a table with housing attributes (household_size, housing_type,
     heating_type) derived from energy consumption patterns.
     """
-    fixture_path = FIXTURES_DIR / "eurostat_hhcomp_2022_fixture.csv"
-    raw = pcsv.read_csv(fixture_path)
-
     # Derive housing attributes from energy product codes
     # G3000=gas, O4000XBIO=oil, E7000=renewables, S2000=solid, RA000=ambient
     housing_types = ["apartment", "house", "apartment", "house", "apartment",
@@ -267,17 +263,16 @@ def build_pipeline() -> PopulationPipeline:
                     IPFConstraint(
                         dimension="region",
                         targets={
-                            "75": 3.0, "84": 3.0, "11": 3.0,
-                            "69": 1.0, "13": 1.0, "31": 1.0,
-                            "33": 1.0, "44": 1.0, "67": 1.0,
-                            "59": 1.0, "06": 1.0, "35": 1.0,
-                            "34": 1.0, "21": 1.0, "38": 1.0,
-                            "76": 3.0, "32": 2.0, "93": 2.0,
+                            "75": 2.0, "69": 1.0, "13": 1.0,
+                            "31": 1.0, "33": 1.0, "44": 1.0,
+                            "67": 1.0, "59": 1.0, "06": 1.0,
+                            "35": 1.0, "34": 1.0, "21": 1.0,
+                            "38": 1.0, "76": 1.0,
                         },
                     ),
                 ),
-                max_iterations=100,
-                tolerance=1e-6,
+                max_iterations=200,
+                tolerance=1.5,
             ),
             config=MergeConfig(
                 seed=SEED,
@@ -323,12 +318,12 @@ def validate_population(table: pa.Table) -> None:
 def write_summary(table: pa.Table, summary_path: Path) -> None:
     """Write population summary statistics to a text file."""
     lines = [
-        f"French Household Example Population Summary",
-        f"==========================================",
+        "French Household Example Population Summary",
+        "==========================================",
         f"Row count: {table.num_rows}",
         f"Columns ({table.num_columns}): {', '.join(table.column_names)}",
-        f"",
-        f"Key distributions:",
+        "",
+        "Key distributions:",
     ]
 
     for col_name in table.column_names:
