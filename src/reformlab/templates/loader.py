@@ -557,12 +557,18 @@ def _parse_generic_custom_policy(
             break
 
     if target_class is None:
-        # No registered class — fall back to base PolicyParameters
-        return PolicyParameters(
-            rate_schedule=rate_schedule,
-            exemptions=exemptions,
-            thresholds=thresholds,
-            covered_categories=covered_categories,
+        raise ScenarioError(
+            file_path=file_path,
+            summary="Scenario validation failed",
+            reason=(
+                f"Custom policy type '{policy_type.value}' is registered "
+                f"but has no associated PolicyParameters class"
+            ),
+            fix=(
+                f"Register a PolicyParameters subclass for '{policy_type.value}' "
+                f"with register_custom_template()"
+            ),
+            invalid_fields=("policy_type",),
         )
 
     # Build constructor kwargs from already-parsed base fields

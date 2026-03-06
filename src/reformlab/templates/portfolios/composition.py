@@ -19,7 +19,7 @@ from reformlab.templates.portfolios.exceptions import (
     PortfolioValidationError,
 )
 from reformlab.templates.portfolios.portfolio import PolicyConfig, PolicyPortfolio
-from reformlab.templates.schema import PolicyType
+from reformlab.templates.schema import CustomPolicyType, PolicyParameters, PolicyType
 
 logger = logging.getLogger(__name__)
 
@@ -274,7 +274,11 @@ def dict_to_portfolio(data: dict[str, Any]) -> PolicyPortfolio:
     )
 
 
-def _dict_to_policy_parameters(data: dict[str, Any], policy_type: PolicyType | Any, field_path: str) -> Any:
+def _dict_to_policy_parameters(
+    data: dict[str, Any],
+    policy_type: PolicyType | CustomPolicyType,
+    field_path: str,
+) -> Any:
     """Convert dictionary to appropriate PolicyParameters subclass.
 
     Args:
@@ -467,10 +471,10 @@ def _dict_to_policy_parameters(data: dict[str, Any], policy_type: PolicyType | A
 
 def _dict_to_custom_policy_parameters(
     data: dict[str, Any],
-    policy_type: Any,
+    policy_type: CustomPolicyType,
     rate_schedule: dict[int, float],
     field_path: str,
-) -> Any:
+) -> PolicyParameters:
     """Parse a custom PolicyParameters subclass from a dict.
 
     Uses dataclass field introspection to construct the registered class.
@@ -480,7 +484,6 @@ def _dict_to_custom_policy_parameters(
     from reformlab.templates.schema import (
         _CUSTOM_PARAMETERS_TO_POLICY_TYPE,
         CustomPolicyType,
-        PolicyParameters,
     )
 
     target_class: type[PolicyParameters] | None = None

@@ -472,7 +472,10 @@ class TestCustomTemplateInPortfolio:
         )
         conflicts = validate_compatibility(portfolio)
         # Should detect overlapping years and overlapping categories
-        assert len(conflicts) > 0
+        assert len(conflicts) >= 2
+        conflict_types = {c.conflict_type.value for c in conflicts}
+        assert "overlapping_years" in conflict_types
+        assert "overlapping_categories" in conflict_types
 
     # AC5c: portfolio YAML round-trip preserves custom parameters
     def test_portfolio_yaml_round_trip_custom(self, tmp_path: Any) -> None:
@@ -553,6 +556,73 @@ class TestCustomTemplateOrchestrator:
         assert comp_policy.policy["emission_threshold"] == 130.0
         assert comp_policy.policy["malus_rate"] == 60.0
         assert comp_policy.policy["rate_schedule"] == {2026: 50.0}
+
+    # AC5d / Task 5.3: integration test — custom template through orchestrator yearly loop
+    def test_execute_with_custom_template(self) -> None:
+        """PortfolioComputationStep.execute() passes custom fields to adapter and merges output."""
+        import pyarrow as pa
+
+        from reformlab.computation.mock_adapter import MockAdapter
+        from reformlab.computation.types import PopulationData
+        from reformlab.orchestrator.portfolio_step import (
+            COMPUTATION_RESULT_KEY,
+            PortfolioComputationStep,
+        )
+        from reformlab.orchestrator.types import YearState
+        from reformlab.templates.portfolios.portfolio import PolicyConfig, PolicyPortfolio
+        from reformlab.templates.schema import (
+            CarbonTaxParameters,
+            PolicyType,
+            register_custom_template,
+            register_policy_type,
+        )
+
+        pt = register_policy_type("vehicle_malus")
+        register_custom_template(pt, VehicleMalusParameters)
+
+        output = pa.table({
+            "household_id": pa.array([1, 2, 3]),
+            "amount": pa.array([100.0, 200.0, 300.0]),
+        })
+        adapter = MockAdapter(version_string="mock-1.0", default_output=output)
+        population = PopulationData(tables={})
+
+        carbon_config = PolicyConfig(
+            policy_type=PolicyType.CARBON_TAX,
+            policy=CarbonTaxParameters(rate_schedule={2026: 44.6}),
+            name="Carbon Tax",
+        )
+        malus_config = PolicyConfig(
+            policy_type=pt,
+            policy=VehicleMalusParameters(
+                rate_schedule={2026: 50.0},
+                emission_threshold=130.0,
+                malus_rate=60.0,
+            ),
+            name="Vehicle Malus",
+        )
+        portfolio = PolicyPortfolio(
+            name="Integration Test",
+            policies=(carbon_config, malus_config),
+        )
+
+        step = PortfolioComputationStep(
+            adapter=adapter,
+            population=population,
+            portfolio=portfolio,
+        )
+        state = YearState(year=2026, data={}, seed=42, metadata={})
+        new_state = step.execute(year=2026, state=state)
+
+        # Verify adapter was called twice (once per policy)
+        assert len(adapter.call_log) == 2
+        assert adapter.call_log[0]["policy_name"] == "Carbon Tax"
+        assert adapter.call_log[1]["policy_name"] == "Vehicle Malus"
+
+        # Verify merged result is in state
+        assert COMPUTATION_RESULT_KEY in new_state.data
+        merged_result = new_state.data[COMPUTATION_RESULT_KEY]
+        assert merged_result.output_fields.num_rows == 3
 
     # AC5: validate_policy_type accepts custom types
     def test_portfolio_step_accepts_custom_type(self) -> None:

@@ -34,7 +34,7 @@ if TYPE_CHECKING:
         PolicyConfig as PortfolioPolicyConfig,
     )
     from reformlab.templates.portfolios.portfolio import PolicyPortfolio
-    from reformlab.templates.schema import PolicyType
+    from reformlab.templates.schema import CustomPolicyType, PolicyType
 
 logger = logging.getLogger(__name__)
 
@@ -480,7 +480,7 @@ def _get_adapter_version(
 
 
 def _validate_policy_type(
-    policy_type: PolicyType | Any,
+    policy_type: PolicyType | CustomPolicyType,
     index: int,
     policy_cfg: PortfolioPolicyConfig,
 ) -> None:

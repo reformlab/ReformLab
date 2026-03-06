@@ -210,6 +210,7 @@ Claude Opus 4.6
 - Task 6 complete: Exported `register_policy_type`, `register_custom_template`, `get_policy_type`, `CustomPolicyType` from `templates/__init__.py`
 - Task 7 complete: 25 tests in `test_custom_templates.py` covering all 5 ACs; updated 1 existing test for new error message
 - All validations pass: ruff clean, mypy strict clean, 2142 tests pass (0 failures)
+- Code review synthesis: Fixed silent fallback in _parse_generic_custom_policy (fail-loud), added PortfolioComputationStep.execute() integration test, strengthened weak test assertion, fixed `Any` type hints to `PolicyType | CustomPolicyType`
 
 ### File List
 
@@ -219,5 +220,18 @@ Claude Opus 4.6
 - `src/reformlab/templates/portfolios/portfolio.py` — MODIFIED: Updated type annotations to accept CustomPolicyType
 - `src/reformlab/templates/__init__.py` — MODIFIED: Added exports for registration API
 - `src/reformlab/orchestrator/portfolio_step.py` — MODIFIED: Updated _validate_policy_type() to accept CustomPolicyType
-- `tests/templates/test_custom_templates.py` — CREATED: 25 tests across 5 test classes
+- `tests/templates/test_custom_templates.py` — CREATED: 26 tests across 5 test classes (25 original + 1 integration test added in review)
 - `tests/templates/test_schema.py` — MODIFIED: Updated 1 test for new error message in infer_policy_type()
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-06
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 7.9 → MAJOR REWORK (Reviewer A: 11.6 REJECT, Reviewer B: 4.2 MAJOR REWORK — synthesis reduced after false positive removal)
+- **Issues Found:** 6 verified
+- **Issues Fixed:** 4
+- **Action Items Created:** 2
+
+#### Review Follow-ups (AI)
+- [ ] [AI-Review] MEDIUM: Implement `register_policy_parser()` API for custom YAML parsing (Task 3.2/3.3 — deferred to Story 13.2/13.3 when first consumer needs it) (`src/reformlab/templates/loader.py`)
+- [ ] [AI-Review] LOW: Add reverse lookup dict for custom type → class mapping to avoid linear scan in `_parse_generic_custom_policy` and `_dict_to_custom_policy_parameters` (`src/reformlab/templates/loader.py`, `src/reformlab/templates/portfolios/composition.py`)
