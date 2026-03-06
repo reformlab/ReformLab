@@ -3,6 +3,9 @@
 Story 13.1: Define custom template authoring API and registration.
 Validates AC1-AC5: custom PolicyType extension, PolicyParameters registration,
 validation on registration, YAML loading, and portfolio participation.
+
+Note: Uses "test_penalty" as the example custom type name to avoid conflict
+with the production "vehicle_malus" type registered by Story 13.2.
 """
 
 from __future__ import annotations
@@ -28,8 +31,8 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True)
-class VehicleMalusParameters(PolicyParameters):
-    """Vehicle malus (penalty) for high-emission vehicles."""
+class MockPenaltyParameters(PolicyParameters):
+    """Test penalty parameters for custom template API tests."""
 
     emission_threshold: float = 120.0
     malus_rate: float = 50.0
@@ -64,17 +67,29 @@ class NotPolicyParametersSubclass:
 
 
 # ====================================================================
-# Cleanup fixture — reset custom registrations between tests
+# Cleanup fixture — save/restore custom registrations between tests
 # ====================================================================
 
 
 @pytest.fixture(autouse=True)
 def _cleanup_custom_registrations() -> Any:
-    """Reset custom type registrations after each test."""
-    yield
-    from reformlab.templates.schema import _reset_custom_registrations
+    """Save custom registrations before test, restore after.
 
-    _reset_custom_registrations()
+    This preserves production registrations (e.g., vehicle_malus from
+    Story 13.2) while cleaning up test-only registrations.
+    """
+    from reformlab.templates.schema import (
+        _CUSTOM_PARAMETERS_TO_POLICY_TYPE,
+        _CUSTOM_POLICY_TYPES,
+    )
+
+    saved_types = dict(_CUSTOM_POLICY_TYPES)
+    saved_params = dict(_CUSTOM_PARAMETERS_TO_POLICY_TYPE)
+    yield
+    _CUSTOM_POLICY_TYPES.clear()
+    _CUSTOM_POLICY_TYPES.update(saved_types)
+    _CUSTOM_PARAMETERS_TO_POLICY_TYPE.clear()
+    _CUSTOM_PARAMETERS_TO_POLICY_TYPE.update(saved_params)
 
 
 # ====================================================================
@@ -90,9 +105,9 @@ class TestCustomPolicyTypeRegistration:
         """Registering a new policy type returns a usable PolicyType-like object."""
         from reformlab.templates.schema import register_policy_type
 
-        result = register_policy_type("vehicle_malus")
+        result = register_policy_type("test_penalty")
         assert result is not None
-        assert result.value == "vehicle_malus"
+        assert result.value == "test_penalty"
 
     def test_register_policy_type_snake_case_validation(self) -> None:
         """Policy type names must be non-empty, lowercase, snake_case."""
@@ -102,18 +117,18 @@ class TestCustomPolicyTypeRegistration:
             register_policy_type("")
 
         with pytest.raises(TemplateError, match="lowercase"):
-            register_policy_type("Vehicle_Malus")
+            register_policy_type("Test_Penalty")
 
         with pytest.raises(TemplateError, match="snake_case"):
-            register_policy_type("vehicle-malus")
+            register_policy_type("test-penalty")
 
     def test_register_duplicate_policy_type_raises(self) -> None:
         """Registering an existing type name raises TemplateError."""
         from reformlab.templates.schema import register_policy_type
 
-        register_policy_type("vehicle_malus")
+        register_policy_type("test_penalty")
         with pytest.raises(TemplateError, match="already registered"):
-            register_policy_type("vehicle_malus")
+            register_policy_type("test_penalty")
 
     def test_register_builtin_policy_type_raises(self) -> None:
         """Registering a built-in type name raises TemplateError."""
@@ -133,9 +148,9 @@ class TestCustomPolicyTypeRegistration:
         """get_policy_type returns registered custom type."""
         from reformlab.templates.schema import get_policy_type, register_policy_type
 
-        register_policy_type("vehicle_malus")
-        result = get_policy_type("vehicle_malus")
-        assert result.value == "vehicle_malus"
+        register_policy_type("test_penalty")
+        result = get_policy_type("test_penalty")
+        assert result.value == "test_penalty"
 
     def test_get_policy_type_unknown_raises(self) -> None:
         """get_policy_type raises TemplateError for unknown types."""
@@ -148,7 +163,7 @@ class TestCustomPolicyTypeRegistration:
         """Built-in PolicyType enum members still work after custom registration."""
         from reformlab.templates.schema import get_policy_type, register_policy_type
 
-        register_policy_type("vehicle_malus")
+        register_policy_type("test_penalty")
 
         assert get_policy_type("carbon_tax") is PolicyType.CARBON_TAX
         assert get_policy_type("subsidy") is PolicyType.SUBSIDY
@@ -173,12 +188,12 @@ class TestCustomParametersRegistration:
             register_policy_type,
         )
 
-        pt = register_policy_type("vehicle_malus")
-        register_custom_template(pt, VehicleMalusParameters)
+        pt = register_policy_type("test_penalty")
+        register_custom_template(pt, MockPenaltyParameters)
 
-        instance = VehicleMalusParameters(rate_schedule={2026: 50.0})
+        instance = MockPenaltyParameters(rate_schedule={2026: 50.0})
         inferred = infer_policy_type(instance)
-        assert inferred.value == "vehicle_malus"
+        assert inferred.value == "test_penalty"
 
     def test_register_with_string_policy_type(self) -> None:
         """register_custom_template accepts a string policy type."""
@@ -188,12 +203,12 @@ class TestCustomParametersRegistration:
             register_policy_type,
         )
 
-        register_policy_type("vehicle_malus")
-        register_custom_template("vehicle_malus", VehicleMalusParameters)
+        register_policy_type("test_penalty")
+        register_custom_template("test_penalty", MockPenaltyParameters)
 
-        instance = VehicleMalusParameters(rate_schedule={2026: 50.0})
+        instance = MockPenaltyParameters(rate_schedule={2026: 50.0})
         inferred = infer_policy_type(instance)
-        assert inferred.value == "vehicle_malus"
+        assert inferred.value == "test_penalty"
 
     # AC3: validation on registration — not frozen
     def test_register_non_frozen_dataclass_raises(self) -> None:
@@ -227,17 +242,17 @@ class TestCustomParametersRegistration:
         """Re-registering same class raises TemplateError."""
         from reformlab.templates.schema import register_custom_template, register_policy_type
 
-        pt = register_policy_type("vehicle_malus")
-        register_custom_template(pt, VehicleMalusParameters)
+        pt = register_policy_type("test_penalty")
+        register_custom_template(pt, MockPenaltyParameters)
         with pytest.raises(TemplateError, match="already registered"):
-            register_custom_template(pt, VehicleMalusParameters)
+            register_custom_template(pt, MockPenaltyParameters)
 
     def test_register_conflicting_type_raises(self) -> None:
         """Registering a different class for an existing type raises."""
         from reformlab.templates.schema import register_custom_template, register_policy_type
 
-        pt = register_policy_type("vehicle_malus")
-        register_custom_template(pt, VehicleMalusParameters)
+        pt = register_policy_type("test_penalty")
+        register_custom_template(pt, MockPenaltyParameters)
         with pytest.raises(TemplateError, match="already registered"):
             register_custom_template(pt, EnergyPovertyAidParameters)
 
@@ -251,20 +266,20 @@ class TestCustomParametersRegistration:
             register_policy_type,
         )
 
-        pt = register_policy_type("vehicle_malus")
-        register_custom_template(pt, VehicleMalusParameters)
+        pt = register_policy_type("test_penalty")
+        register_custom_template(pt, MockPenaltyParameters)
 
-        policy = VehicleMalusParameters(
+        policy = MockPenaltyParameters(
             rate_schedule={2026: 50.0},
             emission_threshold=130.0,
         )
         scenario = BaselineScenario(
-            name="Test Malus",
+            name="Test Penalty",
             year_schedule=YearSchedule(start_year=2026, end_year=2036),
             policy=policy,
         )
         assert scenario.policy_type is not None
-        assert scenario.policy_type.value == "vehicle_malus"
+        assert scenario.policy_type.value == "test_penalty"
 
     def test_custom_type_in_reform_scenario(self) -> None:
         """Custom registered type works in ReformScenario construction."""
@@ -274,20 +289,20 @@ class TestCustomParametersRegistration:
             register_policy_type,
         )
 
-        pt = register_policy_type("vehicle_malus")
-        register_custom_template(pt, VehicleMalusParameters)
+        pt = register_policy_type("test_penalty")
+        register_custom_template(pt, MockPenaltyParameters)
 
-        policy = VehicleMalusParameters(
+        policy = MockPenaltyParameters(
             rate_schedule={2026: 60.0},
             emission_threshold=110.0,
         )
         scenario = ReformScenario(
-            name="Stricter Malus",
-            baseline_ref="baseline-malus",
+            name="Stricter Penalty",
+            baseline_ref="baseline-penalty",
             policy=policy,
         )
         assert scenario.policy_type is not None
-        assert scenario.policy_type.value == "vehicle_malus"
+        assert scenario.policy_type.value == "test_penalty"
 
 
 # ====================================================================
@@ -298,12 +313,12 @@ class TestCustomParametersRegistration:
 class TestCustomTemplateYAMLLoading:
     """Tests for YAML loading and round-trip of custom templates."""
 
-    def _register_vehicle_malus(self) -> None:
-        """Helper to register the vehicle_malus custom type."""
+    def _register_test_penalty(self) -> None:
+        """Helper to register the test_penalty custom type."""
         from reformlab.templates.schema import register_custom_template, register_policy_type
 
-        register_policy_type("vehicle_malus")
-        register_custom_template("vehicle_malus", VehicleMalusParameters)
+        register_policy_type("test_penalty")
+        register_custom_template("test_penalty", MockPenaltyParameters)
 
     # AC4: YAML loading of custom template
     def test_load_custom_template_from_yaml(self, tmp_path: Any) -> None:
@@ -312,14 +327,14 @@ class TestCustomTemplateYAMLLoading:
 
         from reformlab.templates.loader import load_scenario_template
 
-        self._register_vehicle_malus()
+        self._register_test_penalty()
 
         content = textwrap.dedent("""\
             $schema: "./schema/scenario-template.schema.json"
             version: "1.0"
-            name: "Vehicle Malus 2026"
-            description: "Vehicle emission penalty"
-            policy_type: vehicle_malus
+            name: "Test Penalty 2026"
+            description: "Test emission penalty"
+            policy_type: test_penalty
             year_schedule:
               start_year: 2026
               end_year: 2036
@@ -339,42 +354,42 @@ class TestCustomTemplateYAMLLoading:
               emission_threshold: 130.0
               malus_rate: 60.0
         """)
-        p = tmp_path / "vehicle-malus.yaml"
+        p = tmp_path / "test-penalty.yaml"
         p.write_text(content, encoding="utf-8")
 
         scenario = load_scenario_template(p)
-        assert isinstance(scenario.policy, VehicleMalusParameters)
+        assert isinstance(scenario.policy, MockPenaltyParameters)
         assert scenario.policy.emission_threshold == 130.0
         assert scenario.policy.malus_rate == 60.0
         assert scenario.policy_type is not None
-        assert scenario.policy_type.value == "vehicle_malus"
+        assert scenario.policy_type.value == "test_penalty"
 
     # AC4: YAML round-trip
     def test_yaml_round_trip_custom_template(self, tmp_path: Any) -> None:
-        """Dump → reload preserves custom field values."""
+        """Dump -> reload preserves custom field values."""
         from reformlab.templates.loader import dump_scenario_template, load_scenario_template
         from reformlab.templates.schema import BaselineScenario, YearSchedule
 
-        self._register_vehicle_malus()
+        self._register_test_penalty()
 
-        policy = VehicleMalusParameters(
+        policy = MockPenaltyParameters(
             rate_schedule={2026: 50.0, 2027: 55.0, 2028: 60.0, 2029: 65.0, 2030: 70.0,
                           2031: 75.0, 2032: 80.0, 2033: 85.0, 2034: 90.0, 2035: 95.0, 2036: 100.0},
             emission_threshold=130.0,
             malus_rate=60.0,
         )
         scenario = BaselineScenario(
-            name="Vehicle Malus 2026",
+            name="Test Penalty 2026",
             year_schedule=YearSchedule(start_year=2026, end_year=2036),
             policy=policy,
-            description="Vehicle emission penalty",
+            description="Test emission penalty",
         )
 
-        out_path = tmp_path / "vehicle-malus-out.yaml"
+        out_path = tmp_path / "test-penalty-out.yaml"
         dump_scenario_template(scenario, out_path)
 
         reloaded = load_scenario_template(out_path)
-        assert isinstance(reloaded.policy, VehicleMalusParameters)
+        assert isinstance(reloaded.policy, MockPenaltyParameters)
         assert reloaded.policy.emission_threshold == 130.0
         assert reloaded.policy.malus_rate == 60.0
         assert reloaded.policy.rate_schedule == policy.rate_schedule
@@ -388,28 +403,28 @@ class TestCustomTemplateYAMLLoading:
 class TestCustomTemplateInPortfolio:
     """Tests for custom templates in PolicyConfig, PolicyPortfolio, and YAML round-trip."""
 
-    def _register_vehicle_malus(self) -> None:
+    def _register_test_penalty(self) -> None:
         from reformlab.templates.schema import register_custom_template, register_policy_type
 
-        register_policy_type("vehicle_malus")
-        register_custom_template("vehicle_malus", VehicleMalusParameters)
+        register_policy_type("test_penalty")
+        register_custom_template("test_penalty", MockPenaltyParameters)
 
     # AC5a: portfolio construction succeeds
     def test_custom_template_in_policy_config(self) -> None:
         """Custom template can be wrapped in PolicyConfig."""
         from reformlab.templates.schema import register_custom_template, register_policy_type
 
-        pt = register_policy_type("vehicle_malus")
-        register_custom_template(pt, VehicleMalusParameters)
+        pt = register_policy_type("test_penalty")
+        register_custom_template(pt, MockPenaltyParameters)
 
         from reformlab.templates.portfolios.portfolio import PolicyConfig
 
         config = PolicyConfig(
             policy_type=pt,
-            policy=VehicleMalusParameters(rate_schedule={2026: 50.0}),
-            name="Vehicle Malus",
+            policy=MockPenaltyParameters(rate_schedule={2026: 50.0}),
+            name="Test Penalty",
         )
-        assert config.policy_type.value == "vehicle_malus"
+        assert config.policy_type.value == "test_penalty"
 
     # AC5a: portfolio construction with custom + built-in
     def test_custom_template_in_portfolio(self) -> None:
@@ -422,8 +437,8 @@ class TestCustomTemplateInPortfolio:
             register_policy_type,
         )
 
-        pt = register_policy_type("vehicle_malus")
-        register_custom_template(pt, VehicleMalusParameters)
+        pt = register_policy_type("test_penalty")
+        register_custom_template(pt, MockPenaltyParameters)
 
         carbon_config = PolicyConfig(
             policy_type=PolicyType.CARBON_TAX,
@@ -432,8 +447,8 @@ class TestCustomTemplateInPortfolio:
         )
         malus_config = PolicyConfig(
             policy_type=pt,
-            policy=VehicleMalusParameters(rate_schedule={2026: 50.0}),
-            name="Vehicle Malus",
+            policy=MockPenaltyParameters(rate_schedule={2026: 50.0}),
+            name="Test Penalty",
         )
         portfolio = PolicyPortfolio(
             name="Mixed Portfolio",
@@ -453,8 +468,8 @@ class TestCustomTemplateInPortfolio:
             register_policy_type,
         )
 
-        pt = register_policy_type("vehicle_malus")
-        register_custom_template(pt, VehicleMalusParameters)
+        pt = register_policy_type("test_penalty")
+        register_custom_template(pt, MockPenaltyParameters)
 
         carbon_config = PolicyConfig(
             policy_type=PolicyType.CARBON_TAX,
@@ -463,8 +478,8 @@ class TestCustomTemplateInPortfolio:
         )
         malus_config = PolicyConfig(
             policy_type=pt,
-            policy=VehicleMalusParameters(rate_schedule={2026: 50.0}, covered_categories=("transport_fuel",)),
-            name="Vehicle Malus",
+            policy=MockPenaltyParameters(rate_schedule={2026: 50.0}, covered_categories=("transport_fuel",)),
+            name="Test Penalty",
         )
         portfolio = PolicyPortfolio(
             name="Overlapping",
@@ -479,7 +494,7 @@ class TestCustomTemplateInPortfolio:
 
     # AC5c: portfolio YAML round-trip preserves custom parameters
     def test_portfolio_yaml_round_trip_custom(self, tmp_path: Any) -> None:
-        """portfolio dump → load round-trip preserves custom parameters."""
+        """portfolio dump -> load round-trip preserves custom parameters."""
         from reformlab.templates.portfolios.composition import (
             dict_to_portfolio,
             portfolio_to_dict,
@@ -492,8 +507,8 @@ class TestCustomTemplateInPortfolio:
             register_policy_type,
         )
 
-        pt = register_policy_type("vehicle_malus")
-        register_custom_template(pt, VehicleMalusParameters)
+        pt = register_policy_type("test_penalty")
+        register_custom_template(pt, MockPenaltyParameters)
 
         carbon_config = PolicyConfig(
             policy_type=PolicyType.CARBON_TAX,
@@ -502,10 +517,10 @@ class TestCustomTemplateInPortfolio:
         )
         malus_config = PolicyConfig(
             policy_type=pt,
-            policy=VehicleMalusParameters(
+            policy=MockPenaltyParameters(
                 rate_schedule={2027: 50.0}, emission_threshold=130.0, malus_rate=60.0,
             ),
-            name="Vehicle Malus",
+            name="Test Penalty",
         )
         portfolio = PolicyPortfolio(
             name="Round Trip Test",
@@ -514,7 +529,7 @@ class TestCustomTemplateInPortfolio:
         data = portfolio_to_dict(portfolio)
         reloaded = dict_to_portfolio(data)
         assert reloaded.policy_count == 2
-        assert isinstance(reloaded.policies[1].policy, VehicleMalusParameters)
+        assert isinstance(reloaded.policies[1].policy, MockPenaltyParameters)
         assert reloaded.policies[1].policy.emission_threshold == 130.0
         assert reloaded.policies[1].policy.malus_rate == 60.0
 
@@ -527,11 +542,11 @@ class TestCustomTemplateInPortfolio:
 class TestCustomTemplateOrchestrator:
     """Tests for custom templates through PortfolioComputationStep."""
 
-    def _register_vehicle_malus(self) -> None:
+    def _register_test_penalty(self) -> None:
         from reformlab.templates.schema import register_custom_template, register_policy_type
 
-        register_policy_type("vehicle_malus")
-        register_custom_template("vehicle_malus", VehicleMalusParameters)
+        register_policy_type("test_penalty")
+        register_custom_template("test_penalty", MockPenaltyParameters)
 
     # AC5d: PortfolioComputationStep passes custom parameters to adapter via asdict()
     def test_to_computation_policy_custom_fields(self) -> None:
@@ -540,17 +555,17 @@ class TestCustomTemplateOrchestrator:
         from reformlab.templates.portfolios.portfolio import PolicyConfig
         from reformlab.templates.schema import register_custom_template, register_policy_type
 
-        pt = register_policy_type("vehicle_malus")
-        register_custom_template(pt, VehicleMalusParameters)
+        pt = register_policy_type("test_penalty")
+        register_custom_template(pt, MockPenaltyParameters)
 
         config = PolicyConfig(
             policy_type=pt,
-            policy=VehicleMalusParameters(
+            policy=MockPenaltyParameters(
                 rate_schedule={2026: 50.0},
                 emission_threshold=130.0,
                 malus_rate=60.0,
             ),
-            name="Vehicle Malus",
+            name="Test Penalty",
         )
         comp_policy = _to_computation_policy(config)
         assert comp_policy.policy["emission_threshold"] == 130.0
@@ -577,8 +592,8 @@ class TestCustomTemplateOrchestrator:
             register_policy_type,
         )
 
-        pt = register_policy_type("vehicle_malus")
-        register_custom_template(pt, VehicleMalusParameters)
+        pt = register_policy_type("test_penalty")
+        register_custom_template(pt, MockPenaltyParameters)
 
         output = pa.table({
             "household_id": pa.array([1, 2, 3]),
@@ -594,12 +609,12 @@ class TestCustomTemplateOrchestrator:
         )
         malus_config = PolicyConfig(
             policy_type=pt,
-            policy=VehicleMalusParameters(
+            policy=MockPenaltyParameters(
                 rate_schedule={2026: 50.0},
                 emission_threshold=130.0,
                 malus_rate=60.0,
             ),
-            name="Vehicle Malus",
+            name="Test Penalty",
         )
         portfolio = PolicyPortfolio(
             name="Integration Test",
@@ -617,7 +632,7 @@ class TestCustomTemplateOrchestrator:
         # Verify adapter was called twice (once per policy)
         assert len(adapter.call_log) == 2
         assert adapter.call_log[0]["policy_name"] == "Carbon Tax"
-        assert adapter.call_log[1]["policy_name"] == "Vehicle Malus"
+        assert adapter.call_log[1]["policy_name"] == "Test Penalty"
 
         # Verify merged result is in state
         assert COMPUTATION_RESULT_KEY in new_state.data
@@ -638,8 +653,8 @@ class TestCustomTemplateOrchestrator:
             register_policy_type,
         )
 
-        pt = register_policy_type("vehicle_malus")
-        register_custom_template(pt, VehicleMalusParameters)
+        pt = register_policy_type("test_penalty")
+        register_custom_template(pt, MockPenaltyParameters)
 
         carbon_config = PolicyConfig(
             policy_type=PolicyType.CARBON_TAX,
@@ -648,8 +663,8 @@ class TestCustomTemplateOrchestrator:
         )
         malus_config = PolicyConfig(
             policy_type=pt,
-            policy=VehicleMalusParameters(rate_schedule={2026: 50.0}),
-            name="Vehicle Malus",
+            policy=MockPenaltyParameters(rate_schedule={2026: 50.0}),
+            name="Test Penalty",
         )
         portfolio = PolicyPortfolio(
             name="Test",

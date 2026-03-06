@@ -32,14 +32,17 @@ from reformlab.templates.packs import (
     get_feebate_pack_dir,
     get_rebate_pack_dir,
     get_subsidy_pack_dir,
+    get_vehicle_malus_pack_dir,
     list_carbon_tax_templates,
     list_feebate_templates,
     list_rebate_templates,
     list_subsidy_templates,
+    list_vehicle_malus_templates,
     load_carbon_tax_template,
     load_feebate_template,
     load_rebate_template,
     load_subsidy_template,
+    load_vehicle_malus_template,
 )
 from reformlab.templates.portfolios import (
     Conflict,
@@ -164,6 +167,10 @@ __all__ = [
     "get_feebate_pack_dir",
     "list_feebate_templates",
     "load_feebate_template",
+    # Pack utilities - Vehicle malus
+    "get_vehicle_malus_pack_dir",
+    "list_vehicle_malus_templates",
+    "load_vehicle_malus_template",
     # Inference and registration
     "infer_policy_type",
     "register_policy_type",

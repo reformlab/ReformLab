@@ -1,0 +1,48 @@
+version: "1.0"
+
+name: "Vehicle Malus - French 2026"
+description: "Simplified French malus ecologique 2026. Starts at 108 gCO2/km threshold with progressive tightening over 11 years. Linear rate model: malus = max(0, emissions - threshold) * rate_per_gkm."
+policy_type: vehicle_malus
+
+year_schedule:
+  start_year: 2026
+  end_year: 2036
+
+policy:
+  # Rate schedule: malus rate per gCO2/km above threshold (EUR)
+  # Increases progressively to reflect policy ambition
+  rate_schedule:
+    2026: 50.0
+    2027: 55.0
+    2028: 60.0
+    2029: 65.0
+    2030: 70.0
+    2031: 75.0
+    2032: 80.0
+    2033: 85.0
+    2034: 90.0
+    2035: 95.0
+    2036: 100.0
+
+  # Default emission threshold (gCO2/km) — overridden by threshold_schedule
+  emission_threshold: 108.0
+
+  # Default malus rate — overridden by rate_schedule
+  malus_rate_per_gkm: 50.0
+
+  # Threshold schedule: emission threshold tightens annually
+  threshold_schedule:
+    2026: 108.0
+    2027: 105.0
+    2028: 102.0
+    2029: 99.0
+    2030: 95.0
+    2031: 92.0
+    2032: 89.0
+    2033: 86.0
+    2034: 83.0
+    2035: 80.0
+    2036: 77.0
+
+  covered_categories:
+    - "passenger_vehicle"

@@ -18,3 +18,11 @@
 | medium | Task 2.3 redundantly validates `rate_schedule` presence when Task 2.2 already validates `PolicyParameters` subclassing | Task 2.3 reworded to clarify it's about proper subclass validation, not redundant field checking. |
 | medium | Global registration lifecycle not explicitly stated | Not applied as a story change — registration-before-use is implicit in Python's execution model, and the existing error paths (`TemplateError` on unknown types) already handle the failure case. The story's `_reset_custom_registrations()` test helper adequately covers test isolation. |
 | low | Dev Notes repeat project-context patterns verbosely | Not applied — the focused reminder in Architecture Patterns section provides valuable quick-reference for the dev agent without requiring context switches to project-context.md. |
+
+## Story 13-2 (2026-03-06)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| high | AC3 contradicts Task 2.3 on year-schedule error semantics. AC3 says "raises a clear error" for missing years, but Task 2.3 says fall back to default field values, and Key Design Decision #2 confirms override-with-fallback intent. | Rewrote AC3 to specify `.get(t, default_field)` fallback behavior, aligning AC with Task 2.3 and Design Decision #2. Updated Task 2.3 description to remove the stale "raise error" clause. |
+| medium | AC2 lists `VehicleMalusResult` fields without `vehicle_emissions`, but Task 2.2 includes it. The feebate pattern (`FeebateResult.metric_value`) also includes the underlying metric in results. | Added `vehicle_emissions` to AC2's field list. |
+| medium | `malus_amount` unit (EUR) not explicitly stated in result dataclass. | Added `(EUR)` annotation to Task 2.2's `malus_amount` field description. |

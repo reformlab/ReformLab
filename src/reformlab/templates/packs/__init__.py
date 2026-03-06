@@ -326,6 +326,77 @@ def get_feebate_pack_dir() -> Path:
     return _PACKS_DIR / "feebate"
 
 
+# ---------------------------------------------------------------------------
+# Vehicle malus template pack
+# ---------------------------------------------------------------------------
+
+
+def list_vehicle_malus_templates() -> list[str]:
+    """List available vehicle malus template variant names.
+
+    Returns:
+        List of variant names (without .yaml extension) that can be passed
+        to load_vehicle_malus_template().
+    """
+    vehicle_malus_dir = _PACKS_DIR / "vehicle_malus"
+    if not vehicle_malus_dir.exists():
+        return []
+
+    variants = []
+    for yaml_file in sorted(vehicle_malus_dir.glob("*.yaml")):
+        variants.append(yaml_file.stem)
+    return variants
+
+
+def load_vehicle_malus_template(variant_name: str) -> BaselineScenario:
+    """Load a vehicle malus template by variant name.
+
+    Args:
+        variant_name: The variant name (e.g., "vehicle-malus-french-2026").
+            Use list_vehicle_malus_templates() to see available variants.
+
+    Returns:
+        BaselineScenario loaded from the template YAML file.
+
+    Raises:
+        FileNotFoundError: If the variant does not exist.
+        ScenarioError: If the template file is invalid.
+    """
+    # Ensure vehicle_malus custom type is registered before loading YAML
+    import reformlab.templates.vehicle_malus  # noqa: F401
+
+    vehicle_malus_dir = _PACKS_DIR / "vehicle_malus"
+    template_path = vehicle_malus_dir / f"{variant_name}.yaml"
+
+    if not template_path.exists():
+        available = list_vehicle_malus_templates()
+        raise FileNotFoundError(
+            f"Vehicle malus template '{variant_name}' not found. "
+            f"Available variants: {available}"
+        )
+
+    scenario = load_scenario_template(template_path)
+
+    from reformlab.templates.schema import BaselineScenario
+
+    if not isinstance(scenario, BaselineScenario):
+        raise TypeError(
+            f"Expected BaselineScenario, got {type(scenario).__name__}. "
+            "Vehicle malus pack templates must be baseline scenarios."
+        )
+
+    return scenario
+
+
+def get_vehicle_malus_pack_dir() -> Path:
+    """Return the path to the vehicle malus template pack directory.
+
+    Returns:
+        Path to the vehicle_malus pack directory.
+    """
+    return _PACKS_DIR / "vehicle_malus"
+
+
 __all__ = [
     # Carbon tax
     "get_carbon_tax_pack_dir",
@@ -343,4 +414,8 @@ __all__ = [
     "get_feebate_pack_dir",
     "list_feebate_templates",
     "load_feebate_template",
+    # Vehicle malus
+    "get_vehicle_malus_pack_dir",
+    "list_vehicle_malus_templates",
+    "load_vehicle_malus_template",
 ]

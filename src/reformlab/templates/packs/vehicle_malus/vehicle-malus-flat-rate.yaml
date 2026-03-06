@@ -1,0 +1,47 @@
+version: "1.0"
+
+name: "Vehicle Malus - Flat Rate"
+description: "Simple flat-rate vehicle malus with fixed threshold and constant rate over 11 years. Useful as a baseline comparison against progressive designs."
+policy_type: vehicle_malus
+
+year_schedule:
+  start_year: 2026
+  end_year: 2036
+
+policy:
+  # Constant rate across all years
+  rate_schedule:
+    2026: 50.0
+    2027: 50.0
+    2028: 50.0
+    2029: 50.0
+    2030: 50.0
+    2031: 50.0
+    2032: 50.0
+    2033: 50.0
+    2034: 50.0
+    2035: 50.0
+    2036: 50.0
+
+  # Fixed emission threshold (gCO2/km)
+  emission_threshold: 120.0
+
+  # Default malus rate
+  malus_rate_per_gkm: 50.0
+
+  # Constant threshold across all years
+  threshold_schedule:
+    2026: 120.0
+    2027: 120.0
+    2028: 120.0
+    2029: 120.0
+    2030: 120.0
+    2031: 120.0
+    2032: 120.0
+    2033: 120.0
+    2034: 120.0
+    2035: 120.0
+    2036: 120.0
+
+  covered_categories:
+    - "passenger_vehicle"
