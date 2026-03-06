@@ -1,0 +1,67 @@
+cli_args:
+- run
+- -e
+- '12'
+- -g
+- -v
+- -n
+- --skip-story-prompts
+cli_args_masked:
+- run
+- -e
+- '12'
+- -g
+- -v
+- -n
+- --skip-story-prompts
+current_phase: null
+ended_at: '2026-03-06T13:30:03.454772Z'
+epic: 12
+phase_events:
+- duration_ms: null
+  epic: 12
+  error_type: null
+  event_type: started
+  model: opus
+  phase: DEV_STORY
+  provider: claude-subprocess
+  status: null
+  story: '12.5'
+  termination_metadata: null
+  timestamp: '2026-03-06T13:30:03.349365Z'
+- duration_ms: 20
+  epic: 12
+  error_type: 'Failed to compile workflow: dev-story
+
+
+    The workflow compiler could not load this workflow.
+
+    Handler Y'
+  event_type: completed
+  model: opus
+  phase: DEV_STORY
+  provider: claude-subprocess
+  status: error
+  story: '12.5'
+  termination_metadata: null
+  timestamp: '2026-03-06T13:30:03.370008Z'
+phases:
+- duration_ms: 20
+  ended_at: '2026-03-06T13:30:03.370008Z'
+  error_type: 'Failed to compile workflow: dev-story
+
+
+    The workflow compiler could not load this workflow.
+
+    Handler Y'
+  model: opus
+  phase: DEV_STORY
+  provider: claude-subprocess
+  provider_count: 1
+  started_at: '2026-03-06T13:30:03.349365Z'
+  status: error
+project_path: /Users/lucas/Workspace/reformlab
+run_id: 4bbb6ce8
+started_at: '2026-03-06T13:30:03.309251Z'
+status: completed
+story: '12.5'

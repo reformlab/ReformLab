@@ -1,0 +1,51 @@
+record_id: cd0b35ce-e67d-4da8-9412-cb6280ec7bf3
+created_at: '2026-03-06T12:05:26.595034+00:00'
+workflow:
+  id: dev-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 12
+  story_num: 3
+  title: Story 12.3
+  complexity_flags: {}
+evaluator:
+  provider: claude-subprocess
+  model: opus
+  role: master
+  role_id: null
+  session_id: ffaf74b2-e74a-4086-b6b7-7efb74928a5f
+execution:
+  start_time: '2026-03-06T11:29:05.063477Z'
+  end_time: '2026-03-06T12:05:26.569439Z'
+  duration_ms: 2181505
+  input_tokens: 0
+  output_tokens: 0
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 4284
+  heading_count: 2
+  list_depth_max: 1
+  code_block_count: 0
+  sections_detected:
+  - Story 12.3 — Complete
+  - Story 12.3 — Complete
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.31
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 4615d7d9e77f
+findings: null
+reasoning: null
+linguistic: null
+quality: null
+consensus: null
+ground_truth: null
+custom: null
