@@ -8,12 +8,12 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, replace
-from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import yaml
 
+from reformlab.templates.portfolios.enums import ConflictType
 from reformlab.templates.portfolios.exceptions import (
     PortfolioSerializationError,
     PortfolioValidationError,
@@ -21,29 +21,7 @@ from reformlab.templates.portfolios.exceptions import (
 from reformlab.templates.portfolios.portfolio import PolicyConfig, PolicyPortfolio
 from reformlab.templates.schema import PolicyType
 
-if TYPE_CHECKING:
-    pass
-
 logger = logging.getLogger(__name__)
-
-
-class ConflictType(Enum):
-    """Types of conflicts that can occur in a portfolio."""
-
-    SAME_POLICY_TYPE = "same_policy_type"
-    OVERLAPPING_CATEGORIES = "overlapping_categories"
-    OVERLAPPING_YEARS = "overlapping_years"
-    PARAMETER_MISMATCH = "parameter_mismatch"
-
-
-class ResolutionStrategy(Enum):
-    """Strategies for resolving portfolio conflicts."""
-
-    ERROR = "error"
-    SUM = "sum"
-    FIRST_WINS = "first_wins"
-    LAST_WINS = "last_wins"
-    MAX = "max"
 
 
 @dataclass(frozen=True)
@@ -231,11 +209,28 @@ def dict_to_portfolio(data: dict[str, Any]) -> PolicyPortfolio:
                 fix=f"Add 'policy' to policies[{idx}]",
                 invalid_fields=(f"policies[{idx}].policy",),
             )
+        if not isinstance(policy_data["policy"], dict):
+            raise PortfolioValidationError(
+                summary="Portfolio validation failed",
+                reason=f"policies[{idx}].policy must be a mapping",
+                fix=f"Ensure policies[{idx}].policy is a YAML mapping",
+                invalid_fields=(f"policies[{idx}].policy",),
+            )
 
+        policy_data_dict = policy_data["policy"]
+
+        # Validate and convert policy_type
         policy_type_str = policy_data["policy_type"]
+        if not isinstance(policy_type_str, str):
+            raise PortfolioValidationError(
+                summary="Portfolio validation failed",
+                reason=f"policies[{idx}].policy_type must be a string, got {type(policy_type_str).__name__}",
+                fix=f"Ensure policies[{idx}].policy_type is a string",
+                invalid_fields=(f"policies[{idx}].policy_type",),
+            )
         try:
             policy_type = PolicyType(policy_type_str)
-        except ValueError:
+        except (ValueError, TypeError):
             raise PortfolioValidationError(
                 summary="Portfolio validation failed",
                 reason=f"policies[{idx}] has invalid policy_type: {policy_type_str}",
@@ -243,10 +238,7 @@ def dict_to_portfolio(data: dict[str, Any]) -> PolicyPortfolio:
                 invalid_fields=(f"policies[{idx}].policy_type",),
             ) from None
 
-        policy_params = _dict_to_policy_parameters(
-            policy_data["policy"], policy_type, f"policies[{idx}].policy"
-        )
-
+        policy_params = _dict_to_policy_parameters(policy_data_dict, policy_type, f"policies[{idx}].policy")
         config = PolicyConfig(
             policy_type=policy_type,
             policy=policy_params,
@@ -462,8 +454,6 @@ def validate_compatibility(portfolio: PolicyPortfolio) -> tuple[Conflict, ...]:
     # Detect same policy type conflicts
     for i in range(len(portfolio.policies)):
         for j in range(i + 1, len(portfolio.policies)):
-            if i >= j:
-                continue
             if portfolio.policies[i].policy_type == portfolio.policies[j].policy_type:
                 conflict = Conflict(
                     conflict_type=ConflictType.SAME_POLICY_TYPE,
@@ -480,8 +470,6 @@ def validate_compatibility(portfolio: PolicyPortfolio) -> tuple[Conflict, ...]:
     # Detect overlapping years conflicts
     for i in range(len(portfolio.policies)):
         for j in range(i + 1, len(portfolio.policies)):
-            if i >= j:
-                continue
             policy_i_years = set(portfolio.policies[i].policy.rate_schedule.keys())
             policy_j_years = set(portfolio.policies[j].policy.rate_schedule.keys())
             overlap = policy_i_years & policy_j_years
@@ -494,30 +482,69 @@ def validate_compatibility(portfolio: PolicyPortfolio) -> tuple[Conflict, ...]:
                         tuple(sorted(policy_i_years)),
                         tuple(sorted(policy_j_years)),
                     ),
-                    description=f"rate_schedule years overlap: {overlap}",
+                    description=f"rate_schedule years overlap: {sorted(overlap)}",
                 )
                 conflicts.append(conflict)
 
-    # Detect overlapping categories conflicts
+    # Detect overlapping categories conflicts (symmetric - check all attribute combinations)
     for i in range(len(portfolio.policies)):
         for j in range(i + 1, len(portfolio.policies)):
-            if i >= j:
+            # Check all category attribute pairs for overlap
+            for attr_i in ("covered_categories", "eligible_categories"):
+                for attr_j in ("covered_categories", "eligible_categories"):
+                    policy_i_cats = getattr(portfolio.policies[i].policy, attr_i, ())
+                    policy_j_cats = getattr(portfolio.policies[j].policy, attr_j, ())
+                    overlap = set(policy_i_cats) & set(policy_j_cats)
+                    if overlap:
+                        conflict = Conflict(
+                            conflict_type=ConflictType.OVERLAPPING_CATEGORIES,
+                            policy_indices=(i, j),
+                            parameter_name=f"{attr_i} vs {attr_j}",
+                            conflicting_values=(
+                                tuple(sorted(policy_i_cats)),
+                                tuple(sorted(policy_j_cats)),
+                            ),
+                            description=f"categories overlap: {sorted(overlap)}",
+                        )
+                        conflicts.append(conflict)
+
+    # Detect PARAMETER_MISMATCH conflicts
+    # When policies affect overlapping categories but have different parameter values
+    # that affect how the policy is applied (e.g., redistribution_type, income_caps)
+    for i in range(len(portfolio.policies)):
+        for j in range(i + 1, len(portfolio.policies)):
+            # Get overlapping categories between policies
+            cats_i = set(getattr(portfolio.policies[i].policy, "covered_categories", ()))
+            cats_j = set(getattr(portfolio.policies[j].policy, "covered_categories", ()))
+            overlap = cats_i & cats_j
+
+            # Only check for parameter mismatches if categories overlap
+            if not overlap:
                 continue
-            policy_i_cats = getattr(portfolio.policies[i].policy, "covered_categories", ())
-            policy_j_cats = getattr(portfolio.policies[j].policy, "eligible_categories", ())
-            overlap = set(policy_i_cats) & set(policy_j_cats)
-            if overlap:
-                conflict = Conflict(
-                    conflict_type=ConflictType.OVERLAPPING_CATEGORIES,
-                    policy_indices=(i, j),
-                    parameter_name="categories",
-                    conflicting_values=(
-                        tuple(sorted(policy_i_cats)),
-                        tuple(sorted(policy_j_cats)),
-                    ),
-                    description=f"categories overlap: {overlap}",
-                )
-                conflicts.append(conflict)
+
+            # Check for mismatches in key parameters that affect policy application
+            # Note: This is a metadata-based proxy detection as per story requirements
+            params_to_check = [
+                ("redistribution_type", "redistribution_type"),
+                ("rebate_type", "rebate_type"),
+                ("income_caps", "income_caps"),
+                ("pivot_point", "pivot_point"),
+            ]
+
+            for param_name, attr_name in params_to_check:
+                val_i = getattr(portfolio.policies[i].policy, attr_name, None)
+                val_j = getattr(portfolio.policies[j].policy, attr_name, None)
+
+                # Only report mismatch if both policies have the parameter and values differ
+                if val_i is not None and val_j is not None and val_i != val_j:
+                    conflict = Conflict(
+                        conflict_type=ConflictType.PARAMETER_MISMATCH,
+                        policy_indices=(i, j),
+                        parameter_name=param_name,
+                        conflicting_values=(str(val_i), str(val_j)),
+                        description=f"{param_name} mismatch for overlapping categories: {sorted(overlap)}",
+                    )
+                    conflicts.append(conflict)
 
     # Sort conflicts by policy indices, then parameter name for deterministic ordering
     conflicts.sort(key=lambda c: (c.policy_indices[0], c.parameter_name))
@@ -577,10 +604,15 @@ def resolve_conflicts(portfolio: PolicyPortfolio, conflicts: tuple[Conflict, ...
             invalid_fields=("resolution_strategy",),
         )
 
-    # Create description suffix
-    description_suffix = (
-        f"\n\nResolved {len(conflicts)} conflicts using '{portfolio.resolution_strategy}' strategy."
+    # Create description suffix (idempotent - don't duplicate if already resolved)
+    resolution_marker = (
+        f"Resolved {len(conflicts)} conflicts using '{portfolio.resolution_strategy}' strategy."
     )
+    if resolution_marker not in portfolio.description:
+        description_suffix = f"\n\n{resolution_marker}"
+    else:
+        # Already has resolution metadata - don't add again
+        description_suffix = ""
 
     # Return new portfolio with resolved policies
     return PolicyPortfolio(

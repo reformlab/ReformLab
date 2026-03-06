@@ -15,10 +15,12 @@ from pathlib import Path
 
 import pytest
 
-from reformlab.templates.portfolios.composition import (
+from reformlab.templates.portfolios import (
     Conflict,
     ConflictType,
     ResolutionStrategy,
+)
+from reformlab.templates.portfolios.composition import (
     dump_portfolio,
     load_portfolio,
     resolve_conflicts,

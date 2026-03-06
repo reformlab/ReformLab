@@ -11,13 +11,12 @@ from __future__ import annotations
 
 from reformlab.templates.portfolios.composition import (
     Conflict,
-    ConflictType,
-    ResolutionStrategy,
     dump_portfolio,
     load_portfolio,
     resolve_conflicts,
     validate_compatibility,
 )
+from reformlab.templates.portfolios.enums import ConflictType, ResolutionStrategy
 from reformlab.templates.portfolios.exceptions import (
     PortfolioError,
     PortfolioSerializationError,

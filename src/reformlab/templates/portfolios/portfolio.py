@@ -6,13 +6,15 @@ Story 12.1: Define PolicyPortfolio dataclass and composition logic
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
+from reformlab.templates.portfolios.enums import ResolutionStrategy
 from reformlab.templates.portfolios.exceptions import PortfolioValidationError
 from reformlab.templates.schema import PolicyParameters, PolicyType, infer_policy_type
 
-if TYPE_CHECKING:
-    pass
+# Valid resolution strategies - derived from ResolutionStrategy enum
+# Used for validation in __post_init__
+_VALID_RESOLUTION_STRATEGIES = frozenset({s.value for s in ResolutionStrategy})
 
 
 @dataclass(frozen=True)
@@ -90,14 +92,14 @@ class PolicyPortfolio:
             )
 
         # Validate resolution_strategy is a valid enum value
-        valid_strategies = {"error", "sum", "first_wins", "last_wins", "max"}
-        if self.resolution_strategy not in valid_strategies:
+        if self.resolution_strategy not in _VALID_RESOLUTION_STRATEGIES:
             raise PortfolioValidationError(
                 summary="Invalid resolution strategy",
                 reason=(
-                    f"resolution_strategy must be one of {valid_strategies}, got {self.resolution_strategy!r}"
+                    f"resolution_strategy must be one of {_VALID_RESOLUTION_STRATEGIES}, "
+                    f"got {self.resolution_strategy!r}"
                 ),
-                fix=f"Use one of: {', '.join(sorted(valid_strategies))}",
+                fix=f"Use one of: {', '.join(sorted(_VALID_RESOLUTION_STRATEGIES))}",
                 invalid_fields=("resolution_strategy",),
             )
 
