@@ -78,14 +78,14 @@ compiler:
     budget: 15000
     tree_budget: 0
     defaults:
-      include: [project-context] # [project-tree, project-context, architecture]
+      include: [project-tree, project-context, architecture]
       main_only: true
     create_story:
-      include: [project-context] # [project-tree, project-context, architecture, prd]
+      include: [project-tree, project-context, architecture, prd]
     dev_story:
-      include: [project-context] # [project-tree, project-context, architecture]
+      include: [project-tree, project-context, architecture]
     code_review:
-      include: [project-context] # project-tree, project-context, architecture]
+      include: [project-tree, project-context, architecture]
 
 # Loop: standard cycle with synthesis, no TEA
 loop:

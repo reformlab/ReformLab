@@ -41,6 +41,7 @@ _bmad/_memory/*.yaml
 !_bmad/_memory/config.yaml
 
 overnight-build.sh
+benchmark-analysis-report.md
 
 # === Testing ===
 coverage/
