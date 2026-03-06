@@ -96,14 +96,14 @@ development_status:
   10-2-infer-policy-type-from-parameters-class: done
   epic-10-retrospective: optional
   # Epic 11
-  epic-11: backlog
-  11-1-define-datasourceloader-protocol-and-caching-infrastructure: backlog
-  11-2-implement-insee-data-source-loader: backlog
-  11-3-implement-eurostat-ademe-sdes-data-source-loaders: backlog
-  11-4-define-mergemethod-protocol-and-uniform-distribution-method: backlog
-  11-5-implement-ipf-and-conditional-sampling-merge-methods: backlog
-  11-6-build-populationpipeline-builder-with-assumption-recording: backlog
-  11-7-implement-population-validation-against-known-marginals: backlog
+  epic-11: in-progress
+  11-1-define-datasourceloader-protocol-and-caching-infrastructure: done
+  11-2-implement-insee-data-source-loader: done
+  11-3-implement-eurostat-ademe-sdes-data-source-loaders: done
+  11-4-define-mergemethod-protocol-and-uniform-distribution-method: done
+  11-5-implement-ipf-and-conditional-sampling-merge-methods: done
+  11-6-build-populationpipeline-builder-with-assumption-recording: in-progress
+  11-7-implement-population-validation-against-known-marginals: done
   11-8-build-french-household-example-pipeline-and-pedagogical-notebook: backlog
   epic-11-retrospective: optional
   # Epic 12

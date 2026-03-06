@@ -35,10 +35,17 @@ yarn-error.log*
 # === Claude Code ===
 .claude/settings.local.json
 
-# === BMAD ===
-# Memory files are local to each developer
-_bmad/_memory/*.yaml
-!_bmad/_memory/config.yaml
+# === BMAD Framework & Outputs (LLM development tooling — internal) ===
+_bmad/
+_bmad-output/
+.bmad-assist/
+.bmad-assist/cache/
+bmad-assist.yaml
+bmad-assist-test.yaml
+bmad-assist.legacy.yaml
+
+# === Local scripts ===
+scripts/
 
 overnight-build.sh
 benchmark-analysis-report.md
@@ -69,7 +76,6 @@ data/
 notebooks/data/
 notebooks/demo/
 
-# bmad-assist artifacts (auto-generated, never commit)
-.bmad-assist/cache/
+# bmad-assist artifacts (redundant with _bmad/ rules above, kept for meta/tpl files outside _bmad)
 *.meta.yaml
 *.tpl.xml

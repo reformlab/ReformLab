@@ -1,0 +1,6 @@
+REGION_CODE;REGION_LIBELLE;CLASSE_VEHICULE;CATEGORIE_VEHICULE;CARBURANT;AGE;CRITAIR;PARC_2022
+84;Auvergne-Rhône-Alpes;VP;M1;Diesel;De 1 à 5 ans;Crit'Air 2;450000
+84;Auvergne-Rhône-Alpes;VP;M1;Essence;De 1 à 5 ans;Crit'Air 1;380000
+84;Auvergne-Rhône-Alpes;VP;M1;Electrique;De 1 à 5 ans;Crit'Air E;95000
+11;Île-de-France;VP;M1;Diesel;De 1 à 5 ans;Crit'Air 2;520000
+11;Île-de-France;VP;M1;Essence;Plus de 15 ans;;
