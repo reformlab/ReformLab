@@ -368,4 +368,13 @@ records:
   provider: codex
   created_at: '2026-03-06T00:00:19.217114+00:00'
   workflow_id: code-review
-updated_at: '2026-03-06T00:00:19.269773+00:00'
+- record_id: 8a31fb07-1262-4a24-b243-6790a54a9d35
+  path: eval-12-3-master-20260306T110814Z.yaml
+  epic: 12
+  story: 3
+  role: master
+  role_id: null
+  provider: claude-subprocess
+  created_at: '2026-03-06T11:08:14.920525+00:00'
+  workflow_id: create-story
+updated_at: '2026-03-06T11:08:14.940168+00:00'

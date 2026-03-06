@@ -670,5 +670,6 @@ All rules from `project-context.md` apply:
 
 ## Change Log
 
+- 2026-03-06: Code review fixes applied — fixed mock_loader_shared column length mismatch, removed dead TYPE_CHECKING guard, removed 2 placeholder tests, reused stored duration_ms in log. Evidence score: 0.5 (APPROVED).
 - 2026-03-05: Story implementation completed — all 9 tasks and 39 subtasks delivered and verified. Comprehensive test coverage with 73 new tests for pipeline and assumption modules. All tests pass (382 total in population module). Ruff and mypy strict validation passed. Full governance integration via `PipelineAssumptionChain.to_governance_entries()` with step context preservation. Error handling with `PipelineExecutionError` capturing step-level context.
 - 2026-03-03: Story created by create-story workflow — comprehensive developer context with composable builder pattern design, fluent API specification, governance integration via `to_governance_entry()` (NOT `capture_assumptions()`), error hierarchy with step context preservation, mock loader test fixtures, sequential DAG execution model, timing measurement, and downstream dependency mapping.
