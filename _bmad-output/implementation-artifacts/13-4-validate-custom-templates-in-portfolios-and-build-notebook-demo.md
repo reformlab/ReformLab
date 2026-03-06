@@ -15,36 +15,31 @@ so that I can confidently author, register, and deploy custom policy templates i
 
 1. **AC1: Custom template in portfolio execution** — Given a custom template (e.g., `VehicleMalusParameters`) authored and registered via the Story 13.1 API, when added to a `PolicyPortfolio` alongside built-in templates (e.g., `CarbonTaxParameters`, `SubsidyParameters`), then the portfolio constructs successfully, `validate_compatibility()` runs without errors for non-conflicting policies, and `PortfolioComputationStep` passes the custom template's parameters to the adapter via `asdict()` without error.
 
-2. **AC2: Portfolio execution with all Epic 13 templates** — Given a portfolio containing at least one `VehicleMalusParameters` policy, one `EnergyPovertyAidParameters` policy, and one built-in `CarbonTaxParameters` policy, when executed through the orchestrator's `PortfolioComputationStep` with a population containing `household_id`, `income`, `carbon_emissions`, `vehicle_emissions`, and `energy_expenditure` columns, then all three policies produce per-household results that are merged into a single output table with correct column prefixing.
+2. **AC2: Portfolio execution with all Epic 13 templates** — Given a portfolio containing at least one `VehicleMalusParameters` policy, one `EnergyPovertyAidParameters` policy, and one built-in `CarbonTaxParameters` policy, when executed through the orchestrator's `PortfolioComputationStep` with a population containing `household_id`, `income`, `carbon_emissions`, `vehicle_emissions_gkm`, and `energy_expenditure` columns, then all three policies produce per-household results that are merged into a single output table with `{policy_type}_` prefixed columns per the `PortfolioComputationStep` convention (`household_id` preserved as join key, each policy's output columns prefixed by its policy type). Tests must assert non-zero malus and aid totals to confirm the population data actually triggers policy logic.
 
 3. **AC3: Conflict detection for custom templates** — Given a portfolio with two policies of the same custom type (e.g., two `VehicleMalusParameters` with overlapping `rate_schedule` years), when `validate_compatibility()` is called, then it detects both `same_policy_type` and `overlapping_years` conflicts, identical to the behavior for built-in policy types.
 
 4. **AC4: Notebook demo end-to-end** — Given the notebook at `notebooks/demo/epic13_custom_templates.ipynb`, when run in CI via `uv run pytest --nbmake notebooks/demo/epic13_custom_templates.ipynb -v`, then it completes without errors and demonstrates: (a) defining a simple custom template from scratch, (b) registering it via `register_policy_type()` + `register_custom_template()`, (c) using it in a `BaselineScenario`, (d) composing it into a portfolio with built-in templates, (e) running batch comparison using template-specific `run_*_batch()` functions, (f) comparing a portfolio with custom templates against one using only built-in templates.
 
-5. **AC5: Notebook pedagogical quality** — Given the notebook, when read by an analyst unfamiliar with the custom template API, then each section includes a plain-language explanation before code, the steps to author a new template are explicit (define frozen dataclass → register type → register class → use in scenario/portfolio), and no external documentation is needed to understand the workflow.
+5. **AC5: Notebook pedagogical quality** — Given the notebook, when read by an analyst unfamiliar with the custom template API, then: (a) every code cell is preceded by a markdown cell with a plain-language explanation, (b) the lifecycle steps are explicitly enumerated (define frozen dataclass → register type → register class → use in scenario/portfolio), (c) sections "Define a Custom Template", "Register and Use", and "Portfolios with Custom Templates" are present as markdown headings, and (d) no external documentation is needed to understand the workflow.
 
 6. **AC6: Static notebook tests** — Given the test file `tests/notebooks/test_epic13_demo_notebook.py`, when run, then it validates: (a) notebook exists at expected path, (b) outputs are cleared (execution_count=None, outputs=[]), (c) uses public API imports only (no `reformlab.computation.*` internals), (d) contains key API calls (`register_policy_type`, `register_custom_template`, `PolicyPortfolio`, `validate_compatibility`), (e) CI workflow includes nbmake execution line.
 
-7. **AC7: YAML round-trip with custom template in portfolio** — Given a `PolicyPortfolio` containing a custom template policy, when serialized via `dump_portfolio()` and reloaded via `load_portfolio()`, then the round-trip preserves all custom template fields (including custom-specific fields like `emission_threshold`, `income_ceiling`, etc.).
+7. **AC7: YAML round-trip with custom template in portfolio** — Given a `PolicyPortfolio` containing a custom template policy, when serialized via `dump_portfolio()` and reloaded via `load_portfolio()` (with the custom template modules imported beforehand so types are registered), then the round-trip preserves all custom template fields (including custom-specific fields like `emission_threshold`, `income_ceiling`, etc.). Tests and notebook must import `reformlab.templates.vehicle_malus` and `reformlab.templates.energy_poverty_aid` before calling `load_portfolio()` to ensure registration side effects have run.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Create population data file for notebook** (AC: #2, #4)
-  - [ ] 1.1 Create `data/populations/demo-epic13-100.csv` with 100 households and columns: `household_id` (int64), `income` (float64), `carbon_emissions` (float64), `vehicle_emissions` (float64, gCO2/km for vehicle malus), `energy_expenditure` (float64, annual EUR for energy poverty aid), `vehicle_type` (string)
-  - [ ] 1.2 Generate deterministically with seed 42, income range ~5,000-80,000 EUR, vehicle_emissions ~80-250 gCO2/km, energy_expenditure ~200-3,000 EUR
-  - [ ] 1.3 Ensure distribution creates interesting results: ~30% households eligible for energy poverty aid, ~40% above vehicle malus emission threshold
-
-- [ ] **Task 2: Write portfolio integration tests** (AC: #1, #2, #3, #7)
-  - [ ] 2.1 Create `tests/templates/test_custom_template_portfolio_integration.py` with test classes:
+- [ ] **Task 1: Write portfolio integration tests** (AC: #1, #2, #3, #7)
+  - [ ] 1.1 Create `tests/templates/test_custom_template_portfolio_integration.py` with test classes:
     - `TestCustomTemplatePortfolioExecution`: portfolio with VehicleMalusParameters + CarbonTaxParameters + SubsidyParameters constructs and validates without conflict; portfolio with VehicleMalusParameters + EnergyPovertyAidParameters + CarbonTaxParameters constructs successfully
     - `TestCustomTemplateConflictDetection`: two VehicleMalusParameters with overlapping rate_schedule years triggers same_policy_type + overlapping_years conflicts; two EnergyPovertyAidParameters triggers same_policy_type conflict
-    - `TestPortfolioComputationWithCustomTemplates`: `PortfolioComputationStep` executes a portfolio with custom templates using MockAdapter; verify `asdict()` conversion produces complete dict with custom fields (emission_threshold, income_ceiling, etc.)
-    - `TestPortfolioYamlRoundTripWithCustomTemplates`: `dump_portfolio()` + `load_portfolio()` round-trip preserves custom template fields
-  - [ ] 2.2 Use `MockAdapter` from existing test infrastructure — never use real OpenFisca
-  - [ ] 2.3 Reference AC IDs in test docstrings
+    - `TestPortfolioComputationWithCustomTemplates`: `PortfolioComputationStep` executes a portfolio with custom templates using MockAdapter; verify `asdict()` conversion produces complete dict with custom fields (emission_threshold, income_ceiling, etc.); assert non-zero malus and aid totals from seeded population
+    - `TestPortfolioYamlRoundTripWithCustomTemplates`: `dump_portfolio()` + `load_portfolio()` round-trip preserves custom template fields; import custom template modules before `load_portfolio()` to ensure registration
+  - [ ] 1.2 Use `MockAdapter` from existing test infrastructure — never use real OpenFisca
+  - [ ] 1.3 Reference AC IDs in test docstrings
 
-- [ ] **Task 3: Build notebook demo** (AC: #4, #5)
-  - [ ] 3.1 Create `notebooks/demo/epic13_custom_templates.ipynb` following the Epic 12 demo pattern:
+- [ ] **Task 2: Build notebook demo** (AC: #4, #5)
+  - [ ] 2.1 Create `notebooks/demo/epic13_custom_templates.ipynb` following the Epic 12 demo pattern:
     - Section 0: Introduction (what you'll learn, prerequisites, ~15 min)
     - Section 1: Setup (path resolution, imports, output directory)
     - Section 2: "The Custom Template API" — explain the lifecycle with a diagram-like markdown
@@ -55,14 +50,14 @@ so that I can confidently author, register, and deploy custom policy templates i
     - Section 7: "Compare Portfolios" — compare a "Green Transition" portfolio (carbon tax + vehicle malus + energy poverty aid) against a "Carbon Tax Only" portfolio, show distributional differences
     - Section 8: "YAML Round-Trip" — dump portfolio to YAML, reload, verify custom fields preserved
     - Section 9: Next Steps
-  - [ ] 3.2 Create synthetic population data inline using `random.seed(42)` (same pattern as Epic 12 demo), with columns: `household_id`, `income`, `carbon_emissions`, `vehicle_emissions`, `energy_expenditure`
-  - [ ] 3.3 Use `show()` helper function for table display (inline definition, same as Epic 12)
-  - [ ] 3.4 All code cells must have `execution_count: null` and `outputs: []` (committed clean)
-  - [ ] 3.5 Use public API imports only — `from reformlab.templates.schema import ...`, `from reformlab.templates.vehicle_malus import ...`, `from reformlab.templates.energy_poverty_aid import ...`, `from reformlab.templates.portfolios import ...`
-  - [ ] 3.6 Include plain-language explanation before every code cell explaining what it does and why
+  - [ ] 2.2 Create synthetic population data inline using `random.seed(42)` (same pattern as Epic 12 demo), with columns: `household_id`, `income`, `carbon_emissions`, `vehicle_emissions_gkm`, `energy_expenditure`. Target ~30% eligible for energy poverty aid, ~40% above vehicle malus emission threshold (> 118 gCO2/km)
+  - [ ] 2.3 Use `show()` helper function for table display (inline definition, same as Epic 12)
+  - [ ] 2.4 All code cells must have `execution_count: null` and `outputs: []` (committed clean)
+  - [ ] 2.5 Use public API imports only — `from reformlab.templates.schema import ...`, `from reformlab.templates.vehicle_malus import ...`, `from reformlab.templates.energy_poverty_aid import ...`, `from reformlab.templates.portfolios import ...`
+  - [ ] 2.6 Include plain-language markdown explanation before every code cell explaining what it does and why
 
-- [ ] **Task 4: Write static notebook tests** (AC: #6)
-  - [ ] 4.1 Create `tests/notebooks/test_epic13_demo_notebook.py` following `test_advanced_notebook.py` pattern:
+- [ ] **Task 3: Write static notebook tests** (AC: #6)
+  - [ ] 3.1 Create `tests/notebooks/test_epic13_demo_notebook.py` following `test_advanced_notebook.py` pattern:
     - `test_epic13_notebook_exists()` — file at expected path
     - `test_epic13_notebook_outputs_are_cleared()` — all code cells have execution_count=None, outputs=[]
     - `test_epic13_notebook_uses_public_api_only()` — contains `register_policy_type`, `register_custom_template`, `PolicyPortfolio`, `validate_compatibility`; does NOT contain `reformlab.computation`, `from openfisca import`
@@ -70,14 +65,14 @@ so that I can confidently author, register, and deploy custom policy templates i
     - `test_epic13_notebook_covers_portfolio_comparison()` — contains `compare_` or portfolio comparison code
     - `test_epic13_notebook_covers_yaml_round_trip()` — contains `dump_portfolio` or `dump_scenario_template` and `load_`
 
-- [ ] **Task 5: Update CI workflow** (AC: #4, #6)
-  - [ ] 5.1 Add `uv run pytest --nbmake notebooks/demo/epic13_custom_templates.ipynb -v` to `.github/workflows/ci.yml`
+- [ ] **Task 4: Update CI workflow** (AC: #4, #6)
+  - [ ] 4.1 Add `uv run pytest --nbmake notebooks/demo/epic13_custom_templates.ipynb -v` to `.github/workflows/ci.yml` (after existing notebook lines)
 
-- [ ] **Task 6: Run verification** (AC: #1-#7)
-  - [ ] 6.1 Run `uv run ruff check src/ tests/`
-  - [ ] 6.2 Run `uv run mypy src/`
-  - [ ] 6.3 Run `uv run pytest tests/ -x` to verify no regressions
-  - [ ] 6.4 Run `uv run pytest --nbmake notebooks/demo/epic13_custom_templates.ipynb -v` to verify notebook executes
+- [ ] **Task 5: Run verification** (AC: #1-#7)
+  - [ ] 5.1 Run `uv run ruff check src/ tests/`
+  - [ ] 5.2 Run `uv run mypy src/`
+  - [ ] 5.3 Run `uv run pytest tests/ -x` to verify no regressions
+  - [ ] 5.4 Run `uv run pytest --nbmake notebooks/demo/epic13_custom_templates.ipynb -v` to verify notebook executes
 
 ## Dev Notes
 
@@ -145,7 +140,7 @@ portfolio = PolicyPortfolio(
 ### Key Design Decisions
 
 **1. Notebook creates synthetic data inline (NOT from CSV file):**
-The Epic 12 portfolio comparison notebook creates synthetic population data inline with `random.seed(42)`. Story 13.4 follows the same pattern. This avoids creating another population CSV and keeps the notebook self-contained. The population needs `vehicle_emissions` (float64, gCO2/km) and `energy_expenditure` (float64, EUR) columns that don't exist in any shipped CSV.
+The Epic 12 portfolio comparison notebook creates synthetic population data inline with `random.seed(42)`. Story 13.4 follows the same pattern. This avoids creating another population CSV and keeps the notebook self-contained. The population needs `vehicle_emissions_gkm` (float64, gCO2/km — matching `compute_vehicle_malus()` expected column name) and `energy_expenditure` (float64, EUR — matching `compute_energy_poverty_aid()` expected column name) columns that don't exist in any shipped CSV.
 
 **2. Simple custom template example for pedagogy:**
 The notebook defines a minimal `ParkingLevyParameters` template to demonstrate the authoring lifecycle. This is deliberately simple (one custom field: `levy_per_vehicle`) so the reader focuses on the registration API, not computation logic. Vehicle malus and energy poverty aid are then shown as "shipped" custom templates for production use.
@@ -177,8 +172,8 @@ The notebook creates a 100-household synthetic population inline:
 | `household_id` | int64 | 0-99 | Unique ID |
 | `income` | float64 | ~5,000-80,000 EUR | Eligibility, decile assignment |
 | `carbon_emissions` | float64 | ~1-8 tCO2 | Carbon tax computation |
-| `vehicle_emissions` | float64 | ~80-250 gCO2/km | Vehicle malus computation |
-| `energy_expenditure` | float64 | ~200-3,000 EUR | Energy poverty aid eligibility |
+| `vehicle_emissions_gkm` | float64 | ~80-250 gCO2/km | Vehicle malus computation (must match `compute_vehicle_malus()` expected column name) |
+| `energy_expenditure` | float64 | ~200-3,000 EUR | Energy poverty aid eligibility (must match `compute_energy_poverty_aid()` expected column name) |
 
 Distribution targets for interesting results:
 - ~30% households eligible for energy poverty aid (income < 11,000 AND energy_share >= 0.08)
@@ -207,6 +202,9 @@ Distribution targets for interesting results:
 - **Static notebook tests in `tests/notebooks/`** — JSON structure checks without kernel launch
 - **nbmake execution in CI** — full notebook execution with fresh kernel
 - **Portfolio integration tests in `tests/templates/`** — unit tests with MockAdapter, no real OpenFisca
+- **`PortfolioComputationStep` is test-only** — integration tests may use `PortfolioComputationStep` directly, but the notebook must NOT (it uses public template-level APIs only)
+- **Registration precondition** — tests involving `load_portfolio()` with custom templates must import `reformlab.templates.vehicle_malus` and `reformlab.templates.energy_poverty_aid` before loading, so import-time registration side effects run
+- **Non-zero result assertions** — integration tests must assert that malus totals > 0 and aid totals > 0 for the seeded population, to prevent silent zero-result failures from column name mismatches
 - **Class-based test grouping** — `TestCustomTemplatePortfolioExecution`, `TestCustomTemplateConflictDetection`, etc.
 - **Direct assertions** — plain `assert`, `pytest.raises(TemplateError, match=...)` for errors
 - **AC ID references** — comment AC IDs in test docstrings
@@ -242,7 +240,8 @@ Section 3: Define a Custom Template (code + markdown)
 
 Section 4: Built-in Custom Templates (code + markdown)
   - Show VehicleMalusParameters and EnergyPovertyAidParameters
-  - Create 100-household synthetic population (random.seed(42))
+  - Create 100-household synthetic population (random.seed(42)) with columns:
+    household_id, income, carbon_emissions, vehicle_emissions_gkm, energy_expenditure
   - Run compute_vehicle_malus() and compute_energy_poverty_aid()
   - Show decile aggregation results
 
