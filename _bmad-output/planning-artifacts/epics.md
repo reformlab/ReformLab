@@ -30,8 +30,8 @@ Single source of truth for all epics and stories across the project. For detaile
 | EPIC-8 | Post-Phase-1 Validation Spikes | 1 | done | 2 |
 | EPIC-9 | OpenFisca Adapter Hardening | 1 | done | 5 |
 | EPIC-10 | API Ergonomics and Developer Experience | 1 | done | 2 |
-| EPIC-11 | Realistic Population Generation Library | 2 | backlog | 8 |
-| EPIC-12 | Policy Portfolio Model | 2 | backlog | 5 |
+| EPIC-11 | Realistic Population Generation Library | 2 | done | 8 |
+| EPIC-12 | Policy Portfolio Model | 2 | done | 5 |
 | EPIC-13 | Additional Policy Templates + Extensibility | 2 | backlog | 4 |
 | EPIC-14 | Discrete Choice Model for Household Decisions | 2 | backlog | 7 |
 | EPIC-15 | Calibration Engine | 2 | backlog | 5 |
@@ -670,7 +670,7 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 **User outcome:** Analyst can build a credible French household population from real public data sources, choosing merge methods with transparent assumptions, and producing a population with all attributes needed for policy simulation.
 
-**Status:** backlog
+**Status:** done
 
 **Builds on:** EPIC-1 (data layer), EPIC-5 (governance)
 
@@ -678,14 +678,14 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 | ID | Type | Pri | SP | Title | Status | PRD Refs |
 |------|------|-----|----|-------|--------|----------|
-| BKL-1101 | Story | P0 | 5 | Define DataSourceLoader protocol and caching infrastructure | backlog | FR36 |
-| BKL-1102 | Story | P0 | 5 | Implement INSEE data source loader | backlog | FR36, FR37 |
-| BKL-1103 | Story | P0 | 5 | Implement Eurostat, ADEME, and SDES data source loaders | backlog | FR36, FR37 |
-| BKL-1104 | Story | P0 | 5 | Define MergeMethod protocol and implement uniform distribution method | backlog | FR38, FR39 |
-| BKL-1105 | Story | P0 | 8 | Implement IPF and conditional sampling merge methods | backlog | FR38, FR39 |
-| BKL-1106 | Story | P0 | 8 | Build PopulationPipeline builder with assumption recording | backlog | FR40, FR41 |
-| BKL-1107 | Story | P0 | 5 | Implement population validation against known marginals | backlog | FR42 |
-| BKL-1108 | Story | P0 | 5 | Build French household example pipeline and pedagogical notebook | backlog | FR40, FR37 |
+| BKL-1101 | Story | P0 | 5 | Define DataSourceLoader protocol and caching infrastructure | done | FR36 |
+| BKL-1102 | Story | P0 | 5 | Implement INSEE data source loader | done | FR36, FR37 |
+| BKL-1103 | Story | P0 | 5 | Implement Eurostat, ADEME, and SDES data source loaders | done | FR36, FR37 |
+| BKL-1104 | Story | P0 | 5 | Define MergeMethod protocol and implement uniform distribution method | done | FR38, FR39 |
+| BKL-1105 | Story | P0 | 8 | Implement IPF and conditional sampling merge methods | done | FR38, FR39 |
+| BKL-1106 | Story | P0 | 8 | Build PopulationPipeline builder with assumption recording | done | FR40, FR41 |
+| BKL-1107 | Story | P0 | 5 | Implement population validation against known marginals | done | FR42 |
+| BKL-1108 | Story | P0 | 5 | Build French household example pipeline and pedagogical notebook | done | FR40, FR37 |
 
 ### Epic-Level Acceptance Criteria
 
@@ -701,7 +701,7 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 ### Story 11.1: Define DataSourceLoader protocol and caching infrastructure
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 5
 
@@ -720,7 +720,7 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 ### Story 11.2: Implement INSEE data source loader
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 5
 
@@ -738,7 +738,7 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 ### Story 11.3: Implement Eurostat, ADEME, and SDES data source loaders
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 5
 
@@ -757,7 +757,7 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 ### Story 11.4: Define MergeMethod protocol and implement uniform distribution method
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 5
 
@@ -774,7 +774,7 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 ### Story 11.5: Implement IPF and conditional sampling merge methods
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 8
 
@@ -793,7 +793,7 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 ### Story 11.6: Build PopulationPipeline builder with assumption recording
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 8
 
@@ -812,7 +812,7 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 ### Story 11.7: Implement population validation against known marginals
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 5
 
@@ -830,7 +830,7 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 ### Story 11.8: Build French household example pipeline and pedagogical notebook
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 5
 
@@ -857,7 +857,7 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 **User outcome:** Analyst can compose multiple individual policy templates into a named portfolio and run simulations with bundled policies applied together.
 
-**Status:** backlog
+**Status:** done
 
 **Builds on:** EPIC-2 (templates, registry), EPIC-3 (orchestrator)
 
@@ -865,11 +865,11 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 | ID | Type | Pri | SP | Title | Status | PRD Refs |
 |------|------|-----|----|-------|--------|----------|
-| BKL-1201 | Story | P0 | 5 | Define PolicyPortfolio dataclass and composition logic | backlog | FR43 |
-| BKL-1202 | Story | P0 | 5 | Implement portfolio compatibility validation and conflict resolution | backlog | FR43, FR44 |
-| BKL-1203 | Story | P0 | 5 | Extend orchestrator to execute policy portfolios | backlog | FR44 |
-| BKL-1204 | Story | P0 | 5 | Extend scenario registry with portfolio versioning | backlog | FR43 |
-| BKL-1205 | Story | P0 | 5 | Implement multi-portfolio comparison and notebook demo | backlog | FR45 |
+| BKL-1201 | Story | P0 | 5 | Define PolicyPortfolio dataclass and composition logic | done | FR43 |
+| BKL-1202 | Story | P0 | 5 | Implement portfolio compatibility validation and conflict resolution | done | FR43, FR44 |
+| BKL-1203 | Story | P0 | 5 | Extend orchestrator to execute policy portfolios | done | FR44 |
+| BKL-1204 | Story | P0 | 5 | Extend scenario registry with portfolio versioning | done | FR43 |
+| BKL-1205 | Story | P0 | 5 | Implement multi-portfolio comparison and notebook demo | done | FR45 |
 
 ### Epic-Level Acceptance Criteria
 
@@ -884,7 +884,7 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 ### Story 12.1: Define PolicyPortfolio dataclass and composition logic
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 5
 
@@ -900,7 +900,7 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 ### Story 12.2: Implement portfolio compatibility validation and conflict resolution
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 5
 
@@ -918,7 +918,7 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 ### Story 12.3: Extend orchestrator to execute policy portfolios
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 5
 
@@ -936,7 +936,7 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 ### Story 12.4: Extend scenario registry with portfolio versioning
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 5
 
@@ -953,7 +953,7 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 ### Story 12.5: Implement multi-portfolio comparison and notebook demo
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 5
 

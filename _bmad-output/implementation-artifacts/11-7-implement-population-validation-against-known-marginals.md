@@ -1,6 +1,6 @@
 # Story 11.7: Implement population validation against known marginals
 
-Status: complete
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 

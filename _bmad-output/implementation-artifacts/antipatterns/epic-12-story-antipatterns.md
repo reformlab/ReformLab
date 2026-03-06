@@ -58,3 +58,14 @@
 | medium | `migrate()` regression**: After widening `get()` return type, calling `migrate()` on a portfolio entry would crash in `_scenario_to_dict_for_registry()`. | Added Task 5.6 with early guard raising `RegistryError`. Noted that `get_baseline()` and `list_reforms()` are naturally safe via `isinstance` checks. |
 | medium | Legacy inference under-specified**: Task 4.1 said "examine version content" without specifying algorithm. | Specified: load latest version, check for `baseline_ref` (present → `"reform"`, absent → `"baseline"`). Added persist-back to metadata. |
 | low | Elevate dual `_registry_type` storage**: Requirement to store marker in both metadata and version files was buried in Dev Notes. | Already covered by Task 1.1's `_registry_type` marker addition to the serialized dict. No additional change needed. |
+
+## Story 12-5 (2026-03-06)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| high | Config interface uses kwargs dicts instead of typed configs | Changed `distributional_kwargs: dict[str, Any]`, `fiscal_kwargs: dict[str, Any]`, `welfare_kwargs: dict[str, Any]` to `distributional_config: DistributionalConfig \| None = None`, `fiscal_config: FiscalConfig \| None = None`, `welfare_config: WelfareConfig \| None = None`. The actual API signatures use typed configs (`FiscalConfig`, `DistributionalConfig`, `WelfareConfig`), so the story must match. |
+| high | Welfare comparison breaks with 2 portfolios | Added explicit edge case handling in Task 2.3. With 2 portfolios and welfare enabled, skipping baseline leaves only 1 scenario, which violates `compare_scenarios()` minimum of 2. Fix: skip `compare_scenarios()` for welfare in this case, store single-portfolio result directly, emit warning. |
+| medium | AC6 type mismatch ("dict" vs tuple) | Changed AC6 wording from "as a dict" to "as a tuple of `CrossComparisonMetric` objects" to match Task 1.5's actual type definition. |
+| medium | Tie-breaking semantics undefined | Added deterministic tie-break rule to Task 3.4: maintain input order (stable sort) when metric values are equal. |
+| medium | Portfolio A naming inconsistency | Renamed from "Carbon Tax Only" (misleading, since it contains 2 policies) to "Carbon Tax Light" with honest description. |
+| medium | Test config syntax mismatch | Updated Task 6.4 from `fiscal_kwargs=FiscalConfig(...)` to `fiscal_config=FiscalConfig(...)` to match the corrected config interface. |

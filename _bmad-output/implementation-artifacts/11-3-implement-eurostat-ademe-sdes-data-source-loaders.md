@@ -1,7 +1,7 @@
 
 # Story 11.3: Implement Eurostat, ADEME, and SDES data source loaders
 
-Status: dev-complete
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 

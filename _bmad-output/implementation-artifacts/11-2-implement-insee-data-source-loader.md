@@ -1,7 +1,7 @@
 
 # Story 11.2: Implement INSEE data source loader
 
-Status: complete
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 

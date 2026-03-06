@@ -1,7 +1,7 @@
 
 # Story 11.4: Define MergeMethod protocol and implement uniform distribution method
 
-Status: dev-complete
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 

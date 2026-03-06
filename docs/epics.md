@@ -30,8 +30,8 @@ Single source of truth for all epics and stories across the project. For detaile
 | Epic 8 | Post-Phase-1 Validation Spikes | 1 | done | 2 |
 | Epic 9 | OpenFisca Adapter Hardening | 1 | done | 5 |
 | Epic 10 | API Ergonomics and Developer Experience | 1 | done | 2 |
-| Epic 11 | Realistic Population Generation Library | 2 | backlog | 8 |
-| Epic 12 | Policy Portfolio Model | 2 | backlog | 5 |
+| Epic 11 | Realistic Population Generation Library | 2 | done | 8 |
+| Epic 12 | Policy Portfolio Model | 2 | done | 5 |
 | Epic 13 | Additional Policy Templates + Extensibility | 2 | backlog | 4 |
 | Epic 14 | Discrete Choice Model for Household Decisions | 2 | backlog | 7 |
 | Epic 15 | Calibration Engine | 2 | backlog | 5 |
@@ -1026,7 +1026,7 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 _User outcome: Analyst can build a credible French household population from real public data sources, choosing merge methods with transparent assumptions, and producing a population with all attributes needed for policy simulation._
 
-_Status: backlog_
+_Status: done_
 
 _Builds on: EPIC-1 (data layer), EPIC-5 (governance)_
 
@@ -1034,7 +1034,7 @@ _PRD Refs: FR36–FR42_
 
 ### Story 11.1: Define DataSourceLoader protocol and caching infrastructure
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 5 SP
 **Type:** Story
@@ -1043,7 +1043,7 @@ _PRD Refs: FR36–FR42_
 
 ### Story 11.2: Implement INSEE data source loader
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 5 SP
 **Type:** Story
@@ -1052,7 +1052,7 @@ _PRD Refs: FR36–FR42_
 
 ### Story 11.3: Implement Eurostat, ADEME, and SDES data source loaders
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 5 SP
 **Type:** Story
@@ -1061,7 +1061,7 @@ _PRD Refs: FR36–FR42_
 
 ### Story 11.4: Define MergeMethod protocol and implement uniform distribution method
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 5 SP
 **Type:** Story
@@ -1070,7 +1070,7 @@ _PRD Refs: FR36–FR42_
 
 ### Story 11.5: Implement IPF and conditional sampling merge methods
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 8 SP
 **Type:** Story
@@ -1079,7 +1079,7 @@ _PRD Refs: FR36–FR42_
 
 ### Story 11.6: Build PopulationPipeline builder with assumption recording
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 8 SP
 **Type:** Story
@@ -1088,7 +1088,7 @@ _PRD Refs: FR36–FR42_
 
 ### Story 11.7: Implement population validation against known marginals
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 5 SP
 **Type:** Story
@@ -1097,7 +1097,7 @@ _PRD Refs: FR36–FR42_
 
 ### Story 11.8: Build French household example pipeline and pedagogical notebook
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 5 SP
 **Type:** Story
@@ -1190,7 +1190,7 @@ _PRD Refs: FR36–FR42_
 
 _User outcome: Analyst can compose multiple individual policy templates into a named portfolio and run simulations with bundled policies applied together._
 
-_Status: backlog_
+_Status: done_
 
 _Builds on: EPIC-2 (templates, registry), EPIC-3 (orchestrator)_
 
@@ -1198,7 +1198,7 @@ _PRD Refs: FR43–FR46_
 
 ### Story 12.1: Define PolicyPortfolio dataclass and composition logic
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 5 SP
 **Type:** Story
@@ -1207,7 +1207,7 @@ _PRD Refs: FR43–FR46_
 
 ### Story 12.2: Implement portfolio compatibility validation and conflict resolution
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 5 SP
 **Type:** Story
@@ -1216,7 +1216,7 @@ _PRD Refs: FR43–FR46_
 
 ### Story 12.3: Extend orchestrator to execute policy portfolios
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 5 SP
 **Type:** Story
@@ -1225,7 +1225,7 @@ _PRD Refs: FR43–FR46_
 
 ### Story 12.4: Extend scenario registry with portfolio versioning
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 5 SP
 **Type:** Story
@@ -1234,7 +1234,7 @@ _PRD Refs: FR43–FR46_
 
 ### Story 12.5: Implement multi-portfolio comparison and notebook demo
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 5 SP
 **Type:** Story

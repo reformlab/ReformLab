@@ -2,7 +2,7 @@
 
 # Story 11.6: Build PopulationPipeline builder with assumption recording
 
-Status: complete
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 

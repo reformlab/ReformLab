@@ -1,6 +1,6 @@
 # Story 12.1: Define PolicyPortfolio dataclass and composition logic
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 

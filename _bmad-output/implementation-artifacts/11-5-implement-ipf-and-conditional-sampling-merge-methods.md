@@ -2,7 +2,7 @@
 
 # Story 11.5: Implement IPF and conditional sampling merge methods
 
-Status: complete
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 

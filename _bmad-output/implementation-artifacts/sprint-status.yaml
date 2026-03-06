@@ -96,7 +96,7 @@ development_status:
   10-2-infer-policy-type-from-parameters-class: done
   epic-10-retrospective: optional
   # Epic 11
-  epic-11: in-progress
+  epic-11: done
   11-1-define-datasourceloader-protocol-and-caching-infrastructure: done
   11-2-implement-insee-data-source-loader: done
   11-3-implement-eurostat-ademe-sdes-data-source-loaders: done
@@ -105,7 +105,7 @@ development_status:
   11-6-build-populationpipeline-builder-with-assumption-recording: done
   11-7-implement-population-validation-against-known-marginals: done
   11-8-build-french-household-example-pipeline-and-pedagogical-notebook: done
-  epic-11-retrospective: optional
+  epic-11-retrospective: done
   # Epic 12
   epic-12: done
   12-1-define-policyportfolio-dataclass-and-composition-logic: done
@@ -114,7 +114,7 @@ development_status:
   12-3-extend-orchestrator-to-execute-policy-portfolios: done
   12-4-extend-scenario-registry-with-portfolio-versioning: done
   12-5-implement-multi-portfolio-comparison-and-notebook-demo: done
-  epic-12-retrospective: optional
+  epic-12-retrospective: done
   # Epic 13
   epic-13: backlog
   13-1-define-custom-template-authoring-api-and-registration: backlog
