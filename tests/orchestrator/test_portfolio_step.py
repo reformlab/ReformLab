@@ -760,3 +760,108 @@ class TestPortfolioStepKeys:
 
     def test_portfolio_results_key_is_stable(self) -> None:
         assert PORTFOLIO_RESULTS_KEY == "portfolio_results"
+
+
+# ============================================================================
+# Merge validation: household_id consistency (Code Review Synthesis)
+# ============================================================================
+
+
+class TestPortfolioStepMergeValidation:
+    """Merge validates household_id uniqueness and set consistency."""
+
+    def test_mismatched_household_ids_raises_error(
+        self,
+        portfolio_population: PopulationData,
+        year_state: YearState,
+    ) -> None:
+        """Given policies returning different household_id sets, error is raised."""
+        call_count = 0
+
+        def mismatched_fn(
+            pop: PopulationData, policy: ComputationPolicyConfig, period: int
+        ) -> pa.Table:
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return pa.table({
+                    "household_id": pa.array([1, 2, 3], type=pa.int64()),
+                    "val": pa.array([1.0, 2.0, 3.0]),
+                })
+            return pa.table({
+                "household_id": pa.array([2, 3, 4], type=pa.int64()),
+                "val": pa.array([4.0, 5.0, 6.0]),
+            })
+
+        adapter = MockAdapter(version_string="v1", compute_fn=mismatched_fn)
+        portfolio = PolicyPortfolio(
+            name="mismatch",
+            policies=(
+                PortfolioPolicyConfig(
+                    policy_type=PolicyType.CARBON_TAX,
+                    policy=CarbonTaxParameters(rate_schedule={2025: 10.0}),
+                    name="ct",
+                ),
+                PortfolioPolicyConfig(
+                    policy_type=PolicyType.SUBSIDY,
+                    policy=SubsidyParameters(rate_schedule={2025: 20.0}),
+                    name="sub",
+                ),
+            ),
+        )
+        step = PortfolioComputationStep(
+            adapter=adapter, population=portfolio_population, portfolio=portfolio
+        )
+        with pytest.raises(
+            PortfolioComputationStepError, match="household_id set differs"
+        ):
+            step.execute(2025, year_state)
+
+    def test_duplicate_household_ids_raises_error(
+        self,
+        portfolio_population: PopulationData,
+        year_state: YearState,
+    ) -> None:
+        """Given a policy with duplicate household_ids, error is raised."""
+
+        def duplicate_fn(
+            pop: PopulationData, policy: ComputationPolicyConfig, period: int
+        ) -> pa.Table:
+            return pa.table({
+                "household_id": pa.array([1, 1, 2], type=pa.int64()),
+                "val": pa.array([1.0, 2.0, 3.0]),
+            })
+
+        adapter = MockAdapter(version_string="v1", compute_fn=duplicate_fn)
+        portfolio = PolicyPortfolio(
+            name="dups",
+            policies=(
+                PortfolioPolicyConfig(
+                    policy_type=PolicyType.CARBON_TAX,
+                    policy=CarbonTaxParameters(rate_schedule={2025: 10.0}),
+                    name="ct",
+                ),
+                PortfolioPolicyConfig(
+                    policy_type=PolicyType.SUBSIDY,
+                    policy=SubsidyParameters(rate_schedule={2025: 20.0}),
+                    name="sub",
+                ),
+            ),
+        )
+        step = PortfolioComputationStep(
+            adapter=adapter, population=portfolio_population, portfolio=portfolio
+        )
+        with pytest.raises(
+            PortfolioComputationStepError, match="duplicate household_id"
+        ):
+            step.execute(2025, year_state)
+
+    def test_per_policy_results_stored_as_tuple(
+        self,
+        portfolio_computation_step: PortfolioComputationStep,
+        year_state: YearState,
+    ) -> None:
+        """Given portfolio execution, per-policy results stored as immutable tuple."""
+        result = portfolio_computation_step.execute(2025, year_state)
+        per_policy = result.data[PORTFOLIO_RESULTS_KEY]
+        assert isinstance(per_policy, tuple)

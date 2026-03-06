@@ -6,6 +6,7 @@ import pyarrow as pa
 import pytest
 
 from reformlab.computation.mock_adapter import MockAdapter
+from reformlab.computation.types import PolicyConfig as ComputationPolicyConfig
 from reformlab.computation.types import PopulationData
 from reformlab.orchestrator.portfolio_step import PortfolioComputationStep
 from reformlab.orchestrator.types import OrchestratorConfig, YearState
@@ -107,7 +108,7 @@ def config_with_failing_step() -> OrchestratorConfig:
 
 
 def _portfolio_compute_fn(
-    population: PopulationData, policy: "PolicyConfig", period: int  # noqa: F821
+    population: PopulationData, policy: ComputationPolicyConfig, period: int
 ) -> pa.Table:
     """Return policy-type-specific columns based on policy name."""
     hh_ids = [1, 2, 3]

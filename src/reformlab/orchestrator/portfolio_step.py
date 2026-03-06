@@ -117,6 +117,10 @@ def _merge_policy_results(
     ``{policy_type}_`` to avoid collisions. If two policies share the
     same policy_type, ALL are prefixed with ``{policy_type}_{index}_``.
 
+    All policy results must contain identical ``household_id`` sets with
+    no duplicates — mismatches raise ``PortfolioComputationStepError``
+    per the fail-loud data-contract rule.
+
     Args:
         results: Ordered list of ComputationResult from each policy.
         portfolio: The portfolio providing policy metadata.
@@ -126,22 +130,59 @@ def _merge_policy_results(
         each policy in portfolio order.
 
     Raises:
-        PortfolioComputationStepError: If any result lacks household_id.
+        PortfolioComputationStepError: If any result lacks household_id,
+            contains duplicate household_ids, or has mismatched id sets.
     """
     if not results:
         return pa.table({"household_id": pa.array([], type=pa.int64())})
 
-    # Validate household_id column presence
+    # Validate household_id column presence, uniqueness, and set consistency
+    reference_ids: set[Any] | None = None
     for i, result in enumerate(results):
-        if "household_id" not in result.output_fields.column_names:
-            policy_cfg = portfolio.policies[i]
+        table = result.output_fields
+        policy_cfg = portfolio.policies[i]
+        policy_name = policy_cfg.name or policy_cfg.policy_type.value
+
+        if "household_id" not in table.column_names:
             raise PortfolioComputationStepError(
-                f"Policy[{i}] '{policy_cfg.name or policy_cfg.policy_type.value}' "
+                f"Policy[{i}] '{policy_name}' "
                 f"output_fields missing required 'household_id' column",
                 year=result.period,
                 adapter_version=result.adapter_version,
                 policy_index=i,
-                policy_name=policy_cfg.name or policy_cfg.policy_type.value,
+                policy_name=policy_name,
+                policy_type=policy_cfg.policy_type.value,
+            )
+
+        hh_ids = table.column("household_id").to_pylist()
+        hh_id_set = set(hh_ids)
+
+        # Check for duplicate household_ids within a single policy result
+        if len(hh_ids) != len(hh_id_set):
+            raise PortfolioComputationStepError(
+                f"Policy[{i}] '{policy_name}' output_fields contains "
+                f"duplicate household_id values ({len(hh_ids)} rows, "
+                f"{len(hh_id_set)} unique)",
+                year=result.period,
+                adapter_version=result.adapter_version,
+                policy_index=i,
+                policy_name=policy_name,
+                policy_type=policy_cfg.policy_type.value,
+            )
+
+        # Check household_id set consistency across policies
+        if reference_ids is None:
+            reference_ids = hh_id_set
+        elif hh_id_set != reference_ids:
+            missing = reference_ids - hh_id_set
+            extra = hh_id_set - reference_ids
+            raise PortfolioComputationStepError(
+                f"Policy[{i}] '{policy_name}' household_id set differs "
+                f"from policy[0]: missing={missing}, extra={extra}",
+                year=result.period,
+                adapter_version=result.adapter_version,
+                policy_index=i,
+                policy_name=policy_name,
                 policy_type=policy_cfg.policy_type.value,
             )
 
@@ -172,26 +213,28 @@ def _merge_policy_results(
         else:
             prefix = f"{ptype}_"
 
-        # Build rename mapping and join
-        renamed_table = table.select(["household_id"])
+        # Build renamed table in a single construction
+        col_arrays = [table.column("household_id")]
+        col_names = ["household_id"]
         for col_name in non_id_cols:
             new_name = f"{prefix}{col_name}" if prefix else col_name
-            renamed_table = renamed_table.append_column(
-                new_name, table.column(col_name)
-            )
+            col_arrays.append(table.column(col_name))
+            col_names.append(new_name)
+        renamed_table = pa.table(
+            dict(zip(col_names, col_arrays, strict=True))
+        )
 
         # Join on household_id
         if i == 0:
-            # First policy: take all columns directly
-            for col_name in non_id_cols:
-                new_name = f"{prefix}{col_name}" if prefix else col_name
-                merged = merged.append_column(new_name, table.column(col_name))
+            merged = renamed_table
         else:
-            # Subsequent policies: join on household_id
+            # Left outer preserves all households from the base table.
+            # Mismatched sets are already caught above, so this is
+            # effectively an equi-join with guaranteed full overlap.
             merged = merged.join(
                 renamed_table,
                 keys="household_id",
-                join_type="inner",
+                join_type="left outer",
             )
 
     return merged
@@ -398,7 +441,7 @@ class PortfolioComputationStep:
         # Update state immutably
         new_data = dict(state.data)
         new_data[COMPUTATION_RESULT_KEY] = merged_result
-        new_data[PORTFOLIO_RESULTS_KEY] = policy_results
+        new_data[PORTFOLIO_RESULTS_KEY] = tuple(policy_results)
 
         new_metadata = dict(state.metadata)
         new_metadata[PORTFOLIO_METADATA_KEY] = portfolio_metadata
