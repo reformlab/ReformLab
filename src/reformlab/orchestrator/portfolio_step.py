@@ -480,14 +480,15 @@ def _get_adapter_version(
 
 
 def _validate_policy_type(
-    policy_type: PolicyType,
+    policy_type: PolicyType | Any,
     index: int,
     policy_cfg: PortfolioPolicyConfig,
 ) -> None:
-    """Validate that a policy type is a valid PolicyType enum value."""
+    """Validate that a policy type is a valid PolicyType enum value or registered custom type."""
+    from reformlab.templates.schema import CustomPolicyType
     from reformlab.templates.schema import PolicyType as PolicyTypeEnum
 
-    if not isinstance(policy_type, PolicyTypeEnum):
+    if not isinstance(policy_type, (PolicyTypeEnum, CustomPolicyType)):
         raise PortfolioComputationStepError(
             f"Invalid policy_type at index {index}: {policy_type!r}",
             year=0,

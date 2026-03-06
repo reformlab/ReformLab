@@ -373,7 +373,7 @@ class TestInferPolicyType:
     def test_infer_error_includes_registration_guidance(self) -> None:
         """AC#3: Error message explains how to register the mapping."""
         params = PolicyParameters(rate_schedule={})
-        with pytest.raises(TemplateError, match="_PARAMETERS_TO_POLICY_TYPE"):
+        with pytest.raises(TemplateError, match="register_custom_template"):
             infer_policy_type(params)
 
 

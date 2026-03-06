@@ -67,6 +67,7 @@ from reformlab.templates.registry import (
 from reformlab.templates.schema import (
     BaselineScenario,
     CarbonTaxParameters,
+    CustomPolicyType,
     FeebateParameters,
     PolicyParameters,
     PolicyType,
@@ -75,7 +76,10 @@ from reformlab.templates.schema import (
     ScenarioTemplate,
     SubsidyParameters,
     YearSchedule,
+    get_policy_type,
     infer_policy_type,
+    register_custom_template,
+    register_policy_type,
 )
 from reformlab.templates.workflow import (
     WORKFLOW_SCHEMA_VERSION,
@@ -160,8 +164,12 @@ __all__ = [
     "get_feebate_pack_dir",
     "list_feebate_templates",
     "load_feebate_template",
-    # Inference
+    # Inference and registration
     "infer_policy_type",
+    "register_policy_type",
+    "register_custom_template",
+    "get_policy_type",
+    "CustomPolicyType",
     # Exceptions
     "ScenarioError",
     "TemplateError",

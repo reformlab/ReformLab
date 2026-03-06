@@ -139,6 +139,27 @@ def _policy_parameters_to_dict(policy: Any) -> dict[str, Any]:
     if hasattr(policy, "rebate_rate") and policy.rebate_rate is not None:
         result["rebate_rate"] = policy.rebate_rate
 
+    # Custom PolicyParameters subclass — serialize extra fields via introspection
+    import dataclasses
+
+    from reformlab.templates.schema import (
+        CarbonTaxParameters,
+        FeebateParameters,
+        PolicyParameters,
+        RebateParameters,
+        SubsidyParameters,
+    )
+
+    _BUILTIN_TYPES = (CarbonTaxParameters, SubsidyParameters, RebateParameters, FeebateParameters)
+    if dataclasses.is_dataclass(policy) and type(policy) not in (*_BUILTIN_TYPES, PolicyParameters):
+        base_field_names = {"rate_schedule", "exemptions", "thresholds", "covered_categories"}
+        for f in dataclasses.fields(policy):
+            if f.name in base_field_names or f.name in result:
+                continue
+            value = getattr(policy, f.name)
+            if value != f.default:
+                result[f.name] = value
+
     return result
 
 
@@ -154,10 +175,6 @@ def dict_to_portfolio(data: dict[str, Any]) -> PolicyPortfolio:
     Raises:
         PortfolioValidationError: If data is invalid
     """
-    from reformlab.templates.schema import (
-        PolicyType,
-    )
-
     # Validate required fields
     if "name" not in data:
         raise PortfolioValidationError(
@@ -229,12 +246,14 @@ def dict_to_portfolio(data: dict[str, Any]) -> PolicyPortfolio:
                 invalid_fields=(f"policies[{idx}].policy_type",),
             )
         try:
-            policy_type = PolicyType(policy_type_str)
-        except (ValueError, TypeError):
+            from reformlab.templates.schema import get_policy_type
+
+            policy_type = get_policy_type(policy_type_str)
+        except Exception:
             raise PortfolioValidationError(
                 summary="Portfolio validation failed",
                 reason=f"policies[{idx}] has invalid policy_type: {policy_type_str}",
-                fix="Use one of: carbon_tax, subsidy, rebate, feebate",
+                fix="Use one of: carbon_tax, subsidy, rebate, feebate (or register a custom type)",
                 invalid_fields=(f"policies[{idx}].policy_type",),
             ) from None
 
@@ -255,7 +274,7 @@ def dict_to_portfolio(data: dict[str, Any]) -> PolicyPortfolio:
     )
 
 
-def _dict_to_policy_parameters(data: dict[str, Any], policy_type: PolicyType, field_path: str) -> Any:
+def _dict_to_policy_parameters(data: dict[str, Any], policy_type: PolicyType | Any, field_path: str) -> Any:
     """Convert dictionary to appropriate PolicyParameters subclass.
 
     Args:
@@ -432,12 +451,78 @@ def _dict_to_policy_parameters(data: dict[str, Any], policy_type: PolicyType, fi
         )
 
     else:
+        # Custom type — use generic parser via dataclass introspection
+        from reformlab.templates.schema import CustomPolicyType
+
+        if isinstance(policy_type, CustomPolicyType):
+            return _dict_to_custom_policy_parameters(data, policy_type, rate_schedule, field_path)
+
         raise PortfolioValidationError(
             summary="Portfolio validation failed",
             reason=f"Unsupported policy_type: {policy_type.value}",
-            fix="Use one of: carbon_tax, subsidy, rebate, feebate",
+            fix="Use one of: carbon_tax, subsidy, rebate, feebate (or register a custom type)",
             invalid_fields=(f"{field_path}.policy_type",),
         )
+
+
+def _dict_to_custom_policy_parameters(
+    data: dict[str, Any],
+    policy_type: Any,
+    rate_schedule: dict[int, float],
+    field_path: str,
+) -> Any:
+    """Parse a custom PolicyParameters subclass from a dict.
+
+    Uses dataclass field introspection to construct the registered class.
+    """
+    import dataclasses
+
+    from reformlab.templates.schema import (
+        _CUSTOM_PARAMETERS_TO_POLICY_TYPE,
+        CustomPolicyType,
+        PolicyParameters,
+    )
+
+    target_class: type[PolicyParameters] | None = None
+    for cls, pt in _CUSTOM_PARAMETERS_TO_POLICY_TYPE.items():
+        if isinstance(pt, CustomPolicyType) and pt.value == policy_type.value:
+            target_class = cls
+            break
+
+    if target_class is None:
+        raise PortfolioValidationError(
+            summary="Portfolio validation failed",
+            reason=f"No registered class for custom policy_type: {policy_type.value}",
+            fix=(
+                f"Register a PolicyParameters subclass for "
+                f"'{policy_type.value}' with register_custom_template()"
+            ),
+            invalid_fields=(f"{field_path}.policy_type",),
+        )
+
+    kwargs: dict[str, Any] = {
+        "rate_schedule": rate_schedule,
+        "exemptions": tuple(data.get("exemptions", [])),
+        "thresholds": tuple(data.get("thresholds", [])),
+        "covered_categories": tuple(data.get("covered_categories", [])),
+    }
+
+    base_field_names = {"rate_schedule", "exemptions", "thresholds", "covered_categories"}
+    for f in dataclasses.fields(target_class):
+        if f.name in base_field_names:
+            continue
+        if f.name in data:
+            kwargs[f.name] = data[f.name]
+
+    try:
+        return target_class(**kwargs)
+    except (TypeError, ValueError) as exc:
+        raise PortfolioValidationError(
+            summary="Portfolio validation failed",
+            reason=f"Failed to construct {target_class.__name__}: {exc}",
+            fix=f"Check that all fields for '{policy_type.value}' are valid",
+            invalid_fields=(field_path,),
+        ) from None
 
 
 def validate_compatibility(portfolio: PolicyPortfolio) -> tuple[Conflict, ...]:

@@ -10,7 +10,7 @@ from typing import Any
 
 from reformlab.templates.portfolios.enums import ResolutionStrategy
 from reformlab.templates.portfolios.exceptions import PortfolioValidationError
-from reformlab.templates.schema import PolicyParameters, PolicyType, infer_policy_type
+from reformlab.templates.schema import CustomPolicyType, PolicyParameters, PolicyType, infer_policy_type
 
 # Valid resolution strategies - derived from ResolutionStrategy enum
 # Used for validation in __post_init__
@@ -30,7 +30,7 @@ class PolicyConfig:
         name: Optional human-readable name for this policy within the portfolio
     """
 
-    policy_type: PolicyType
+    policy_type: PolicyType | CustomPolicyType
     policy: PolicyParameters
     name: str = ""
 
@@ -104,7 +104,7 @@ class PolicyPortfolio:
             )
 
     @property
-    def policy_types(self) -> tuple[PolicyType, ...]:
+    def policy_types(self) -> tuple[PolicyType | CustomPolicyType, ...]:
         """Return tuple of policy types in order."""
         return tuple(p.policy_type for p in self.policies)
 
@@ -134,7 +134,7 @@ class PolicyPortfolio:
             result.append(policy_dict)
         return result
 
-    def get_policy_by_type(self, policy_type: PolicyType) -> PolicyConfig | None:
+    def get_policy_by_type(self, policy_type: PolicyType | CustomPolicyType) -> PolicyConfig | None:
         """Get first policy matching the given type.
 
         Args:
@@ -148,7 +148,7 @@ class PolicyPortfolio:
                 return config
         return None
 
-    def has_policy_type(self, policy_type: PolicyType) -> bool:
+    def has_policy_type(self, policy_type: PolicyType | CustomPolicyType) -> bool:
         """Check if portfolio contains a policy of the given type.
 
         Args:

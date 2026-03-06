@@ -10,6 +10,7 @@ from reformlab.templates.exceptions import ScenarioError
 from reformlab.templates.schema import (
     BaselineScenario,
     CarbonTaxParameters,
+    CustomPolicyType,
     FeebateParameters,
     PolicyParameters,
     PolicyType,
@@ -17,6 +18,7 @@ from reformlab.templates.schema import (
     ReformScenario,
     SubsidyParameters,
     YearSchedule,
+    get_policy_type,
 )
 
 logger = logging.getLogger(__name__)
@@ -135,7 +137,7 @@ def load_scenario_template(
     _validate_required_fields(file_path, data)
     _validate_policy_type(file_path, data)
 
-    policy_type = PolicyType(data["policy_type"])
+    policy_type = get_policy_type(data["policy_type"])
     name = str(data["name"])
     version = str(data["version"])
     validate_schema_version(version, strict=strict, file_path=file_path)
@@ -240,11 +242,19 @@ def _validate_required_fields(file_path: Path, data: dict[str, Any]) -> None:
         )
 
 
+def _get_all_valid_policy_types() -> frozenset[str]:
+    """Return all valid policy type strings (built-in + registered custom)."""
+    from reformlab.templates.schema import _CUSTOM_POLICY_TYPES
+
+    return _VALID_POLICY_TYPES | frozenset(_CUSTOM_POLICY_TYPES.keys())
+
+
 def _validate_policy_type(file_path: Path, data: dict[str, Any]) -> None:
-    """Validate policy_type is one of the supported values."""
+    """Validate policy_type is one of the supported values (built-in or custom)."""
     policy_type = data.get("policy_type")
-    if policy_type not in _VALID_POLICY_TYPES:
-        valid_types = ", ".join(sorted(_VALID_POLICY_TYPES))
+    all_valid = _get_all_valid_policy_types()
+    if policy_type not in all_valid:
+        valid_types = ", ".join(sorted(all_valid))
         raise ScenarioError(
             file_path=file_path,
             summary="Scenario validation failed",
@@ -297,7 +307,7 @@ def _parse_year_schedule(
 
 def _parse_policy(
     file_path: Path,
-    policy_type: PolicyType,
+    policy_type: PolicyType | CustomPolicyType,
     raw: dict[str, Any],
 ) -> PolicyParameters:
     """Parse policy parameters based on policy type."""
@@ -506,13 +516,83 @@ def _parse_policy(
             _rebate_rate_set=rebate_rate_set,
         )
     else:
-        # Generic parameters for unknown types
+        # Custom type — dispatch to generic custom parser
+        if isinstance(policy_type, CustomPolicyType):
+            return _parse_generic_custom_policy(
+                file_path, policy_type, raw, rate_schedule, exemptions, thresholds, covered_categories,
+            )
+        # Generic parameters for truly unknown types
         return PolicyParameters(
             rate_schedule=rate_schedule,
             exemptions=exemptions,
             thresholds=thresholds,
             covered_categories=covered_categories,
         )
+
+
+def _parse_generic_custom_policy(
+    file_path: Path,
+    policy_type: CustomPolicyType,
+    raw: dict[str, Any],
+    rate_schedule: dict[int, float],
+    exemptions: tuple[dict[str, Any], ...],
+    thresholds: tuple[dict[str, Any], ...],
+    covered_categories: tuple[str, ...],
+) -> PolicyParameters:
+    """Parse a custom policy type using dataclass field introspection.
+
+    Constructs the registered custom PolicyParameters subclass from the raw
+    YAML dict. Handles rate_schedule string→int key conversion automatically
+    since it is inherited from PolicyParameters.
+    """
+    import dataclasses
+
+    from reformlab.templates.schema import _CUSTOM_PARAMETERS_TO_POLICY_TYPE
+
+    # Find the registered class for this custom type
+    target_class: type[PolicyParameters] | None = None
+    for cls, pt in _CUSTOM_PARAMETERS_TO_POLICY_TYPE.items():
+        if isinstance(pt, CustomPolicyType) and pt.value == policy_type.value:
+            target_class = cls
+            break
+
+    if target_class is None:
+        # No registered class — fall back to base PolicyParameters
+        return PolicyParameters(
+            rate_schedule=rate_schedule,
+            exemptions=exemptions,
+            thresholds=thresholds,
+            covered_categories=covered_categories,
+        )
+
+    # Build constructor kwargs from already-parsed base fields
+    kwargs: dict[str, Any] = {
+        "rate_schedule": rate_schedule,
+        "exemptions": exemptions,
+        "thresholds": thresholds,
+        "covered_categories": covered_categories,
+    }
+
+    # Base field names that are already handled
+    base_field_names = {"rate_schedule", "exemptions", "thresholds", "covered_categories"}
+
+    # Add custom fields from the raw dict
+    for f in dataclasses.fields(target_class):
+        if f.name in base_field_names:
+            continue
+        if f.name in raw:
+            kwargs[f.name] = raw[f.name]
+
+    try:
+        return target_class(**kwargs)
+    except (TypeError, ValueError) as exc:
+        raise ScenarioError(
+            file_path=file_path,
+            summary="Scenario validation failed",
+            reason=f"failed to construct {target_class.__name__}: {exc}",
+            fix=f"Check that all fields for policy_type '{policy_type.value}' are valid",
+            invalid_fields=("policy",),
+        ) from None
 
 
 def _scenario_to_dict(scenario: BaselineScenario | ReformScenario) -> dict[str, Any]:
@@ -595,5 +675,16 @@ def _policy_to_dict(params: PolicyParameters) -> dict[str, Any]:
             result["fee_rate"] = params.fee_rate
         if params._rebate_rate_set or params.rebate_rate != 0.0:
             result["rebate_rate"] = params.rebate_rate
+    elif type(params) is not PolicyParameters:
+        # Custom PolicyParameters subclass — serialize extra fields via introspection
+        import dataclasses as dc
+
+        base_field_names = {"rate_schedule", "exemptions", "thresholds", "covered_categories"}
+        for f in dc.fields(params):
+            if f.name in base_field_names:
+                continue
+            value = getattr(params, f.name)
+            if value != f.default:
+                result[f.name] = value
 
     return result
