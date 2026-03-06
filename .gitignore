@@ -35,12 +35,12 @@ yarn-error.log*
 # === Claude Code ===
 .claude/settings.local.json
 
-# === BMAD Framework & Outputs (LLM development tooling — internal) ===
-_bmad/
-_bmad-output/
-.bmad-assist/
+# === BMAD Framework & Outputs ===
+# Keep BMAD assets versioned for branch portability.
+# Ignore only local runtime/cache noise.
 .bmad-assist/cache/
-bmad-assist.yaml
+.bmad-assist/logs/
+.bmad-assist/running.lock
 bmad-assist-test.yaml
 bmad-assist.legacy.yaml
 
@@ -68,15 +68,15 @@ logs/
 
 # === Data artifacts ===
 *.parquet
-data/
-!data/populations/
-!data/populations/demo-*.csv
+/data/*
+!/data/populations/
+!/data/populations/**
 !frontend/src/data/
 !frontend/src/data/*.ts
 
 # === Notebooks ===
 notebooks/data/
-notebooks/demo/
+notebooks/demo/data/
 
 # bmad-assist artifacts (redundant with _bmad/ rules above, kept for meta/tpl files outside _bmad)
 *.meta.yaml

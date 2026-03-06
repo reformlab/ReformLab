@@ -1,0 +1,14 @@
+French Household Example Population Summary
+==========================================
+Row count: 15
+Columns (11): household_id, income, region, income_decile, household_size, housing_type, heating_type, vehicle_type, vehicle_age, energy_consumption, carbon_emissions
+
+Key distributions:
+  income: min=18000.0, max=32000.0, mean=23233.3
+  region: 14 unique values: ['75', '69', '13', '31', '33', '44', '67', '59', '60', '35']
+  income_decile: 10 unique values: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']
+  housing_type: 2 unique values: ['apartment', 'house']
+  heating_type: 5 unique values: ['electric', 'oil', 'gas', 'heat_pump', 'wood']
+  vehicle_type: 3 unique values: ['Diesel', 'Electrique', 'Essence']
+  energy_consumption: min=5200.0, max=12000.0, mean=8586.7
+  carbon_emissions: min=169.0, max=3264.0, mean=1014.3
