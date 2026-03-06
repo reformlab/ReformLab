@@ -101,9 +101,87 @@
       }
     },
     {
+      "label": "AI: Check Usage (Claude/Codex/Gemini)",
+      "type": "shell",
+      "command": "[ -s \"$HOME/.nvm/nvm.sh\" ] && source \"$HOME/.nvm/nvm.sh\" && nvm use 22 >/dev/null; python3 scripts/check_ai_usage.py",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "/bin/zsh",
+          "args": [
+            "-lc"
+          ]
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "AI: Check Usage + Open Dashboards",
+      "type": "shell",
+      "command": "[ -s \"$HOME/.nvm/nvm.sh\" ] && source \"$HOME/.nvm/nvm.sh\" && nvm use 22 >/dev/null; python3 scripts/check_ai_usage.py --open-dashboards",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "/bin/zsh",
+          "args": [
+            "-lc"
+          ]
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "BMAD: Test Run (Cheap + Verbose)",
+      "type": "shell",
+      "command": "source ~/.nvm/nvm.sh && nvm use 22 && mv bmad-assist.yaml bmad-assist.yaml.bak && cp bmad-assist-test.yaml bmad-assist.yaml && trap 'mv bmad-assist.yaml.bak bmad-assist.yaml' EXIT && /Users/lucas/Workspace/bmad-assist/.venv/bin/bmad-assist run -e ${input:epicNumber} -v --debug --full-stream --plain",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "/bin/zsh",
+          "args": [
+            "-lc"
+          ]
+        }
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "bmad-assist-test",
+        "fileLocation": [
+          "relative",
+          "${workspaceFolder}"
+        ],
+        "pattern": {
+          "regexp": "^(?!x)x$",
+          "file": 1,
+          "location": 2,
+          "message": 3
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^.*bmad-assist.*",
+          "endsPattern": "^$NEVER_MATCH$"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
+    },
+    {
       "label": "BMAD: Run Epic",
       "type": "shell",
-      "command": "source ~/.nvm/nvm.sh && nvm use 22 && (git checkout epic-${input:epicNumber} 2>/dev/null || git checkout -b epic-${input:epicNumber} master) && /Users/lucas/Workspace/bmad-assist/.venv/bin/bmad-assist run -e ${input:epicNumber} -g -v --skip-story-prompts",
+      "command": "source ~/.nvm/nvm.sh && nvm use 22 && (git checkout epic-${input:epicNumber} 2>/dev/null || git checkout -b epic-${input:epicNumber} master) && /Users/lucas/Workspace/bmad-assist/.venv/bin/bmad-assist run -e ${input:epicNumber} -g -v --debug --full-stream --plain --skip-story-prompts",
       "options": {
         "cwd": "${workspaceFolder}",
         "shell": {

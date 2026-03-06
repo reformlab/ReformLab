@@ -1,0 +1,102 @@
+# bmad-assist TEST configuration for ReformLab
+# Purpose: Cheap providers to debug pipeline issues
+# Uses: Haiku (claude), o3-mini (codex), flash-lite (gemini)
+
+project_name: ReformLab
+user_name: Lucas
+communication_language: English
+document_output_language: English
+user_skill_level: intermediate
+
+timeouts:
+  default: 300
+  retries: 1
+  create_story: 600
+  dev_story: 1200
+
+providers:
+  master:
+    provider: claude-subprocess
+    model: haiku
+
+  helper:
+    provider: claude-subprocess
+    model: haiku
+
+# All phases use cheap models for testing
+phase_models:
+  create_story:
+    provider: claude-subprocess
+    model: haiku
+  dev_story:
+    provider: claude-subprocess
+    model: haiku
+
+  # Two reviewers per phase (minimum for synthesis)
+  validate_story:
+    - provider: claude-subprocess
+      model: haiku
+    - provider: claude-subprocess
+      model: haiku
+  validate_story_synthesis:
+    provider: claude-subprocess
+    model: haiku
+
+  code_review:
+    - provider: claude-subprocess
+      model: haiku
+    - provider: claude-subprocess
+      model: haiku
+  code_review_synthesis:
+    provider: claude-subprocess
+    model: haiku
+
+  retrospective:
+    provider: claude-subprocess
+    model: haiku
+
+# Keep compiler config identical to production
+compiler:
+  source_context:
+    budgets:
+      create_story: 60000
+      validate_story: 15000
+      validate_story_synthesis: 15000
+      dev_story: 15000
+      code_review: 30000
+      code_review_synthesis: 30000
+      default: 30000
+
+  strategic_context:
+    budget: 15000
+    tree_budget: 0
+    defaults:
+      include: [project-tree, project-context, architecture]
+      main_only: true
+    create_story:
+      include: [project-tree, project-context, architecture, prd]
+    dev_story:
+      include: [project-tree, project-context, architecture]
+    code_review:
+      include: [project-tree, project-context, architecture]
+
+# Same loop structure
+loop:
+  story:
+    - create_story
+    - validate_story
+    - validate_story_synthesis
+    - dev_story
+    - code_review
+    - code_review_synthesis
+  epic_teardown:
+    - retrospective
+
+testarch:
+  enabled: false
+
+deep_verify:
+  enabled: false
+
+security_agent:
+  enabled: false
