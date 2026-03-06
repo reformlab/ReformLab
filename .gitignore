@@ -41,6 +41,8 @@ yarn-error.log*
 .bmad-assist/cache/
 .bmad-assist/logs/
 .bmad-assist/running.lock
+.bmad-assist/prompts/
+.bmad-assist/runs/
 bmad-assist-test.yaml
 bmad-assist.legacy.yaml
 
