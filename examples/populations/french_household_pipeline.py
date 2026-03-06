@@ -18,6 +18,7 @@ import logging
 from pathlib import Path
 
 import pyarrow as pa
+import pyarrow.compute as pc
 import pyarrow.csv as pcsv
 
 from reformlab.population import (
@@ -76,6 +77,178 @@ assert isinstance(_FixtureLoader(pa.table({"a": [1]})), DataSourceLoader)
 
 
 # ====================================================================
+# Fixture integrity guards
+# ====================================================================
+
+
+def _assert_fixture(condition: bool, *, fixture: str, detail: str) -> None:
+    """Raise a clear error when fixture semantics do not match expectations."""
+    if not condition:
+        raise ValueError(
+            f"Fixture semantic integrity check failed for {fixture}: {detail}"
+        )
+
+
+def _assert_insee_fixture_identity(raw: pa.Table) -> None:
+    fixture = "insee_filosofi_2021_fixture"
+    required = {
+        "commune_code",
+        "median_income",
+        "decile_1",
+        "decile_5",
+        "decile_9",
+    }
+    missing = required.difference(raw.column_names)
+    _assert_fixture(
+        not missing,
+        fixture=fixture,
+        detail=f"missing required columns: {sorted(missing)}",
+    )
+
+    commune_codes = []
+    for code in raw.column("commune_code").to_pylist():
+        if code is None:
+            commune_codes.append("")
+            continue
+        code_str = str(code)
+        if code_str.isdigit():
+            code_str = code_str.zfill(5)
+        commune_codes.append(code_str)
+    _assert_fixture(
+        all(code.isdigit() and len(code) == 5 for code in commune_codes),
+        fixture=fixture,
+        detail="commune_code must use 5-digit INSEE commune codes",
+    )
+
+    median = raw.column("median_income").to_pylist()
+    decile_1 = raw.column("decile_1").to_pylist()
+    decile_9 = raw.column("decile_9").to_pylist()
+    _assert_fixture(
+        all(
+            d1 is not None and med is not None and d9 is not None and d1 < med < d9
+            for d1, med, d9 in zip(decile_1, median, decile_9)
+        ),
+        fixture=fixture,
+        detail="income deciles must bracket median_income for every commune",
+    )
+
+    sentinel_ok = any(
+        code == "75101" and float(med) == 32000.0
+        for code, med in zip(commune_codes, median)
+    )
+    _assert_fixture(
+        sentinel_ok,
+        fixture=fixture,
+        detail="expected Paris 1er sentinel row (commune_code=75101, median_income=32000.0)",
+    )
+
+
+def _assert_eurostat_fixture_identity(raw: pa.Table) -> None:
+    fixture = "eurostat_hhcomp_2022_fixture"
+    required = {"country", "energy_product", "time_period", "value"}
+    missing = required.difference(raw.column_names)
+    _assert_fixture(
+        not missing,
+        fixture=fixture,
+        detail=f"missing required columns: {sorted(missing)}",
+    )
+
+    countries = set(raw.column("country").to_pylist())
+    _assert_fixture(
+        {"FR", "DE"}.issubset(countries),
+        fixture=fixture,
+        detail="expected FR and DE rows for cross-country energy context",
+    )
+
+    products = raw.column("energy_product").to_pylist()
+    periods = raw.column("time_period").to_pylist()
+    values = raw.column("value").to_pylist()
+    sentinel_ok = any(
+        country == "FR" and product == "G3000" and int(period) == 2022 and float(value) == 155.2
+        for country, product, period, value in zip(
+            raw.column("country").to_pylist(),
+            products,
+            periods,
+            values,
+        )
+    )
+    _assert_fixture(
+        sentinel_ok,
+        fixture=fixture,
+        detail="expected FR G3000 2022 sentinel value 155.2",
+    )
+
+
+def _assert_sdes_fixture_identity(raw: pa.Table) -> None:
+    fixture = "sdes_vehicles_2023_fixture"
+    required = {"region_code", "departement_code", "fuel_type", "fleet_count_2022"}
+    missing = required.difference(raw.column_names)
+    _assert_fixture(
+        not missing,
+        fixture=fixture,
+        detail=f"missing required columns: {sorted(missing)}",
+    )
+
+    fuel_types = set(str(f) for f in raw.column("fuel_type").to_pylist())
+    _assert_fixture(
+        {"Diesel", "Essence", "Electrique"}.issubset(fuel_types),
+        fixture=fixture,
+        detail="expected fuel types Diesel/Essence/Electrique",
+    )
+
+    sentinel_ok = any(
+        int(dep) == 75 and str(fuel) == "Diesel" and float(count) == 520000.0
+        for dep, fuel, count in zip(
+            raw.column("departement_code").to_pylist(),
+            raw.column("fuel_type").to_pylist(),
+            raw.column("fleet_count_2022").to_pylist(),
+        )
+    )
+    _assert_fixture(
+        sentinel_ok,
+        fixture=fixture,
+        detail="expected Ile-de-France diesel sentinel row (departement_code=75, fleet_count_2022=520000)",
+    )
+
+
+def _assert_ademe_fixture_identity(raw: pa.Table) -> None:
+    fixture = "ademe_energy_2023_fixture"
+    required = {"name_fr", "unit_fr", "total_co2e"}
+    missing = required.difference(raw.column_names)
+    _assert_fixture(
+        not missing,
+        fixture=fixture,
+        detail=f"missing required columns: {sorted(missing)}",
+    )
+
+    factors = {
+        str(name): float(value)
+        for name, value in zip(
+            raw.column("name_fr").to_pylist(),
+            raw.column("total_co2e").to_pylist(),
+        )
+    }
+    expected = {
+        "Gaz naturel": 0.227,
+        "Electricite": 0.0569,
+        "Bois buche": 0.03,
+        "GPL": 0.272,
+    }
+    for name, expected_value in expected.items():
+        _assert_fixture(
+            name in factors and abs(factors[name] - expected_value) < 1e-9,
+            fixture=fixture,
+            detail=f"expected sentinel factor for {name} = {expected_value}",
+        )
+
+    _assert_fixture(
+        factors["Gaz naturel"] > factors["Electricite"],
+        fixture=fixture,
+        detail="gas factor must remain higher than electricity factor",
+    )
+
+
+# ====================================================================
 # Source data preparation
 # ====================================================================
 
@@ -88,6 +261,7 @@ def _load_income_source() -> tuple[_FixtureLoader, SourceConfig]:
     """
     fixture_path = FIXTURES_DIR / "insee_filosofi_2021_fixture.csv"
     raw = pcsv.read_csv(fixture_path)
+    _assert_insee_fixture_identity(raw)
 
     # Expand commune-level data to individual households using nb_fiscal_households
     # For the example, create one representative household per commune
@@ -122,6 +296,10 @@ def _load_housing_source() -> tuple[_FixtureLoader, SourceConfig]:
     Returns a table with housing attributes (household_size, housing_type,
     heating_type) derived from energy consumption patterns.
     """
+    fixture_path = FIXTURES_DIR / "eurostat_hhcomp_2022_fixture.csv"
+    raw = pcsv.read_csv(fixture_path)
+    _assert_eurostat_fixture_identity(raw)
+
     # Derive housing attributes from energy product codes
     # G3000=gas, O4000XBIO=oil, E7000=renewables, S2000=solid, RA000=ambient
     housing_types = ["apartment", "house", "apartment", "house", "apartment",
@@ -155,6 +333,7 @@ def _load_vehicle_source() -> tuple[_FixtureLoader, SourceConfig]:
     """
     fixture_path = FIXTURES_DIR / "sdes_vehicles_2023_fixture.csv"
     raw = pcsv.read_csv(fixture_path)
+    _assert_sdes_fixture_identity(raw)
 
     vehicle_types = raw.column("fuel_type").to_pylist()
     # Map French age ranges to numeric mid-point
@@ -165,7 +344,8 @@ def _load_vehicle_source() -> tuple[_FixtureLoader, SourceConfig]:
         "Plus de 15 ans": 18,
     }
     vehicle_ages = [age_map.get(a, 5) for a in raw.column("vehicle_age").to_pylist()]
-    regions = raw.column("region_code").to_pylist()
+    # Convert departement codes to zero-padded strings (fixture stores them as integers)
+    regions = [str(r).zfill(2) for r in raw.column("departement_code").to_pylist()]
 
     table = pa.table({
         "vehicle_type": pa.array(vehicle_types, type=pa.utf8()),
@@ -187,19 +367,38 @@ def _load_energy_source() -> tuple[_FixtureLoader, SourceConfig]:
 
     Returns a table with energy consumption and carbon emission attributes
     derived from Base Carbone emission factors.
+
+    Uses only heating-related emission factors (kgCO2e/kWh) from the ADEME
+    fixture to compute carbon emissions from annual energy consumption.
     """
     fixture_path = FIXTURES_DIR / "ademe_energy_2023_fixture.csv"
     raw = pcsv.read_csv(fixture_path)
+    _assert_ademe_fixture_identity(raw)
+
+    # Extract emission factors for heating fuels only (rows with kgCO2e/kWh units)
+    # Row 0: Gaz naturel  → 0.227 kgCO2e/kWh
+    # Row 2: Electricite   → 0.0569 kgCO2e/kWh
+    # Row 3: Bois buche    → 0.030 kgCO2e/kWh
+    # Row 4: GPL           → 0.272 kgCO2e/kWh (used as proxy for heat_pump backup)
+    co2e_all = raw.column("total_co2e").to_pylist()
+    emission_factors = {
+        "gas": co2e_all[0],       # 0.227 kgCO2e/kWh
+        "electric": co2e_all[2],  # 0.0569 kgCO2e/kWh
+        "wood": co2e_all[3],      # 0.030 kgCO2e/kWh
+        "oil": co2e_all[4],       # 0.272 kgCO2e/kWh (GPL as oil proxy)
+        "heat_pump": co2e_all[2] * 0.33,  # electric COP~3 effective factor
+    }
 
     # Create energy consumption profiles keyed by heating_type
-    co2e_values = raw.column("total_co2e").to_pylist()
+    # Annual kWh values represent typical French household heating consumption
     heating_types = ["gas", "oil", "electric", "wood", "gas",
                      "electric", "oil", "gas", "heat_pump", "electric",
                      "wood", "heat_pump"]
     energy_kwh = [8500.0, 12000.0, 5200.0, 6800.0, 9500.0,
                   7200.0, 10500.0, 4800.0, 11000.0, 7800.0,
                   6500.0, 9000.0]
-    carbon_emissions = [e * c for e, c in zip(energy_kwh, co2e_values)]
+    # Carbon = energy_kWh * emission_factor (kgCO2e/kWh) → kgCO2e
+    carbon_emissions = [e * emission_factors[ht] for e, ht in zip(energy_kwh, heating_types)]
 
     table = pa.table({
         "heating_type": pa.array(heating_types, type=pa.utf8()),
@@ -329,7 +528,6 @@ def write_summary(table: pa.Table, summary_path: Path) -> None:
     for col_name in table.column_names:
         col = table.column(col_name)
         if pa.types.is_floating(col.type):
-            import pyarrow.compute as pc
             lines.append(
                 f"  {col_name}: min={pc.min(col).as_py():.1f}, "
                 f"max={pc.max(col).as_py():.1f}, "

@@ -1,16 +1,16 @@
-region_code,region_name,vehicle_class,vehicle_category,fuel_type,vehicle_age,critair_sticker,fleet_count_2022
-84,Auvergne-Rhone-Alpes,VP,M1,Diesel,De 1 a 5 ans,Crit'Air 2,450000
-84,Auvergne-Rhone-Alpes,VP,M1,Essence,De 1 a 5 ans,Crit'Air 1,380000
-84,Auvergne-Rhone-Alpes,VP,M1,Electrique,De 1 a 5 ans,Crit'Air E,95000
-11,Ile-de-France,VP,M1,Diesel,De 1 a 5 ans,Crit'Air 2,520000
-11,Ile-de-France,VP,M1,Essence,De 1 a 5 ans,Crit'Air 1,440000
-11,Ile-de-France,VP,M1,Electrique,De 1 a 5 ans,Crit'Air E,135000
-76,Occitanie,VP,M1,Diesel,De 6 a 10 ans,Crit'Air 2,310000
-76,Occitanie,VP,M1,Essence,De 6 a 10 ans,Crit'Air 1,260000
-44,Grand Est,VP,M1,Diesel,De 11 a 15 ans,,280000
-44,Grand Est,VP,M1,Essence,De 11 a 15 ans,,220000
-32,Hauts-de-France,VP,M1,Diesel,De 1 a 5 ans,Crit'Air 2,340000
-32,Hauts-de-France,VP,M1,Essence,De 1 a 5 ans,Crit'Air 1,290000
-93,Provence-Alpes-Cote d'Azur,VP,M1,Diesel,De 6 a 10 ans,Crit'Air 2,250000
-93,Provence-Alpes-Cote d'Azur,VP,M1,Essence,De 6 a 10 ans,Crit'Air 1,200000
-75,Nouvelle-Aquitaine,VP,M1,Diesel,Plus de 15 ans,,180000
+region_code,region_name,departement_code,vehicle_class,vehicle_category,fuel_type,vehicle_age,critair_sticker,fleet_count_2022
+84,Auvergne-Rhone-Alpes,69,VP,M1,Diesel,De 1 a 5 ans,Crit'Air 2,450000
+84,Auvergne-Rhone-Alpes,38,VP,M1,Essence,De 1 a 5 ans,Crit'Air 1,380000
+84,Auvergne-Rhone-Alpes,69,VP,M1,Electrique,De 1 a 5 ans,Crit'Air E,95000
+11,Ile-de-France,75,VP,M1,Diesel,De 1 a 5 ans,Crit'Air 2,520000
+11,Ile-de-France,75,VP,M1,Essence,De 1 a 5 ans,Crit'Air 1,440000
+11,Ile-de-France,75,VP,M1,Electrique,De 1 a 5 ans,Crit'Air E,135000
+76,Occitanie,34,VP,M1,Diesel,De 6 a 10 ans,Crit'Air 2,310000
+76,Occitanie,31,VP,M1,Essence,De 6 a 10 ans,Crit'Air 1,260000
+44,Grand Est,67,VP,M1,Diesel,De 11 a 15 ans,,280000
+44,Grand Est,67,VP,M1,Essence,De 11 a 15 ans,,220000
+32,Hauts-de-France,59,VP,M1,Diesel,De 1 a 5 ans,Crit'Air 2,340000
+32,Hauts-de-France,59,VP,M1,Essence,De 1 a 5 ans,Crit'Air 1,290000
+93,Provence-Alpes-Cote d'Azur,13,VP,M1,Diesel,De 6 a 10 ans,Crit'Air 2,250000
+93,Provence-Alpes-Cote d'Azur,06,VP,M1,Essence,De 6 a 10 ans,Crit'Air 1,200000
+75,Nouvelle-Aquitaine,33,VP,M1,Diesel,Plus de 15 ans,,180000
