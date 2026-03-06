@@ -7,6 +7,11 @@ communication_language: English
 document_output_language: English
 user_skill_level: intermediate
 
+tool_guard:
+  max_total_calls: 400
+  max_interactions_per_file: 25
+  max_calls_per_minute: 150
+
 timeouts:
   default: 600
   retries: 2
@@ -66,16 +71,16 @@ phase_models:
 compiler:
   source_context:
     budgets:
-      create_story: 60000
+      create_story: 100000
       validate_story: 15000
       validate_story_synthesis: 15000
-      dev_story: 15000
-      code_review: 30000
-      code_review_synthesis: 30000
-      default: 30000
+      dev_story: 30000
+      code_review: 40000
+      code_review_synthesis: 40000
+      default: 40000
 
   strategic_context:
-    budget: 15000
+    budget: 20000
     tree_budget: 0
     defaults:
       include: [project-context] # [project-tree, project-context, architecture]

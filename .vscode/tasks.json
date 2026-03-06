@@ -101,9 +101,29 @@
       }
     },
     {
+      "label": "BMAD: Update bmad-assist",
+      "type": "shell",
+      "command": "cd /Users/lucas/Workspace/bmad-assist && git pull && uv sync",
+      "options": {
+        "shell": {
+          "executable": "/bin/zsh",
+          "args": [
+            "-lc"
+          ]
+        }
+      },
+      "isBackground": false,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
+    },
+    {
       "label": "BMAD: Run Epic",
       "type": "shell",
-      "command": "set -o pipefail && source ~/.nvm/nvm.sh && nvm use 22 && (git checkout epic-${input:epicNumber} 2>/dev/null || git checkout -b epic-${input:epicNumber} master) && mkdir -p .bmad-assist/logs && export BMAD_LOGFILE=.bmad-assist/logs/epic-${input:epicNumber}-$(date +%Y%m%dT%H%M%S).log && caffeinate -s /Users/lucas/Workspace/bmad-assist/.venv/bin/bmad-assist run -e ${input:epicNumber} -g -v --skip-story-prompts 2>&1 | tee \"$BMAD_LOGFILE\"",
+      "command": "set -o pipefail && source ~/.nvm/nvm.sh && nvm use 22 && (git checkout epic-${input:epicNumber} 2>/dev/null || git checkout -b epic-${input:epicNumber} master) && mkdir -p .bmad-assist/logs && export BMAD_LOGFILE=.bmad-assist/logs/epic-${input:epicNumber}-$(date +%Y%m%dT%H%M%S).log && caffeinate -s /Users/lucas/Workspace/bmad-assist/.venv/bin/bmad-assist run -e ${input:epicNumber} -g -v -n --skip-story-prompts 2>&1 | tee \"$BMAD_LOGFILE\"",
       "options": {
         "cwd": "${workspaceFolder}",
         "shell": {

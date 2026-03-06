@@ -1,0 +1,13 @@
+element_id,name_fr,attribute_name_fr,line_type,unit_fr,total_co2e,co2_fossil,ch4_fossil,ch4_biogenic,n2o,co2_biogenic,other_ghg,geography,sub_geography,contributor
+1234,Gaz naturel,PCI,element,kgCO2e/kWh PCI,0.227,0.205,0.004,0.0,0.018,0.0,0.0,France metropolitaine,,ADEME
+5678,Fioul domestique,PCI,element,kgCO2e/litre,3.25,3.15,0.001,0.0,0.089,0.0,0.0,France metropolitaine,,ADEME
+9012,Electricite,Mix moyen,element,kgCO2e/kWh,0.0569,0.0479,0.0,0.0,0.009,0.0,0.0,France metropolitaine,,ADEME
+3456,Bois buche,PCI,element,kgCO2e/kWh PCI,0.03,0.001,0.025,0.001,0.0,0.004,0.0,France metropolitaine,,
+7890,GPL,PCI,element,kgCO2e/kWh PCI,0.272,0.231,0.005,0.0,0.036,0.0,0.0,France metropolitaine,,ADEME
+2345,Charbon,PCI,element,kgCO2e/kWh PCI,0.385,0.342,0.018,0.0,0.025,0.0,0.0,France metropolitaine,,ADEME
+6789,Reseau de chaleur,Mix moyen,element,kgCO2e/kWh,0.125,0.098,0.003,0.0,0.024,0.0,0.0,France metropolitaine,,ADEME
+1357,Diesel,combustion,element,kgCO2e/litre,3.16,2.98,0.002,0.0,0.178,0.0,0.0,France metropolitaine,,ADEME
+2468,Essence SP95,combustion,element,kgCO2e/litre,2.80,2.66,0.002,0.0,0.138,0.0,0.0,France metropolitaine,,ADEME
+3579,Essence E10,combustion,element,kgCO2e/litre,2.71,2.58,0.002,0.0,0.128,0.0,0.0,France metropolitaine,,ADEME
+4680,Bioethanol E85,combustion,element,kgCO2e/litre,1.11,0.98,0.002,0.0,0.128,0.0,0.0,France metropolitaine,,ADEME
+5791,Propane,PCI,element,kgCO2e/kWh PCI,0.274,0.234,0.005,0.0,0.035,0.0,0.0,France metropolitaine,,ADEME
