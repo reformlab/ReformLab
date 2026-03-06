@@ -98,7 +98,7 @@ All Phase 1 FRs (FR1-FR35) mapped to implementation/test evidence.
 |----|-------------|----------|--------|
 | **FR30** | User can run full workflows from a Python API in notebooks | `src/reformlab/interfaces/api.py`<br>`src/reformlab/__init__.py`<br>`notebooks/quickstart.ipynb`<br>`notebooks/advanced.ipynb` | ✅ PASS |
 | **FR31** | User can configure workflows with YAML/JSON files for analyst-friendly version control | `src/reformlab/templates/workflow.py`<br>`tests/templates/test_workflow.py`<br>`tests/interfaces/test_api.py` | ✅ PASS |
-| **FR32** | User can use an early no-code GUI to create/clone/run scenarios | `frontend/src`<br>`docs/deployment-guide.md`<br>`_bmad-output/planning-artifacts/architecture.md` | ✅ PASS (static UI + deployed architecture; live GUI-backend wiring remains BKL-604b P1) |
+| **FR32** | User can use an early no-code GUI to create/clone/run scenarios | `frontend/src`<br>`docs/deployment-guide.md`<br>`docs/architecture.md` | ✅ PASS (static UI + deployed architecture; live GUI-backend wiring remains BKL-604b P1) |
 | **FR33** | User can export tables and indicators in CSV/Parquet for downstream reporting | `src/reformlab/interfaces/api.py`<br>`src/reformlab/orchestrator/panel.py`<br>`src/reformlab/indicators/comparison.py`<br>`tests/interfaces/test_api.py`<br>`tests/orchestrator/test_panel.py`<br>`tests/indicators/test_comparison.py` | ✅ PASS |
 
 ### 2.7 Documentation & Enablement (FR34-FR35)
@@ -131,7 +131,7 @@ Each NFR row includes metric, target, measurement method, evidence source, and s
 | NFR | Metric | Target | Measured Result | Evidence | Status |
 |-----|--------|--------|-----------------|----------|--------|
 | **NFR6** | Same-machine determinism | Identical inputs -> bit-identical outputs on same machine | Deterministic runner + reproducibility harness checks pass | `tests/orchestrator/test_runner.py`<br>`tests/governance/test_reproducibility.py` | ✅ PASS |
-| **NFR7** | Cross-machine reproducibility | Identical outputs across OS/machines with pinned environment | External pilot and reproducibility artifacts document cross-machine validation | `docs/pilot-checklist.md`<br>`_bmad-output/implementation-artifacts/7-4-external-pilot-run-carbon-tax-workflow.md`<br>`tests/governance/test_reproducibility.py` | ✅ PASS |
+| **NFR7** | Cross-machine reproducibility | Identical outputs across OS/machines with pinned environment | External pilot and reproducibility artifacts document cross-machine validation | `docs/pilot-checklist.md`<br>`tests/governance/test_reproducibility.py` | ✅ PASS |
 | **NFR8** | Seed control and traceability | Seeds explicit, pinned, and stored in manifest | Seed validation/propagation covered in orchestrator/API tests and manifest model | `src/reformlab/orchestrator/runner.py`<br>`src/reformlab/governance/manifest.py`<br>`tests/orchestrator/test_runner.py`<br>`tests/interfaces/test_api.py` | ✅ PASS |
 | **NFR9** | Automatic manifest generation | Manifest emitted without manual post-processing | API run paths return manifest data and manifest tests validate schema/integrity | `src/reformlab/governance/manifest.py`<br>`tests/governance/test_manifest.py`<br>`tests/interfaces/test_api.py` | ✅ PASS |
 | **NFR10** | Explicit period semantics | No implicit temporal defaults | Year-bound validation and projection mapping are enforced in tests | `src/reformlab/orchestrator/types.py`<br>`tests/interfaces/test_api.py`<br>`tests/orchestrator/test_integration.py` | ✅ PASS |
@@ -140,9 +140,9 @@ Each NFR row includes metric, target, measurement method, evidence source, and s
 
 | NFR | Metric | Target | Measured Result | Evidence | Status |
 |-----|--------|--------|-----------------|----------|--------|
-| **NFR11** | Restricted microdata handling | No persistence/transmission beyond local environment | Framework uses local file-path contracts; no remote service integration in core runtime | `src/reformlab/data/pipeline.py`<br>`src/reformlab/interfaces/api.py`<br>`_bmad-output/planning-artifacts/architecture.md` | ✅ PASS |
+| **NFR11** | Restricted microdata handling | No persistence/transmission beyond local environment | Framework uses local file-path contracts; no remote service integration in core runtime | `src/reformlab/data/pipeline.py`<br>`src/reformlab/interfaces/api.py`<br>`docs/architecture.md` | ✅ PASS |
 | **NFR12** | Manifest data minimization | Paths/hashes referenced; raw data not embedded in manifests/logs | Manifest schema stores hash/path metadata and assumption context, not raw datasets | `src/reformlab/governance/manifest.py`<br>`tests/governance/test_manifest.py` | ✅ PASS |
-| **NFR13** | Offline operation | No telemetry/network calls required by framework | Core package has local execution design and no telemetry integration points | `src/reformlab`<br>`pyproject.toml`<br>`_bmad-output/planning-artifacts/architecture.md` | ✅ PASS |
+| **NFR13** | Offline operation | No telemetry/network calls required by framework | Core package has local execution design and no telemetry integration points | `src/reformlab`<br>`pyproject.toml`<br>`docs/architecture.md` | ✅ PASS |
 
 ### 3.4 Integration & Interoperability (NFR14-NFR17)
 
@@ -181,7 +181,7 @@ Use explicit yes/no checks for each pilot criterion:
 - **AC-7: Required artifacts accessible (manifests/outputs/lineage)** -> [x] Yes / [ ] No
 
 **Pilot outcome:** ✅ PASS  
-**Evidence:** `docs/pilot-checklist.md`, `_bmad-output/implementation-artifacts/7-4-external-pilot-run-carbon-tax-workflow.md`
+**Evidence:** `docs/pilot-checklist.md`
 
 ---
 
@@ -260,7 +260,7 @@ CI workflow reference: `.github/workflows/ci.yml`
 
 ## 8. Architecture Compliance
 
-Architecture reference: `_bmad-output/planning-artifacts/architecture.md`
+Architecture reference: `docs/architecture.md`
 
 ### 8.1 Layered Design
 
@@ -323,7 +323,7 @@ Architecture reference: `_bmad-output/planning-artifacts/architecture.md`
 ### 9.2 Developer Documentation
 
 - [x] **DOC-7:** Architecture decision document exists  
-  Evidence: `_bmad-output/planning-artifacts/architecture.md`
+  Evidence: `docs/architecture.md`
 - [x] **DOC-8:** PRD with FR/NFR definitions exists  
   Evidence: `_bmad-output/planning-artifacts/prd.md`
 - [x] **DOC-9:** Phase 1 backlog artifact exists  
@@ -390,7 +390,7 @@ Architecture reference: `_bmad-output/planning-artifacts/architecture.md`
 - CI configuration: `.github/workflows/ci.yml`
 - Story tracking: `_bmad-output/implementation-artifacts/sprint-status.yaml`
 - Planning artifacts: `_bmad-output/planning-artifacts`
-- Pilot validation artifacts: `docs/pilot-checklist.md`, `_bmad-output/implementation-artifacts/7-4-external-pilot-run-carbon-tax-workflow.md`
+- Pilot validation artifacts: `docs/pilot-checklist.md`
 
 ## Appendix B: Version Context
 

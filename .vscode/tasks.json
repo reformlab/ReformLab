@@ -101,6 +101,171 @@
       }
     },
     {
+      "label": "CI: Sync Dependencies",
+      "type": "shell",
+      "command": "uv sync --locked --all-extras --dev",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "/bin/zsh",
+          "args": [
+            "-lc"
+          ]
+        }
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "group": "test"
+    },
+    {
+      "label": "CI: Ruff",
+      "type": "shell",
+      "command": "uv run ruff check src tests",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "/bin/zsh",
+          "args": [
+            "-lc"
+          ]
+        }
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "group": "test"
+    },
+    {
+      "label": "CI: Mypy",
+      "type": "shell",
+      "command": "uv run mypy src",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "/bin/zsh",
+          "args": [
+            "-lc"
+          ]
+        }
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "group": "test"
+    },
+    {
+      "label": "CI: Pytest + Coverage",
+      "type": "shell",
+      "command": "uv run pytest --cov=src/reformlab --cov-report=term-missing tests/",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "/bin/zsh",
+          "args": [
+            "-lc"
+          ]
+        }
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "group": "test"
+    },
+    {
+      "label": "CI: Notebook Quickstart",
+      "type": "shell",
+      "command": "uv run pytest --nbmake notebooks/quickstart.ipynb -v",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "/bin/zsh",
+          "args": [
+            "-lc"
+          ]
+        }
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "group": "test"
+    },
+    {
+      "label": "CI: Notebook Advanced",
+      "type": "shell",
+      "command": "uv run pytest --nbmake notebooks/advanced.ipynb -v",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "/bin/zsh",
+          "args": [
+            "-lc"
+          ]
+        }
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "group": "test"
+    },
+    {
+      "label": "CI: Notebook Population Example",
+      "type": "shell",
+      "command": "uv run pytest --nbmake notebooks/population-french-household-example.ipynb -v",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "/bin/zsh",
+          "args": [
+            "-lc"
+          ]
+        }
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "group": "test"
+    },
+    {
+      "label": "CI: Full Local (Mirror GitHub)",
+      "dependsOn": [
+        "CI: Sync Dependencies",
+        "CI: Ruff",
+        "CI: Mypy",
+        "CI: Pytest + Coverage",
+        "CI: Notebook Quickstart",
+        "CI: Notebook Advanced",
+        "CI: Notebook Population Example"
+      ],
+      "dependsOrder": "sequence",
+      "problemMatcher": [],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      }
+    },
+    {
       "label": "API: Quick Workflow Smoke Test",
       "type": "shell",
       "command": "uv run python examples/api/api_smoke_test.py",

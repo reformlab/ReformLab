@@ -415,7 +415,6 @@ class ScenarioRegistry:
         self.initialize()
 
         scenario_name = _validate_scenario_name(name)
-        is_portfolio = isinstance(scenario, PolicyPortfolio)
         incoming_type = _get_registry_type_for_artifact(scenario)
 
         # Generate version ID based on artifact type

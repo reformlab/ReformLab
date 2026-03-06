@@ -41,6 +41,20 @@ from reformlab.templates.packs import (
     load_rebate_template,
     load_subsidy_template,
 )
+from reformlab.templates.portfolios import (
+    Conflict,
+    ConflictType,
+    PolicyConfig,
+    PolicyPortfolio,
+    PortfolioError,
+    PortfolioSerializationError,
+    PortfolioValidationError,
+    ResolutionStrategy,
+    dump_portfolio,
+    load_portfolio,
+    resolve_conflicts,
+    validate_compatibility,
+)
 from reformlab.templates.reform import resolve_reform_definition
 from reformlab.templates.registry import (
     RegistryEntry,
@@ -62,20 +76,6 @@ from reformlab.templates.schema import (
     SubsidyParameters,
     YearSchedule,
     infer_policy_type,
-)
-from reformlab.templates.portfolios import (
-    Conflict,
-    ConflictType,
-    PolicyConfig,
-    PolicyPortfolio,
-    PortfolioError,
-    PortfolioSerializationError,
-    PortfolioValidationError,
-    ResolutionStrategy,
-    dump_portfolio,
-    load_portfolio,
-    resolve_conflicts,
-    validate_compatibility,
 )
 from reformlab.templates.workflow import (
     WORKFLOW_SCHEMA_VERSION,
