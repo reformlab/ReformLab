@@ -161,20 +161,23 @@ so that **I can understand how to build my own population from real institutiona
 
 ### References
 
-- **Population module public API**: `src/reformlab/population/__init__.py` — Exports loaders, methods, pipeline, validation classes
-- **Pipeline builder documentation**: `src/reformlab/population/pipeline.py` — `PopulationPipeline` class with fluent API
-- **Merge methods base**: `src/reformlab/population/methods/base.py` — `MergeMethod` protocol and `MergeConfig` dataclass
-- **Assumption recording**: `src/reformlab/population/assumptions.py` — `PipelineAssumptionChain.to_governance_entries()` method
-- **Validation**: `src/reformlab/population/validation.py` — `PopulationValidator` class and `MarginalConstraint` dataclass
+- **Population module public API**: `src/reformlab/population/__init__.py` — Exports loaders, methods, pipeline, validation classes. Key exports include: `get_insee_loader()`, `get_eurostat_loader()`, `get_ademe_loader()`, `get_sdes_loader()`, `make_insee_config()`, `make_eurostat_config()`, `make_ademe_config()`, `make_sdes_config()`, `PopulationPipeline`, `PipelineResult`, `PopulationValidator`, `MarginalConstraint`, `ValidationResult`, `ValidationAssumption`. Also exports dataset catalogs: `INSEE_CATALOG`, `EUROSTAT_CATALOG`, `ADEME_CATALOG`, `SDES_CATALOG` and dataset enums: `INSEEDataset`, `EurostatDataset`, `ADEMEDataset`, `SDESDataset`.
+- **Pipeline builder**: `src/reformlab/population/pipeline.py` — `PopulationPipeline` fluent API with `add_source(label, loader, config)`, `add_merge(label, left, right, method, config)`, `execute() -> PipelineResult`
+- **Merge methods**: `src/reformlab/population/methods/base.py` — `MergeMethod` protocol, `MergeConfig(seed, drop_right_columns)`, `MergeAssumption(method_name, statement, details)`
+- **Merge method implementations**: `UniformMergeMethod()` (uniform.py), `IPFMergeMethod()` (ipf.py — uses `IPFConstraint`), `ConditionalSamplingMethod(strata_columns=(...,))` (conditional.py)
+- **Assumption recording**: `src/reformlab/population/assumptions.py` — `PipelineAssumptionChain.to_governance_entries(source_label=)` produces governance-compatible dicts. Do NOT use `capture_assumptions()` from governance module.
+- **Validation**: `src/reformlab/population/validation.py` — `PopulationValidator.validate(table, constraints) -> ValidationResult`. `MarginalConstraint(dimension, distribution, tolerance)`. `ValidationAssumption` for governance integration.
 - **Existing notebook patterns**: `notebooks/quickstart.ipynb`, `notebooks/advanced.ipynb` — Reference for markdown style, code organization, visualization patterns
-- **Story 11.6 synthesis**: `_bmad-output/implementation-artifacts/11-7-implement-population-validation-against-known-marginals-synthesis-final.md` — Reference for validation implementation
+- **Story 11.6 implementation**: `_bmad-output/implementation-artifacts/11-6-build-populationpipeline-builder-with-assumption-recording.md` — Pipeline builder implementation details
+- **Story 11.7 implementation**: `_bmad-output/implementation-artifacts/11-7-implement-population-validation-against-known-marginals-synthesis-final.md` — Validation implementation details
 - **Project context**: `docs/project-context.md` — Critical rules for code style, testing, and development workflow
 
 ## Dev Agent Record
 
 ### Agent Model Used
 
-glm-4.7 (zai-coding-plan/glm-4.7)
+claude-opus-4-6 (story refresh 2026-03-06)
+Previous: glm-4.7 (zai-coding-plan/glm-4.7, initial creation)
 
 ### Debug Log References
 
@@ -182,14 +185,17 @@ None (debug mode not enabled for this story creation).
 
 ### Completion Notes List
 
-1. Analyzed existing population module implementation (loaders, methods, pipeline, validation)
+1. Analyzed existing population module implementation (loaders, methods, pipeline, validation) — all 11.1-11.7 stories complete with 434 population tests passing
 2. Reviewed existing notebook patterns (quickstart, advanced) to match style
-3. Checked sprint status to confirm stories 11.1-11.7 are done, 11.8 is in-progress
+3. Confirmed stories 11.1-11.7 are done; 11.8 is the final story in Epic 11
 4. Examined antipatterns from previous stories to avoid common mistakes
 5. Designed comprehensive task breakdown covering pipeline script, notebook, CI integration
 6. Specified offline-first testing strategy with fixture fallback
 7. Aligned with existing project structure (notebooks/, examples/, tests/fixtures/)
 8. Incorporated pedagogical requirements from EPIC-11 scope notes
+9. Verified public API exports match actual `__init__.py` — includes dataset catalogs (INSEE_CATALOG, EUROSTAT_CATALOG, etc.) and dataset enums (INSEEDataset, EurostatDataset, etc.) for source configuration
+10. Confirmed `PipelineAssumptionChain.to_governance_entries()` is the correct governance bridge (NOT `capture_assumptions()`)
+11. Verified `ValidationAssumption` is exported from validation module for governance integration of validation results
 
 ### File List
 
