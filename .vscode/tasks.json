@@ -101,6 +101,52 @@
       }
     },
     {
+      "label": "API: Quick Workflow Smoke Test",
+      "type": "shell",
+      "command": "uv run python examples/api/api_smoke_test.py",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "REFORMLAB_API_BASE_URL": "http://127.0.0.1:8000",
+          "REFORMLAB_API_PASSWORD": "local"
+        },
+        "shell": {
+          "executable": "/bin/zsh",
+          "args": [
+            "-lc"
+          ]
+        }
+      },
+      "isBackground": false,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
+    },
+    {
+      "label": "API: Start Backend + Smoke Test",
+      "type": "shell",
+      "command": "set -euo pipefail; REFORMLAB_PASSWORD=local uv run --extra server uvicorn reformlab.server.app:create_app --factory --port 8011 >/tmp/reformlab-api-smoke.log 2>&1 & PID=$!; trap 'kill $PID >/dev/null 2>&1 || true' EXIT; for i in $(seq 1 120); do curl -fs http://127.0.0.1:8011/api/openapi.json >/dev/null 2>&1 && break; sleep 0.25; done; REFORMLAB_API_BASE_URL=http://127.0.0.1:8011 REFORMLAB_API_PASSWORD=local uv run python examples/api/api_smoke_test.py",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "/bin/zsh",
+          "args": [
+            "-lc"
+          ]
+        }
+      },
+      "isBackground": false,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
+    },
+    {
       "label": "BMAD: Update bmad-assist",
       "type": "shell",
       "command": "cd /Users/lucas/Workspace/bmad-assist && git pull && uv sync",

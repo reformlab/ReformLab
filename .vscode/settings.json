@@ -1,0 +1,14 @@
+{
+  "rest-client.environmentVariables": {
+    "$shared": {
+      "password": "local"
+    },
+    "local": {
+      "baseUrl": "http://127.0.0.1:8000"
+    },
+    "production": {
+      "baseUrl": "https://api.reformlab.fr",
+      "password": ""
+    }
+  }
+}

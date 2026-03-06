@@ -7,6 +7,11 @@ communication_language: English
 document_output_language: English
 user_skill_level: intermediate
 
+tool_guard:
+  max_total_calls: 400
+  max_interactions_per_file: 25
+  max_calls_per_minute: 150
+
 timeouts:
   default: 600
   retries: 2
@@ -15,23 +20,23 @@ timeouts:
 
 providers:
   master:
-    provider: opencode
-    model: zai-coding-plan/glm-5
+    provider: claude-subprocess # or claude-sdk
+    model: opus # Fastest master model
 
   helper:
     provider: claude-subprocess
-    model: sonnet
+    model: haiku
 
 # Per-phase model assignment
 # GLM-5 creates/devs/synth/retro, Gemini+GLM-5+Codex validate/review
 phase_models:
   # --- Creative phases: GLM-5 ---
   create_story:
-    provider: opencode
-    model: zai-coding-plan/glm-5
+    provider: claude-subprocess
+    model: opus
   dev_story:
-    provider: opencode
-    model: zai-coding-plan/glm-5
+    provider: claude-subprocess
+    model: opus
 
   # --- Validation phases: Gemini + GLM-5 + Codex (three reviewers for synthesis) ---
   validate_story:
@@ -41,8 +46,8 @@ phase_models:
       model: gpt-5.3-codex
       reasoning_effort: high
   validate_story_synthesis:
-    provider: opencode
-    model: zai-coding-plan/glm-5
+    provider: claude-subprocess
+    model: opus
 
   # --- Review phases: Gemini + GLM-5 + Codex (three reviewers for synthesis) ---
   code_review:
@@ -52,13 +57,13 @@ phase_models:
       model: gpt-5.3-codex
       reasoning_effort: high
   code_review_synthesis:
-    provider: opencode
-    model: zai-coding-plan/glm-5
+    provider: claude-subprocess
+    model: opus
 
   # --- Retrospective: GLM-5 ---
   retrospective:
-    provider: opencode
-    model: zai-coding-plan/glm-5
+    provider: claude-subprocess
+    model: opus
 
 # Compiler configuration — balanced budgets
 # Restored closer to defaults after synthesis starvation warnings (2026-03-03).
@@ -66,26 +71,26 @@ phase_models:
 compiler:
   source_context:
     budgets:
-      create_story: 60000
+      create_story: 100000
       validate_story: 15000
       validate_story_synthesis: 15000
-      dev_story: 15000
-      code_review: 30000
-      code_review_synthesis: 30000
-      default: 30000
+      dev_story: 30000
+      code_review: 40000
+      code_review_synthesis: 40000
+      default: 40000
 
   strategic_context:
-    budget: 15000
+    budget: 20000
     tree_budget: 0
     defaults:
-      include: [project-tree, project-context, architecture]
+      include: [project-context] # [project-tree, project-context, architecture]
       main_only: true
     create_story:
-      include: [project-tree, project-context, architecture, prd]
+      include: [project-context] # [project-tree, project-context, architecture, prd]
     dev_story:
-      include: [project-tree, project-context, architecture]
+      include: [project-context] # [project-tree, project-context, architecture]
     code_review:
-      include: [project-tree, project-context, architecture]
+      include: [project-context] # project-tree, project-context, architecture]
 
 # Loop: standard cycle with synthesis, no TEA
 loop:

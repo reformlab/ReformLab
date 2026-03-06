@@ -1,0 +1,140 @@
+### ReformLab API - REST Client collection
+# Usage:
+# 1) Start backend (VS Code task: "Backend: API Server")
+# 2) Command Palette -> "Rest Client: Switch Environment" -> choose "local"
+# 3) Run requests top-to-bottom with "Send Request"
+#
+# Notes:
+# - Auth token is reused via {{login.response.body.$.token}}
+# - run_id is reused via {{runBaseline.response.body.$.run_id}}
+# - template name is read from the first template returned by /api/templates
+
+### OpenAPI schema (no auth)
+GET {{baseUrl}}/api/openapi.json
+
+### Login and capture token
+# @name login
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "password": "{{password}}"
+}
+
+### List templates
+# @name listTemplates
+GET {{baseUrl}}/api/templates
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Get details for first available template
+GET {{baseUrl}}/api/templates/{{listTemplates.response.body.$.templates[0].id}}
+Authorization: Bearer {{login.response.body.$.token}}
+
+### List populations
+GET {{baseUrl}}/api/populations
+Authorization: Bearer {{login.response.body.$.token}}
+
+### List scenarios
+GET {{baseUrl}}/api/scenarios
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Create a scenario (optional)
+# @name createScenario
+@scenarioName = rest-client-scenario-{{$timestamp}}
+POST {{baseUrl}}/api/scenarios
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "name": "{{scenarioName}}",
+  "policy_type": "carbon_tax",
+  "policy": {
+    "rate_schedule": {
+      "2025": 44.6,
+      "2026": 55.0,
+      "2027": 65.0
+    }
+  },
+  "start_year": 2025,
+  "end_year": 2027,
+  "description": "Created from VS Code REST Client"
+}
+
+### Run baseline simulation
+# @name runBaseline
+POST {{baseUrl}}/api/runs
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "template_name": "{{listTemplates.response.body.$.templates[0].id}}",
+  "policy": {
+    "rate_schedule": {
+      "2025": 44.6,
+      "2026": 55.0,
+      "2027": 65.0
+    }
+  },
+  "start_year": 2025,
+  "end_year": 2027
+}
+
+### Run reform simulation (higher rates)
+# @name runReform
+POST {{baseUrl}}/api/runs
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "template_name": "{{listTemplates.response.body.$.templates[0].id}}",
+  "policy": {
+    "rate_schedule": {
+      "2025": 90.0,
+      "2026": 100.0,
+      "2027": 110.0
+    }
+  },
+  "start_year": 2025,
+  "end_year": 2027
+}
+
+### Distributional indicator for baseline run
+POST {{baseUrl}}/api/indicators/distributional
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "run_id": "{{runBaseline.response.body.$.run_id}}",
+  "income_field": "income",
+  "by_year": true
+}
+
+### Welfare comparison between baseline and reform runs
+POST {{baseUrl}}/api/comparison
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "baseline_run_id": "{{runBaseline.response.body.$.run_id}}",
+  "reform_run_id": "{{runReform.response.body.$.run_id}}",
+  "welfare_field": "disposable_income",
+  "threshold": 0
+}
+
+### Export baseline run to CSV
+POST {{baseUrl}}/api/exports/csv
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "run_id": "{{runBaseline.response.body.$.run_id}}"
+}
+
+### Export baseline run to Parquet
+POST {{baseUrl}}/api/exports/parquet
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "run_id": "{{runBaseline.response.body.$.run_id}}"
+}
