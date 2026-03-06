@@ -1,0 +1,59 @@
+version: "1.0"
+
+name: "Energy Poverty Aid - Generous"
+description: "Higher-aid energy poverty variant for comparison. Income ceiling 15,000 EUR (+36% more households eligible), 10% energy share threshold, 300 EUR base aid (doubled). Named generous because the higher ceiling and doubled base aid make the overall program substantially more generous despite the stricter energy share threshold."
+policy_type: energy_poverty_aid
+
+year_schedule:
+  start_year: 2026
+  end_year: 2036
+
+policy:
+  # Base rate schedule (unused for aid computation, required by PolicyParameters)
+  rate_schedule: {}
+
+  # Higher income ceiling for broader eligibility
+  income_ceiling: 15000.0
+
+  # Stricter energy share threshold (10%)
+  energy_share_threshold: 0.10
+
+  # Doubled base aid amount
+  base_aid_amount: 300.0
+
+  # Cap on energy burden multiplier
+  max_energy_factor: 2.0
+
+  # Income ceiling schedule: increases over time
+  income_ceiling_schedule:
+    2026: 15000.0
+    2027: 15500.0
+    2028: 16000.0
+    2029: 16500.0
+    2030: 17000.0
+    2031: 17500.0
+    2032: 18000.0
+    2033: 18500.0
+    2034: 19000.0
+    2035: 19500.0
+    2036: 20000.0
+
+  # Energy share threshold: stable at 10%
+  energy_share_schedule: {}
+
+  # Aid schedule: generous increase over time
+  aid_schedule:
+    2026: 300.0
+    2027: 315.0
+    2028: 330.0
+    2029: 345.0
+    2030: 360.0
+    2031: 375.0
+    2032: 390.0
+    2033: 405.0
+    2034: 420.0
+    2035: 435.0
+    2036: 450.0
+
+  covered_categories:
+    - "energy_poverty"

@@ -397,6 +397,77 @@ def get_vehicle_malus_pack_dir() -> Path:
     return _PACKS_DIR / "vehicle_malus"
 
 
+# ---------------------------------------------------------------------------
+# Energy poverty aid template pack
+# ---------------------------------------------------------------------------
+
+
+def list_energy_poverty_aid_templates() -> list[str]:
+    """List available energy poverty aid template variant names.
+
+    Returns:
+        List of variant names (without .yaml extension) that can be passed
+        to load_energy_poverty_aid_template().
+    """
+    energy_poverty_aid_dir = _PACKS_DIR / "energy_poverty_aid"
+    if not energy_poverty_aid_dir.exists():
+        return []
+
+    variants = []
+    for yaml_file in sorted(energy_poverty_aid_dir.glob("*.yaml")):
+        variants.append(yaml_file.stem)
+    return variants
+
+
+def load_energy_poverty_aid_template(variant_name: str) -> BaselineScenario:
+    """Load an energy poverty aid template by variant name.
+
+    Args:
+        variant_name: The variant name (e.g., "energy-poverty-cheque-energie").
+            Use list_energy_poverty_aid_templates() to see available variants.
+
+    Returns:
+        BaselineScenario loaded from the template YAML file.
+
+    Raises:
+        FileNotFoundError: If the variant does not exist.
+        ScenarioError: If the template file is invalid.
+    """
+    # Ensure energy_poverty_aid custom type is registered before loading YAML
+    import reformlab.templates.energy_poverty_aid  # noqa: F401
+
+    energy_poverty_aid_dir = _PACKS_DIR / "energy_poverty_aid"
+    template_path = energy_poverty_aid_dir / f"{variant_name}.yaml"
+
+    if not template_path.exists():
+        available = list_energy_poverty_aid_templates()
+        raise FileNotFoundError(
+            f"Energy poverty aid template '{variant_name}' not found. "
+            f"Available variants: {available}"
+        )
+
+    scenario = load_scenario_template(template_path)
+
+    from reformlab.templates.schema import BaselineScenario
+
+    if not isinstance(scenario, BaselineScenario):
+        raise TypeError(
+            f"Expected BaselineScenario, got {type(scenario).__name__}. "
+            "Energy poverty aid pack templates must be baseline scenarios."
+        )
+
+    return scenario
+
+
+def get_energy_poverty_aid_pack_dir() -> Path:
+    """Return the path to the energy poverty aid template pack directory.
+
+    Returns:
+        Path to the energy_poverty_aid pack directory.
+    """
+    return _PACKS_DIR / "energy_poverty_aid"
+
+
 __all__ = [
     # Carbon tax
     "get_carbon_tax_pack_dir",
@@ -418,4 +489,8 @@ __all__ = [
     "get_vehicle_malus_pack_dir",
     "list_vehicle_malus_templates",
     "load_vehicle_malus_template",
+    # Energy poverty aid
+    "get_energy_poverty_aid_pack_dir",
+    "list_energy_poverty_aid_templates",
+    "load_energy_poverty_aid_template",
 ]

@@ -1,0 +1,59 @@
+version: "1.0"
+
+name: "Energy Poverty Aid - Cheque Energie"
+description: "Simplified French cheque energie model. Income ceiling 11,000 EUR RFR/UC, 8% energy share threshold (TEE_3D), 150 EUR base aid with linear scaling by income ratio and energy burden severity."
+policy_type: energy_poverty_aid
+
+year_schedule:
+  start_year: 2026
+  end_year: 2036
+
+policy:
+  # Base rate schedule (unused for aid computation, required by PolicyParameters)
+  rate_schedule: {}
+
+  # Default income ceiling (EUR RFR/UC)
+  income_ceiling: 11000.0
+
+  # Default energy expenditure share threshold (8% TEE_3D)
+  energy_share_threshold: 0.08
+
+  # Default base aid amount (EUR, average cheque energie)
+  base_aid_amount: 150.0
+
+  # Cap on energy burden multiplier
+  max_energy_factor: 2.0
+
+  # Income ceiling schedule: stable at 11,000 EUR with slight inflation adjustment
+  income_ceiling_schedule:
+    2026: 11000.0
+    2027: 11200.0
+    2028: 11400.0
+    2029: 11600.0
+    2030: 11800.0
+    2031: 12000.0
+    2032: 12200.0
+    2033: 12400.0
+    2034: 12600.0
+    2035: 12800.0
+    2036: 13000.0
+
+  # Energy share threshold: stable at 8%
+  energy_share_schedule: {}
+
+  # Aid schedule: gradual increase over time
+  aid_schedule:
+    2026: 150.0
+    2027: 155.0
+    2028: 160.0
+    2029: 165.0
+    2030: 170.0
+    2031: 175.0
+    2032: 180.0
+    2033: 185.0
+    2034: 190.0
+    2035: 195.0
+    2036: 200.0
+
+  covered_categories:
+    - "energy_poverty"

@@ -29,16 +29,19 @@ from reformlab.templates.migration import (
 )
 from reformlab.templates.packs import (
     get_carbon_tax_pack_dir,
+    get_energy_poverty_aid_pack_dir,
     get_feebate_pack_dir,
     get_rebate_pack_dir,
     get_subsidy_pack_dir,
     get_vehicle_malus_pack_dir,
     list_carbon_tax_templates,
+    list_energy_poverty_aid_templates,
     list_feebate_templates,
     list_rebate_templates,
     list_subsidy_templates,
     list_vehicle_malus_templates,
     load_carbon_tax_template,
+    load_energy_poverty_aid_template,
     load_feebate_template,
     load_rebate_template,
     load_subsidy_template,
@@ -171,6 +174,10 @@ __all__ = [
     "get_vehicle_malus_pack_dir",
     "list_vehicle_malus_templates",
     "load_vehicle_malus_template",
+    # Pack utilities - Energy poverty aid
+    "get_energy_poverty_aid_pack_dir",
+    "list_energy_poverty_aid_templates",
+    "load_energy_poverty_aid_template",
     # Inference and registration
     "infer_policy_type",
     "register_policy_type",
