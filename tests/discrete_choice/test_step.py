@@ -285,7 +285,7 @@ class TestDiscreteChoiceStepExecution:
         )
         state = YearState(year=2025, data={"some_key": "some_value"})
 
-        with pytest.raises(DiscreteChoiceError, match="No PopulationData found"):
+        with pytest.raises(DiscreteChoiceError, match="PopulationData not found"):
             step.execute(2025, state)
 
     def test_adapter_failure_wrapped(

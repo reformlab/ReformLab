@@ -1,0 +1,120 @@
+record_id: f25ee0b6-bb95-4167-9e0e-ec68ad4e43bf
+created_at: '2026-03-06T23:31:00.840028+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 14
+  story_num: '1'
+  title: Story 14.1
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: gemini
+  model: gemini-2.5-flash
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-03-06T23:27:17.885650Z'
+  end_time: '2026-03-06T23:28:53.368650Z'
+  duration_ms: 95483
+  input_tokens: 0
+  output_tokens: 5723
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 22894
+  heading_count: 20
+  list_depth_max: 3
+  code_block_count: 11
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: 6.5'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes &amp; Readability
+  - ⚡ Performance &amp; Scalability
+  - 🐛 Correctness &amp; Safety
+  - 🔧 Maintainability Issues
+  - 🛠️ Suggested Fixes
+  - 1. Ambiguous Population Retrieval
+  - '... (rest of class) ...'
+  - 2. Fragile N-Households Determination
+  - 3. Performance/Memory Bottleneck in Reshape
+  - 4. ExpansionResult.population Typed as Any
+  - 5. Inconsistent Logging of Adapter Version Failure
+  - 6. Test Helper `_make_expansion` Uses Type Ignore
+  - 7. Inconsistently Alphabetized Imports
+  - 8. Docstring Ambiguity in `apply_alternative`
+  - 9. Redundant `isinstance(exc, Exception)` Check
+  - 10. Magic Numbers in Test Assertions
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.33
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: fb57de31b5b3
+findings:
+  total_count: 10
+  by_severity:
+    critical: 1
+    major: 3
+    minor: 6
+    nit: 0
+  by_category:
+    security: 0
+    performance: 1
+    correctness: 3
+    completeness: 0
+    clarity: 4
+    testability: 2
+  has_fix_count: 10
+  has_location_count: 10
+  has_evidence_count: 10
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 10
+  confidence_phrases_count: 0
+linguistic:
+  avg_sentence_length: 28.880434782608695
+  vocabulary_richness: 0.24237862250658637
+  flesch_reading_ease: -2.5502405600777536
+  vague_terms_count: 0
+  formality_score: 0.8
+  sentiment: negative
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.9
+  evidence_quality: 0.7
+  follows_template: true
+  internal_consistency: 0.92
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 13
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

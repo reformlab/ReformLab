@@ -9,9 +9,12 @@ Story 14-1: DiscreteChoiceStep with population expansion pattern.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
+
+if TYPE_CHECKING:
+    from reformlab.computation.types import PopulationData
 
 
 @dataclass(frozen=True)
@@ -84,6 +87,17 @@ class CostMatrix:
     table: pa.Table
     alternative_ids: tuple[str, ...]
 
+    def __post_init__(self) -> None:
+        """Validate cost matrix invariants."""
+        from reformlab.discrete_choice.errors import ReshapeError
+
+        col_names = tuple(self.table.column_names)
+        if col_names != self.alternative_ids:
+            raise ReshapeError(
+                f"CostMatrix column names {col_names} do not match "
+                f"alternative_ids {self.alternative_ids}"
+            )
+
     @property
     def n_households(self) -> int:
         """Number of households (N)."""
@@ -109,7 +123,7 @@ class ExpansionResult:
         alternative_ids: Tuple of alternative IDs in deterministic order.
     """
 
-    population: Any  # PopulationData — avoid circular import
+    population: PopulationData
     n_households: int
     n_alternatives: int
     alternative_ids: tuple[str, ...]

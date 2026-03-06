@@ -79,7 +79,7 @@ def expand_population(
                     f"Failed to apply alternative '{alternative.id}' "
                     f"to entity '{entity_key}': {exc}",
                     domain_name=domain.name,
-                    original_error=exc if isinstance(exc, Exception) else None,
+                    original_error=exc,
                 ) from exc
 
             # Add tracking columns
@@ -95,7 +95,16 @@ def expand_population(
             segments.append(modified)
 
         # Concatenate all segments into one expanded table
-        expanded_tables[entity_key] = pa.concat_tables(segments)
+        try:
+            expanded_tables[entity_key] = pa.concat_tables(segments)
+        except Exception as exc:
+            raise ExpansionError(
+                f"Failed to concatenate expanded segments for entity "
+                f"'{entity_key}': {exc}. Alternative attribute overrides may "
+                f"have produced incompatible schemas.",
+                domain_name=domain.name,
+                original_error=exc,
+            ) from exc
 
     # Determine N from the first entity table (or 0 if no tables)
     n_households = 0

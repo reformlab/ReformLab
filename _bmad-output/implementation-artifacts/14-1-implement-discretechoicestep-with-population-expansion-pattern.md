@@ -334,6 +334,8 @@ TDD approach: wrote types/errors/domain first, then expansion with tests, reshap
 - AC-9: Structured key=value logging at INFO (step_start, step_complete) and DEBUG (expansion_complete, compute_complete)
 - Edge cases tested: empty population (N=0), single alternative (M=1), single household (N=1), no attribute overrides, multi-entity population, adapter failure, missing population in state
 - Ruff, mypy strict, and full regression suite (2288 tests) all pass
+- [Code Review Synthesis] 8 fixes applied: reshape bijection checks, concat_tables error wrapping, CostMatrix __post_init__ validation, ExpansionResult.population typing, explicit population_key, redundant isinstance cleanup, docstring clarity, test type:ignore removal
+- [Code Review Synthesis] All 2288 tests pass, ruff clean, mypy strict clean after fixes
 
 ### File List
 
@@ -352,6 +354,25 @@ TDD approach: wrote types/errors/domain first, then expansion with tests, reshap
 - `tests/discrete_choice/test_reshape.py` — 8 tests for cost matrix reshape
 - `tests/discrete_choice/test_step.py` — 20 tests for step protocol, execution, logging
 
-#### Modified Files
-- None — purely additive implementation
+#### Modified Files (Code Review Synthesis)
+- `src/reformlab/discrete_choice/types.py` — Added CostMatrix.__post_init__ validation, fixed ExpansionResult.population typing
+- `src/reformlab/discrete_choice/reshape.py` — Added duplicate cell and missing cell detection
+- `src/reformlab/discrete_choice/expansion.py` — Wrapped pa.concat_tables in ExpansionError, removed redundant isinstance
+- `src/reformlab/discrete_choice/step.py` — Replaced _get_population with explicit population_key, removed redundant isinstance
+- `src/reformlab/discrete_choice/domain.py` — Clarified apply_alternative docstring
+- `tests/discrete_choice/test_reshape.py` — Replaced type:ignore with proper PopulationData
+- `tests/discrete_choice/test_types.py` — Replaced type:ignore with proper PopulationData
+- `tests/discrete_choice/test_step.py` — Updated error message match for population_key change
+
+#### Review Follow-ups (AI)
+- [ ] [AI-Review] MEDIUM: N-households determination uses first sorted entity key — fragile for multi-entity populations with different row counts (expansion.py, step.py). Consider adding explicit household_entity_key parameter in Story 14.3/14.4.
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-07
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 8.5 → Changes Requested
+- **Issues Found:** 11 (verified)
+- **Issues Fixed:** 8
+- **Action Items Created:** 1
 

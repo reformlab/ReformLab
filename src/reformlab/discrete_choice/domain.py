@@ -48,13 +48,15 @@ class DecisionDomain(Protocol):
     def apply_alternative(
         self, table: "pa.Table", alternative: "Alternative"
     ) -> "pa.Table":
-        """Modify population table attributes for a given alternative.
+        """Return a new table with attributes modified for a given alternative.
+
+        The input table is not modified (PyArrow tables are immutable).
 
         Args:
             table: Entity table from PopulationData.
             alternative: The alternative whose attribute overrides to apply.
 
         Returns:
-            Modified table with alternative-specific attribute values.
+            New table with alternative-specific attribute values.
         """
         ...

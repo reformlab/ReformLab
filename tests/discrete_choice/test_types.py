@@ -9,12 +9,17 @@ from __future__ import annotations
 import pyarrow as pa
 import pytest
 
+from reformlab.computation.types import PopulationData
 from reformlab.discrete_choice.errors import ExpansionError
 from reformlab.discrete_choice.types import (
     Alternative,
     ChoiceSet,
     CostMatrix,
     ExpansionResult,
+)
+
+_DUMMY_POPULATION = PopulationData(
+    tables={"menage": pa.table({"id": pa.array([0], type=pa.int64())})},
 )
 
 
@@ -104,7 +109,7 @@ class TestExpansionResult:
 
     def test_expansion_result_creation(self) -> None:
         er = ExpansionResult(
-            population=None,  # type: ignore[arg-type]
+            population=_DUMMY_POPULATION,
             n_households=3,
             n_alternatives=3,
             alternative_ids=("a", "b", "c"),
@@ -115,7 +120,7 @@ class TestExpansionResult:
 
     def test_expansion_result_immutable(self) -> None:
         er = ExpansionResult(
-            population=None,  # type: ignore[arg-type]
+            population=_DUMMY_POPULATION,
             n_households=1,
             n_alternatives=1,
             alternative_ids=("a",),

@@ -9,7 +9,7 @@ from __future__ import annotations
 import pyarrow as pa
 import pytest
 
-from reformlab.computation.types import ComputationResult
+from reformlab.computation.types import ComputationResult, PopulationData
 from reformlab.discrete_choice.errors import ReshapeError
 from reformlab.discrete_choice.expansion import (
     TRACKING_COL_ALTERNATIVE_ID,
@@ -21,8 +21,11 @@ from reformlab.discrete_choice.types import ExpansionResult
 
 def _make_expansion(n: int, m: int, alt_ids: tuple[str, ...]) -> ExpansionResult:
     """Helper to create ExpansionResult for reshape tests."""
+    dummy_population = PopulationData(
+        tables={"menage": pa.table({"id": pa.array(list(range(n)), type=pa.int64())})},
+    )
     return ExpansionResult(
-        population=None,  # type: ignore[arg-type]
+        population=dummy_population,
         n_households=n,
         n_alternatives=m,
         alternative_ids=alt_ids,

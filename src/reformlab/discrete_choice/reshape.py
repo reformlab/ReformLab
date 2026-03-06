@@ -105,7 +105,22 @@ def reshape_to_cost_matrix(
                 f"(expected 0..{m - 1})",
             )
 
+        if matrix[hh_idx][alt_idx] is not None:
+            raise ReshapeError(
+                f"Duplicate tracking pair (household={hh_idx}, alternative={alt_idx}) "
+                f"at row {row_idx}",
+            )
+
         matrix[hh_idx][alt_idx] = cost_array[row_idx]
+
+    # Verify all cells were filled (no missing tracking pairs)
+    for i in range(n):
+        for j in range(m):
+            if matrix[i][j] is None:
+                raise ReshapeError(
+                    f"Missing cost value for household={i}, alternative={j}. "
+                    f"Tracking column data is incomplete.",
+                )
 
     # Build PyArrow table with M named columns
     columns: dict[str, pa.Array] = {}

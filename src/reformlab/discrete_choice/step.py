@@ -19,7 +19,7 @@ from reformlab.discrete_choice.types import ChoiceSet
 
 if TYPE_CHECKING:
     from reformlab.computation.adapter import ComputationAdapter
-    from reformlab.computation.types import PolicyConfig, PopulationData
+    from reformlab.computation.types import PolicyConfig
     from reformlab.discrete_choice.domain import DecisionDomain
     from reformlab.orchestrator.types import YearState
 
@@ -60,6 +60,7 @@ class DiscreteChoiceStep:
         "_name",
         "_depends_on",
         "_description",
+        "_population_key",
     )
 
     def __init__(
@@ -70,6 +71,7 @@ class DiscreteChoiceStep:
         name: str = "discrete_choice",
         depends_on: tuple[str, ...] = (),
         description: str | None = None,
+        population_key: str = "population_data",
     ) -> None:
         """Initialize the discrete choice step.
 
@@ -80,6 +82,7 @@ class DiscreteChoiceStep:
             name: Step name for registry (default: "discrete_choice").
             depends_on: Names of steps this step depends on.
             description: Optional description for the step.
+            population_key: Key in YearState.data to retrieve PopulationData.
         """
         self._adapter = adapter
         self._domain = domain
@@ -90,6 +93,7 @@ class DiscreteChoiceStep:
             description
             or "Discrete choice step: population expansion and cost evaluation"
         )
+        self._population_key = population_key
 
     @property
     def name(self) -> str:
@@ -125,8 +129,16 @@ class DiscreteChoiceStep:
         alternatives = domain.alternatives
         choice_set = ChoiceSet(alternatives=alternatives)
 
-        # Extract population from state
-        population = self._get_population(state)
+        # Extract population from state using explicit key
+        from reformlab.computation.types import PopulationData
+
+        population = state.data.get(self._population_key)
+        if not isinstance(population, PopulationData):
+            raise DiscreteChoiceError(
+                f"PopulationData not found in YearState.data['{self._population_key}']. "
+                f"Available keys: {list(state.data.keys())}",
+                step_name=self._name,
+            )
 
         n = 0
         if population.tables:
@@ -154,7 +166,7 @@ class DiscreteChoiceStep:
                 year=year,
                 step_name=self._name,
                 domain_name=domain.name,
-                original_error=exc if isinstance(exc, Exception) else None,
+                original_error=exc,
             ) from exc
 
         expanded_n = expansion.population.row_count
@@ -204,7 +216,7 @@ class DiscreteChoiceStep:
                     year=year,
                     step_name=self._name,
                     domain_name=domain.name,
-                    original_error=exc if isinstance(exc, Exception) else None,
+                    original_error=exc,
                 ) from exc
 
             logger.debug(
@@ -228,7 +240,7 @@ class DiscreteChoiceStep:
                     year=year,
                     step_name=self._name,
                     domain_name=domain.name,
-                    original_error=exc if isinstance(exc, Exception) else None,
+                    original_error=exc,
                 ) from exc
 
         # Phase 4: Store in YearState
@@ -257,35 +269,3 @@ class DiscreteChoiceStep:
 
         return replace(state, data=new_data)
 
-    def _get_population(self, state: YearState) -> PopulationData:
-        """Extract population data from YearState.
-
-        Looks for PopulationData in state.data under common keys.
-
-        Args:
-            state: Current year state.
-
-        Returns:
-            PopulationData from state.
-
-        Raises:
-            DiscreteChoiceError: If no population data found in state.
-        """
-        from reformlab.computation.types import PopulationData
-
-        # Check for population data under known keys
-        for key in ("population_data", "population"):
-            value = state.data.get(key)
-            if isinstance(value, PopulationData):
-                return value
-
-        # Check if any value is PopulationData
-        for key, value in state.data.items():
-            if isinstance(value, PopulationData):
-                return value
-
-        raise DiscreteChoiceError(
-            f"No PopulationData found in YearState.data. "
-            f"Available keys: {list(state.data.keys())}",
-            step_name=self._name,
-        )
