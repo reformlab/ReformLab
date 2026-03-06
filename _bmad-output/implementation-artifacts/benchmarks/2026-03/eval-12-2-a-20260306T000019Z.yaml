@@ -1,0 +1,133 @@
+record_id: 17c5da27-afd7-4025-8a8a-6d806e385b34
+created_at: '2026-03-06T00:00:19.201195+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 12
+  story_num: '2'
+  title: Story 12.2
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: gemini
+  model: gemini-2.5-flash
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-03-05T23:56:50.134744Z'
+  end_time: '2026-03-05T23:57:56.760744Z'
+  duration_ms: 66626
+  input_tokens: 0
+  output_tokens: 4877
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 19508
+  heading_count: 33
+  list_depth_max: 3
+  code_block_count: 5
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: 10.1'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes &amp; Readability
+  - ⚡ Performance &amp; Scalability
+  - 🐛 Correctness &amp; Safety
+  - 🔧 Maintainability Issues
+  - 🛠️ Suggested Fixes
+  - 1. Implement Missing `PARAMETER_MISMATCH` Detection
+  - 2. Generalize Conflict Resolution Strategies
+  - 3. Update `PolicyPortfolio` `__post_init__` to Use Enum Values
+  - 4. Remove Unrelated File `scripts/check_ai_usage.py`
+  - 5. Add Missing Tests for `PARAMETER_MISMATCH` and Generalize Resolution Strategy Tests
+  - No automated fix provided. This requires manual implementation of new tests and generalization of existing tests.
+  - New tests should be added for PARAMETER_MISMATCH conflicts once the detection logic is implemented.
+  - Existing tests for resolution strategies should be expanded to cover SAME_POLICY_TYPE, OVERLAPPING_CATEGORIES,
+  - and other conflicting parameters, not just rate_schedule for overlapping years.
+  - 'Example of a new test for PARAMETER_MISMATCH (once implemented):'
+  - 'def test_detect_parameter_mismatch_conflict(self) -> None:'
+  - '"""Detect conflict when policies affect same category with different parameters."""'
+  - '# Setup policies that conflict on a parameter (e.g., covered_categories with different values for the same logical category)'
+  - 'tax1 = CarbonTaxParameters(rate_schedule={2026: 50}, covered_categories=("transport",))'
+  - 'tax2 = CarbonTaxParameters(rate_schedule={2026: 50}, covered_categories=("transport", "heating"))'
+  - policy1 = PolicyConfig(policy_type=PolicyType.CARBON_TAX, policy=tax1, name="Tax A")
+  - policy2 = PolicyConfig(policy_type=PolicyType.CARBON_TAX, policy=tax2, name="Tax B")
+  - portfolio = PolicyPortfolio(name="Parameter Mismatch", policies=(policy1, policy2))
+  - conflicts = validate_compatibility(portfolio)
+  - assert any(c.conflict_type == ConflictType.PARAMETER_MISMATCH for c in conflicts)
+  - 'Example of expanding existing tests:'
+  - The `test_first_wins_strategy` (and others) should be updated to verify that conflicting parameters
+  - beyond rate_schedule are also correctly resolved according to the strategy. For instance, if `SAME_POLICY_TYPE`
+  - conflict results in one policy being "removed" for `first_wins`, then assertions should reflect that removal.
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.31
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 445b345c3ae6
+findings:
+  total_count: 8
+  by_severity:
+    critical: 3
+    major: 3
+    minor: 2
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 3
+    completeness: 2
+    clarity: 2
+    testability: 1
+  has_fix_count: 4
+  has_location_count: 8
+  has_evidence_count: 7
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 1
+  confidence_phrases_count: 4
+linguistic:
+  avg_sentence_length: 24.53846153846154
+  vocabulary_richness: 0.26332288401253917
+  flesch_reading_ease: -9.487071180223609
+  vague_terms_count: 1
+  formality_score: 0.65
+  sentiment: mixed
+quality:
+  actionable_ratio: 0.63
+  specificity_score: 0.85
+  evidence_quality: 0.7
+  follows_template: true
+  internal_consistency: 0.55
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 5
+  lines_of_code_reviewed: null
+  test_coverage_delta: null
