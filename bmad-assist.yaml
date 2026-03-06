@@ -15,23 +15,23 @@ timeouts:
 
 providers:
   master:
-    provider: opencode
-    model: zai-coding-plan/glm-5
+    provider: claude-subprocess # or claude-sdk
+    model: opus # Fastest master model
 
   helper:
     provider: claude-subprocess
-    model: sonnet
+    model: haiku
 
 # Per-phase model assignment
 # GLM-5 creates/devs/synth/retro, Gemini+GLM-5+Codex validate/review
 phase_models:
   # --- Creative phases: GLM-5 ---
   create_story:
-    provider: opencode
-    model: zai-coding-plan/glm-5
+    provider: claude-subprocess
+    model: opus
   dev_story:
-    provider: opencode
-    model: zai-coding-plan/glm-5
+    provider: claude-subprocess
+    model: opus
 
   # --- Validation phases: Gemini + GLM-5 + Codex (three reviewers for synthesis) ---
   validate_story:
@@ -41,8 +41,8 @@ phase_models:
       model: gpt-5.3-codex
       reasoning_effort: high
   validate_story_synthesis:
-    provider: opencode
-    model: zai-coding-plan/glm-5
+    provider: claude-subprocess
+    model: opus
 
   # --- Review phases: Gemini + GLM-5 + Codex (three reviewers for synthesis) ---
   code_review:
@@ -52,13 +52,13 @@ phase_models:
       model: gpt-5.3-codex
       reasoning_effort: high
   code_review_synthesis:
-    provider: opencode
-    model: zai-coding-plan/glm-5
+    provider: claude-subprocess
+    model: opus
 
   # --- Retrospective: GLM-5 ---
   retrospective:
-    provider: opencode
-    model: zai-coding-plan/glm-5
+    provider: claude-subprocess
+    model: opus
 
 # Compiler configuration — balanced budgets
 # Restored closer to defaults after synthesis starvation warnings (2026-03-03).

@@ -48,7 +48,7 @@ Single source of truth for all epics and stories across the project. For detaile
 
 ---
 
-## EPIC-1: Computation Adapter and Data Layer
+## Epic 1: Computation Adapter and Data Layer
 
 **User outcome:** Analyst can connect OpenFisca outputs and open datasets to the framework with validated data contracts.
 
@@ -122,7 +122,7 @@ Single source of truth for all epics and stories across the project. For detaile
 
 ---
 
-## EPIC-2: Scenario Templates and Registry
+## Epic 2: Scenario Templates and Registry
 
 **User outcome:** Analyst can define, version, and reuse environmental policy scenarios without writing code.
 
@@ -188,7 +188,7 @@ Single source of truth for all epics and stories across the project. For detaile
 
 ---
 
-## EPIC-3: Step-Pluggable Dynamic Orchestrator and Vintage Tracking
+## Epic 3: Step-Pluggable Dynamic Orchestrator and Vintage Tracking
 
 **User outcome:** Analyst can run multi-year projections with vintage tracking and get year-by-year panel results.
 
@@ -259,7 +259,7 @@ Single source of truth for all epics and stories across the project. For detaile
 
 ---
 
-## EPIC-4: Indicators and Scenario Comparison
+## Epic 4: Indicators and Scenario Comparison
 
 **User outcome:** Analyst can compute and compare distributional, welfare, and fiscal indicators across scenarios.
 
@@ -314,7 +314,7 @@ Single source of truth for all epics and stories across the project. For detaile
 
 ---
 
-## EPIC-5: Governance and Reproducibility
+## Epic 5: Governance and Reproducibility
 
 **User outcome:** Analyst can trust and reproduce any simulation run through immutable manifests and lineage tracking.
 
@@ -369,7 +369,7 @@ Single source of truth for all epics and stories across the project. For detaile
 
 ---
 
-## EPIC-6: Interfaces (Python API, Notebooks, Early No-Code GUI)
+## Epic 6: Interfaces (Python API, Notebooks, Early No-Code GUI)
 
 **User outcome:** User can operate the full analysis workflow from Python API, notebooks, or a no-code GUI.
 
@@ -425,7 +425,7 @@ Single source of truth for all epics and stories across the project. For detaile
 
 ---
 
-## EPIC-7: Trusted Outputs and External Pilot Validation
+## Epic 7: Trusted Outputs and External Pilot Validation
 
 **User outcome:** External pilot user can validate simulation credibility against published benchmarks and run the carbon-tax workflow independently.
 
@@ -473,7 +473,7 @@ Single source of truth for all epics and stories across the project. For detaile
 
 ---
 
-## EPIC-8: Post-Phase-1 Validation Spikes
+## Epic 8: Post-Phase-1 Validation Spikes
 
 **User outcome:** Platform developers confirm that the adapter layer works end-to-end with real OpenFisca and at production scale.
 
@@ -666,7 +666,7 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 ---
 
-## EPIC-11: Realistic Population Generation Library
+## Epic 11: Realistic Population Generation Library
 
 **User outcome:** Analyst can build a credible French household population from real public data sources, choosing merge methods with transparent assumptions, and producing a population with all attributes needed for policy simulation.
 
@@ -853,7 +853,7 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 ---
 
-## EPIC-12: Policy Portfolio Model
+## Epic 12: Policy Portfolio Model
 
 **User outcome:** Analyst can compose multiple individual policy templates into a named portfolio and run simulations with bundled policies applied together.
 
@@ -975,7 +975,7 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 ---
 
-## EPIC-13: Additional Policy Templates + Extensibility
+## Epic 13: Additional Policy Templates + Extensibility
 
 **User outcome:** Analyst can define custom policy templates and use new built-in templates beyond the Phase 1 set, with all templates portfolio-ready.
 
@@ -1075,7 +1075,7 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 ---
 
-## EPIC-14: Discrete Choice Model for Household Decisions
+## Epic 14: Discrete Choice Model for Household Decisions
 
 **User outcome:** Analyst can run multi-year simulations where households make investment decisions (vehicle, heating, renovation) in response to policy signals, with decisions feeding back into subsequent years.
 
@@ -1245,7 +1245,7 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 ---
 
-## EPIC-15: Calibration Engine
+## Epic 15: Calibration Engine
 
 **User outcome:** Analyst can calibrate discrete choice taste parameters against observed data so that simulated transition rates match reality.
 
@@ -1367,7 +1367,7 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 ---
 
-## EPIC-16: Replication Package Export
+## Epic 16: Replication Package Export
 
 **User outcome:** Researcher can export a self-contained package that reproduces any simulation on a clean environment.
 
@@ -1473,7 +1473,7 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 ---
 
-## EPIC-17: GUI Showcase Product
+## Epic 17: GUI Showcase Product
 
 **User outcome:** Non-coding analyst can operate the complete Phase 2 workflow through a web GUI: build populations from real data, design policy portfolios, run simulations, browse persistent results, and compare across portfolios.
 

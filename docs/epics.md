@@ -25,7 +25,7 @@ Single source of truth for all epics and stories across the project. For detaile
 | Epic 3 | Step-Pluggable Dynamic Orchestrator and Vintage Tracking | 1 | done | 7 |
 | Epic 4 | Indicators and Scenario Comparison | 1 | done | 6 |
 | Epic 5 | Governance and Reproducibility | 1 | done | 6 |
-| Epic 6 | Interfaces (Python API, Notebooks, Early No-Code GUI) | 1 | done | 7 |
+| Epic 6 | Interfaces (Python API, Notebooks, Early No-Code GUI) | 1 | done | 8 |
 | Epic 7 | Trusted Outputs and External Pilot Validation | 1 | done | 5 |
 | Epic 8 | Post-Phase-1 Validation Spikes | 1 | done | 2 |
 | Epic 9 | OpenFisca Adapter Hardening | 1 | done | 5 |
@@ -659,7 +659,7 @@ _Status: done_
 **PRD Refs:** FR30, FR35
 **Original ID:** BKL-603
 
-### Story 6.4a: Build static GUI prototype
+### Story 6.4: Build static GUI prototype
 
 **Status:** done
 **Priority:** P0
@@ -668,7 +668,7 @@ _Status: done_
 **PRD Refs:** FR32
 **Original ID:** BKL-604a
 
-### Story 6.4b: Wire GUI prototype to FastAPI backend
+### Story 6.5: Wire GUI prototype to FastAPI backend
 
 **Status:** done
 **Priority:** P0
@@ -677,7 +677,7 @@ _Status: done_
 **PRD Refs:** FR32
 **Original ID:** BKL-604b
 
-### Story 6.5: Add export actions in API/GUI for CSV/Parquet outputs
+### Story 6.6: Add export actions in API/GUI for CSV/Parquet outputs
 
 **Status:** done
 **Priority:** P0
@@ -686,7 +686,7 @@ _Status: done_
 **PRD Refs:** FR33
 **Original ID:** BKL-605
 
-### Story 6.6: Improve operational error UX
+### Story 6.7: Improve operational error UX
 
 **Status:** done
 **Priority:** P1
@@ -694,6 +694,14 @@ _Status: done_
 **Type:** Task
 **PRD Refs:** FR4, FR27
 **Original ID:** BKL-606
+
+### Story 6.8: Rework notebook UX (policy-first)
+
+**Status:** done
+**Priority:** P0
+**Estimate:** 3 SP
+**Type:** Story
+**PRD Refs:** FR34
 
 ### Epic-Level Acceptance Criteria
 

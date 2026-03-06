@@ -63,11 +63,11 @@ development_status:
   6-1-implement-stable-python-api: done
   6-2-build-quickstart-notebook: done
   6-3-build-advanced-notebook: done
-  6-4a-build-static-gui-prototype: done
-  6-4b-wire-gui-prototype-to-backend: done
-  6-5-add-export-actions: done
-  6-6-improve-operational-error-ux: done
-  6-7-rework-notebook-ux-policy-first: done
+  6-4-build-static-gui-prototype: done
+  6-5-wire-gui-prototype-to-backend: done
+  6-6-add-export-actions: done
+  6-7-improve-operational-error-ux: done
+  6-8-rework-notebook-ux-policy-first: done
   epic-6-retrospective: done
   # Epic 7
   epic-7: done
@@ -102,7 +102,7 @@ development_status:
   11-3-implement-eurostat-ademe-sdes-data-source-loaders: done
   11-4-define-mergemethod-protocol-and-uniform-distribution-method: done
   11-5-implement-ipf-and-conditional-sampling-merge-methods: done
-  11-6-build-populationpipeline-builder-with-assumption-recording: in-progress
+  11-6-build-populationpipeline-builder-with-assumption-recording: done
   11-7-implement-population-validation-against-known-marginals: done
   11-8-build-french-household-example-pipeline-and-pedagogical-notebook: backlog
   epic-11-retrospective: optional
