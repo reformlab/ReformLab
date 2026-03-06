@@ -21,15 +21,9 @@ while merge assumptions are structured with nested metadata.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Iterator
+from typing import Any, Iterator
 
 from reformlab.population.methods.base import MergeAssumption
-
-if TYPE_CHECKING:
-    # PipelineResult is defined in pipeline.py, which imports this module
-    # Use TYPE_CHECKING to avoid circular import
-    pass
-
 
 # ====================================================================
 # Pipeline assumption types

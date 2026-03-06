@@ -503,7 +503,7 @@ class PopulationPipeline:
                 step.label,
                 tables[step.label].num_rows,
                 len(tables[step.label].column_names),
-                (time.monotonic() - step_start) * 1000.0,
+                step_logs[-1].duration_ms,
             )
 
             step_index += 1

@@ -148,6 +148,7 @@ def mock_loader_shared() -> DataSourceLoader:
                     13000.0,
                     9000.0,
                     16000.0,
+                    11000.0,
                 ],
                 type=pa.float64(),
             ),

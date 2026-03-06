@@ -554,18 +554,3 @@ class TestPipelineAssumptionChainIntegrationWithManifest:
         assert entry["value"]["pipeline_step_label"] == "income_vehicles"
         assert entry["value"]["pipeline_description"] == "French household population 2024"
 
-
-class TestPipelineResultAssumptionAccess:
-    """Test assumption access through PipelineResult."""
-
-    def test_result_assumption_chain_records_accessible(self) -> None:
-        """PipelineResult provides access to assumption_chain.records."""
-        # This will be tested in test_pipeline.py when PipelineResult is implemented
-        # Placeholder for test organization
-        pass
-
-    def test_result_assumption_chain_to_governance_entries_works(self) -> None:
-        """PipelineResult.assumption_chain.to_governance_entries() works end-to-end."""
-        # This will be tested in test_pipeline.py when PipelineResult is implemented
-        # Placeholder for test organization
-        pass
