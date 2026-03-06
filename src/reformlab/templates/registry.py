@@ -17,6 +17,7 @@ Story 12.4: Extend Scenario Registry with Portfolio Versioning
 from __future__ import annotations
 
 import hashlib
+import logging
 import os
 import tempfile
 from dataclasses import dataclass, replace
@@ -48,6 +49,8 @@ from reformlab.templates.schema import (
     SubsidyParameters,
     YearSchedule,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class RegistryError(Exception):
@@ -416,7 +419,7 @@ class ScenarioRegistry:
         incoming_type = _get_registry_type_for_artifact(scenario)
 
         # Generate version ID based on artifact type
-        if is_portfolio:
+        if isinstance(scenario, PolicyPortfolio):
             version_id = _generate_portfolio_version_id(scenario)
         else:
             version_id = _generate_version_id(scenario)
@@ -594,10 +597,13 @@ class ScenarioRegistry:
         return loaded
 
     def list_scenarios(self) -> list[str]:
-        """List all scenario names in the registry.
+        """List all entry names in the registry (scenarios and portfolios).
+
+        Returns all registry entries regardless of type. Use list_portfolios()
+        or get_entry_type() to filter by type.
 
         Returns:
-            List of scenario names.
+            List of entry names.
         """
         if not self._path.exists():
             return []
@@ -749,6 +755,10 @@ class ScenarioRegistry:
                 if self.get_entry_type(entry_name) == "portfolio":
                     result.append(entry_name)
             except RegistryError:
+                logger.warning(
+                    "event=list_portfolios_skip entry=%s reason=corrupted_metadata",
+                    entry_name,
+                )
                 continue
         return result
 
@@ -1001,8 +1011,9 @@ class ScenarioRegistry:
                 scenario_name=name,
             )
 
-        # Get the scenario
+        # Get the scenario (portfolio case is guarded above)
         scenario = self.get(name, version_id)
+        assert not isinstance(scenario, PolicyPortfolio)  # Guarded above
         scenario_name = _validate_scenario_name(name)
 
         # Convert to dict for migration
@@ -1205,16 +1216,19 @@ class ScenarioRegistry:
         versions.sort(key=lambda entry: entry.timestamp)
         return versions
 
-    def _save_scenario_file(
+    def _save_entry_file(
         self,
-        scenario: BaselineScenario | ReformScenario,
+        artifact: BaselineScenario | ReformScenario | PolicyPortfolio,
         path: Path,
     ) -> None:
-        """Save a scenario to a YAML file atomically.
+        """Save a scenario or portfolio to a YAML file atomically.
 
         Uses atomic write pattern (temp file + replace) for single-machine safety.
         """
-        data = _scenario_to_dict_for_registry(scenario)
+        if isinstance(artifact, PolicyPortfolio):
+            data = _portfolio_to_dict_for_registry(artifact)
+        else:
+            data = _scenario_to_dict_for_registry(artifact)
 
         # Write to temp file first, then replace
         fd, tmp_path = tempfile.mkstemp(
@@ -1232,11 +1246,19 @@ class ScenarioRegistry:
                 os.unlink(tmp_path)
             raise
 
-    def _load_scenario_file(self, path: Path) -> BaselineScenario | ReformScenario:
-        """Load a scenario from a YAML file."""
+    def _load_entry_file(
+        self, path: Path,
+    ) -> BaselineScenario | ReformScenario | PolicyPortfolio:
+        """Load a scenario or portfolio from a YAML file.
+
+        Dispatches to portfolio or scenario deserializer based on
+        _registry_type marker in the stored data.
+        """
         with open(path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
+        if isinstance(data, dict) and data.get("_registry_type") == "portfolio":
+            return _dict_to_portfolio_from_registry(data)
         return self._dict_to_scenario(data)
 
     def _save_metadata(self, metadata: dict[str, Any], path: Path) -> None:
