@@ -1,13 +1,17 @@
-"""Scenario registry with immutable versioning.
+"""Scenario and portfolio registry with immutable versioning.
 
-This module provides a file-based scenario registry that stores versioned
-scenario definitions with content-addressable version IDs.
+This module provides a file-based registry that stores versioned scenario
+definitions and policy portfolios with content-addressable version IDs.
 
 Key features:
 - Content-addressable version IDs (SHA-256 prefix)
-- Immutable scenarios: once saved, definitions cannot be modified
+- Immutable artifacts: once saved, a version cannot be modified
 - Version history tracking with timestamps and change descriptions
 - File-based persistence for portability and version control
+- Portfolio support: PolicyPortfolio objects alongside BaselineScenario/ReformScenario
+- Type-distinguishable listing via entry_type field and list_portfolios()
+
+Story 12.4: Extend Scenario Registry with Portfolio Versioning
 """
 
 from __future__ import annotations
@@ -28,6 +32,11 @@ from reformlab.templates.migration import (
     MigrationReport,
     migrate_scenario_dict,
 )
+from reformlab.templates.portfolios.composition import (
+    dict_to_portfolio,
+    portfolio_to_dict,
+)
+from reformlab.templates.portfolios.portfolio import PolicyPortfolio
 from reformlab.templates.schema import (
     BaselineScenario,
     CarbonTaxParameters,
@@ -137,12 +146,18 @@ class ScenarioVersion:
 
 @dataclass(frozen=True)
 class RegistryEntry:
-    """Metadata for a scenario in the registry."""
+    """Metadata for a registry entry (scenario or portfolio).
+
+    Attributes:
+        entry_type: One of "baseline", "reform", "portfolio", or "scenario"
+            (default for backward compatibility).
+    """
 
     name: str
     created: datetime
     latest_version: str
     versions: tuple[ScenarioVersion, ...]
+    entry_type: str = "scenario"
 
 
 # Default registry location
@@ -195,6 +210,90 @@ def _scenario_to_dict_for_registry(
     data["policy"] = _policy_to_dict(scenario.policy)
 
     return data
+
+
+def _portfolio_to_dict_for_registry(portfolio: PolicyPortfolio) -> dict[str, Any]:
+    """Convert a portfolio to a dictionary for registry storage.
+
+    Uses portfolio_to_dict() as base but normalizes $schema to a stable
+    relative path for cross-machine version ID determinism, and adds
+    _registry_type marker for type discrimination.
+    """
+    data = portfolio_to_dict(portfolio)
+    # Normalize $schema to stable relative path (portfolio_to_dict emits
+    # machine-specific absolute path via Path(__file__))
+    data["$schema"] = "portfolio.schema.json"
+    # Add registry type marker for standalone version file identification
+    data["_registry_type"] = "portfolio"
+    return data
+
+
+def _dict_to_portfolio_from_registry(data: dict[str, Any]) -> PolicyPortfolio:
+    """Reconstruct a PolicyPortfolio from registry YAML dict.
+
+    Strips _registry_type marker before delegating to dict_to_portfolio().
+    """
+    clean = {k: v for k, v in data.items() if k != "_registry_type"}
+    return dict_to_portfolio(clean)
+
+
+def _generate_portfolio_version_id(portfolio: PolicyPortfolio) -> str:
+    """Generate deterministic version ID from portfolio content.
+
+    Uses SHA-256 hash of the serialized portfolio content (with sorted keys)
+    to produce a 12-character version ID. Includes _registry_type in the hash
+    to prevent collisions with scenario version IDs.
+
+    Args:
+        portfolio: The portfolio to hash.
+
+    Returns:
+        A 12-character hexadecimal version ID.
+    """
+    content = _portfolio_to_dict_for_registry(portfolio)
+    yaml_str = yaml.dump(content, sort_keys=True)
+    return hashlib.sha256(yaml_str.encode("utf-8")).hexdigest()[:12]
+
+
+def _infer_registry_type(scenario_name: str, metadata: dict[str, Any], registry_path: Path) -> str:
+    """Infer _registry_type for legacy entries without the field.
+
+    Loads the latest version file and checks for baseline_ref to determine
+    if the entry is a baseline or reform scenario.
+
+    Args:
+        scenario_name: The entry name.
+        metadata: The metadata dict.
+        registry_path: The registry root path.
+
+    Returns:
+        "reform" if baseline_ref present, "baseline" otherwise.
+    """
+    latest_version = metadata.get("latest_version", "")
+    if not latest_version:
+        return "baseline"
+
+    version_file = registry_path / scenario_name / "versions" / f"{latest_version}.yaml"
+    if not version_file.exists():
+        return "baseline"
+
+    with open(version_file, encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+
+    if isinstance(data, dict) and data.get("baseline_ref"):
+        return "reform"
+    return "baseline"
+
+
+def _get_registry_type_for_artifact(
+    artifact: BaselineScenario | ReformScenario | PolicyPortfolio,
+) -> str:
+    """Determine _registry_type string for an artifact."""
+    if isinstance(artifact, PolicyPortfolio):
+        return "portfolio"
+    if isinstance(artifact, ReformScenario):
+        return "reform"
+    return "baseline"
 
 
 def _validate_scenario_name(name: str) -> str:
@@ -289,23 +388,23 @@ class ScenarioRegistry:
 
     def save(
         self,
-        scenario: BaselineScenario | ReformScenario,
+        scenario: BaselineScenario | ReformScenario | PolicyPortfolio,
         name: str,
         change_description: str = "",
     ) -> str:
-        """Save a scenario to the registry.
+        """Save a scenario or portfolio to the registry.
 
-        If the scenario content matches an existing version, the existing
+        If the content matches an existing version, the existing
         version ID is returned (idempotent save).
 
         Args:
-            scenario: The scenario to save.
-            name: The name to store the scenario under.
+            scenario: The scenario or portfolio to save.
+            name: The name to store the entry under.
             change_description: Optional description of changes from the
                 previous version.
 
         Returns:
-            The version ID of the saved scenario.
+            The version ID of the saved entry.
 
         Raises:
             RegistryError: If there's a conflict with existing data.
@@ -313,18 +412,46 @@ class ScenarioRegistry:
         self.initialize()
 
         scenario_name = _validate_scenario_name(name)
-        version_id = _generate_version_id(scenario)
+        is_portfolio = isinstance(scenario, PolicyPortfolio)
+        incoming_type = _get_registry_type_for_artifact(scenario)
+
+        # Generate version ID based on artifact type
+        if is_portfolio:
+            version_id = _generate_portfolio_version_id(scenario)
+        else:
+            version_id = _generate_version_id(scenario)
+
         scenario_dir = self._path / scenario_name
         versions_dir = scenario_dir / "versions"
         version_file = versions_dir / f"{version_id}.yaml"
         metadata_file = scenario_dir / "metadata.yaml"
 
+        # Type-consistency guard: reject type mismatches with existing entries
+        if metadata_file.exists():
+            existing_metadata = self._load_metadata(metadata_file)
+            stored_type = existing_metadata.get("_registry_type")
+            if stored_type is None:
+                # Legacy entry: infer type
+                stored_type = _infer_registry_type(
+                    scenario_name, existing_metadata, self._path
+                )
+            if stored_type != incoming_type:
+                raise RegistryError(
+                    summary="Entry type mismatch",
+                    reason=(
+                        f"Registry entry '{scenario_name}' is a {stored_type}, "
+                        f"but received a {incoming_type}"
+                    ),
+                    fix="Use a different name or save as the correct type",
+                    scenario_name=scenario_name,
+                )
+
         # Check if this exact version already exists
         if version_file.exists():
             # Verify content matches (idempotent save)
-            existing = self._load_scenario_file(version_file)
+            existing = self._load_entry_file(version_file)
             self._ensure_version_integrity(
-                scenario=existing,
+                artifact=existing,
                 expected_version_id=version_id,
                 scenario_name=scenario_name,
             )
@@ -367,8 +494,8 @@ class ScenarioRegistry:
         else:
             created = now
 
-        # Save the scenario file atomically
-        self._save_scenario_file(scenario, version_file)
+        # Save the version file atomically
+        self._save_entry_file(scenario, version_file)
 
         # Build version entry
         new_version = {
@@ -382,12 +509,14 @@ class ScenarioRegistry:
         if metadata_file.exists():
             metadata = self._load_metadata(metadata_file)
             metadata["latest_version"] = version_id
+            metadata["_registry_type"] = incoming_type
             metadata["versions"].append(new_version)
         else:
             metadata = {
                 "name": scenario_name,
                 "created": created.isoformat(),
                 "latest_version": version_id,
+                "_registry_type": incoming_type,
                 "versions": [new_version],
             }
 
@@ -399,18 +528,18 @@ class ScenarioRegistry:
         self,
         name: str,
         version_id: str | None = None,
-    ) -> BaselineScenario | ReformScenario:
-        """Get a scenario by name and optional version.
+    ) -> BaselineScenario | ReformScenario | PolicyPortfolio:
+        """Get a scenario or portfolio by name and optional version.
 
         Args:
-            name: The scenario name.
+            name: The entry name.
             version_id: The version ID. If None, returns the latest version.
 
         Returns:
-            The scenario.
+            The scenario or portfolio.
 
         Raises:
-            ScenarioNotFoundError: If the scenario doesn't exist.
+            ScenarioNotFoundError: If the entry doesn't exist.
             VersionNotFoundError: If the version doesn't exist.
         """
         scenario_name = _validate_scenario_name(name)
@@ -456,9 +585,9 @@ class ScenarioRegistry:
                 version_id=version_id,
             )
 
-        loaded = self._load_scenario_file(version_file)
+        loaded = self._load_entry_file(version_file)
         self._ensure_version_integrity(
-            scenario=loaded,
+            artifact=loaded,
             expected_version_id=version_id,
             scenario_name=scenario_name,
         )
@@ -538,16 +667,16 @@ class ScenarioRegistry:
         return version_file.exists()
 
     def get_entry(self, name: str) -> RegistryEntry:
-        """Get full registry entry metadata for a scenario.
+        """Get full registry entry metadata for a scenario or portfolio.
 
         Args:
-            name: The scenario name.
+            name: The entry name.
 
         Returns:
-            RegistryEntry with full metadata.
+            RegistryEntry with full metadata including entry_type.
 
         Raises:
-            ScenarioNotFoundError: If the scenario doesn't exist.
+            ScenarioNotFoundError: If the entry doesn't exist.
         """
         scenario_name = _validate_scenario_name(name)
         scenario_dir = self._path / scenario_name
@@ -564,42 +693,87 @@ class ScenarioRegistry:
         metadata = self._load_metadata(metadata_file)
         versions = self._versions_from_metadata(metadata, scenario_name=scenario_name)
 
+        entry_type = self.get_entry_type(name)
+
         return RegistryEntry(
             name=metadata["name"],
             created=datetime.fromisoformat(metadata["created"]),
             latest_version=metadata["latest_version"],
             versions=tuple(versions),
+            entry_type=entry_type,
         )
+
+    def get_entry_type(self, name: str) -> str:
+        """Get the entry type for a registry entry.
+
+        Args:
+            name: The entry name.
+
+        Returns:
+            One of "baseline", "reform", or "portfolio".
+
+        Raises:
+            ScenarioNotFoundError: If the entry doesn't exist.
+        """
+        scenario_name = _validate_scenario_name(name)
+        scenario_dir = self._path / scenario_name
+        metadata_file = scenario_dir / "metadata.yaml"
+
+        if not metadata_file.exists():
+            raise ScenarioNotFoundError(scenario_name, self.list_scenarios())
+
+        metadata = self._load_metadata(metadata_file)
+        stored_type = metadata.get("_registry_type")
+
+        if stored_type is not None:
+            return str(stored_type)
+
+        # Legacy entry: infer type from content
+        inferred = _infer_registry_type(scenario_name, metadata, self._path)
+
+        # Persist inferred type for future reads
+        metadata["_registry_type"] = inferred
+        self._save_metadata(metadata, metadata_file)
+
+        return inferred
+
+    def list_portfolios(self) -> list[str]:
+        """List all portfolio names in the registry.
+
+        Returns:
+            List of portfolio entry names.
+        """
+        result = []
+        for entry_name in self.list_scenarios():
+            try:
+                if self.get_entry_type(entry_name) == "portfolio":
+                    result.append(entry_name)
+            except RegistryError:
+                continue
+        return result
 
     def clone(
         self,
         name: str,
         version_id: str | None = None,
         new_name: str | None = None,
-    ) -> BaselineScenario | ReformScenario:
-        """Clone a scenario with a new identity.
+    ) -> BaselineScenario | ReformScenario | PolicyPortfolio:
+        """Clone a scenario or portfolio with a new identity.
 
-        Creates an in-memory copy of a scenario with a new name. The clone
-        is independent of the original and can be modified and saved as a
-        new scenario.
+        Creates an in-memory copy with a new name. The clone is independent
+        of the original and can be modified and saved as a new entry.
 
         Args:
-            name: Source scenario name.
+            name: Source entry name.
             version_id: Source version ID (None = latest version).
             new_name: Name for the clone (None = auto-generate as "{name}-clone").
 
         Returns:
-            A new scenario instance with identical parameters but new identity.
+            A new instance with identical parameters but new identity.
 
         Raises:
-            ScenarioNotFoundError: If the source scenario doesn't exist.
+            ScenarioNotFoundError: If the source entry doesn't exist.
             VersionNotFoundError: If the specified version doesn't exist.
-
-        Example:
-            >>> registry.save(my_scenario, "carbon-tax-2026")
-            >>> clone = registry.clone("carbon-tax-2026", new_name="variant")
-            >>> modified = replace(clone, description="New variant")
-            >>> registry.save(modified, "variant", "Cloned from carbon-tax-2026")
         """
         original = self.get(name, version_id)
         clone_name = new_name or f"{name}-clone"
@@ -808,8 +982,25 @@ class ScenarioRegistry:
         Raises:
             ScenarioNotFoundError: If scenario doesn't exist.
             VersionNotFoundError: If version doesn't exist.
-            RegistryError: If migration fails due to breaking version change.
+            RegistryError: If migration fails or entry is a portfolio.
         """
+        # Portfolio migration guard
+        try:
+            entry_type = self.get_entry_type(name)
+        except ScenarioNotFoundError:
+            entry_type = None
+
+        if entry_type == "portfolio":
+            raise RegistryError(
+                summary="Migration not supported for portfolios",
+                reason=(
+                    f"Registry entry '{name}' is a portfolio. "
+                    "Portfolio migration is not yet implemented"
+                ),
+                fix="Portfolio entries cannot be migrated in this version",
+                scenario_name=name,
+            )
+
         # Get the scenario
         scenario = self.get(name, version_id)
         scenario_name = _validate_scenario_name(name)
@@ -941,12 +1132,16 @@ class ScenarioRegistry:
     def _ensure_version_integrity(
         self,
         *,
-        scenario: BaselineScenario | ReformScenario,
+        artifact: BaselineScenario | ReformScenario | PolicyPortfolio,
         expected_version_id: str,
         scenario_name: str,
     ) -> None:
-        """Verify scenario content still matches its content-addressable ID."""
-        actual_version_id = _generate_version_id(scenario)
+        """Verify artifact content still matches its content-addressable ID."""
+        if isinstance(artifact, PolicyPortfolio):
+            actual_version_id = _generate_portfolio_version_id(artifact)
+        else:
+            actual_version_id = _generate_version_id(artifact)
+
         if actual_version_id != expected_version_id:
             raise RegistryError(
                 summary="Registry integrity check failed",

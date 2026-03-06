@@ -47,3 +47,14 @@
 | high | Merged `ComputationResult` fields underspecified**: Task 3.8 only said "create a single `ComputationResult` with the merged output table" without specifying `adapter_version`, `period`, `metadata`, or `entity_tables`. Verified that `ComputationResult` has 5 required/optional fields. | Expanded Task 3.8 with explicit values for all `ComputationResult` fields. |
 | medium | Task 2.3 "non-empty" vs >=2 inconsistency**: Task 2.3 said "non-empty" but `PolicyPortfolio.__post_init__` enforces `len(policies) < 2`. Defensive check should match the actual invariant. | Changed to "at least 2 entries" with reference to the >=2 invariant. |
 | medium | Brittle line-number references**: References to "line 342-346" (runner.py) and "line 233-235" (panel.py) are fragile. | Replaced with behavior-based references (`_execute_step()`, `from_orchestrator_result()`). |
+
+## Story 12-4 (2026-03-06)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| high | Type model contradiction**: Stored `_registry_type` used binary `"scenario" | Changed stored values to `"baseline"\|"reform"\|"portfolio"` throughout Tasks 2.4, 4.1, 4.2, and Dev Notes. Added legacy inference algorithm (check `baseline_ref` in version content). |
+| high | Missing type-consistency guard**: No protection against saving a portfolio under an existing scenario name or vice versa. | Added Task 2.7 with type-consistency check on save, raising `RegistryError` on mismatch. |
+| high | `$schema` determinism risk**: `portfolio_to_dict()` emits `Path(__file__).parent.parent / "schema" / "portfolio.schema.json"` — a machine-specific absolute path included in version ID hash input. | Updated Task 1.1 to explicitly normalize `$schema` to a stable relative path before hashing. Added note in Dev Notes version ID section. |
+| medium | `migrate()` regression**: After widening `get()` return type, calling `migrate()` on a portfolio entry would crash in `_scenario_to_dict_for_registry()`. | Added Task 5.6 with early guard raising `RegistryError`. Noted that `get_baseline()` and `list_reforms()` are naturally safe via `isinstance` checks. |
+| medium | Legacy inference under-specified**: Task 4.1 said "examine version content" without specifying algorithm. | Specified: load latest version, check for `baseline_ref` (present → `"reform"`, absent → `"baseline"`). Added persist-back to metadata. |
+| low | Elevate dual `_registry_type` storage**: Requirement to store marker in both metadata and version files was buried in Dev Notes. | Already covered by Task 1.1's `_registry_type` marker addition to the serialized dict. No additional change needed. |
