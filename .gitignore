@@ -69,6 +69,8 @@ logs/
 # === Data artifacts ===
 *.parquet
 data/
+!data/populations/
+!data/populations/demo-*.csv
 !frontend/src/data/
 !frontend/src/data/*.ts
 
