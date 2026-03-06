@@ -1,0 +1,116 @@
+record_id: ee5b5b26-8d9a-4d7d-947d-d1c00ab2ac5a
+created_at: '2026-03-06T19:45:06.132572+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 13
+  story_num: '3'
+  title: Story 13.3
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: gemini
+  model: gemini-2.5-flash
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-03-06T19:42:34.818232Z'
+  end_time: '2026-03-06T19:44:04.833232Z'
+  duration_ms: 90015
+  input_tokens: 0
+  output_tokens: 4142
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 16571
+  heading_count: 16
+  list_depth_max: 3
+  code_block_count: 1
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: 11.4'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes &amp; Readability
+  - ⚡ Performance &amp; Scalability
+  - 🐛 Correctness &amp; Safety
+  - 🔧 Maintainability Issues
+  - 🛠️ Suggested Fixes
+  - 1. Address False Dependency Claims
+  - 2. Vectorize PyArrow Operations
+  - 3. Create Missing README.md for Template Pack
+  - 4. Remove Docstring Artifacts
+  - 5. Strengthen Decile Assignment Test
+  - 6. Adjust Golden Value Test Tolerance
+  - 7. Improve Error Handling for Uncastable Energy Expenditure
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.33
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 731887f283e2
+findings:
+  total_count: 9
+  by_severity:
+    critical: 3
+    major: 3
+    minor: 3
+    nit: 0
+  by_category:
+    security: 0
+    performance: 1
+    correctness: 3
+    completeness: 1
+    clarity: 2
+    testability: 2
+  has_fix_count: 9
+  has_location_count: 9
+  has_evidence_count: 9
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 2
+  confidence_phrases_count: 2
+linguistic:
+  avg_sentence_length: 28.164383561643834
+  vocabulary_richness: 0.2893968871595331
+  flesch_reading_ease: 1.6949366130558303
+  vague_terms_count: 2
+  formality_score: 0.4
+  sentiment: negative
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.9
+  evidence_quality: 0.8
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 13
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

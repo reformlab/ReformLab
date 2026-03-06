@@ -162,7 +162,7 @@ def compute_energy_poverty_aid(
     incomes = pc.fill_null(pc.cast(incomes_raw, pa.float64()), 0.0)
     income_deciles = assign_income_deciles(incomes)
 
-    # Year-indexed schedule lookups
+    # Year-indexed schedule lookups with runtime validation
     effective_ceiling = policy.income_ceiling_schedule.get(
         year, policy.income_ceiling
     )
@@ -171,6 +171,19 @@ def compute_energy_poverty_aid(
     )
     effective_base_aid = policy.aid_schedule.get(year, policy.base_aid_amount)
 
+    if effective_ceiling <= 0:
+        msg = (
+            f"Effective income_ceiling for year {year} is {effective_ceiling} "
+            f"(from schedule). Must be > 0."
+        )
+        raise TemplateError(msg)
+    if effective_threshold <= 0:
+        msg = (
+            f"Effective energy_share_threshold for year {year} is "
+            f"{effective_threshold} (from schedule). Must be > 0."
+        )
+        raise TemplateError(msg)
+
     # Get energy expenditure — missing column treated as 0 (no one eligible)
     if "energy_expenditure" in population.column_names:
         raw_col = population.column("energy_expenditure")
@@ -178,29 +191,31 @@ def compute_energy_poverty_aid(
             raw_col = raw_col.combine_chunks()
         try:
             energy_exp = pc.fill_null(pc.cast(raw_col, pa.float64()), 0.0)
-        except (pa.ArrowInvalid, pa.ArrowNotImplementedError):
-            energy_exp = pa.array([0.0] * num_households, type=pa.float64())
+        except (pa.ArrowInvalid, pa.ArrowNotImplementedError) as exc:
+            msg = (
+                f"Column 'energy_expenditure' has type {raw_col.type} "
+                f"which cannot be cast to float64. "
+                f"Provide numeric energy expenditure values."
+            )
+            raise TemplateError(msg) from exc
     else:
         energy_exp = pa.array([0.0] * num_households, type=pa.float64())
 
-    # Compute energy expenditure share
+    # Compute energy expenditure share (vectorized)
     # For income <= 0: treat share as exceeding threshold (eligible for max aid)
     # For energy_expenditure <= 0: share = 0 (not eligible)
-    income_list = incomes.to_pylist()
-    energy_list = energy_exp.to_pylist()
+    energy_positive = pc.greater(energy_exp, 0.0)
+    income_positive = pc.greater(incomes, 0.0)
 
-    shares: list[float] = []
-    for inc, eng in zip(income_list, energy_list):
-        if eng <= 0:
-            shares.append(0.0)
-        elif inc <= 0:
-            # Zero/negative income with positive energy expenditure:
-            # treat as exceeding threshold
-            shares.append(effective_threshold + 1.0)
-        else:
-            shares.append(eng / inc)
-
-    energy_share_array = pa.array(shares, type=pa.float64())
+    energy_share_array = pc.if_else(
+        pc.invert(energy_positive),
+        0.0,
+        pc.if_else(
+            pc.invert(income_positive),
+            effective_threshold + 1.0,
+            pc.divide(energy_exp, incomes),
+        ),
+    )
 
     # Compute eligibility: income < ceiling AND energy_share >= threshold
     income_below_ceiling = pc.less(incomes, effective_ceiling)
@@ -209,29 +224,28 @@ def compute_energy_poverty_aid(
     )
     is_eligible = pc.and_(income_below_ceiling, share_at_or_above_threshold)
 
-    # Compute aid amounts for eligible households
     # income_ratio = (ceiling - income) / ceiling, clamped to [0, 1]
     # For income <= 0: income_ratio = 1.0
-    income_ratios: list[float] = []
-    for inc in income_list:
-        if inc <= 0:
-            income_ratios.append(1.0)
-        else:
-            ratio = (effective_ceiling - inc) / effective_ceiling
-            income_ratios.append(max(0.0, min(1.0, ratio)))
-
-    income_ratio_array = pa.array(income_ratios, type=pa.float64())
+    raw_ratio = pc.divide(
+        pc.subtract(pa.scalar(effective_ceiling), incomes),
+        pa.scalar(effective_ceiling),
+    )
+    clamped_ratio = pc.max_element_wise(
+        pc.min_element_wise(raw_ratio, 1.0), 0.0
+    )
+    income_ratio_array = pc.if_else(
+        income_positive, clamped_ratio, 1.0
+    )
 
     # energy_burden_factor = min(energy_share / threshold, max_energy_factor)
-    energy_factors: list[float] = []
-    for share in shares:
-        if share <= 0:
-            energy_factors.append(0.0)
-        else:
-            factor = share / effective_threshold
-            energy_factors.append(min(factor, policy.max_energy_factor))
-
-    energy_factor_array = pa.array(energy_factors, type=pa.float64())
+    energy_factor_array = pc.if_else(
+        pc.greater(energy_share_array, 0.0),
+        pc.min_element_wise(
+            pc.divide(energy_share_array, pa.scalar(effective_threshold)),
+            pa.scalar(policy.max_energy_factor),
+        ),
+        0.0,
+    )
 
     # aid = base_aid * income_ratio * energy_burden_factor (for eligible only)
     raw_aid = pc.multiply(
@@ -240,13 +254,7 @@ def compute_energy_poverty_aid(
     )
 
     # Zero out ineligible households
-    eligible_list = is_eligible.to_pylist()
-    aid_list = raw_aid.to_pylist()
-    final_aid = [
-        aid_list[i] if eligible_list[i] else 0.0
-        for i in range(num_households)
-    ]
-    aid_amount = pa.array(final_aid, type=pa.float64())
+    aid_amount = pc.if_else(is_eligible, raw_aid, 0.0)
 
     total_cost = _sum_array(aid_amount)
     eligible_count = int(pc.sum(pc.cast(is_eligible, pa.int64())).as_py() or 0)

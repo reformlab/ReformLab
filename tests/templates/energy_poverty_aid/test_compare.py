@@ -20,6 +20,7 @@ from reformlab.templates.energy_poverty_aid.compute import (
     EnergyPovertyAidResult,
     compute_energy_poverty_aid,
 )
+from reformlab.templates.exceptions import TemplateError
 from reformlab.templates.schema import (
     BaselineScenario,
     CarbonTaxParameters,
@@ -105,7 +106,7 @@ class TestRunEnergyPovertyAidBatch:
                 policy=cheque_energie_params,
             ),
         ]
-        with pytest.raises(ValueError, match="Duplicate scenario name"):
+        with pytest.raises(TemplateError, match="Duplicate scenario name"):
             run_energy_poverty_aid_batch(
                 sample_population, scenarios, year=2026
             )

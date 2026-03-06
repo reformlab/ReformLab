@@ -135,6 +135,7 @@ class TestPortfolioIntegration:
             ),
         )
         conflicts = validate_compatibility(portfolio)
-        assert len(conflicts) >= 1
+        assert len(conflicts) >= 2
         conflict_types = [c.conflict_type.value for c in conflicts]
+        assert "same_policy_type" in conflict_types
         assert "overlapping_years" in conflict_types

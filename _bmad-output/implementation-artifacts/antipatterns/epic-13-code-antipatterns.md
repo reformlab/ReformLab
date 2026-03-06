@@ -29,3 +29,15 @@
 | low | Missing `from __future__ import annotations` in `vehicle_malus/__init__.py` | Added the import. |
 | low | Story "Source File Touchpoints" incomplete | Deferred as follow-up task (documentation-only). |
 | low | `aggregate_vehicle_malus_by_decile` uses Python loops | Deferred — matches feebate pattern exactly, and the aggregation path processes only 10 decile buckets (not per-row). |
+
+## Story 13-3 (2026-03-06)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| high | Silent fallback to zeros on invalid `energy_expenditure` column type | Changed `except` block to raise `TemplateError` with column/type context instead of silently falling back to zeros. |
+| high | Schedule overrides not validated — `income_ceiling_schedule` or `energy_share_schedule` value of 0 causes divide-by-zero | Added runtime validation of `effective_ceiling` and `effective_threshold` after schedule lookup, raising `TemplateError` if <= 0. |
+| high | Bare `ValueError` for duplicate scenario names — project rules require `TemplateError` | Changed to `TemplateError`. Updated matching test to expect `TemplateError`. |
+| high | Python row loops in compute path instead of vectorized PyArrow operations | Replaced all `to_pylist()` + Python loops with vectorized `pc.if_else`, `pc.divide`, `pc.subtract`, `pc.multiply`, `pc.min_element_wise`, `pc.max_element_wise` operations. |
+| medium | Weak AC7(b) portfolio test assertion — only checks `"overlapping_years"`, not `"same_policy_type"` | Changed `len(conflicts) >= 1` to `>= 2` and added assertion for both `"same_policy_type"` and `"overlapping_years"` conflict types. |
+| medium | AC7(c) evidence gap — no execution-path test proving adapter receives `asdict()` payload | Deferred as review follow-up task — requires orchestrator-level integration test setup beyond story scope. |
+| medium | Comparison table column slug collisions possible | Deferred — matches vehicle_malus pattern exactly, low practical risk. Noted as follow-up. |

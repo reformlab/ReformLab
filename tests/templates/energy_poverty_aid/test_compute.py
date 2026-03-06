@@ -374,6 +374,51 @@ class TestComputeEnergyPovertyAid:
         expected = 150.0 * (6000.0 / 11000.0) * 2.0
         assert result.aid_amount.to_pylist()[0] == pytest.approx(expected, abs=0.01)
 
+    def test_schedule_zero_ceiling_raises(self) -> None:
+        """Schedule value of 0 for income_ceiling raises TemplateError at compute time."""
+        pop = pa.table(
+            {
+                "household_id": pa.array([1], type=pa.int64()),
+                "income": pa.array([5000.0], type=pa.float64()),
+                "energy_expenditure": pa.array([600.0], type=pa.float64()),
+            }
+        )
+        params = EnergyPovertyAidParameters(
+            rate_schedule={},
+            income_ceiling_schedule={2027: 0.0},
+        )
+        with pytest.raises(TemplateError, match="Effective income_ceiling"):
+            compute_energy_poverty_aid(pop, params, year=2027)
+
+    def test_schedule_zero_threshold_raises(self) -> None:
+        """Schedule value of 0 for energy_share_threshold raises TemplateError."""
+        pop = pa.table(
+            {
+                "household_id": pa.array([1], type=pa.int64()),
+                "income": pa.array([5000.0], type=pa.float64()),
+                "energy_expenditure": pa.array([600.0], type=pa.float64()),
+            }
+        )
+        params = EnergyPovertyAidParameters(
+            rate_schedule={},
+            energy_share_schedule={2027: 0.0},
+        )
+        with pytest.raises(TemplateError, match="Effective energy_share_threshold"):
+            compute_energy_poverty_aid(pop, params, year=2027)
+
+    def test_uncastable_energy_expenditure_raises(self) -> None:
+        """Non-numeric energy_expenditure column raises TemplateError."""
+        pop = pa.table(
+            {
+                "household_id": pa.array([1], type=pa.int64()),
+                "income": pa.array([5000.0], type=pa.float64()),
+                "energy_expenditure": pa.array(["not_a_number"], type=pa.string()),
+            }
+        )
+        params = EnergyPovertyAidParameters(rate_schedule={})
+        with pytest.raises(TemplateError, match="cannot be cast to float64"):
+            compute_energy_poverty_aid(pop, params, year=2026)
+
     def test_boundary_income_at_ceiling_not_eligible(self) -> None:
         """AC #2: income == income_ceiling -> NOT eligible (strict < comparison)."""
         pop = pa.table(

@@ -19,6 +19,7 @@ from reformlab.templates.energy_poverty_aid.compute import (
     aggregate_energy_poverty_aid_by_decile,
     compute_energy_poverty_aid,
 )
+from reformlab.templates.exceptions import TemplateError
 
 if TYPE_CHECKING:
     from reformlab.templates.schema import BaselineScenario
@@ -64,7 +65,7 @@ def run_energy_poverty_aid_batch(
     seen: set[str] = set()
     for name in names:
         if name in seen:
-            raise ValueError(
+            raise TemplateError(
                 f"Duplicate scenario name '{name}' in batch — "
                 f"scenario names must be unique"
             )
