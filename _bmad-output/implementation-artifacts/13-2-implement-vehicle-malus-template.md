@@ -287,3 +287,16 @@ Claude Opus 4.6
 - `tests/templates/vehicle_malus/test_compare.py` — CREATE: Batch/comparison tests (6 tests)
 - `tests/templates/vehicle_malus/test_pack.py` — CREATE: Pack loading + portfolio integration tests (8 tests)
 - `tests/templates/test_custom_templates.py` — MODIFY: Renamed test examples to avoid collision with production vehicle_malus registration
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-06
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 8.6 → Changes Requested
+- **Issues Found:** 7
+- **Issues Fixed:** 5
+- **Action Items Created:** 2
+
+#### Review Follow-ups (AI)
+- [ ] [AI-Review] MEDIUM: Vectorize `aggregate_vehicle_malus_by_decile()` decile aggregation loop using `pa.Table.group_by` (src/reformlab/templates/vehicle_malus/compute.py)
+- [ ] [AI-Review] LOW: Update story "Source File Touchpoints" table to list all actually-modified files including schema.py, loader.py, composition.py, portfolio.py, portfolio_step.py (_bmad-output/implementation-artifacts/13-2-implement-vehicle-malus-template.md)

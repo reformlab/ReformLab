@@ -16,3 +16,16 @@
 | low | `Any` type hints where `PolicyType | Changed to concrete `PolicyType \| CustomPolicyType` union type, added `CustomPolicyType` to module-level imports. |
 | low | Cross-module import of private `_CUSTOM_*` registries | Not addressed — internal coupling within same subsystem (templates). Noted for future improvement if registries grow. |
 | low | Hardcoded `_BUILTIN_TYPES` tuple in `composition.py` | Not addressed — low risk, new built-in types are rare. Added reverse lookup concern as follow-up task. |
+
+## Story 13-2 (2026-03-06)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| high | Python row loops in compute path instead of vectorized PyArrow operations | Replaced Python loops with `pc.cast`, `pc.fill_null`, `pc.subtract`, `pc.max_element_wise`, `pc.multiply` vectorized operations. Also handles non-numeric emissions gracefully via try/except on `pc.cast`. |
+| medium | Non-idempotent import-time registration — `importlib.reload()` crashes | Added guard checking `_CUSTOM_POLICY_TYPES` and `_CUSTOM_PARAMETERS_TO_POLICY_TYPE` before registration. |
+| medium | Batch silently overwrites duplicate scenario names | Added duplicate name detection with `ValueError` before batch execution. |
+| medium | Weak test assertion for AC7 portfolio integration | Changed from `isinstance(conflicts, tuple)` to asserting `len(conflicts) >= 1` and checking `"overlapping_years"` in conflict types. |
+| medium | `__import__("dataclasses").field(...)` is opaque | Changed to proper `from dataclasses import dataclass, field` import. |
+| low | Missing `from __future__ import annotations` in `vehicle_malus/__init__.py` | Added the import. |
+| low | Story "Source File Touchpoints" incomplete | Deferred as follow-up task (documentation-only). |
+| low | `aggregate_vehicle_malus_by_decile` uses Python loops | Deferred — matches feebate pattern exactly, and the aggregation path processes only 10 decile buckets (not per-row). |

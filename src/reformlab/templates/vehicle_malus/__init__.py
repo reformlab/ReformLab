@@ -11,7 +11,14 @@ Story 13.2 — Models the French malus ecologique using a simplified linear
 rate approach appropriate for population-level microsimulation.
 """
 
-from reformlab.templates.schema import register_custom_template, register_policy_type
+from __future__ import annotations
+
+from reformlab.templates.schema import (
+    _CUSTOM_PARAMETERS_TO_POLICY_TYPE,
+    _CUSTOM_POLICY_TYPES,
+    register_custom_template,
+    register_policy_type,
+)
 from reformlab.templates.vehicle_malus.compare import (
     ComparisonResult,
     compare_vehicle_malus_decile_impacts,
@@ -28,8 +35,14 @@ from reformlab.templates.vehicle_malus.compute import (
 
 # Register vehicle_malus as a custom policy type at import time.
 # This is a "built-in custom" type shipped with the package.
-_vehicle_malus_type = register_policy_type("vehicle_malus")
-register_custom_template(_vehicle_malus_type, VehicleMalusParameters)
+# Idempotent: skip registration if already registered (e.g. module reload).
+if "vehicle_malus" not in _CUSTOM_POLICY_TYPES:
+    _vehicle_malus_type = register_policy_type("vehicle_malus")
+    register_custom_template(_vehicle_malus_type, VehicleMalusParameters)
+elif VehicleMalusParameters not in _CUSTOM_PARAMETERS_TO_POLICY_TYPE:
+    register_custom_template(
+        _CUSTOM_POLICY_TYPES["vehicle_malus"], VehicleMalusParameters
+    )
 
 __all__ = [
     # Result types

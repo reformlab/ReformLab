@@ -129,11 +129,13 @@ class TestPortfolioIntegration:
         )
         assert len(portfolio.policies) == 3
 
-        # validate_compatibility should work without error
+        # validate_compatibility should detect overlapping years
         conflicts = validate_compatibility(portfolio)
-        # Returns conflicts (tuple) — overlapping_years expected since
-        # all policies share year 2026 in rate_schedule
         assert isinstance(conflicts, tuple)
+        assert len(conflicts) >= 1
+        # At least one conflict should be about overlapping years
+        conflict_types = {c.conflict_type.value for c in conflicts}
+        assert "overlapping_years" in conflict_types
 
     def test_validate_compatibility_detects_overlap(self) -> None:
         """AC #7: validate_compatibility detects overlapping categories."""

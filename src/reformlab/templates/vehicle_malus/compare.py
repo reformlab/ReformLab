@@ -56,6 +56,17 @@ def run_vehicle_malus_batch(
     """
     from reformlab.templates.vehicle_malus.compute import VehicleMalusParameters
 
+    # Detect duplicate scenario names that would silently overwrite results
+    names = [s.name for s in scenarios]
+    seen: set[str] = set()
+    for name in names:
+        if name in seen:
+            raise ValueError(
+                f"Duplicate scenario name '{name}' in batch — "
+                f"scenario names must be unique"
+            )
+        seen.add(name)
+
     results: dict[str, VehicleMalusResult] = {}
     for scenario in scenarios:
         if not isinstance(scenario.policy, VehicleMalusParameters):

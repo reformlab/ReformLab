@@ -12,7 +12,7 @@ linear rate approach: malus = max(0, emissions - threshold) * rate_per_gkm.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import pyarrow as pa
 import pyarrow.compute as pc
@@ -49,9 +49,7 @@ class VehicleMalusParameters(PolicyParameters):
 
     emission_threshold: float = 118.0
     malus_rate_per_gkm: float = 50.0
-    threshold_schedule: dict[int, float] = __import__("dataclasses").field(
-        default_factory=dict
-    )
+    threshold_schedule: dict[int, float] = field(default_factory=dict)
 
 
 # ====================================================================
@@ -126,28 +124,20 @@ def compute_vehicle_malus(
 
     # Get vehicle emissions — missing column treated as 0 emissions (no malus)
     if "vehicle_emissions_gkm" in population.column_names:
-        emissions_col = population.column("vehicle_emissions_gkm")
-        emission_values: list[float] = []
-        for value in emissions_col:
-            raw = value.as_py()
-            if raw is None:
-                emission_values.append(0.0)
-            else:
-                emission_values.append(float(raw))
+        raw_col = population.column("vehicle_emissions_gkm").combine_chunks()
+        try:
+            emissions_array = pc.fill_null(
+                pc.cast(raw_col, pa.float64()), 0.0
+            )
+        except (pa.ArrowInvalid, pa.ArrowNotImplementedError):
+            emissions_array = pa.array([0.0] * num_households, type=pa.float64())
     else:
-        emission_values = [0.0] * num_households
+        emissions_array = pa.array([0.0] * num_households, type=pa.float64())
 
-    # Compute malus per household
-    malus_values: list[float] = []
-    for emissions in emission_values:
-        excess = emissions - effective_threshold
-        if excess > 0:
-            malus_values.append(excess * effective_rate)
-        else:
-            malus_values.append(0.0)
-
-    malus_array = pa.array(malus_values, type=pa.float64())
-    emissions_array = pa.array(emission_values, type=pa.float64())
+    # Compute malus per household: max(0, emissions - threshold) * rate
+    excess = pc.subtract(emissions_array, effective_threshold)
+    clamped = pc.max_element_wise(excess, 0.0)
+    malus_array = pc.multiply(clamped, effective_rate)
     total_revenue = _sum_array(malus_array)
 
     return VehicleMalusResult(
