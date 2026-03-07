@@ -15,8 +15,9 @@ tool_guard:
 timeouts:
   default: 600
   retries: 2
-  create_story: 900
+  create_story: 1200
   dev_story: 3600
+  code_review_synthesis: 900
 
 providers:
   master:
@@ -47,7 +48,7 @@ phase_models:
       reasoning_effort: high
   validate_story_synthesis:
     provider: claude-subprocess
-    model: opus
+    model: sonnet
 
   # --- Review phases: Gemini + GLM-5 + Codex (three reviewers for synthesis) ---
   code_review:
@@ -58,7 +59,7 @@ phase_models:
       reasoning_effort: high
   code_review_synthesis:
     provider: claude-subprocess
-    model: opus
+    model: sonnet
 
   # --- Retrospective: GLM-5 ---
   retrospective:
@@ -71,10 +72,10 @@ phase_models:
 compiler:
   source_context:
     budgets:
-      create_story: 100000
+      create_story: 120000
       validate_story: 15000
       validate_story_synthesis: 15000
-      dev_story: 30000
+      dev_story: 50000
       code_review: 40000
       code_review_synthesis: 40000
       default: 40000
