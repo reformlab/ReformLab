@@ -47,3 +47,15 @@ class ReproducibilityValidationError(Exception):
     """
 
     pass
+
+
+class ReplicationPackageError(Exception):
+    """Raised when replication package export fails.
+
+    Indicates invalid simulation result state, missing required artifacts,
+    or invalid output path configuration.
+
+    Story 16.1 / FR54.
+    """
+
+    pass

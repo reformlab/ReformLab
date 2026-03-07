@@ -10,6 +10,7 @@ Public API:
     ManifestValidationError: Raised on schema validation failures
     LineageIntegrityError: Raised on lineage validation failures
     ReproducibilityValidationError: Raised on reproducibility input contract errors
+    ReplicationPackageError: Raised on replication package export failures
     LineageGraph: Lineage graph query model
     get_lineage: Extract lineage graph from manifest
     validate_lineage: Validate bidirectional lineage integrity
@@ -30,6 +31,10 @@ Public API:
     MemoryEstimate: Memory usage estimate for simulation runs
     estimate_memory_usage: Estimate memory usage for a simulation
     get_available_memory: Get available system memory
+    PackageArtifact: Single artifact entry in a replication package index
+    PackageIndex: Manifest index for a replication package
+    ReplicationPackageMetadata: Metadata returned after package export
+    export_replication_package: Export a simulation run as a replication package
 """
 
 from reformlab.governance.benchmarking import (
@@ -52,6 +57,7 @@ from reformlab.governance.errors import (
     LineageIntegrityError,
     ManifestIntegrityError,
     ManifestValidationError,
+    ReplicationPackageError,
     ReproducibilityValidationError,
 )
 from reformlab.governance.hashing import (
@@ -71,6 +77,12 @@ from reformlab.governance.memory import (
     MemoryEstimate,
     estimate_memory_usage,
     get_available_memory,
+)
+from reformlab.governance.replication import (
+    PackageArtifact,
+    PackageIndex,
+    ReplicationPackageMetadata,
+    export_replication_package,
 )
 from reformlab.governance.reproducibility import (
     ReproducibilityResult,
@@ -108,4 +120,9 @@ __all__ = [
     "MemoryEstimate",
     "estimate_memory_usage",
     "get_available_memory",
+    "PackageArtifact",
+    "PackageIndex",
+    "ReplicationPackageMetadata",
+    "ReplicationPackageError",
+    "export_replication_package",
 ]

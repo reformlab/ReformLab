@@ -205,6 +205,36 @@ class SimulationResult:
                 fix="Use one of the supported indicator types: distributional, geographic, welfare, fiscal",
             )
 
+    def export_replication_package(
+        self,
+        output_path: Path,
+        *,
+        compress: bool = False,
+    ) -> Any:
+        """Export this simulation run as a self-contained replication package.
+
+        Delegates to ``governance.export_replication_package()``. Creates a
+        structured directory (or ZIP archive) with panel output, policy
+        configuration, scenario metadata, and run manifest, plus a
+        ``package-index.json`` with SHA-256 hashes for all artifacts.
+
+        Args:
+            output_path: Existing directory where the package is written.
+            compress: If True, produce a ``.zip`` archive.
+
+        Returns:
+            ReplicationPackageMetadata with package location and index.
+
+        Raises:
+            ReplicationPackageError: If the result is not successful or
+                panel output is missing.
+
+        Story 16.1 / FR54.
+        """
+        from reformlab.governance.replication import export_replication_package
+
+        return export_replication_package(self, output_path, compress=compress)
+
     def export_manifest(self, path: str | Path) -> Path:
         """Export run manifest to JSON file.
 
