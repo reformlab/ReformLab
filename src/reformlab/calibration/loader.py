@@ -154,6 +154,11 @@ def _table_to_target_set(table: pa.Table, path: Path) -> CalibrationTargetSet:
     to_state_col: list[str] = table.column("to_state").to_pylist()
     observed_rate_col: list[float] = table.column("observed_rate").to_pylist()
     source_label_col: list[str] = table.column("source_label").to_pylist()
+    weight_col: list[float] = (
+        table.column("weight").to_pylist()
+        if "weight" in table.column_names
+        else [1.0] * n_rows
+    )
 
     targets: list[CalibrationTarget] = []
     for row in range(n_rows):
@@ -165,6 +170,7 @@ def _table_to_target_set(table: pa.Table, path: Path) -> CalibrationTargetSet:
                 to_state=to_state_col[row],
                 observed_rate=float(observed_rate_col[row]),
                 source_label=source_label_col[row],
+                weight=float(weight_col[row]),
             )
         except Exception as exc:
             raise CalibrationTargetLoadError(
@@ -245,6 +251,7 @@ def _load_yaml(path: Path) -> CalibrationTargetSet:
                 observed_rate=float(item["observed_rate"]),
                 source_label=item["source_label"],
                 source_metadata=dict(item.get("source_metadata") or {}),
+                weight=float(item.get("weight", 1.0)),
             )
         except Exception as exc:
             raise CalibrationTargetLoadError(

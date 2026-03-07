@@ -4,19 +4,29 @@ Defines CalibrationTarget and CalibrationTargetSet as immutable frozen
 dataclasses representing observed real-world transition rates (e.g., vehicle
 adoption from ADEME/SDES) used to calibrate discrete choice taste parameters.
 
+Also provides CalibrationConfig, CalibrationResult, and RateComparison
+used by the calibration engine (Story 15.2).
+
 Story 15.1 / FR52 — Define calibration target format and load observed transition rates.
+Story 15.2 / FR52 — CalibrationEngine with objective function optimization.
 """
 
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+import pyarrow as pa
 
 from reformlab.calibration.errors import (
+    CalibrationOptimizationError,
     CalibrationTargetLoadError,
     CalibrationTargetValidationError,
 )
+
+if TYPE_CHECKING:
+    from reformlab.discrete_choice.types import CostMatrix, TasteParameters
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +46,8 @@ class CalibrationTarget:
             Must be in [0.0, 1.0].
         source_label: Human-readable data source identifier (e.g., ``'SDES vehicle fleet 2022'``).
         source_metadata: Optional key-value metadata (dataset id, URL, vintage year, etc.).
+        weight: Non-negative weight for this target in the objective function.
+            Defaults to 1.0. A weight of 0.0 effectively excludes the target.
     """
 
     domain: str
@@ -45,6 +57,7 @@ class CalibrationTarget:
     observed_rate: float
     source_label: str
     source_metadata: dict[str, str] = field(default_factory=dict)
+    weight: float = 1.0
 
     def __post_init__(self) -> None:
         if not self.domain:
@@ -56,6 +69,10 @@ class CalibrationTarget:
         if not (0.0 <= self.observed_rate <= 1.0):
             raise CalibrationTargetValidationError(
                 f"observed_rate={self.observed_rate!r} is out of range; must be in [0.0, 1.0]"
+            )
+        if self.weight < 0.0:
+            raise CalibrationTargetValidationError(
+                f"weight={self.weight!r} must be >= 0.0"
             )
 
 
@@ -146,3 +163,138 @@ class CalibrationTargetSet:
             "source": source_label,
             "is_default": False,
         }
+
+
+# ============================== Story 15.2: Engine Types ==============================
+
+
+@dataclass(frozen=True)
+class RateComparison:
+    """Per-target comparison of observed vs simulated transition rates.
+
+    Attributes:
+        from_state: Origin state for this comparison.
+        to_state: Destination alternative for this comparison.
+        observed_rate: The target observed rate from institutional data.
+        simulated_rate: The rate produced by the optimized model.
+        absolute_error: Absolute difference |simulated_rate - observed_rate|.
+        within_tolerance: True if absolute_error <= CalibrationConfig.rate_tolerance.
+    """
+
+    from_state: str
+    to_state: str
+    observed_rate: float
+    simulated_rate: float
+    absolute_error: float
+    within_tolerance: bool
+
+
+@dataclass(frozen=True)
+class CalibrationResult:
+    """Result of a calibration optimization run.
+
+    Contains the optimized β coefficient, diagnostics, and per-target
+    rate comparisons for governance and audit purposes.
+
+    Attributes:
+        optimized_parameters: TasteParameters with the calibrated beta_cost.
+        domain: The calibrated decision domain.
+        objective_type: ``'mse'`` or ``'log_likelihood'``.
+        objective_value: Final objective function value at the optimized point.
+        convergence_flag: True if the optimizer converged successfully.
+        iterations: Number of optimizer iterations performed.
+        gradient_norm: Absolute gradient norm at convergence, or None for
+            gradient-free methods (e.g., Nelder-Mead).
+        method: scipy optimizer method used (e.g., ``'L-BFGS-B'``).
+        rate_comparisons: Per-target observed vs simulated rate comparisons.
+        all_within_tolerance: True if all rate_comparisons are within_tolerance.
+    """
+
+    optimized_parameters: TasteParameters
+    domain: str
+    objective_type: str
+    objective_value: float
+    convergence_flag: bool
+    iterations: int
+    gradient_norm: float | None
+    method: str
+    rate_comparisons: tuple[RateComparison, ...]
+    all_within_tolerance: bool
+
+    def to_governance_entry(self, *, source_label: str = "calibration_engine") -> dict[str, Any]:
+        """Return an AssumptionEntry-compatible dict for governance manifests.
+
+        Given a CalibrationResult, when called, returns a dict compatible
+        with the governance manifest format (Story 15.4).
+        """
+        return {
+            "key": "calibration_result",
+            "value": {
+                "domain": self.domain,
+                "optimized_beta_cost": self.optimized_parameters.beta_cost,
+                "objective_type": self.objective_type,
+                "final_objective_value": self.objective_value,
+                "convergence_flag": self.convergence_flag,
+                "iterations": self.iterations,
+                "method": self.method,
+                "all_within_tolerance": self.all_within_tolerance,
+                "n_targets": len(self.rate_comparisons),
+            },
+            "source": source_label,
+            "is_default": False,
+        }
+
+
+@dataclass(frozen=True)
+class CalibrationConfig:
+    """Configuration for a single-domain calibration run.
+
+    Attributes:
+        targets: All available calibration targets (may be multi-domain;
+            engine filters by ``domain``).
+        cost_matrix: Pre-computed N×M CostMatrix for the domain.
+        from_states: Length-N PyArrow array of household origin states.
+        domain: Decision domain to calibrate (e.g., ``'vehicle'``).
+        initial_beta: Starting β_cost value for the optimizer.
+        objective_type: ``'mse'`` or ``'log_likelihood'``.
+        method: scipy optimizer method (e.g., ``'L-BFGS-B'``, ``'Nelder-Mead'``).
+        max_iterations: Maximum optimizer iterations.
+        tolerance: Optimizer convergence tolerance (ftol).
+        beta_bounds: (lower, upper) bounds on beta_cost; both exclusive ends.
+        rate_tolerance: Maximum acceptable |simulated - observed| per target.
+    """
+
+    targets: CalibrationTargetSet
+    cost_matrix: CostMatrix
+    from_states: pa.Array
+    domain: str
+    initial_beta: float = -0.01
+    objective_type: str = "mse"
+    method: str = "L-BFGS-B"
+    max_iterations: int = 100
+    tolerance: float = 1e-8
+    beta_bounds: tuple[float, float] = (-1.0, 0.0)
+    rate_tolerance: float = 0.05
+
+    def __post_init__(self) -> None:
+        if self.objective_type not in ("mse", "log_likelihood"):
+            raise CalibrationOptimizationError(
+                f"objective_type={self.objective_type!r} must be 'mse' or 'log_likelihood'"
+            )
+        if self.max_iterations <= 0:
+            raise CalibrationOptimizationError(
+                f"max_iterations={self.max_iterations!r} must be > 0"
+            )
+        if self.beta_bounds[0] >= self.beta_bounds[1]:
+            raise CalibrationOptimizationError(
+                f"beta_bounds={self.beta_bounds!r}: lower bound must be < upper bound"
+            )
+        if self.rate_tolerance <= 0.0:
+            raise CalibrationOptimizationError(
+                f"rate_tolerance={self.rate_tolerance!r} must be > 0.0"
+            )
+        if len(self.from_states) != self.cost_matrix.n_households:
+            raise CalibrationOptimizationError(
+                f"from_states length ({len(self.from_states)}) must equal "
+                f"cost_matrix.n_households ({self.cost_matrix.n_households})"
+            )

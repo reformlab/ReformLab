@@ -1,4 +1,4 @@
-"""Shared fixtures for calibration subsystem tests — Story 15.1 / AC: all."""
+"""Shared fixtures for calibration subsystem tests — Story 15.1 / Story 15.2 / AC: all."""
 
 from __future__ import annotations
 
@@ -8,7 +8,13 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from reformlab.calibration.types import CalibrationTarget, CalibrationTargetSet
+from reformlab.calibration.engine import CalibrationEngine
+from reformlab.calibration.types import (
+    CalibrationConfig,
+    CalibrationTarget,
+    CalibrationTargetSet,
+)
+from reformlab.discrete_choice.types import CostMatrix
 
 # ============================== Fixture directory ==============================
 
@@ -25,6 +31,7 @@ def make_target(
     to_state: str = "buy_electric",
     observed_rate: float = 0.03,
     source_label: str = "test source",
+    weight: float = 1.0,
 ) -> CalibrationTarget:
     """Build a CalibrationTarget with sensible defaults for tests."""
     return CalibrationTarget(
@@ -34,6 +41,7 @@ def make_target(
         to_state=to_state,
         observed_rate=observed_rate,
         source_label=source_label,
+        weight=weight,
     )
 
 
@@ -70,6 +78,98 @@ def make_multi_domain_set() -> CalibrationTargetSet:
                 source_label="ADEME 2022",
             ),
         )
+    )
+
+
+# ============================== Engine fixture helpers (Story 15.2) ==============================
+
+# Hand-computed 3-household example from Dev Notes:
+#   Households: H0 (petrol, cost_A=100, cost_B=200),
+#               H1 (petrol, cost_A=150, cost_B=100),
+#               H2 (diesel, cost_A=200, cost_B=300)
+#   Alternative IDs: ("A", "B")
+#   beta = -0.01 → simulated rates: petrol→A=0.5543, petrol→B=0.4457, diesel→A=0.7311
+
+
+def make_sample_cost_matrix() -> CostMatrix:
+    """Return a 3×2 CostMatrix matching the Dev Notes hand-computed example."""
+    table = pa.table(
+        {
+            "A": pa.array([100.0, 150.0, 200.0], pa.float64()),
+            "B": pa.array([200.0, 100.0, 300.0], pa.float64()),
+        }
+    )
+    return CostMatrix(table=table, alternative_ids=("A", "B"))
+
+
+def make_sample_from_states() -> pa.Array:
+    """Return a 3-element from_states array matching the hand-computed example."""
+    return pa.array(["petrol", "petrol", "diesel"], type=pa.utf8())
+
+
+def make_sample_target_set() -> CalibrationTargetSet:
+    """Return calibration targets for the hand-computed example.
+
+    Observed rates chosen to be achievable with small beta:
+    petrol→A=0.40, petrol→B=0.55, diesel→A=0.60
+    """
+    return CalibrationTargetSet(
+        targets=(
+            CalibrationTarget(
+                domain="vehicle",
+                period=2022,
+                from_state="petrol",
+                to_state="A",
+                observed_rate=0.40,
+                source_label="test",
+            ),
+            CalibrationTarget(
+                domain="vehicle",
+                period=2022,
+                from_state="petrol",
+                to_state="B",
+                observed_rate=0.55,
+                source_label="test",
+            ),
+            CalibrationTarget(
+                domain="vehicle",
+                period=2022,
+                from_state="diesel",
+                to_state="A",
+                observed_rate=0.60,
+                source_label="test",
+            ),
+        )
+    )
+
+
+def make_sample_config(
+    objective_type: str = "mse",
+    method: str = "L-BFGS-B",
+    initial_beta: float = -0.01,
+    max_iterations: int = 100,
+) -> CalibrationConfig:
+    """Return a CalibrationConfig for the 3-household example."""
+    return CalibrationConfig(
+        targets=make_sample_target_set(),
+        cost_matrix=make_sample_cost_matrix(),
+        from_states=make_sample_from_states(),
+        domain="vehicle",
+        initial_beta=initial_beta,
+        objective_type=objective_type,
+        method=method,
+        max_iterations=max_iterations,
+    )
+
+
+def make_sample_engine(
+    objective_type: str = "mse",
+    method: str = "L-BFGS-B",
+    initial_beta: float = -0.01,
+) -> CalibrationEngine:
+    """Return a CalibrationEngine for the 3-household example."""
+    return CalibrationEngine(
+        config=make_sample_config(objective_type=objective_type, method=method, initial_beta=initial_beta)
     )
 
 

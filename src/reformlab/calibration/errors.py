@@ -1,9 +1,10 @@
 """Calibration subsystem error hierarchy.
 
 Provides subsystem-specific exceptions for target loading, schema validation,
-and semantic consistency checks.
+semantic consistency checks, and optimization failures.
 
 Story 15.1 / FR52 — Define calibration target format and load observed transition rates.
+Story 15.2 / FR52 — CalibrationEngine with objective function optimization.
 """
 
 from __future__ import annotations
@@ -27,3 +28,7 @@ class CalibrationTargetLoadError(CalibrationError):
     Examples: missing required columns; unsupported file format;
     YAML schema validation failure; duplicate (domain, period, from_state, to_state) rows.
     """
+
+
+class CalibrationOptimizationError(CalibrationError):
+    """Raised when calibration optimization fails (convergence, invalid parameters, input validation)."""

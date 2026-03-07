@@ -1,4 +1,4 @@
-"""Tests for calibration error hierarchy — Story 15.1 / AC-4."""
+"""Tests for calibration error hierarchy — Story 15.1 / AC-4, Story 15.2."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ import pytest
 
 from reformlab.calibration.errors import (
     CalibrationError,
+    CalibrationOptimizationError,
     CalibrationTargetLoadError,
     CalibrationTargetValidationError,
 )
@@ -46,3 +47,31 @@ class TestCalibrationErrorHierarchy:
         msg = "observed_rate=-0.5 is out of range"
         exc = CalibrationTargetValidationError(msg)
         assert msg in str(exc)
+
+
+class TestCalibrationOptimizationError:
+    """Story 15.2 / Task 4: CalibrationOptimizationError hierarchy."""
+
+    def test_optimization_error_is_calibration_error(self) -> None:
+        """Given CalibrationOptimizationError, then it is a subclass of CalibrationError."""
+        assert issubclass(CalibrationOptimizationError, CalibrationError)
+
+    def test_optimization_error_is_exception(self) -> None:
+        """Given CalibrationOptimizationError, then it is a subclass of Exception."""
+        assert issubclass(CalibrationOptimizationError, Exception)
+
+    def test_optimization_error_catchable_as_calibration_error(self) -> None:
+        """Given CalibrationOptimizationError raised, when caught as CalibrationError, succeeds."""
+        with pytest.raises(CalibrationError):
+            raise CalibrationOptimizationError("scipy optimization failed for domain='vehicle': ...")
+
+    def test_optimization_error_message_preserved(self) -> None:
+        """Given an error with a message, when raised, then str() returns the message."""
+        msg = "No calibration targets for domain='heating'"
+        exc = CalibrationOptimizationError(msg)
+        assert msg in str(exc)
+
+    def test_optimization_error_is_not_load_error(self) -> None:
+        """Given CalibrationOptimizationError, it is a sibling of load/validation errors."""
+        assert not issubclass(CalibrationOptimizationError, CalibrationTargetLoadError)
+        assert not issubclass(CalibrationOptimizationError, CalibrationTargetValidationError)

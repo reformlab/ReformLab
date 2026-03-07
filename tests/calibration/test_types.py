@@ -1,17 +1,34 @@
-"""Tests for CalibrationTarget and CalibrationTargetSet — Story 15.1 / AC-1, AC-3."""
+"""Tests for CalibrationTarget, CalibrationTargetSet, and Story 15.2 types — Story 15.1, 15.2."""
 
 from __future__ import annotations
 
 import dataclasses
 
+import pyarrow as pa
 import pytest
 
 from reformlab.calibration.errors import (
+    CalibrationOptimizationError,
     CalibrationTargetLoadError,
     CalibrationTargetValidationError,
 )
-from reformlab.calibration.types import CalibrationTarget, CalibrationTargetSet
-from tests.calibration.conftest import make_multi_domain_set, make_target, make_vehicle_set
+from reformlab.calibration.types import (
+    CalibrationConfig,
+    CalibrationResult,
+    CalibrationTarget,
+    CalibrationTargetSet,
+    RateComparison,
+)
+from reformlab.discrete_choice.types import TasteParameters
+from tests.calibration.conftest import (
+    make_multi_domain_set,
+    make_sample_config,
+    make_sample_cost_matrix,
+    make_sample_from_states,
+    make_sample_target_set,
+    make_target,
+    make_vehicle_set,
+)
 
 
 class TestCalibrationTarget:
@@ -225,3 +242,224 @@ class TestCalibrationTargetSet:
         """Given an empty CalibrationTargetSet, when validate_consistency(), then no error."""
         target_set = CalibrationTargetSet(targets=())
         target_set.validate_consistency()  # must not raise
+
+
+class TestCalibrationTargetWeight:
+    """Story 15.2 / Task 2: weight field on CalibrationTarget."""
+
+    def test_weight_defaults_to_one(self) -> None:
+        """Given no weight argument, weight defaults to 1.0."""
+        target = make_target()
+        assert target.weight == 1.0
+
+    def test_weight_positive_accepted(self) -> None:
+        """Given weight=2.5, construction succeeds."""
+        target = make_target(weight=2.5)
+        assert target.weight == 2.5
+
+    def test_weight_zero_accepted(self) -> None:
+        """Given weight=0.0, construction succeeds (zero weight is valid per spec)."""
+        target = make_target(weight=0.0)
+        assert target.weight == 0.0
+
+    def test_weight_negative_raises(self) -> None:
+        """Given weight=-1.0, construction raises CalibrationTargetValidationError."""
+        with pytest.raises(CalibrationTargetValidationError, match="weight"):
+            make_target(weight=-1.0)
+
+
+class TestRateComparison:
+    """Story 15.2 / Task 3: RateComparison dataclass."""
+
+    def test_construction(self) -> None:
+        """Given valid fields, RateComparison constructs without error."""
+        rc = RateComparison(
+            from_state="petrol",
+            to_state="A",
+            observed_rate=0.40,
+            simulated_rate=0.42,
+            absolute_error=0.02,
+            within_tolerance=True,
+        )
+        assert rc.from_state == "petrol"
+        assert rc.to_state == "A"
+        assert rc.observed_rate == 0.40
+        assert rc.simulated_rate == 0.42
+        assert rc.absolute_error == 0.02
+        assert rc.within_tolerance is True
+
+    def test_frozen_immutability(self) -> None:
+        """Given RateComparison, when attempting mutation, raises."""
+        rc = RateComparison(
+            from_state="petrol",
+            to_state="A",
+            observed_rate=0.40,
+            simulated_rate=0.42,
+            absolute_error=0.02,
+            within_tolerance=True,
+        )
+        with pytest.raises((AttributeError, dataclasses.FrozenInstanceError)):
+            rc.from_state = "diesel"  # type: ignore[misc]
+
+
+class TestCalibrationResult:
+    """Story 15.2 / Task 3: CalibrationResult dataclass."""
+
+    def _make_result(self) -> CalibrationResult:
+        rc = RateComparison(
+            from_state="petrol",
+            to_state="A",
+            observed_rate=0.40,
+            simulated_rate=0.42,
+            absolute_error=0.02,
+            within_tolerance=True,
+        )
+        return CalibrationResult(
+            optimized_parameters=TasteParameters(beta_cost=-0.05),
+            domain="vehicle",
+            objective_type="mse",
+            objective_value=0.001,
+            convergence_flag=True,
+            iterations=12,
+            gradient_norm=1e-7,
+            method="L-BFGS-B",
+            rate_comparisons=(rc,),
+            all_within_tolerance=True,
+        )
+
+    def test_construction(self) -> None:
+        """Given valid fields, CalibrationResult constructs without error."""
+        result = self._make_result()
+        assert result.domain == "vehicle"
+        assert result.convergence_flag is True
+        assert result.iterations == 12
+
+    def test_frozen_immutability(self) -> None:
+        """Given CalibrationResult, when attempting mutation, raises."""
+        result = self._make_result()
+        with pytest.raises((AttributeError, dataclasses.FrozenInstanceError)):
+            result.domain = "heating"  # type: ignore[misc]
+
+    def test_gradient_norm_can_be_none(self) -> None:
+        """Given gradient_norm=None (gradient-free method), construction succeeds."""
+        rc = RateComparison(
+            from_state="petrol",
+            to_state="A",
+            observed_rate=0.40,
+            simulated_rate=0.42,
+            absolute_error=0.02,
+            within_tolerance=True,
+        )
+        result = CalibrationResult(
+            optimized_parameters=TasteParameters(beta_cost=-0.05),
+            domain="vehicle",
+            objective_type="mse",
+            objective_value=0.001,
+            convergence_flag=True,
+            iterations=12,
+            gradient_norm=None,
+            method="Nelder-Mead",
+            rate_comparisons=(rc,),
+            all_within_tolerance=True,
+        )
+        assert result.gradient_norm is None
+
+    def test_to_governance_entry_structure(self) -> None:
+        """Given CalibrationResult, to_governance_entry returns correct structure."""
+        result = self._make_result()
+        entry = result.to_governance_entry()
+
+        assert entry["key"] == "calibration_result"
+        assert entry["source"] == "calibration_engine"
+        assert entry["is_default"] is False
+        value = entry["value"]
+        assert value["domain"] == "vehicle"
+        assert value["optimized_beta_cost"] == pytest.approx(-0.05)
+        assert value["objective_type"] == "mse"
+        assert value["convergence_flag"] is True
+        assert value["iterations"] == 12
+        assert value["method"] == "L-BFGS-B"
+        assert value["all_within_tolerance"] is True
+        assert value["n_targets"] == 1
+
+    def test_to_governance_entry_custom_source_label(self) -> None:
+        """Given custom source_label, to_governance_entry uses it."""
+        result = self._make_result()
+        entry = result.to_governance_entry(source_label="my_run")
+        assert entry["source"] == "my_run"
+
+
+class TestCalibrationConfig:
+    """Story 15.2 / Task 3: CalibrationConfig dataclass."""
+
+    def test_construction_with_defaults(self) -> None:
+        """Given required fields only, CalibrationConfig uses defaults."""
+        config = make_sample_config()
+        assert config.initial_beta == -0.01
+        assert config.objective_type == "mse"
+        assert config.method == "L-BFGS-B"
+        assert config.max_iterations == 100
+        assert config.tolerance == 1e-8
+        assert config.beta_bounds == (-1.0, 0.0)
+        assert config.rate_tolerance == 0.05
+
+    def test_frozen_immutability(self) -> None:
+        """Given CalibrationConfig, when attempting mutation, raises."""
+        config = make_sample_config()
+        with pytest.raises((AttributeError, dataclasses.FrozenInstanceError)):
+            config.domain = "heating"  # type: ignore[misc]
+
+    def test_invalid_objective_type_raises(self) -> None:
+        """Given objective_type='invalid', post_init raises CalibrationOptimizationError."""
+        with pytest.raises(CalibrationOptimizationError, match="objective_type"):
+            CalibrationConfig(
+                targets=make_sample_target_set(),
+                cost_matrix=make_sample_cost_matrix(),
+                from_states=make_sample_from_states(),
+                domain="vehicle",
+                objective_type="invalid",
+            )
+
+    def test_zero_max_iterations_raises(self) -> None:
+        """Given max_iterations=0, post_init raises CalibrationOptimizationError."""
+        with pytest.raises(CalibrationOptimizationError, match="max_iterations"):
+            CalibrationConfig(
+                targets=make_sample_target_set(),
+                cost_matrix=make_sample_cost_matrix(),
+                from_states=make_sample_from_states(),
+                domain="vehicle",
+                max_iterations=0,
+            )
+
+    def test_inverted_beta_bounds_raises(self) -> None:
+        """Given beta_bounds=(0.0, -1.0), post_init raises CalibrationOptimizationError."""
+        with pytest.raises(CalibrationOptimizationError, match="beta_bounds"):
+            CalibrationConfig(
+                targets=make_sample_target_set(),
+                cost_matrix=make_sample_cost_matrix(),
+                from_states=make_sample_from_states(),
+                domain="vehicle",
+                beta_bounds=(0.0, -1.0),
+            )
+
+    def test_zero_rate_tolerance_raises(self) -> None:
+        """Given rate_tolerance=0.0, post_init raises CalibrationOptimizationError."""
+        with pytest.raises(CalibrationOptimizationError, match="rate_tolerance"):
+            CalibrationConfig(
+                targets=make_sample_target_set(),
+                cost_matrix=make_sample_cost_matrix(),
+                from_states=make_sample_from_states(),
+                domain="vehicle",
+                rate_tolerance=0.0,
+            )
+
+    def test_from_states_length_mismatch_raises(self) -> None:
+        """Given from_states with wrong length, post_init raises CalibrationOptimizationError."""
+        wrong_from_states = pa.array(["petrol", "petrol"], type=pa.utf8())  # 2, not 3
+        with pytest.raises(CalibrationOptimizationError, match="from_states length"):
+            CalibrationConfig(
+                targets=make_sample_target_set(),
+                cost_matrix=make_sample_cost_matrix(),
+                from_states=wrong_from_states,
+                domain="vehicle",
+            )

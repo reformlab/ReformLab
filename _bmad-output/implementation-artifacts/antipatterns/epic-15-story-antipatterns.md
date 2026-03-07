@@ -16,3 +16,15 @@
 | medium | `sum ≤ 1.0` consistency check has no floating-point tolerance — boundary values (e.g., `0.1 + 0.1 + 0.8`) can fail due to binary float accumulation | Task 2.4 adds `1e-9` tolerance; Consistency Validation Rule section documents boundary test cases |
 | medium | Duplicate `(domain, period, from_state, to_state)` row behavior unspecified — double-counting would silently inflate probability sums | Task 2.4 and Consistency Validation Rule section now specify: duplicates are always a `CalibrationTargetLoadError`, not a validation error |
 | medium | JSON Schema type for `source_metadata` was unspecified — allows any object type | Task 3.2 now types `source_metadata` as `{type: object, additionalProperties: {type: string}}` |
+
+## Story 15-2 (2026-03-07)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | MSE divide-by-zero | Added validation rule 5 to `_validate_inputs()` (Task 5.7 + Input Validation Rules section): total weight must be `> 0.0`; added test case to Task 7.6. |
+| critical | AC-3 "fixed seed" is incorrect | Rewrote AC-3 — removed "fixed seed" language; now states "deterministic by construction (no random sampling occurs in objective evaluation; expected probabilities are used, not stochastic draws)." |
+| critical | AC-5 "documented threshold" is vague | Updated AC-5 to reference `CalibrationConfig.rate_tolerance` (default 0.05) explicitly. |
+| high | Period key missing from duplicate check | Updated Task 5.7 duplicate validation to use `(from_state, to_state)` within the same `period`, explicitly aligning with Story 15.1's uniqueness key `(domain, period, from_state, to_state)`. |
+| high | AC-4 ambiguous wording | Changed "optimized β coefficients per domain" → "the optimized β coefficient for the calibrated domain"; added "or `None` for gradient-free methods such as Nelder-Mead" to gradient norm. |
+| high | Scipy exceptions not wrapped | Added exception-handling note to scipy.optimize.minimize section: wrap `minimize()` in `try/except Exception as e` and re-raise as `CalibrationOptimizationError`. |
+| medium | Vague error message formats | Updated Input Validation Rules items 2 and 3 with concrete example error message format strings (e.g., `f"Unknown to_state values {unknown!r} in domain={domain!r}; expected one of {available!r}"`). |
