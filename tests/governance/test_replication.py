@@ -13,6 +13,13 @@ Story 16.2 — AC-1 through AC-5 (import and reproduction):
     AC-3: Manifest integrity verification
     AC-4: Corrupted artifact detection
     AC-5: Reproduction comparison report
+
+Story 16.3 — AC-1 through AC-5 (population and calibration provenance):
+    AC-1: Population generation provenance in exported package
+    AC-2: Calibration provenance in exported package
+    AC-3: Population regeneration from imported provenance
+    AC-4: Full traceability from data source to final result
+    AC-5: Backward compatibility with packages without provenance
 """
 
 from __future__ import annotations
@@ -1376,3 +1383,703 @@ class TestReproduceDiscrepancyDetails:
         assert len(repro.discrepancies) > 0
         # At least one discrepancy must mention the mismatched column
         assert any("carbon_tax" in d for d in repro.discrepancies)
+
+
+# ============================================================
+# Story 16.3 — Provenance helpers
+# ============================================================
+
+
+def _make_population_provenance() -> dict[str, Any]:
+    """Build a minimal population provenance dict for tests."""
+    return {
+        "pipeline_description": "Test pipeline",
+        "generation_seed": 42,
+        "step_log": [
+            {
+                "step_index": 0,
+                "step_type": "load",
+                "label": "income",
+                "input_labels": [],
+                "output_rows": 100,
+                "output_columns": ["household_id", "income"],
+                "method_name": None,
+                "duration_ms": 10.0,
+            },
+        ],
+        "assumption_chain": [
+            {
+                "key": "merge_uniform",
+                "value": {
+                    "method": "uniform",
+                    "statement": "Uniform random matching",
+                    "seed": 42,
+                },
+                "source": "population_pipeline",
+                "is_default": False,
+            },
+        ],
+        "source_configs": [
+            {
+                "provider": "insee",
+                "dataset_id": "filosofi_2021",
+                "url": "https://www.insee.fr/example",
+                "params": {},
+                "description": "Test INSEE dataset",
+            },
+        ],
+    }
+
+
+def _make_calibration_provenance() -> dict[str, Any]:
+    """Build a minimal calibration provenance dict for tests."""
+    return {
+        "entries": [
+            {
+                "key": "calibration_result",
+                "value": {
+                    "domain": "vehicle",
+                    "optimized_beta_cost": -0.012,
+                    "objective_type": "mse",
+                    "final_objective_value": 0.008,
+                    "convergence_flag": True,
+                    "iterations": 25,
+                    "gradient_norm": 1e-8,
+                    "method": "L-BFGS-B",
+                    "all_within_tolerance": True,
+                    "n_targets": 4,
+                },
+                "source": "calibration_engine",
+                "is_default": False,
+            },
+        ],
+    }
+
+
+# ============================================================
+# TestExportPopulationProvenance — Story 16.3 / AC-1
+# ============================================================
+
+
+class TestExportPopulationProvenance:
+    """Story 16.3 / AC-1: Population generation provenance in exported package."""
+
+    def test_provenance_file_created(self, tmp_path: Path) -> None:
+        """Export with population_provenance writes provenance/population-generation.json."""
+        result = _make_result()
+        pop_prov = _make_population_provenance()
+        meta = export_replication_package(result, tmp_path, population_provenance=pop_prov)
+
+        pkg_dir = meta.package_path
+        assert pkg_dir.is_dir()
+        prov_file = pkg_dir / "provenance" / "population-generation.json"
+        assert prov_file.exists(), "provenance/population-generation.json must be created"
+
+    def test_provenance_file_content_matches(self, tmp_path: Path) -> None:
+        """population-generation.json content must match the provided dict."""
+        result = _make_result()
+        pop_prov = _make_population_provenance()
+        meta = export_replication_package(result, tmp_path, population_provenance=pop_prov)
+
+        prov_file = meta.package_path / "provenance" / "population-generation.json"
+        loaded = json.loads(prov_file.read_text(encoding="utf-8"))
+        assert loaded == pop_prov
+
+    def test_provenance_artifact_in_index(self, tmp_path: Path) -> None:
+        """population-generation.json must be listed in package-index.json."""
+        result = _make_result()
+        pop_prov = _make_population_provenance()
+        meta = export_replication_package(result, tmp_path, population_provenance=pop_prov)
+
+        paths_in_index = [a.path for a in meta.index.artifacts]
+        assert "provenance/population-generation.json" in paths_in_index
+
+    def test_provenance_artifact_role_and_type(self, tmp_path: Path) -> None:
+        """Population provenance artifact must have role=metadata and artifact_type=lineage."""
+        result = _make_result()
+        pop_prov = _make_population_provenance()
+        meta = export_replication_package(result, tmp_path, population_provenance=pop_prov)
+
+        lineage_artifacts = [
+            a for a in meta.index.artifacts
+            if a.path == "provenance/population-generation.json"
+        ]
+        assert len(lineage_artifacts) == 1
+        artifact = lineage_artifacts[0]
+        assert artifact.role == "metadata"
+        assert artifact.artifact_type == "lineage"
+
+
+# ============================================================
+# TestExportCalibrationProvenance — Story 16.3 / AC-2
+# ============================================================
+
+
+class TestExportCalibrationProvenance:
+    """Story 16.3 / AC-2: Calibration provenance in exported package."""
+
+    def test_calibration_file_created(self, tmp_path: Path) -> None:
+        """Export with calibration_provenance writes provenance/calibration.json."""
+        result = _make_result()
+        cal_prov = _make_calibration_provenance()
+        meta = export_replication_package(result, tmp_path, calibration_provenance=cal_prov)
+
+        prov_file = meta.package_path / "provenance" / "calibration.json"
+        assert prov_file.exists(), "provenance/calibration.json must be created"
+
+    def test_calibration_file_content_matches(self, tmp_path: Path) -> None:
+        """calibration.json content must match the provided dict."""
+        result = _make_result()
+        cal_prov = _make_calibration_provenance()
+        meta = export_replication_package(result, tmp_path, calibration_provenance=cal_prov)
+
+        prov_file = meta.package_path / "provenance" / "calibration.json"
+        loaded = json.loads(prov_file.read_text(encoding="utf-8"))
+        assert loaded == cal_prov
+
+    def test_calibration_artifact_in_index(self, tmp_path: Path) -> None:
+        """calibration.json must be listed in package-index.json."""
+        result = _make_result()
+        cal_prov = _make_calibration_provenance()
+        meta = export_replication_package(result, tmp_path, calibration_provenance=cal_prov)
+
+        paths_in_index = [a.path for a in meta.index.artifacts]
+        assert "provenance/calibration.json" in paths_in_index
+
+    def test_calibration_artifact_role_and_type(self, tmp_path: Path) -> None:
+        """Calibration provenance artifact must have role=metadata and artifact_type=lineage."""
+        result = _make_result()
+        cal_prov = _make_calibration_provenance()
+        meta = export_replication_package(result, tmp_path, calibration_provenance=cal_prov)
+
+        lineage_artifacts = [
+            a for a in meta.index.artifacts
+            if a.path == "provenance/calibration.json"
+        ]
+        assert len(lineage_artifacts) == 1
+        artifact = lineage_artifacts[0]
+        assert artifact.role == "metadata"
+        assert artifact.artifact_type == "lineage"
+
+
+# ============================================================
+# TestExportBothProvenance — Story 16.3 / AC-1, AC-2
+# ============================================================
+
+
+class TestExportBothProvenance:
+    """Story 16.3 / AC-1, AC-2: Export with both provenance dicts."""
+
+    def test_both_files_created(self, tmp_path: Path) -> None:
+        """Exporting with both provenance dicts creates both files."""
+        result = _make_result()
+        meta = export_replication_package(
+            result,
+            tmp_path,
+            population_provenance=_make_population_provenance(),
+            calibration_provenance=_make_calibration_provenance(),
+        )
+
+        assert (meta.package_path / "provenance" / "population-generation.json").exists()
+        assert (meta.package_path / "provenance" / "calibration.json").exists()
+
+    def test_artifact_count_increased_by_two(self, tmp_path: Path) -> None:
+        """Exporting with both provenance adds exactly 2 artifacts to the index."""
+        result = _make_result()
+
+        # Baseline: no provenance
+        base_dir = tmp_path / "base"
+        base_dir.mkdir()
+        meta_base = export_replication_package(result, base_dir)
+        # With both provenance
+        both_dir = tmp_path / "both"
+        both_dir.mkdir()
+        meta_both = export_replication_package(
+            result,
+            both_dir,
+            population_provenance=_make_population_provenance(),
+            calibration_provenance=_make_calibration_provenance(),
+        )
+
+        assert meta_both.artifact_count == meta_base.artifact_count + 2
+
+    def test_both_artifacts_in_index(self, tmp_path: Path) -> None:
+        """Both provenance paths must appear in the index."""
+        result = _make_result()
+        meta = export_replication_package(
+            result,
+            tmp_path,
+            population_provenance=_make_population_provenance(),
+            calibration_provenance=_make_calibration_provenance(),
+        )
+
+        paths = [a.path for a in meta.index.artifacts]
+        assert "provenance/population-generation.json" in paths
+        assert "provenance/calibration.json" in paths
+
+
+# ============================================================
+# TestExportNoProvenance — Story 16.3 / AC-5
+# ============================================================
+
+
+class TestExportNoProvenance:
+    """Story 16.3 / AC-5: Export with no provenance — backward compatible."""
+
+    def test_no_provenance_directory_created(self, tmp_path: Path) -> None:
+        """Default export (no provenance kwargs) must not create provenance/ directory."""
+        result = _make_result()
+        meta = export_replication_package(result, tmp_path)
+
+        prov_dir = meta.package_path / "provenance"
+        assert not prov_dir.exists(), "provenance/ must not be created when no provenance provided"
+
+    def test_artifact_count_unchanged(self, tmp_path: Path) -> None:
+        """Artifact count must equal the 16.1/16.2 baseline (4 core artifacts)."""
+        result = _make_result()
+        meta = export_replication_package(result, tmp_path)
+
+        # 4 core artifacts: panel output, policy, scenario metadata, run manifest
+        assert meta.artifact_count == 4
+
+
+# ============================================================
+# TestExportProvenanceCompressed — Story 16.3 / AC-1, AC-2
+# ============================================================
+
+
+class TestExportProvenanceCompressed:
+    """Story 16.3: Provenance files must be included when compress=True."""
+
+    def test_zip_contains_population_provenance(self, tmp_path: Path) -> None:
+        """ZIP archive must include provenance/population-generation.json."""
+        result = _make_result()
+        meta = export_replication_package(
+            result,
+            tmp_path,
+            compress=True,
+            population_provenance=_make_population_provenance(),
+        )
+
+        assert meta.package_path.suffix == ".zip"
+        with zipfile.ZipFile(meta.package_path) as zf:
+            names = zf.namelist()
+        assert any("population-generation.json" in n for n in names)
+
+    def test_zip_contains_calibration_provenance(self, tmp_path: Path) -> None:
+        """ZIP archive must include provenance/calibration.json."""
+        result = _make_result()
+        meta = export_replication_package(
+            result,
+            tmp_path,
+            compress=True,
+            calibration_provenance=_make_calibration_provenance(),
+        )
+
+        with zipfile.ZipFile(meta.package_path) as zf:
+            names = zf.namelist()
+        assert any("calibration.json" in n for n in names)
+
+
+# ============================================================
+# TestImportWithPopulationProvenance — Story 16.3 / AC-3
+# ============================================================
+
+
+class TestImportWithPopulationProvenance:
+    """Story 16.3 / AC-3: Round-trip export→import with population provenance."""
+
+    def test_population_provenance_round_trip(self, tmp_path: Path) -> None:
+        """import_replication_package must return population_provenance matching export input."""
+        result = _make_result()
+        pop_prov = _make_population_provenance()
+        meta = export_replication_package(result, tmp_path, population_provenance=pop_prov)
+        pkg = import_replication_package(meta.package_path)
+
+        assert pkg.population_provenance == pop_prov
+
+    def test_population_provenance_contains_required_keys(self, tmp_path: Path) -> None:
+        """Story 16.3 / AC-3: imported population_provenance must have required keys."""
+        result = _make_result()
+        pop_prov = _make_population_provenance()
+        meta = export_replication_package(result, tmp_path, population_provenance=pop_prov)
+        pkg = import_replication_package(meta.package_path)
+
+        assert pkg.population_provenance is not None
+        prov = pkg.population_provenance
+        assert "pipeline_description" in prov
+        assert "generation_seed" in prov
+        assert "step_log" in prov
+        assert "assumption_chain" in prov
+        assert "source_configs" in prov
+
+    def test_calibration_provenance_none_when_absent(self, tmp_path: Path) -> None:
+        """When only population provenance exported, calibration_provenance must be None."""
+        result = _make_result()
+        meta = export_replication_package(
+            result, tmp_path, population_provenance=_make_population_provenance()
+        )
+        pkg = import_replication_package(meta.package_path)
+
+        assert pkg.calibration_provenance is None
+
+
+# ============================================================
+# TestImportWithCalibrationProvenance — Story 16.3 / AC-3, AC-4
+# ============================================================
+
+
+class TestImportWithCalibrationProvenance:
+    """Story 16.3 / AC-3, AC-4: Round-trip export→import with calibration provenance."""
+
+    def test_calibration_provenance_round_trip(self, tmp_path: Path) -> None:
+        """import_replication_package must return calibration_provenance matching export input."""
+        result = _make_result()
+        cal_prov = _make_calibration_provenance()
+        meta = export_replication_package(result, tmp_path, calibration_provenance=cal_prov)
+        pkg = import_replication_package(meta.package_path)
+
+        assert pkg.calibration_provenance == cal_prov
+
+    def test_calibration_entries_accessible(self, tmp_path: Path) -> None:
+        """Story 16.3 / AC-4: calibration_provenance must expose entries key."""
+        result = _make_result()
+        cal_prov = _make_calibration_provenance()
+        meta = export_replication_package(result, tmp_path, calibration_provenance=cal_prov)
+        pkg = import_replication_package(meta.package_path)
+
+        assert pkg.calibration_provenance is not None
+        assert "entries" in pkg.calibration_provenance
+        entries = pkg.calibration_provenance["entries"]
+        assert len(entries) > 0
+
+    def test_population_provenance_none_when_absent(self, tmp_path: Path) -> None:
+        """When only calibration provenance exported, population_provenance must be None."""
+        result = _make_result()
+        meta = export_replication_package(
+            result, tmp_path, calibration_provenance=_make_calibration_provenance()
+        )
+        pkg = import_replication_package(meta.package_path)
+
+        assert pkg.population_provenance is None
+
+
+# ============================================================
+# TestImportWithBothProvenance — Story 16.3 / AC-3, AC-4
+# ============================================================
+
+
+class TestImportWithBothProvenance:
+    """Story 16.3 / AC-3, AC-4: Round-trip with both provenance dicts."""
+
+    def test_both_provenance_fields_populated(self, tmp_path: Path) -> None:
+        """Both population_provenance and calibration_provenance must be populated."""
+        result = _make_result()
+        pop_prov = _make_population_provenance()
+        cal_prov = _make_calibration_provenance()
+        meta = export_replication_package(
+            result,
+            tmp_path,
+            population_provenance=pop_prov,
+            calibration_provenance=cal_prov,
+        )
+        pkg = import_replication_package(meta.package_path)
+
+        assert pkg.population_provenance == pop_prov
+        assert pkg.calibration_provenance == cal_prov
+
+
+# ============================================================
+# TestImportWithoutProvenance — Story 16.3 / AC-5
+# ============================================================
+
+
+class TestImportWithoutProvenance:
+    """Story 16.3 / AC-5: Old-style packages without provenance stay compatible."""
+
+    def test_no_provenance_fields_are_none(self, tmp_path: Path) -> None:
+        """Importing a 16.1/16.2-style package sets both provenance fields to None."""
+        result = _make_result()
+        meta = export_replication_package(result, tmp_path)  # no provenance kwargs
+        pkg = import_replication_package(meta.package_path)
+
+        assert pkg.population_provenance is None
+        assert pkg.calibration_provenance is None
+
+    def test_existing_functionality_unchanged(self, tmp_path: Path) -> None:
+        """All 16.1/16.2 fields remain intact on packages without provenance."""
+        result = _make_result()
+        meta = export_replication_package(result, tmp_path)
+        pkg = import_replication_package(meta.package_path)
+
+        assert pkg.integrity_verified is True
+        assert pkg.panel_table.num_rows == 3
+        assert pkg.policy is not None
+        assert pkg.scenario_metadata is not None
+
+
+# ============================================================
+# TestImportProvenanceIntegrity — Story 16.3 / AC-1, AC-2
+# ============================================================
+
+
+class TestImportProvenanceIntegrity:
+    """Story 16.3: Tampered provenance file must fail hash verification."""
+
+    def test_corrupt_population_provenance_raises(self, tmp_path: Path) -> None:
+        """Corrupting population-generation.json after export must raise ReplicationPackageError."""
+        result = _make_result()
+        meta = export_replication_package(
+            result, tmp_path, population_provenance=_make_population_provenance()
+        )
+
+        # Corrupt the provenance file
+        prov_file = meta.package_path / "provenance" / "population-generation.json"
+        prov_file.write_text('{"corrupted": true}', encoding="utf-8")
+
+        with pytest.raises(ReplicationPackageError, match="Integrity check failed"):
+            import_replication_package(meta.package_path)
+
+    def test_corrupt_calibration_provenance_raises(self, tmp_path: Path) -> None:
+        """Corrupting calibration.json after export must raise ReplicationPackageError."""
+        result = _make_result()
+        meta = export_replication_package(
+            result, tmp_path, calibration_provenance=_make_calibration_provenance()
+        )
+
+        cal_file = meta.package_path / "provenance" / "calibration.json"
+        cal_file.write_text('{"corrupted": true}', encoding="utf-8")
+
+        with pytest.raises(ReplicationPackageError, match="Integrity check failed"):
+            import_replication_package(meta.package_path)
+
+
+# ============================================================
+# TestImportProvenanceMutableFieldIsolation — Story 16.3 / AC-3
+# ============================================================
+
+
+class TestImportProvenanceMutableFieldIsolation:
+    """Story 16.3 / AC-3: Provenance dicts must be deep-copied (immutable contract)."""
+
+    def test_mutating_population_provenance_does_not_affect_package(
+        self, tmp_path: Path
+    ) -> None:
+        """Mutating returned population_provenance must not change internal package state."""
+        result = _make_result()
+        meta = export_replication_package(
+            result, tmp_path, population_provenance=_make_population_provenance()
+        )
+        pkg = import_replication_package(meta.package_path)
+
+        original_seed = pkg.population_provenance["generation_seed"]  # type: ignore[index]
+        # Mutating a second reference to the field should not be possible on frozen dataclass,
+        # but the dict itself is mutable — verify deep-copy protects internal state.
+        prov_ref = pkg.population_provenance
+        assert prov_ref is not None
+        prov_ref["generation_seed"] = 9999  # mutate the returned reference
+
+        # Re-importing to verify the file on disk is unchanged
+        pkg2 = import_replication_package(meta.package_path)
+        assert pkg2.population_provenance is not None
+        assert pkg2.population_provenance["generation_seed"] == original_seed
+
+    def test_mutating_calibration_provenance_does_not_affect_package(
+        self, tmp_path: Path
+    ) -> None:
+        """Mutating returned calibration_provenance must not change internal package state."""
+        result = _make_result()
+        meta = export_replication_package(
+            result, tmp_path, calibration_provenance=_make_calibration_provenance()
+        )
+        pkg = import_replication_package(meta.package_path)
+
+        cal_ref = pkg.calibration_provenance
+        assert cal_ref is not None
+        original_len = len(cal_ref["entries"])
+        cal_ref["entries"].append({"injected": True})
+
+        pkg2 = import_replication_package(meta.package_path)
+        assert pkg2.calibration_provenance is not None
+        assert len(pkg2.calibration_provenance["entries"]) == original_len
+
+
+# ============================================================
+# TestReproduceWithProvenance — Story 16.3 / AC-3
+# ============================================================
+
+
+class TestReproduceWithProvenance:
+    """Story 16.3 / AC-3: Provenance must not interfere with reproduce_from_package()."""
+
+    def test_reproduce_passes_with_provenance(self, tmp_path: Path) -> None:
+        """Reproduction from a package with provenance must succeed normally."""
+        result = _make_result()
+        meta = export_replication_package(
+            result,
+            tmp_path,
+            population_provenance=_make_population_provenance(),
+            calibration_provenance=_make_calibration_provenance(),
+        )
+        pkg = import_replication_package(meta.package_path)
+
+        adapter = _make_fixed_adapter()
+        repro = reproduce_from_package(pkg, adapter)
+        assert repro.passed is True
+
+
+# ============================================================
+# TestConvenienceMethodWithProvenance — Story 16.3 / AC-1, AC-2
+# ============================================================
+
+
+class TestConvenienceMethodWithProvenance:
+    """Story 16.3 / AC-1, AC-2: SimulationResult.export_replication_package() forwards provenance."""
+
+    def test_convenience_method_forwards_population_provenance(self, tmp_path: Path) -> None:
+        """Convenience method must forward population_provenance kwarg correctly."""
+        result = _make_result()
+        pop_prov = _make_population_provenance()
+        meta = result.export_replication_package(tmp_path, population_provenance=pop_prov)
+
+        prov_file = meta.package_path / "provenance" / "population-generation.json"
+        assert prov_file.exists()
+        loaded = json.loads(prov_file.read_text(encoding="utf-8"))
+        assert loaded == pop_prov
+
+    def test_convenience_method_forwards_calibration_provenance(self, tmp_path: Path) -> None:
+        """Convenience method must forward calibration_provenance kwarg correctly."""
+        result = _make_result()
+        cal_prov = _make_calibration_provenance()
+        meta = result.export_replication_package(tmp_path, calibration_provenance=cal_prov)
+
+        prov_file = meta.package_path / "provenance" / "calibration.json"
+        assert prov_file.exists()
+        loaded = json.loads(prov_file.read_text(encoding="utf-8"))
+        assert loaded == cal_prov
+
+    def test_convenience_method_forwards_both_provenance(self, tmp_path: Path) -> None:
+        """Convenience method must forward both provenance kwargs."""
+        result = _make_result()
+        meta = result.export_replication_package(
+            tmp_path,
+            population_provenance=_make_population_provenance(),
+            calibration_provenance=_make_calibration_provenance(),
+        )
+
+        assert (meta.package_path / "provenance" / "population-generation.json").exists()
+        assert (meta.package_path / "provenance" / "calibration.json").exists()
+
+
+# ============================================================
+# TestProvenanceArtifactHashVerification — Story 16.3 / AC-1, AC-2
+# ============================================================
+
+
+class TestProvenanceArtifactHashVerification:
+    """Story 16.3: Provenance artifact hashes in index must match file content."""
+
+    def test_population_provenance_hash_matches_file(self, tmp_path: Path) -> None:
+        """Hash stored in package-index.json for population provenance must match file."""
+        result = _make_result()
+        meta = export_replication_package(
+            result, tmp_path, population_provenance=_make_population_provenance()
+        )
+
+        prov_file = meta.package_path / "provenance" / "population-generation.json"
+        actual_hash = hash_file(prov_file)
+
+        indexed = [
+            a for a in meta.index.artifacts
+            if a.path == "provenance/population-generation.json"
+        ]
+        assert len(indexed) == 1
+        assert indexed[0].hash == actual_hash
+
+    def test_calibration_provenance_hash_matches_file(self, tmp_path: Path) -> None:
+        """Hash stored in package-index.json for calibration provenance must match file."""
+        result = _make_result()
+        meta = export_replication_package(
+            result, tmp_path, calibration_provenance=_make_calibration_provenance()
+        )
+
+        cal_file = meta.package_path / "provenance" / "calibration.json"
+        actual_hash = hash_file(cal_file)
+
+        indexed = [
+            a for a in meta.index.artifacts
+            if a.path == "provenance/calibration.json"
+        ]
+        assert len(indexed) == 1
+        assert indexed[0].hash == actual_hash
+
+
+# ============================================================
+# TestExportProvenanceJsonSerializationError — Story 16.3 / AC-1, AC-2
+# ============================================================
+
+
+class TestExportProvenanceJsonSerializationError:
+    """Story 16.3: Non-serializable provenance dict must raise ReplicationPackageError."""
+
+    def test_non_serializable_population_provenance_raises(self, tmp_path: Path) -> None:
+        """Population provenance with non-serializable value raises ReplicationPackageError."""
+        result = _make_result()
+        bad_prov = {"pipeline_description": "test", "non_serializable": object()}
+
+        with pytest.raises(ReplicationPackageError, match="Cannot serialize population_provenance"):
+            export_replication_package(result, tmp_path, population_provenance=bad_prov)
+
+    def test_non_serializable_calibration_provenance_raises(self, tmp_path: Path) -> None:
+        """Calibration provenance with non-serializable value raises ReplicationPackageError."""
+        result = _make_result()
+        bad_prov = {"entries": [{"bad": object()}]}
+
+        with pytest.raises(ReplicationPackageError, match="Cannot serialize calibration_provenance"):
+            export_replication_package(result, tmp_path, calibration_provenance=bad_prov)
+
+
+# ============================================================
+# TestImportUnindexedProvenanceIgnored — Story 16.3 / AC-5
+# ============================================================
+
+
+class TestImportUnindexedProvenanceIgnored:
+    """Story 16.3: Provenance files present on disk but not in index must be ignored."""
+
+    def test_unindexed_population_provenance_file_is_ignored(self, tmp_path: Path) -> None:
+        """A provenance file added after export (not in index) must not be loaded."""
+        result = _make_result()
+        meta = export_replication_package(result, tmp_path)  # no provenance
+
+        # Manually inject a provenance file that is NOT in the index
+        prov_dir = meta.package_path / "provenance"
+        prov_dir.mkdir()
+        injected = prov_dir / "population-generation.json"
+        injected.write_text(
+            json.dumps({"injected": True}, sort_keys=True, indent=2),
+            encoding="utf-8",
+        )
+
+        pkg = import_replication_package(meta.package_path)
+        assert pkg.population_provenance is None, (
+            "Unindexed provenance file must not be loaded (not hash-verified)"
+        )
+
+    def test_unindexed_calibration_provenance_file_is_ignored(self, tmp_path: Path) -> None:
+        """A calibration provenance file added after export (not in index) must not be loaded."""
+        result = _make_result()
+        meta = export_replication_package(result, tmp_path)  # no provenance
+
+        prov_dir = meta.package_path / "provenance"
+        prov_dir.mkdir()
+        injected = prov_dir / "calibration.json"
+        injected.write_text(
+            json.dumps({"injected": True}, sort_keys=True, indent=2),
+            encoding="utf-8",
+        )
+
+        pkg = import_replication_package(meta.package_path)
+        assert pkg.calibration_provenance is None, (
+            "Unindexed calibration provenance file must not be loaded (not hash-verified)"
+        )

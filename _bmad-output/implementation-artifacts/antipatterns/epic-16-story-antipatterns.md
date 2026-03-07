@@ -22,3 +22,14 @@
 |----------|-------|-----|
 | high | ZIP root directory validation missing — `import_replication_package()` specified "single subdirectory expected" but gave no error path for 0 entries, 2+ entries, or a top-level file | Task 2.2 updated with explicit `ReplicationPackageError` on non-conforming structure; Algorithm step 2a extended with enumerated error condition. |
 | medium | `_compare_panel_tables` sort fallback and NaN semantics unspecified — if `household_id`/`year` columns are absent the sort would raise; NaN comparison semantics (False for NaN == NaN) not documented | Algorithm step 3 updated with explicit fallback (skip sort + warning log) and NaN/null treatment documented. |
+
+## Story 16-3 (2026-03-07)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| high | Loading unindexed provenance files bypasses hash verification | Tasks 4.1/4.2 updated to use the index as authority for file discovery — unindexed provenance files log WARNING and resolve to `None`. Dev Notes import section rewritten to match. New test 6.17 added. |
+| medium | AC-3 "enough information" is qualitative and not objectively testable | AC-3 now enumerates the required keys (`pipeline_description`, `generation_seed`, `step_log`, `assumption_chain`, `source_configs`) explicitly. |
+| medium | AC-4 "every methodological choice is traceable" is subjective | AC-4 now specifies exactly what each provenance field must record — data sources with provider/dataset ID/URL for population; targets, objective function, parameters, and diagnostics for calibration. |
+| medium | JSON serialization/parse failures not required to wrap in `ReplicationPackageError`, violating subsystem error hierarchy | Tasks 1.4/1.5 now require catching `TypeError` from `json.dumps` and re-raising as `ReplicationPackageError`. New test 6.16 added. |
+| low | Task 6.5 artifact count baseline "(4)" ambiguous given optional year manifests | Clarified to "4 core artifacts; optional year manifests not counted." |
+| low | Anti-patterns table missing entries for the two new failure modes | Two new anti-pattern rows added. |

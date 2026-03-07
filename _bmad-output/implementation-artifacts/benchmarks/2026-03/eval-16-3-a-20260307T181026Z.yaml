@@ -1,0 +1,120 @@
+record_id: f8fae61f-fe05-464d-b89a-cc9ba9cabdba
+created_at: '2026-03-07T18:10:26.576134+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 16
+  story_num: 3
+  title: Story 16.3
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: gemini
+  model: gemini-2.5-flash
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-03-07T18:06:33.965653Z'
+  end_time: '2026-03-07T18:07:20.763653Z'
+  duration_ms: 46798
+  input_tokens: 0
+  output_tokens: 3101
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 12407
+  heading_count: 24
+  list_depth_max: 2
+  code_block_count: 4
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: -0.4'
+  - 🎯 Ruthless Story Validation 16.3
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: -0.4 → PASS'
+  - 🚨 Critical Issues (Must Fix)
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Formalize Provenance Data Schemas in ACs
+  - ✨ Optimizations (Nice to Have)
+  - 🤖 LLM Optimization Improvements
+  - 1. Refine AC-3 Phrasing for Directness
+  - 2. Refine AC-4 Phrasing for Measurability
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.33
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 3c5ffeba9619
+findings:
+  total_count: 5
+  by_severity:
+    critical: 0
+    major: 0
+    minor: 3
+    nit: 2
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 0
+    completeness: 1
+    clarity: 5
+    testability: 3
+  has_fix_count: 5
+  has_location_count: 5
+  has_evidence_count: 3
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 4
+  confidence_phrases_count: 4
+linguistic:
+  avg_sentence_length: 21.34246575342466
+  vocabulary_richness: 0.31129653401797175
+  flesch_reading_ease: 7.031276072884225
+  vague_terms_count: 0
+  formality_score: 0.75
+  sentiment: positive
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.9
+  evidence_quality: 0.85
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false

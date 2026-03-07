@@ -2,7 +2,7 @@
 
 # Story 16.3: Include Population Generation Assumptions and Calibration Provenance
 
-Status: ready-for-dev
+Status: dev-complete
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -16,60 +16,62 @@ so that every methodological choice — from raw data source selection through s
 
 1. **AC-1: Population generation provenance in exported package** — Given a simulation run where the caller provides population provenance metadata (step log, assumption chain, source configs, pipeline description, generation seed), when the replication package is exported via `export_replication_package(result, output_path, population_provenance=provenance_dict)`, then a `provenance/population-generation.json` file is created in the package containing the full pipeline configuration: data sources used, merge methods, statistical assumptions, and the generation seed. The file is listed in `package-index.json` with `role="metadata"` and `artifact_type="lineage"`.
 2. **AC-2: Calibration provenance in exported package** — Given a simulation run where the caller provides calibration provenance metadata (optimized β values, objective function type, convergence diagnostics, calibration target metadata, holdout validation metrics), when the replication package is exported via `export_replication_package(result, output_path, calibration_provenance=calibration_dict)`, then a `provenance/calibration.json` file is created in the package containing the full calibration provenance. The file is listed in `package-index.json` with `role="metadata"` and `artifact_type="lineage"`.
-3. **AC-3: Population regeneration from imported provenance** — Given a package with `provenance/population-generation.json`, when imported via `import_replication_package()`, then `ImportedPackage.population_provenance` is a `dict[str, Any]` containing the pipeline configuration with enough information (source configs, merge methods, seeds, step order) for a developer to reconstruct and re-execute the population pipeline on a different machine. Packages without this file set `population_provenance` to `None`.
-4. **AC-4: Full traceability from data source to final result** — Given the provenance files in an imported package, when a reviewer inspects `population_provenance` and `calibration_provenance`, then every methodological choice is traceable: which institutional data sources were used, which merge methods with which assumptions, what calibration targets were used, what objective function, and what the final calibrated parameters are.
+3. **AC-3: Population regeneration from imported provenance** — Given a package with `provenance/population-generation.json`, when imported via `import_replication_package()`, then `ImportedPackage.population_provenance` is a `dict[str, Any]` that explicitly contains the pipeline configuration with the keys required for reconstruction on a different machine: `pipeline_description`, `generation_seed`, `step_log` (ordered pipeline steps with type/label/method), `assumption_chain` (statistical assumptions per merge step), and `source_configs` (institutional data sources with provider, dataset ID, and URL). Packages without this file set `population_provenance` to `None`.
+4. **AC-4: Full traceability from data source to final result** — Given the provenance files in an imported package, when a reviewer inspects `population_provenance` and `calibration_provenance`, then the data explicitly provides full traceability for all methodological choices: `population_provenance` records institutional data sources (provider, dataset ID, URL), merge methods, and statistical assumptions; `calibration_provenance` records calibration targets, objective function type, final calibrated parameters, and convergence diagnostics.
 5. **AC-5: Backward compatibility** — Given a replication package exported by Story 16.1/16.2 (without provenance files), when imported, then `ImportedPackage.population_provenance` and `ImportedPackage.calibration_provenance` are both `None`, and all existing import/export/reproduction functionality works unchanged.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Extend `export_replication_package()` with provenance parameters (AC: 1, 2, 5)
-  - [ ] 1.1: Add `population_provenance: dict[str, Any] | None = None` keyword parameter to `export_replication_package()`
-  - [ ] 1.2: Add `calibration_provenance: dict[str, Any] | None = None` keyword parameter to `export_replication_package()`
-  - [ ] 1.3: When either provenance dict is not None, create `provenance/` subdirectory inside the package directory
-  - [ ] 1.4: Write `provenance/population-generation.json` with `json.dumps(population_provenance, sort_keys=True, indent=2)` when provided
-  - [ ] 1.5: Write `provenance/calibration.json` with `json.dumps(calibration_provenance, sort_keys=True, indent=2)` when provided
-  - [ ] 1.6: Add provenance artifacts to `PackageArtifact` list with `role="metadata"`, `artifact_type="lineage"`, and computed SHA-256 hash — population-generation description: `"Population generation pipeline configuration and assumptions"`, calibration description: `"Calibration provenance with optimized parameters and diagnostics"`
-  - [ ] 1.7: Structured logging: `event=provenance_exported population=%s calibration=%s` (True/False for each)
+- [x] Task 1: Extend `export_replication_package()` with provenance parameters (AC: 1, 2, 5)
+  - [x] 1.1: Add `population_provenance: dict[str, Any] | None = None` keyword parameter to `export_replication_package()`
+  - [x] 1.2: Add `calibration_provenance: dict[str, Any] | None = None` keyword parameter to `export_replication_package()`
+  - [x] 1.3: When either provenance dict is not None, create `provenance/` subdirectory inside the package directory
+  - [x] 1.4: Write `provenance/population-generation.json` with `json.dumps(population_provenance, sort_keys=True, indent=2)` when provided; catch `TypeError` (non-serializable value in dict) and re-raise as `ReplicationPackageError` with the file path and root cause
+  - [x] 1.5: Write `provenance/calibration.json` with `json.dumps(calibration_provenance, sort_keys=True, indent=2)` when provided; catch `TypeError` and re-raise as `ReplicationPackageError`
+  - [x] 1.6: Add provenance artifacts to `PackageArtifact` list with `role="metadata"`, `artifact_type="lineage"`, and computed SHA-256 hash — population-generation description: `"Population generation pipeline configuration and assumptions"`, calibration description: `"Calibration provenance with optimized parameters and diagnostics"`
+  - [x] 1.7: Structured logging: `event=provenance_exported population=%s calibration=%s` (True/False for each)
 
-- [ ] Task 2: Update `SimulationResult.export_replication_package()` convenience method (AC: 1, 2)
-  - [ ] 2.1: Add `population_provenance: dict[str, Any] | None = None` and `calibration_provenance: dict[str, Any] | None = None` keyword parameters to the convenience method on `SimulationResult`
-  - [ ] 2.2: Forward both parameters to `export_replication_package()`
+- [x] Task 2: Update `SimulationResult.export_replication_package()` convenience method (AC: 1, 2)
+  - [x] 2.1: Add `population_provenance: dict[str, Any] | None = None` and `calibration_provenance: dict[str, Any] | None = None` keyword parameters to the convenience method on `SimulationResult`
+  - [x] 2.2: Forward both parameters to `export_replication_package()`
 
-- [ ] Task 3: Extend `ImportedPackage` with provenance fields (AC: 3, 4, 5)
-  - [ ] 3.1: Add `population_provenance: dict[str, Any] | None = None` field to `ImportedPackage` (after `integrity_verified`, with default `None`)
-  - [ ] 3.2: Add `calibration_provenance: dict[str, Any] | None = None` field to `ImportedPackage` (after `population_provenance`, with default `None`)
-  - [ ] 3.3: In `__post_init__`, deep-copy both provenance dicts when not None (following the existing `policy` / `scenario_metadata` deep-copy pattern)
+- [x] Task 3: Extend `ImportedPackage` with provenance fields (AC: 3, 4, 5)
+  - [x] 3.1: Add `population_provenance: dict[str, Any] | None = None` field to `ImportedPackage` (after `integrity_verified`, with default `None`)
+  - [x] 3.2: Add `calibration_provenance: dict[str, Any] | None = None` field to `ImportedPackage` (after `population_provenance`, with default `None`)
+  - [x] 3.3: In `__post_init__`, deep-copy both provenance dicts when not None (following the existing `policy` / `scenario_metadata` deep-copy pattern)
 
-- [ ] Task 4: Extend `_load_package_from_dir()` to load provenance files (AC: 3, 4, 5)
-  - [ ] 4.1: After loading existing artifacts (Task 2 in 16.2), check for `provenance/population-generation.json` — if present, load via `json.loads()` into `dict[str, Any]`; if absent, set to `None`
-  - [ ] 4.2: Check for `provenance/calibration.json` — if present, load via `json.loads()`; if absent, set to `None`
-  - [ ] 4.3: Pass loaded provenance dicts to `ImportedPackage` constructor
-  - [ ] 4.4: Structured logging: `event=provenance_loaded population=%s calibration=%s` (True/False for each)
+- [x] Task 4: Extend `_load_package_from_dir()` to load provenance files (AC: 3, 4, 5)
+  - [x] 4.1: After loading existing artifacts (Task 2 in 16.2), check for `provenance/population-generation.json` — load only if the file exists AND the path appears as a `lineage` artifact in the already-loaded `PackageIndex` (hash already verified by the integrity check loop); if the file exists but is NOT indexed, log a `WARNING` (`event=provenance_unindexed path=provenance/population-generation.json`) and set to `None`; if the file is absent, set to `None`
+  - [x] 4.2: Apply the same index-authority pattern to `provenance/calibration.json` — only load if present AND indexed as a `lineage` artifact; if present but not indexed, log a `WARNING` and set to `None`; if absent, set to `None`
+  - [x] 4.3: Pass loaded provenance dicts to `ImportedPackage` constructor
+  - [x] 4.4: Structured logging: `event=provenance_loaded population=%s calibration=%s` (True/False for each)
 
-- [ ] Task 5: Update public API exports (AC: all)
-  - [ ] 5.1: No new public types needed — `ImportedPackage` already exported. Verify `__all__` in `governance/__init__.py` is unchanged.
+- [x] Task 5: Update public API exports (AC: all)
+  - [x] 5.1: No new public types needed — `ImportedPackage` already exported. Verify `__all__` in `governance/__init__.py` is unchanged.
 
-- [ ] Task 6: Write tests (AC: all)
-  - [ ] 6.1: Add test classes to `tests/governance/test_replication.py` (extending the existing file)
-  - [ ] 6.2: `TestExportPopulationProvenance`: export with `population_provenance` dict → verify `provenance/population-generation.json` exists, content matches, artifact in index with correct role/type
-  - [ ] 6.3: `TestExportCalibrationProvenance`: export with `calibration_provenance` dict → verify `provenance/calibration.json` exists, content matches, artifact in index
-  - [ ] 6.4: `TestExportBothProvenance`: export with both → verify both files, both in index, artifact count increased by 2
-  - [ ] 6.5: `TestExportNoProvenance`: export with neither (default) → verify no `provenance/` directory, artifact count unchanged from 16.1 baseline (4)
-  - [ ] 6.6: `TestExportProvenanceCompressed`: export with provenance + `compress=True` → verify ZIP contains provenance files
-  - [ ] 6.7: `TestImportWithPopulationProvenance`: round-trip export with population provenance → import → verify `pkg.population_provenance` matches input
-  - [ ] 6.8: `TestImportWithCalibrationProvenance`: round-trip export with calibration provenance → import → verify `pkg.calibration_provenance` matches input
-  - [ ] 6.9: `TestImportWithBothProvenance`: round-trip with both → verify both fields populated
-  - [ ] 6.10: `TestImportWithoutProvenance`: import old-style package (no provenance/) → verify both fields are `None`
-  - [ ] 6.11: `TestImportProvenanceIntegrity`: corrupt a provenance file after export → import raises `ReplicationPackageError` with hash mismatch
-  - [ ] 6.12: `TestImportProvenanceMutableFieldIsolation`: verify deep-copy of provenance dicts (mutating returned dict doesn't affect package)
-  - [ ] 6.13: `TestReproduceWithProvenance`: export with provenance → import → reproduce → verify provenance doesn't interfere with reproduction
-  - [ ] 6.14: `TestConvenienceMethodWithProvenance`: `SimulationResult.export_replication_package()` correctly forwards provenance kwargs
-  - [ ] 6.15: `TestProvenanceArtifactHashVerification`: verify provenance artifact hashes in `package-index.json` match actual file content
+- [x] Task 6: Write tests (AC: all)
+  - [x] 6.1: Add test classes to `tests/governance/test_replication.py` (extending the existing file)
+  - [x] 6.2: `TestExportPopulationProvenance`: export with `population_provenance` dict → verify `provenance/population-generation.json` exists, content matches, artifact in index with correct role/type
+  - [x] 6.3: `TestExportCalibrationProvenance`: export with `calibration_provenance` dict → verify `provenance/calibration.json` exists, content matches, artifact in index
+  - [x] 6.4: `TestExportBothProvenance`: export with both → verify both files, both in index, artifact count increased by 2
+  - [x] 6.5: `TestExportNoProvenance`: export with neither (default) → verify no `provenance/` directory, artifact count unchanged from 16.2 baseline (4 core artifacts: panel output, policy, scenario metadata, run manifest; optional year manifests from 16.1 not counted)
+  - [x] 6.6: `TestExportProvenanceCompressed`: export with provenance + `compress=True` → verify ZIP contains provenance files
+  - [x] 6.7: `TestImportWithPopulationProvenance`: round-trip export with population provenance → import → verify `pkg.population_provenance` matches input
+  - [x] 6.8: `TestImportWithCalibrationProvenance`: round-trip export with calibration provenance → import → verify `pkg.calibration_provenance` matches input
+  - [x] 6.9: `TestImportWithBothProvenance`: round-trip with both → verify both fields populated
+  - [x] 6.10: `TestImportWithoutProvenance`: import old-style package (no provenance/) → verify both fields are `None`
+  - [x] 6.11: `TestImportProvenanceIntegrity`: corrupt a provenance file after export → import raises `ReplicationPackageError` with hash mismatch
+  - [x] 6.12: `TestImportProvenanceMutableFieldIsolation`: verify deep-copy of provenance dicts (mutating returned dict doesn't affect package)
+  - [x] 6.13: `TestReproduceWithProvenance`: export with provenance → import → reproduce → verify provenance doesn't interfere with reproduction
+  - [x] 6.14: `TestConvenienceMethodWithProvenance`: `SimulationResult.export_replication_package()` correctly forwards provenance kwargs
+  - [x] 6.15: `TestProvenanceArtifactHashVerification`: verify provenance artifact hashes in `package-index.json` match actual file content
+  - [x] 6.16: `TestExportProvenanceJsonSerializationError`: export with a provenance dict containing a non-serializable value (e.g., `{"bad": object()}`) → raises `ReplicationPackageError`
+  - [x] 6.17: `TestImportUnindexedProvenanceIgnored`: manually add a provenance file to a package dir after export (so it exists on disk but not in index) → import sets that field to `None` (unindexed file is not loaded)
 
-- [ ] Task 7: Lint, type-check, regression (AC: all)
-  - [ ] 7.1: `uv run ruff check src/reformlab/governance/ src/reformlab/interfaces/ tests/governance/`
-  - [ ] 7.2: `uv run mypy src/reformlab/governance/ src/reformlab/interfaces/`
-  - [ ] 7.3: `uv run pytest tests/` — all tests pass (existing + new)
+- [x] Task 7: Lint, type-check, regression (AC: all)
+  - [x] 7.1: `uv run ruff check src/reformlab/governance/ src/reformlab/interfaces/ tests/governance/`
+  - [x] 7.2: `uv run mypy src/reformlab/governance/ src/reformlab/interfaces/`
+  - [x] 7.3: `uv run pytest tests/` — all tests pass (existing + new)
 
 ## Dev Notes
 
@@ -175,7 +177,7 @@ if cal_prov_path.exists():
     calibration_provenance = json.loads(cal_prov_path.read_text(encoding="utf-8"))
 ```
 
-**Note:** Provenance files are NOT loaded independently of the artifact index. If a provenance file is listed in `package-index.json`, its hash was already verified during the integrity check loop (step 4 of the import algorithm). If a provenance file exists on disk but is NOT listed in the index (shouldn't happen with packages exported by this code), it is still loaded — the index is the authority for integrity, not for file discovery of provenance. This design is backward-compatible: old packages have no provenance files and no provenance artifacts in the index.
+**Note:** The index is the authority for both integrity and provenance discovery. Only load provenance files that both exist on disk AND appear as `lineage` artifacts in `PackageIndex` — their SHA-256 hashes were already verified in the integrity check loop (step 4 of the import algorithm). If a provenance file exists on disk but is NOT listed in the index, log a `WARNING` and set the field to `None` to avoid loading tampered or externally injected content. This design is backward-compatible: old packages have no provenance files and no provenance entries in the index, so both fields remain `None`.
 
 #### ImportedPackage Extension
 
@@ -483,6 +485,8 @@ capture_calibration_provenance() ────── → dict[str, Any]  → cali
 | Creating provenance dir when not needed | Only create `provenance/` when at least one provenance dict is not None. |
 | Non-deterministic JSON output | Use `json.dumps(sort_keys=True, indent=2)` for all provenance files. |
 | Path traversal in provenance file paths | Provenance paths are hardcoded (`provenance/population-generation.json`, `provenance/calibration.json`) — no user-controlled path components. |
+| Loading unindexed provenance files | Only load provenance files that are both present on disk AND listed in `package-index.json` as `lineage` artifacts. If present but not indexed, log a `WARNING` and set to `None` — never load unverified content that bypasses hash checking. |
+| Non-serializable provenance values | Wrap `json.dumps` `TypeError` in `ReplicationPackageError` at export time rather than letting it propagate as an uncaught runtime exception. |
 
 ### Testing Standards Summary
 
@@ -593,11 +597,25 @@ def _make_calibration_provenance() -> dict[str, Any]:
 
 ### Agent Model Used
 
-<!-- filled by dev agent -->
+claude-sonnet-4-6
 
 ### Debug Log References
 
+None — implementation was clean on first pass.
+
 ### Completion Notes List
 
+- ✅ Task 1: Extended `export_replication_package()` with `population_provenance` and `calibration_provenance` kwargs. Provenance dir only created when at least one dict is provided. `TypeError` from `json.dumps` caught and re-raised as `ReplicationPackageError`. Artifacts added to `artifacts_info` BEFORE hash loop so hashes are computed and included in index. Structured logging added.
+- ✅ Task 2: Updated `SimulationResult.export_replication_package()` in `api.py` to accept and forward both provenance kwargs.
+- ✅ Task 3: Extended `ImportedPackage` with `population_provenance` and `calibration_provenance` fields (both `dict[str, Any] | None = None`). Extended `__post_init__` to deep-copy both when not None.
+- ✅ Task 4: Extended `_load_package_from_dir()` with index-authority pattern: provenance files loaded only when present on disk AND listed as `lineage` artifacts in PackageIndex (hash already verified by the integrity loop). Unindexed files log WARNING and set field to None. Structured logging added.
+- ✅ Task 5: No changes to `__all__` needed — `ImportedPackage` was already exported.
+- ✅ Task 6: Added 16 test classes (29 test methods) covering all 6.2–6.17 subtasks. All 133 governance replication tests pass.
+- ✅ Task 7: ruff all-pass, mypy strict all-pass, pytest 2911 passed (0 regressions).
+
 ### File List
+
+- `src/reformlab/governance/replication.py` — Extended with provenance export/import logic
+- `src/reformlab/interfaces/api.py` — Extended SimulationResult convenience method
+- `tests/governance/test_replication.py` — Added 16 new test classes for Story 16.3
 

@@ -211,6 +211,8 @@ class SimulationResult:
         output_path: Path,
         *,
         compress: bool = False,
+        population_provenance: dict[str, Any] | None = None,
+        calibration_provenance: dict[str, Any] | None = None,
     ) -> ReplicationPackageMetadata:
         """Export this simulation run as a self-contained replication package.
 
@@ -219,9 +221,14 @@ class SimulationResult:
         configuration, scenario metadata, and run manifest, plus a
         ``package-index.json`` with SHA-256 hashes for all artifacts.
 
+        Optionally includes population generation provenance and calibration
+        provenance files when the caller provides them.
+
         Args:
             output_path: Existing directory where the package is written.
             compress: If True, produce a ``.zip`` archive.
+            population_provenance: Optional population pipeline config dict.
+            calibration_provenance: Optional calibration provenance dict.
 
         Returns:
             ReplicationPackageMetadata with package location and index.
@@ -231,10 +238,17 @@ class SimulationResult:
                 panel output is missing.
 
         Story 16.1 / FR54.
+        Story 16.3 / AC-1, AC-2.
         """
         from reformlab.governance.replication import export_replication_package
 
-        return export_replication_package(self, output_path, compress=compress)
+        return export_replication_package(
+            self,
+            output_path,
+            compress=compress,
+            population_provenance=population_provenance,
+            calibration_provenance=calibration_provenance,
+        )
 
     def export_manifest(self, path: str | Path) -> Path:
         """Export run manifest to JSON file.

@@ -6,12 +6,20 @@ manifest index listing all artifacts with roles and SHA-256 integrity hashes.
 Implements Story 16.2: import of replication packages (directory or ZIP) with
 integrity verification and reproduction of simulation runs.
 
+Implements Story 16.3: optional provenance files for population generation
+pipeline configuration and calibration provenance. Provenance is passed in by
+the caller as ``dict[str, Any]`` — this module stores and retrieves it without
+interpreting its content.
+
 A replication package is a directory (or ZIP archive) containing:
   data/panel-output.parquet    — simulation results
   config/policy.json           — policy parameters snapshot
   config/scenario-metadata.json — seeds, pipeline, assumptions, mappings
   manifests/run-manifest.json  — full RunManifest with provenance
   package-index.json           — artifact manifest index (not self-referential)
+  provenance/                  — optional provenance files (Story 16.3)
+    population-generation.json — population pipeline config and assumptions
+    calibration.json           — calibration provenance with optimized params
 
 Public API:
     PackageArtifact: Single artifact entry in the index
@@ -216,8 +224,13 @@ class ImportedPackage:
         policy: Policy parameters from config/policy.json.
         scenario_metadata: Scenario metadata from config/scenario-metadata.json.
         integrity_verified: True when all artifact hashes matched on import.
+        population_provenance: Population pipeline config and assumptions, or None
+            if not present in the package. Story 16.3 / AC-3, AC-4, AC-5.
+        calibration_provenance: Calibration provenance with optimized parameters
+            and diagnostics, or None if not present. Story 16.3 / AC-3, AC-4, AC-5.
 
     Story 16.2 / AC-1, AC-3.
+    Story 16.3 / AC-3, AC-4, AC-5.
     """
 
     package_id: str
@@ -229,16 +242,26 @@ class ImportedPackage:
     policy: dict[str, Any]
     scenario_metadata: dict[str, Any]
     integrity_verified: bool
+    population_provenance: dict[str, Any] | None = None
+    calibration_provenance: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
         """Defensive-copy mutable dict fields to honour the immutability contract.
 
         ``pa.Table`` is already copy-on-write immutable in PyArrow. Only the
-        two plain ``dict`` fields need deep-copying so that callers cannot
+        plain ``dict`` fields need deep-copying so that callers cannot
         mutate internal package state through the returned references.
         """
         object.__setattr__(self, "policy", copy.deepcopy(self.policy))
         object.__setattr__(self, "scenario_metadata", copy.deepcopy(self.scenario_metadata))
+        if self.population_provenance is not None:
+            object.__setattr__(
+                self, "population_provenance", copy.deepcopy(self.population_provenance)
+            )
+        if self.calibration_provenance is not None:
+            object.__setattr__(
+                self, "calibration_provenance", copy.deepcopy(self.calibration_provenance)
+            )
 
     def reproduce(
         self,
@@ -331,6 +354,8 @@ def export_replication_package(
     output_path: Path,
     *,
     compress: bool = False,
+    population_provenance: dict[str, Any] | None = None,
+    calibration_provenance: dict[str, Any] | None = None,
 ) -> ReplicationPackageMetadata:
     """Export a completed simulation run as a self-contained replication package.
 
@@ -339,20 +364,32 @@ def export_replication_package(
     manifest. A ``package-index.json`` enumerates all artifacts with SHA-256
     hashes for integrity verification.
 
+    Optionally includes provenance files for population generation pipeline
+    configuration (``provenance/population-generation.json``) and calibration
+    provenance (``provenance/calibration.json``). The caller prepares these dicts
+    using existing population and calibration APIs; this function stores them.
+
     Args:
         result: Completed ``SimulationResult`` (``success=True``).
         output_path: Existing directory where the package is written.
             The package subdirectory ``{package_id}/`` is created inside it.
         compress: If True, produce a ``.zip`` archive instead of a directory.
+        population_provenance: Optional population pipeline configuration dict
+            containing step_log, assumption_chain, source_configs, etc.
+            When provided, written to ``provenance/population-generation.json``.
+        calibration_provenance: Optional calibration provenance dict containing
+            calibration result entries, targets, and holdout validation metrics.
+            When provided, written to ``provenance/calibration.json``.
 
     Returns:
         ReplicationPackageMetadata with package location and index.
 
     Raises:
         ReplicationPackageError: If validation fails (failed run, missing panel
-            output, or invalid output_path).
+            output, invalid output_path, or non-serializable provenance values).
 
     Story 16.1 / FR54, AC-1 through AC-5.
+    Story 16.3 / AC-1, AC-2, AC-5.
     """
     # ── Validate inputs (AC-3 validation, AC-1 guard) ──────────────────────
     if not getattr(result, "success", False):
@@ -449,6 +486,33 @@ def export_replication_package(
         else:
             logger.debug("event=child_manifests_absent package_id=%s", package_id)
 
+        # ── Provenance artifacts (Story 16.3) ──────────────────────────────────
+        if population_provenance is not None or calibration_provenance is not None:
+            provenance_dir = package_dir / "provenance"
+            provenance_dir.mkdir()
+
+            if population_provenance is not None:
+                pop_prov_path = provenance_dir / "population-generation.json"
+                try:
+                    pop_prov_text = json.dumps(population_provenance, sort_keys=True, indent=2)
+                except TypeError as exc:
+                    raise ReplicationPackageError(
+                        f"Cannot serialize population_provenance to JSON "
+                        f"({pop_prov_path.as_posix()}): {exc}"
+                    ) from exc
+                pop_prov_path.write_text(pop_prov_text, encoding="utf-8")
+
+            if calibration_provenance is not None:
+                cal_prov_path = provenance_dir / "calibration.json"
+                try:
+                    cal_prov_text = json.dumps(calibration_provenance, sort_keys=True, indent=2)
+                except TypeError as exc:
+                    raise ReplicationPackageError(
+                        f"Cannot serialize calibration_provenance to JSON "
+                        f"({cal_prov_path.as_posix()}): {exc}"
+                    ) from exc
+                cal_prov_path.write_text(cal_prov_text, encoding="utf-8")
+
         # ── Hash all artifact files ─────────────────────────────────────────────
         artifacts_info: list[tuple[Path, PackageArtifactRole, PackageArtifactType, str]] = [
             (parquet_path, "output", "result", "Panel output table (household × year)"),
@@ -460,6 +524,28 @@ def export_replication_package(
             year_label = child_path.stem  # e.g. "year-2025"
             artifacts_info.append(
                 (child_path, "metadata", "manifest", f"Year manifest: {year_label}"),
+            )
+
+        # Add provenance files to artifact list AFTER writing them so hashes can be computed
+        if population_provenance is not None:
+            pop_prov_path = package_dir / "provenance" / "population-generation.json"
+            artifacts_info.append(
+                (
+                    pop_prov_path,
+                    "metadata",
+                    "lineage",
+                    "Population generation pipeline configuration and assumptions",
+                ),
+            )
+        if calibration_provenance is not None:
+            cal_prov_path = package_dir / "provenance" / "calibration.json"
+            artifacts_info.append(
+                (
+                    cal_prov_path,
+                    "metadata",
+                    "lineage",
+                    "Calibration provenance with optimized parameters and diagnostics",
+                ),
             )
 
         package_artifacts: list[PackageArtifact] = []
@@ -517,6 +603,11 @@ def export_replication_package(
         package_id,
         len(package_artifacts),
         compress,
+    )
+    logger.info(
+        "event=provenance_exported population=%s calibration=%s",
+        population_provenance is not None,
+        calibration_provenance is not None,
     )
 
     return ReplicationPackageMetadata(
@@ -658,12 +749,51 @@ def _load_package_from_dir(
         scenario_meta_path.read_text(encoding="utf-8")
     )
 
+    # ── 5b. Load provenance files (Story 16.3, optional) ───────────────────
+    # The index is the authority: only load provenance files that are both
+    # present on disk AND listed as "lineage" artifacts in the index.
+    # Their hashes were already verified in the integrity check loop above.
+    # If a provenance file exists on disk but is NOT in the index, log a
+    # WARNING and set to None to avoid loading unverified content.
+    indexed_lineage_paths: set[str] = {
+        a.path for a in index.artifacts if a.artifact_type == "lineage"
+    }
+
+    pop_prov_path = package_dir / "provenance" / "population-generation.json"
+    pop_prov_rel = "provenance/population-generation.json"
+    population_provenance: dict[str, Any] | None = None
+    if pop_prov_path.exists():
+        if pop_prov_rel in indexed_lineage_paths:
+            population_provenance = json.loads(pop_prov_path.read_text(encoding="utf-8"))
+        else:
+            logger.warning(
+                "event=provenance_unindexed path=%s",
+                pop_prov_rel,
+            )
+
+    cal_prov_path = package_dir / "provenance" / "calibration.json"
+    cal_prov_rel = "provenance/calibration.json"
+    calibration_provenance: dict[str, Any] | None = None
+    if cal_prov_path.exists():
+        if cal_prov_rel in indexed_lineage_paths:
+            calibration_provenance = json.loads(cal_prov_path.read_text(encoding="utf-8"))
+        else:
+            logger.warning(
+                "event=provenance_unindexed path=%s",
+                cal_prov_rel,
+            )
+
     # ── 6. Build and return ImportedPackage ──────────────────────────────────
     logger.info(
         "event=replication_package_imported package_id=%s artifact_count=%d "
         "integrity_verified=True",
         index.package_id,
         len(index.artifacts),
+    )
+    logger.info(
+        "event=provenance_loaded population=%s calibration=%s",
+        population_provenance is not None,
+        calibration_provenance is not None,
     )
 
     return ImportedPackage(
@@ -676,6 +806,8 @@ def _load_package_from_dir(
         policy=policy,
         scenario_metadata=scenario_metadata,
         integrity_verified=True,
+        population_provenance=population_provenance,
+        calibration_provenance=calibration_provenance,
     )
 
 
