@@ -1,4 +1,4 @@
-"""Tests for CalibrationTarget, CalibrationTargetSet, and Story 15.2 types — Story 15.1, 15.2."""
+"""Tests for CalibrationTarget, CalibrationTargetSet, and Story 15.2/15.3 types — Story 15.1, 15.2, 15.3."""
 
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ from reformlab.calibration.types import (
     CalibrationResult,
     CalibrationTarget,
     CalibrationTargetSet,
+    FitMetrics,
     RateComparison,
 )
 from reformlab.discrete_choice.types import TasteParameters
@@ -463,3 +464,52 @@ class TestCalibrationConfig:
                 from_states=wrong_from_states,
                 domain="vehicle",
             )
+
+
+class TestFitMetrics:
+    """Story 15.3 / Task 1: FitMetrics dataclass."""
+
+    def test_construction(self) -> None:
+        """Given valid fields, FitMetrics constructs without error."""
+        fm = FitMetrics(mse=0.01, mae=0.05, n_targets=3, all_within_tolerance=True)
+        assert fm.mse == 0.01
+        assert fm.mae == 0.05
+        assert fm.n_targets == 3
+        assert fm.all_within_tolerance is True
+
+    def test_frozen_immutability(self) -> None:
+        """Given FitMetrics, when attempting mutation, raises."""
+        fm = FitMetrics(mse=0.01, mae=0.05, n_targets=3, all_within_tolerance=True)
+        with pytest.raises((AttributeError, dataclasses.FrozenInstanceError)):
+            fm.mse = 0.02  # type: ignore[misc]
+
+    def test_zero_n_targets_raises(self) -> None:
+        """Given n_targets=0, __post_init__ raises CalibrationOptimizationError."""
+        with pytest.raises(CalibrationOptimizationError, match="n_targets"):
+            FitMetrics(mse=0.01, mae=0.05, n_targets=0, all_within_tolerance=True)
+
+    def test_negative_n_targets_raises(self) -> None:
+        """Given n_targets=-1, __post_init__ raises CalibrationOptimizationError."""
+        with pytest.raises(CalibrationOptimizationError, match="n_targets"):
+            FitMetrics(mse=0.01, mae=0.05, n_targets=-1, all_within_tolerance=True)
+
+    def test_negative_mse_raises(self) -> None:
+        """Given mse=-0.01, __post_init__ raises CalibrationOptimizationError."""
+        with pytest.raises(CalibrationOptimizationError, match="mse"):
+            FitMetrics(mse=-0.01, mae=0.05, n_targets=3, all_within_tolerance=True)
+
+    def test_negative_mae_raises(self) -> None:
+        """Given mae=-0.05, __post_init__ raises CalibrationOptimizationError."""
+        with pytest.raises(CalibrationOptimizationError, match="mae"):
+            FitMetrics(mse=0.01, mae=-0.05, n_targets=3, all_within_tolerance=True)
+
+    def test_zero_mse_mae_valid(self) -> None:
+        """Given mse=0.0, mae=0.0, construction succeeds (perfect fit boundary)."""
+        fm = FitMetrics(mse=0.0, mae=0.0, n_targets=1, all_within_tolerance=True)
+        assert fm.mse == 0.0
+        assert fm.mae == 0.0
+
+    def test_all_within_tolerance_false(self) -> None:
+        """Given all_within_tolerance=False, construction succeeds."""
+        fm = FitMetrics(mse=0.5, mae=0.5, n_targets=2, all_within_tolerance=False)
+        assert fm.all_within_tolerance is False

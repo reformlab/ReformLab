@@ -28,3 +28,13 @@
 | high | AC-4 ambiguous wording | Changed "optimized β coefficients per domain" → "the optimized β coefficient for the calibrated domain"; added "or `None` for gradient-free methods such as Nelder-Mead" to gradient norm. |
 | high | Scipy exceptions not wrapped | Added exception-handling note to scipy.optimize.minimize section: wrap `minimize()` in `try/except Exception as e` and re-raise as `CalibrationOptimizationError`. |
 | medium | Vague error message formats | Updated Input Validation Rules items 2 and 3 with concrete example error message format strings (e.g., `f"Unknown to_state values {unknown!r} in domain={domain!r}; expected one of {available!r}"`). |
+
+## Story 15-3 (2026-03-07)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| high | Tolerance comparability gap | Added explicit note to AC-4, `validate_holdout()` docstring, `HoldoutValidationResult.rate_tolerance` docstring; renamed `rate_tolerance` → `holdout_rate_tolerance` in `to_governance_entry()` value dict. |
+| high | Unweighted metrics never stated | AC-2 now says "unweighted gap metrics"; `compute_fit_metrics()` docstring now says "Compute unweighted aggregate fit metrics" with explicit note that `CalibrationTarget.weight` is not applied. |
+| medium | rate_tolerance not validated | Task 3.4 re-lettered with (a) rate_tolerance guard first; algorithm pseudocode now checks `math.isfinite(rate_tolerance) and rate_tolerance > 0.0` before any other logic; `math` added to Key Imports; error test cases added to Task 5.4. |
+| medium | No defensive consistency check on holdout targets | Task 3.4 now requires `validate_consistency()` call; `_validate_holdout_inputs()` algorithm now calls it as step 1b; Task 5.4 adds duplicate-holdout-target test case. |
+| medium | Ordering of `holdout_rate_comparisons` non-deterministic | Algorithm now sorts by `(from_state, to_state)` before `tuple()` construction; Task 5.3 adds ordering test. |

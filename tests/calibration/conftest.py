@@ -1,4 +1,4 @@
-"""Shared fixtures for calibration subsystem tests — Story 15.1 / Story 15.2 / AC: all."""
+"""Shared fixtures for calibration subsystem tests — Story 15.1 / Story 15.2 / Story 15.3 / AC: all."""
 
 from __future__ import annotations
 
@@ -257,3 +257,64 @@ def duplicate_rows_csv(tmp_path: Path) -> Path:
     path = tmp_path / "duplicate_rows.csv"
     path.write_text(content, encoding="utf-8")
     return path
+
+
+# ============================== Holdout fixture helpers (Story 15.3) ==============================
+
+# Holdout data: same 3-household structure, different time period (2023 vs 2022 training)
+#   Holdout households: H0 (petrol, cost_A=110, cost_B=190),
+#                       H1 (petrol, cost_A=140, cost_B=110),
+#                       H2 (diesel, cost_A=210, cost_B=280)
+#   Holdout targets (2023 period): petrol→A=0.45, petrol→B=0.50, diesel→A=0.65
+
+
+def make_holdout_cost_matrix() -> CostMatrix:
+    """Return a 3×2 CostMatrix for the holdout dataset (different period)."""
+    table = pa.table(
+        {
+            "A": pa.array([110.0, 140.0, 210.0], pa.float64()),
+            "B": pa.array([190.0, 110.0, 280.0], pa.float64()),
+        }
+    )
+    return CostMatrix(table=table, alternative_ids=("A", "B"))
+
+
+def make_holdout_from_states() -> pa.Array:
+    """Return a 3-element from_states array for the holdout dataset."""
+    return pa.array(["petrol", "petrol", "diesel"], type=pa.utf8())
+
+
+def make_holdout_target_set() -> CalibrationTargetSet:
+    """Return calibration targets for the holdout dataset (2023 period).
+
+    Holdout observed rates represent a different time period from training:
+    petrol→A=0.45, petrol→B=0.50, diesel→A=0.65
+    """
+    return CalibrationTargetSet(
+        targets=(
+            CalibrationTarget(
+                domain="vehicle",
+                period=2023,
+                from_state="petrol",
+                to_state="A",
+                observed_rate=0.45,
+                source_label="test holdout",
+            ),
+            CalibrationTarget(
+                domain="vehicle",
+                period=2023,
+                from_state="petrol",
+                to_state="B",
+                observed_rate=0.50,
+                source_label="test holdout",
+            ),
+            CalibrationTarget(
+                domain="vehicle",
+                period=2023,
+                from_state="diesel",
+                to_state="A",
+                observed_rate=0.65,
+                source_label="test holdout",
+            ),
+        )
+    )

@@ -4,11 +4,12 @@ Defines CalibrationTarget and CalibrationTargetSet as immutable frozen
 dataclasses representing observed real-world transition rates (e.g., vehicle
 adoption from ADEME/SDES) used to calibrate discrete choice taste parameters.
 
-Also provides CalibrationConfig, CalibrationResult, and RateComparison
-used by the calibration engine (Story 15.2).
+Also provides CalibrationConfig, CalibrationResult, RateComparison, FitMetrics,
+and HoldoutValidationResult used by the calibration engine and validation module.
 
 Story 15.1 / FR52 — Define calibration target format and load observed transition rates.
 Story 15.2 / FR52 — CalibrationEngine with objective function optimization.
+Story 15.3 / FR53 — Calibration validation against holdout data.
 """
 
 from __future__ import annotations
@@ -191,6 +192,42 @@ class RateComparison:
 
 
 @dataclass(frozen=True)
+class FitMetrics:
+    """Aggregate fit metrics for a set of rate comparisons.
+
+    Used to summarize both in-sample (training) and out-of-sample (holdout)
+    fit quality for side-by-side comparison.
+
+    Attributes:
+        mse: Mean Squared Error across all rate comparisons.
+        mae: Mean Absolute Error across all rate comparisons.
+        n_targets: Number of rate comparisons summarized.
+        all_within_tolerance: True if all comparisons are within tolerance.
+
+    Story 15.3 / FR53 — Calibration validation against holdout data.
+    """
+
+    mse: float
+    mae: float
+    n_targets: int
+    all_within_tolerance: bool
+
+    def __post_init__(self) -> None:
+        if self.n_targets <= 0:
+            raise CalibrationOptimizationError(
+                f"n_targets={self.n_targets!r} must be > 0"
+            )
+        if self.mse < 0.0:
+            raise CalibrationOptimizationError(
+                f"mse={self.mse!r} must be >= 0.0"
+            )
+        if self.mae < 0.0:
+            raise CalibrationOptimizationError(
+                f"mae={self.mae!r} must be >= 0.0"
+            )
+
+
+@dataclass(frozen=True)
 class CalibrationResult:
     """Result of a calibration optimization run.
 
@@ -299,3 +336,62 @@ class CalibrationConfig:
                 f"from_states length ({len(self.from_states)}) must equal "
                 f"cost_matrix.n_households ({self.cost_matrix.n_households})"
             )
+
+
+# ============================== Story 15.3: Holdout Validation Types ==============================
+
+
+@dataclass(frozen=True)
+class HoldoutValidationResult:
+    """Result of holdout validation with side-by-side training/holdout metrics.
+
+    Provides both in-sample (training) and out-of-sample (holdout) fit
+    metrics so the analyst can assess whether calibrated parameters
+    generalize beyond the training data.
+
+    Attributes:
+        domain: Decision domain that was validated.
+        training_fit: In-sample aggregate fit metrics from calibration.
+        holdout_fit: Out-of-sample aggregate fit metrics from holdout validation.
+        holdout_rate_comparisons: Per-target observed vs simulated comparisons on holdout.
+        rate_tolerance: Tolerance threshold used for holdout within_tolerance checks.
+            Note: training_fit.all_within_tolerance reflects the original calibration
+            tolerance from CalibrationConfig, which may differ. For a fair side-by-side
+            comparison, use the same tolerance here as in CalibrationConfig.
+
+    Story 15.3 / FR53 — Calibration validation against holdout data.
+    """
+
+    domain: str
+    training_fit: FitMetrics
+    holdout_fit: FitMetrics
+    holdout_rate_comparisons: tuple[RateComparison, ...]
+    rate_tolerance: float
+
+    def to_governance_entry(self, *, source_label: str = "holdout_validation") -> dict[str, Any]:
+        """Return an AssumptionEntry-compatible dict for governance manifests.
+
+        Given a HoldoutValidationResult, when called, returns a dict compatible
+        with the governance manifest format (Story 15.4).
+        """
+        return {
+            "key": "holdout_validation",
+            "value": {
+                "domain": self.domain,
+                "holdout_rate_tolerance": self.rate_tolerance,
+                "training": {
+                    "mse": self.training_fit.mse,
+                    "mae": self.training_fit.mae,
+                    "n_targets": self.training_fit.n_targets,
+                    "all_within_tolerance": self.training_fit.all_within_tolerance,
+                },
+                "holdout": {
+                    "mse": self.holdout_fit.mse,
+                    "mae": self.holdout_fit.mae,
+                    "n_targets": self.holdout_fit.n_targets,
+                    "all_within_tolerance": self.holdout_fit.all_within_tolerance,
+                },
+            },
+            "source": source_label,
+            "is_default": False,
+        }
