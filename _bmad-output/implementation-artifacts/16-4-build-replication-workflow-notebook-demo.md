@@ -400,11 +400,11 @@ None — implementation was clean on first attempt. Notebook executed in 3.59s v
 - ✅ Section 1: Marco's simulation with `create_quickstart_adapter(carbon_tax_rate=44.0)`, `ScenarioConfig(template_name="carbon-tax", seed=42)`, `run_scenario()`, `show(result.panel_output.table, n=5)`
 - ✅ Section 2: Basic export via `result.export_replication_package(OUTPUT_DIR)`, directory listing with `Path.rglob("*")` + file sizes, `package-index.json` inspection with role/type/hash-excerpt columns
 - ✅ Section 3: Provenance export with representative INSEE pop_prov dict (1 load + 1 merge step, 1 assumption, 1 source_config) and L-BFGS-B cal_prov dict; shows baseline+2 artifact count delta; lists provenance files
-- ✅ Section 4: `del result, metadata` clean-environment simulation; `import_replication_package(package_path)` with `integrity_verified=True` confirmed
-- ✅ Section 5: `reproduce_from_package(pkg, fresh_adapter, tolerance=0.0)`; `repro.summary()` printed; assertions `repro.passed is True`, `repro.numerical_match is True`, `len(repro.discrepancies) == 0` all pass
-- ✅ Section 6: Column-level comparison using `pa.types.is_floating`/`is_integer` + `to_pylist()` — zero max_abs_diff across all numeric columns
+- ✅ Section 4: `del result, metadata, config, adapter` clean-environment simulation (code review fix: also clear config/adapter); `import_replication_package(package_path)` with `integrity_verified=True` confirmed
+- ✅ Section 5: adapter config now derived from `pkg.policy["carbon_tax_rate"]` (code review fix: package self-sufficiency); `reproduce_from_package(pkg, fresh_adapter, tolerance=0.0)`; `repro.summary()` printed; assertions all pass
+- ✅ Section 6: Added row-count and schema equality assertions before `zip` loop (code review fix: prevent false-pass on mismatched tables); zero max_abs_diff confirmed
 - ✅ Section 7: Import provenance-enriched package; `json.dumps()` pretty-print of both provenance dicts; round-trip recovery confirmed
-- ✅ Section 8: Re-run simulation, `compress=True`, ZIP path + size printed; `import_replication_package(zip_path)` with `integrity_verified=True`
+- ✅ Section 8: Re-run simulation, `compress=True`, ZIP path + size printed; `reproduce_from_package` called on ZIP import with `passed=True` assertion (code review fix: numerical verification for ZIP path)
 - ✅ Conclusion: Marco/Clara narrative wrap-up table + next steps
 - ✅ Cleanup: `shutil.rmtree(OUTPUT_DIR, ignore_errors=True)` — no CI artifacts left
 - ✅ CI: Added `uv run pytest --nbmake notebooks/guides/11_replication_workflow.ipynb -v` as last step in `.github/workflows/ci.yml`
@@ -412,5 +412,14 @@ None — implementation was clean on first attempt. Notebook executed in 3.59s v
 
 ### File List
 
-- `notebooks/guides/11_replication_workflow.ipynb` (created)
+- `notebooks/guides/11_replication_workflow.ipynb` (created; modified by code review synthesis)
 - `.github/workflows/ci.yml` (modified — appended nbmake step for guide 11)
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-07
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 3.8 (Reviewer A) / 5.2 (Reviewer B) → effective score: ~3.8 after false-positive dismissals
+- **Issues Found:** 6 verified (4 high/medium, 2 dismissed)
+- **Issues Fixed:** 4
+- **Action Items Created:** 0

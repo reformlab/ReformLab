@@ -38,3 +38,12 @@
 | medium | `TestImportProvenanceMutableFieldIsolation` test methods were misleadingly named "does_not_affect_package" but actually only verified disk stability (re-importing from disk), not in-memory isolation of the same `pkg` instance. | Renamed methods and rewrote docstrings to accurately describe what is tested (file/disk stability after mutation of the returned reference). Behavior unchanged. |
 | medium | Path traversal test replaced mandatory artifact[0] with traversal path, breaking the new mandatory artifact check. | Changed test to inject traversal path as an additional entry (not replacing a mandatory one), so mandatory check passes and path traversal guard fires correctly. |
 | low | Task 5 completion note incorrectly stated "No changes to `__all__` needed" — the git diff shows `governance/__init__.py` did have additions (from prior stories). | Updated completion note to accurate wording. |
+
+## Story 16-4 (2026-03-07)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| high | `zip()` truncation in s6-diff silently produces false-positive zero-diff if tables have unequal row counts | Added `assert original.num_rows == reproduced.num_rows` and `assert original.schema == reproduced.schema` before the diff loop. |
+| high | ZIP section (s8) claims equivalence but only verifies integrity/row count, not numerical reproduction | Added `reproduce_from_package(pkg_zip, zip_adapter, tolerance=0.0)` with `assert repro_zip.passed is True` and `assert repro_zip.numerical_match is True`. |
+| medium | "Clean context" simulation deletes only `result` and `metadata`; `config` and `adapter` persist in kernel | Changed to `del result, metadata, config, adapter`. |
+| medium | s5-reproduce hardcodes `carbon_tax_rate=44.0` instead of deriving from `pkg.policy`, weakening the self-sufficiency demonstration | Changed to `carbon_tax_rate = float(pkg.policy["carbon_tax_rate"])`. |
