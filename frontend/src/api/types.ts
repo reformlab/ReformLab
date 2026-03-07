@@ -146,6 +146,7 @@ export interface DataSourceItem {
 
 export interface ColumnInfo {
   name: string;
+  type: string;
   description: string;
 }
 

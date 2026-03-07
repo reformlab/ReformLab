@@ -173,6 +173,7 @@ class ColumnInfo(BaseModel):
     """Column metadata for a data source."""
 
     name: str
+    type: str = ""
     description: str
 
 

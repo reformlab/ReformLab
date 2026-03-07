@@ -323,8 +323,13 @@ async def list_sources() -> dict[str, dict[str, list[DataSourceItem]]]:
         for dataset_id, dataset in catalog.items():
             try:
                 items.append(_build_source_item(provider, dataset_id, dataset))
-            except Exception:
-                logger.warning("Failed to build source item provider=%s dataset_id=%s", provider, dataset_id)
+            except (AttributeError, KeyError) as exc:
+                logger.error(
+                    "event=catalog_item_malformed provider=%s dataset_id=%s error=%s",
+                    provider,
+                    dataset_id,
+                    exc,
+                )
         result[provider] = items
 
     return {"sources": result}

@@ -1,0 +1,19 @@
+# Epic 17 - Code Antipatterns
+
+> **WARNING: ANTI-PATTERNS**
+> The issues below were MISTAKES found during code review of previous stories.
+> DO NOT repeat these patterns. Learn from them and avoid similar errors.
+> These represent implementation mistakes (race conditions, missing tests, weak assertions, etc.)
+
+## Story 17-1 (2026-03-07)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | AC-5 validation — backend hardcodes `validation_result=None`, so no marginal check data is ever returned | Deferred — wiring `PopulationValidator` requires understanding catalog marginal API; added as AI-Review follow-up |
+| critical | AC-5 distributions — `PopulationPreview` uses placeholder `100 - i * 8` values, not real population statistics | Deferred — explicitly commented "not in scope for 17.1"; added as AI-Review follow-up |
+| high | `<a>` nested inside `<button>` — HTML spec violation; browsers handle nested interactive elements inconsistently | Restructured card to `<div>` wrapper with `<button>` for selection and sibling `<a>` for the link |
+| high | AC-2 VariableOverlapView — overlap table not implemented, shows static text; `hasKnownOverlap = false` hardcoded | Deferred — explicitly documented design decision in Dev Agent Record; added as AI-Review follow-up |
+| medium | `list_sources` broad `except Exception` silently drops datasets without loud failure | Changed to `except (AttributeError, KeyError)` with ERROR-level logging — prevents masking programming errors while being resilient to individually malformed catalog entries |
+| medium | Task 1.3 column schema contract — `ColumnInfo` missing `type` field; task specifies `(name, type, description)` | Added `type: str = ""` to backend `ColumnInfo`; added `type: string` to frontend `ColumnInfo` interface |
+| medium | Determinism test only asserts `record_count` equality on a fully mocked pipeline; proves nothing about reproducibility | Deferred — mock design is intentional; fixing properly requires a content-hash assertion; added as AI-Review follow-up |
+| low | AC-1 — `record_count` always `None` in source listing; card conditionally hides the badge | Deferred — catalog metadata doesn't expose record counts without loading data; added as AI-Review follow-up |

@@ -393,3 +393,27 @@ None — no unresolved issues.
 - `frontend/src/hooks/useApi.ts`
 - `frontend/src/contexts/AppContext.tsx`
 - `frontend/src/App.tsx`
+
+**Post-review modifications (synthesis-17.1):**
+- `frontend/src/components/simulation/DataSourceBrowser.tsx` — fixed `<a>` nested inside `<button>` (HTML spec violation)
+- `src/reformlab/server/routes/data_fusion.py` — tightened `list_sources` exception handling from broad `except Exception` to `(AttributeError, KeyError)` with ERROR-level logging
+- `src/reformlab/server/models.py` — added `type: str = ""` field to `ColumnInfo` (Task 1.3 contract gap)
+- `frontend/src/api/types.ts` — added `type: string` to `ColumnInfo` interface to match backend contract
+
+## Tasks / Subtasks
+
+#### Review Follow-ups (AI)
+- [ ] [AI-Review] CRITICAL: AC-5 — `validation_result` is hardcoded `None`; wire `PopulationValidator` into the `/generate` endpoint using catalog marginals so validation results are returned (`src/reformlab/server/routes/data_fusion.py:487`)
+- [ ] [AI-Review] HIGH: AC-5 — Population distribution charts use placeholder data (`value: 100 - i * 8`); replace with actual demographic distributions from pipeline output or indicator endpoint (`frontend/src/components/simulation/PopulationPreview.tsx:17-20`)
+- [ ] [AI-Review] HIGH: AC-2 — VariableOverlapView shows informational text only; implement real column intersection by fetching dataset detail schemas per selected source (`frontend/src/components/simulation/VariableOverlapView.tsx:35-39`)
+- [ ] [AI-Review] MEDIUM: AC-3/AC-6 — Determinism test only checks `record_count` equality on a mocked pipeline; add a content-hash or fingerprint assertion to verify actual bit-for-bit reproducibility (`tests/server/test_data_fusion.py:424-445`)
+- [ ] [AI-Review] LOW: AC-1 — `record_count` is always `None` in the backend; populate from catalog metadata where available so source cards can display record counts (`src/reformlab/server/routes/data_fusion.py:57`)
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-07
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 15.3 (Reviewer A) / 7.0 (Reviewer B) → REJECT
+- **Issues Found:** 8 verified (3 fixed, 5 deferred)
+- **Issues Fixed:** 3
+- **Action Items Created:** 5

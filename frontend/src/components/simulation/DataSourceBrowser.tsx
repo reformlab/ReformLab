@@ -68,55 +68,56 @@ export function DataSourceBrowser({
               {filtered.map((ds) => {
                 const selected = isSelected(selectedIds, provider, ds.id);
                 return (
-                  <button
+                  <div
                     key={ds.id}
-                    type="button"
-                    onClick={() => onToggleSource(provider, ds.id)}
                     className={cn(
-                      "border p-3 text-left transition-colors",
-                      selected
-                        ? "border-blue-500 bg-blue-50"
-                        : "border-slate-200 bg-white hover:bg-slate-50",
+                      "border transition-colors",
+                      selected ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white",
                     )}
-                    aria-pressed={selected}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-slate-900">{ds.name}</p>
-                        <p className="mt-0.5 text-xs text-slate-600 line-clamp-2">
-                          {ds.description}
-                        </p>
-                        <div className="mt-1.5 flex flex-wrap gap-1.5">
-                          <Badge variant="default" className="text-xs">
-                            {ds.variable_count} variables
-                          </Badge>
-                          {ds.record_count != null ? (
+                    <button
+                      type="button"
+                      onClick={() => onToggleSource(provider, ds.id)}
+                      className="w-full p-3 text-left hover:bg-slate-50/50"
+                      aria-pressed={selected}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-slate-900">{ds.name}</p>
+                          <p className="mt-0.5 text-xs text-slate-600 line-clamp-2">
+                            {ds.description}
+                          </p>
+                          <div className="mt-1.5 flex flex-wrap gap-1.5">
                             <Badge variant="default" className="text-xs">
-                              {ds.record_count.toLocaleString()} records
+                              {ds.variable_count} variables
                             </Badge>
-                          ) : null}
+                            {ds.record_count != null ? (
+                              <Badge variant="default" className="text-xs">
+                                {ds.record_count.toLocaleString()} records
+                              </Badge>
+                            ) : null}
+                          </div>
                         </div>
+                        <input
+                          type="checkbox"
+                          readOnly
+                          checked={selected}
+                          tabIndex={-1}
+                          aria-hidden="true"
+                          className="mt-0.5 h-4 w-4 shrink-0 accent-blue-500"
+                        />
                       </div>
-                      <input
-                        type="checkbox"
-                        readOnly
-                        checked={selected}
-                        tabIndex={-1}
-                        aria-hidden="true"
-                        className="mt-0.5 h-4 w-4 shrink-0 accent-blue-500"
-                      />
-                    </div>
+                    </button>
                     <a
                       href={ds.source_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="mt-1.5 flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                      className="flex items-center gap-1 border-t border-slate-100 px-3 py-1.5 text-xs text-blue-600 hover:underline"
                     >
                       <ExternalLink className="h-3 w-3" />
                       Source
                     </a>
-                  </button>
+                  </div>
                 );
               })}
             </div>
