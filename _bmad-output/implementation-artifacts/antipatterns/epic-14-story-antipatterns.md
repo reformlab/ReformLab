@@ -28,3 +28,13 @@
 | medium | AC-8 "extending" language could be misread as dict mutation, violating frozen dataclass principle | Rewrote AC-8 to explicitly state "creating a new dict" and "never mutate the existing dict in-place", with `dataclasses.replace()` reference. |
 | medium | NaN/Inf handling documented only in edge case table, not enforceable via ACs | Added fail-fast `LogitError` requirement with invalid cell positions to AC-1. |
 | low | Missing module docstring task for `logit.py` | Not applied — this is a standard project convention documented in `project-context.md` that all dev agents follow. Adding explicit tasks for every convention would bloat the story. |
+
+## Story 14-3 (2026-03-07)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| high | Missing validation for unknown alternative IDs in `ChoiceResult.chosen` | Added Task 3.9 (validate all IDs exist in `alt_map`), added validation block to algorithm pseudocode, added unknown-ID test to Task 6.5, added edge case row, added explicit statement in AC-6. |
+| medium | AC-3 type mismatch behavior undefined when attribute value is incompatible with existing column type | AC-3 now explicitly states incompatible casts wrap `ArrowInvalid` in `DiscreteChoiceError`. Type inference rules pseudocode updated with try/except pattern. Edge case row added. |
+| medium | Task 3.5 type inference wording inconsistent with `_infer_pa_type` mapping rules | Task 3.5 now explicitly references `_infer_pa_type` mapping and `pa.array(..., type=existing_type)` cast pattern. |
+| medium | AC-6 positional alignment between `ChoiceResult.chosen` and entity table underspecified | AC-6 now states positional alignment is guaranteed by upstream pipeline and that unknown IDs raise errors. |
+| medium | Empty population edge case conflicts with AC-9 metadata extension | Edge case row clarified: population and vintage unchanged, but metadata is still extended with zero counts. |

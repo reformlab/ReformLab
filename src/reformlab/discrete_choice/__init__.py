@@ -7,10 +7,16 @@ protocol and integrate with the orchestrator pipeline.
 
 Story 14-1: DiscreteChoiceStep with population expansion pattern.
 Story 14-2: Conditional logit model with seed-controlled draws.
+Story 14-3: Vehicle investment decision domain and state update step.
 
 Public API:
 - DiscreteChoiceStep: OrchestratorStep for discrete choice evaluation
 - LogitChoiceStep: OrchestratorStep for logit probability + draws
+- VehicleInvestmentDomain: Vehicle decision domain (DecisionDomain protocol)
+- VehicleStateUpdateStep: OrchestratorStep for post-logit state updates
+- VehicleDomainConfig: Configuration for vehicle domain
+- default_vehicle_domain_config: Factory for French market defaults
+- apply_choices_to_population: Per-household attribute application
 - DecisionDomain: Protocol for decision domains (vehicle, heating, etc.)
 - Alternative, ChoiceSet, CostMatrix, ExpansionResult: Core value types
 - TasteParameters, ChoiceResult: Logit model types
@@ -57,6 +63,13 @@ from reformlab.discrete_choice.types import (
     ExpansionResult,
     TasteParameters,
 )
+from reformlab.discrete_choice.vehicle import (
+    VehicleDomainConfig,
+    VehicleInvestmentDomain,
+    VehicleStateUpdateStep,
+    apply_choices_to_population,
+    default_vehicle_domain_config,
+)
 
 __all__ = [
     "Alternative",
@@ -83,4 +96,9 @@ __all__ = [
     "TasteParameters",
     "TRACKING_COL_ALTERNATIVE_ID",
     "TRACKING_COL_ORIGINAL_INDEX",
+    "VehicleDomainConfig",
+    "VehicleInvestmentDomain",
+    "VehicleStateUpdateStep",
+    "apply_choices_to_population",
+    "default_vehicle_domain_config",
 ]
