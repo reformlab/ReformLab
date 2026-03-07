@@ -52,6 +52,8 @@ scripts/
 overnight-build.sh
 benchmark-analysis-report.md
 
+.claude/glm.json
+
 # === Testing ===
 coverage/
 .coverage
@@ -78,7 +80,7 @@ logs/
 
 # === Notebooks ===
 notebooks/data/
-notebooks/demo/data/
+notebooks/scratch/
 
 # bmad-assist artifacts (redundant with _bmad/ rules above, kept for meta/tpl files outside _bmad)
 *.meta.yaml

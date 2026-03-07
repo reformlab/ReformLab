@@ -12,8 +12,8 @@ from pathlib import Path
 NOTEBOOK_PATH = (
     Path(__file__).resolve().parents[2]
     / "notebooks"
-    / "demo"
-    / "epic14_discrete_choice.ipynb"
+    / "guides"
+    / "08_discrete_choice_model.ipynb"
 )
 CI_WORKFLOW_PATH = (
     Path(__file__).resolve().parents[2] / ".github" / "workflows" / "ci.yml"
@@ -127,6 +127,6 @@ def test_ci_includes_notebook() -> None:
     """CI workflow includes nbmake execution of this notebook."""
     ci_workflow = CI_WORKFLOW_PATH.read_text(encoding="utf-8")
     assert (
-        "uv run pytest --nbmake notebooks/demo/epic14_discrete_choice.ipynb -v"
+        "uv run pytest --nbmake notebooks/guides/08_discrete_choice_model.ipynb -v"
         in ci_workflow
     )
