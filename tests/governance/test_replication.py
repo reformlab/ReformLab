@@ -1280,15 +1280,27 @@ class TestImportEdgeCases:
     def test_path_traversal_artifact_raises_replication_package_error(
         self, tmp_path: Path
     ) -> None:
-        """An artifact.path that escapes the package root is rejected."""
+        """An artifact.path that escapes the package root is rejected.
+
+        The traversal path is injected as an *additional* artifact so that the
+        mandatory artifact presence check (which runs before hash verification)
+        passes, and the path-traversal guard inside the hash loop fires.
+        """
         result = _make_result()
         meta = export_replication_package(result, tmp_path)
         pkg_dir = meta.package_path
 
-        # Inject a path-traversal artifact path into package-index.json
+        # Inject a path-traversal artifact as a new entry (keep mandatory ones intact)
         index_path = pkg_dir / "package-index.json"
         index_data = json.loads(index_path.read_text(encoding="utf-8"))
-        index_data["artifacts"][0]["path"] = "../../etc/passwd"
+        traversal_entry = {
+            "role": "output",
+            "artifact_type": "result",
+            "path": "../../etc/passwd",
+            "hash": "a" * 64,
+            "description": "malicious",
+        }
+        index_data["artifacts"].insert(0, traversal_entry)
         index_path.write_text(json.dumps(index_data), encoding="utf-8")
 
         with pytest.raises(ReplicationPackageError, match="path traversal"):
@@ -1860,12 +1872,26 @@ class TestImportProvenanceIntegrity:
 
 
 class TestImportProvenanceMutableFieldIsolation:
-    """Story 16.3 / AC-3: Provenance dicts must be deep-copied (immutable contract)."""
+    """Story 16.3 / AC-3: Provenance dicts are deep-copied in __post_init__.
 
-    def test_mutating_population_provenance_does_not_affect_package(
+    Note: the deep-copy protects the *caller's input dict* from being shared
+    with the package's internal state. Mutating a reference returned by
+    pkg.population_provenance DOES affect subsequent accesses to the same field
+    on that instance (consistent with policy/scenario_metadata behaviour).
+    These tests verify that mutations do not propagate to disk or to separately
+    imported package instances.
+    """
+
+    def test_mutating_population_provenance_does_not_affect_disk(
         self, tmp_path: Path
     ) -> None:
-        """Mutating returned population_provenance must not change internal package state."""
+        """Mutating the returned population_provenance dict must not alter the package file.
+
+        The package file on disk is written during export and never modified
+        by in-memory operations. A re-import from the same path must return
+        the original value regardless of mutations applied to a prior import.
+        Story 16.3 / AC-3.
+        """
         result = _make_result()
         meta = export_replication_package(
             result, tmp_path, population_provenance=_make_population_provenance()
@@ -1873,21 +1899,24 @@ class TestImportProvenanceMutableFieldIsolation:
         pkg = import_replication_package(meta.package_path)
 
         original_seed = pkg.population_provenance["generation_seed"]  # type: ignore[index]
-        # Mutating a second reference to the field should not be possible on frozen dataclass,
-        # but the dict itself is mutable — verify deep-copy protects internal state.
+        assert original_seed == 42
+
         prov_ref = pkg.population_provenance
         assert prov_ref is not None
         prov_ref["generation_seed"] = 9999  # mutate the returned reference
 
-        # Re-importing to verify the file on disk is unchanged
+        # The file on disk is immutable: a fresh import must still return the original value.
         pkg2 = import_replication_package(meta.package_path)
         assert pkg2.population_provenance is not None
         assert pkg2.population_provenance["generation_seed"] == original_seed
 
-    def test_mutating_calibration_provenance_does_not_affect_package(
+    def test_mutating_calibration_provenance_does_not_affect_disk(
         self, tmp_path: Path
     ) -> None:
-        """Mutating returned calibration_provenance must not change internal package state."""
+        """Mutating the returned calibration_provenance dict must not alter the package file.
+
+        Story 16.3 / AC-3.
+        """
         result = _make_result()
         meta = export_replication_package(
             result, tmp_path, calibration_provenance=_make_calibration_provenance()

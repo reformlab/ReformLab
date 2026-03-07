@@ -27,3 +27,14 @@
 | medium | `ImportedPackage` frozen dataclass holds mutable `dict` fields without defensive copies | Added `__post_init__` using `object.__setattr__` + `copy.deepcopy` for `policy` and `scenario_metadata`. |
 | medium | Missing tests for negative tolerance, malformed ZIP, malformed index JSON, path traversal, mutable field isolation, and discrepancy column naming | Added 4 test classes: `TestImportEdgeCases`, `TestImportedPackageMutableFieldIsolation`, `TestReproduceNegativeTolerance`, `TestReproduceDiscrepancyDetails`. |
 | low | Non-numeric column comparison has redundant outer `if orig_list != repr_list` check causing double traversal | Removed outer check; loop directly finds and reports first mismatch. |
+
+## Story 16-3 (2026-03-07)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | `integrity_verified=True` set without verifying that mandatory core artifacts are listed in the index. A crafted index omitting core files would allow those files to be loaded without hash verification. | Added mandatory artifact presence check (step 3b) before hash verification — raises `ReplicationPackageError` if any of the 4 core paths are absent from the index. |
+| high | Provenance JSON parsing (`json.loads`) can raise `json.JSONDecodeError` leaking through the `ReplicationPackageError` boundary. | Wrapped both provenance `json.loads` calls in `try/except json.JSONDecodeError → ReplicationPackageError`. |
+| high | Loaded provenance value is not validated as `dict` — `json.loads` can return list/string/null while the field is typed `dict[str, Any] | Added `isinstance(loaded, dict)` check after parsing; raises `ReplicationPackageError` on type mismatch. |
+| medium | `TestImportProvenanceMutableFieldIsolation` test methods were misleadingly named "does_not_affect_package" but actually only verified disk stability (re-importing from disk), not in-memory isolation of the same `pkg` instance. | Renamed methods and rewrote docstrings to accurately describe what is tested (file/disk stability after mutation of the returned reference). Behavior unchanged. |
+| medium | Path traversal test replaced mandatory artifact[0] with traversal path, breaking the new mandatory artifact check. | Changed test to inject traversal path as an additional entry (not replacing a mandatory one), so mandatory check passes and path traversal guard fires correctly. |
+| low | Task 5 completion note incorrectly stated "No changes to `__all__` needed" — the git diff shows `governance/__init__.py` did have additions (from prior stories). | Updated completion note to accurate wording. |

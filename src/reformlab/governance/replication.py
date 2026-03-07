@@ -711,6 +711,24 @@ def _load_package_from_dir(
             f"Malformed package-index.json in package at {package_dir!r}: {exc}"
         ) from exc
 
+    # ── 3b. Verify mandatory core artifacts are indexed ──────────────────────
+    # The index is the authority. Core files MUST be listed; if an adversary
+    # crafts an index that omits them, the files would load without hash
+    # verification, making integrity_verified=True a false claim.
+    _MANDATORY_ARTIFACT_PATHS: frozenset[str] = frozenset({
+        "data/panel-output.parquet",
+        "config/policy.json",
+        "config/scenario-metadata.json",
+        "manifests/run-manifest.json",
+    })
+    indexed_paths = {a.path for a in index.artifacts}
+    missing_mandatory = _MANDATORY_ARTIFACT_PATHS - indexed_paths
+    if missing_mandatory:
+        raise ReplicationPackageError(
+            f"Package index is missing mandatory artifacts: {sorted(missing_mandatory)}. "
+            "Package may be corrupt or tampered."
+        )
+
     # ── 4. Verify all artifact hashes ───────────────────────────────────────
     pkg_dir_resolved = package_dir.resolve()
     for artifact in index.artifacts:
@@ -764,7 +782,17 @@ def _load_package_from_dir(
     population_provenance: dict[str, Any] | None = None
     if pop_prov_path.exists():
         if pop_prov_rel in indexed_lineage_paths:
-            population_provenance = json.loads(pop_prov_path.read_text(encoding="utf-8"))
+            try:
+                loaded_pop = json.loads(pop_prov_path.read_text(encoding="utf-8"))
+            except json.JSONDecodeError as exc:
+                raise ReplicationPackageError(
+                    f"Failed to parse {pop_prov_rel}: {exc}"
+                ) from exc
+            if not isinstance(loaded_pop, dict):
+                raise ReplicationPackageError(
+                    f"{pop_prov_rel} must be a JSON object, got {type(loaded_pop).__name__}"
+                )
+            population_provenance = loaded_pop
         else:
             logger.warning(
                 "event=provenance_unindexed path=%s",
@@ -776,7 +804,17 @@ def _load_package_from_dir(
     calibration_provenance: dict[str, Any] | None = None
     if cal_prov_path.exists():
         if cal_prov_rel in indexed_lineage_paths:
-            calibration_provenance = json.loads(cal_prov_path.read_text(encoding="utf-8"))
+            try:
+                loaded_cal = json.loads(cal_prov_path.read_text(encoding="utf-8"))
+            except json.JSONDecodeError as exc:
+                raise ReplicationPackageError(
+                    f"Failed to parse {cal_prov_rel}: {exc}"
+                ) from exc
+            if not isinstance(loaded_cal, dict):
+                raise ReplicationPackageError(
+                    f"{cal_prov_rel} must be a JSON object, got {type(loaded_cal).__name__}"
+                )
+            calibration_provenance = loaded_cal
         else:
             logger.warning(
                 "event=provenance_unindexed path=%s",
