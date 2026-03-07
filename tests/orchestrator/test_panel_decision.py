@@ -330,8 +330,8 @@ class TestPanelDecisionCSV:
     """AC-4: CSV export with decision columns."""
 
     def test_csv_export_valid(self, tmp_path: Path) -> None:
-        """CSV export with list columns produces a valid file."""
-        record = _make_decision_record("vehicle", n=3)
+        """CSV export with list columns produces a valid file with serialized lists."""
+        record = _make_decision_record("vehicle", n=3, alt_ids=("ev", "ice", "keep"))
         result = _make_result_with_decisions(
             [2025], n=3, records_per_year=[record]
         )
@@ -342,7 +342,19 @@ class TestPanelDecisionCSV:
 
         assert csv_path.exists()
         content = csv_path.read_text()
+
+        # Column names present
         assert "vehicle_chosen" in content
+        assert "vehicle_probabilities" in content
+        assert "vehicle_utilities" in content
+
+        # List columns serialized as bracket-delimited strings
+        # (not raw PyArrow list type which CSV writer cannot handle)
+        lines = content.strip().split("\n")
+        assert len(lines) == 4  # header + 3 household rows
+        # Each data row should contain bracket notation for the list columns
+        for line in lines[1:]:
+            assert "[" in line, f"Expected bracketed list in CSV row: {line}"
 
 
 # ============================================================================

@@ -229,30 +229,49 @@ def _build_decision_columns(
         domain_alternatives[domain] = list(alt_ids)
         n = len(record.chosen)
 
+        # Invariant: decision record must match table row count
+        if n != output_table.num_rows:
+            raise DiscreteChoiceError(
+                f"Domain '{domain}': chosen array length ({n}) does not match "
+                f"output table row count ({output_table.num_rows}). "
+                "Row counts must match for panel column injection."
+            )
+
+        # Validate column presence upfront to catch misconfigured DecisionRecord
+        for table_name, tbl in [
+            ("probabilities", record.probabilities),
+            ("utilities", record.utilities),
+        ]:
+            missing = [aid for aid in alt_ids if aid not in tbl.column_names]
+            if missing:
+                raise DiscreteChoiceError(
+                    f"Domain '{domain}': {table_name} table missing columns "
+                    f"for alternative_ids {missing}. "
+                    f"Available: {tbl.column_names}"
+                )
+
         # {domain}_chosen: string column
         output_table = output_table.append_column(
             f"{domain}_chosen", record.chosen
         )
 
-        # {domain}_probabilities: list<float64> column
-        prob_lists: list[list[float]] = []
-        for i in range(n):
-            row = [
-                record.probabilities.column(aid)[i].as_py() for aid in alt_ids
-            ]
-            prob_lists.append(row)
+        # Vectorized extraction: convert each column to Python list once,
+        # then zip rows — avoids per-cell Arrow bridge crossings (O(M) calls, not O(N*M))
+        prob_col_data = [record.probabilities.column(aid).to_pylist() for aid in alt_ids]
+        prob_lists: list[list[float]] = [
+            [prob_col_data[j][i] for j in range(len(alt_ids))]
+            for i in range(n)
+        ]
         output_table = output_table.append_column(
             f"{domain}_probabilities",
             pa.array(prob_lists, type=pa.list_(pa.float64())),
         )
 
-        # {domain}_utilities: list<float64> column
-        util_lists: list[list[float]] = []
-        for i in range(n):
-            row = [
-                record.utilities.column(aid)[i].as_py() for aid in alt_ids
-            ]
-            util_lists.append(row)
+        util_col_data = [record.utilities.column(aid).to_pylist() for aid in alt_ids]
+        util_lists: list[list[float]] = [
+            [util_col_data[j][i] for j in range(len(alt_ids))]
+            for i in range(n)
+        ]
         output_table = output_table.append_column(
             f"{domain}_utilities",
             pa.array(util_lists, type=pa.list_(pa.float64())),

@@ -46,3 +46,13 @@
 | high | `TestFullPipelineIntegration.test_pipeline_with_eligibility` stops at `EligibilityMergeStep`, leaving AC-7 ("population attributes unchanged, no vintage entry created") unverified | Added `test_pipeline_with_state_update_ac7()` — runs full pipeline through `VehicleStateUpdateStep`, asserts ineligible households have unchanged `vehicle_type` and vintage cohort count is bounded by eligible household count. |
 | medium | `evaluate_eligibility()` leaks raw `ArrowNotImplementedError`/`ArrowTypeError` when threshold type is incompatible with column type (e.g., string threshold on numeric column) | Wrapped `op_fn(col, rule.threshold)` in `try/except (pa.ArrowNotImplementedError, pa.ArrowTypeError, pa.ArrowInvalid)` raising `DiscreteChoiceError` with rule context. |
 | medium | `filter_population_by_eligibility()` leaks raw `ArrowInvalid` when mask length doesn't match table length | Wrapped `table.filter(eligible_mask)` in `try/except (pa.ArrowInvalid, pa.ArrowTypeError)` raising `DiscreteChoiceError` with entity key context. |
+
+## Story 14-6 (2026-03-07)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| medium | Eligibility `n_eligible`/`n_ineligible` values not validated as `int` before storing in `dict[str,int]` | Added `isinstance(..., int)` guards before storing; falls back to safe defaults on type mismatch |
+| medium | No row-count invariant check before appending decision columns — PyArrow error would be cryptic | Added explicit check raising `DiscreteChoiceError` with row count context |
+| medium | No upfront validation that probabilities/utilities tables contain columns for all `alternative_ids` — `KeyError` from Arrow leaks uncontextually | Added pre-loop column presence validation with `DiscreteChoiceError` |
+| medium | O(N×M) per-cell Arrow bridge crossings (`column(aid)[i].as_py()`) — scales poorly at 100k households | Vectorized with `column(aid).to_pylist()` per alternative (O(M) Arrow calls, then pure Python list comprehension) |
+| low | CSV test only checks for column name in raw text, not list serialization format | Added assertions for bracket presence in data rows and correct line count |

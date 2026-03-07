@@ -607,3 +607,17 @@ Claude Opus 4.6
 - `src/reformlab/orchestrator/panel.py` — Extended from_orchestrator_result() with _build_decision_columns() helper; added _cast_list_columns_to_string() for CSV export; DECISION_LOG_KEY import; promote_options="permissive" for concat; decision_domain_alternatives in metadata
 - `src/reformlab/governance/capture.py` — Added capture_discrete_choice_parameters() function
 - `src/reformlab/orchestrator/runner.py` — Added capture_discrete_choice_parameters import and call in OrchestratorRunner.run(); discrete_choice_parameters in manifest metadata
+
+#### Post-Review Fixes (AI Synthesis 2026-03-07)
+- `src/reformlab/discrete_choice/decision_record.py` — Validate eligibility_n_eligible/n_ineligible as int before storing in dict[str,int]
+- `src/reformlab/orchestrator/panel.py` — Add row-count invariant check; validate probabilities/utilities column names upfront; vectorize extraction with to_pylist() replacing per-cell as_py()
+- `tests/orchestrator/test_panel_decision.py` — Strengthen CSV test to verify bracket-delimited list serialization
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-07
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 8.35 (avg of 5.9 and 10.8) → CHANGES REQUESTED
+- **Issues Found:** 4 verified (after dismissing false positives)
+- **Issues Fixed:** 4
+- **Action Items Created:** 0

@@ -165,10 +165,12 @@ class DecisionRecordStep:
         eligibility_summary: dict[str, int] | None = None
         n_total = metadata.get("eligibility_n_total")
         if isinstance(n_total, int):
+            n_eligible_raw = metadata.get("eligibility_n_eligible", n_total)
+            n_ineligible_raw = metadata.get("eligibility_n_ineligible", 0)
             eligibility_summary = {
                 "n_total": n_total,
-                "n_eligible": metadata.get("eligibility_n_eligible", n_total),
-                "n_ineligible": metadata.get("eligibility_n_ineligible", 0),
+                "n_eligible": n_eligible_raw if isinstance(n_eligible_raw, int) else n_total,
+                "n_ineligible": n_ineligible_raw if isinstance(n_ineligible_raw, int) else 0,
             }
 
         record = DecisionRecord(
