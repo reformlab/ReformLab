@@ -27,3 +27,12 @@
 | medium | `seed=None` governance warning only at step level, not in pure function | Added `logger.warning` in `draw_choices` when `seed is None`. |
 | medium | `dict(existing_metadata)` can throw raw `TypeError` if metadata is not a dict | Added `isinstance(existing_metadata, dict)` guard with `DiscreteChoiceError`. |
 | low | `test_result_fields_populated` only checks types, not semantic correctness of utilities | Updated test to use distinct utility values and assert they are correctly stored (not copied from probabilities). |
+
+## Story 14-3 (2026-03-07)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| high | `apply_choices_to_population` raises raw `KeyError` when `entity_key` not in `population.tables` | Added explicit key check with `DiscreteChoiceError` listing available keys |
+| medium | Non-dict metadata silently reset to `{}` instead of fail-loud error, inconsistent with `LogitChoiceStep.execute()` pattern | Changed to raise `DiscreteChoiceError` with type information, matching `logit.py:330-336` |
+| medium | Existing `VintageState` with wrong `asset_class` (e.g., "heating") merged without validation, allowing state contamination | Added `asset_class != "vehicle"` validation before merge, raising `DiscreteChoiceError` |
+| low | `sorted(unknown_ids)` can throw `TypeError` for heterogeneous types in edge cases | Changed to `sorted(str(x) for x in unknown_ids)` for robust formatting |

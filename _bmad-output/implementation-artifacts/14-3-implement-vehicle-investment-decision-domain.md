@@ -421,15 +421,27 @@ TDD approach: wrote 49 tests first covering all ACs, then implemented `vehicle.p
 - Vintage integration pattern documented with VintageCohort/VintageState types from vintage subsystem
 - Edge cases comprehensively defined (empty population, all-keep, all-switch, missing state, length mismatch)
 - Out-of-scope guardrails explicitly defined (no heating, no eligibility, no calibration, no nested logit)
-- Implementation complete: 49 tests passing, ruff clean, mypy strict clean (129 files), full regression (2383 tests) green
+- Implementation complete: 52 tests passing, ruff clean, mypy strict clean, full regression (2386 tests) green
 - No modifications to any existing files except `__init__.py` (AC-10 satisfied)
 - Vehicle domain fixtures kept self-contained in test_vehicle.py (no conftest changes needed)
+- Code review synthesis applied 4 fixes: entity_key validation, metadata fail-loud, vintage asset_class validation, sorted() type safety
+- Added 3 new tests for review-identified failure paths (missing entity_key, non-dict metadata, vintage asset_class mismatch)
 
 ### File List
 
 #### New Files
 - `src/reformlab/discrete_choice/vehicle.py` — VehicleDomainConfig, VehicleInvestmentDomain, VehicleStateUpdateStep, apply_choices_to_population, default_vehicle_domain_config, _create_vintage_entries, _infer_pa_type
-- `tests/discrete_choice/test_vehicle.py` — 49 tests across 7 test classes covering all ACs
+- `tests/discrete_choice/test_vehicle.py` — 52 tests across 7 test classes covering all ACs
 
 #### Modified Files
 - `src/reformlab/discrete_choice/__init__.py` — Export new public API (5 new exports)
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-07
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 4.9 (A) / 11.0 (B) — both inflated by false positive AC-10 claim (+3 each)
+- **Adjusted Score:** ~2/8 after removing false positives → Approved with Reservations
+- **Issues Found:** 4 verified (0 critical, 1 high, 2 medium, 1 low)
+- **Issues Fixed:** 4
+- **Action Items Created:** 0

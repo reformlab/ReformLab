@@ -254,6 +254,12 @@ def apply_choices_to_population(
     """
     from reformlab.computation.types import PopulationData as _PopulationData
 
+    if entity_key not in population.tables:
+        raise DiscreteChoiceError(
+            f"Entity key '{entity_key}' not found in population tables. "
+            f"Available keys: {sorted(population.tables.keys())}"
+        )
+
     table = population.tables[entity_key]
     n = table.num_rows
     chosen_list: list[Any] = choice_result.chosen.to_pylist()
@@ -271,7 +277,7 @@ def apply_choices_to_population(
     unknown_ids = set(chosen_list) - set(alt_map)
     if unknown_ids:
         raise DiscreteChoiceError(
-            f"Unknown alternative IDs in chosen: {sorted(unknown_ids)}, "
+            f"Unknown alternative IDs in chosen: {sorted(str(x) for x in unknown_ids)}, "
             f"valid: {sorted(alt_map)}"
         )
 
@@ -489,6 +495,13 @@ class VehicleStateUpdateStep:
         # Merge with existing vintage state
         existing_vintage = state.data.get(self._vintage_key)
         if isinstance(existing_vintage, _VintageState):
+            if existing_vintage.asset_class != "vehicle":
+                raise DiscreteChoiceError(
+                    f"Existing VintageState has asset_class='{existing_vintage.asset_class}', "
+                    f"expected 'vehicle'",
+                    year=year,
+                    step_name=self._name,
+                )
             merged_vintage = _VintageState(
                 asset_class="vehicle",
                 cohorts=existing_vintage.cohorts + new_cohorts,
@@ -524,7 +537,12 @@ class VehicleStateUpdateStep:
         # Extend metadata
         existing_metadata = state.data.get(DISCRETE_CHOICE_METADATA_KEY, {})
         if not isinstance(existing_metadata, dict):
-            existing_metadata = {}
+            raise DiscreteChoiceError(
+                f"Expected dict for metadata key '{DISCRETE_CHOICE_METADATA_KEY}', "
+                f"got {type(existing_metadata).__name__}",
+                year=year,
+                step_name=self._name,
+            )
         extended_metadata = dict(existing_metadata)
         extended_metadata["vehicle_n_switchers"] = n_switchers
         extended_metadata["vehicle_n_keepers"] = n_keepers

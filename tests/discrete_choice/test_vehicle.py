@@ -738,6 +738,60 @@ class TestVehicleStateUpdateStep:
         with pytest.raises(DiscreteChoiceError, match="PopulationData"):
             step.execute(2025, state)
 
+    def test_missing_entity_key_raises(self) -> None:
+        """Edge case: entity_key not in population raises DiscreteChoiceError."""
+        config = default_vehicle_domain_config()
+        population = PopulationData(
+            tables={"other_entity": pa.table({"x": pa.array([1])})},
+            metadata={},
+        )
+        choice_result = ChoiceResult(
+            chosen=pa.array(["keep_current"]),
+            probabilities=pa.table({
+                aid: pa.array([1.0 / 6])
+                for aid in [a.id for a in config.alternatives]
+            }),
+            utilities=pa.table({
+                aid: pa.array([-1.0])
+                for aid in [a.id for a in config.alternatives]
+            }),
+            alternative_ids=tuple(a.id for a in config.alternatives),
+            seed=42,
+        )
+        with pytest.raises(DiscreteChoiceError, match="Entity key"):
+            apply_choices_to_population(
+                population, choice_result, config.alternatives, "menage"
+            )
+
+    def test_non_dict_metadata_raises(self) -> None:
+        """Edge case: non-dict metadata raises DiscreteChoiceError."""
+        config = default_vehicle_domain_config()
+        domain = VehicleInvestmentDomain(config)
+        step = VehicleStateUpdateStep(domain=domain)
+        state = self._make_state(n=1, chosen=["keep_current"])
+        # Corrupt metadata to non-dict
+        corrupted_data = dict(state.data)
+        corrupted_data[DISCRETE_CHOICE_METADATA_KEY] = "not_a_dict"
+        from dataclasses import replace as _replace
+
+        corrupted_state = _replace(state, data=corrupted_data)
+        with pytest.raises(DiscreteChoiceError, match="Expected dict"):
+            step.execute(2025, corrupted_state)
+
+    def test_vintage_asset_class_mismatch_raises(self) -> None:
+        """Edge case: existing vintage with wrong asset_class raises DiscreteChoiceError."""
+        config = default_vehicle_domain_config()
+        domain = VehicleInvestmentDomain(config)
+        step = VehicleStateUpdateStep(domain=domain)
+        wrong_vintage = VintageState(
+            asset_class="heating",
+            cohorts=(VintageCohort(age=1, count=5, attributes={"type": "gas"}),),
+            metadata={},
+        )
+        state = self._make_state(n=1, chosen=["buy_ev"], existing_vintage=wrong_vintage)
+        with pytest.raises(DiscreteChoiceError, match="asset_class"):
+            step.execute(2025, state)
+
 
 # ============================================================================
 # TestVintageIntegration (AC-8)
