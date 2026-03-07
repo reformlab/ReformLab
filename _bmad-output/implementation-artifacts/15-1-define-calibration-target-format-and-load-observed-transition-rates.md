@@ -307,6 +307,7 @@ n/a — clean implementation, no debug sessions required.
 ### Completion Notes List
 
 - Story 15.1 fully implemented and validated — all 70 new tests pass, zero regressions across 2639 total tests.
+- Code review synthesis (2026-03-07): 3 fixes applied — (1) `_load_yaml` now catches `OSError`/`FileNotFoundError` and wraps in `CalibrationTargetLoadError` instead of leaking raw OS exception; (2) `CALIBRATION_TARGET_SCHEMA` now declares `weight` as an optional column, matching the JSON Schema contract for the YAML path; (3) `_table_to_target_set` error message corrected from `field='row'` to `field='unknown'` — 'row' is a location not a field name.
 - Module docstring ordering fix: project convention is docstring-first, then `from __future__ import annotations` (following `discrete_choice/errors.py` pattern), not the inverse. All calibration files follow this convention.
 - JSON Schema loaded via `importlib.resources.files("reformlab.calibration.schema")` — no path hardcoding; schema `__init__.py` makes the directory a Python package so wheel packaging works correctly.
 - PyArrow CSV type-error row extraction: PyArrow `read_csv` with `ConvertOptions(column_types=...)` embeds `Row #N` (1-based) in its `ArrowInvalid` message; `_extract_row_from_message()` converts to 0-based `row=N` for `CalibrationTargetLoadError`.
@@ -341,3 +342,17 @@ Modified files:
 ### Change Log
 
 - 2026-03-07: Story 15.1 implemented — calibration module created, 70 tests written and passing, ruff/mypy clean, full regression suite green.
+- 2026-03-07: Code review synthesis — 3 fixes applied to `src/reformlab/calibration/loader.py` (see Completion Notes above).
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-07
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 9.8 (Reviewer B) / 0.4 (Reviewer A) → net verdict: Changes Requested (critical issues present)
+- **Issues Found:** 3 verified, 6 dismissed as false positives
+- **Issues Fixed:** 3
+- **Action Items Created:** 0
+
+#### Review Follow-ups (AI)
+
+_(No open action items — all verified issues fixed.)_

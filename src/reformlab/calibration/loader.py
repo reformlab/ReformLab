@@ -41,10 +41,11 @@ CALIBRATION_TARGET_SCHEMA = DataSchema(
             pa.field("to_state", pa.utf8()),
             pa.field("observed_rate", pa.float64()),
             pa.field("source_label", pa.utf8()),
+            pa.field("weight", pa.float64()),
         ]
     ),
     required_columns=("domain", "period", "from_state", "to_state", "observed_rate", "source_label"),
-    optional_columns=(),
+    optional_columns=("weight",),
 )
 
 # ============================== JSON Schema Cache ==============================
@@ -167,7 +168,7 @@ def _table_to_target_set(table: pa.Table, path: Path) -> CalibrationTargetSet:
             )
         except Exception as exc:
             raise CalibrationTargetLoadError(
-                f"field='row' location='row={row}' file={str(path)!r}: {exc}"
+                f"field='unknown' location='row={row}' file={str(path)!r}: {exc}"
             ) from exc
         targets.append(target)
 
@@ -218,6 +219,10 @@ def _load_yaml(path: Path) -> CalibrationTargetSet:
     """
     try:
         raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise CalibrationTargetLoadError(
+            f"field='path' location='file' file={str(path)!r}: cannot read file: {exc}"
+        ) from exc
     except yaml.YAMLError as exc:
         raise CalibrationTargetLoadError(
             f"field='unknown' location='file' file={str(path)!r}: YAML parse error: {exc}"

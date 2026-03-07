@@ -1,0 +1,106 @@
+record_id: 79f34f07-423b-42f7-a7ad-4e90ec376e76
+created_at: '2026-03-07T14:15:26.516973+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 15
+  story_num: '1'
+  title: Story 15.1
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: codex
+  model: gpt-5.3-codex
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-03-07T14:11:40.068975Z'
+  end_time: '2026-03-07T14:14:24.010975Z'
+  duration_ms: 163942
+  input_tokens: 0
+  output_tokens: 1394
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 5579
+  heading_count: 6
+  list_depth_max: 2
+  code_block_count: 0
+  sections_detected:
+  - Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: 9.8'
+  - Architectural Sins
+  - Correctness, Performance, and Test Integrity
+  - Suggested Fixes
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.33
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 6af7e5cc955b
+findings:
+  total_count: 9
+  by_severity:
+    critical: 1
+    major: 7
+    minor: 1
+    nit: 0
+  by_category:
+    security: 0
+    performance: 1
+    correctness: 6
+    completeness: 1
+    clarity: 0
+    testability: 1
+  has_fix_count: 9
+  has_location_count: 9
+  has_evidence_count: 9
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: true
+  uses_conditionals: false
+  uncertainty_phrases_count: 0
+  confidence_phrases_count: 1
+linguistic:
+  avg_sentence_length: 22.575757575757574
+  vocabulary_richness: 0.3825503355704698
+  flesch_reading_ease: -50.45099603099601
+  vague_terms_count: 1
+  formality_score: 0.75
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.95
+  evidence_quality: 0.9
+  follows_template: true
+  internal_consistency: 0.95
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 18
+  lines_of_code_reviewed: null
+  test_coverage_delta: null
