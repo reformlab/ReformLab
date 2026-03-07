@@ -33,7 +33,7 @@ from reformlab.governance.errors import ReplicationPackageError
 from reformlab.governance.hashing import hash_file
 
 if TYPE_CHECKING:
-    pass
+    from reformlab.interfaces.api import SimulationResult
 
 logger = logging.getLogger(__name__)
 
@@ -138,16 +138,19 @@ class PackageIndex:
         if missing:
             raise ValueError(f"PackageIndex missing fields: {', '.join(missing)}")
 
-        artifacts = tuple(
-            PackageArtifact(
-                role=entry["role"],
-                artifact_type=entry["artifact_type"],
-                path=entry["path"],
-                hash=entry["hash"],
-                description=entry["description"],
+        try:
+            artifacts = tuple(
+                PackageArtifact(
+                    role=entry["role"],
+                    artifact_type=entry["artifact_type"],
+                    path=entry["path"],
+                    hash=entry["hash"],
+                    description=entry["description"],
+                )
+                for entry in data["artifacts"]
             )
-            for entry in data["artifacts"]
-        )
+        except (KeyError, TypeError) as exc:
+            raise ValueError(f"PackageIndex artifact entry malformed: {exc}") from exc
 
         return cls(
             package_id=data["package_id"],
@@ -185,7 +188,7 @@ class ReplicationPackageMetadata:
 
 
 def export_replication_package(
-    result: Any,
+    result: SimulationResult,
     output_path: Path,
     *,
     compress: bool = False,
@@ -239,127 +242,136 @@ def export_replication_package(
     package_dir = output_path / package_id
     package_dir.mkdir(parents=False, exist_ok=False)
 
-    data_dir = package_dir / "data"
-    config_dir = package_dir / "config"
-    manifests_dir = package_dir / "manifests"
-    data_dir.mkdir()
-    config_dir.mkdir()
-    manifests_dir.mkdir()
+    # Wrap all artifact I/O in try/finally so partial directories are cleaned
+    # up on any failure, leaving no half-exported packages on disk.
+    try:
+        data_dir = package_dir / "data"
+        config_dir = package_dir / "config"
+        manifests_dir = package_dir / "manifests"
+        data_dir.mkdir()
+        config_dir.mkdir()
+        manifests_dir.mkdir()
 
-    # ── Export artifacts ────────────────────────────────────────────────────
+        # ── Export artifacts ────────────────────────────────────────────────────
 
-    # AC-1: panel output (Parquet)
-    parquet_path = data_dir / "panel-output.parquet"
-    panel_output.to_parquet(parquet_path)
+        # AC-1: panel output (Parquet)
+        parquet_path = data_dir / "panel-output.parquet"
+        panel_output.to_parquet(parquet_path)
 
-    # AC-1: policy parameters snapshot
-    policy_path = config_dir / "policy.json"
-    policy_data = getattr(manifest, "policy", {})
-    policy_path.write_text(
-        json.dumps(policy_data, sort_keys=True, indent=2),
-        encoding="utf-8",
-    )
-
-    # AC-1: scenario metadata snapshot (seeds, pipeline, assumptions, mappings, warnings)
-    scenario_meta_path = config_dir / "scenario-metadata.json"
-    scenario_meta: dict[str, Any] = {
-        "adapter_version": getattr(manifest, "adapter_version", ""),
-        "assumptions": getattr(manifest, "assumptions", []),
-        "engine_version": getattr(manifest, "engine_version", ""),
-        "mappings": getattr(manifest, "mappings", []),
-        "scenario_version": getattr(manifest, "scenario_version", ""),
-        "seeds": getattr(manifest, "seeds", {}),
-        "step_pipeline": getattr(manifest, "step_pipeline", []),
-        "warnings": getattr(manifest, "warnings", []),
-    }
-    scenario_meta_path.write_text(
-        json.dumps(scenario_meta, sort_keys=True, indent=2),
-        encoding="utf-8",
-    )
-
-    # AC-1: run manifest (full RunManifest JSON)
-    run_manifest_path = manifests_dir / "run-manifest.json"
-    run_manifest_path.write_text(manifest.to_json(), encoding="utf-8")
-
-    # AC-4: child manifests if available in metadata (year → manifest JSON string)
-    child_manifests_meta: Any = result.metadata.get("child_manifests", {})
-    child_manifests_written: list[Path] = []
-    if isinstance(child_manifests_meta, dict) and child_manifests_meta:
-        any_written = False
-        for year_raw, manifest_value in child_manifests_meta.items():
-            if isinstance(manifest_value, str) and manifest_value.startswith("{"):
-                try:
-                    year_int = int(year_raw)
-                except (TypeError, ValueError):
-                    continue
-                child_path = manifests_dir / f"year-{year_int}.json"
-                child_path.write_text(manifest_value, encoding="utf-8")
-                child_manifests_written.append(child_path)
-                any_written = True
-        if not any_written:
-            logger.debug(
-                "event=child_manifests_absent package_id=%s reason=no_json_manifest_strings",
-                package_id,
-            )
-    else:
-        logger.debug("event=child_manifests_absent package_id=%s", package_id)
-
-    # ── Hash all artifact files ─────────────────────────────────────────────
-    artifacts_info: list[tuple[Path, PackageArtifactRole, PackageArtifactType, str]] = [
-        (parquet_path, "output", "result", "Panel output table (household × year)"),
-        (policy_path, "config", "scenario", "Policy parameters snapshot"),
-        (scenario_meta_path, "config", "scenario", "Seeds, step pipeline, assumptions, mappings"),
-        (run_manifest_path, "metadata", "manifest", "Immutable run manifest with full provenance"),
-    ]
-    for child_path in child_manifests_written:
-        year_label = child_path.stem  # e.g. "year-2025"
-        artifacts_info.append(
-            (child_path, "metadata", "manifest", f"Year manifest: {year_label}"),
+        # AC-1: policy parameters snapshot
+        policy_path = config_dir / "policy.json"
+        policy_data = getattr(manifest, "policy", {})
+        policy_path.write_text(
+            json.dumps(policy_data, sort_keys=True, indent=2),
+            encoding="utf-8",
         )
 
-    package_artifacts: list[PackageArtifact] = []
-    for file_path, role, artifact_type, description in artifacts_info:
-        file_hash = hash_file(file_path)
-        rel_path = file_path.relative_to(package_dir).as_posix()
-        package_artifacts.append(
-            PackageArtifact(
-                role=role,
-                artifact_type=artifact_type,
-                path=rel_path,
-                hash=file_hash,
-                description=description,
-            )
+        # AC-1: scenario metadata snapshot (seeds, pipeline, assumptions, mappings, warnings)
+        scenario_meta_path = config_dir / "scenario-metadata.json"
+        scenario_meta: dict[str, Any] = {
+            "adapter_version": getattr(manifest, "adapter_version", ""),
+            "assumptions": getattr(manifest, "assumptions", []),
+            "engine_version": getattr(manifest, "engine_version", ""),
+            "mappings": getattr(manifest, "mappings", []),
+            "scenario_version": getattr(manifest, "scenario_version", ""),
+            "seeds": getattr(manifest, "seeds", {}),
+            "step_pipeline": getattr(manifest, "step_pipeline", []),
+            "warnings": getattr(manifest, "warnings", []),
+        }
+        scenario_meta_path.write_text(
+            json.dumps(scenario_meta, sort_keys=True, indent=2),
+            encoding="utf-8",
         )
 
-    # ── Build and write PackageIndex (AC-2, AC-5) ───────────────────────────
-    created_at = datetime.now(timezone.utc).isoformat()
-    reformlab_version = getattr(manifest, "engine_version", "unknown")
-    source_manifest_id = getattr(manifest, "manifest_id", "")
+        # AC-1: run manifest (full RunManifest JSON)
+        run_manifest_path = manifests_dir / "run-manifest.json"
+        run_manifest_path.write_text(manifest.to_json(), encoding="utf-8")
 
-    index = PackageIndex(
-        package_id=package_id,
-        created_at=created_at,
-        reformlab_version=reformlab_version,
-        source_manifest_id=source_manifest_id,
-        artifacts=tuple(package_artifacts),
-    )
+        # AC-4: child manifests if available in metadata (year → manifest JSON string)
+        child_manifests_meta: Any = result.metadata.get("child_manifests", {})
+        child_manifests_written: list[Path] = []
+        if isinstance(child_manifests_meta, dict) and child_manifests_meta:
+            any_written = False
+            for year_raw, manifest_value in sorted(child_manifests_meta.items()):
+                if isinstance(manifest_value, str) and manifest_value.startswith("{"):
+                    try:
+                        year_int = int(year_raw)
+                    except (TypeError, ValueError):
+                        continue
+                    child_path = manifests_dir / f"year-{year_int}.json"
+                    child_path.write_text(manifest_value, encoding="utf-8")
+                    child_manifests_written.append(child_path)
+                    any_written = True
+            if not any_written:
+                logger.debug(
+                    "event=child_manifests_absent package_id=%s reason=no_json_manifest_strings",
+                    package_id,
+                )
+        else:
+            logger.debug("event=child_manifests_absent package_id=%s", package_id)
 
-    index_path = package_dir / "package-index.json"
-    index_path.write_text(index.to_json(), encoding="utf-8")
+        # ── Hash all artifact files ─────────────────────────────────────────────
+        artifacts_info: list[tuple[Path, PackageArtifactRole, PackageArtifactType, str]] = [
+            (parquet_path, "output", "result", "Panel output table (household × year)"),
+            (policy_path, "config", "scenario", "Policy parameters snapshot"),
+            (scenario_meta_path, "config", "scenario", "Seeds, step pipeline, assumptions, mappings"),
+            (run_manifest_path, "metadata", "manifest", "Immutable run manifest with full provenance"),
+        ]
+        for child_path in child_manifests_written:
+            year_label = child_path.stem  # e.g. "year-2025"
+            artifacts_info.append(
+                (child_path, "metadata", "manifest", f"Year manifest: {year_label}"),
+            )
 
-    # ── Optional compression (AC-3) ─────────────────────────────────────────
-    final_path: Path
-    if compress:
-        zip_path = output_path / f"{package_id}.zip"
-        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-            for file_path in package_dir.rglob("*"):
-                if file_path.is_file():
-                    arcname = file_path.relative_to(output_path)
-                    zf.write(file_path, arcname)
-        shutil.rmtree(package_dir)
-        final_path = zip_path
-    else:
-        final_path = package_dir
+        package_artifacts: list[PackageArtifact] = []
+        for file_path, role, artifact_type, description in artifacts_info:
+            file_hash = hash_file(file_path)
+            rel_path = file_path.relative_to(package_dir).as_posix()
+            package_artifacts.append(
+                PackageArtifact(
+                    role=role,
+                    artifact_type=artifact_type,
+                    path=rel_path,
+                    hash=file_hash,
+                    description=description,
+                )
+            )
+
+        # ── Build and write PackageIndex (AC-2, AC-5) ───────────────────────────
+        created_at = datetime.now(timezone.utc).isoformat()
+        reformlab_version = getattr(manifest, "engine_version", "unknown")
+        source_manifest_id = getattr(manifest, "manifest_id", "")
+
+        index = PackageIndex(
+            package_id=package_id,
+            created_at=created_at,
+            reformlab_version=reformlab_version,
+            source_manifest_id=source_manifest_id,
+            artifacts=tuple(package_artifacts),
+        )
+
+        index_path = package_dir / "package-index.json"
+        index_path.write_text(index.to_json(), encoding="utf-8")
+
+        # ── Optional compression (AC-3) ─────────────────────────────────────────
+        final_path: Path
+        if compress:
+            zip_path = output_path / f"{package_id}.zip"
+            with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+                for file_path in package_dir.rglob("*"):
+                    if file_path.is_file():
+                        arcname = file_path.relative_to(output_path)
+                        zf.write(file_path, arcname)
+            shutil.rmtree(package_dir)
+            final_path = zip_path
+        else:
+            final_path = package_dir
+
+    except Exception:
+        # Clean up partial package directory so no half-exported packages remain.
+        if package_dir.exists():
+            shutil.rmtree(package_dir)
+        raise
 
     logger.info(
         "event=replication_package_created package_id=%s artifact_count=%d compressed=%s",

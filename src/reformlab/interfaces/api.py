@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     from reformlab.governance.benchmarking import BenchmarkSuiteResult
     from reformlab.governance.manifest import RunManifest
     from reformlab.governance.memory import MemoryEstimate
+    from reformlab.governance.replication import ReplicationPackageMetadata
     from reformlab.indicators.types import IndicatorResult
     from reformlab.orchestrator.panel import PanelOutput
     from reformlab.orchestrator.types import PipelineStep, YearState
@@ -210,7 +211,7 @@ class SimulationResult:
         output_path: Path,
         *,
         compress: bool = False,
-    ) -> Any:
+    ) -> ReplicationPackageMetadata:
         """Export this simulation run as a self-contained replication package.
 
         Delegates to ``governance.export_replication_package()``. Creates a
