@@ -1,0 +1,139 @@
+record_id: 3127824f-0f57-4c95-9e57-b1f0cb6ae965
+created_at: '2026-03-07T19:19:13.763692+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 17
+  story_num: 1
+  title: Story 17.1
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: true
+    requires_migration: false
+evaluator:
+  provider: codex
+  model: gpt-5.3-codex
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-03-07T19:15:26.020949Z'
+  end_time: '2026-03-07T19:17:59.039949Z'
+  duration_ms: 153019
+  input_tokens: 0
+  output_tokens: 4104
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 16416
+  heading_count: 43
+  list_depth_max: 2
+  code_block_count: 10
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 17.8'
+  - 🎯 Ruthless Story Validation 17.1
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 17.8 → REJECT'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Progress Model Contradiction
+  - 2. API Path Contract Conflict
+  - 3. Undefined Validation Inputs
+  - 4. Incomplete Core Endpoint Contract
+  - 5. Missing Operational Guardrails
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 6. Define Overlap Semantics for Multi-Source Selection
+  - 7. Add Determinism Criteria for Regeneration
+  - 8. Add Explicit Negative-Path ACs
+  - 9. Add Accessibility Acceptance Criteria
+  - 10. Normalize Metadata Definitions
+  - 11. Add Regression ACs for Existing Workspace
+  - 12. Add Data Readiness Requirement
+  - 13. Clarify Cancel Behavior Scope
+  - ✨ Optimizations (Nice to Have)
+  - 14. Split Delivery Into Three Stories
+  - 15. Add OpenAPI Snapshot/Contract Tests
+  - 16. Provide Canonical JSON Fixtures
+  - 17. Add AC-to-Test Matrix in Story
+  - 🤖 LLM Optimization Improvements
+  - 18. Unify Route Instructions
+  - 19. Compress Repeated UI Pattern Text
+  - 20. Move Long Method Explanations to Data Constants
+  - 21. Replace Version Blocks With Single Source References
+  - 22. Elevate Critical Constraints to Top
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.33
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 9c94dc236db5
+findings:
+  total_count: 22
+  by_severity:
+    critical: 5
+    major: 8
+    minor: 9
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 4
+    completeness: 6
+    clarity: 7
+    testability: 5
+  has_fix_count: 22
+  has_location_count: 18
+  has_evidence_count: 20
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: false
+  uncertainty_phrases_count: 2
+  confidence_phrases_count: 2
+linguistic:
+  avg_sentence_length: 11.026737967914439
+  vocabulary_richness: 0.3433559650824442
+  flesch_reading_ease: 15.527308743169414
+  vague_terms_count: 0
+  formality_score: 0.7
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.8
+  evidence_quality: 0.8
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: true
+    requires_migration: false

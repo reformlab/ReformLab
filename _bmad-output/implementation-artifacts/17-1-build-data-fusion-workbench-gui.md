@@ -12,26 +12,26 @@ so that I can build a credible population for policy simulation without writing 
 
 ## Acceptance Criteria
 
-1. **AC-1: Data source browsing** — Given the Data Fusion Workbench screen, when the analyst opens it, then available data sources are listed with metadata (name, description, variables, record count, source URL) grouped by provider (INSEE, Eurostat, ADEME, SDES).
+1. **AC-1: Data source browsing** — Given the Data Fusion Workbench screen, when the analyst opens it, then available data sources are listed with metadata (name, description, variable count, record count, source URL) grouped by provider (INSEE, Eurostat, ADEME, SDES).
 
-2. **AC-2: Variable overlap display** — Given the source browser, when the analyst selects two or more data sources, then the GUI shows overlapping and unique variables between selected sources, and prompts merge method selection.
+2. **AC-2: Variable overlap display** — Given the source browser, when the analyst selects two or more data sources, then the GUI shows overlapping variables (columns present in all selected sources) and unique variables per source, and prompts merge method selection. If only one source is selected, the overlap view and merge method prompt are not shown. If two or more selected sources share no overlapping columns, the GUI displays an informational message noting this and still allows the analyst to proceed to merge method selection.
 
 3. **AC-3: Merge method explanation** — Given merge method selection, when the analyst chooses a method (uniform, IPF, conditional sampling), then a plain-language explanation of the method's assumptions and trade-offs is displayed alongside configurable parameters.
 
-4. **AC-4: Population generation with progress** — Given a configured merge, when the analyst clicks "Generate Population", then the population generation pipeline runs and the GUI shows progress (current step, percentage, ETA).
+4. **AC-4: Population generation feedback** — Given a configured merge, when the analyst clicks "Generate Population", then the population generation pipeline runs synchronously, the GUI shows a loading indicator during execution, and on completion displays the step-by-step execution log returned by the pipeline. If generation fails, the GUI displays a structured error message (what, why, fix) with guidance for resolution.
 
-5. **AC-5: Population preview and validation** — Given a generated population, when previewed, then the GUI displays summary statistics (record count, variable distributions, key demographics) and validation results against known marginals with pass/fail indicators.
+5. **AC-5: Population preview and validation** — Given a generated population, when previewed, then the GUI displays summary statistics (record count, variable distributions, key demographics: income deciles, heating type distribution, vehicle type distribution) and validation results from the pipeline's built-in marginal checks (pass/fail per marginal, expected vs. observed deviation values, overall validation status). Marginals are provided by the Epic 11 pipeline from catalog metadata; they are not user-configurable in this story.
 
-6. **AC-6: Iterative regeneration** — Given the workbench, when the analyst adjusts merge parameters and regenerates, then the new population reflects the changed configuration without requiring page reload.
+6. **AC-6: Iterative regeneration** — Given the workbench, when the analyst adjusts merge parameters and regenerates, then the new population reflects the changed configuration without requiring page reload. When the same seed and configuration are resubmitted, the result is bit-for-bit identical (deterministic), consistent with the project's reproducibility requirement.
 
 ## Tasks / Subtasks
 
 - [ ] Task 1: Implement FastAPI endpoints for data fusion operations (AC: 1, 2, 3, 4, 5)
   - [ ] 1.1: Create `src/reformlab/server/routes/data_fusion.py` with router
-  - [ ] 1.2: Add `GET /api/data-sources` endpoint — list all available datasets from all 4 provider catalogs with metadata (name, description, column count, source URL)
-  - [ ] 1.3: Add `GET /api/data-sources/{provider}/{dataset_id}` endpoint — return dataset detail including column schema (name, type, description)
-  - [ ] 1.4: Add `GET /api/merge-methods` endpoint — return available merge methods with plain-language descriptions, assumption statements, and parameter specifications
-  - [ ] 1.5: Add `POST /api/data-fusion/generate` endpoint — accept source selections + merge config, execute `PopulationPipeline`, return generation result with summary stats, assumption chain, step log, and validation results
+  - [ ] 1.2: Add `GET /sources` endpoint (full path: `GET /api/data-fusion/sources`) — list all available datasets from all 4 provider catalogs with metadata (name, description, column count, record count, source URL)
+  - [ ] 1.3: Add `GET /sources/{provider}/{dataset_id}` endpoint (full path: `GET /api/data-fusion/sources/{provider}/{dataset_id}`) — return dataset detail including column schema (name, type, description)
+  - [ ] 1.4: Add `GET /merge-methods` endpoint (full path: `GET /api/data-fusion/merge-methods`) — return available merge methods with plain-language descriptions, assumption statements, and parameter specifications
+  - [ ] 1.5: Add `POST /generate` endpoint (full path: `POST /api/data-fusion/generate`) — accept source selections + merge config, execute `PopulationPipeline`, return generation result with summary stats, assumption chain, step log, and validation results
   - [ ] 1.6: Add Pydantic v2 request/response models to `src/reformlab/server/models.py` for all new endpoints
   - [ ] 1.7: Register data fusion router in `src/reformlab/server/app.py`
   - [ ] 1.8: Write backend tests in `tests/server/test_data_fusion.py`
@@ -53,7 +53,7 @@ so that I can build a credible population for policy simulation without writing 
   - [ ] 4.3: Add unit tests for MergeMethodSelector and MergeParametersPanel
 
 - [ ] Task 5: Build Population Preview and Validation components (AC: 4, 5)
-  - [ ] 5.1: Create `frontend/src/components/simulation/PopulationGenerationProgress.tsx` — progress bar (reuse RunProgressBar pattern) with current step label, percentage, ETA, cancel-ability
+  - [ ] 5.1: Create `frontend/src/components/simulation/PopulationGenerationProgress.tsx` — loading indicator (reuse RunProgressBar pattern) shown during synchronous generation; on completion replaced by step-by-step execution log from `result.step_log`; on failure displays structured error (what, why, fix)
   - [ ] 5.2: Create `frontend/src/components/simulation/PopulationPreview.tsx` — tabbed view (Summary | Distributions | Assumptions) showing record count, column list, key demographic stats, assumption chain from pipeline
   - [ ] 5.3: Create `frontend/src/components/simulation/PopulationDistributionChart.tsx` — Recharts bar chart showing distribution of key variables (income deciles, heating types, vehicle types) using existing DistributionalChart pattern
   - [ ] 5.4: Create `frontend/src/components/simulation/PopulationValidationPanel.tsx` — per-marginal pass/fail badges, deviation values, expected vs. observed comparison, overall validation status
@@ -65,6 +65,7 @@ so that I can build a credible population for policy simulation without writing 
   - [ ] 6.3: Update `frontend/src/contexts/AppContext.tsx` — add data fusion state (selected sources, merge method, generation result, population preview), expose through context
   - [ ] 6.4: Add unit tests for DataFusionWorkbench screen component
   - [ ] 6.5: Verify full end-to-end flow: open workbench → select sources → review variables → choose method → generate → preview → regenerate with different parameters
+  - [ ] 6.6: Verify non-regression: existing view modes (scenario, results, etc.), left panel navigation, and `Cmd+[`/`Cmd+]` keyboard shortcuts remain functional after the App.tsx and AppContext.tsx integration changes
 
 - [ ] Task 7: Run quality checks (AC: all)
   - [ ] 7.1: Run `uv run ruff check src/ tests/` and fix any lint issues
@@ -76,6 +77,15 @@ so that I can build a credible population for policy simulation without writing 
 ## Dev Notes
 
 ### Architecture Patterns (MUST FOLLOW)
+
+**Backend — Canonical endpoint table:**
+
+| Method | Full URL | Router-relative path | Purpose |
+|---|---|---|---|
+| GET | `/api/data-fusion/sources` | `/sources` | List all datasets from all 4 catalogs |
+| GET | `/api/data-fusion/sources/{provider}/{dataset_id}` | `/sources/{provider}/{dataset_id}` | Dataset detail with column schema |
+| GET | `/api/data-fusion/merge-methods` | `/merge-methods` | Available merge methods with descriptions |
+| POST | `/api/data-fusion/generate` | `/generate` | Execute pipeline, return result + validation |
 
 **Backend — FastAPI route pattern:**
 - All routes follow pattern in `src/reformlab/server/routes/templates.py` and `scenarios.py`
