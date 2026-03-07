@@ -36,3 +36,13 @@
 | medium | Non-dict metadata silently reset to `{}` instead of fail-loud error, inconsistent with `LogitChoiceStep.execute()` pattern | Changed to raise `DiscreteChoiceError` with type information, matching `logit.py:330-336` |
 | medium | Existing `VintageState` with wrong `asset_class` (e.g., "heating") merged without validation, allowing state contamination | Added `asset_class != "vehicle"` validation before merge, raising `DiscreteChoiceError` |
 | low | `sorted(unknown_ids)` can throw `TypeError` for heterogeneous types in edge cases | Changed to `sorted(str(x) for x in unknown_ids)` for robust formatting |
+
+## Story 14-5 (2026-03-07)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | `EligibilityMergeStep.execute()` throws raw `IndexError` on inconsistent EligibilityInfo/ChoiceResult lengths | Added three invariant checks before the merge loop: `n_eligible == len(eligible_indices)`, `0 <= n_eligible <= n_total`, and `len(choice_result.chosen) == n_eligible` — each raises `DiscreteChoiceError` on violation. |
+| critical | Invalid `EligibilityInfo` (e.g., `n_eligible=10, n_total=3`) silently produces `eligibility_merge_n_defaulted=-7` | Covered by the same invariant checks above (`0 <= n_eligible <= n_total`). |
+| high | `TestFullPipelineIntegration.test_pipeline_with_eligibility` stops at `EligibilityMergeStep`, leaving AC-7 ("population attributes unchanged, no vintage entry created") unverified | Added `test_pipeline_with_state_update_ac7()` — runs full pipeline through `VehicleStateUpdateStep`, asserts ineligible households have unchanged `vehicle_type` and vintage cohort count is bounded by eligible household count. |
+| medium | `evaluate_eligibility()` leaks raw `ArrowNotImplementedError`/`ArrowTypeError` when threshold type is incompatible with column type (e.g., string threshold on numeric column) | Wrapped `op_fn(col, rule.threshold)` in `try/except (pa.ArrowNotImplementedError, pa.ArrowTypeError, pa.ArrowInvalid)` raising `DiscreteChoiceError` with rule context. |
+| medium | `filter_population_by_eligibility()` leaks raw `ArrowInvalid` when mask length doesn't match table length | Wrapped `table.filter(eligible_mask)` in `try/except (pa.ArrowInvalid, pa.ArrowTypeError)` raising `DiscreteChoiceError` with entity key context. |

@@ -1142,6 +1142,111 @@ class TestFullPipelineIntegration:
         # EligibilityInfo should be consumed
         assert DISCRETE_CHOICE_ELIGIBILITY_KEY not in state.data
 
+    def test_pipeline_with_state_update_ac7(self) -> None:
+        """AC-7: ineligible household attributes unchanged after VehicleStateUpdateStep.
+
+        Full pipeline: DiscreteChoiceStep → LogitChoiceStep → EligibilityMergeStep
+        → VehicleStateUpdateStep. Verifies population attributes and vintage state
+        for ineligible households.
+        """
+        from reformlab.discrete_choice.vehicle import (
+            VehicleInvestmentDomain,
+            VehicleStateUpdateStep,
+            default_vehicle_domain_config,
+        )
+        from reformlab.vintage.types import VintageState
+
+        config = default_vehicle_domain_config()
+        # 4 households: indices 0, 1 have vehicle_age=3 (ineligible, < 10)
+        #               indices 2, 3 have vehicle_age=15 (eligible, >= 10)
+        table = pa.table(
+            {
+                "household_id": pa.array([0, 1, 2, 3], type=pa.int64()),
+                "vehicle_type": pa.array(["petrol", "diesel", "petrol", "diesel"]),
+                "vehicle_age": pa.array([3, 3, 15, 15], type=pa.int64()),
+                "vehicle_emissions_gkm": pa.array([120.0, 140.0, 120.0, 140.0]),
+                "income": pa.array([30000.0, 40000.0, 50000.0, 60000.0]),
+                "fuel_cost": pa.array([0.15, 0.15, 0.15, 0.15]),
+            }
+        )
+        pop = PopulationData(tables={"menage": table}, metadata={"source": "test"})
+
+        def _vehicle_compute_fn(
+            population: PopulationData,
+            policy: PolicyConfig,
+            period: int,
+        ) -> pa.Table:
+            entity_key = sorted(population.tables.keys())[0]
+            t = population.tables[entity_key]
+            n = t.num_rows
+            result_cols: dict[str, pa.Array] = {
+                "total_vehicle_cost": pa.array([5000.0] * n),
+            }
+            if TRACKING_COL_ALTERNATIVE_ID in t.column_names:
+                result_cols[TRACKING_COL_ALTERNATIVE_ID] = t.column(
+                    TRACKING_COL_ALTERNATIVE_ID
+                )
+            if TRACKING_COL_ORIGINAL_INDEX in t.column_names:
+                result_cols[TRACKING_COL_ORIGINAL_INDEX] = t.column(
+                    TRACKING_COL_ORIGINAL_INDEX
+                )
+            return pa.table(result_cols)
+
+        adapter = MockAdapter(version_string="test-1.0", compute_fn=_vehicle_compute_fn)
+        policy = PolicyConfig(policy={}, name="test")
+        taste = TasteParameters(beta_cost=-0.01)
+        domain = VehicleInvestmentDomain(config=config)
+
+        ef = EligibilityFilter(
+            rules=(EligibilityRule(column="vehicle_age", operator="ge", threshold=10),),
+            default_choice="keep_current",
+            entity_key="menage",
+            description="Old vehicles eligible for replacement",
+        )
+
+        dc_step = DiscreteChoiceStep(
+            adapter=adapter,
+            domain=domain,
+            policy=policy,
+            eligibility_filter=ef,
+            name="discrete_choice",
+        )
+        logit_step = LogitChoiceStep(
+            taste_parameters=taste,
+            name="logit_choice",
+            depends_on=("discrete_choice",),
+        )
+        merge_step = EligibilityMergeStep(
+            name="eligibility_merge",
+            depends_on=("logit_choice",),
+        )
+        vehicle_update_step = VehicleStateUpdateStep(
+            domain=domain,
+            depends_on=("eligibility_merge",),
+        )
+
+        state = _make_state(pop)
+        state = dc_step.execute(2025, state)
+        state = logit_step.execute(2025, state)
+        state = merge_step.execute(2025, state)
+        state = vehicle_update_step.execute(2025, state)
+
+        # AC-7: ineligible households (indices 0, 1) have unchanged vehicle_type
+        updated_table = state.data["population_data"].tables["menage"]
+        vehicle_types = updated_table.column("vehicle_type").to_pylist()
+        assert vehicle_types[0] == "petrol"  # unchanged — was ineligible
+        assert vehicle_types[1] == "diesel"  # unchanged — was ineligible
+
+        # AC-7: no vintage entries for ineligible households — "keep_current" is
+        # in non_purchase_ids so neither ineligible nor eligible "keep_current" choices
+        # generate cohorts
+        vintage = state.data.get("vintage_vehicle")
+        if vintage is not None:
+            assert isinstance(vintage, VintageState)
+            # Cohort count bounded by number of eligible households (2)
+            total_cohort_count = sum(c.count for c in vintage.cohorts)
+            assert total_cohort_count <= 2
+
 
 # ============================================================================
 # TestPerformanceAssertion (Task 7.9, AC-6)

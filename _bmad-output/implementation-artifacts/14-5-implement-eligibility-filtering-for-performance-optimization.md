@@ -619,6 +619,13 @@ None — clean implementation, no debugging issues.
   - No existing files modified beyond step.py and __init__.py (as planned)
   - No new dependencies added
   - Backward compatibility verified: all pre-14.5 tests pass unmodified
+- Code review synthesis notes (2026-03-07):
+  - Added invariant validation in EligibilityMergeStep.execute(): validates n_eligible == len(eligible_indices), 0 <= n_eligible <= n_total, and len(choice_result.chosen) == n_eligible — raises DiscreteChoiceError on violation (prevents raw IndexError and negative n_defaulted)
+  - Wrapped PyArrow compute operations in evaluate_eligibility() with try/except for ArrowNotImplementedError/ArrowTypeError/ArrowInvalid — raises DiscreteChoiceError with rule context (e.g., string threshold on numeric column)
+  - Wrapped table.filter() in filter_population_by_eligibility() with try/except for ArrowInvalid/ArrowTypeError — raises DiscreteChoiceError with entity key context
+  - Added test_pipeline_with_state_update_ac7() to TestFullPipelineIntegration: full pipeline including VehicleStateUpdateStep verifies ineligible households have unchanged vehicle_type and vintage cohort count is bounded by eligible household count (completes AC-7 verification)
+  - 1 new test added: 56 total in test_eligibility.py — all passing
+  - Full regression: 2516 passed, 0 failures
 
 ### File List
 
@@ -629,3 +636,16 @@ None — clean implementation, no debugging issues.
 #### Modified Files
 - `src/reformlab/discrete_choice/step.py` — DiscreteChoiceStep.__init__ gets optional `eligibility_filter` parameter; execute() evaluates and filters before expansion when filter is provided
 - `src/reformlab/discrete_choice/__init__.py` — Added eligibility exports (EligibilityRule, EligibilityFilter, EligibilityInfo, evaluate_eligibility, filter_population_by_eligibility, EligibilityMergeStep, DISCRETE_CHOICE_ELIGIBILITY_KEY)
+
+#### Code Review Synthesis — Additional Modifications
+- `src/reformlab/discrete_choice/eligibility.py` — Added: (1) invariant validation in EligibilityMergeStep.execute() for n_eligible/eligible_indices consistency and ChoiceResult length; (2) try/except around PyArrow compute in evaluate_eligibility(); (3) try/except around table.filter() in filter_population_by_eligibility()
+- `tests/discrete_choice/test_eligibility.py` — Added test_pipeline_with_state_update_ac7() to TestFullPipelineIntegration for full AC-7 verification including VehicleStateUpdateStep
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-07
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 9.3 (combined A: 5.3, B: 12.8, adjusted for false positives) → CHANGES REQUESTED (pre-fix)
+- **Issues Found:** 4 verified (3 source code bugs, 1 test gap)
+- **Issues Fixed:** 4
+- **Action Items Created:** 0

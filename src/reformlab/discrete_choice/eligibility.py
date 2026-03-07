@@ -178,7 +178,13 @@ def evaluate_eligibility(
             )
         col = table.column(rule.column)
         op_fn = _OPERATOR_MAP[rule.operator]
-        mask = op_fn(col, rule.threshold)
+        try:
+            mask = op_fn(col, rule.threshold)
+        except (pa.ArrowNotImplementedError, pa.ArrowTypeError, pa.ArrowInvalid) as exc:
+            raise DiscreteChoiceError(
+                f"Cannot evaluate eligibility rule '{rule.column} {rule.operator} "
+                f"{rule.threshold!r}': {exc}"
+            ) from exc
         masks.append(mask)
 
     result = masks[0]
@@ -228,7 +234,12 @@ def filter_population_by_eligibility(
         )
 
     table = population.tables[entity_key]
-    filtered_table = table.filter(eligible_mask)
+    try:
+        filtered_table = table.filter(eligible_mask)
+    except (pa.ArrowInvalid, pa.ArrowTypeError) as exc:
+        raise DiscreteChoiceError(
+            f"Failed to filter entity '{entity_key}' table with eligibility mask: {exc}"
+        ) from exc
 
     # Build eligible_indices from mask
     mask_list = eligible_mask.to_pylist()
@@ -337,6 +348,30 @@ class EligibilityMergeStep:
         eligible_indices = eligibility_info.eligible_indices
         default_choice = eligibility_info.default_choice
         alt_ids = eligibility_info.alternative_ids
+
+        # Validate EligibilityInfo invariants
+        if not (0 <= n_eligible <= n_total):
+            raise DiscreteChoiceError(
+                f"EligibilityInfo invalid: n_eligible={n_eligible} out of range "
+                f"[0, n_total={n_total}]",
+                year=year,
+                step_name=self._name,
+            )
+        if n_eligible != len(eligible_indices):
+            raise DiscreteChoiceError(
+                f"EligibilityInfo inconsistent: n_eligible={n_eligible} but "
+                f"len(eligible_indices)={len(eligible_indices)}",
+                year=year,
+                step_name=self._name,
+            )
+        n_choice_result = len(choice_result.chosen)
+        if n_choice_result != n_eligible:
+            raise DiscreteChoiceError(
+                f"ChoiceResult length ({n_choice_result}) does not match "
+                f"EligibilityInfo.n_eligible ({n_eligible})",
+                year=year,
+                step_name=self._name,
+            )
 
         # Validate default_choice is a valid alternative ID
         if default_choice not in alt_ids:
