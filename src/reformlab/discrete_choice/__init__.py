@@ -9,6 +9,7 @@ Story 14-1: DiscreteChoiceStep with population expansion pattern.
 Story 14-2: Conditional logit model with seed-controlled draws.
 Story 14-3: Vehicle investment decision domain and state update step.
 Story 14-4: Heating system investment decision domain and state update step.
+Story 14-5: Eligibility filtering for performance optimization.
 """
 
 from __future__ import annotations
@@ -18,6 +19,15 @@ from reformlab.discrete_choice.domain_utils import (
     apply_choices_to_population,
     create_vintage_entries,
     infer_pa_type,
+)
+from reformlab.discrete_choice.eligibility import (
+    DISCRETE_CHOICE_ELIGIBILITY_KEY,
+    EligibilityFilter,
+    EligibilityInfo,
+    EligibilityMergeStep,
+    EligibilityRule,
+    evaluate_eligibility,
+    filter_population_by_eligibility,
 )
 from reformlab.discrete_choice.errors import (
     DiscreteChoiceError,
@@ -78,15 +88,22 @@ __all__ = [
     "default_heating_domain_config",
     "default_vehicle_domain_config",
     "DISCRETE_CHOICE_COST_MATRIX_KEY",
+    "DISCRETE_CHOICE_ELIGIBILITY_KEY",
     "DISCRETE_CHOICE_EXPANSION_KEY",
     "DISCRETE_CHOICE_METADATA_KEY",
     "DISCRETE_CHOICE_RESULT_KEY",
     "DiscreteChoiceError",
     "DiscreteChoiceStep",
     "draw_choices",
+    "EligibilityFilter",
+    "EligibilityInfo",
+    "EligibilityMergeStep",
+    "EligibilityRule",
+    "evaluate_eligibility",
     "expand_population",
     "ExpansionError",
     "ExpansionResult",
+    "filter_population_by_eligibility",
     "HeatingDomainConfig",
     "HeatingInvestmentDomain",
     "HeatingStateUpdateStep",

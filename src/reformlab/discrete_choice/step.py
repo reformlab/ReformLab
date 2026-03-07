@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from reformlab.computation.adapter import ComputationAdapter
     from reformlab.computation.types import PolicyConfig
     from reformlab.discrete_choice.domain import DecisionDomain
+    from reformlab.discrete_choice.eligibility import EligibilityFilter
     from reformlab.orchestrator.types import YearState
 
 logger = logging.getLogger(__name__)
@@ -61,6 +62,7 @@ class DiscreteChoiceStep:
         "_depends_on",
         "_description",
         "_population_key",
+        "_eligibility_filter",
     )
 
     def __init__(
@@ -72,6 +74,7 @@ class DiscreteChoiceStep:
         depends_on: tuple[str, ...] = (),
         description: str | None = None,
         population_key: str = "population_data",
+        eligibility_filter: EligibilityFilter | None = None,
     ) -> None:
         """Initialize the discrete choice step.
 
@@ -83,6 +86,8 @@ class DiscreteChoiceStep:
             depends_on: Names of steps this step depends on.
             description: Optional description for the step.
             population_key: Key in YearState.data to retrieve PopulationData.
+            eligibility_filter: Optional eligibility filter (Story 14-5).
+                When provided, only eligible households are expanded.
         """
         self._adapter = adapter
         self._domain = domain
@@ -94,6 +99,7 @@ class DiscreteChoiceStep:
             or "Discrete choice step: population expansion and cost evaluation"
         )
         self._population_key = population_key
+        self._eligibility_filter = eligibility_filter
 
     @property
     def name(self) -> str:
@@ -155,6 +161,55 @@ class DiscreteChoiceStep:
             n,
             m,
         )
+
+        # Eligibility filtering (Story 14-5)
+        eligibility_info = None
+        if self._eligibility_filter is not None:
+            from reformlab.discrete_choice.eligibility import (
+                DISCRETE_CHOICE_ELIGIBILITY_KEY,
+                EligibilityInfo,
+                evaluate_eligibility,
+                filter_population_by_eligibility,
+            )
+
+            entity_key = self._eligibility_filter.entity_key
+            if entity_key not in population.tables:
+                raise DiscreteChoiceError(
+                    f"Eligibility entity_key '{entity_key}' not found. "
+                    f"Available: {sorted(population.tables.keys())}",
+                    year=year,
+                    step_name=self._name,
+                )
+            eligible_mask = evaluate_eligibility(
+                population.tables[entity_key], self._eligibility_filter
+            )
+            filtered_pop, eligible_indices = filter_population_by_eligibility(
+                population, eligible_mask, entity_key
+            )
+            n_total = population.tables[entity_key].num_rows
+            n_eligible = len(eligible_indices)
+
+            logger.info(
+                "year=%d step_name=%s n_total=%d n_eligible=%d "
+                "event=eligibility_evaluated",
+                year,
+                self._name,
+                n_total,
+                n_eligible,
+            )
+
+            eligibility_info = EligibilityInfo(
+                n_total=n_total,
+                n_eligible=n_eligible,
+                eligible_indices=eligible_indices,
+                default_choice=self._eligibility_filter.default_choice,
+                filter_description=self._eligibility_filter.description,
+                alternative_ids=choice_set.alternative_ids,
+                filter_rules=self._eligibility_filter.rules,
+            )
+
+            population = filtered_pop
+            n = n_eligible
 
         # Phase 1: Expand population
         try:
@@ -263,6 +318,23 @@ class DiscreteChoiceStep:
         new_data = dict(state.data)
         new_data[DISCRETE_CHOICE_COST_MATRIX_KEY] = cost_matrix
         new_data[DISCRETE_CHOICE_EXPANSION_KEY] = expansion
+
+        # Store eligibility info if filtering was applied (Story 14-5)
+        if eligibility_info is not None:
+            from reformlab.discrete_choice.eligibility import (
+                DISCRETE_CHOICE_ELIGIBILITY_KEY,
+            )
+
+            new_data[DISCRETE_CHOICE_ELIGIBILITY_KEY] = eligibility_info
+            extended_metadata["eligibility_n_total"] = eligibility_info.n_total
+            extended_metadata["eligibility_n_eligible"] = eligibility_info.n_eligible
+            extended_metadata["eligibility_n_ineligible"] = (
+                eligibility_info.n_total - eligibility_info.n_eligible
+            )
+            extended_metadata["eligibility_filter_description"] = (
+                eligibility_info.filter_description
+            )
+
         new_data[DISCRETE_CHOICE_METADATA_KEY] = extended_metadata
 
         logger.info(
