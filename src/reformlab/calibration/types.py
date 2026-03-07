@@ -274,6 +274,7 @@ class CalibrationResult:
                 "final_objective_value": self.objective_value,
                 "convergence_flag": self.convergence_flag,
                 "iterations": self.iterations,
+                "gradient_norm": self.gradient_norm,
                 "method": self.method,
                 "all_within_tolerance": self.all_within_tolerance,
                 "n_targets": len(self.rate_comparisons),

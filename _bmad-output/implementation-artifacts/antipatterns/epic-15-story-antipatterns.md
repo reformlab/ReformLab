@@ -38,3 +38,13 @@
 | medium | rate_tolerance not validated | Task 3.4 re-lettered with (a) rate_tolerance guard first; algorithm pseudocode now checks `math.isfinite(rate_tolerance) and rate_tolerance > 0.0` before any other logic; `math` added to Key Imports; error test cases added to Task 5.4. |
 | medium | No defensive consistency check on holdout targets | Task 3.4 now requires `validate_consistency()` call; `_validate_holdout_inputs()` algorithm now calls it as step 1b; Task 5.4 adds duplicate-holdout-target test case. |
 | medium | Ordering of `holdout_rate_comparisons` non-deterministic | Algorithm now sorts by `(from_state, to_state)` before `tuple()` construction; Task 5.3 adds ordering test. |
+
+## Story 15-4 (2026-03-07)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | `gradient_norm` missing from `CalibrationResult.to_governance_entry()` — AC-1 requires it, field exists on the dataclass, but implementation omits it from the returned dict | Added Task 0 (update `types.py`), updated file layout, updated File List, updated governance entry keys table to include `gradient_norm` |
+| high | Duplicate `calibration_result` entries for the same domain in `extract_calibrated_parameters()` produce silent wrong-beta extraction — first match returned with no error | Updated AC-3 to specify duplicate behavior (raise `CalibrationProvenanceError` with count), updated Task 1.5, rewrote algorithm to collect all matches first then check count, added test case to Task 4.5 |
+| medium | `source_label` parameter present in algorithm and test requirements but absent from Task 1.2's function signature description | Added `source_label: str = "calibration_engine"` to Task 1.2 signature |
+| medium | `optimized_beta_cost` has no type guard — if a non-numeric value is deserialized from manifest, `float()` raises `ValueError` instead of a controlled `CalibrationProvenanceError` | Added `isinstance(beta_cost, (float, int))` guard with `CalibrationProvenanceError` message to algorithm; added test case to Task 4.5 |
+| low | Typo `CalibrationProvenance Error` (space) in AC-3 | Corrected to `CalibrationProvenanceError` |

@@ -1,10 +1,11 @@
 """Calibration subsystem error hierarchy.
 
 Provides subsystem-specific exceptions for target loading, schema validation,
-semantic consistency checks, and optimization failures.
+semantic consistency checks, optimization failures, and provenance capture.
 
 Story 15.1 / FR52 — Define calibration target format and load observed transition rates.
 Story 15.2 / FR52 — CalibrationEngine with objective function optimization.
+Story 15.4 / FR52 — Record calibrated parameters in run manifests.
 """
 
 from __future__ import annotations
@@ -32,3 +33,11 @@ class CalibrationTargetLoadError(CalibrationError):
 
 class CalibrationOptimizationError(CalibrationError):
     """Raised when calibration optimization fails (convergence, invalid parameters, input validation)."""
+
+
+class CalibrationProvenanceError(CalibrationError):
+    """Raised when calibration provenance capture or extraction fails.
+
+    Examples: missing calibration result in manifest assumptions,
+    empty manifest ID for calibration reference, domain not found.
+    """

@@ -2,7 +2,7 @@
 
 # Story 15.4: Record Calibrated Parameters in Run Manifests
 
-Status: ready-for-dev
+Status: dev-complete
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -16,36 +16,39 @@ so that every simulation using calibrated behavioral parameters has full provena
 
 1. **AC-1: Calibration provenance in manifest** — Given a completed calibration run (CalibrationResult) and optionally a HoldoutValidationResult and CalibrationTargetSet, when `capture_calibration_provenance()` is called, then the returned assumption entries include: calibrated β coefficients per domain, objective function type and final value, convergence diagnostics (iterations, gradient norm, method), calibration target source metadata (domains, periods, sources, n_targets), and holdout validation metrics (training/holdout MSE, MAE, all_within_tolerance) if provided.
 2. **AC-2: Calibration run reference** — Given a simulation run that uses calibrated parameters, when a calibration reference entry is created via `make_calibration_reference()`, then it records the calibration run's manifest_id and optionally its integrity_hash, allowing the simulation manifest to trace back to the calibration that produced its parameters.
-3. **AC-3: Parameter extraction round-trip** — Given calibrated parameters recorded in a manifest's assumptions list, when `extract_calibrated_parameters()` is called with the assumptions and domain, then the exact same β value (TasteParameters) is returned. If no calibration result is found for the requested domain, a `CalibrationProvenance Error` is raised.
+3. **AC-3: Parameter extraction round-trip** — Given calibrated parameters recorded in a manifest's assumptions list, when `extract_calibrated_parameters()` is called with the assumptions and domain, then the exact same β value (TasteParameters) is returned. If no calibration result is found for the requested domain, a `CalibrationProvenanceError` is raised. If multiple `calibration_result` entries exist for the same domain, a `CalibrationProvenanceError` is raised with a count of duplicates found.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create `provenance.py` module (AC: 1, 2, 3)
-  - [ ] 1.1: Create `src/reformlab/calibration/provenance.py` with module docstring referencing Story 15.4 / FR52
-  - [ ] 1.2: Implement `capture_calibration_provenance(calibration_result, *, target_set=None, holdout_result=None) -> list[dict[str, Any]]` — aggregates all governance entries from calibration objects (see Dev Notes for algorithm)
-  - [ ] 1.3: Implement `make_calibration_reference(calibration_manifest_id, *, calibration_integrity_hash="") -> dict[str, Any]` — creates an AssumptionEntry-compatible dict with key `"calibration_reference"` (see Dev Notes)
-  - [ ] 1.4: Implement `extract_calibrated_parameters(assumptions, domain) -> TasteParameters` — scans assumptions list for `"calibration_result"` entry matching domain, extracts `optimized_beta_cost`, returns `TasteParameters(beta_cost=...)` (see Dev Notes)
-  - [ ] 1.5: Add input validation: `capture_calibration_provenance()` validates `calibration_result` is a `CalibrationResult`; `extract_calibrated_parameters()` raises `CalibrationProvenanceError` if no matching entry found; `make_calibration_reference()` raises `CalibrationProvenanceError` if `calibration_manifest_id` is empty
-  - [ ] 1.6: Add structured logging: `event=calibration_provenance_captured`, `event=calibration_parameters_extracted`
+- [x] Task 0: Update `CalibrationResult.to_governance_entry()` in `types.py` (AC: 1)
+  - [x] 0.1: Add `"gradient_norm": self.gradient_norm` to the value dict in `CalibrationResult.to_governance_entry()` in `src/reformlab/calibration/types.py` — the field already exists on the dataclass but is missing from the governance entry, causing AC-1 to be unsatisfiable without this change
 
-- [ ] Task 2: Add `CalibrationProvenanceError` to `errors.py` (AC: 3)
-  - [ ] 2.1: Add `CalibrationProvenanceError(CalibrationError)` to `src/reformlab/calibration/errors.py`
+- [x] Task 1: Create `provenance.py` module (AC: 1, 2, 3)
+  - [x] 1.1: Create `src/reformlab/calibration/provenance.py` with module docstring referencing Story 15.4 / FR52
+  - [x] 1.2: Implement `capture_calibration_provenance(calibration_result, *, target_set=None, holdout_result=None, source_label: str = "calibration_engine") -> list[dict[str, Any]]` — aggregates all governance entries from calibration objects, propagating source_label to all entries (see Dev Notes for algorithm)
+  - [x] 1.3: Implement `make_calibration_reference(calibration_manifest_id, *, calibration_integrity_hash="") -> dict[str, Any]` — creates an AssumptionEntry-compatible dict with key `"calibration_reference"` (see Dev Notes)
+  - [x] 1.4: Implement `extract_calibrated_parameters(assumptions, domain) -> TasteParameters` — scans assumptions list for `"calibration_result"` entry matching domain, extracts `optimized_beta_cost`, returns `TasteParameters(beta_cost=...)` (see Dev Notes)
+  - [x] 1.5: Add input validation: `capture_calibration_provenance()` validates `calibration_result` is a `CalibrationResult`; `extract_calibrated_parameters()` raises `CalibrationProvenanceError` if no matching entry found, if multiple entries exist for the same domain (with count in message), or if `optimized_beta_cost` is not a float or int; `make_calibration_reference()` raises `CalibrationProvenanceError` if `calibration_manifest_id` is empty
+  - [x] 1.6: Add structured logging: `event=calibration_provenance_captured`, `event=calibration_parameters_extracted`
 
-- [ ] Task 3: Update public API in `__init__.py` (AC: all)
-  - [ ] 3.1: Add imports and `__all__` entries for: `capture_calibration_provenance`, `make_calibration_reference`, `extract_calibrated_parameters`, `CalibrationProvenanceError`
+- [x] Task 2: Add `CalibrationProvenanceError` to `errors.py` (AC: 3)
+  - [x] 2.1: Add `CalibrationProvenanceError(CalibrationError)` to `src/reformlab/calibration/errors.py`
 
-- [ ] Task 4: Write tests (AC: all)
-  - [ ] 4.1: Create `tests/calibration/test_provenance.py` with test classes
-  - [ ] 4.2: `TestCaptureCalibrationProvenance`: result-only capture (1 entry), result + target_set (2 entries), result + holdout (2 entries), all three (3 entries), entries have correct keys (`calibration_result`, `calibration_targets`, `holdout_validation`), entries are AssumptionEntry-compatible (key/value/source/is_default), custom source_label propagated
-  - [ ] 4.3: `TestCaptureCalibrationProvenanceValidation`: invalid calibration_result type raises TypeError
-  - [ ] 4.4: `TestMakeCalibrationReference`: correct structure with manifest_id only, correct structure with manifest_id + integrity_hash, empty manifest_id raises CalibrationProvenanceError, entry has key `"calibration_reference"` and is AssumptionEntry-compatible
-  - [ ] 4.5: `TestExtractCalibratedParameters`: round-trip (calibrate → capture → extract → same beta), missing domain raises CalibrationProvenanceError, empty assumptions raises CalibrationProvenanceError, no `calibration_result` key raises CalibrationProvenanceError, multiple domains returns correct one, extracted TasteParameters has exact beta_cost value
-  - [ ] 4.6: `TestRoundTrip`: end-to-end integration — run CalibrationEngine.calibrate(), capture provenance, extract parameters, verify identical TasteParameters; verify assumptions pass RunManifest validation (construct a manifest with captured assumptions)
+- [x] Task 3: Update public API in `__init__.py` (AC: all)
+  - [x] 3.1: Add imports and `__all__` entries for: `capture_calibration_provenance`, `make_calibration_reference`, `extract_calibrated_parameters`, `CalibrationProvenanceError`
 
-- [ ] Task 5: Lint, type-check, regression (AC: all)
-  - [ ] 5.1: `uv run ruff check src/reformlab/calibration/ tests/calibration/` — clean
-  - [ ] 5.2: `uv run mypy src/reformlab/calibration/` — clean (exclude pre-existing template error)
-  - [ ] 5.3: `uv run pytest tests/` — all tests pass (existing + new)
+- [x] Task 4: Write tests (AC: all)
+  - [x] 4.1: Create `tests/calibration/test_provenance.py` with test classes
+  - [x] 4.2: `TestCaptureCalibrationProvenance`: result-only capture (1 entry), result + target_set (2 entries), result + holdout (2 entries), all three (3 entries), entries have correct keys (`calibration_result`, `calibration_targets`, `holdout_validation`), entries are AssumptionEntry-compatible (key/value/source/is_default), custom source_label propagated
+  - [x] 4.3: `TestCaptureCalibrationProvenanceValidation`: invalid calibration_result type raises TypeError
+  - [x] 4.4: `TestMakeCalibrationReference`: correct structure with manifest_id only, correct structure with manifest_id + integrity_hash, empty manifest_id raises CalibrationProvenanceError, entry has key `"calibration_reference"` and is AssumptionEntry-compatible
+  - [x] 4.5: `TestExtractCalibratedParameters`: round-trip (calibrate → capture → extract → same beta), missing domain raises CalibrationProvenanceError, empty assumptions raises CalibrationProvenanceError, no `calibration_result` key raises CalibrationProvenanceError, multiple domains returns correct one, extracted TasteParameters has exact beta_cost value, duplicate `calibration_result` entries for same domain raises CalibrationProvenanceError with count in message, non-numeric `optimized_beta_cost` raises CalibrationProvenanceError
+  - [x] 4.6: `TestRoundTrip`: end-to-end integration — run CalibrationEngine.calibrate(), capture provenance, extract parameters, verify identical TasteParameters; verify assumptions pass RunManifest validation (construct a manifest with captured assumptions)
+
+- [x] Task 5: Lint, type-check, regression (AC: all)
+  - [x] 5.1: `uv run ruff check src/reformlab/calibration/ tests/calibration/` — clean
+  - [x] 5.2: `uv run mypy src/reformlab/calibration/` — clean (exclude pre-existing template error)
+  - [x] 5.3: `uv run pytest tests/` — all tests pass (existing + new)
 
 ## Dev Notes
 
@@ -57,7 +60,7 @@ so that every simulation using calibrated behavioral parameters has full provena
 ```
 src/reformlab/calibration/
 ├── __init__.py                       # Updated: add new exports
-├── types.py                          # No changes
+├── types.py                          # Updated: add gradient_norm to CalibrationResult.to_governance_entry()
 ├── errors.py                         # Updated: add CalibrationProvenanceError
 ├── engine.py                         # No changes
 ├── validation.py                     # No changes
@@ -256,30 +259,44 @@ def extract_calibrated_parameters(
             "Cannot extract calibrated parameters from empty assumptions list"
         )
 
-    for entry in assumptions:
-        if entry.get("key") != "calibration_result":
-            continue
-        value = entry.get("value", {})
-        if value.get("domain") == domain:
-            beta_cost = value.get("optimized_beta_cost")
-            if beta_cost is None:
-                raise CalibrationProvenanceError(
-                    f"calibration_result entry for domain={domain!r} is missing "
-                    f"'optimized_beta_cost' in value"
-                )
+    matches = [
+        entry for entry in assumptions
+        if entry.get("key") == "calibration_result"
+        and entry.get("value", {}).get("domain") == domain
+    ]
 
-            logger.info(
-                "event=calibration_parameters_extracted domain=%s beta_cost=%f",
-                domain,
-                beta_cost,
-            )
+    if len(matches) > 1:
+        raise CalibrationProvenanceError(
+            f"Found {len(matches)} calibration_result entries for domain={domain!r}; "
+            f"expected exactly 1. Manifest may have been corrupted or incorrectly assembled."
+        )
 
-            return TasteParameters(beta_cost=float(beta_cost))
+    if not matches:
+        raise CalibrationProvenanceError(
+            f"No calibration_result entry found for domain={domain!r} "
+            f"in assumptions list (checked {len(assumptions)} entries)"
+        )
 
-    raise CalibrationProvenanceError(
-        f"No calibration_result entry found for domain={domain!r} "
-        f"in assumptions list (checked {len(assumptions)} entries)"
+    value = matches[0].get("value", {})
+    beta_cost = value.get("optimized_beta_cost")
+    if beta_cost is None:
+        raise CalibrationProvenanceError(
+            f"calibration_result entry for domain={domain!r} is missing "
+            f"'optimized_beta_cost' in value"
+        )
+    if not isinstance(beta_cost, (float, int)):
+        raise CalibrationProvenanceError(
+            f"Expected 'optimized_beta_cost' for domain={domain!r} to be a float or int, "
+            f"but found type {type(beta_cost).__name__!r} with value {beta_cost!r}"
+        )
+
+    logger.info(
+        "event=calibration_parameters_extracted domain=%s beta_cost=%f",
+        domain,
+        beta_cost,
     )
+
+    return TasteParameters(beta_cost=float(beta_cost))
 ```
 
 ### Cross-Story Dependencies
@@ -326,7 +343,7 @@ CalibrationResult          CalibrationTargetSet       HoldoutValidationResult
 
 | Key | Source Function | Content |
 |-----|----------------|---------|
-| `calibration_result` | `CalibrationResult.to_governance_entry()` | domain, optimized_beta_cost, objective_type, final_objective_value, convergence_flag, iterations, method, all_within_tolerance, n_targets |
+| `calibration_result` | `CalibrationResult.to_governance_entry()` | domain, optimized_beta_cost, objective_type, final_objective_value, convergence_flag, iterations, gradient_norm, method, all_within_tolerance, n_targets |
 | `calibration_targets` | `CalibrationTargetSet.to_governance_entry()` | domains, n_targets, periods, sources |
 | `holdout_validation` | `HoldoutValidationResult.to_governance_entry()` | domain, holdout_rate_tolerance, training {mse, mae, n_targets, all_within_tolerance}, holdout {mse, mae, n_targets, all_within_tolerance} |
 | `calibration_reference` | `make_calibration_reference()` | calibration_manifest_id, calibration_integrity_hash (optional) |
@@ -430,11 +447,22 @@ def test_captured_entries_pass_manifest_validation(self) -> None:
 
 ### Agent Model Used
 
-(to be filled by dev agent)
+claude-sonnet-4-6
 
 ### Debug Log References
 
+- Pre-existing `governance/memory.py:19` unused type-ignore excluded per story task 5.2 instruction
+- Pre-existing `tests/server/test_api.py` starlette TestClient failures excluded (unrelated to calibration)
+- `gradient_norm` is `float | None`; `None` maps to JSON `null` which passes `_validate_json_compatible` in manifest.py
+
 ### Completion Notes List
+
+- ✅ Task 0: Added `"gradient_norm": self.gradient_norm` to `CalibrationResult.to_governance_entry()` value dict — satisfies AC-1 convergence diagnostics requirement
+- ✅ Task 2: Added `CalibrationProvenanceError(CalibrationError)` to `errors.py`
+- ✅ Task 1: Created `src/reformlab/calibration/provenance.py` with `capture_calibration_provenance()`, `make_calibration_reference()`, `extract_calibrated_parameters()` — all with structured logging, input validation, and inline `TasteParameters` runtime import
+- ✅ Task 3: Updated `__init__.py` with new exports and updated module docstring
+- ✅ Task 4: Created `tests/calibration/test_provenance.py` — 29 tests across 5 classes covering all ACs and edge cases (TDD RED→GREEN)
+- ✅ Task 5: Ruff clean, mypy clean (calibration module), 202/202 calibration tests pass, 2743 total tests pass
 
 ### File List
 
@@ -443,10 +471,12 @@ New files:
 - `tests/calibration/test_provenance.py`
 
 Modified files:
-- `src/reformlab/calibration/__init__.py` — add new exports
+- `src/reformlab/calibration/types.py` — add gradient_norm to CalibrationResult.to_governance_entry()
+- `src/reformlab/calibration/__init__.py` — add new exports (CalibrationProvenanceError, capture_calibration_provenance, extract_calibrated_parameters, make_calibration_reference)
 - `src/reformlab/calibration/errors.py` — add CalibrationProvenanceError
 
 ### Change Log
 
 - 2026-03-07: Story 15.4 created — comprehensive developer guide with full algorithm specifications, test design, and anti-pattern prevention.
+- 2026-03-07: Story 15.4 implemented — provenance.py created, errors.py updated, types.py updated, __init__.py updated, 29 new tests passing.
 
