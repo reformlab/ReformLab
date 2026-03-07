@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import dataclasses
-import math
 
 import pyarrow as pa
 import pytest
@@ -114,6 +113,22 @@ class TestComputeFitMetrics:
         assert result.mse == pytest.approx(0.0)
         assert result.mae == pytest.approx(0.0)
 
+    def test_metrics_are_unweighted(self) -> None:
+        """Given comparisons with implied equal contribution, metrics match unweighted formula.
+
+        AC-2: metrics are unweighted regardless of CalibrationTarget.weight.
+        The function takes RateComparison (no weight field), so every comparison
+        contributes equally — verified here with a hand-computed example.
+        """
+        # absolute_errors: 0.20, 0.10 → unweighted MSE = (0.04+0.01)/2=0.025, MAE = 0.15
+        rcs = (
+            _make_rc(0.20, False),
+            _make_rc(0.10, False),
+        )
+        result = compute_fit_metrics(rcs)
+        assert result.mse == pytest.approx((0.20**2 + 0.10**2) / 2, abs=1e-8)
+        assert result.mae == pytest.approx((0.20 + 0.10) / 2, abs=1e-8)
+
 
 # ============================== TestValidateHoldout ==============================
 
@@ -164,12 +179,14 @@ class TestValidateHoldout:
             make_holdout_from_states(),
         )
 
-        # holdout_fit must reference the holdout comparisons
+        # holdout_fit must be computed correctly from holdout rate comparisons
         assert result.holdout_fit.n_targets == len(make_holdout_target_set().targets)
-        assert math.isfinite(result.holdout_fit.mse)
-        assert math.isfinite(result.holdout_fit.mae)
-        assert result.holdout_fit.mse >= 0.0
-        assert result.holdout_fit.mae >= 0.0
+        # Verify exact values: MSE and MAE must match the formula applied to returned comparisons
+        rcs = result.holdout_rate_comparisons
+        expected_mse = sum(rc.absolute_error**2 for rc in rcs) / len(rcs)
+        expected_mae = sum(rc.absolute_error for rc in rcs) / len(rcs)
+        assert result.holdout_fit.mse == pytest.approx(expected_mse, abs=1e-8)
+        assert result.holdout_fit.mae == pytest.approx(expected_mae, abs=1e-8)
 
     def test_holdout_rate_comparisons_count(self) -> None:
         """Given 3 holdout targets, holdout_rate_comparisons has 3 entries."""
@@ -413,6 +430,22 @@ class TestValidateHoldoutValidation:
                 make_holdout_target_set(),
                 make_holdout_cost_matrix(),
                 wrong_from_states,
+            )
+
+    def test_null_from_states_raises(self) -> None:
+        """Given holdout_from_states with nulls, raises CalibrationOptimizationError.
+
+        Data contracts fail loudly — null household origin states are not silently dropped.
+        """
+        cal_result = make_sample_engine().calibrate()
+        null_from_states = pa.array(["petrol", None, "diesel"], type=pa.utf8())  # null in position 1
+
+        with pytest.raises(CalibrationOptimizationError, match="null values"):
+            validate_holdout(
+                cal_result,
+                make_holdout_target_set(),
+                make_holdout_cost_matrix(),
+                null_from_states,
             )
 
 

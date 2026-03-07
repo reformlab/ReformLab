@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+import math
 
 import pyarrow as pa
 import pytest
@@ -513,3 +514,18 @@ class TestFitMetrics:
         """Given all_within_tolerance=False, construction succeeds."""
         fm = FitMetrics(mse=0.5, mae=0.5, n_targets=2, all_within_tolerance=False)
         assert fm.all_within_tolerance is False
+
+    def test_nan_mse_raises(self) -> None:
+        """Given mse=nan, __post_init__ raises CalibrationOptimizationError."""
+        with pytest.raises(CalibrationOptimizationError, match="mse"):
+            FitMetrics(mse=math.nan, mae=0.05, n_targets=3, all_within_tolerance=True)
+
+    def test_inf_mse_raises(self) -> None:
+        """Given mse=inf, __post_init__ raises CalibrationOptimizationError."""
+        with pytest.raises(CalibrationOptimizationError, match="mse"):
+            FitMetrics(mse=math.inf, mae=0.05, n_targets=3, all_within_tolerance=True)
+
+    def test_nan_mae_raises(self) -> None:
+        """Given mae=nan, __post_init__ raises CalibrationOptimizationError."""
+        with pytest.raises(CalibrationOptimizationError, match="mae"):
+            FitMetrics(mse=0.01, mae=math.nan, n_targets=3, all_within_tolerance=True)

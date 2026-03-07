@@ -217,13 +217,13 @@ class FitMetrics:
             raise CalibrationOptimizationError(
                 f"n_targets={self.n_targets!r} must be > 0"
             )
-        if self.mse < 0.0:
+        if not math.isfinite(self.mse) or self.mse < 0.0:
             raise CalibrationOptimizationError(
-                f"mse={self.mse!r} must be >= 0.0"
+                f"mse={self.mse!r} must be a finite non-negative number"
             )
-        if self.mae < 0.0:
+        if not math.isfinite(self.mae) or self.mae < 0.0:
             raise CalibrationOptimizationError(
-                f"mae={self.mae!r} must be >= 0.0"
+                f"mae={self.mae!r} must be a finite non-negative number"
             )
 
 

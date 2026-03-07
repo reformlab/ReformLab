@@ -16,12 +16,17 @@ from __future__ import annotations
 
 import logging
 import math
+from typing import TYPE_CHECKING
 
 import pyarrow as pa
 import pyarrow.compute as pc
 
 from reformlab.calibration.engine import compute_simulated_rates
-from reformlab.calibration.errors import CalibrationOptimizationError
+from reformlab.calibration.errors import (
+    CalibrationOptimizationError,
+    CalibrationTargetLoadError,
+    CalibrationTargetValidationError,
+)
 from reformlab.calibration.types import (
     CalibrationResult,
     CalibrationTargetSet,
@@ -29,7 +34,9 @@ from reformlab.calibration.types import (
     HoldoutValidationResult,
     RateComparison,
 )
-from reformlab.discrete_choice.types import CostMatrix
+
+if TYPE_CHECKING:
+    from reformlab.discrete_choice.types import CostMatrix
 
 logger = logging.getLogger(__name__)
 
@@ -210,17 +217,19 @@ def _validate_holdout_inputs(
         )
 
     # 1b. Semantic consistency (duplicate rows, rate sums) — fail loudly
-    from reformlab.calibration.errors import (
-        CalibrationTargetLoadError,
-        CalibrationTargetValidationError,
-    )
-
     try:
         holdout_domain_targets.validate_consistency()
     except (CalibrationTargetLoadError, CalibrationTargetValidationError) as exc:
         raise CalibrationOptimizationError(
             f"Holdout target consistency check failed for domain={domain!r}: {exc}"
         ) from exc
+
+    # 1c. Reject null from_states — data contracts fail loudly
+    if pc.any(pc.is_null(holdout_from_states)).as_py():
+        raise CalibrationOptimizationError(
+            f"holdout_from_states contains null values for domain={domain!r}; "
+            "all household origin states must be non-null"
+        )
 
     # 2. Dimension match
     if len(holdout_from_states) != holdout_cost_matrix.n_households:
