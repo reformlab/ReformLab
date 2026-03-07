@@ -15,7 +15,7 @@ from reformlab.discrete_choice.expansion import (
     TRACKING_COL_ALTERNATIVE_ID,
     TRACKING_COL_ORIGINAL_INDEX,
 )
-from reformlab.discrete_choice.types import Alternative, ChoiceSet
+from reformlab.discrete_choice.types import Alternative, ChoiceSet, CostMatrix, TasteParameters
 
 # ============================================================================
 # Mock Decision Domain
@@ -264,4 +264,28 @@ def sample_policy() -> PolicyConfig:
         policy={"carbon_tax_rate": 44.6},
         name="test_policy",
         description="Test policy for discrete choice",
+    )
+
+
+# ============================================================================
+# Story 14-2: Logit model fixtures
+# ============================================================================
+
+
+@pytest.fixture
+def sample_taste_parameters() -> TasteParameters:
+    """Default taste parameters for logit tests."""
+    return TasteParameters(beta_cost=-0.01)
+
+
+@pytest.fixture
+def sample_cost_matrix() -> CostMatrix:
+    """3×3 cost matrix for logit tests."""
+    return CostMatrix(
+        table=pa.table({
+            "option_a": pa.array([100.0, 200.0, 300.0]),
+            "option_b": pa.array([200.0, 100.0, 200.0]),
+            "option_c": pa.array([300.0, 300.0, 100.0]),
+        }),
+        alternative_ids=("option_a", "option_b", "option_c"),
     )

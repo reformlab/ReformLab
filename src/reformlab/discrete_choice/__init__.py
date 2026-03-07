@@ -1,21 +1,24 @@
 """Discrete choice subsystem for household decision modeling.
 
-Implements population expansion and cost matrix computation for
-evaluating household alternatives via the ComputationAdapter. The
-DiscreteChoiceStep implements the OrchestratorStep protocol and
-integrates with the orchestrator pipeline without modifying existing
-interfaces.
+Implements population expansion, cost matrix computation, and
+conditional logit choice modeling for evaluating household alternatives.
+DiscreteChoiceStep and LogitChoiceStep implement the OrchestratorStep
+protocol and integrate with the orchestrator pipeline.
 
 Story 14-1: DiscreteChoiceStep with population expansion pattern.
+Story 14-2: Conditional logit model with seed-controlled draws.
 
 Public API:
 - DiscreteChoiceStep: OrchestratorStep for discrete choice evaluation
+- LogitChoiceStep: OrchestratorStep for logit probability + draws
 - DecisionDomain: Protocol for decision domains (vehicle, heating, etc.)
 - Alternative, ChoiceSet, CostMatrix, ExpansionResult: Core value types
+- TasteParameters, ChoiceResult: Logit model types
+- compute_utilities, compute_probabilities, draw_choices: Pure logit functions
 - expand_population: Population expansion function
 - reshape_to_cost_matrix: Cost matrix reshape function
-- DiscreteChoiceError, ExpansionError, ReshapeError: Error hierarchy
-- State keys: DISCRETE_CHOICE_COST_MATRIX_KEY, etc.
+- DiscreteChoiceError, ExpansionError, ReshapeError, LogitError: Error hierarchy
+- State keys: DISCRETE_CHOICE_COST_MATRIX_KEY, DISCRETE_CHOICE_RESULT_KEY, etc.
 """
 
 from __future__ import annotations
@@ -24,12 +27,20 @@ from reformlab.discrete_choice.domain import DecisionDomain
 from reformlab.discrete_choice.errors import (
     DiscreteChoiceError,
     ExpansionError,
+    LogitError,
     ReshapeError,
 )
 from reformlab.discrete_choice.expansion import (
     TRACKING_COL_ALTERNATIVE_ID,
     TRACKING_COL_ORIGINAL_INDEX,
     expand_population,
+)
+from reformlab.discrete_choice.logit import (
+    DISCRETE_CHOICE_RESULT_KEY,
+    LogitChoiceStep,
+    compute_probabilities,
+    compute_utilities,
+    draw_choices,
 )
 from reformlab.discrete_choice.reshape import reshape_to_cost_matrix
 from reformlab.discrete_choice.step import (
@@ -40,26 +51,36 @@ from reformlab.discrete_choice.step import (
 )
 from reformlab.discrete_choice.types import (
     Alternative,
+    ChoiceResult,
     ChoiceSet,
     CostMatrix,
     ExpansionResult,
+    TasteParameters,
 )
 
 __all__ = [
     "Alternative",
+    "ChoiceResult",
     "ChoiceSet",
+    "compute_probabilities",
+    "compute_utilities",
     "CostMatrix",
     "DecisionDomain",
     "DISCRETE_CHOICE_COST_MATRIX_KEY",
     "DISCRETE_CHOICE_EXPANSION_KEY",
     "DISCRETE_CHOICE_METADATA_KEY",
+    "DISCRETE_CHOICE_RESULT_KEY",
     "DiscreteChoiceError",
     "DiscreteChoiceStep",
+    "draw_choices",
     "expand_population",
     "ExpansionError",
     "ExpansionResult",
+    "LogitChoiceStep",
+    "LogitError",
     "reshape_to_cost_matrix",
     "ReshapeError",
+    "TasteParameters",
     "TRACKING_COL_ALTERNATIVE_ID",
     "TRACKING_COL_ORIGINAL_INDEX",
 ]

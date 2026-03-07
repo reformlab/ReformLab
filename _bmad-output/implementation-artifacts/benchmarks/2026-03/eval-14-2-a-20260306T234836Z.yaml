@@ -1,0 +1,131 @@
+record_id: c4a35f3c-520e-4039-ade5-cbba656fcd74
+created_at: '2026-03-06T23:48:36.863047+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 14
+  story_num: 2
+  title: Story 14.2
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: true
+    requires_migration: true
+evaluator:
+  provider: codex
+  model: gpt-5.3-codex
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-03-06T23:44:22.098576Z'
+  end_time: '2026-03-06T23:47:26.437576Z'
+  duration_ms: 184339
+  input_tokens: 0
+  output_tokens: 2851
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 11404
+  heading_count: 35
+  list_depth_max: 2
+  code_block_count: 6
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 6.6'
+  - 🎯 Ruthless Story Validation 14.2
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 6.6 → MAJOR REWORK'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. AC-4 Statistical Acceptance Is Not Verifiable
+  - 2. Non-Finite Input Safety Is Not Enforceable
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Canonical Metadata Contract
+  - 2. Explicit Missing-CostMatrix Error Contract
+  - 3. Explicit Probability Cell Constraints
+  - 4. Seed=None Governance Definition
+  - 5. Deterministic Order Contract Restatement
+  - ✨ Optimizations (Nice to Have)
+  - 1. Add Performance Guard Note for Large N
+  - 2. Add Minimal Golden Fixture Contract
+  - 3. Clarify Numeric Type Expectations
+  - 🤖 LLM Optimization Improvements
+  - 1. Make AC-4 Deterministic and Short
+  - 2. Remove Metadata Key Drift
+  - 3. Compress Repeated Out-of-Scope Lists
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.33
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: dd08eac8b5bb
+findings:
+  total_count: 25
+  by_severity:
+    critical: 2
+    major: 17
+    minor: 3
+    nit: 3
+  by_category:
+    security: 1
+    performance: 1
+    correctness: 4
+    completeness: 10
+    clarity: 4
+    testability: 3
+  has_fix_count: 21
+  has_location_count: 16
+  has_evidence_count: 22
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 1
+  confidence_phrases_count: 2
+linguistic:
+  avg_sentence_length: 13.045045045045045
+  vocabulary_richness: 0.3867403314917127
+  flesch_reading_ease: 10.351396474822991
+  vague_terms_count: 0
+  formality_score: 0.78
+  sentiment: mixed
+quality:
+  actionable_ratio: 0.88
+  specificity_score: 0.82
+  evidence_quality: 0.87
+  follows_template: true
+  internal_consistency: 0.92
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: true
+    requires_migration: true

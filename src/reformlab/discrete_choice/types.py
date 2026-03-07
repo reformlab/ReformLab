@@ -1,9 +1,11 @@
 """Frozen dataclasses for the discrete choice subsystem.
 
 Provides core value types for alternatives, choice sets, cost matrices,
-and expansion results. All types are immutable (frozen dataclasses).
+expansion results, taste parameters, and choice results. All types are
+immutable (frozen dataclasses).
 
 Story 14-1: DiscreteChoiceStep with population expansion pattern.
+Story 14-2: Conditional logit model types (TasteParameters, ChoiceResult).
 """
 
 from __future__ import annotations
@@ -127,3 +129,85 @@ class ExpansionResult:
     n_households: int
     n_alternatives: int
     alternative_ids: tuple[str, ...]
+
+
+# ============================================================================
+# Story 14-2: Logit model types
+# ============================================================================
+
+
+@dataclass(frozen=True)
+class TasteParameters:
+    """Taste parameters for the conditional logit model.
+
+    Single β coefficient applied to the cost matrix to compute
+    deterministic utilities: V_ij = beta_cost × cost_ij.
+
+    Attributes:
+        beta_cost: Coefficient for cost in utility function.
+    """
+
+    beta_cost: float
+
+
+@dataclass(frozen=True)
+class ChoiceResult:
+    """Result of logit choice model: probabilities and drawn choices.
+
+    Contains chosen alternatives, probability and utility matrices,
+    and the seed used for draws. Validates probability normalization,
+    column consistency, and chosen array length at construction.
+
+    Attributes:
+        chosen: PyArrow Array of string alternative IDs (length N).
+        probabilities: N×M PyArrow Table of choice probabilities.
+        utilities: N×M PyArrow Table of deterministic utilities.
+        alternative_ids: Tuple of alternative IDs matching column order.
+        seed: Random seed used for draws (None if unseeded).
+    """
+
+    chosen: pa.Array
+    probabilities: pa.Table
+    utilities: pa.Table
+    alternative_ids: tuple[str, ...]
+    seed: int | None
+
+    def __post_init__(self) -> None:
+        """Validate choice result invariants (AC-5, AC-6)."""
+        from reformlab.discrete_choice.errors import LogitError
+
+        n = self.probabilities.num_rows
+
+        # Validate column names match alternative_ids
+        prob_cols = tuple(self.probabilities.column_names)
+        if prob_cols != self.alternative_ids:
+            raise LogitError(
+                f"ChoiceResult probability column names {prob_cols} do not match "
+                f"alternative_ids {self.alternative_ids}"
+            )
+
+        util_cols = tuple(self.utilities.column_names)
+        if util_cols != self.alternative_ids:
+            raise LogitError(
+                f"ChoiceResult utility column names {util_cols} do not match "
+                f"alternative_ids {self.alternative_ids}"
+            )
+
+        # Validate chosen length matches N
+        if len(self.chosen) != n:
+            raise LogitError(
+                f"ChoiceResult chosen length ({len(self.chosen)}) does not match "
+                f"probability row count ({n})"
+            )
+
+        # Validate probability row sums within tolerance (AC-5)
+        tolerance = 1e-10
+        for i in range(n):
+            row_sum = 0.0
+            for col_name in self.alternative_ids:
+                row_sum += self.probabilities.column(col_name)[i].as_py()
+            if abs(row_sum - 1.0) >= tolerance:
+                raise LogitError(
+                    f"ChoiceResult probability row {i} sums to {row_sum}, "
+                    f"expected 1.0 within tolerance {tolerance}"
+                )

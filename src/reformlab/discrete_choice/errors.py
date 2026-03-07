@@ -1,9 +1,10 @@
 """Error hierarchy for the discrete choice subsystem.
 
 Provides subsystem-specific exceptions for population expansion,
-cost matrix reshape, and step execution errors.
+cost matrix reshape, logit computation, and step execution errors.
 
 Story 14-1: DiscreteChoiceStep with population expansion pattern.
+Story 14-2: LogitError for probability computation and draw failures.
 """
 
 from __future__ import annotations
@@ -45,4 +46,12 @@ class ReshapeError(DiscreteChoiceError):
 
     Raised when computation results cannot be reshaped into the
     expected N×M cost matrix (missing columns, dimension mismatch).
+    """
+
+
+class LogitError(DiscreteChoiceError):
+    """Error during logit probability computation or choice draws.
+
+    Raised when cost matrix contains invalid values (NaN, Inf),
+    probability normalization fails, or draw sampling encounters errors.
     """
