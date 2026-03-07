@@ -26,10 +26,12 @@ import {
   useTemplateDetails,
   useRunSimulation,
   useIndicators,
+  useDataSources,
+  useMergeMethods,
 } from "@/hooks/useApi";
-import type { DecileData, Parameter, Population, Scenario, Template } from "@/data/mock-data";
+import type { DecileData, Parameter, Population, Scenario, Template, MockDataSource, MockMergeMethod } from "@/data/mock-data";
 import { mockDecileData, mockParameters, mockScenarios } from "@/data/mock-data";
-import type { RunResponse, IndicatorResponse } from "@/api/types";
+import type { RunResponse, IndicatorResponse, GenerationResult } from "@/api/types";
 
 // ============================================================================
 // Context types
@@ -74,6 +76,13 @@ interface AppState {
   // Refetch
   refetchPopulations: () => Promise<void>;
   refetchTemplates: () => Promise<void>;
+
+  // Data fusion (Story 17.1)
+  dataFusionSources: Record<string, MockDataSource[]>;
+  dataFusionMethods: MockMergeMethod[];
+  dataFusionResult: GenerationResult | null;
+  setDataFusionResult: (result: GenerationResult | null) => void;
+  dataFusionSourcesLoading: boolean;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -115,6 +124,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Data hooks
   const { populations, loading: populationsLoading, usingMockData: populationsMock, refetch: refetchPopulations } = usePopulations();
   const { templates, loading: templatesLoading, usingMockData: templatesMock, refetch: refetchTemplates } = useTemplates();
+
+  // Data fusion hooks (Story 17.1)
+  const { sources: dataFusionSources, loading: dataFusionSourcesLoading, refetch: refetchDataFusionSources } = useDataSources();
+  const { methods: dataFusionMethods, refetch: refetchDataFusionMethods } = useMergeMethods();
+  const [dataFusionResult, setDataFusionResult] = useState<GenerationResult | null>(null);
 
   // Selections
   const [selectedPopulationId, setSelectedPopulationId] = useState("");
@@ -170,8 +184,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setAuthToken(null);
         }
       });
+      refetchDataFusionSources().catch(() => {});
+      refetchDataFusionMethods().catch(() => {});
     }
-  }, [isAuthenticated, refetchPopulations, refetchTemplates]);
+  }, [isAuthenticated, refetchPopulations, refetchTemplates, refetchDataFusionSources, refetchDataFusionMethods]);
 
   // Warn user if data is still mock after loading completes
   useEffect(() => {
@@ -369,6 +385,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       parametersLoading,
       refetchPopulations,
       refetchTemplates,
+      dataFusionSources,
+      dataFusionMethods,
+      dataFusionResult,
+      setDataFusionResult,
+      dataFusionSourcesLoading,
     }),
     [
       isAuthenticated, authLoading, authenticate, logout,
@@ -380,6 +401,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       cloneScenario, deleteScenario,
       populationsLoading, templatesLoading, parametersLoading,
       refetchPopulations, refetchTemplates,
+      dataFusionSources, dataFusionMethods, dataFusionResult, setDataFusionResult, dataFusionSourcesLoading,
     ],
   );
 

@@ -19,6 +19,7 @@ from fastapi.responses import JSONResponse
 import reformlab
 from reformlab.server.auth import AuthMiddleware
 from reformlab.server.auth import router as auth_router
+from reformlab.server.routes.data_fusion import router as data_fusion_router
 from reformlab.server.routes.exports import router as exports_router
 from reformlab.server.routes.indicators import comparison_router
 from reformlab.server.routes.indicators import router as indicators_router
@@ -69,6 +70,7 @@ def create_app() -> FastAPI:
     app.include_router(exports_router, prefix="/api/exports")
     app.include_router(templates_router, prefix="/api/templates")
     app.include_router(populations_router, prefix="/api/populations")
+    app.include_router(data_fusion_router, prefix="/api/data-fusion", tags=["data-fusion"])
 
     # Register exception handlers
     _register_exception_handlers(app)

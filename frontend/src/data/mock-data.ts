@@ -265,6 +265,179 @@ export const mockSummaryStats: SummaryStatistic[] = [
   },
 ];
 
+// ============================================================================
+// Data fusion mock data — Story 17.1
+// ============================================================================
+
+export interface MockDataSource {
+  id: string;
+  provider: string;
+  name: string;
+  description: string;
+  variable_count: number;
+  record_count: number | null;
+  source_url: string;
+}
+
+export interface MockMergeMethod {
+  id: string;
+  name: string;
+  what_it_does: string;
+  assumption: string;
+  when_appropriate: string;
+  tradeoff: string;
+  parameters: Array<{ name: string; type: string; description: string; required: boolean }>;
+}
+
+export const mockDataSources: Record<string, MockDataSource[]> = {
+  insee: [
+    {
+      id: "filosofi_2021_commune",
+      provider: "insee",
+      name: "Filosofi 2021 Commune",
+      description: "Filosofi 2021 commune-level income data (deciles D1-D9, median, poverty rate)",
+      variable_count: 13,
+      record_count: null,
+      source_url: "https://www.insee.fr/fr/statistiques/6036907",
+    },
+    {
+      id: "filosofi_2021_iris_declared",
+      provider: "insee",
+      name: "Filosofi 2021 IRIS Declared",
+      description: "Filosofi 2021 IRIS-level declared income (quartiles/deciles)",
+      variable_count: 14,
+      record_count: null,
+      source_url: "https://www.insee.fr/fr/statistiques/6036907",
+    },
+    {
+      id: "filosofi_2021_iris_disposable",
+      provider: "insee",
+      name: "Filosofi 2021 IRIS Disposable",
+      description: "Filosofi 2021 IRIS-level disposable income (quartiles/deciles)",
+      variable_count: 14,
+      record_count: null,
+      source_url: "https://www.insee.fr/fr/statistiques/6036907",
+    },
+  ],
+  eurostat: [
+    {
+      id: "ilc_di01",
+      provider: "eurostat",
+      name: "ILC DI01 Income Distribution",
+      description: "Income distribution by quantile (EU-SILC deciles D1-D10, shares/EUR)",
+      variable_count: 8,
+      record_count: null,
+      source_url: "https://ec.europa.eu/eurostat/databrowser/view/ilc_di01",
+    },
+    {
+      id: "nrg_d_hhq",
+      provider: "eurostat",
+      name: "NRG D HHQ Energy Consumption",
+      description: "Disaggregated final energy consumption in households",
+      variable_count: 8,
+      record_count: null,
+      source_url: "https://ec.europa.eu/eurostat/databrowser/view/nrg_d_hhq",
+    },
+  ],
+  ademe: [
+    {
+      id: "base_carbone",
+      provider: "ademe",
+      name: "Base Carbone",
+      description: "Base Carbone V23.6 emission factors (CSV from data.gouv.fr)",
+      variable_count: 15,
+      record_count: null,
+      source_url: "https://www.data.gouv.fr/fr/datasets/base-carbone-v23-6/",
+    },
+  ],
+  sdes: [
+    {
+      id: "vehicle_fleet",
+      provider: "sdes",
+      name: "Vehicle Fleet",
+      description:
+        "Vehicle fleet composition by fuel type, age, Crit'Air, region (communal-level data from data.gouv.fr)",
+      variable_count: 8,
+      record_count: null,
+      source_url: "https://www.data.gouv.fr/fr/datasets/parc-de-vehicules-en-circulation/",
+    },
+  ],
+};
+
+export const mockMergeMethods: MockMergeMethod[] = [
+  {
+    id: "uniform",
+    name: "Uniform Distribution",
+    what_it_does:
+      "Matches each household from one source to a randomly chosen household from another source, with equal probability.",
+    assumption:
+      "Variables in the two sources are statistically independent — knowing a household's income tells you nothing about their vehicle type.",
+    when_appropriate:
+      "Quick baseline when no better information is available about correlations between sources.",
+    tradeoff:
+      "Fast and simple, but may produce unrealistic combinations (e.g., low-income household paired with luxury vehicle).",
+    parameters: [
+      {
+        name: "seed",
+        type: "int",
+        description: "Random seed for deterministic results (default: 42)",
+        required: false,
+      },
+    ],
+  },
+  {
+    id: "ipf",
+    name: "Iterative Proportional Fitting (IPF)",
+    what_it_does:
+      "Adjusts matching weights so that the final population matches known aggregate statistics (marginals) from official sources.",
+    assumption:
+      "The population matches known distribution totals — if INSEE says 10% of households are in decile 1, the result respects that.",
+    when_appropriate: "You have reliable census or administrative marginals to calibrate against.",
+    tradeoff:
+      "More accurate aggregates, but requires knowing the target marginals upfront; may not converge if constraints are contradictory.",
+    parameters: [
+      {
+        name: "seed",
+        type: "int",
+        description: "Random seed for deterministic results (default: 42)",
+        required: false,
+      },
+      {
+        name: "ipf_constraints",
+        type: "list[constraint]",
+        description: "List of {dimension, targets} marginal constraints to satisfy",
+        required: false,
+      },
+    ],
+  },
+  {
+    id: "conditional",
+    name: "Conditional Sampling",
+    what_it_does:
+      "Groups households by a shared variable (e.g., income bracket), then matches randomly only within the same group.",
+    assumption:
+      "Given the grouping variable, remaining variables are independent — within the same income bracket, vehicle and heating choices are uncorrelated.",
+    when_appropriate:
+      "You know that some variable (like income or region) correlates with variables in both sources.",
+    tradeoff:
+      "Preserves known correlations through the grouping variable, but assumes independence within groups.",
+    parameters: [
+      {
+        name: "seed",
+        type: "int",
+        description: "Random seed for deterministic results (default: 42)",
+        required: false,
+      },
+      {
+        name: "strata_columns",
+        type: "list[str]",
+        description: "Shared column names to use for stratification",
+        required: false,
+      },
+    ],
+  },
+];
+
 /** Simulated progress steps for RunProgressBar */
 export const mockSimulationSteps = [
   "Initializing population data...",

@@ -7,6 +7,7 @@ import { listTemplates, getTemplate } from "@/api/templates";
 import { listScenarios as apiListScenarios } from "@/api/scenarios";
 import { runScenario as apiRunScenario } from "@/api/runs";
 import { getIndicators } from "@/api/indicators";
+import { listDataSources, listMergeMethods } from "@/api/data-fusion";
 import { AuthError } from "@/api/client";
 import type {
   PopulationItem,
@@ -16,11 +17,13 @@ import type {
   TemplateDetailResponse,
   IndicatorResponse,
 } from "@/api/types";
-import type { Population, Template, Parameter } from "@/data/mock-data";
+import type { Population, Template, Parameter, MockDataSource, MockMergeMethod } from "@/data/mock-data";
 import {
   mockPopulations,
   mockTemplates,
   mockParameters,
+  mockDataSources,
+  mockMergeMethods,
 } from "@/data/mock-data";
 
 // ============================================================================
@@ -266,4 +269,66 @@ export function useIndicators() {
   }, []);
 
   return { data, loading, error, fetch };
+}
+
+// ============================================================================
+// Data sources (data fusion)
+// ============================================================================
+
+export function useDataSources() {
+  const [sources, setSources] = useState<Record<string, MockDataSource[]>>(mockDataSources);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const [usingMockData, setUsingMockData] = useState(true);
+
+  const fetch = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await listDataSources();
+      if (Object.keys(data).length > 0) {
+        setSources(data as unknown as Record<string, MockDataSource[]>);
+        setUsingMockData(false);
+      }
+    } catch (err) {
+      if (err instanceof AuthError) throw err;
+      setError(err instanceof Error ? err : new Error(String(err)));
+      setUsingMockData(true);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { sources, loading, error, usingMockData, refetch: fetch };
+}
+
+// ============================================================================
+// Merge methods (data fusion)
+// ============================================================================
+
+export function useMergeMethods() {
+  const [methods, setMethods] = useState<MockMergeMethod[]>(mockMergeMethods);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const [usingMockData, setUsingMockData] = useState(true);
+
+  const fetch = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await listMergeMethods();
+      if (data.length > 0) {
+        setMethods(data as unknown as MockMergeMethod[]);
+        setUsingMockData(false);
+      }
+    } catch (err) {
+      if (err instanceof AuthError) throw err;
+      setError(err instanceof Error ? err : new Error(String(err)));
+      setUsingMockData(true);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { methods, loading, error, usingMockData, refetch: fetch };
 }

@@ -129,3 +129,111 @@ export interface ErrorResponse {
 }
 
 export type IndicatorType = "distributional" | "geographic" | "welfare" | "fiscal";
+
+// ============================================================================
+// Data fusion types — Story 17.1
+// ============================================================================
+
+export interface DataSourceItem {
+  id: string;
+  provider: string;
+  name: string;
+  description: string;
+  variable_count: number;
+  record_count: number | null;
+  source_url: string;
+}
+
+export interface ColumnInfo {
+  name: string;
+  description: string;
+}
+
+export interface DataSourceDetail extends DataSourceItem {
+  columns: ColumnInfo[];
+}
+
+export interface VariableInfo {
+  name: string;
+  description: string;
+  present_in: string[];
+}
+
+export interface MergeMethodParam {
+  name: string;
+  type: string;
+  description: string;
+  required: boolean;
+}
+
+export interface MergeMethodInfo {
+  id: string;
+  name: string;
+  what_it_does: string;
+  assumption: string;
+  when_appropriate: string;
+  tradeoff: string;
+  parameters: MergeMethodParam[];
+}
+
+export interface IPFConstraintRequest {
+  dimension: string;
+  targets: Record<string, number>;
+}
+
+export interface GenerationRequest {
+  sources: Array<{ provider: string; dataset_id: string }>;
+  merge_method: string;
+  seed: number;
+  ipf_constraints?: IPFConstraintRequest[];
+  strata_columns?: string[];
+}
+
+export interface StepLogItem {
+  step_index: number;
+  step_type: string;
+  label: string;
+  input_labels: string[];
+  output_rows: number;
+  output_columns: string[];
+  method_name: string | null;
+  duration_ms: number;
+}
+
+export interface AssumptionRecordItem {
+  step_index: number;
+  step_label: string;
+  method: string;
+  description: string;
+}
+
+export interface MarginalResultResponse {
+  dimension: string;
+  passed: boolean;
+  max_deviation: number;
+  tolerance: number;
+  observed: Record<string, number>;
+  expected: Record<string, number>;
+  deviations: Record<string, number>;
+}
+
+export interface ValidationResultResponse {
+  all_passed: boolean;
+  total_constraints: number;
+  failed_count: number;
+  marginal_results: MarginalResultResponse[];
+}
+
+export interface PopulationSummary {
+  record_count: number;
+  column_count: number;
+  columns: string[];
+}
+
+export interface GenerationResult {
+  success: boolean;
+  summary: PopulationSummary;
+  step_log: StepLogItem[];
+  assumption_chain: AssumptionRecordItem[];
+  validation_result: ValidationResultResponse | null;
+}
