@@ -26,6 +26,7 @@ Public API:
 
 from __future__ import annotations
 
+import copy
 import json
 import logging
 import shutil
@@ -228,6 +229,16 @@ class ImportedPackage:
     policy: dict[str, Any]
     scenario_metadata: dict[str, Any]
     integrity_verified: bool
+
+    def __post_init__(self) -> None:
+        """Defensive-copy mutable dict fields to honour the immutability contract.
+
+        ``pa.Table`` is already copy-on-write immutable in PyArrow. Only the
+        two plain ``dict`` fields need deep-copying so that callers cannot
+        mutate internal package state through the returned references.
+        """
+        object.__setattr__(self, "policy", copy.deepcopy(self.policy))
+        object.__setattr__(self, "scenario_metadata", copy.deepcopy(self.scenario_metadata))
 
     def reproduce(
         self,
@@ -557,8 +568,14 @@ def import_replication_package(package_path: Path) -> ImportedPackage:
     elif package_path.suffix.lower() == ".zip":
         _tmp_dir_ctx = tempfile.TemporaryDirectory()
         tmp_root = Path(_tmp_dir_ctx.name)
-        with zipfile.ZipFile(package_path, "r") as zf:
-            zf.extractall(tmp_root)
+        try:
+            with zipfile.ZipFile(package_path, "r") as zf:
+                zf.extractall(tmp_root)
+        except zipfile.BadZipFile as exc:
+            _tmp_dir_ctx.cleanup()
+            raise ReplicationPackageError(
+                f"Cannot open ZIP archive {package_path!r}: {exc}"
+            ) from exc
         entries = list(tmp_root.iterdir())
         if len(entries) != 1 or not entries[0].is_dir():
             if _tmp_dir_ctx is not None:
@@ -596,11 +613,25 @@ def _load_package_from_dir(
         raise ReplicationPackageError(
             f"package-index.json not found in package at {package_dir!r}"
         )
-    index = PackageIndex.from_json(index_path.read_text(encoding="utf-8"))
+    try:
+        index = PackageIndex.from_json(index_path.read_text(encoding="utf-8"))
+    except ValueError as exc:
+        raise ReplicationPackageError(
+            f"Malformed package-index.json in package at {package_dir!r}: {exc}"
+        ) from exc
 
     # ── 4. Verify all artifact hashes ───────────────────────────────────────
+    pkg_dir_resolved = package_dir.resolve()
     for artifact in index.artifacts:
         full_path = package_dir / artifact.path
+        # Prevent path traversal: reject any artifact.path that escapes the package root
+        try:
+            full_path.resolve().relative_to(pkg_dir_resolved)
+        except ValueError:
+            raise ReplicationPackageError(
+                f"Artifact path escapes package directory (path traversal rejected): "
+                f"{artifact.path!r}"
+            )
         if not full_path.exists():
             raise ReplicationPackageError(
                 f"Artifact missing: {artifact.path} — expected hash {artifact.hash}"
@@ -686,6 +717,16 @@ def reproduce_from_package(
             f"tolerance must be >= 0, got {tolerance}"
         )
 
+    # ── Validate panel table before config extraction ────────────────────────
+    if "year" not in package.panel_table.column_names:
+        raise ReplicationPackageError(
+            "Panel table in imported package has no 'year' column; cannot extract year range"
+        )
+    if package.panel_table.num_rows == 0:
+        raise ReplicationPackageError(
+            "Panel table in imported package is empty; cannot extract year range"
+        )
+
     # ── Extract scenario config from package ─────────────────────────────────
     year_col = package.panel_table.column("year")
     year_values = year_col.to_pylist()
@@ -693,7 +734,12 @@ def reproduce_from_package(
     end_year = int(max(year_values))
 
     seed_raw = package.manifest.seeds.get("master")
-    seed: int | None = int(seed_raw) if seed_raw is not None else None
+    try:
+        seed: int | None = int(seed_raw) if seed_raw is not None else None
+    except (TypeError, ValueError) as exc:
+        raise ReplicationPackageError(
+            f"Cannot convert master seed {seed_raw!r} to integer: {exc}"
+        ) from exc
 
     # ── Runtime import to avoid circular dependencies ─────────────────────────
     from reformlab.interfaces.api import ScenarioConfig, run_scenario  # noqa: PLC0415
@@ -826,7 +872,9 @@ def _compare_panel_tables(
         repr_col = reproduced.column(col_name)
         col_type = orig_col.type
 
-        if pa.types.is_floating(col_type) or pa.types.is_integer(col_type):
+        if pa.types.is_floating(col_type):
+            import math
+
             orig_vals = orig_col.to_pylist()
             repr_vals = repr_col.to_pylist()
             for row_idx, (ov, rv) in enumerate(zip(orig_vals, repr_vals)):
@@ -838,39 +886,44 @@ def _compare_panel_tables(
                             f"(original={ov!r}, reproduced={rv!r})"
                         )
                     continue
-                try:
-                    fov, frv = float(ov), float(rv)
-                except (TypeError, ValueError):
-                    discrepancies.append(
-                        f"Column '{col_name}' row {row_idx}: cannot compare values "
-                        f"{ov!r} and {rv!r}"
-                    )
-                    continue
-                import math
-
-                if math.isnan(fov) or math.isnan(frv):
+                if math.isnan(ov) or math.isnan(rv):
                     discrepancies.append(
                         f"Column '{col_name}' row {row_idx}: NaN value(s) "
-                        f"(original={fov}, reproduced={frv})"
+                        f"(original={ov}, reproduced={rv})"
                     )
                     continue
-                diff = abs(fov - frv)
+                diff = abs(ov - rv)
                 if diff > tolerance:
                     discrepancies.append(
                         f"Column '{col_name}' row {row_idx}: "
-                        f"{fov} vs {frv} (diff={diff})"
+                        f"{ov} vs {rv} (diff={diff})"
+                    )
+        elif pa.types.is_integer(col_type):
+            # Integer columns: exact comparison only — no float conversion, no tolerance
+            orig_vals = orig_col.to_pylist()
+            repr_vals = repr_col.to_pylist()
+            for row_idx, (ov, rv) in enumerate(zip(orig_vals, repr_vals)):
+                if ov is None or rv is None:
+                    if ov != rv:
+                        discrepancies.append(
+                            f"Column '{col_name}' row {row_idx}: null mismatch "
+                            f"(original={ov!r}, reproduced={rv!r})"
+                        )
+                    continue
+                if ov != rv:
+                    discrepancies.append(
+                        f"Column '{col_name}' row {row_idx}: "
+                        f"{ov} vs {rv} (diff={abs(ov - rv)})"
                     )
         else:
             orig_list = orig_col.to_pylist()
             repr_list = repr_col.to_pylist()
-            if orig_list != repr_list:
-                # Report first mismatch
-                for row_idx, (ov, rv) in enumerate(zip(orig_list, repr_list)):
-                    if ov != rv:
-                        discrepancies.append(
-                            f"Column '{col_name}' row {row_idx}: "
-                            f"{ov!r} vs {rv!r}"
-                        )
-                        break
+            for row_idx, (ov, rv) in enumerate(zip(orig_list, repr_list)):
+                if ov != rv:
+                    discrepancies.append(
+                        f"Column '{col_name}' row {row_idx}: "
+                        f"{ov!r} vs {rv!r}"
+                    )
+                    break
 
     return len(discrepancies) == 0, tuple(discrepancies)

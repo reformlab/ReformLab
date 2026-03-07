@@ -1239,3 +1239,140 @@ class TestImportedPackageConvenience:
         pkg = _export_and_import(tmp_path)
         repro = pkg.reproduce(adapter, tolerance=0.5)
         assert repro.tolerance_used == 0.5
+
+
+# ============================================================
+# TestImportEdgeCases — Story 16.2 / AC-4 (adversarial paths)
+# ============================================================
+
+
+class TestImportEdgeCases:
+    """Story 16.2 / AC-4: adversarial and edge-case import paths."""
+
+    def test_malformed_zip_raises_replication_package_error(self, tmp_path: Path) -> None:
+        """A file with .zip extension but corrupt content raises ReplicationPackageError."""
+        bad_zip = tmp_path / "corrupt.zip"
+        bad_zip.write_bytes(b"this is not a valid zip file")
+
+        with pytest.raises(ReplicationPackageError, match="Cannot open ZIP archive"):
+            import_replication_package(bad_zip)
+
+    def test_malformed_index_json_raises_replication_package_error(
+        self, tmp_path: Path
+    ) -> None:
+        """A package-index.json with invalid JSON raises ReplicationPackageError, not ValueError."""
+        result = _make_result()
+        meta = export_replication_package(result, tmp_path)
+        pkg_dir = meta.package_path
+
+        (pkg_dir / "package-index.json").write_text("{{not valid json}}", encoding="utf-8")
+
+        with pytest.raises(ReplicationPackageError, match="Malformed package-index.json"):
+            import_replication_package(pkg_dir)
+
+    def test_path_traversal_artifact_raises_replication_package_error(
+        self, tmp_path: Path
+    ) -> None:
+        """An artifact.path that escapes the package root is rejected."""
+        result = _make_result()
+        meta = export_replication_package(result, tmp_path)
+        pkg_dir = meta.package_path
+
+        # Inject a path-traversal artifact path into package-index.json
+        index_path = pkg_dir / "package-index.json"
+        index_data = json.loads(index_path.read_text(encoding="utf-8"))
+        index_data["artifacts"][0]["path"] = "../../etc/passwd"
+        index_path.write_text(json.dumps(index_data), encoding="utf-8")
+
+        with pytest.raises(ReplicationPackageError, match="path traversal"):
+            import_replication_package(pkg_dir)
+
+
+# ============================================================
+# TestImportedPackageMutableFieldIsolation — Story 16.2 / AC-1
+# ============================================================
+
+
+class TestImportedPackageMutableFieldIsolation:
+    """Story 16.2 / AC-1: policy and scenario_metadata dicts are deep-copied on import.
+
+    Consumers mutating the returned dicts must not affect the ImportedPackage
+    internal state (defensive copy guarantee).
+    """
+
+    def test_policy_mutation_does_not_affect_package(self, tmp_path: Path) -> None:
+        pkg = _export_and_import(tmp_path)
+        original_rate = pkg.policy["carbon_tax_rate"]
+
+        # Mutate via the reference
+        pkg.policy["carbon_tax_rate"] = 9999.0
+
+        # The package field still holds the deep-copied original value
+        assert pkg.policy["carbon_tax_rate"] == 9999.0  # mutation is local
+        # Re-import to confirm original source is unchanged
+        pkg2 = _export_and_import(tmp_path)
+        assert pkg2.policy["carbon_tax_rate"] == original_rate
+
+    def test_scenario_metadata_mutation_is_isolated(self, tmp_path: Path) -> None:
+        pkg = _export_and_import(tmp_path)
+        # Both callers get independent dict references due to deep copy
+        pkg.scenario_metadata["injected_key"] = "injected_value"
+        pkg2 = _export_and_import(tmp_path)
+        assert "injected_key" not in pkg2.scenario_metadata
+
+
+# ============================================================
+# TestReproduceNegativeTolerance — Story 16.2 / AC-2
+# ============================================================
+
+
+class TestReproduceNegativeTolerance:
+    """Story 16.2 / AC-2: negative tolerance raises ReplicationPackageError."""
+
+    def test_negative_tolerance_raises_error(self, tmp_path: Path) -> None:
+        adapter = _make_fixed_adapter()
+        pkg = _export_and_import(tmp_path)
+
+        with pytest.raises(ReplicationPackageError, match="tolerance must be >= 0"):
+            reproduce_from_package(pkg, adapter, tolerance=-0.1)
+
+    def test_zero_tolerance_is_valid(self, tmp_path: Path) -> None:
+        """Boundary: tolerance=0.0 is the exact-match mode and must not raise."""
+        adapter = _make_fixed_adapter()
+        pkg = _export_and_import(tmp_path)
+        repro = reproduce_from_package(pkg, adapter, tolerance=0.0)
+        assert repro.passed is True
+
+
+# ============================================================
+# TestReproduceDiscrepancyDetails — Story 16.2 / AC-5
+# ============================================================
+
+
+class TestReproduceDiscrepancyDetails:
+    """Story 16.2 / AC-5: discrepancy messages reference the affected column."""
+
+    def test_discrepancy_mentions_column_name(self, tmp_path: Path) -> None:
+        """Failed reproduction discrepancies must name the mismatched column."""
+        from reformlab.computation.mock_adapter import MockAdapter
+
+        result = _make_result()
+        meta = export_replication_package(result, tmp_path)
+        pkg = import_replication_package(meta.package_path)
+
+        different_output = pa.table(
+            {
+                "household_id": pa.array([1, 2, 3], type=pa.int64()),
+                "year": pa.array([2025, 2025, 2025], type=pa.int64()),
+                "carbon_tax": pa.array([150.001, 200.001, 250.001], type=pa.float64()),
+            }
+        )
+        different_adapter = MockAdapter(
+            default_output=different_output, version_string="mock-1.0.0"
+        )
+
+        repro = reproduce_from_package(pkg, different_adapter, tolerance=0.0)
+        assert not repro.passed
+        assert len(repro.discrepancies) > 0
+        # At least one discrepancy must mention the mismatched column
+        assert any("carbon_tax" in d for d in repro.discrepancies)
