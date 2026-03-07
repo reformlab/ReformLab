@@ -38,3 +38,16 @@
 | medium | Task 3.5 type inference wording inconsistent with `_infer_pa_type` mapping rules | Task 3.5 now explicitly references `_infer_pa_type` mapping and `pa.array(..., type=existing_type)` cast pattern. |
 | medium | AC-6 positional alignment between `ChoiceResult.chosen` and entity table underspecified | AC-6 now states positional alignment is guaranteed by upstream pipeline and that unknown IDs raise errors. |
 | medium | Empty population edge case conflicts with AC-9 metadata extension | Edge case row clarified: population and vintage unchanged, but metadata is still extended with zero counts. |
+
+## Story 14-4 (2026-03-07)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| high | AC-11 lacks explicit dependency chain and test assertions for sequential multi-domain execution | AC-11 now specifies the full 6-step dependency chain with naming convention and requires the integration test to verify vehicle attribute presence in heating's population. |
+| high | AC-9 metadata preservation semantics are ambiguous for sequential execution | AC-9 now explicitly requires preservation of all pre-existing metadata keys and raises DiscreteChoiceError on non-dict metadata. |
+| medium | AC-3 omits explicit `bool` type handling | AC-3 now lists `bool` alongside other unsupported types. |
+| medium | AC-8 zero-switcher/no-existing-vintage behavior is implicit | AC-8 now explicitly states that no empty VintageState is created when there are zero switchers and no existing state. |
+| medium | AC-10 import path change in `__init__.py` is implied but not stated | AC-10 now explicitly states the import source changes from `vehicle` to `domain_utils`. |
+| medium | Design Decision #8 doesn't explain metadata key preservation in sequential mode | DD#8 now documents how domain-prefixed metadata keys coexist and that final results use separate vintage keys. |
+| low | AC-3 "returned unchanged" vs "new table" ambiguity | Addressed as part of the AC-3 update — clarified that identity return is acceptable since PyArrow tables are immutable. |
+| low | LLM token efficiency improvements (redundant protocol blocks, algorithm code) | Not applied. The story is already written and the dev agent context benefits from having protocol definitions inline. Removing them risks implementation errors. |

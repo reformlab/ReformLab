@@ -8,28 +8,17 @@ protocol and integrate with the orchestrator pipeline.
 Story 14-1: DiscreteChoiceStep with population expansion pattern.
 Story 14-2: Conditional logit model with seed-controlled draws.
 Story 14-3: Vehicle investment decision domain and state update step.
-
-Public API:
-- DiscreteChoiceStep: OrchestratorStep for discrete choice evaluation
-- LogitChoiceStep: OrchestratorStep for logit probability + draws
-- VehicleInvestmentDomain: Vehicle decision domain (DecisionDomain protocol)
-- VehicleStateUpdateStep: OrchestratorStep for post-logit state updates
-- VehicleDomainConfig: Configuration for vehicle domain
-- default_vehicle_domain_config: Factory for French market defaults
-- apply_choices_to_population: Per-household attribute application
-- DecisionDomain: Protocol for decision domains (vehicle, heating, etc.)
-- Alternative, ChoiceSet, CostMatrix, ExpansionResult: Core value types
-- TasteParameters, ChoiceResult: Logit model types
-- compute_utilities, compute_probabilities, draw_choices: Pure logit functions
-- expand_population: Population expansion function
-- reshape_to_cost_matrix: Cost matrix reshape function
-- DiscreteChoiceError, ExpansionError, ReshapeError, LogitError: Error hierarchy
-- State keys: DISCRETE_CHOICE_COST_MATRIX_KEY, DISCRETE_CHOICE_RESULT_KEY, etc.
+Story 14-4: Heating system investment decision domain and state update step.
 """
 
 from __future__ import annotations
 
 from reformlab.discrete_choice.domain import DecisionDomain
+from reformlab.discrete_choice.domain_utils import (
+    apply_choices_to_population,
+    create_vintage_entries,
+    infer_pa_type,
+)
 from reformlab.discrete_choice.errors import (
     DiscreteChoiceError,
     ExpansionError,
@@ -40,6 +29,12 @@ from reformlab.discrete_choice.expansion import (
     TRACKING_COL_ALTERNATIVE_ID,
     TRACKING_COL_ORIGINAL_INDEX,
     expand_population,
+)
+from reformlab.discrete_choice.heating import (
+    HeatingDomainConfig,
+    HeatingInvestmentDomain,
+    HeatingStateUpdateStep,
+    default_heating_domain_config,
 )
 from reformlab.discrete_choice.logit import (
     DISCRETE_CHOICE_RESULT_KEY,
@@ -67,7 +62,6 @@ from reformlab.discrete_choice.vehicle import (
     VehicleDomainConfig,
     VehicleInvestmentDomain,
     VehicleStateUpdateStep,
-    apply_choices_to_population,
     default_vehicle_domain_config,
 )
 
@@ -75,10 +69,14 @@ __all__ = [
     "Alternative",
     "ChoiceResult",
     "ChoiceSet",
+    "apply_choices_to_population",
     "compute_probabilities",
     "compute_utilities",
     "CostMatrix",
+    "create_vintage_entries",
     "DecisionDomain",
+    "default_heating_domain_config",
+    "default_vehicle_domain_config",
     "DISCRETE_CHOICE_COST_MATRIX_KEY",
     "DISCRETE_CHOICE_EXPANSION_KEY",
     "DISCRETE_CHOICE_METADATA_KEY",
@@ -89,6 +87,10 @@ __all__ = [
     "expand_population",
     "ExpansionError",
     "ExpansionResult",
+    "HeatingDomainConfig",
+    "HeatingInvestmentDomain",
+    "HeatingStateUpdateStep",
+    "infer_pa_type",
     "LogitChoiceStep",
     "LogitError",
     "reshape_to_cost_matrix",
@@ -99,6 +101,4 @@ __all__ = [
     "VehicleDomainConfig",
     "VehicleInvestmentDomain",
     "VehicleStateUpdateStep",
-    "apply_choices_to_population",
-    "default_vehicle_domain_config",
 ]

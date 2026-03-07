@@ -2,7 +2,7 @@
 
 # Story 14.4: Implement Heating System Decision Domain
 
-Status: ready-for-dev
+Status: dev-complete
 
 ## Story
 
@@ -23,7 +23,7 @@ so that multi-year simulations model realistic household heating system investme
    | `wood_pellet` | Install Wood/Pellet Stove | `"wood"` | `0` | `0.030` |
 
    `keep_current` has `attributes={}` (empty dict). All other alternatives have attributes overriding `heating_type` (str), `heating_age` (int), and `heating_emissions_kgco2_kwh` (float). Alternative order is stable and deterministic.
-3. **AC-3: apply_alternative** — Given a population entity table and an alternative, when `apply_alternative` is called, then it returns a **new** `pa.Table` with the alternative's attribute overrides applied. Columns present in the table are replaced (preserving the existing column's PyArrow type — PyArrow casts the value; if the cast is incompatible, wrap the resulting `ArrowInvalid` in `DiscreteChoiceError`). Columns absent from the table are appended with type inferred from the Python value (`str` → `pa.utf8()`, `int` → `pa.int64()`, `float` → `pa.float64()`; unsupported types raise `DiscreteChoiceError`). The input table is **not modified**. If `alternative.attributes` is empty (e.g., `keep_current`), the table is returned unchanged.
+3. **AC-3: apply_alternative** — Given a population entity table and an alternative, when `apply_alternative` is called, then it returns a **new** `pa.Table` with the alternative's attribute overrides applied. Columns present in the table are replaced (preserving the existing column's PyArrow type — PyArrow casts the value; if the cast is incompatible, wrap the resulting `ArrowInvalid` in `DiscreteChoiceError`). Columns absent from the table are appended with type inferred from the Python value (`str` → `pa.utf8()`, `int` → `pa.int64()`, `float` → `pa.float64()`; `bool` and other unsupported types raise `DiscreteChoiceError`). The input table is **not modified**. If `alternative.attributes` is empty (e.g., `keep_current`), the original table is returned as-is (identity return is acceptable since PyArrow tables are immutable).
 4. **AC-4: Configurable domain** — `HeatingDomainConfig` is a frozen dataclass with fields: `alternatives: tuple[Alternative, ...]`, `cost_column: str` (default `"total_heating_cost"`), `entity_key: str` (default `"menage"`), `non_purchase_ids: frozenset[str]` (default `frozenset({"keep_current"})`). `default_heating_domain_config()` factory returns a config with French market defaults (AC-2 values). `HeatingInvestmentDomain.__init__` takes a `HeatingDomainConfig`.
 5. **AC-5: HeatingStateUpdateStep protocol** — `HeatingStateUpdateStep` implements the `OrchestratorStep` protocol. Default `name="heating_state_update"`, `depends_on=("logit_choice",)`. Constructor takes `domain: HeatingInvestmentDomain`, optional `population_key: str` (default `"population_data"`), optional `vintage_key: str` (default `"vintage_heating"`).
 6. **AC-6: State update — heating switch** — Given a `ChoiceResult` where household _i_ chose a new heating alternative (ID not in `config.non_purchase_ids`), when `HeatingStateUpdateStep.execute()` runs, then:
@@ -34,39 +34,41 @@ so that multi-year simulations model realistic household heating system investme
 8. **AC-8: Vintage integration** — Given households that chose non-keep alternatives (IDs not in `config.non_purchase_ids`), when the state update runs, then:
    - New `VintageCohort(age=0, count=N, attributes={"heating_type": <type>})` entries are created, one per distinct `heating_type` among switchers.
    - If `YearState.data[vintage_key]` contains an existing `VintageState`, new cohorts are appended to its cohorts tuple.
-   - If no `VintageState` exists, a new `VintageState(asset_class="heating", cohorts=<new_cohorts>)` is created.
-   - The updated `VintageState` is stored under `vintage_key` in the returned `YearState`.
-9. **AC-9: State storage and immutability** — `HeatingStateUpdateStep.execute()` returns a new `YearState` via `dataclasses.replace()`. The original state is not modified. Updated population is stored under `population_key`. Vintage state under `vintage_key`. Metadata is extended under `DISCRETE_CHOICE_METADATA_KEY` with keys `heating_n_switchers` (int), `heating_n_keepers` (int), and `heating_per_alternative_counts` (dict[str, int]).
-10. **AC-10: Extract shared utilities from vehicle.py** — `apply_choices_to_population` and `_infer_pa_type` are extracted from `vehicle.py` into a new `domain_utils.py` module within the `discrete_choice` package. `vehicle.py` is updated to import from `domain_utils.py`. `heating.py` imports from `domain_utils.py`. The public API (`__init__.py`) still exports `apply_choices_to_population`. All existing vehicle tests must pass without modification after extraction.
-11. **AC-11: Sequential domain execution** — Given both vehicle and heating domains configured in the orchestrator pipeline, when a year executes, then the heating domain's `DiscreteChoiceStep` receives the population **after** `VehicleStateUpdateStep` has applied vehicle choice updates. An integration test demonstrates this sequential dependency.
+   - If no `VintageState` exists and there are switchers, a new `VintageState(asset_class="heating", cohorts=<new_cohorts>)` is created.
+   - If no `VintageState` exists and there are zero switchers (all keep_current), `vintage_key` is not set in the returned state — no empty `VintageState` is created.
+   - If an existing `VintageState` has `asset_class != "heating"`, raise `DiscreteChoiceError`.
+   - The updated `VintageState` (when created) is stored under `vintage_key` in the returned `YearState`.
+9. **AC-9: State storage and immutability** — `HeatingStateUpdateStep.execute()` returns a new `YearState` via `dataclasses.replace()`. The original state is not modified. Updated population is stored under `population_key`. Vintage state under `vintage_key`. Metadata is extended under `DISCRETE_CHOICE_METADATA_KEY` with keys `heating_n_switchers` (int), `heating_n_keepers` (int), and `heating_per_alternative_counts` (dict[str, int]). All pre-existing metadata keys (including those set by a prior vehicle domain step) are preserved — heating keys are added alongside existing entries, never replacing them. If the value at `DISCRETE_CHOICE_METADATA_KEY` is not a `dict`, raise `DiscreteChoiceError`.
+10. **AC-10: Extract shared utilities from vehicle.py** — `apply_choices_to_population` and `_infer_pa_type` are extracted from `vehicle.py` into a new `domain_utils.py` module within the `discrete_choice` package. `vehicle.py` is updated to import from `domain_utils.py`. `heating.py` imports from `domain_utils.py`. The public API (`__init__.py`) continues to export `apply_choices_to_population`, with its internal import updated to source from `domain_utils` instead of `vehicle`. All existing vehicle tests must pass without modification after extraction.
+11. **AC-11: Sequential domain execution** — Given both vehicle and heating domains configured in the orchestrator pipeline, when a year executes, then the heating domain's `DiscreteChoiceStep` receives the population **after** `VehicleStateUpdateStep` has applied vehicle choice updates. Each domain's steps use unique names (e.g., `"discrete_choice_vehicle"` / `"discrete_choice_heating"`) and explicit `depends_on` to enforce ordering: `vehicle_discrete_choice → vehicle_logit → vehicle_state_update → heating_discrete_choice → heating_logit → heating_state_update`. An integration test demonstrates this by verifying that the population passed to the heating domain's expansion already contains vehicle attribute updates (e.g., `vehicle_type` column values changed by the vehicle step).
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Extract shared utilities to `domain_utils.py` (AC: 10)
-  - [ ] 1.1: Create `domain_utils.py` with `infer_pa_type(value) -> pa.DataType` (renamed from `_infer_pa_type`, now module-level public within package)
-  - [ ] 1.2: Move `apply_choices_to_population()` from `vehicle.py` to `domain_utils.py`
-  - [ ] 1.3: Add `create_vintage_entries(choice_result, alternatives, non_purchase_ids, asset_type_key) -> tuple[VintageCohort, ...]` — parameterized version of vehicle's `_create_vintage_entries`, with `asset_type_key` specifying which attribute to group by (e.g., `"vehicle_type"` or `"heating_type"`)
-  - [ ] 1.4: Update `vehicle.py` to import `infer_pa_type`, `apply_choices_to_population`, `create_vintage_entries` from `domain_utils`; remove local definitions; update `_create_vintage_entries` call to use `create_vintage_entries(..., asset_type_key="vehicle_type")`
-  - [ ] 1.5: Update `vehicle.py`'s `VehicleInvestmentDomain.apply_alternative` to use `infer_pa_type` from `domain_utils` instead of local `_infer_pa_type`
-  - [ ] 1.6: Run all existing vehicle tests — must pass without modification
-  - [ ] 1.7: Add module docstring to `domain_utils.py` referencing Stories 14.3/14.4
+- [x] Task 1: Extract shared utilities to `domain_utils.py` (AC: 10)
+  - [x] 1.1: Create `domain_utils.py` with `infer_pa_type(value) -> pa.DataType` (renamed from `_infer_pa_type`, now module-level public within package)
+  - [x] 1.2: Move `apply_choices_to_population()` from `vehicle.py` to `domain_utils.py`
+  - [x] 1.3: Add `create_vintage_entries(choice_result, alternatives, non_purchase_ids, asset_type_key) -> tuple[VintageCohort, ...]` — parameterized version of vehicle's `_create_vintage_entries`, with `asset_type_key` specifying which attribute to group by (e.g., `"vehicle_type"` or `"heating_type"`)
+  - [x] 1.4: Update `vehicle.py` to import `infer_pa_type`, `apply_choices_to_population`, `create_vintage_entries` from `domain_utils`; remove local definitions; update `_create_vintage_entries` call to use `create_vintage_entries(..., asset_type_key="vehicle_type")`
+  - [x] 1.5: Update `vehicle.py`'s `VehicleInvestmentDomain.apply_alternative` to use `infer_pa_type` from `domain_utils` instead of local `_infer_pa_type`
+  - [x] 1.6: Run all existing vehicle tests — must pass without modification
+  - [x] 1.7: Add module docstring to `domain_utils.py` referencing Stories 14.3/14.4
 
-- [ ] Task 2: Create `heating.py` with config types (AC: 4)
-  - [ ] 2.1: Add `HeatingDomainConfig` frozen dataclass with fields: `alternatives`, `cost_column`, `entity_key`, `non_purchase_ids`
-  - [ ] 2.2: Implement `default_heating_domain_config()` factory returning French market defaults (5 alternatives per AC-2)
-  - [ ] 2.3: Add module docstring referencing Story 14-4 and FR47/FR50
+- [x] Task 2: Create `heating.py` with config types (AC: 4)
+  - [x] 2.1: Add `HeatingDomainConfig` frozen dataclass with fields: `alternatives`, `cost_column`, `entity_key`, `non_purchase_ids`
+  - [x] 2.2: Implement `default_heating_domain_config()` factory returning French market defaults (5 alternatives per AC-2)
+  - [x] 2.3: Add module docstring referencing Story 14-4 and FR47/FR50
 
-- [ ] Task 3: Implement `HeatingInvestmentDomain` in `heating.py` (AC: 1, 2, 3)
-  - [ ] 3.1: Class with `__slots__`, constructor taking `HeatingDomainConfig`
-  - [ ] 3.2: `name` property returning `"heating"`
-  - [ ] 3.3: `alternatives` property returning config alternatives as `tuple[Alternative, ...]`
-  - [ ] 3.4: `cost_column` property from config
-  - [ ] 3.5: `apply_alternative(table, alternative)` — iterate over `alternative.attributes`, replace existing columns (using existing type) or append new columns (with inferred type via `infer_pa_type` from `domain_utils`). Return new table. Empty attributes → return table unchanged.
+- [x] Task 3: Implement `HeatingInvestmentDomain` in `heating.py` (AC: 1, 2, 3)
+  - [x] 3.1: Class with `__slots__`, constructor taking `HeatingDomainConfig`
+  - [x] 3.2: `name` property returning `"heating"`
+  - [x] 3.3: `alternatives` property returning config alternatives as `tuple[Alternative, ...]`
+  - [x] 3.4: `cost_column` property from config
+  - [x] 3.5: `apply_alternative(table, alternative)` — iterate over `alternative.attributes`, replace existing columns (using existing type) or append new columns (with inferred type via `infer_pa_type` from `domain_utils`). Return new table. Empty attributes → return table unchanged.
 
-- [ ] Task 4: Implement `HeatingStateUpdateStep` in `heating.py` (AC: 5, 6, 7, 8, 9)
-  - [ ] 4.1: Class with `__slots__` implementing `OrchestratorStep` protocol
-  - [ ] 4.2: Constructor: `domain: HeatingInvestmentDomain`, `population_key`, `vintage_key`, `name`, `depends_on`, `description`
-  - [ ] 4.3: `execute(year, state)`:
+- [x] Task 4: Implement `HeatingStateUpdateStep` in `heating.py` (AC: 5, 6, 7, 8, 9)
+  - [x] 4.1: Class with `__slots__` implementing `OrchestratorStep` protocol
+  - [x] 4.2: Constructor: `domain: HeatingInvestmentDomain`, `population_key`, `vintage_key`, `name`, `depends_on`, `description`
+  - [x] 4.3: `execute(year, state)`:
     - Read `ChoiceResult` from `state.data[DISCRETE_CHOICE_RESULT_KEY]`; raise `DiscreteChoiceError` if missing
     - Read `PopulationData` from `state.data[population_key]`; raise `DiscreteChoiceError` if missing
     - Call `apply_choices_to_population()` from `domain_utils` to update population
@@ -75,28 +77,28 @@ so that multi-year simulations model realistic household heating system investme
     - Validate existing `VintageState.asset_class == "heating"` if present; raise `DiscreteChoiceError` on mismatch
     - Extend metadata with heating switch counts
     - Return new `YearState` via `replace()`
-  - [ ] 4.4: Structured key=value logging: `year`, `step_name`, `n_households`, `n_switchers`, `n_keepers`, `event=step_start/step_complete`
+  - [x] 4.4: Structured key=value logging: `year`, `step_name`, `n_households`, `n_switchers`, `n_keepers`, `event=step_start/step_complete`
 
-- [ ] Task 5: Update `__init__.py` with new exports (AC: 10)
-  - [ ] 5.1: Export `HeatingInvestmentDomain`, `HeatingStateUpdateStep`, `HeatingDomainConfig`, `default_heating_domain_config`
-  - [ ] 5.2: Export `infer_pa_type` and `create_vintage_entries` from `domain_utils`
-  - [ ] 5.3: Update `apply_choices_to_population` import to source from `domain_utils` (backward-compatible)
+- [x] Task 5: Update `__init__.py` with new exports (AC: 10)
+  - [x] 5.1: Export `HeatingInvestmentDomain`, `HeatingStateUpdateStep`, `HeatingDomainConfig`, `default_heating_domain_config`
+  - [x] 5.2: Export `infer_pa_type` and `create_vintage_entries` from `domain_utils`
+  - [x] 5.3: Update `apply_choices_to_population` import to source from `domain_utils` (backward-compatible)
 
-- [ ] Task 6: Write tests (AC: all)
-  - [ ] 6.1: `test_domain_utils.py` — Tests for extracted shared functions: `infer_pa_type` (str→utf8, int→int64, float→float64, bool→error, unsupported→error), `apply_choices_to_population` (per-household application, keep_current no-op, length mismatch, unknown ID, entity key validation, empty population), `create_vintage_entries` (parameterized by asset_type_key, non_purchase_ids exclusion, sorted output)
-  - [ ] 6.2: `test_heating.py` — `TestHeatingDomainConfig`: default config has 5 alternatives, correct IDs and order, non_purchase_ids={"keep_current"}, cost_column="total_heating_cost", entity_key="menage", immutability
-  - [ ] 6.3: `test_heating.py` — `TestHeatingInvestmentDomain`: protocol compliance (`isinstance(domain, DecisionDomain)`), name="heating", alternatives match config, cost_column, `__slots__`
-  - [ ] 6.4: `test_heating.py` — `TestApplyAlternative`: type preservation (existing column type used), new column type inference (str→utf8, int→int64, float→float64), empty attributes no-op, multiple attributes applied, column append for new attributes, incompatible cast error, unsupported type error
-  - [ ] 6.5: `test_heating.py` — `TestHeatingStateUpdateStep`: protocol compliance, StepRegistry registration, full execute cycle (reads ChoiceResult + population, updates population + vintage), keep_current no-op, vintage cohort creation (counts per heating_type), missing ChoiceResult error, missing PopulationData error, entity_key validation, non-dict metadata error, vintage asset_class mismatch error, metadata extension, state immutability
-  - [ ] 6.6: `test_heating.py` — `TestVintageIntegration`: new VintageState created when none exists with asset_class="heating", correct age=0 and counts, cohorts appended to existing VintageState
-  - [ ] 6.7: `test_heating.py` — Integration test: `DiscreteChoiceStep` → `LogitChoiceStep` → `HeatingStateUpdateStep` full pipeline with MockAdapter
-  - [ ] 6.8: `test_heating.py` — Sequential domain test (AC-11): Vehicle pipeline followed by heating pipeline; verify heating step receives vehicle-updated population
+- [x] Task 6: Write tests (AC: all)
+  - [x] 6.1: `test_domain_utils.py` — Tests for extracted shared functions: `infer_pa_type` (str→utf8, int→int64, float→float64, bool→error, unsupported→error), `apply_choices_to_population` (per-household application, keep_current no-op, length mismatch, unknown ID, entity key validation, empty population), `create_vintage_entries` (parameterized by asset_type_key, non_purchase_ids exclusion, sorted output)
+  - [x] 6.2: `test_heating.py` — `TestHeatingDomainConfig`: default config has 5 alternatives, correct IDs and order, non_purchase_ids={"keep_current"}, cost_column="total_heating_cost", entity_key="menage", immutability
+  - [x] 6.3: `test_heating.py` — `TestHeatingInvestmentDomain`: protocol compliance (`isinstance(domain, DecisionDomain)`), name="heating", alternatives match config, cost_column, `__slots__`
+  - [x] 6.4: `test_heating.py` — `TestApplyAlternative`: type preservation (existing column type used), new column type inference (str→utf8, int→int64, float→float64), empty attributes no-op, multiple attributes applied, column append for new attributes, incompatible cast error, unsupported type error
+  - [x] 6.5: `test_heating.py` — `TestHeatingStateUpdateStep`: protocol compliance, StepRegistry registration, full execute cycle (reads ChoiceResult + population, updates population + vintage), keep_current no-op, vintage cohort creation (counts per heating_type), missing ChoiceResult error, missing PopulationData error, entity_key validation, non-dict metadata error, vintage asset_class mismatch error, metadata extension, state immutability
+  - [x] 6.6: `test_heating.py` — `TestVintageIntegration`: new VintageState created when none exists with asset_class="heating", correct age=0 and counts, cohorts appended to existing VintageState
+  - [x] 6.7: `test_heating.py` — Integration test: `DiscreteChoiceStep` → `LogitChoiceStep` → `HeatingStateUpdateStep` full pipeline with MockAdapter
+  - [x] 6.8: `test_heating.py` — Sequential domain test (AC-11): Vehicle pipeline followed by heating pipeline; verify heating step receives vehicle-updated population
 
-- [ ] Task 7: Lint, type-check, regression (AC: all)
-  - [ ] 7.1: `uv run ruff check src/reformlab/discrete_choice/ tests/discrete_choice/`
-  - [ ] 7.2: `uv run mypy src/reformlab/discrete_choice/`
-  - [ ] 7.3: `uv run mypy src/`
-  - [ ] 7.4: `uv run pytest tests/` — full regression, 0 failures
+- [x] Task 7: Lint, type-check, regression (AC: all)
+  - [x] 7.1: `uv run ruff check src/reformlab/discrete_choice/ tests/discrete_choice/`
+  - [x] 7.2: `uv run mypy src/reformlab/discrete_choice/`
+  - [x] 7.3: `uv run mypy src/`
+  - [x] 7.4: `uv run pytest tests/` — full regression, 0 failures
 
 ## Dev Notes
 
@@ -179,7 +181,7 @@ HeatingStateUpdateStep (14.4) ← THIS STORY
 
 7. **Oil heating is NOT an alternative** — New oil boiler installations are banned in France since July 2022 (RE2020 regulation). Households with existing oil heating can only `keep_current` or switch to another system. This is correctly modeled by the choice set.
 
-8. **Sequential domain execution (AC-11)** — When both vehicle and heating domains run in the same year, they share the same state keys (`DISCRETE_CHOICE_COST_MATRIX_KEY`, `DISCRETE_CHOICE_RESULT_KEY`). The second domain overwrites the first domain's intermediate results, which is correct since the first domain's results are consumed by its state update step before the second domain starts. Each step instance needs a unique `name` for the pipeline (e.g., `"discrete_choice_heating"`, `"logit_choice_heating"`, `"heating_state_update"`).
+8. **Sequential domain execution (AC-11)** — When both vehicle and heating domains run in the same year, they share the same intermediate state keys (`DISCRETE_CHOICE_COST_MATRIX_KEY`, `DISCRETE_CHOICE_RESULT_KEY`). The second domain overwrites the first domain's intermediate results, which is correct since the first domain's results are consumed by its state update step before the second domain starts. Each step instance needs a unique `name` for the pipeline (e.g., `"discrete_choice_heating"`, `"logit_choice_heating"`, `"heating_state_update"`). Metadata under `DISCRETE_CHOICE_METADATA_KEY` is preserved across domains — each state update step reads the existing metadata dict, adds its domain-prefixed keys (`vehicle_*` / `heating_*`), and writes back the merged dict. Final domain results (updated population, vintage states) use separate keys (`vintage_vehicle` vs `vintage_heating`) and do not conflict.
 
 9. **Vintage integration is additive** — New `VintageCohort` entries are appended to the existing `VintageState.cohorts` tuple. The vehicle vintage (`vintage_vehicle`) and heating vintage (`vintage_heating`) are stored under **separate keys** — they do not interact.
 
@@ -450,9 +452,20 @@ No new dependencies required — uses only existing `pyarrow`, `dataclasses` (st
 
 ### Agent Model Used
 
+Claude Opus 4.6
+
 ### Debug Log References
 
+None — clean implementation with no blocking issues.
+
 ### Implementation Plan
+
+1. Extract `infer_pa_type`, `apply_choices_to_population`, `create_vintage_entries` from `vehicle.py` into `domain_utils.py` — parameterizing `create_vintage_entries` with `asset_type_key` for multi-domain support.
+2. Update `vehicle.py` to import from `domain_utils`, removing local function definitions. Verified 52 existing vehicle tests pass unchanged.
+3. Create `heating.py` with `HeatingDomainConfig` (frozen dataclass), `default_heating_domain_config()` factory (5 alternatives with ADEME emission factors), `HeatingInvestmentDomain` (DecisionDomain protocol via structural typing, `__slots__`), and `HeatingStateUpdateStep` (OrchestratorStep protocol).
+4. Update `__init__.py` to export heating types and shared utilities from `domain_utils`.
+5. Write comprehensive tests: 25 tests for `test_domain_utils.py` (infer_pa_type, apply_choices, create_vintage), 49 tests for `test_heating.py` (config, domain, apply_alternative, state update, vintage integration, full pipeline, sequential domain execution).
+6. All validation passed: ruff clean, mypy strict (131 files), 2460 tests passing.
 
 ### Completion Notes List
 
@@ -472,11 +485,11 @@ No new dependencies required — uses only existing `pyarrow`, `dataclasses` (st
 ### File List
 
 #### New Files
-- `src/reformlab/discrete_choice/domain_utils.py` — infer_pa_type, apply_choices_to_population, create_vintage_entries (extracted from vehicle.py)
-- `src/reformlab/discrete_choice/heating.py` — HeatingDomainConfig, HeatingInvestmentDomain, HeatingStateUpdateStep, default_heating_domain_config
-- `tests/discrete_choice/test_domain_utils.py` — Shared utility function tests
-- `tests/discrete_choice/test_heating.py` — Heating domain and state update tests
+- `src/reformlab/discrete_choice/domain_utils.py` — `infer_pa_type`, `apply_choices_to_population`, `create_vintage_entries` (extracted from vehicle.py)
+- `src/reformlab/discrete_choice/heating.py` — `HeatingDomainConfig`, `HeatingInvestmentDomain`, `HeatingStateUpdateStep`, `default_heating_domain_config`
+- `tests/discrete_choice/test_domain_utils.py` — 25 tests for shared utility functions
+- `tests/discrete_choice/test_heating.py` — 49 tests for heating domain and state update
 
 #### Modified Files
-- `src/reformlab/discrete_choice/vehicle.py` — Import shared functions from domain_utils.py, remove local definitions
-- `src/reformlab/discrete_choice/__init__.py` — Add heating exports, update apply_choices_to_population import path, export shared utilities
+- `src/reformlab/discrete_choice/vehicle.py` — Imports shared functions from `domain_utils.py`, removed `_infer_pa_type`, `apply_choices_to_population`, `_create_vintage_entries` local definitions, cleaned up unused imports
+- `src/reformlab/discrete_choice/__init__.py` — Added heating exports, shared utility exports, updated `apply_choices_to_population` import to source from `domain_utils`

@@ -1,10 +1,10 @@
-"""Vehicle investment decision domain for discrete choice modeling.
+"""Heating system investment decision domain for discrete choice modeling.
 
-Defines vehicle alternatives, applies attribute overrides during population
+Defines heating alternatives, applies attribute overrides during population
 expansion, and updates household state after choice draws. Integrates with
-the vintage tracking subsystem for new vehicle purchase cohorts.
+the vintage tracking subsystem for new heating installation cohorts.
 
-Story 14-3: Implement Vehicle Investment Decision Domain (FR47/FR50).
+Story 14-4: Implement Heating System Decision Domain (FR47/FR50).
 """
 
 from __future__ import annotations
@@ -12,8 +12,6 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
-
-import pyarrow as pa
 
 from reformlab.discrete_choice.domain_utils import (
     apply_choices_to_population,
@@ -26,98 +24,91 @@ from reformlab.discrete_choice.step import DISCRETE_CHOICE_METADATA_KEY
 from reformlab.discrete_choice.types import Alternative
 
 if TYPE_CHECKING:
+    import pyarrow as pa
+
     from reformlab.orchestrator.types import YearState
 
 logger = logging.getLogger(__name__)
 
-# Re-export for backward compatibility
-__all__ = [
-    "VehicleDomainConfig",
-    "VehicleInvestmentDomain",
-    "VehicleStateUpdateStep",
-    "apply_choices_to_population",
-    "default_vehicle_domain_config",
-]
-
 
 # ============================================================================
-# VehicleDomainConfig (AC-4)
+# HeatingDomainConfig (AC-4)
 # ============================================================================
 
 
 @dataclass(frozen=True)
-class VehicleDomainConfig:
-    """Configuration for the vehicle investment decision domain.
+class HeatingDomainConfig:
+    """Configuration for the heating investment decision domain.
 
     Attributes:
-        alternatives: Ordered tuple of vehicle alternatives.
+        alternatives: Ordered tuple of heating alternatives.
         cost_column: Column name for cost metric in computation results.
         entity_key: Entity key in PopulationData.tables (default: "menage").
         non_purchase_ids: Alternative IDs that do not create vintage entries.
     """
 
     alternatives: tuple[Alternative, ...]
-    cost_column: str = "total_vehicle_cost"
+    cost_column: str = "total_heating_cost"
     entity_key: str = "menage"
-    non_purchase_ids: frozenset[str] = frozenset({"keep_current", "buy_no_vehicle"})
+    non_purchase_ids: frozenset[str] = frozenset({"keep_current"})
 
 
-def default_vehicle_domain_config() -> VehicleDomainConfig:
-    """Factory returning French market default vehicle domain config.
+def default_heating_domain_config() -> HeatingDomainConfig:
+    """Factory returning French market default heating domain config.
+
+    Emission values from ADEME Base Carbone V23.6:
+    - Gas boiler: 0.227 kgCO2e/kWh PCI (natural gas combustion)
+    - Heat pump: 0.057 kgCO2e/kWh (French electricity grid)
+    - Electric resistance: 0.057 kgCO2e/kWh (same French grid factor)
+    - Wood/pellet: 0.030 kgCO2e/kWh PCI (near carbon-neutral biogenic)
+
+    Oil heating is NOT an alternative — banned for new installations
+    in France since July 2022 (RE2020 regulation).
 
     Returns:
-        VehicleDomainConfig with 6 alternatives per AC-2.
+        HeatingDomainConfig with 5 alternatives per AC-2.
     """
-    return VehicleDomainConfig(
+    return HeatingDomainConfig(
         alternatives=(
             Alternative(
                 id="keep_current",
-                name="Keep Current Vehicle",
+                name="Keep Current Heating",
                 attributes={},
             ),
             Alternative(
-                id="buy_petrol",
-                name="Buy Petrol Vehicle",
+                id="gas_boiler",
+                name="Install Gas Boiler",
                 attributes={
-                    "vehicle_type": "petrol",
-                    "vehicle_age": 0,
-                    "vehicle_emissions_gkm": 120.0,
+                    "heating_type": "gas",
+                    "heating_age": 0,
+                    "heating_emissions_kgco2_kwh": 0.227,
                 },
             ),
             Alternative(
-                id="buy_diesel",
-                name="Buy Diesel Vehicle",
+                id="heat_pump",
+                name="Install Heat Pump",
                 attributes={
-                    "vehicle_type": "diesel",
-                    "vehicle_age": 0,
-                    "vehicle_emissions_gkm": 110.0,
+                    "heating_type": "heat_pump",
+                    "heating_age": 0,
+                    "heating_emissions_kgco2_kwh": 0.057,
                 },
             ),
             Alternative(
-                id="buy_hybrid",
-                name="Buy Hybrid Vehicle",
+                id="electric",
+                name="Install Electric Heating",
                 attributes={
-                    "vehicle_type": "hybrid",
-                    "vehicle_age": 0,
-                    "vehicle_emissions_gkm": 50.0,
+                    "heating_type": "electric",
+                    "heating_age": 0,
+                    "heating_emissions_kgco2_kwh": 0.057,
                 },
             ),
             Alternative(
-                id="buy_ev",
-                name="Buy Electric Vehicle",
+                id="wood_pellet",
+                name="Install Wood/Pellet Stove",
                 attributes={
-                    "vehicle_type": "ev",
-                    "vehicle_age": 0,
-                    "vehicle_emissions_gkm": 0.0,
-                },
-            ),
-            Alternative(
-                id="buy_no_vehicle",
-                name="Give Up Vehicle",
-                attributes={
-                    "vehicle_type": "none",
-                    "vehicle_age": 0,
-                    "vehicle_emissions_gkm": 0.0,
+                    "heating_type": "wood",
+                    "heating_age": 0,
+                    "heating_emissions_kgco2_kwh": 0.030,
                 },
             ),
         ),
@@ -125,12 +116,12 @@ def default_vehicle_domain_config() -> VehicleDomainConfig:
 
 
 # ============================================================================
-# VehicleInvestmentDomain (AC-1, AC-2, AC-3)
+# HeatingInvestmentDomain (AC-1, AC-2, AC-3)
 # ============================================================================
 
 
-class VehicleInvestmentDomain:
-    """Vehicle investment decision domain.
+class HeatingInvestmentDomain:
+    """Heating system investment decision domain.
 
     Satisfies the DecisionDomain protocol via structural typing.
     Stateless — all domain-specific logic is encoded in the config
@@ -141,17 +132,17 @@ class VehicleInvestmentDomain:
 
     __slots__ = ("_config",)
 
-    def __init__(self, config: VehicleDomainConfig) -> None:
+    def __init__(self, config: HeatingDomainConfig) -> None:
         self._config = config
 
     @property
     def name(self) -> str:
         """Domain identifier."""
-        return "vehicle"
+        return "heating"
 
     @property
     def alternatives(self) -> tuple[Alternative, ...]:
-        """Available vehicle alternatives."""
+        """Available heating alternatives."""
         return self._config.alternatives
 
     @property
@@ -179,6 +170,8 @@ class VehicleInvestmentDomain:
         Raises:
             DiscreteChoiceError: If cast is incompatible or type unsupported.
         """
+        import pyarrow as _pa
+
         if not alternative.attributes:
             return table
 
@@ -187,8 +180,8 @@ class VehicleInvestmentDomain:
             if col_name in table.column_names:
                 existing_type = table.column(col_name).type
                 try:
-                    new_col = pa.array([col_value] * n, type=existing_type)
-                except (pa.ArrowInvalid, pa.ArrowTypeError) as exc:
+                    new_col = _pa.array([col_value] * n, type=existing_type)
+                except (_pa.ArrowInvalid, _pa.ArrowTypeError) as exc:
                     raise DiscreteChoiceError(
                         f"Cannot cast {col_value!r} to {existing_type}: {exc}"
                     ) from exc
@@ -196,27 +189,27 @@ class VehicleInvestmentDomain:
                 table = table.set_column(idx, col_name, new_col)
             else:
                 inferred_type = infer_pa_type(col_value)
-                new_col = pa.array([col_value] * n, type=inferred_type)
+                new_col = _pa.array([col_value] * n, type=inferred_type)
                 table = table.append_column(col_name, new_col)
 
         return table
 
 
 # ============================================================================
-# VehicleStateUpdateStep (AC-5, AC-8, AC-9)
+# HeatingStateUpdateStep (AC-5, AC-6, AC-7, AC-8, AC-9)
 # ============================================================================
 
 
-class VehicleStateUpdateStep:
-    """Orchestrator step for vehicle state updates after logit choice draws.
+class HeatingStateUpdateStep:
+    """Orchestrator step for heating state updates after logit choice draws.
 
     Reads ChoiceResult and PopulationData from YearState, applies
     per-household attribute overrides, creates vintage cohort entries
-    for new purchases, and returns updated state.
+    for new heating installations, and returns updated state.
 
     Implements the OrchestratorStep protocol (AC-5).
 
-    Story 14-3, AC-5/AC-6/AC-7/AC-8/AC-9.
+    Story 14-4, AC-5/AC-6/AC-7/AC-8/AC-9.
     """
 
     __slots__ = (
@@ -230,10 +223,10 @@ class VehicleStateUpdateStep:
 
     def __init__(
         self,
-        domain: VehicleInvestmentDomain,
+        domain: HeatingInvestmentDomain,
         population_key: str = "population_data",
-        vintage_key: str = "vintage_vehicle",
-        name: str = "vehicle_state_update",
+        vintage_key: str = "vintage_heating",
+        name: str = "heating_state_update",
         depends_on: tuple[str, ...] = ("logit_choice",),
         description: str | None = None,
     ) -> None:
@@ -244,7 +237,7 @@ class VehicleStateUpdateStep:
         self._depends_on = depends_on
         self._description = (
             description
-            or "Vehicle state update: apply choices and track vintage cohorts"
+            or "Heating state update: apply choices and track vintage cohorts"
         )
 
     @property
@@ -263,11 +256,11 @@ class VehicleStateUpdateStep:
         return self._description
 
     def execute(self, year: int, state: YearState) -> YearState:
-        """Execute vehicle state update for a given year.
+        """Execute heating state update for a given year.
 
         Reads ChoiceResult and PopulationData from state, applies
         per-household attribute overrides, creates vintage entries
-        for new purchases, and returns new YearState.
+        for new installations, and returns new YearState.
 
         Args:
             year: Current simulation year.
@@ -324,32 +317,32 @@ class VehicleStateUpdateStep:
             config.entity_key,
         )
 
-        # Create vintage entries for new purchases (AC-8)
+        # Create vintage entries for new installations (AC-8)
         new_cohorts = create_vintage_entries(
             choice_result,
             config.alternatives,
             config.non_purchase_ids,
-            asset_type_key="vehicle_type",
+            asset_type_key="heating_type",
         )
 
         # Merge with existing vintage state
         existing_vintage = state.data.get(self._vintage_key)
         if isinstance(existing_vintage, _VintageState):
-            if existing_vintage.asset_class != "vehicle":
+            if existing_vintage.asset_class != "heating":
                 raise DiscreteChoiceError(
                     f"Existing VintageState has asset_class='{existing_vintage.asset_class}', "
-                    f"expected 'vehicle'",
+                    f"expected 'heating'",
                     year=year,
                     step_name=self._name,
                 )
-            merged_vintage = _VintageState(
-                asset_class="vehicle",
+            merged_vintage: _VintageState | None = _VintageState(
+                asset_class="heating",
                 cohorts=existing_vintage.cohorts + new_cohorts,
                 metadata={**existing_vintage.metadata, "last_choice_year": year},
             )
         elif new_cohorts:
             merged_vintage = _VintageState(
-                asset_class="vehicle",
+                asset_class="heating",
                 cohorts=new_cohorts,
                 metadata={"last_choice_year": year},
             )
@@ -374,7 +367,7 @@ class VehicleStateUpdateStep:
         if merged_vintage is not None:
             new_data[self._vintage_key] = merged_vintage
 
-        # Extend metadata
+        # Extend metadata — preserve existing keys (including vehicle domain)
         existing_metadata = state.data.get(DISCRETE_CHOICE_METADATA_KEY, {})
         if not isinstance(existing_metadata, dict):
             raise DiscreteChoiceError(
@@ -384,9 +377,9 @@ class VehicleStateUpdateStep:
                 step_name=self._name,
             )
         extended_metadata = dict(existing_metadata)
-        extended_metadata["vehicle_n_switchers"] = n_switchers
-        extended_metadata["vehicle_n_keepers"] = n_keepers
-        extended_metadata["vehicle_per_alternative_counts"] = per_alt_counts
+        extended_metadata["heating_n_switchers"] = n_switchers
+        extended_metadata["heating_n_keepers"] = n_keepers
+        extended_metadata["heating_per_alternative_counts"] = per_alt_counts
         new_data[DISCRETE_CHOICE_METADATA_KEY] = extended_metadata
 
         logger.info(

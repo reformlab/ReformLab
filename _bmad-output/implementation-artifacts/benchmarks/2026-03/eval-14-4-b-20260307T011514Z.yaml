@@ -1,0 +1,135 @@
+record_id: 447f01ef-e8cc-4d8b-9608-f1d2ffbe3ce5
+created_at: '2026-03-07T01:15:14.656228+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 14
+  story_num: 4
+  title: Story 14.4
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: codex
+  model: gpt-5.3-codex
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-03-07T01:11:02.824656Z'
+  end_time: '2026-03-07T01:14:01.127656Z'
+  duration_ms: 178303
+  input_tokens: 0
+  output_tokens: 3682
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 14730
+  heading_count: 39
+  list_depth_max: 3
+  code_block_count: 8
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 11.6'
+  - 🎯 Ruthless Story Validation 14.4
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 11.6 → REJECT'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Missing Domain-Scoped Intermediate State Contract
+  - 2. Sequential Dependency Chain Not Formally Specified
+  - 3. Heating Vintage Compatibility Not Proven End-to-End
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Clarify Zero-Switcher Vintage Behavior
+  - 2. Preserve Existing Metadata Keys Explicitly
+  - 3. Make AC-3 Object-Identity Semantics Explicit
+  - 4. Add Vehicle Behavior Equivalence Criterion for Extraction
+  - 5. Add Explicit Error Contract for Unknown/Invalid Metadata Types in Heating ACs
+  - 6. Add Performance Guardrail for Per-Row Update Path
+  - ✨ Optimizations (Nice to Have)
+  - 1. Split Story into Refactor + Feature Stories
+  - 2. Add a Compact “Must-Implement” Checklist Section
+  - 3. Add Deterministic Ordering Requirement for `heating_per_alternative_counts`
+  - 4. Add One Cross-Year Smoke Test for Heating Vintage Cohorts
+  - 🤖 LLM Optimization Improvements
+  - 1. Reduce Repeated Pipeline Narratives
+  - 2. Move Non-Executable Market Rationale to Appendix
+  - 3. Convert Long Task Lists into Requirement Matrix
+  - 4. Promote Blocking Constraints to Top “Must Not Break” Section
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.33
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 71cd4953977c
+findings:
+  total_count: 17
+  by_severity:
+    critical: 3
+    major: 4
+    minor: 7
+    nit: 3
+  by_category:
+    security: 0
+    performance: 1
+    correctness: 4
+    completeness: 2
+    clarity: 7
+    testability: 3
+  has_fix_count: 17
+  has_location_count: 13
+  has_evidence_count: 17
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 5
+  confidence_phrases_count: 6
+linguistic:
+  avg_sentence_length: 14.244094488188976
+  vocabulary_richness: 0.35655058043117743
+  flesch_reading_ease: 8.839168157423984
+  vague_terms_count: 0
+  formality_score: 0.68
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.82
+  evidence_quality: 0.87
+  follows_template: true
+  internal_consistency: 0.88
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
