@@ -14,6 +14,7 @@ Story 15.2 / FR52 — CalibrationEngine with objective function optimization.
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -70,9 +71,9 @@ class CalibrationTarget:
             raise CalibrationTargetValidationError(
                 f"observed_rate={self.observed_rate!r} is out of range; must be in [0.0, 1.0]"
             )
-        if self.weight < 0.0:
+        if not math.isfinite(self.weight) or self.weight < 0.0:
             raise CalibrationTargetValidationError(
-                f"weight={self.weight!r} must be >= 0.0"
+                f"weight={self.weight!r} must be a finite non-negative number"
             )
 
 

@@ -22,7 +22,11 @@ from dataclasses import dataclass
 import pyarrow as pa
 import pyarrow.compute as pc
 
-from reformlab.calibration.errors import CalibrationOptimizationError
+from reformlab.calibration.errors import (
+    CalibrationOptimizationError,
+    CalibrationTargetLoadError,
+    CalibrationTargetValidationError,
+)
 from reformlab.calibration.types import (
     CalibrationConfig,
     CalibrationResult,
@@ -355,8 +359,14 @@ class CalibrationEngine:
                 f"in domain={domain!r}"
             )
 
-        # 4. Consistency (duplicate detection)
-        domain_targets.validate_consistency()
+        # 4. Consistency (duplicate detection) — re-raise as CalibrationOptimizationError
+        # to enforce the single exception boundary documented in Task 5.7.
+        try:
+            domain_targets.validate_consistency()
+        except (CalibrationTargetLoadError, CalibrationTargetValidationError) as exc:
+            raise CalibrationOptimizationError(
+                f"Calibration targets consistency check failed for domain={domain!r}: {exc}"
+            ) from exc
 
         # 5. Non-zero total weight
         total_weight = sum(t.weight for t in domain_targets.targets)

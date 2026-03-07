@@ -251,7 +251,16 @@ class TestLogLikelihoodObjective:
     """AC-2: Log-likelihood objective function."""
 
     def test_known_value_hand_computed(self) -> None:
-        """Given Dev Notes targets, log-likelihood is a finite positive scalar at beta=-0.01."""
+        """Given Dev Notes targets, NLL at beta=-0.01 matches hand-computed ≈2.14.
+
+        Hand-computed:
+          sim: petrol→A=0.5543, petrol→B=0.4457, diesel→A=0.7311
+          obs: petrol→A=0.40, petrol→B=0.55, diesel→A=0.60
+          NLL = -(0.40*ln(0.5543)+0.60*ln(0.4457))
+                -(0.55*ln(0.4457)+0.45*ln(0.5543))
+                -(0.60*ln(0.7311)+0.40*ln(0.2689))
+              ≈ 0.721 + 0.710 + 0.713 = 2.144
+        """
         import numpy as np
 
         targets = make_sample_target_set()
@@ -262,6 +271,7 @@ class TestLogLikelihoodObjective:
         ll = obj(np.array([-0.01]))
         assert math.isfinite(ll)
         assert ll > 0.0  # negative log-likelihood is positive
+        assert ll == pytest.approx(2.14, abs=0.02)  # hand-computed expected value
 
     def test_clamping_prevents_log_of_zero(self) -> None:
         """Given an observed_rate=0.0, when computing log-likelihood, then no NaN/Inf."""
@@ -608,14 +618,13 @@ class TestCalibrationEngineEdgeCases:
             engine.calibrate()
 
     def test_non_convergence_returns_result_with_flag_false(self) -> None:
-        """Given max_iterations=1, calibrate() still returns result with convergence_flag=False. AC-4."""
+        """Given max_iterations=1, calibrate() returns result with convergence_flag=False. AC-4."""
         config = make_sample_config(max_iterations=1)
         engine = CalibrationEngine(config=config)
         result = engine.calibrate()
         assert isinstance(result, CalibrationResult)
-        # With only 1 iteration, convergence is unlikely
-        # Result must be returned regardless (no exception)
-        assert result.iterations >= 0
+        # L-BFGS-B with maxiter=1 on a non-trivial objective reliably reports failure
+        assert result.convergence_flag is False
 
     def test_beta_at_bounds_boundary(self) -> None:
         """Given initial_beta=-1.0 (at lower bound), calibrate() completes."""
