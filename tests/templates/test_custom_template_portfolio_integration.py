@@ -32,7 +32,6 @@ from reformlab.templates.schema import (
 )
 from reformlab.templates.vehicle_malus.compute import VehicleMalusParameters
 
-
 # ====================================================================
 # Cleanup fixture — save/restore custom registrations between tests
 # ====================================================================
