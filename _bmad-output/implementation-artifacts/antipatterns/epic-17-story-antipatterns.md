@@ -17,3 +17,23 @@
 | medium | AC-5 "key demographics" undefined and marginals source unspecified | AC-5 now specifies income deciles, heating type distribution, vehicle type distribution as key demographics; notes marginals are provided by Epic 11 pipeline catalog metadata, not user-configurable in 17.1 |
 | medium | AC-6 missing determinism requirement despite project context rule that all runs must be reproducible | AC-6 extended with explicit same-seed → identical-result requirement |
 | medium | No non-regression check for existing workspace navigation after App.tsx/AppContext.tsx integration | New subtask 6.6 added to verify existing view modes and shortcuts remain functional |
+
+## Story 17-2 (2026-03-07)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | Missing AC for conflict validation | Added AC-6 covering conflict display, save-block under `resolution_strategy="error"`, and warning-but-permit for other strategies. |
+| critical | Undefined PUT versioning semantics | Added "Backend — Versioning semantics for PUT" section explaining `registry.save()` idempotency and SHA-256 content hash behavior. |
+| critical | No `delete()` method in `ScenarioRegistry` | Added "Backend — DELETE implementation" section with `shutil.rmtree()` pattern and safety checks. |
+| critical | Route collision `/validate` vs `/{name}` | Added explicit note to route pattern section: "declare `/validate` before `/{name}` so the static route is matched first." |
+| critical | Unspecified Pydantic request model for POST | Added full "Pydantic Request/Response Models" section with `CreatePortfolioRequest`, `UpdatePortfolioRequest`, `ClonePortfolioRequest`, `ValidatePortfolioRequest`, `ValidatePortfolioResponse`, `PortfolioListItem`, `PortfolioDetailResponse`, `PortfolioPolicyItem`. |
+| high | Template source for AC-1 unspecified | Added "Template Source for AC-1" section: templates come from existing `GET /api/templates`, no new endpoint required. |
+| high | `selectedPortfolioId` vs name-keyed backend | Renamed to `selectedPortfolioName` in Task 6.3. |
+| high | Year schedule year range ambiguous | AC-4 now explicitly states "fixed at 2025–2035; dynamic scenario-driven range is out of scope." |
+| high | Frontend parameter schema for composition | Added "Frontend Parameter Schema for Composition Panel" section explaining template metadata drives `ParameterRow` rendering and `rate_schedule` → `YearScheduleEditor`. |
+| high | Clone endpoint missing `registry.save()` call | Added "Backend — Clone implementation" section noting `clone()` returns in-memory copy only; must call `registry.save()` after. |
+| medium | API status code matrix missing | Added "Backend — HTTP status code matrix" table covering all 7 endpoints. |
+| medium | Portfolio name validation rules absent | Added "Backend — Portfolio name validation" with slug regex, reserved names, client-side enforcement note. |
+| medium | AC-2 save-block UI behavior implicit | AC-2 now specifies disabled save button with exact hint text. |
+| medium | AC-3 boundary behavior unspecified | AC-3 now specifies first/last item disabled states and order persistence on save/load. |
+| medium | AC-5 clone 409 and load fidelity | AC-5 now specifies 409 conflict with suggested rename, and explicit order-restored-on-load guarantee. |

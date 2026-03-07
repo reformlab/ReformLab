@@ -28,10 +28,11 @@ import {
   useIndicators,
   useDataSources,
   useMergeMethods,
+  usePortfolios,
 } from "@/hooks/useApi";
 import type { DecileData, Parameter, Population, Scenario, Template, MockDataSource, MockMergeMethod } from "@/data/mock-data";
 import { mockDecileData, mockParameters, mockScenarios } from "@/data/mock-data";
-import type { RunResponse, IndicatorResponse, GenerationResult } from "@/api/types";
+import type { RunResponse, IndicatorResponse, GenerationResult, PortfolioListItem } from "@/api/types";
 
 // ============================================================================
 // Context types
@@ -83,6 +84,11 @@ interface AppState {
   dataFusionResult: GenerationResult | null;
   setDataFusionResult: (result: GenerationResult | null) => void;
   dataFusionSourcesLoading: boolean;
+
+  // Portfolios (Story 17.2)
+  portfolios: PortfolioListItem[];
+  portfoliosLoading: boolean;
+  refetchPortfolios: () => Promise<void>;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -129,6 +135,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { sources: dataFusionSources, loading: dataFusionSourcesLoading, refetch: refetchDataFusionSources } = useDataSources();
   const { methods: dataFusionMethods, refetch: refetchDataFusionMethods } = useMergeMethods();
   const [dataFusionResult, setDataFusionResult] = useState<GenerationResult | null>(null);
+
+  // Portfolio hooks (Story 17.2)
+  const { portfolios, loading: portfoliosLoading, refetch: refetchPortfolios } = usePortfolios();
 
   // Selections
   const [selectedPopulationId, setSelectedPopulationId] = useState("");
@@ -186,8 +195,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
       refetchDataFusionSources().catch(() => {});
       refetchDataFusionMethods().catch(() => {});
+      refetchPortfolios().catch(() => {});
     }
-  }, [isAuthenticated, refetchPopulations, refetchTemplates, refetchDataFusionSources, refetchDataFusionMethods]);
+  }, [isAuthenticated, refetchPopulations, refetchTemplates, refetchDataFusionSources, refetchDataFusionMethods, refetchPortfolios]);
 
   // Warn user if data is still mock after loading completes
   useEffect(() => {
@@ -390,6 +400,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dataFusionResult,
       setDataFusionResult,
       dataFusionSourcesLoading,
+      portfolios,
+      portfoliosLoading,
+      refetchPortfolios,
     }),
     [
       isAuthenticated, authLoading, authenticate, logout,
@@ -402,6 +415,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       populationsLoading, templatesLoading, parametersLoading,
       refetchPopulations, refetchTemplates,
       dataFusionSources, dataFusionMethods, dataFusionResult, setDataFusionResult, dataFusionSourcesLoading,
+      portfolios, portfoliosLoading, refetchPortfolios,
     ],
   );
 

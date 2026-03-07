@@ -275,3 +275,87 @@ class GeneratePopulationResponse(BaseModel):
     step_log: list[StepLogItem]
     assumption_chain: list[AssumptionRecordItem]
     validation_result: ValidationResultResponse | None = None
+
+
+# ---------------------------------------------------------------------------
+# Portfolio models — Story 17.2
+# ---------------------------------------------------------------------------
+
+
+class PortfolioPolicyRequest(BaseModel):
+    """A single policy entry in a portfolio create/update request."""
+
+    model_config = {"from_attributes": True}
+    name: str
+    policy_type: str
+    rate_schedule: dict[str, float] = {}
+    exemptions: list[str] = []
+    thresholds: list[float] = []
+    covered_categories: list[str] = []
+    extra_params: dict[str, Any] = {}
+
+
+class CreatePortfolioRequest(BaseModel):
+    model_config = {"from_attributes": True}
+    name: str
+    description: str = ""
+    policies: list[PortfolioPolicyRequest]
+    resolution_strategy: str = "error"
+
+
+class UpdatePortfolioRequest(BaseModel):
+    model_config = {"from_attributes": True}
+    description: str | None = None
+    policies: list[PortfolioPolicyRequest]
+    resolution_strategy: str | None = None
+
+
+class ClonePortfolioRequest(BaseModel):
+    model_config = {"from_attributes": True}
+    new_name: str
+
+
+class PortfolioConflict(BaseModel):
+    model_config = {"from_attributes": True}
+    conflict_type: str
+    policy_indices: list[int]
+    parameter_name: str
+    description: str
+
+
+class ValidatePortfolioRequest(BaseModel):
+    model_config = {"from_attributes": True}
+    policies: list[PortfolioPolicyRequest]
+    resolution_strategy: str = "error"
+
+
+class ValidatePortfolioResponse(BaseModel):
+    model_config = {"from_attributes": True}
+    conflicts: list[PortfolioConflict]
+    is_compatible: bool
+
+
+class PortfolioPolicyItem(BaseModel):
+    model_config = {"from_attributes": True}
+    name: str
+    policy_type: str
+    rate_schedule: dict[str, float]
+    parameters: dict[str, Any]
+
+
+class PortfolioDetailResponse(BaseModel):
+    model_config = {"from_attributes": True}
+    name: str
+    description: str
+    version_id: str
+    policies: list[PortfolioPolicyItem]
+    resolution_strategy: str
+    policy_count: int
+
+
+class PortfolioListItem(BaseModel):
+    model_config = {"from_attributes": True}
+    name: str
+    description: str
+    version_id: str
+    policy_count: int

@@ -10,6 +10,7 @@ import { AssumptionsReviewScreen } from "@/components/screens/AssumptionsReviewS
 import { DataFusionWorkbench } from "@/components/screens/DataFusionWorkbench";
 import { ParameterEditingScreen } from "@/components/screens/ParameterEditingScreen";
 import { PopulationSelectionScreen } from "@/components/screens/PopulationSelectionScreen";
+import { PortfolioDesignerScreen } from "@/components/screens/PortfolioDesignerScreen";
 import { TemplateSelectionScreen } from "@/components/screens/TemplateSelectionScreen";
 import {
   type ConfigStep,
@@ -40,7 +41,7 @@ const STEP_ORDER: ConfigStep["key"][] = [
 const LEFT_COLLAPSE_STORAGE_KEY = "reformlab-left-panel-collapsed";
 const RIGHT_COLLAPSE_STORAGE_KEY = "reformlab-right-panel-collapsed";
 
-type ViewMode = "configuration" | "run" | "progress" | "results" | "comparison" | "data-fusion";
+type ViewMode = "configuration" | "run" | "progress" | "results" | "comparison" | "data-fusion" | "portfolio";
 
 function readStoredBool(key: string): boolean {
   const value = window.localStorage.getItem(key);
@@ -80,6 +81,8 @@ function Workspace() {
     dataFusionMethods,
     dataFusionResult,
     setDataFusionResult,
+    portfolios,
+    refetchPortfolios,
   } = useAppState();
 
   const [activeStep, setActiveStep] = useState<ConfigStep["key"]>("population");
@@ -237,7 +240,7 @@ function Workspace() {
           </p>
         </div>
         <div className="flex gap-2">
-          {viewMode !== "configuration" && viewMode !== "comparison" && viewMode !== "data-fusion" ? (
+          {viewMode !== "configuration" && viewMode !== "comparison" && viewMode !== "data-fusion" && viewMode !== "portfolio" ? (
             <Button variant="outline" onClick={() => setViewMode("configuration")}>
               Configuration
             </Button>
@@ -253,6 +256,11 @@ function Workspace() {
             </Button>
           ) : null}
           {viewMode === "data-fusion" ? (
+            <Button variant="outline" onClick={() => setViewMode("configuration")}>
+              Configure Policy
+            </Button>
+          ) : null}
+          {viewMode === "portfolio" ? (
             <Button variant="outline" onClick={() => setViewMode("configuration")}>
               Configure Policy
             </Button>
@@ -369,6 +377,14 @@ function Workspace() {
           onPopulationGenerated={setDataFusionResult}
         />
       ) : null}
+
+      {viewMode === "portfolio" ? (
+        <PortfolioDesignerScreen
+          templates={templates}
+          savedPortfolios={portfolios}
+          onSaved={() => { void refetchPortfolios(); }}
+        />
+      ) : null}
     </>
   );
 
@@ -392,6 +408,14 @@ function Workspace() {
                 onClick={() => setViewMode("data-fusion")}
               >
                 Population
+              </Button>
+
+              <Button
+                variant={viewMode === "portfolio" ? "default" : "outline"}
+                className="w-full"
+                onClick={() => setViewMode("portfolio")}
+              >
+                Portfolio
               </Button>
 
               <Button

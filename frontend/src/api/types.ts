@@ -238,3 +238,74 @@ export interface GenerationResult {
   assumption_chain: AssumptionRecordItem[];
   validation_result: ValidationResultResponse | null;
 }
+
+// ============================================================================
+// Portfolio types — Story 17.2
+// ============================================================================
+
+export interface PortfolioPolicyRequest {
+  name: string;
+  policy_type: string;
+  rate_schedule: Record<string, number>;
+  exemptions: string[];
+  thresholds: number[];
+  covered_categories: string[];
+  extra_params: Record<string, unknown>;
+}
+
+export interface CreatePortfolioRequest {
+  name: string;
+  description?: string;
+  policies: PortfolioPolicyRequest[];
+  resolution_strategy?: string;
+}
+
+export interface UpdatePortfolioRequest {
+  description?: string;
+  policies: PortfolioPolicyRequest[];
+  resolution_strategy?: string;
+}
+
+export interface ClonePortfolioRequest {
+  new_name: string;
+}
+
+export interface PortfolioConflict {
+  conflict_type: string;
+  policy_indices: number[];
+  parameter_name: string;
+  description: string;
+}
+
+export interface ValidatePortfolioRequest {
+  policies: PortfolioPolicyRequest[];
+  resolution_strategy?: string;
+}
+
+export interface ValidatePortfolioResponse {
+  conflicts: PortfolioConflict[];
+  is_compatible: boolean;
+}
+
+export interface PortfolioPolicyItem {
+  name: string;
+  policy_type: string;
+  rate_schedule: Record<string, number>;
+  parameters: Record<string, unknown>;
+}
+
+export interface PortfolioDetailResponse {
+  name: string;
+  description: string;
+  version_id: string;
+  policies: PortfolioPolicyItem[];
+  resolution_strategy: string;
+  policy_count: number;
+}
+
+export interface PortfolioListItem {
+  name: string;
+  description: string;
+  version_id: string;
+  policy_count: number;
+}

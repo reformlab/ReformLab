@@ -8,6 +8,7 @@ import { listScenarios as apiListScenarios } from "@/api/scenarios";
 import { runScenario as apiRunScenario } from "@/api/runs";
 import { getIndicators } from "@/api/indicators";
 import { listDataSources, listMergeMethods } from "@/api/data-fusion";
+import { listPortfolios as apiListPortfolios, validatePortfolio as apiValidatePortfolio } from "@/api/portfolios";
 import { AuthError } from "@/api/client";
 import type {
   PopulationItem,
@@ -16,14 +17,18 @@ import type {
   TemplateListItem,
   TemplateDetailResponse,
   IndicatorResponse,
+  PortfolioListItem,
+  ValidatePortfolioRequest,
+  ValidatePortfolioResponse,
 } from "@/api/types";
-import type { Population, Template, Parameter, MockDataSource, MockMergeMethod } from "@/data/mock-data";
+import type { Population, Template, Parameter, MockDataSource, MockMergeMethod, MockPortfolio } from "@/data/mock-data";
 import {
   mockPopulations,
   mockTemplates,
   mockParameters,
   mockDataSources,
   mockMergeMethods,
+  mockPortfolios,
 } from "@/data/mock-data";
 
 // ============================================================================
@@ -331,4 +336,67 @@ export function useMergeMethods() {
   }, []);
 
   return { methods, loading, error, usingMockData, refetch: fetch };
+}
+
+// ============================================================================
+// Portfolios (Story 17.2)
+// ============================================================================
+
+export function usePortfolios() {
+  const [portfolios, setPortfolios] = useState<PortfolioListItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const [usingMockData, setUsingMockData] = useState(false);
+
+  const fetch = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await apiListPortfolios();
+      setPortfolios(data);
+      setUsingMockData(false);
+    } catch (err) {
+      if (err instanceof AuthError) throw err;
+      setError(err instanceof Error ? err : new Error(String(err)));
+      // Fall back to mock portfolios as PortfolioListItem shape
+      setPortfolios(
+        mockPortfolios.map((p: MockPortfolio) => ({
+          name: p.name,
+          description: p.description,
+          version_id: p.version,
+          policy_count: p.policy_count,
+        })),
+      );
+      setUsingMockData(true);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { portfolios, loading, error, usingMockData, refetch: fetch };
+}
+
+export function useValidatePortfolio() {
+  const [result, setResult] = useState<ValidatePortfolioResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const validate = useCallback(async (request: ValidatePortfolioRequest) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await apiValidatePortfolio(request);
+      setResult(response);
+      return response;
+    } catch (err) {
+      if (err instanceof AuthError) throw err;
+      const e = err instanceof Error ? err : new Error(String(err));
+      setError(e);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { result, loading, error, validate };
 }

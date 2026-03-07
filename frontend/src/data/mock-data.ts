@@ -438,6 +438,53 @@ export const mockMergeMethods: MockMergeMethod[] = [
   },
 ];
 
+// ============================================================================
+// Portfolio mock data — Story 17.2
+// ============================================================================
+
+export interface MockPortfolioPolicy {
+  name: string;
+  template_id: string;
+  policy_type: string;
+  parameters: Record<string, unknown>;
+  rate_schedule: Record<string, number>;
+}
+
+export interface MockPortfolio {
+  name: string;
+  description: string;
+  version: string;
+  policy_count: number;
+  policies: MockPortfolioPolicy[];
+  resolution_strategy: string;
+}
+
+export const mockPortfolios: MockPortfolio[] = [
+  {
+    name: "green-transition-2030",
+    description: "Carbon tax with energy efficiency subsidy for low-income households",
+    version: "1.0",
+    policy_count: 2,
+    policies: [
+      {
+        name: "Carbon Tax Trajectory",
+        template_id: "carbon-tax-flat",
+        policy_type: "carbon_tax",
+        parameters: { tax_rate: 50, tax_rate_growth: 10 },
+        rate_schedule: { "2025": 50, "2026": 60, "2027": 70, "2028": 80, "2029": 90, "2030": 100 },
+      },
+      {
+        name: "Energy Efficiency Subsidy",
+        template_id: "subsidy-energy",
+        policy_type: "subsidy",
+        parameters: { means_test_ceiling: 30000 },
+        rate_schedule: { "2025": 5000, "2026": 5000, "2027": 4000 },
+      },
+    ],
+    resolution_strategy: "error",
+  },
+];
+
 /** Simulated progress steps for RunProgressBar */
 export const mockSimulationSteps = [
   "Initializing population data...",

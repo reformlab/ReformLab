@@ -24,6 +24,7 @@ from reformlab.server.routes.exports import router as exports_router
 from reformlab.server.routes.indicators import comparison_router
 from reformlab.server.routes.indicators import router as indicators_router
 from reformlab.server.routes.populations import router as populations_router
+from reformlab.server.routes.portfolios import router as portfolios_router
 from reformlab.server.routes.runs import router as runs_router
 from reformlab.server.routes.scenarios import router as scenarios_router
 from reformlab.server.routes.templates import router as templates_router
@@ -71,6 +72,7 @@ def create_app() -> FastAPI:
     app.include_router(templates_router, prefix="/api/templates")
     app.include_router(populations_router, prefix="/api/populations")
     app.include_router(data_fusion_router, prefix="/api/data-fusion", tags=["data-fusion"])
+    app.include_router(portfolios_router, prefix="/api/portfolios", tags=["portfolios"])
 
     # Register exception handlers
     _register_exception_handlers(app)
