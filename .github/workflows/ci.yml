@@ -19,3 +19,4 @@ jobs:
       - run: uv run pytest --nbmake notebooks/advanced.ipynb -v
       - run: uv run pytest --nbmake notebooks/guides/09_population_generation.ipynb -v
       - run: uv run pytest --nbmake notebooks/guides/08_discrete_choice_model.ipynb -v
+      - run: uv run pytest --nbmake notebooks/guides/10_calibration_workflow.ipynb -v

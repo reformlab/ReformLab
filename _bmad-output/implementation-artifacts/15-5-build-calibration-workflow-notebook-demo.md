@@ -2,7 +2,7 @@
 
 # Story 15.5: Build Calibration Workflow Notebook Demo
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -16,45 +16,45 @@ so that I can understand, reproduce, and adapt the calibration process for my ow
 
 1. **AC-1: End-to-end workflow** — Given the notebook, when run end-to-end, then it demonstrates: loading observed transition rates (from fixture CSV), running the `CalibrationEngine`, inspecting convergence diagnostics (iterations, gradient norm, convergence flag), validating against holdout data via `validate_holdout()`, and using calibrated parameters in a simulation via `extract_calibrated_parameters()`.
 2. **AC-2: CI execution** — Given the notebook, when run via `pytest --nbmake notebooks/guides/10_calibration_workflow.ipynb -v` in CI, then it completes without errors. The notebook is committed with cleared outputs.
-3. **AC-3: Visualization and interpretation** — Given the notebook output, when inspected, then it shows: (a) training vs. observed rate comparison bar chart, (b) holdout validation metrics side-by-side with training metrics, (c) a final simulation using calibrated parameters with distributional outcomes, and (d) governance provenance entries captured via `capture_calibration_provenance()`.
+3. **AC-3: Visualization and interpretation** — Given the notebook output, when inspected, then it shows: (a) training vs. observed rate comparison bar chart, (b) holdout validation metrics side-by-side with training metrics, (c) a final simulation using calibrated parameters displaying a per-household choice probability matrix computed via `compute_utilities()` and `compute_probabilities()`, and (d) governance provenance entries captured via `capture_calibration_provenance()`.
 4. **AC-4: Static validation tests** — Given the static test file `tests/notebooks/test_epic15_notebook.py`, when run, then it validates: notebook exists, outputs are cleared, public API imports are correct, required sections are present, key API calls are present, and CI workflow includes the notebook.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create the notebook (AC: 1, 2, 3)
-  - [ ] 1.1: Create `notebooks/guides/10_calibration_workflow.ipynb` with cleared outputs and `python3` kernel metadata
-  - [ ] 1.2: Section 0 — Setup: imports, path resolution (`_NB_DIR`), `SEED = 42`, `show()` helper
-  - [ ] 1.3: Section 1 — Load Calibration Targets: load training targets from fixture CSV via `load_calibration_targets()`, display target summary table, explain target format (domain, period, from_state, to_state, observed_rate, source_label)
-  - [ ] 1.4: Section 2 — Build Cost Matrix: construct a small CostMatrix (from conftest pattern — 3 households, 2 alternatives), build `from_states` PyArrow array, explain how CostMatrix connects households to alternative costs
-  - [ ] 1.5: Section 3 — Run Calibration Engine: create `CalibrationConfig`, instantiate `CalibrationEngine`, call `calibrate()`, display convergence diagnostics (iterations, gradient_norm, convergence_flag, method, objective_type, objective_value), print per-target `RateComparison` results showing observed vs simulated rates
-  - [ ] 1.6: Section 4 — Visualize Training Fit: matplotlib grouped bar chart comparing observed_rate vs simulated_rate per target (from_state → to_state labels), show `all_within_tolerance` status, highlight rate_tolerance threshold on chart
-  - [ ] 1.7: Section 5 — Holdout Validation: construct holdout CostMatrix and from_states (different data from training), load holdout targets, call `validate_holdout()`, display side-by-side training vs holdout `FitMetrics` (MSE, MAE, n_targets, all_within_tolerance) in a formatted comparison
-  - [ ] 1.8: Section 6 — Governance Provenance: call `capture_calibration_provenance()` with all three inputs (result, target_set, holdout_result), display the AssumptionEntry list, call `make_calibration_reference()` with a sample manifest ID, show how entries would be added to a `RunManifest`
-  - [ ] 1.9: Section 7 — Parameter Round-Trip: demonstrate `extract_calibrated_parameters()` to recover `TasteParameters` from the captured assumptions list, verify exact β equality, explain the calibration → manifest → extraction lifecycle
-  - [ ] 1.10: Section 8 — Using Calibrated Parameters in Simulation: create a `LogitChoiceStep` with the extracted `TasteParameters`, show how calibrated parameters feed into the discrete choice pipeline, display choice probabilities and outcomes for the demo population
-  - [ ] 1.11: Section 9 — Summary and Next Steps: recap the calibration workflow steps, link to related guides (08_discrete_choice_model, 09_population_generation), note that production calibration uses larger populations and real institutional data
+- [x] Task 1: Create the notebook (AC: 1, 2, 3)
+  - [x] 1.1: Create `notebooks/guides/10_calibration_workflow.ipynb` with cleared outputs and `python3` kernel metadata
+  - [x] 1.2: Section 0 — Setup: imports, path resolution (`_NB_DIR`), `SEED = 42`, `show()` helper
+  - [x] 1.3: Section 1 — Load Calibration Targets: load training targets from fixture CSV via `load_calibration_targets()`, display target summary table, explain target format (domain, period, from_state, to_state, observed_rate, source_label)
+  - [x] 1.4: Section 2 — Build Cost Matrix: construct a small CostMatrix (from conftest pattern — 3 households, 2 alternatives), build `from_states` PyArrow array, explain how CostMatrix connects households to alternative costs
+  - [x] 1.5: Section 3 — Run Calibration Engine: create `CalibrationConfig`, instantiate `CalibrationEngine`, call `calibrate()`, display convergence diagnostics (iterations, gradient_norm, convergence_flag, method, objective_type, objective_value), print per-target `RateComparison` results showing observed vs simulated rates
+  - [x] 1.6: Section 4 — Visualize Training Fit: matplotlib grouped bar chart comparing observed_rate vs simulated_rate per target (from_state → to_state labels), show `all_within_tolerance` status, highlight rate_tolerance threshold on chart
+  - [x] 1.7: Section 5 — Holdout Validation: construct holdout CostMatrix and from_states (different data from training), load holdout targets, call `validate_holdout()`, display side-by-side training vs holdout `FitMetrics` (MSE, MAE, n_targets, all_within_tolerance) in a formatted comparison
+  - [x] 1.8: Section 6 — Governance Provenance: call `capture_calibration_provenance()` with all three inputs (result, target_set, holdout_result), display the AssumptionEntry list, call `make_calibration_reference()` with a sample manifest ID, show how entries would be added to a `RunManifest`
+  - [x] 1.9: Section 7 — Parameter Round-Trip: demonstrate `extract_calibrated_parameters()` to recover `TasteParameters` from the captured assumptions list, verify exact β equality, explain the calibration → manifest → extraction lifecycle
+  - [x] 1.10: Section 8 — Using Calibrated Parameters in Simulation: use extracted `TasteParameters` with `compute_utilities()` and `compute_probabilities()` on the training CostMatrix, display the per-household choice probability matrix, verify the calibrated β feeds through the discrete choice pipeline
+  - [x] 1.11: Section 9 — Summary and Next Steps: recap the calibration workflow steps, link to related guides (08_discrete_choice_model, 09_population_generation), note that production calibration uses larger populations and real institutional data
 
-- [ ] Task 2: Create fixture data files (AC: 1, 2)
-  - [ ] 2.1: Create `tests/fixtures/calibration/holdout_vehicle_targets.csv` with 3 holdout targets (same domain=vehicle, period=2023 vs training period=2022, different observed rates) — matches the conftest holdout pattern
-  - [ ] 2.2: Verify `tests/fixtures/calibration/valid_vehicle_targets.csv` exists and is suitable for notebook training data (already created by Story 15.1)
+- [x] Task 2: Create fixture data files (AC: 1, 2)
+  - [x] 2.1: Create `tests/fixtures/calibration/holdout_vehicle_targets.csv` with 3 holdout targets (same domain=vehicle, period=2023 vs training period=2022, different observed rates) — matches the conftest holdout pattern
+  - [x] 2.2: Verify `tests/fixtures/calibration/valid_vehicle_targets.csv` exists and is suitable for notebook training data (already created by Story 15.1)
 
-- [ ] Task 3: Create static validation test file (AC: 4)
-  - [ ] 3.1: Create `tests/notebooks/test_epic15_notebook.py` following the `test_epic14_notebook.py` pattern exactly
-  - [ ] 3.2: `test_notebook_exists()` — verify path `notebooks/guides/10_calibration_workflow.ipynb`
-  - [ ] 3.3: `test_outputs_cleared()` — all code cells have `execution_count: None` and `outputs: []`
-  - [ ] 3.4: `test_uses_public_api()` — verify imports from `reformlab.calibration`, `reformlab.discrete_choice`, no internal imports, no OpenFisca imports
-  - [ ] 3.5: `test_required_sections()` — verify all 10 section headers present in notebook source
-  - [ ] 3.6: `test_key_api_calls()` — verify key API calls present: `load_calibration_targets(`, `CalibrationEngine(`, `.calibrate()`, `validate_holdout(`, `capture_calibration_provenance(`, `make_calibration_reference(`, `extract_calibrated_parameters(`, `TasteParameters(`, `RunManifest(`
-  - [ ] 3.7: `test_ci_includes_notebook()` — verify CI workflow includes nbmake for this notebook
+- [x] Task 3: Create static validation test file (AC: 4)
+  - [x] 3.1: Create `tests/notebooks/test_epic15_notebook.py` following the `test_epic14_notebook.py` pattern exactly
+  - [x] 3.2: `test_notebook_exists()` — verify path `notebooks/guides/10_calibration_workflow.ipynb`
+  - [x] 3.3: `test_outputs_cleared()` — all code cells have `execution_count: None` and `outputs: []`
+  - [x] 3.4: `test_uses_public_api()` — verify imports from `reformlab.calibration`, `reformlab.discrete_choice`, no internal imports, no OpenFisca imports
+  - [x] 3.5: `test_required_sections()` — verify all 10 section headers present in notebook source
+  - [x] 3.6: `test_key_api_calls()` — verify key API calls present: `load_calibration_targets(`, `CalibrationEngine(`, `.calibrate()`, `validate_holdout(`, `capture_calibration_provenance(`, `make_calibration_reference(`, `extract_calibrated_parameters(`, `TasteParameters(`, `RunManifest(`
+  - [x] 3.7: `test_ci_includes_notebook()` — verify CI workflow includes nbmake for this notebook
 
-- [ ] Task 4: Update CI workflow (AC: 2)
-  - [ ] 4.1: Add `- run: uv run pytest --nbmake notebooks/guides/10_calibration_workflow.ipynb -v` to `.github/workflows/ci.yml` after the existing notebook lines
+- [x] Task 4: Update CI workflow (AC: 2)
+  - [x] 4.1: Add `- run: uv run pytest --nbmake notebooks/guides/10_calibration_workflow.ipynb -v` to `.github/workflows/ci.yml` after the existing notebook lines
 
-- [ ] Task 5: Lint, type-check, regression (AC: all)
-  - [ ] 5.1: `uv run ruff check tests/notebooks/test_epic15_notebook.py` — clean
-  - [ ] 5.2: `uv run pytest tests/notebooks/test_epic15_notebook.py -v` — all static checks pass
-  - [ ] 5.3: `uv run pytest --nbmake notebooks/guides/10_calibration_workflow.ipynb -v` — notebook executes without errors
-  - [ ] 5.4: `uv run pytest tests/` — all existing tests pass (no regressions)
+- [x] Task 5: Lint, type-check, regression (AC: all)
+  - [x] 5.1: `uv run ruff check tests/notebooks/test_epic15_notebook.py` — clean
+  - [x] 5.2: `uv run pytest tests/notebooks/test_epic15_notebook.py -v` — all static checks pass
+  - [x] 5.3: `uv run pytest --nbmake notebooks/guides/10_calibration_workflow.ipynb -v` — notebook executes without errors
+  - [x] 5.4: `uv run pytest tests/` — all existing tests pass (no regressions)
 
 ## Dev Notes
 
@@ -118,7 +118,6 @@ from reformlab.calibration import (
 )
 from reformlab.discrete_choice import (
     CostMatrix,
-    LogitChoiceStep,
     TasteParameters,
     compute_probabilities,
     compute_utilities,
@@ -402,11 +401,22 @@ CalibrationEngine.calibrate() ──────► CalibrationResult
 
 ### Agent Model Used
 
-(to be filled by dev agent)
+claude-sonnet-4-6
 
 ### Debug Log References
 
+None — implementation was straightforward.
+
 ### Completion Notes List
+
+- ✅ Notebook `notebooks/guides/10_calibration_workflow.ipynb` created with 10 sections (0–9), cleared outputs, python3 kernel, deterministic SEED=42
+- ✅ Notebook uses simplified 2-alternative (A/B) demo matching conftest pattern; valid_vehicle_targets.csv loaded for format display in Section 1; inline CalibrationTargetSet for actual calibration
+- ✅ Holdout CSV `tests/fixtures/calibration/holdout_vehicle_targets.csv` created (3 targets, period=2023, to_states A/B)
+- ✅ Static test file `tests/notebooks/test_epic15_notebook.py` created with 6 tests following test_epic14_notebook.py pattern exactly
+- ✅ CI workflow updated with nbmake line for 10_calibration_workflow.ipynb
+- ✅ All 6 static tests pass
+- ✅ Notebook executes via `pytest --nbmake` in 27s without errors
+- ✅ Full test suite: 2778 passed, 1 skipped, 0 failures (no regressions)
 
 ### File List
 
@@ -421,3 +431,5 @@ Modified files:
 ### Change Log
 
 - 2026-03-07: Story 15.5 created — comprehensive developer guide with section-by-section notebook content, visualization specs, static test patterns, fixture data strategy, and anti-pattern prevention.
+- 2026-03-07: Post-validation fixes — (1) AC-3(c) tightened to specify choice probability matrix instead of vague "distributional outcomes"; (2) Task 1.10 corrected to use `compute_utilities()`/`compute_probabilities()` directly (removing inconsistent `LogitChoiceStep` reference that contradicted Section 8 dev notes and Data Flow diagram); (3) `LogitChoiceStep` removed from Key Imports block.
+- 2026-03-07: Story implemented — notebook created with 10 sections, holdout CSV created, static tests created, CI updated. All tests pass (2778 passed, 1 skipped).

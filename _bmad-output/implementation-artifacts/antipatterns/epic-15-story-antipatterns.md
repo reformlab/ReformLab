@@ -48,3 +48,10 @@
 | medium | `source_label` parameter present in algorithm and test requirements but absent from Task 1.2's function signature description | Added `source_label: str = "calibration_engine"` to Task 1.2 signature |
 | medium | `optimized_beta_cost` has no type guard — if a non-numeric value is deserialized from manifest, `float()` raises `ValueError` instead of a controlled `CalibrationProvenanceError` | Added `isinstance(beta_cost, (float, int))` guard with `CalibrationProvenanceError` message to algorithm; added test case to Task 4.5 |
 | low | Typo `CalibrationProvenance Error` (space) in AC-3 | Corrected to `CalibrationProvenanceError` |
+
+## Story 15-5 (2026-03-07)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | Inconsistent simulation implementation path | Task 1.10 updated to use `compute_utilities()`/`compute_probabilities()` directly, matching the Section 8 dev notes, Data Flow diagram, and visualization specs. `LogitChoiceStep` removed from Key Imports. Evidence: Task 1.10 said "create a `LogitChoiceStep`" while Section 8 guide said "Use extracted TasteParameters with `compute_utilities()` and `compute_probabilities()`" — a contradiction that would produce divergent implementations. |
+| medium | "Distributional outcomes" ambiguous in AC-3(c) | AC-3(c) reworded to specify "per-household choice probability matrix computed via `compute_utilities()` and `compute_probabilities()`", matching Task 1.10 (now corrected) and Section 8 guide. |

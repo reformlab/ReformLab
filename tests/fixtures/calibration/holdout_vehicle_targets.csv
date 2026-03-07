@@ -1,0 +1,4 @@
+domain,period,from_state,to_state,observed_rate,source_label
+vehicle,2023,petrol,A,0.45,SDES vehicle fleet 2023
+vehicle,2023,petrol,B,0.50,SDES vehicle fleet 2023
+vehicle,2023,diesel,A,0.65,SDES vehicle fleet 2023
