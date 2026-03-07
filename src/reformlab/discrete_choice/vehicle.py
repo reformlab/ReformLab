@@ -145,6 +145,11 @@ class VehicleInvestmentDomain:
         self._config = config
 
     @property
+    def config(self) -> VehicleDomainConfig:
+        """Read-only access to domain configuration."""
+        return self._config
+
+    @property
     def name(self) -> str:
         """Domain identifier."""
         return "vehicle"
@@ -283,7 +288,7 @@ class VehicleStateUpdateStep:
         from reformlab.discrete_choice.types import ChoiceResult as _ChoiceResult
         from reformlab.vintage.types import VintageState as _VintageState
 
-        config = self._domain._config
+        config = self._domain.config
 
         # Read ChoiceResult from state
         choice_result = state.data.get(DISCRETE_CHOICE_RESULT_KEY)
@@ -346,6 +351,14 @@ class VehicleStateUpdateStep:
                 asset_class="vehicle",
                 cohorts=existing_vintage.cohorts + new_cohorts,
                 metadata={**existing_vintage.metadata, "last_choice_year": year},
+            )
+        elif existing_vintage is not None:
+            # Non-VintageState value at vintage_key — fail-loud
+            raise DiscreteChoiceError(
+                f"Expected VintageState or None for key '{self._vintage_key}', "
+                f"got {type(existing_vintage).__name__}: {existing_vintage!r}",
+                year=year,
+                step_name=self._name,
             )
         elif new_cohorts:
             merged_vintage = _VintageState(

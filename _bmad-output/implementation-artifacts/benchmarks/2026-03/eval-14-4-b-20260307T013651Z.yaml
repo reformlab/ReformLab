@@ -1,0 +1,110 @@
+record_id: a7137c78-8c85-4553-8386-6d3b6b930610
+created_at: '2026-03-07T01:36:51.597459+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 14
+  story_num: '4'
+  title: Story 14.4
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: gemini
+  model: gemini-2.5-flash
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-03-07T01:31:00.873537Z'
+  end_time: '2026-03-07T01:32:00.548537Z'
+  duration_ms: 59675
+  input_tokens: 0
+  output_tokens: 1419
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 5679
+  heading_count: 10
+  list_depth_max: 2
+  code_block_count: 1
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: 4.3'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes &amp; Readability
+  - ⚡ Performance &amp; Scalability
+  - 🐛 Correctness &amp; Safety
+  - 🔧 Maintainability Issues
+  - 🛠️ Suggested Fixes
+  - 1. **Rectify Metadata Overwrite in DiscreteChoiceStep**
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.33
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: a11b527a31e9
+findings:
+  total_count: 3
+  by_severity:
+    critical: 1
+    major: 1
+    minor: 1
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 1
+    completeness: 1
+    clarity: 0
+    testability: 1
+  has_fix_count: 2
+  has_location_count: 2
+  has_evidence_count: 2
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 0
+  confidence_phrases_count: 0
+linguistic:
+  avg_sentence_length: 27.347826086956523
+  vocabulary_richness: 0.5023847376788553
+  flesch_reading_ease: 2.91878176464175
+  vague_terms_count: 1
+  formality_score: 0.62
+  sentiment: mixed
+quality:
+  actionable_ratio: 0.67
+  specificity_score: 0.5
+  evidence_quality: 0.67
+  follows_template: true
+  internal_consistency: 0.85
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 6
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

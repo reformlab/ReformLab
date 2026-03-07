@@ -244,18 +244,26 @@ class DiscreteChoiceStep:
                 ) from exc
 
         # Phase 4: Store in YearState
-        metadata_dict = {
-            "domain_name": domain.name,
-            "n_households": n,
-            "n_alternatives": m,
-            "alternative_names": list(choice_set.alternative_ids),
-            "adapter_version": adapter_version if n > 0 else None,
-        }
+        # Extend metadata — preserve existing keys from prior domain steps (AC-9)
+        existing_metadata = state.data.get(DISCRETE_CHOICE_METADATA_KEY, {})
+        if not isinstance(existing_metadata, dict):
+            raise DiscreteChoiceError(
+                f"Expected dict for metadata key '{DISCRETE_CHOICE_METADATA_KEY}', "
+                f"got {type(existing_metadata).__name__}",
+                year=year,
+                step_name=self._name,
+            )
+        extended_metadata = dict(existing_metadata)
+        extended_metadata["domain_name"] = domain.name
+        extended_metadata["n_households"] = n
+        extended_metadata["n_alternatives"] = m
+        extended_metadata["alternative_names"] = list(choice_set.alternative_ids)
+        extended_metadata["adapter_version"] = adapter_version if n > 0 else None
 
         new_data = dict(state.data)
         new_data[DISCRETE_CHOICE_COST_MATRIX_KEY] = cost_matrix
         new_data[DISCRETE_CHOICE_EXPANSION_KEY] = expansion
-        new_data[DISCRETE_CHOICE_METADATA_KEY] = metadata_dict
+        new_data[DISCRETE_CHOICE_METADATA_KEY] = extended_metadata
 
         logger.info(
             "year=%d step_name=%s domain=%s cost_matrix_shape=%dx%d "

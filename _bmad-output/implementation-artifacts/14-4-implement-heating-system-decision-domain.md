@@ -2,7 +2,7 @@
 
 # Story 14.4: Implement Heating System Decision Domain
 
-Status: dev-complete
+Status: done
 
 ## Story
 
@@ -493,3 +493,14 @@ None — clean implementation with no blocking issues.
 #### Modified Files
 - `src/reformlab/discrete_choice/vehicle.py` — Imports shared functions from `domain_utils.py`, removed `_infer_pa_type`, `apply_choices_to_population`, `_create_vintage_entries` local definitions, cleaned up unused imports
 - `src/reformlab/discrete_choice/__init__.py` — Added heating exports, shared utility exports, updated `apply_choices_to_population` import to source from `domain_utils`
+- `src/reformlab/discrete_choice/step.py` — (code review fix) Metadata merge instead of overwrite
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-07
+- **Reviewer:** AI Code Review Engine (Validator A + Validator B synthesis)
+- **Evidence Score:** 10.0 (A) / 4.3 (B) → REJECT / MAJOR REWORK
+- **Issues Found:** 7 unique (deduplicated across reviewers)
+- **Issues Fixed:** 7
+- **Action Items Created:** 0
+- **Post-fix status:** All 222 tests pass, ruff clean, mypy clean

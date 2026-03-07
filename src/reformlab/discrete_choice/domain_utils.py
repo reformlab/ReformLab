@@ -122,15 +122,23 @@ def apply_choices_to_population(
     if not all_attr_keys:
         return population
 
+    # Precompute per-household chosen alternative objects (avoids repeated map lookups)
+    chosen_alts = [alt_map[cid] for cid in chosen_list]
+
     # Build per-column values based on each household's chosen alternative
     for attr_key in all_attr_keys:
+        # Precompute existing column as Python list to avoid per-cell scalar extraction
+        existing_col_list: list[Any] | None = None
+        if attr_key in table.column_names:
+            existing_col_list = table.column(attr_key).to_pylist()
+
         values: list[Any] = []
         for i in range(n):
-            alt = alt_map[chosen_list[i]]
+            alt = chosen_alts[i]
             if attr_key in alt.attributes:
                 values.append(alt.attributes[attr_key])
-            elif attr_key in table.column_names:
-                values.append(table.column(attr_key)[i].as_py())
+            elif existing_col_list is not None:
+                values.append(existing_col_list[i])
             else:
                 values.append(None)
 
@@ -191,6 +199,14 @@ def create_vintage_entries(
 
     alt_map = {alt.id: alt for alt in alternatives}
     chosen_list: list[str] = choice_result.chosen.to_pylist()
+
+    # Validate all chosen IDs are known alternatives
+    unknown_ids = set(chosen_list) - set(alt_map)
+    if unknown_ids:
+        raise DiscreteChoiceError(
+            f"Unknown alternative IDs in chosen: {sorted(str(x) for x in unknown_ids)}, "
+            f"valid: {sorted(alt_map)}"
+        )
 
     switcher_counts: dict[str, int] = {}
     for chosen_id in chosen_list:

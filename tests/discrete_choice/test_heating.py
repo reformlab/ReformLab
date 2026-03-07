@@ -384,10 +384,14 @@ class TestHeatingStateUpdateStep:
         state = self._make_state(n=3, chosen=["keep_current"] * 3)
         result = step.execute(2025, state)
 
-        # Population unchanged
+        # Population unchanged — verify ALL columns, not just heating_type (AC-7)
         orig = state.data["population_data"].tables["menage"]  # type: ignore[union-attr]
         updated = result.data["population_data"].tables["menage"]  # type: ignore[union-attr]
-        assert updated.column("heating_type").to_pylist() == orig.column("heating_type").to_pylist()
+        assert updated.column_names == orig.column_names
+        for col_name in orig.column_names:
+            assert (
+                updated.column(col_name).to_pylist() == orig.column(col_name).to_pylist()
+            ), f"Column '{col_name}' changed unexpectedly when all chose keep_current"
 
         # Metadata extended
         meta = result.data[DISCRETE_CHOICE_METADATA_KEY]
@@ -1024,6 +1028,14 @@ class TestSequentialDomainExecution:
         assert isinstance(pop_after_vehicle, PopulationData)
         assert pop_after_vehicle.tables["menage"].num_rows == 3
 
+        # Capture vehicle-mutated attribute values to verify they reach heating pipeline
+        vehicle_types_after_vehicle = (
+            pop_after_vehicle.tables["menage"].column("vehicle_type").to_pylist()
+        )
+        vehicle_ages_after_vehicle = (
+            pop_after_vehicle.tables["menage"].column("vehicle_age").to_pylist()
+        )
+
         # Vehicle metadata is present
         meta = state.data[DISCRETE_CHOICE_METADATA_KEY]
         assert "vehicle_n_switchers" in meta  # type: ignore[operator]
@@ -1039,16 +1051,25 @@ class TestSequentialDomainExecution:
         assert isinstance(final_pop, PopulationData)
         assert final_pop.tables["menage"].num_rows == 3
 
+        # Verify vehicle-mutated attributes survived the heating pipeline
+        final_vehicle_types = final_pop.tables["menage"].column("vehicle_type").to_pylist()
+        final_vehicle_ages = final_pop.tables["menage"].column("vehicle_age").to_pylist()
+        assert final_vehicle_types == vehicle_types_after_vehicle, (
+            "Vehicle type mutations lost during heating pipeline"
+        )
+        assert final_vehicle_ages == vehicle_ages_after_vehicle, (
+            "Vehicle age mutations lost during heating pipeline"
+        )
+
         # Heating metadata is present after heating pipeline
         final_meta = state.data[DISCRETE_CHOICE_METADATA_KEY]
         assert "heating_n_switchers" in final_meta  # type: ignore[operator]
         assert "heating_n_keepers" in final_meta  # type: ignore[operator]
         assert final_meta["heating_n_switchers"] + final_meta["heating_n_keepers"] == 3  # type: ignore[index]
 
-        # Note: vehicle metadata keys (vehicle_n_switchers etc.) are overwritten
-        # when the heating DiscreteChoiceStep creates a fresh metadata dict.
-        # This is expected — each DiscreteChoiceStep resets intermediate metadata.
-        # Vehicle vintage state uses a separate key and is preserved.
+        # Vehicle metadata keys are preserved across domains (AC-9 merge semantics)
+        assert "vehicle_n_switchers" in final_meta  # type: ignore[operator]
+        assert "vehicle_n_keepers" in final_meta  # type: ignore[operator]
 
         # Both vintage states exist independently under separate keys
         if "vintage_vehicle" in state.data:
