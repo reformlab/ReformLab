@@ -241,6 +241,13 @@ class TestComputeProbabilities:
 class TestDrawChoices:
     """Tests for draw_choices: inverse CDF sampling with seed control."""
 
+    @staticmethod
+    def _make_util_table(alt_ids: tuple[str, ...], n: int) -> pa.Table:
+        """Build a dummy utility table with correct shape for draw tests."""
+        return pa.table({
+            aid: pa.array([0.0] * n) for aid in alt_ids
+        })
+
     def test_determinism_same_seed(self) -> None:
         """Same seed → identical choices (AC-3)."""
         prob_table = pa.table({
@@ -248,9 +255,10 @@ class TestDrawChoices:
             "b": pa.array([0.7, 0.3, 0.5]),
         })
         alt_ids = ("a", "b")
+        util_table = self._make_util_table(alt_ids, 3)
 
-        r1 = draw_choices(prob_table, alt_ids, seed=42)
-        r2 = draw_choices(prob_table, alt_ids, seed=42)
+        r1 = draw_choices(prob_table, util_table, alt_ids, seed=42)
+        r2 = draw_choices(prob_table, util_table, alt_ids, seed=42)
 
         assert r1.chosen.to_pylist() == r2.chosen.to_pylist()
 
@@ -263,9 +271,10 @@ class TestDrawChoices:
             "b": pa.array([0.5] * n),
         })
         alt_ids = ("a", "b")
+        util_table = self._make_util_table(alt_ids, n)
 
-        r1 = draw_choices(prob_table, alt_ids, seed=1)
-        r2 = draw_choices(prob_table, alt_ids, seed=2)
+        r1 = draw_choices(prob_table, util_table, alt_ids, seed=1)
+        r2 = draw_choices(prob_table, util_table, alt_ids, seed=2)
 
         # With 100 households at 50/50, different seeds should produce at least
         # one different choice
@@ -277,7 +286,8 @@ class TestDrawChoices:
             "only": pa.array([1.0, 1.0, 1.0]),
         })
         alt_ids = ("only",)
-        result = draw_choices(prob_table, alt_ids, seed=42)
+        util_table = self._make_util_table(alt_ids, 3)
+        result = draw_choices(prob_table, util_table, alt_ids, seed=42)
         assert result.chosen.to_pylist() == ["only", "only", "only"]
 
     def test_empty_population(self) -> None:
@@ -287,7 +297,8 @@ class TestDrawChoices:
             "b": pa.array([], type=pa.float64()),
         })
         alt_ids = ("a", "b")
-        result = draw_choices(prob_table, alt_ids, seed=42)
+        util_table = self._make_util_table(alt_ids, 0)
+        result = draw_choices(prob_table, util_table, alt_ids, seed=42)
         assert len(result.chosen) == 0
         assert result.seed == 42
 
@@ -300,6 +311,7 @@ class TestDrawChoices:
             "c": pa.array([0.5]),
         })
         alt_ids = ("a", "b", "c")
+        util_table = self._make_util_table(alt_ids, 1)
 
         # Determine what random.Random(99).random() gives
         rng = random.Random(99)
@@ -313,7 +325,7 @@ class TestDrawChoices:
         else:
             expected = "c"
 
-        result = draw_choices(prob_table, alt_ids, seed=99)
+        result = draw_choices(prob_table, util_table, alt_ids, seed=99)
         assert result.chosen[0].as_py() == expected
 
     def test_seed_none_works(self) -> None:
@@ -323,7 +335,8 @@ class TestDrawChoices:
             "b": pa.array([0.5]),
         })
         alt_ids = ("a", "b")
-        result = draw_choices(prob_table, alt_ids, seed=None)
+        util_table = self._make_util_table(alt_ids, 1)
+        result = draw_choices(prob_table, util_table, alt_ids, seed=None)
         assert result.seed is None
         assert len(result.chosen) == 1
         assert result.chosen[0].as_py() in ("a", "b")
@@ -331,40 +344,50 @@ class TestDrawChoices:
     def test_stochastic_variation_aggregate_consistency(self) -> None:
         """Different seeds: aggregate frequencies match expected probabilities (AC-4).
 
-        For N >= 1000, |observed_freq - expected_prob| < 5 * sqrt(p*(1-p)/N).
+        For N >= 1000, |observed_freq - expected_prob| < 5 * sqrt(p*(1-p)/N)
+        for each alternative.
         """
         n = 2000
-        prob_a, prob_b = 0.7, 0.3
+        expected_probs = {"a": 0.7, "b": 0.3}
         prob_table = pa.table({
-            "a": pa.array([prob_a] * n),
-            "b": pa.array([prob_b] * n),
+            aid: pa.array([p] * n) for aid, p in expected_probs.items()
         })
         alt_ids = ("a", "b")
+        util_table = self._make_util_table(alt_ids, n)
 
-        result = draw_choices(prob_table, alt_ids, seed=12345)
+        result = draw_choices(prob_table, util_table, alt_ids, seed=12345)
         choices = result.chosen.to_pylist()
-        count_a = choices.count("a")
-        observed_a = count_a / n
 
-        # 5× standard error tolerance
-        se = math.sqrt(prob_a * (1 - prob_a) / n)
-        assert abs(observed_a - prob_a) < 5 * se
+        # Check each alternative's frequency (AC-4 requires per-alternative)
+        for aid, expected_p in expected_probs.items():
+            observed = choices.count(aid) / n
+            se = math.sqrt(expected_p * (1 - expected_p) / n)
+            assert abs(observed - expected_p) < 5 * se, (
+                f"Alternative '{aid}': observed={observed:.4f}, "
+                f"expected={expected_p:.4f}, 5*SE={5 * se:.4f}"
+            )
 
     def test_result_fields_populated(self) -> None:
-        """ChoiceResult has all expected fields populated."""
+        """ChoiceResult has all expected fields populated with correct data."""
         prob_table = pa.table({
             "a": pa.array([0.6, 0.4]),
             "b": pa.array([0.4, 0.6]),
         })
+        util_table = pa.table({
+            "a": pa.array([-1.0, -2.0]),
+            "b": pa.array([-1.5, -3.0]),
+        })
         alt_ids = ("a", "b")
-        # Need utilities too — draw_choices creates them as the prob table
-        result = draw_choices(prob_table, alt_ids, seed=7)
+        result = draw_choices(prob_table, util_table, alt_ids, seed=7)
 
         assert isinstance(result.chosen, pa.Array)
         assert isinstance(result.probabilities, pa.Table)
         assert isinstance(result.utilities, pa.Table)
         assert result.alternative_ids == ("a", "b")
         assert result.seed == 7
+        # Verify utilities are the actual utilities, not probabilities
+        assert result.utilities.column("a")[0].as_py() == pytest.approx(-1.0)
+        assert result.utilities.column("b")[1].as_py() == pytest.approx(-3.0)
 
 
 # ============================================================================
@@ -417,12 +440,12 @@ class TestGoldenValues:
             assert abs(row_sum - 1.0) < 1e-10
 
         # Step 3: Draw choices with known seed
-        result = draw_choices(probabilities, ("x", "y", "z"), seed=42)
+        result = draw_choices(probabilities, utilities, ("x", "y", "z"), seed=42)
         assert len(result.chosen) == 3
         assert result.seed == 42
 
         # Verify determinism
-        result2 = draw_choices(probabilities, ("x", "y", "z"), seed=42)
+        result2 = draw_choices(probabilities, utilities, ("x", "y", "z"), seed=42)
         assert result.chosen.to_pylist() == result2.chosen.to_pylist()
 
 

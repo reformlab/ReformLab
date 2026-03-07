@@ -17,3 +17,13 @@
 | medium | Redundant `isinstance(exc, Exception)` checks in `except Exception as exc` blocks | Simplified to `original_error=exc` (4 occurrences). |
 | low | `apply_alternative` docstring implies in-place mutation | Clarified "Return a new table" and noted PyArrow table immutability. |
 | low | `type: ignore[arg-type]` for `population=None` in tests | Replaced with minimal `PopulationData` instances. |
+
+## Story 14-2 (2026-03-07)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| high | `draw_choices` returns `utilities=probabilities` — semantically wrong ChoiceResult when called outside LogitChoiceStep | Added `utilities: pa.Table` parameter to `draw_choices`, removed the `ChoiceResult` re-construction hack in `LogitChoiceStep.execute()`. Public API now always produces correct ChoiceResult. |
+| medium | AC-4 test checks only one alternative's frequency instead of all alternatives | Rewrote `test_stochastic_variation_aggregate_consistency` to iterate over all alternatives with per-alternative tolerance assertion. |
+| medium | `seed=None` governance warning only at step level, not in pure function | Added `logger.warning` in `draw_choices` when `seed is None`. |
+| medium | `dict(existing_metadata)` can throw raw `TypeError` if metadata is not a dict | Added `isinstance(existing_metadata, dict)` guard with `DiscreteChoiceError`. |
+| low | `test_result_fields_populated` only checks types, not semantic correctness of utilities | Updated test to use distinct utility values and assert they are correctly stored (not copied from probabilities). |

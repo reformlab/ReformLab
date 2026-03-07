@@ -1,0 +1,115 @@
+record_id: 5ac50999-af17-465a-8a98-d140574c8ccb
+created_at: '2026-03-07T00:05:16.212244+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 14
+  story_num: '2'
+  title: Story 14.2
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: gemini
+  model: gemini-2.5-flash
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-03-07T00:00:08.429916Z'
+  end_time: '2026-03-07T00:01:35.298916Z'
+  duration_ms: 86869
+  input_tokens: 0
+  output_tokens: 5876
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 23505
+  heading_count: 15
+  list_depth_max: 3
+  code_block_count: 6
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: 5.5'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes &amp; Readability
+  - ⚡ Performance &amp; Scalability
+  - 🐛 Correctness &amp; Safety
+  - 🔧 Maintainability Issues
+  - 🛠️ Suggested Fixes
+  - 1. Fix Incomplete Story File List
+  - 2. Remove Magic Path Decorator
+  - 3. Optimize Probability and Draw Computations
+  - 4. Narrow Exception Catch
+  - 5. Refactor `draw_choices` to avoid temporary incorrect `utilities` assignment
+  - 6. Remove `__slots__` from `LogitChoiceStep`
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.33
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 785c04d1acb3
+findings:
+  total_count: 10
+  by_severity:
+    critical: 1
+    major: 4
+    minor: 5
+    nit: 0
+  by_category:
+    security: 0
+    performance: 3
+    correctness: 3
+    completeness: 2
+    clarity: 3
+    testability: 1
+  has_fix_count: 10
+  has_location_count: 10
+  has_evidence_count: 10
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 11
+  confidence_phrases_count: 1
+linguistic:
+  avg_sentence_length: 28.39047619047619
+  vocabulary_richness: 0.2586380409258638
+  flesch_reading_ease: -2.5211299457580765
+  vague_terms_count: 6
+  formality_score: 0.75
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 1.0
+  evidence_quality: 0.95
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 7
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

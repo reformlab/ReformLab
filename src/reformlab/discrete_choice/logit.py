@@ -143,6 +143,7 @@ def compute_probabilities(utilities: pa.Table) -> pa.Table:
 
 def draw_choices(
     probabilities: pa.Table,
+    utilities: pa.Table,
     alternative_ids: tuple[str, ...],
     seed: int | None,
 ) -> ChoiceResult:
@@ -153,6 +154,7 @@ def draw_choices(
 
     Args:
         probabilities: N×M PyArrow Table of choice probabilities.
+        utilities: N×M PyArrow Table of deterministic utilities.
         alternative_ids: Tuple of alternative IDs matching column order.
         seed: Random seed (None for non-deterministic draws).
 
@@ -163,11 +165,17 @@ def draw_choices(
     n = probabilities.num_rows
     m = len(alternative_ids)
 
+    if seed is None:
+        logger.warning(
+            "step_name=draw_choices event=null_seed "
+            "msg=No seed provided; draws are non-deterministic",
+        )
+
     if n == 0:
         return ChoiceResult(
             chosen=pa.array([], type=pa.string()),
             probabilities=probabilities,
-            utilities=probabilities,  # 0 rows — utilities match shape
+            utilities=utilities,
             alternative_ids=alternative_ids,
             seed=seed,
         )
@@ -195,7 +203,7 @@ def draw_choices(
     return ChoiceResult(
         chosen=pa.array(chosen_list),
         probabilities=probabilities,
-        utilities=probabilities,  # will be replaced by step with actual utilities
+        utilities=utilities,
         alternative_ids=alternative_ids,
         seed=seed,
     )
@@ -309,15 +317,8 @@ class LogitChoiceStep:
         # Compute utilities → probabilities → draws (AC-1, AC-2)
         utilities = compute_utilities(cost_matrix, self._taste_parameters)
         probabilities = compute_probabilities(utilities)
-        choice_result = draw_choices(probabilities, cost_matrix.alternative_ids, seed)
-
-        # Replace utilities in ChoiceResult with actual utilities (not probabilities)
-        choice_result = ChoiceResult(
-            chosen=choice_result.chosen,
-            probabilities=choice_result.probabilities,
-            utilities=utilities,
-            alternative_ids=choice_result.alternative_ids,
-            seed=choice_result.seed,
+        choice_result = draw_choices(
+            probabilities, utilities, cost_matrix.alternative_ids, seed
         )
 
         # Store result and extend metadata (AC-8)
@@ -326,6 +327,13 @@ class LogitChoiceStep:
 
         # Extend metadata: create new dict from existing + logit fields
         existing_metadata = state.data.get(DISCRETE_CHOICE_METADATA_KEY, {})
+        if not isinstance(existing_metadata, dict):
+            raise DiscreteChoiceError(
+                f"Expected dict for metadata key '{DISCRETE_CHOICE_METADATA_KEY}', "
+                f"got {type(existing_metadata).__name__}",
+                year=year,
+                step_name=self._name,
+            )
         extended_metadata = dict(existing_metadata)
         extended_metadata["beta_cost"] = beta
         extended_metadata["choice_seed"] = seed
