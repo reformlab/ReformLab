@@ -1,6 +1,6 @@
 """Dependency injection for FastAPI route handlers.
 
-Provides global singletons for the result cache and computation adapter.
+Provides global singletons for the result cache, result store, and computation adapter.
 """
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from reformlab.computation.adapter import ComputationAdapter
     from reformlab.interfaces.api import SimulationResult
+    from reformlab.server.result_store import ResultStore
 
 logger = logging.getLogger(__name__)
 
@@ -39,11 +40,22 @@ class ResultCache:
 # Global singletons
 _result_cache = ResultCache(max_size=10)
 _adapter: ComputationAdapter | None = None
+_result_store: ResultStore | None = None
 
 
 def get_result_cache() -> ResultCache:
     """Return the global result cache."""
     return _result_cache
+
+
+def get_result_store() -> ResultStore:
+    """Return the global result store (lazy-initialized)."""
+    global _result_store  # noqa: PLW0603
+    if _result_store is None:
+        from reformlab.server.result_store import ResultStore
+
+        _result_store = ResultStore()
+    return _result_store
 
 
 def get_adapter() -> ComputationAdapter:

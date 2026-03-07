@@ -9,6 +9,7 @@ import { runScenario as apiRunScenario } from "@/api/runs";
 import { getIndicators } from "@/api/indicators";
 import { listDataSources, listMergeMethods } from "@/api/data-fusion";
 import { listPortfolios as apiListPortfolios, validatePortfolio as apiValidatePortfolio } from "@/api/portfolios";
+import { listResults as apiListResults, deleteResult as apiDeleteResult } from "@/api/results";
 import { AuthError } from "@/api/client";
 import type {
   PopulationItem,
@@ -20,6 +21,7 @@ import type {
   PortfolioListItem,
   ValidatePortfolioRequest,
   ValidatePortfolioResponse,
+  ResultListItem,
 } from "@/api/types";
 import type { Population, Template, Parameter, MockDataSource, MockMergeMethod, MockPortfolio } from "@/data/mock-data";
 import {
@@ -374,6 +376,38 @@ export function usePortfolios() {
   }, []);
 
   return { portfolios, loading, error, usingMockData, refetch: fetch };
+}
+
+// ============================================================================
+// Results — Story 17.3
+// ============================================================================
+
+export function useResults() {
+  const [results, setResults] = useState<ResultListItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetch = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await apiListResults();
+      setResults(data);
+    } catch (err) {
+      if (err instanceof AuthError) throw err;
+      setError(err instanceof Error ? err : new Error(String(err)));
+      // Fall back to empty list rather than showing mock data
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const remove = useCallback(async (runId: string) => {
+    await apiDeleteResult(runId);
+    setResults((current) => current.filter((r) => r.run_id !== runId));
+  }, []);
+
+  return { results, loading, error, refetch: fetch, remove };
 }
 
 export function useValidatePortfolio() {

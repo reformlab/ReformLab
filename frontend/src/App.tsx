@@ -11,6 +11,7 @@ import { DataFusionWorkbench } from "@/components/screens/DataFusionWorkbench";
 import { ParameterEditingScreen } from "@/components/screens/ParameterEditingScreen";
 import { PopulationSelectionScreen } from "@/components/screens/PopulationSelectionScreen";
 import { PortfolioDesignerScreen } from "@/components/screens/PortfolioDesignerScreen";
+import { SimulationRunnerScreen } from "@/components/screens/SimulationRunnerScreen";
 import { TemplateSelectionScreen } from "@/components/screens/TemplateSelectionScreen";
 import {
   type ConfigStep,
@@ -41,7 +42,7 @@ const STEP_ORDER: ConfigStep["key"][] = [
 const LEFT_COLLAPSE_STORAGE_KEY = "reformlab-left-panel-collapsed";
 const RIGHT_COLLAPSE_STORAGE_KEY = "reformlab-right-panel-collapsed";
 
-type ViewMode = "configuration" | "run" | "progress" | "results" | "comparison" | "data-fusion" | "portfolio";
+type ViewMode = "configuration" | "run" | "progress" | "results" | "comparison" | "data-fusion" | "portfolio" | "runner";
 
 function readStoredBool(key: string): boolean {
   const value = window.localStorage.getItem(key);
@@ -83,6 +84,7 @@ function Workspace() {
     setDataFusionResult,
     portfolios,
     refetchPortfolios,
+    selectedPortfolioName,
   } = useAppState();
 
   const [activeStep, setActiveStep] = useState<ConfigStep["key"]>("population");
@@ -240,7 +242,7 @@ function Workspace() {
           </p>
         </div>
         <div className="flex gap-2">
-          {viewMode !== "configuration" && viewMode !== "comparison" && viewMode !== "data-fusion" && viewMode !== "portfolio" ? (
+          {viewMode !== "configuration" && viewMode !== "comparison" && viewMode !== "data-fusion" && viewMode !== "portfolio" && viewMode !== "runner" ? (
             <Button variant="outline" onClick={() => setViewMode("configuration")}>
               Configuration
             </Button>
@@ -386,6 +388,15 @@ function Workspace() {
           onDeleted={() => { void refetchPortfolios(); }}
         />
       ) : null}
+
+      {viewMode === "runner" ? (
+        <SimulationRunnerScreen
+          selectedPopulationId={selectedPopulationId || null}
+          selectedPortfolioName={selectedPortfolioName}
+          selectedTemplateName={selectedTemplateId || null}
+          onCancel={() => setViewMode("configuration")}
+        />
+      ) : null}
     </>
   );
 
@@ -417,6 +428,14 @@ function Workspace() {
                 onClick={() => setViewMode("portfolio")}
               >
                 Portfolio
+              </Button>
+
+              <Button
+                variant={viewMode === "runner" ? "default" : "outline"}
+                className="w-full"
+                onClick={() => setViewMode("runner")}
+              >
+                Simulation
               </Button>
 
               <Button

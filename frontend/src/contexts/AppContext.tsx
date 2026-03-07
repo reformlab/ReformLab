@@ -29,10 +29,11 @@ import {
   useDataSources,
   useMergeMethods,
   usePortfolios,
+  useResults,
 } from "@/hooks/useApi";
 import type { DecileData, Parameter, Population, Scenario, Template, MockDataSource, MockMergeMethod } from "@/data/mock-data";
 import { mockDecileData, mockParameters, mockScenarios } from "@/data/mock-data";
-import type { RunResponse, IndicatorResponse, GenerationResult, PortfolioListItem } from "@/api/types";
+import type { RunResponse, IndicatorResponse, GenerationResult, PortfolioListItem, ResultListItem } from "@/api/types";
 
 // ============================================================================
 // Context types
@@ -89,6 +90,13 @@ interface AppState {
   portfolios: PortfolioListItem[];
   portfoliosLoading: boolean;
   refetchPortfolios: () => Promise<void>;
+
+  // Results (Story 17.3)
+  results: ResultListItem[];
+  resultsLoading: boolean;
+  refetchResults: () => Promise<void>;
+  selectedPortfolioName: string | null;
+  setSelectedPortfolioName: (name: string | null) => void;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -139,6 +147,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Portfolio hooks (Story 17.2)
   const { portfolios, loading: portfoliosLoading, refetch: refetchPortfolios } = usePortfolios();
 
+  // Results hooks (Story 17.3)
+  const { results, loading: resultsLoading, refetch: refetchResults } = useResults();
+  const [selectedPortfolioName, setSelectedPortfolioName] = useState<string | null>(null);
+
   // Selections
   const [selectedPopulationId, setSelectedPopulationId] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
@@ -181,6 +193,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Fetch data on auth
   useEffect(() => {
     if (isAuthenticated) {
+      refetchResults().catch(() => {});
       refetchPopulations().catch((err) => {
         if (err instanceof AuthError) {
           setIsAuthenticated(false);
@@ -196,8 +209,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       refetchDataFusionSources().catch(() => {});
       refetchDataFusionMethods().catch(() => {});
       refetchPortfolios().catch(() => {});
+      refetchResults().catch(() => {});
     }
-  }, [isAuthenticated, refetchPopulations, refetchTemplates, refetchDataFusionSources, refetchDataFusionMethods, refetchPortfolios]);
+  }, [isAuthenticated, refetchPopulations, refetchTemplates, refetchDataFusionSources, refetchDataFusionMethods, refetchPortfolios, refetchResults]);
 
   // Warn user if data is still mock after loading completes
   useEffect(() => {
@@ -403,6 +417,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       portfolios,
       portfoliosLoading,
       refetchPortfolios,
+      results,
+      resultsLoading,
+      refetchResults,
+      selectedPortfolioName,
+      setSelectedPortfolioName,
     }),
     [
       isAuthenticated, authLoading, authenticate, logout,
@@ -416,6 +435,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       refetchPopulations, refetchTemplates,
       dataFusionSources, dataFusionMethods, dataFusionResult, setDataFusionResult, dataFusionSourcesLoading,
       portfolios, portfoliosLoading, refetchPortfolios,
+      results, resultsLoading, refetchResults,
+      selectedPortfolioName, setSelectedPortfolioName,
     ],
   );
 

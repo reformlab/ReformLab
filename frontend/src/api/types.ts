@@ -309,3 +309,34 @@ export interface PortfolioListItem {
   version_id: string;
   policy_count: number;
 }
+
+// ============================================================================
+// Result types — Story 17.3
+// ============================================================================
+
+export interface ResultListItem {
+  run_id: string;
+  timestamp: string;
+  run_kind: string;              // "scenario" | "portfolio"
+  start_year: number;
+  end_year: number;
+  row_count: number;
+  status: string;
+  data_available: boolean;
+  template_name: string | null;  // scenario runs only
+  policy_type: string | null;    // scenario runs only
+  portfolio_name: string | null; // portfolio runs only
+}
+
+export interface ResultDetailResponse extends ResultListItem {
+  population_id: string | null;
+  seed: number | null;
+  manifest_id: string;
+  scenario_id: string;
+  adapter_version: string;
+  started_at: string;
+  finished_at: string;
+  indicators: Record<string, unknown> | null;
+  columns: string[] | null;
+  column_count: number | null;
+}

@@ -485,6 +485,66 @@ export const mockPortfolios: MockPortfolio[] = [
   },
 ];
 
+// ============================================================================
+// Results mock data — Story 17.3
+// ============================================================================
+
+export interface MockResultItem {
+  run_id: string;
+  timestamp: string;
+  run_kind: string;
+  template_name: string | null;
+  policy_type: string | null;
+  portfolio_name: string | null;
+  start_year: number;
+  end_year: number;
+  row_count: number;
+  status: string;
+  data_available: boolean;
+}
+
+export const mockResults: MockResultItem[] = [
+  {
+    run_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    timestamp: "2026-03-07T22:15:30Z",
+    run_kind: "scenario",
+    template_name: "Carbon Tax \u2014 With Dividend",
+    policy_type: "carbon_tax",
+    portfolio_name: null,
+    start_year: 2025,
+    end_year: 2030,
+    row_count: 600000,
+    status: "completed",
+    data_available: true,
+  },
+  {
+    run_id: "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+    timestamp: "2026-03-07T21:45:12Z",
+    run_kind: "portfolio",
+    template_name: null,
+    policy_type: null,
+    portfolio_name: "green-transition-2030",
+    start_year: 2025,
+    end_year: 2035,
+    row_count: 1100000,
+    status: "completed",
+    data_available: false,
+  },
+  {
+    run_id: "c3d4e5f6-a7b8-9012-cdef-123456789012",
+    timestamp: "2026-03-07T20:30:00Z",
+    run_kind: "scenario",
+    template_name: "Carbon Tax \u2014 Uniform Rate",
+    policy_type: "carbon_tax",
+    portfolio_name: null,
+    start_year: 2025,
+    end_year: 2027,
+    row_count: 0,
+    status: "failed",
+    data_available: false,
+  },
+];
+
 /** Simulated progress steps for RunProgressBar */
 export const mockSimulationSteps = [
   "Initializing population data...",

@@ -2,7 +2,7 @@
 
 # Story 17.3: Build Simulation Runner with Progress and Persistent Results
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -16,7 +16,7 @@ so that I can execute policy simulations with confidence, track execution progre
 
 1. **AC-1: Run initiation with progress** — Given a configured population and policy portfolio (or single-policy scenario from existing configuration flow), when the analyst clicks "Run Simulation", then the simulation starts and a progress indicator shows: current year being computed (e.g., "Computing year 2027..."), completion percentage (computed as `years_completed / total_years * 100`), and estimated remaining time based on elapsed time per year. The run is synchronous (single HTTP request); progress is simulated client-side based on the year range (start_year to end_year) with a timed interval. The progress bar uses the existing `RunProgressBar` component with enriched step labels. If the API call fails, the progress view transitions to an error state showing structured `what/why/fix` fields. Cancel navigates back to configuration (does not abort the HTTP request for MVP — true abort is out of scope).
 
-2. **AC-2: Automatic persistent save** — Given a running simulation, when it completes successfully, then results are automatically saved to persistent storage on the server with a unique run ID (UUID), timestamp (ISO 8601), configuration summary (template name, policy type, year range, population ID, seed), and all result artifacts (indicators can be recomputed from cached `SimulationResult`). The persistent store is a structured directory under `~/.reformlab/results/{run_id}/` containing a `metadata.json` file with run metadata and a reference to the in-memory cache. The existing `ResultCache` continues to hold the full `SimulationResult`; the persistent metadata layer enables listing and browsing across server restarts. On server restart, previously saved metadata files are discoverable but full `SimulationResult` objects are not recoverable (re-run required for full data — documented limitation for MVP).
+2. **AC-2: Automatic persistent save** — Given a running simulation, when it completes (successfully or with a failure), then metadata is automatically saved to persistent storage on the server with a unique run ID (UUID v4, server-generated), timestamp (ISO 8601 UTC), configuration summary (run kind, template name or portfolio name, policy type, year range, population ID, seed), simulation start/end timestamps, adapter version, and final status (`"completed"` or `"failed"`). Full result artifacts (indicators recomputed from cached `SimulationResult`) are available only for completed runs while the result remains in the in-memory cache. The persistent store is a structured directory under `~/.reformlab/results/{run_id}/` containing a `metadata.json` file with run metadata. The existing `ResultCache` continues to hold the full `SimulationResult`; the persistent metadata layer enables listing and browsing across server restarts. On server restart, previously saved metadata files are discoverable but full `SimulationResult` objects are not recoverable (re-run required for full data — documented limitation for MVP). Failed-run metadata is saved with `row_count=0`; the metadata save is wrapped in a try/except so a storage failure does not mask the run error response.
 
 3. **AC-3: Persistent results listing** — Given persistent results, when the analyst opens the Simulation Runner screen (or returns to the application after closing the browser), then all previously completed runs are listed in reverse chronological order showing: run ID (truncated), timestamp, template/portfolio name, year range, row count, and status badge (completed/failed). The list is fetched from `GET /api/results` which reads metadata files from the persistent store. Each run entry is clickable.
 
@@ -24,61 +24,63 @@ so that I can execute policy simulations with confidence, track execution progre
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Implement persistent result metadata storage (AC: 2, 3)
-  - [ ] 1.1: Create `src/reformlab/server/result_store.py` with `ResultStore` class that manages a structured directory at `~/.reformlab/results/`
-  - [ ] 1.2: Define `ResultMetadata` frozen dataclass with fields: `run_id: str`, `timestamp: str` (ISO 8601), `template_name: str`, `policy_type: str`, `start_year: int`, `end_year: int`, `population_id: str | None`, `seed: int | None`, `row_count: int`, `manifest_id: str`, `scenario_id: str`, `status: str` (completed/failed), `portfolio_name: str | None`
-  - [ ] 1.3: Implement `ResultStore.save_metadata(run_id, metadata)` — writes `metadata.json` to `~/.reformlab/results/{run_id}/metadata.json`
-  - [ ] 1.4: Implement `ResultStore.list_results()` — scans results directory, loads all `metadata.json` files, returns list sorted by timestamp descending
-  - [ ] 1.5: Implement `ResultStore.get_metadata(run_id)` — loads single metadata file by run_id
-  - [ ] 1.6: Implement `ResultStore.delete_result(run_id)` — removes the run directory
-  - [ ] 1.7: Add `get_result_store()` dependency function to `src/reformlab/server/dependencies.py`
-  - [ ] 1.8: Write tests in `tests/server/test_result_store.py`
+- [x] Task 1: Implement persistent result metadata storage (AC: 2, 3)
+  - [x] 1.1: Create `src/reformlab/server/result_store.py` with `ResultStore` class that manages a structured directory at `~/.reformlab/results/`
+  - [x] 1.2: Define `ResultMetadata` frozen dataclass with fields: `run_id: str`, `timestamp: str` (ISO 8601 UTC — submission time), `run_kind: str` (`"scenario"` or `"portfolio"`), `start_year: int`, `end_year: int`, `population_id: str | None`, `seed: int | None`, `row_count: int` (0 for failed runs), `manifest_id: str`, `scenario_id: str`, `adapter_version: str`, `started_at: str` (ISO 8601 UTC — simulation start), `finished_at: str` (ISO 8601 UTC — simulation end), `status: str` (`"completed"` or `"failed"`), `template_name: str | None = None` (scenario runs only), `policy_type: str | None = None` (scenario runs only), `portfolio_name: str | None = None` (portfolio runs only). Define a `ResultStoreError` base exception and `ResultNotFound(ResultStoreError)` subclass in `result_store.py` for consistent error propagation
+  - [x] 1.3: Implement `ResultStore.save_metadata(run_id, metadata)` — writes `metadata.json` to `~/.reformlab/results/{run_id}/metadata.json` using atomic write (write to `.metadata.json.tmp` then `os.replace()`) to prevent corrupt files on crash
+  - [x] 1.4: Implement `ResultStore.list_results()` — scans results directory, loads all `metadata.json` files, returns list sorted by `timestamp` descending (parse as `datetime` for correct ordering, not string comparison); skip and log a warning for corrupt or missing entries rather than raising
+  - [x] 1.5: Implement `ResultStore.get_metadata(run_id)` — loads single metadata file by run_id; raises `ResultNotFound` if the directory or file does not exist
+  - [x] 1.6: Implement `ResultStore.delete_result(run_id)` — removes the run directory
+  - [x] 1.7: Add `get_result_store()` dependency function to `src/reformlab/server/dependencies.py`
+  - [x] 1.8: Write tests in `tests/server/test_result_store.py`
 
-- [ ] Task 2: Implement FastAPI endpoints for result listing and retrieval (AC: 3, 4)
-  - [ ] 2.1: Create `src/reformlab/server/routes/results.py` with router
-  - [ ] 2.2: Add `GET /results` endpoint (full path: `GET /api/results`) — list all saved results with metadata
-  - [ ] 2.3: Add `GET /results/{run_id}` endpoint (full path: `GET /api/results/{run_id}`) — return result detail; if `SimulationResult` in cache, include indicators summary; if not, return metadata only with `data_available: false`
-  - [ ] 2.4: Add `DELETE /results/{run_id}` endpoint (full path: `DELETE /api/results/{run_id}`) — remove from both persistent store and cache
-  - [ ] 2.5: Add Pydantic v2 request/response models to `src/reformlab/server/models.py`: `ResultMetadataResponse`, `ResultDetailResponse`, `ResultListItem`
-  - [ ] 2.6: Register results router in `src/reformlab/server/app.py`
-  - [ ] 2.7: Modify `POST /api/runs` in `src/reformlab/server/routes/runs.py` to auto-save metadata after successful run
-  - [ ] 2.8: Write backend tests in `tests/server/test_results.py`
+- [x] Task 2: Implement FastAPI endpoints for result listing and retrieval (AC: 3, 4)
+  - [x] 2.1: Create `src/reformlab/server/routes/results.py` with router
+  - [x] 2.2: Add `GET /results` endpoint (full path: `GET /api/results`) — list all saved results with metadata
+  - [x] 2.3: Add `GET /results/{run_id}` endpoint (full path: `GET /api/results/{run_id}`) — return result detail; if `SimulationResult` in cache, include indicators summary; if not, return metadata only with `data_available: false`
+  - [x] 2.4: Add `DELETE /results/{run_id}` endpoint (full path: `DELETE /api/results/{run_id}`) — remove from both persistent store and cache
+  - [x] 2.5: Add Pydantic v2 request/response models to `src/reformlab/server/models.py`: `ResultMetadataResponse`, `ResultDetailResponse`, `ResultListItem`
+  - [x] 2.6: Register results router in `src/reformlab/server/app.py`
+  - [x] 2.7: Modify `POST /api/runs` in `src/reformlab/server/routes/runs.py` to auto-save metadata after every run (success and failure). Record `started_at` before invoking the simulation pipeline; record `finished_at` in a `finally` block. Save metadata with `status="completed"` on success and `status="failed"` on exception (`row_count=0`, `manifest_id=""`, `adapter_version="unknown"` when result is unavailable). Wrap the `save_metadata()` call in its own try/except so a storage failure does not prevent the run response from being returned. Add regression tests to `tests/server/test_runs.py` verifying that metadata is saved on both success and failure paths
+  - [x] 2.8: Write backend tests in `tests/server/test_results.py`
+  - [x] 2.9: Add `GET /results/{run_id}/export/csv` endpoint (full path: `GET /api/results/{run_id}/export/csv`) — retrieve `SimulationResult` from `ResultCache` and stream the panel data `pa.Table` as a CSV file download (`Content-Disposition: attachment; filename="{run_id}.csv"`). Return 404 if run_id not found in persistent store; return 409 if result has been evicted from cache (`data_available: false`)
+  - [x] 2.10: Add `GET /results/{run_id}/export/parquet` endpoint (full path: `GET /api/results/{run_id}/export/parquet`) — same as 2.9 but stream as Parquet. Use `pyarrow.parquet.write_table()` to an in-memory buffer and return with `Content-Type: application/octet-stream`
 
-- [ ] Task 3: Define frontend TypeScript types and API client layer (AC: 3, 4)
-  - [ ] 3.1: Add TypeScript interfaces to `frontend/src/api/types.ts`: `ResultListItem`, `ResultDetailResponse`, `ResultMetadata`
-  - [ ] 3.2: Create `frontend/src/api/results.ts` with API functions: `listResults()`, `getResult()`, `deleteResult()`
-  - [ ] 3.3: Add `useResults()` hook to `frontend/src/hooks/useApi.ts` following existing mock-data-fallback pattern
-  - [ ] 3.4: Add mock data for results in `frontend/src/data/mock-data.ts`: `MockResultItem`, `mockResults`
+- [x] Task 3: Define frontend TypeScript types and API client layer (AC: 3, 4)
+  - [x] 3.1: Add TypeScript interfaces to `frontend/src/api/types.ts`: `ResultListItem`, `ResultDetailResponse`, `ResultMetadata`
+  - [x] 3.2: Create `frontend/src/api/results.ts` with API functions: `listResults()`, `getResult()`, `deleteResult()`
+  - [x] 3.3: Add `useResults()` hook to `frontend/src/hooks/useApi.ts` following existing mock-data-fallback pattern
+  - [x] 3.4: Add mock data for results in `frontend/src/data/mock-data.ts`: `MockResultItem`, `mockResults`
 
-- [ ] Task 4: Build SimulationRunnerScreen with progress (AC: 1)
-  - [ ] 4.1: Create `frontend/src/components/screens/SimulationRunnerScreen.tsx` — orchestration container with three sub-views: Configure (pre-run summary), Progress (running), Results (post-run). Uses existing `RunProgressBar` for progress display
-  - [ ] 4.2: Implement client-side progress simulation: given `start_year` and `end_year`, tick through years at a timed interval (total run time / year count), updating `currentStep` ("Computing year YYYY...") and `progress` percentage. On API completion, jump to 100% and transition to results sub-view
-  - [ ] 4.3: Implement error state: on API failure, show `PopulationGenerationProgress`-style error display with what/why/fix fields
-  - [ ] 4.4: Add unit tests for SimulationRunnerScreen
+- [x] Task 4: Build SimulationRunnerScreen with progress (AC: 1)
+  - [x] 4.1: Create `frontend/src/components/screens/SimulationRunnerScreen.tsx` — orchestration container with three sub-views: Configure (pre-run summary), Progress (running), Results (post-run). Uses existing `RunProgressBar` for progress display
+  - [x] 4.2: Implement client-side progress simulation: given `start_year` and `end_year`, tick through years at a timed interval (total run time / year count), updating `currentStep` ("Computing year YYYY...") and `progress` percentage. On API completion, jump to 100% and transition to results sub-view
+  - [x] 4.3: Implement error state: on API failure, show `PopulationGenerationProgress`-style error display with what/why/fix fields
+  - [x] 4.4: Add unit tests for SimulationRunnerScreen
 
-- [ ] Task 5: Build ResultsListPanel for persistent results browsing (AC: 3)
-  - [ ] 5.1: Create `frontend/src/components/simulation/ResultsListPanel.tsx` — reverse-chronological list of completed runs with: truncated run ID (first 8 chars), formatted timestamp, template/portfolio name, year range badge, row count, status badge, click-to-select, delete button
-  - [ ] 5.2: Add unit tests for ResultsListPanel
+- [x] Task 5: Build ResultsListPanel for persistent results browsing (AC: 3)
+  - [x] 5.1: Create `frontend/src/components/simulation/ResultsListPanel.tsx` — reverse-chronological list of completed runs with: truncated run ID (first 8 chars), formatted timestamp, template/portfolio name, year range badge, row count, status badge, click-to-select, delete button
+  - [x] 5.2: Add unit tests for ResultsListPanel
 
-- [ ] Task 6: Build ResultDetailView for run inspection (AC: 4)
-  - [ ] 6.1: Create `frontend/src/components/simulation/ResultDetailView.tsx` — tabbed detail view with: "Indicators" tab (DistributionalChart + SummaryStatCard grid), "Data Summary" tab (row/column count, year range, columns list), "Manifest" tab (manifest ID, scenario ID, adapter version, seed, timestamps). If `data_available: false`, show metadata-only view with "Re-run to access full data" prompt
-  - [ ] 6.2: Add export buttons (CSV, Parquet) in "Data Summary" tab, disabled when `data_available: false`
-  - [ ] 6.3: Add unit tests for ResultDetailView
+- [x] Task 6: Build ResultDetailView for run inspection (AC: 4)
+  - [x] 6.1: Create `frontend/src/components/simulation/ResultDetailView.tsx` — tabbed detail view with: "Indicators" tab (DistributionalChart + SummaryStatCard grid), "Data Summary" tab (row/column count, year range, columns list), "Manifest" tab (manifest ID, scenario ID, adapter version, seed, timestamps). If `data_available: false`, show metadata-only view with "Re-run to access full data" prompt
+  - [x] 6.2: Add export buttons (CSV, Parquet) in "Data Summary" tab, disabled when `data_available: false`
+  - [x] 6.3: Add unit tests for ResultDetailView
 
-- [ ] Task 7: Integrate SimulationRunnerScreen into workspace (AC: 1, 2, 3, 4)
-  - [ ] 7.1: Add `"runner"` view mode to `App.tsx` ViewMode type
-  - [ ] 7.2: Wire `SimulationRunnerScreen` into `App.tsx` main content area
-  - [ ] 7.3: Add "Simulation" navigation button to left panel (between "Portfolio" and "Configure Policy")
-  - [ ] 7.4: Update `AppContext.tsx` — add `results: ResultListItem[]`, `resultsLoading: boolean`, `refetchResults: () => Promise<void>`
-  - [ ] 7.5: Wire run completion to auto-refetch results list
-  - [ ] 7.6: Verify non-regression: existing view modes (configuration, data-fusion, portfolio, run, progress, results, comparison), left panel navigation, and `Cmd+[`/`Cmd+]` keyboard shortcuts remain functional
+- [x] Task 7: Integrate SimulationRunnerScreen into workspace (AC: 1, 2, 3, 4)
+  - [x] 7.1: Add `"runner"` view mode to `App.tsx` ViewMode type
+  - [x] 7.2: Wire `SimulationRunnerScreen` into `App.tsx` main content area
+  - [x] 7.3: Add "Simulation" navigation button to left panel (between "Portfolio" and "Configure Policy")
+  - [x] 7.4: Update `AppContext.tsx` — add `results: ResultListItem[]`, `resultsLoading: boolean`, `refetchResults: () => Promise<void>`. Verify that `AppContext` already exposes (or add) `selectedPopulationId: string | null` (set by DataFusionWorkbench in Story 17.1) and `selectedPortfolioName: string | null` (set by PortfolioDesignerScreen in Story 17.2), as `SimulationRunnerScreen` reads these to populate the pre-run summary and builds the `POST /api/runs` request body. The pre-run summary sub-view should also expose local state for `startYear`, `endYear`, and `seed` editable by the analyst before submitting
+  - [x] 7.5: Wire run completion to auto-refetch results list
+  - [x] 7.6: Verify non-regression: existing view modes (configuration, data-fusion, portfolio, run, progress, results, comparison), left panel navigation, and `Cmd+[`/`Cmd+]` keyboard shortcuts remain functional
 
-- [ ] Task 8: Run quality checks (AC: all)
-  - [ ] 8.1: Run `uv run ruff check src/ tests/` and fix any lint issues
-  - [ ] 8.2: Run `uv run mypy src/` and fix any type errors
-  - [ ] 8.3: Run `cd frontend && npm run typecheck && npm run lint` and fix any issues
-  - [ ] 8.4: Run `uv run pytest tests/` — all tests pass
-  - [ ] 8.5: Run `cd frontend && npm test` — all tests pass
+- [x] Task 8: Run quality checks (AC: all)
+  - [x] 8.1: Run `uv run ruff check src/ tests/` and fix any lint issues
+  - [x] 8.2: Run `uv run mypy src/` and fix any type errors
+  - [x] 8.3: Run `cd frontend && npm run typecheck && npm run lint` and fix any issues
+  - [x] 8.4: Run `uv run pytest tests/` — all tests pass
+  - [x] 8.5: Run `cd frontend && npm test` — all tests pass
 
 ## Dev Notes
 
@@ -91,6 +93,8 @@ so that I can execute policy simulations with confidence, track execution progre
 | GET | `/api/results` | `/` | List all saved results (metadata only) |
 | GET | `/api/results/{run_id}` | `/{run_id}` | Get result detail (metadata + indicators if cached) |
 | DELETE | `/api/results/{run_id}` | `/{run_id}` | Delete result from persistent store and cache |
+| GET | `/api/results/{run_id}/export/csv` | `/{run_id}/export/csv` | Download panel data as CSV (requires cache hit) |
+| GET | `/api/results/{run_id}/export/parquet` | `/{run_id}/export/parquet` | Download panel data as Parquet (requires cache hit) |
 
 **Backend — HTTP status code matrix:**
 
@@ -99,6 +103,8 @@ so that I can execute policy simulations with confidence, track execution progre
 | `GET /api/results` | 200 | — |
 | `GET /api/results/{run_id}` | 200 | 404 (not found) |
 | `DELETE /api/results/{run_id}` | 204 | 404 (not found) |
+| `GET /api/results/{run_id}/export/csv` | 200 (streaming) | 404 (not found), 409 (data evicted from cache) |
+| `GET /api/results/{run_id}/export/parquet` | 200 (streaming) | 404 (not found), 409 (data evicted from cache) |
 
 All error responses use `{"what": str, "why": str, "fix": str}` structure.
 
@@ -127,6 +133,12 @@ The persistent result store is a lightweight metadata layer on top of the existi
 - If the `ResultCache` has the result → return full detail with indicators
 - If only metadata exists → return metadata with `data_available: false`
 
+**ResultStore write safety:**
+- All metadata writes use atomic rename: write to `{run_id}/.metadata.json.tmp`, then `os.replace()` to `{run_id}/metadata.json`
+- `list_results()` wraps each file load in try/except and skips corrupt entries (logs `level=WARNING event=corrupt_metadata run_id=...`)
+- `get_metadata()` raises `ResultNotFound` for missing directories/files; route handlers convert to 404
+- Route handlers for export endpoints return 409 (Conflict) when the run_id is found in persistent store but the `SimulationResult` has been evicted from the `ResultCache`
+
 **Why this design:**
 - Story 17.7 will implement full persistent storage (Parquet serialization of panel data, manifest persistence)
 - This story focuses on the **GUI experience** of persistent results: listing, browsing, detail viewing
@@ -138,42 +150,78 @@ The persistent result store is a lightweight metadata layer on top of the existi
 @dataclass(frozen=True)
 class ResultMetadata:
     run_id: str
-    timestamp: str  # ISO 8601
-    template_name: str
-    policy_type: str
+    timestamp: str        # ISO 8601 UTC — submission time
+    run_kind: str         # "scenario" | "portfolio"
     start_year: int
     end_year: int
     population_id: str | None
     seed: int | None
-    row_count: int
-    manifest_id: str
-    scenario_id: str
-    status: str  # "completed" | "failed"
-    portfolio_name: str | None = None
+    row_count: int        # 0 for failed runs
+    manifest_id: str      # empty string for failed runs
+    scenario_id: str      # empty string for failed runs
+    adapter_version: str  # "unknown" for failed runs
+    started_at: str       # ISO 8601 UTC — simulation start
+    finished_at: str      # ISO 8601 UTC — simulation end
+    status: str           # "completed" | "failed"
+    template_name: str | None = None   # scenario runs; None for portfolio-only runs
+    policy_type: str | None = None     # scenario runs; None for portfolio-only runs
+    portfolio_name: str | None = None  # portfolio runs; None for scenario-only runs
 ```
+
+**ResultStore exceptions:**
+
+```python
+class ResultStoreError(Exception):
+    """Base exception for ResultStore operations."""
+
+class ResultNotFound(ResultStoreError):
+    """Raised when a run_id does not exist in the persistent store."""
+```
+
+Route handlers catch `ResultNotFound` and convert it to `HTTPException(status_code=404, detail={"what": ..., "why": ..., "fix": ...})`.
 
 **Auto-save integration in `POST /api/runs`:**
 
-After a successful run, the existing `run_simulation()` route handler must also save metadata:
+The existing `run_simulation()` route handler must save metadata for both success and failure. Wrap the simulation call with timestamp capture and a `finally` block:
 
 ```python
-# In runs.py, after cache.store(run_id, result):
-store = get_result_store()
-metadata = ResultMetadata(
-    run_id=run_id,
-    timestamp=datetime.now(timezone.utc).isoformat(),
-    template_name=body.template_name,
-    policy_type=...,  # extract from template
-    start_year=body.start_year,
-    end_year=body.end_year,
-    population_id=body.population_id,
-    seed=body.seed,
-    row_count=row_count,
-    manifest_id=result.manifest.manifest_id,
-    scenario_id=result.scenario_id,
-    status="completed" if result.success else "failed",
-)
-store.save_metadata(run_id, metadata)
+# In runs.py — save metadata for both success and failure:
+started_at = datetime.now(timezone.utc).isoformat()
+result = None
+status = "failed"
+row_count = 0
+try:
+    result = run_simulation_pipeline(body, adapter, cache)
+    cache.store(run_id, result)
+    status = "completed" if result.success else "failed"
+    row_count = result.panel_data.num_rows if result.success else 0
+finally:
+    finished_at = datetime.now(timezone.utc).isoformat()
+    store = get_result_store()
+    try:
+        run_kind = "portfolio" if body.portfolio_name else "scenario"
+        store.save_metadata(run_id, ResultMetadata(
+            run_id=run_id,
+            timestamp=started_at,
+            run_kind=run_kind,
+            template_name=body.template_name,
+            policy_type=body.policy_type,
+            portfolio_name=body.portfolio_name,
+            start_year=body.start_year,
+            end_year=body.end_year,
+            population_id=body.population_id,
+            seed=body.seed,
+            row_count=row_count,
+            manifest_id=result.manifest.manifest_id if result else "",
+            scenario_id=result.scenario_id if result else "",
+            adapter_version=result.adapter_version if result else "unknown",
+            started_at=started_at,
+            finished_at=finished_at,
+            status=status,
+        ))
+    except Exception:
+        logger.exception("event=metadata_save_failed run_id=%s", run_id)
+        # Do not propagate — metadata save failure should not mask run result
 ```
 
 **Backend — Dependencies pattern:**
@@ -272,22 +320,22 @@ class ResultListItem(BaseModel):
     model_config = {"from_attributes": True}
     run_id: str
     timestamp: str
-    template_name: str
-    policy_type: str
+    run_kind: str           # "scenario" | "portfolio"
     start_year: int
     end_year: int
     row_count: int
     status: str
-    portfolio_name: str | None = None
-    data_available: bool  # True if SimulationResult is in cache
+    data_available: bool    # True if SimulationResult is in cache
+    template_name: str | None = None   # scenario runs only
+    policy_type: str | None = None     # scenario runs only
+    portfolio_name: str | None = None  # portfolio runs only
 
 class ResultDetailResponse(BaseModel):
     """Full detail for a single simulation result."""
     model_config = {"from_attributes": True}
     run_id: str
     timestamp: str
-    template_name: str
-    policy_type: str
+    run_kind: str
     start_year: int
     end_year: int
     population_id: str | None
@@ -295,9 +343,14 @@ class ResultDetailResponse(BaseModel):
     row_count: int
     manifest_id: str
     scenario_id: str
+    adapter_version: str
+    started_at: str
+    finished_at: str
     status: str
-    portfolio_name: str | None = None
     data_available: bool
+    template_name: str | None = None
+    policy_type: str | None = None
+    portfolio_name: str | None = None
     # Populated only when data_available is True:
     indicators: dict[str, Any] | None = None
     columns: list[str] | None = None
@@ -313,14 +366,15 @@ Add to `frontend/src/api/types.ts`:
 export interface ResultListItem {
   run_id: string;
   timestamp: string;
-  template_name: string;
-  policy_type: string;
+  run_kind: string;              // "scenario" | "portfolio"
   start_year: number;
   end_year: number;
   row_count: number;
   status: string;
-  portfolio_name: string | null;
   data_available: boolean;
+  template_name: string | null;  // scenario runs only
+  policy_type: string | null;    // scenario runs only
+  portfolio_name: string | null; // portfolio runs only
 }
 
 export interface ResultDetailResponse extends ResultListItem {
@@ -328,6 +382,9 @@ export interface ResultDetailResponse extends ResultListItem {
   seed: number | null;
   manifest_id: string;
   scenario_id: string;
+  adapter_version: string;
+  started_at: string;
+  finished_at: string;
   indicators: Record<string, unknown> | null;
   columns: string[] | null;
   column_count: number | null;
@@ -340,13 +397,14 @@ export interface ResultDetailResponse extends ResultListItem {
 export interface MockResultItem {
   run_id: string;
   timestamp: string;
-  template_name: string;
-  policy_type: string;
+  run_kind: string;
+  template_name: string | null;
+  policy_type: string | null;
+  portfolio_name: string | null;
   start_year: number;
   end_year: number;
   row_count: number;
   status: string;
-  portfolio_name: string | null;
   data_available: boolean;
 }
 
@@ -354,25 +412,40 @@ export const mockResults: MockResultItem[] = [
   {
     run_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     timestamp: "2026-03-07T22:15:30Z",
+    run_kind: "scenario",
     template_name: "Carbon Tax — With Dividend",
     policy_type: "carbon_tax",
+    portfolio_name: null,
     start_year: 2025,
     end_year: 2030,
     row_count: 600000,
     status: "completed",
-    portfolio_name: null,
     data_available: true,
   },
   {
     run_id: "b2c3d4e5-f6a7-8901-bcde-f12345678901",
     timestamp: "2026-03-07T21:45:12Z",
-    template_name: "Green Transition 2030",
-    policy_type: "carbon_tax",
+    run_kind: "portfolio",
+    template_name: null,
+    policy_type: null,
+    portfolio_name: "green-transition-2030",
     start_year: 2025,
     end_year: 2035,
     row_count: 1100000,
     status: "completed",
-    portfolio_name: "green-transition-2030",
+    data_available: false,
+  },
+  {
+    run_id: "c3d4e5f6-a7b8-9012-cdef-123456789012",
+    timestamp: "2026-03-07T20:30:00Z",
+    run_kind: "scenario",
+    template_name: "Carbon Tax — Uniform Rate",
+    policy_type: "carbon_tax",
+    portfolio_name: null,
+    start_year: 2025,
+    end_year: 2027,
+    row_count: 0,
+    status: "failed",
     data_available: false,
   },
 ];
@@ -400,11 +473,12 @@ frontend/src/components/simulation/__tests__/ResultDetailView.test.tsx
 src/reformlab/server/models.py                          ← Add result Pydantic models
 src/reformlab/server/app.py                             ← Register results router
 src/reformlab/server/dependencies.py                    ← Add get_result_store()
-src/reformlab/server/routes/runs.py                     ← Auto-save metadata after run
+src/reformlab/server/routes/runs.py                     ← Auto-save metadata after run (success + failure)
+tests/server/test_runs.py                               ← Regression tests for modified runs.py
 frontend/src/api/types.ts                               ← Add result TypeScript interfaces
-frontend/src/data/mock-data.ts                          ← Add mock result data
+frontend/src/data/mock-data.ts                          ← Add mock result data (run_kind, failed run)
 frontend/src/hooks/useApi.ts                            ← Add useResults hook
-frontend/src/contexts/AppContext.tsx                     ← Add results state
+frontend/src/contexts/AppContext.tsx                     ← Add results state + verify run config state
 frontend/src/App.tsx                                    ← Add "runner" view mode, wire screen
 ```
 
@@ -498,8 +572,12 @@ Story 17.3 implements the **GUI layer and lightweight metadata persistence**. Th
 - Use `tmp_path` fixture for ResultStore tests (don't pollute real `~/.reformlab/results/`)
 - Use FastAPI `TestClient` pattern from `tests/server/test_api.py`
 - Test each endpoint: valid input → expected response, invalid input → error
-- Test metadata round-trip: save → list → get → verify fields
+- Test metadata round-trip: save → list → get → verify all fields including `run_kind`, `adapter_version`, `started_at`, `finished_at`
 - Test cache interaction: result in cache → `data_available: true`; evicted → `data_available: false`
+- Test failed-run metadata persistence: simulate run failure, verify `status="failed"`, `row_count=0` saved; metadata appears in list endpoint
+- Test `list_results()` skips corrupt/malformed JSON entries and continues loading others
+- Test export endpoints: 200 with valid cached result; 409 when result evicted; 404 when run_id unknown
+- Test `runs.py` regression: verify existing run response shape is unchanged after auto-save addition; verify metadata save failure does not cause run endpoint to error
 
 **Frontend tests:**
 - Use Vitest + @testing-library/react (already configured)
@@ -571,9 +649,45 @@ Story 17.3 implements the **GUI layer and lightweight metadata persistence**. Th
 
 ### Agent Model Used
 
+claude-sonnet-4-6
+
 ### Debug Log References
+
+None — all issues resolved inline during implementation.
 
 ### Completion Notes List
 
+- `get_adapter()` and `get_result_store()` are called as plain functions in `runs.py` (not via FastAPI `Depends()`), so test isolation requires `monkeypatch.setattr(deps, "_adapter", MockAdapter())` and `monkeypatch.setattr(deps, "_result_store", tmp_store)` rather than `app.dependency_overrides`.
+- `_dict_to_metadata()` uses `int(str(value))` coercion pattern to satisfy mypy strict mode when deserializing `dict[str, object]` from JSON.
+- Client-side progress is capped at 90% until API response arrives; jumps to 100% on success.
+- Export endpoints return HTTP 409 (Conflict) when run_id exists in persistent store but `SimulationResult` has been evicted from `ResultCache`.
+- `refetchResults()` is called once on auth in `AppContext.tsx` (duplicate call removed during lint pass).
+- All 3028 pytest tests pass; all 154 frontend Vitest tests pass.
+
 ### File List
+
+**New files:**
+- `src/reformlab/server/result_store.py`
+- `src/reformlab/server/routes/results.py`
+- `tests/server/test_result_store.py`
+- `tests/server/test_results.py`
+- `tests/server/test_runs.py`
+- `frontend/src/api/results.ts`
+- `frontend/src/components/screens/SimulationRunnerScreen.tsx`
+- `frontend/src/components/simulation/ResultsListPanel.tsx`
+- `frontend/src/components/simulation/ResultDetailView.tsx`
+- `frontend/src/components/screens/__tests__/SimulationRunnerScreen.test.tsx`
+- `frontend/src/components/simulation/__tests__/ResultsListPanel.test.tsx`
+- `frontend/src/components/simulation/__tests__/ResultDetailView.test.tsx`
+
+**Modified files:**
+- `src/reformlab/server/models.py`
+- `src/reformlab/server/app.py`
+- `src/reformlab/server/dependencies.py`
+- `src/reformlab/server/routes/runs.py`
+- `frontend/src/api/types.ts`
+- `frontend/src/data/mock-data.ts`
+- `frontend/src/hooks/useApi.ts`
+- `frontend/src/contexts/AppContext.tsx`
+- `frontend/src/App.tsx`
 

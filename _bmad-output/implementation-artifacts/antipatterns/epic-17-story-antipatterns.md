@@ -37,3 +37,16 @@
 | medium | AC-2 save-block UI behavior implicit | AC-2 now specifies disabled save button with exact hint text. |
 | medium | AC-3 boundary behavior unspecified | AC-3 now specifies first/last item disabled states and order persistence on save/load. |
 | medium | AC-5 clone 409 and load fidelity | AC-5 now specifies 409 conflict with suggested rename, and explicit order-restored-on-load guarantee. |
+
+## Story 17-3 (2026-03-07)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | Failed-run persistence missing — AC-3 shows `status: completed/failed` badge but AC-2 and Task 2.7 only saved on success, creating dead-letter metadata schema | AC-2 updated to cover both outcomes; Task 1.2 documents `row_count=0` for failures; Task 2.7 rewritten with `try/finally` pattern; auto-save code snippet updated; failed mock entry added |
+| critical | Portfolio-run metadata schema incompatible — `template_name: str` and `policy_type: str` were required non-optional fields, but portfolio runs have no single template | Added `run_kind: str` field; made `template_name`, `policy_type` optional (`str \| None`); `portfolio_name` already optional; updated all schemas (ResultMetadata, Pydantic models, TypeScript interfaces, mock data) |
+| critical | Missing manifest fields in ResultMetadata — AC-4 requires Manifest tab to show `adapter_version` and `timestamps` but these were absent from the schema, making the metadata-only view (post-cache-eviction) unable to render required content | Added `adapter_version: str`, `started_at: str`, `finished_at: str` to `ResultMetadata`, `ResultDetailResponse`, and `ResultDetailResponse` TypeScript interface |
+| critical | Missing export API specification — AC-4 commits to CSV/Parquet export buttons but no backend endpoints were defined; existing `exports.ts` is for indicator data, not run-specific panel data | Added Tasks 2.9 and 2.10 for `GET /api/results/{run_id}/export/csv` and `/parquet`; updated endpoint table and HTTP status matrix (200 streaming, 404 not found, 409 data evicted) |
+| critical | Population/portfolio state passing unclarified — `SimulationRunnerScreen` pre-run summary reads selected population/portfolio but Task 7.4 only added `results`-related AppContext state, leaving the run initiation inputs undefined | Task 7.4 updated to verify/add `selectedPopulationId` and `selectedPortfolioName` from prior stories; pre-run sub-view local state for `startYear`, `endYear`, `seed` documented |
+| high | Atomic write and corrupt-entry handling not specified for ResultStore — partial writes on crash could produce malformed JSON that breaks the entire results listing | Task 1.3 updated with atomic rename pattern; Task 1.4 updated with skip-and-log for corrupt entries; "ResultStore write safety" note added to Dev Notes |
+| high | ResultStore custom exceptions not defined — inconsistent error propagation to `what/why/fix` format | `ResultStoreError` and `ResultNotFound` exception classes added to schema section; Task 1.2 updated to require their definition; route handler contract documented |
+| medium | Testing standards missing failed-run and export test cases | Testing Standards section expanded with failed-run metadata tests, corrupt entry skip test, export endpoint tests (200/409/404), and `runs.py` regression tests |

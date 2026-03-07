@@ -20,13 +20,15 @@ class LoginRequest(BaseModel):
 
 
 class RunRequest(BaseModel):
-    template_name: str
-    policy: dict[str, Any]
-    start_year: int
-    end_year: int
+    template_name: str | None = None
+    policy: dict[str, Any] = {}
+    start_year: int = 2025
+    end_year: int = 2030
     population_id: str | None = None
     seed: int | None = None
     baseline_id: str | None = None
+    portfolio_name: str | None = None  # set for portfolio runs
+    policy_type: str | None = None  # for metadata recording
 
 
 class MemoryCheckRequest(BaseModel):
@@ -359,3 +361,53 @@ class PortfolioListItem(BaseModel):
     description: str
     version_id: str
     policy_count: int
+
+
+# ---------------------------------------------------------------------------
+# Result models — Story 17.3
+# ---------------------------------------------------------------------------
+
+
+class ResultListItem(BaseModel):
+    """Summary of a saved simulation result."""
+
+    model_config = {"from_attributes": True}
+    run_id: str
+    timestamp: str
+    run_kind: str  # "scenario" | "portfolio"
+    start_year: int
+    end_year: int
+    row_count: int
+    status: str
+    data_available: bool  # True if SimulationResult is in cache
+    template_name: str | None = None  # scenario runs only
+    policy_type: str | None = None  # scenario runs only
+    portfolio_name: str | None = None  # portfolio runs only
+
+
+class ResultDetailResponse(BaseModel):
+    """Full detail for a single simulation result."""
+
+    model_config = {"from_attributes": True}
+    run_id: str
+    timestamp: str
+    run_kind: str
+    start_year: int
+    end_year: int
+    population_id: str | None
+    seed: int | None
+    row_count: int
+    manifest_id: str
+    scenario_id: str
+    adapter_version: str
+    started_at: str
+    finished_at: str
+    status: str
+    data_available: bool
+    template_name: str | None = None
+    policy_type: str | None = None
+    portfolio_name: str | None = None
+    # Populated only when data_available is True:
+    indicators: dict[str, Any] | None = None
+    columns: list[str] | None = None
+    column_count: int | None = None
