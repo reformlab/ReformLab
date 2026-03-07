@@ -2,7 +2,7 @@
 
 # Story 14.7: Build 10-Year Behavioral Simulation Notebook Demo
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -14,7 +14,7 @@ so that I can understand how behavioral responses reshape fleet composition and 
 
 1. **AC-1: Notebook runs end-to-end** — Given the notebook `notebooks/demo/epic14_discrete_choice.ipynb`, when executed cell-by-cell (or via `pytest --nbmake`), then it completes without errors and produces all described outputs.
 
-2. **AC-2: Population with asset attributes** — The notebook creates or loads a population with at least: `household_id`, `income`, `household_size`, `region`, `housing_type`, `heating_type`, `vehicle_type`, `vehicle_age`, `energy_consumption`, `carbon_emissions`. This is the same attribute set required by the vehicle and heating discrete choice domains.
+2. **AC-2: Population with asset attributes** — The notebook creates or loads a population with at least: `household_id`, `income`, `household_size`, `region`, `housing_type`, `heating_type`, `vehicle_type`, `vehicle_age`, `heating_age`, `energy_consumption`, `carbon_emissions`. These attributes must be demonstrably utilized by the `MockAdapter`'s `compute_fn` to calculate policy-responsive costs and by the notebook's analysis and visualization sections.
 
 3. **AC-3: Policy portfolio configuration** — The notebook configures a policy portfolio (or equivalent multi-policy setup) that includes at minimum a carbon tax with a 10-year escalating rate schedule and a vehicle subsidy (EV bonus). Policy parameters are visible and explained in narrative cells.
 
@@ -28,42 +28,42 @@ so that I can understand how behavioral responses reshape fleet composition and 
 
 8. **AC-8: CI execution** — The notebook is registered in `.github/workflows/ci.yml` as a `pytest --nbmake` target. Committed outputs are cleared (execution_count=None, outputs=[]).
 
-9. **AC-9: Static validation test** — A test file `tests/notebooks/test_epic14_notebook.py` validates: notebook exists, outputs cleared, uses public API only (no internal module imports, no OpenFisca imports), includes required sections (population, policy, simulation, fleet charts, indicators, decision audit), and CI workflow includes the notebook.
+9. **AC-9: Static validation test** — A test file `tests/notebooks/test_epic14_notebook.py` validates: notebook exists, outputs cleared, uses public API only (no `reformlab.computation.adapter` or `reformlab.computation.openfisca` imports, no OpenFisca imports), includes required sections (population, policy, simulation, fleet charts, indicators, decision audit).
 
-10. **AC-10: Manifest and governance** — The notebook inspects the run manifest to show discrete choice taste parameters (beta_cost) recorded per domain and the seed log for reproducibility verification.
+10. **AC-10: Manifest and governance** — The notebook calls `capture_discrete_choice_parameters(result.yearly_states)` to show discrete choice taste parameters (beta_cost) recorded per domain and displays the seed log from `result.yearly_states` for reproducibility verification.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create notebook file (AC: 1, 2, 3, 4, 5, 6, 7, 8, 10)
-  - [ ] 1.1: Create `notebooks/demo/epic14_discrete_choice.ipynb` with cleared outputs
-  - [ ] 1.2: Section 0: Setup — imports, path resolution, `show()` helper, output dir
-  - [ ] 1.3: Section 1: Build Population — construct a synthetic population (100 households) with all required asset attributes using inline PyArrow table construction (NOT the population pipeline — keep it self-contained like epic12 demo)
-  - [ ] 1.4: Section 2: Configure Policy Portfolio — escalating carbon tax (€50→€100/tCO2 over 10 years) + EV subsidy; explain parameters in markdown
-  - [ ] 1.5: Section 3: Wire Discrete Choice Pipeline — set up vehicle domain (6 alternatives) + heating domain (5 alternatives) with `DiscreteChoiceStep`, `LogitChoiceStep`, `EligibilityMergeStep`, state update steps, and `DecisionRecordStep` for both domains; use `MockAdapter` with `compute_fn` that computes per-alternative costs from population attributes and policy parameters
-  - [ ] 1.6: Section 4: Run 10-Year Simulation — build `OrchestratorConfig` with start_year=2025, end_year=2034, seed=42, step_pipeline from Section 3; execute via `Orchestrator`; show progress and completion
-  - [ ] 1.7: Section 5: Fleet Composition Over Time — extract vehicle_type and heating_type from yearly states' population data; build stacked area chart for vehicle fleet evolution (EV adoption) and heating system transitions; use `matplotlib` and `create_figure()`
-  - [ ] 1.8: Section 6: Panel Output and Decision Records — build `PanelOutput.from_orchestrator_result()`; inspect decision columns (`vehicle_chosen`, `vehicle_probabilities`, `heating_chosen`, etc.); show `decision_domains` column; display `decision_domain_alternatives` metadata
-  - [ ] 1.9: Section 7: Distributional Indicators — compute distributional indicators from panel output; show impact by income decile with behavioral responses; use `plot_deciles()` or custom bar chart
-  - [ ] 1.10: Section 8: Governance and Reproducibility — inspect manifest metadata for `discrete_choice_parameters` (beta_cost per domain); show seed_log; verify determinism by re-running and comparing
-  - [ ] 1.11: Section 9: Export and Next Steps — export panel to Parquet, verify round-trip, mention next steps (calibration, GUI)
+- [x] Task 1: Create notebook file (AC: 1, 2, 3, 4, 5, 6, 7, 8, 10)
+  - [x]1.1: Create `notebooks/demo/epic14_discrete_choice.ipynb` with cleared outputs
+  - [x]1.2: Section 0: Setup — imports, path resolution, `show()` helper, output dir
+  - [x]1.3: Section 1: Build Population — construct a synthetic population (100 households) with all required asset attributes using inline PyArrow table construction (NOT the population pipeline — keep it self-contained like epic12 demo)
+  - [x]1.4: Section 2: Configure Policy Portfolio — escalating carbon tax (€50→€100/tCO2 over 10 years) + EV subsidy; explain parameters in markdown
+  - [x]1.5: Section 3: Wire Discrete Choice Pipeline — set up vehicle domain (6 alternatives) + heating domain (5 alternatives) with `DiscreteChoiceStep`, `LogitChoiceStep`, `EligibilityMergeStep`, state update steps, and `DecisionRecordStep` for both domains; use `MockAdapter` with `compute_fn` that implements a simplified but demonstrably responsive cost model: vehicle costs must increase with `carbon_emissions` scaled by the current year's carbon tax rate, and decrease for EV alternatives by the EV subsidy amount; heating costs must reflect similar emissions-based pricing; costs must vary meaningfully across alternatives so choices evolve over the 10-year horizon
+  - [x]1.6: Section 4: Run 10-Year Simulation — build `OrchestratorConfig` with start_year=2025, end_year=2034, seed=42, step_pipeline from Section 3; execute via `Orchestrator`; show progress and completion
+  - [x]1.7: Section 5: Fleet Composition Over Time — extract vehicle_type and heating_type from yearly states' population data; build stacked area chart for vehicle fleet evolution (EV adoption) and heating system transitions; use `matplotlib` and `create_figure()`
+  - [x]1.8: Section 6: Panel Output and Decision Records — build `PanelOutput.from_orchestrator_result()`; inspect decision columns (`vehicle_chosen`, `vehicle_probabilities`, `heating_chosen`, etc.); show `decision_domains` column; display `decision_domain_alternatives` metadata
+  - [x]1.9: Section 7: Distributional Indicators — compute distributional indicators from panel output; show impact by income decile with behavioral responses; use `plot_deciles()` or custom bar chart
+  - [x]1.10: Section 8: Governance and Reproducibility — inspect manifest metadata for `discrete_choice_parameters` (beta_cost per domain); show seed_log; verify determinism by re-running and comparing
+  - [x]1.11: Section 9: Export and Next Steps — export panel to Parquet, verify round-trip, mention next steps (calibration, GUI)
 
-- [ ] Task 2: Add CI integration (AC: 8)
-  - [ ] 2.1: Add `uv run pytest --nbmake notebooks/demo/epic14_discrete_choice.ipynb -v` to `.github/workflows/ci.yml`
+- [x] Task 2: Add CI integration (AC: 8)
+  - [x]2.1: Add `uv run pytest --nbmake notebooks/demo/epic14_discrete_choice.ipynb -v` to `.github/workflows/ci.yml`
 
-- [ ] Task 3: Create static validation test (AC: 9)
-  - [ ] 3.1: Create `tests/notebooks/test_epic14_notebook.py` following `test_advanced_notebook.py` pattern
-  - [ ] 3.2: Test: notebook exists at expected path
-  - [ ] 3.3: Test: outputs are cleared (execution_count=None, outputs=[])
-  - [ ] 3.4: Test: uses public API only — imports from `reformlab.discrete_choice`, `reformlab.orchestrator`, `reformlab.indicators`, `reformlab.visualization`; no `reformlab.computation` internal imports, no `openfisca` imports
-  - [ ] 3.5: Test: includes required sections (population, policy, pipeline, simulation, fleet composition, decision records, indicators, governance)
-  - [ ] 3.6: Test: includes key API calls — `DiscreteChoiceStep(`, `LogitChoiceStep(`, `VehicleStateUpdateStep(`, `HeatingStateUpdateStep(`, `DecisionRecordStep(`, `EligibilityMergeStep(`, `PanelOutput.from_orchestrator_result(`, `discrete_choice_parameters`
-  - [ ] 3.7: Test: CI workflow includes this notebook's nbmake execution
+- [x] Task 3: Create static validation test (AC: 9)
+  - [x]3.1: Create `tests/notebooks/test_epic14_notebook.py` following `test_advanced_notebook.py` pattern
+  - [x]3.2: Test: notebook exists at expected path
+  - [x]3.3: Test: outputs are cleared (execution_count=None, outputs=[])
+  - [x]3.4: Test: uses public API only — imports from `reformlab.discrete_choice`, `reformlab.orchestrator`, `reformlab.indicators`, `reformlab.visualization`, `reformlab.computation.mock_adapter`, `reformlab.computation.types`; no `reformlab.computation.adapter` or `reformlab.computation.openfisca` imports, no `openfisca` imports
+  - [x]3.5: Test: includes required sections (population, policy, pipeline, simulation, fleet composition, decision records, indicators, governance)
+  - [x]3.6: Test: includes key API calls — `DiscreteChoiceStep(`, `LogitChoiceStep(`, `VehicleStateUpdateStep(`, `HeatingStateUpdateStep(`, `DecisionRecordStep(`, `EligibilityMergeStep(`, `PanelOutput.from_orchestrator_result(`, `discrete_choice_parameters`
+  - [x]3.7: Test: CI workflow includes this notebook's nbmake execution
 
-- [ ] Task 4: Verify full regression (AC: all)
-  - [ ] 4.1: `uv run pytest --nbmake notebooks/demo/epic14_discrete_choice.ipynb -v`
-  - [ ] 4.2: `uv run pytest tests/notebooks/test_epic14_notebook.py -v`
-  - [ ] 4.3: `uv run ruff check notebooks/ tests/notebooks/`
-  - [ ] 4.4: `uv run pytest tests/` — full regression (no existing tests broken)
+- [x] Task 4: Verify full regression (AC: all)
+  - [x]4.1: `uv run pytest --nbmake notebooks/demo/epic14_discrete_choice.ipynb -v`
+  - [x]4.2: `uv run pytest tests/notebooks/test_epic14_notebook.py -v`
+  - [x]4.3: `uv run ruff check notebooks/ tests/notebooks/`
+  - [x]4.4: `uv run pytest tests/` — full regression (no existing tests broken)
 
 ## Dev Notes
 
@@ -92,7 +92,7 @@ from reformlab.computation.mock_adapter import MockAdapter
 from reformlab.computation.types import PopulationData, PolicyConfig
 
 def compute_fn(population: PopulationData, policy: PolicyConfig, period: int) -> pa.Table:
-    entity_table = population.entities.get("menage", pa.table({}))
+    entity_table = population.tables.get("menage", pa.table({}))
     n = entity_table.num_rows
     # ... compute costs based on attributes and policy year ...
     return pa.table({"total_vehicle_cost": costs, "total_heating_cost": heating_costs})
@@ -102,7 +102,7 @@ adapter = MockAdapter(compute_fn=compute_fn)
 
 ### Step Pipeline Wiring — Full Two-Domain Pipeline
 
-The notebook must wire the following 12-step pipeline (6 per domain):
+The notebook must wire the following 10-step pipeline (5 per domain):
 
 ```
 # Vehicle domain
@@ -182,7 +182,7 @@ heating_types = random.choices(["gas", "electric", "oil", "heat_pump", "wood"], 
 Store as `PopulationData` for use with `DiscreteChoiceStep`:
 ```python
 entity_table = pa.table({...})
-population = PopulationData(entities={"menage": entity_table})
+population = PopulationData(tables={"menage": entity_table})
 ```
 
 ### Fleet Composition Extraction
@@ -193,7 +193,7 @@ After the 10-year run, extract per-year fleet composition from yearly states:
 fleet_data = {}
 for year, state in sorted(result.yearly_states.items()):
     pop = state.data.get("population_data")
-    entity_table = pop.entities["menage"]
+    entity_table = pop.tables["menage"]
     vehicle_counts = {}
     for vt in entity_table.column("vehicle_type").to_pylist():
         vehicle_counts[vt] = vehicle_counts.get(vt, 0) + 1
@@ -305,8 +305,8 @@ No new Python source files in `src/reformlab/`. No new dependencies.
 | Scenario | Handling |
 |----------|----------|
 | MockAdapter must return correct N×M rows for expanded population | `compute_fn` reads `entity_table.num_rows` and returns matching row count |
-| `PopulationData` construction | Use `PopulationData(entities={"menage": table})` — discrete choice reads from `population_key="population_data"` which maps to `PopulationData` |
-| `PolicyConfig` for DiscreteChoiceStep | Need a valid `PolicyConfig` with `.name` property; use `PolicyConfig(name="carbon_tax_2025", parameters={...})` |
+| `PopulationData` construction | Use `PopulationData(tables={"menage": table})` — discrete choice reads from `population_key="population_data"` which maps to `PopulationData` |
+| `PolicyConfig` for DiscreteChoiceStep | Need a valid `PolicyConfig` with `.name` property; use `PolicyConfig(policy={...}, name="carbon_tax_2025")` |
 | Vehicle domain uses `cost_column="total_vehicle_cost"` | `compute_fn` must return a table containing this column name |
 | Heating domain uses `cost_column="total_heating_cost"` | Same — `compute_fn` must return this column too |
 | 10-year run modifies `PopulationData` in state each year | `VehicleStateUpdateStep` and `HeatingStateUpdateStep` update population attributes based on choices; subsequent years see updated fleet |
@@ -367,9 +367,22 @@ No new Python source files in `src/reformlab/`. No new dependencies.
 
 ### Agent Model Used
 
-(to be filled by dev agent)
+Claude Opus 4.6 (claude-opus-4-6)
 
 ### Debug Log References
+
+- Context overflow required session continuation; ruff lint fixes completed in second session
+
+### Change Log
+
+- Fixed ArrowInvalid schema mismatch during population expansion by adding `vehicle_emissions_gkm` and `heating_emissions_kgco2_kwh` to initial population
+- Fixed ReshapeError by passing through `_alternative_id` and `_original_household_index` tracking columns in compute_fn
+- Fixed DiscreteChoiceError duplicate domain names by adding `reset_decision_log` step at pipeline start
+- Fixed AttributeError on `IndicatorResult.table` — uses `.to_table()` method
+- Fixed 37 ruff lint errors (E402, E501, I001, F541) via auto-fix and manual reformatting
+- Fixed notebook cost modeling so alternative-specific emissions drive discrete-choice utilities under the escalating carbon tax
+- Replaced the static `ComputationStep` with a state-aware post-choice computation hook so panel indicators reflect the updated household fleet
+- Fixed the governance rerun cell to execute `orchestrator_rerun.run()` and added static checks for the post-choice computation wiring
 
 ### Completion Notes List
 
@@ -393,3 +406,18 @@ No new Python source files in `src/reformlab/`. No new dependencies.
 
 #### Modified Files
 - `.github/workflows/ci.yml` — Add nbmake entry for epic14 notebook
+- `_bmad-output/implementation-artifacts/14-7-build-10-year-behavioral-simulation-notebook-demo.md` — Review summary and status update
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-07
+- **Reviewer:** AI Code Review Engine
+- **Evidence Score:** 2.0 → APPROVED
+- **Issues Found:** 3
+- **Issues Fixed:** 3
+- **Action Items Created:** 0
+
+### Findings Closed
+- **IMPORTANT:** The notebook cost model priced alternatives from the shared `carbon_emissions` column, so the rising carbon tax shifted all utilities together instead of changing relative choice incentives. Fixed by pricing from `vehicle_emissions_gkm`, `heating_emissions_kgco2_kwh`, and `energy_consumption`.
+- **IMPORTANT:** The panel-compatible computation used the original `population` object captured at pipeline construction time, so the distributional chart did not actually reflect post-behavioral-response household states. Fixed by computing impacts from `state.data["population_data"]` after the decision-update steps.
+- **IMPORTANT:** The reproducibility check instantiated `orchestrator_rerun` but executed `orchestrator.run()`, weakening the governance proof and letting a broken rerun path pass unnoticed. Fixed the cell and added static coverage for the rerun call and state-aware computation wiring.
