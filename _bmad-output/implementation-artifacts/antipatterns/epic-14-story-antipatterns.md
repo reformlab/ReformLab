@@ -62,3 +62,16 @@
 | medium | `taste_parameters: dict[str, float]` and `eligibility_summary: dict[str, int] | Added "treat as logically immutable after construction" convention note to both fields in AC-1. |
 | medium | AC-5 does not specify whether `"discrete_choice_parameters"` manifest key is always present or only when non-empty | Added explicit "only when non-empty (key is absent for non-discrete-choice runs)" clause to AC-5. |
 | low | `DecisionRecord.probabilities` and `utilities` are `pa.Table` internally but `pa.list_(pa.float64())` in the panel — the transformation is only in Dev Notes code, not in ACs | Added note to AC-1 field descriptions and AC-3 column descriptions clarifying the `pa.Table` → `pa.list_` transformation. |
+
+## Story 14-7 (2026-03-07)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | `PopulationData` uses `.tables` not `.entities` | All 4 code snippets updated to `population.tables.get(...)`, `PopulationData(tables={...})`, `pop.tables[...]` |
+| critical | `PolicyConfig` constructor uses `policy=` not `parameters=` | Edge Cases table updated to `PolicyConfig(policy={...}, name="carbon_tax_2025")` |
+| critical | Task 3.4 forbids `reformlab.computation` imports but notebook requires `mock_adapter` and `types` from that package | Task 3.4 now explicitly whitelists `reformlab.computation.mock_adapter` and `reformlab.computation.types`; forbidden imports are now `reformlab.computation.adapter` and `reformlab.computation.openfisca` |
+| high | Pipeline step count stated as "12-step (6 per domain)" but only 5 steps listed per domain = 10 total | Corrected to "10-step pipeline (5 per domain)" |
+| high | AC-10 referred to "run manifest" ambiguously, conflicting with notebook using `Orchestrator` (not `OrchestratorRunner`) | AC-10 now explicitly specifies `capture_discrete_choice_parameters(result.yearly_states)` as the mechanism |
+| high | `MockAdapter.compute_fn` behavioral contract too vague to guarantee pedagogically meaningful demo | Task 1.5 now specifies that costs must increase with `carbon_emissions` × carbon tax rate, decrease for EV alternatives by subsidy amount, and vary meaningfully across alternatives |
+| medium | AC-9 redundantly required CI workflow check (already covered by AC-8) | Removed "and CI workflow includes the notebook" clause from AC-9 |
+| medium | AC-2 missing `heating_age` attribute needed for realistic heating eligibility filtering | Added `heating_age` to AC-2 required attribute list; added requirement that attributes must be demonstrably used by `compute_fn` |

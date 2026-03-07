@@ -1,56 +1,74 @@
+# =============================================================================
 # bmad-assist configuration for ReformLab
-# Strategy: GLM-5 creates/devs/synth/retro, Gemini+GLM-5+Codex validate/review
+# =============================================================================
 
+# --- Project identity ---
 project_name: ReformLab
 user_name: Lucas
-communication_language: English
-document_output_language: English
-user_skill_level: intermediate
+communication_language: English       # Language the agent uses to talk to you
+document_output_language: English      # Language used in generated artifacts (stories, reviews)
+user_skill_level: intermediate         # Adjusts explanation verbosity (beginner/intermediate/expert)
 
+# --- Tool guard ---
+# Safety limits to prevent runaway agent sessions from burning too many API calls.
 tool_guard:
-  max_total_calls: 400
-  max_interactions_per_file: 25
-  max_calls_per_minute: 150
+  max_total_calls: 400                 # Hard cap on total tool calls per phase execution
+  max_interactions_per_file: 25        # Max read/write operations on a single file
+  max_calls_per_minute: 150            # Rate limit to avoid API throttling
 
+# --- Timeouts (seconds) ---
+# Max wall-clock time per phase. If the agent (or compiler) exceeds this, the
+# process is killed and retried up to `retries` times.
 timeouts:
-  default: 600
-  retries: 2
-  create_story: 1200
-  dev_story: 3600
-  code_review_synthesis: 900
+  default: 600                         # 10 min — fallback for phases without explicit timeout
+  retries: 2                           # Number of retry attempts after a timeout or crash
+  create_story: 1200                   # 20 min — story spec generation (large context, one-shot)
+  dev_story: 3600                      # 60 min — implementation (includes compiler + coding + tests)
+  code_review_synthesis: 900           # 15 min — merging multiple reviewer outputs
 
+# --- Providers ---
+# Default LLM backends. "master" is used for phases without an explicit phase_models
+# entry. "helper" is used for lightweight internal tasks (metrics extraction, etc.).
 providers:
   master:
-    provider: claude-subprocess # or claude-sdk
-    model: opus # Fastest master model
+    provider: claude-subprocess        # Runs Claude CLI as a subprocess
+    model: sonnet
+    model_name: glm-4.7                # Display name shown in logs instead of "sonnet"
+    settings: ~/.claude/glm.json       # Claude CLI settings file (permissions, allowed tools, etc.)
 
   helper:
     provider: claude-subprocess
-    model: haiku
+    model: haiku                       # Fast/cheap model for small utility tasks
 
-# Per-phase model assignment
-# GLM-5 creates/devs/synth/retro, Gemini+GLM-5+Codex validate/review
+# --- Per-phase model assignment ---
+# Override which model runs each phase. Phases not listed here fall back to
+# the "master" provider above.
 phase_models:
-  # --- Creative phases: GLM-5 ---
+
+  # Story creation: uses Opus for high-quality, comprehensive story specs
   create_story:
     provider: claude-subprocess
     model: opus
+
+  # Implementation: uses Sonnet via GLM settings for coding (reads files on demand)
   dev_story:
     provider: claude-subprocess
-    model: opus
+    model: sonnet
+    model_name: glm-4.7
+    settings: ~/.claude/glm.json
 
-  # --- Validation phases: Gemini + GLM-5 + Codex (three reviewers for synthesis) ---
+  # Validation: two independent reviewers run in parallel, then a synthesizer merges
   validate_story:
     - provider: gemini
-      model: gemini-2.5-flash
+      model: gemini-2.5-flash          # Fast, cheap first reviewer
     - provider: codex
-      model: gpt-5.3-codex
+      model: gpt-5.3-codex             # Second reviewer with deep reasoning
       reasoning_effort: high
   validate_story_synthesis:
     provider: claude-subprocess
-    model: sonnet
+    model: sonnet                      # Merges the two validation reports
 
-  # --- Review phases: Gemini + GLM-5 + Codex (three reviewers for synthesis) ---
+  # Code review: same two-reviewer pattern as validation
   code_review:
     - provider: gemini
       model: gemini-2.5-flash
@@ -61,55 +79,60 @@ phase_models:
     provider: claude-subprocess
     model: sonnet
 
-  # --- Retrospective: GLM-5 ---
+  # Retrospective: runs after each epic completes
   retrospective:
     provider: claude-subprocess
-    model: opus
+    model: sonnet
 
-# Compiler configuration — balanced budgets
-# Restored closer to defaults after synthesis starvation warnings (2026-03-03).
-# Architecture doc alone is ~14k tokens; 8k strategic budget was truncating it to 47%.
+# --- Compiler configuration ---
+# The compiler assembles the final prompt sent to the agent by packing in source
+# code files and strategic docs. Budgets control how many tokens of source context
+# are included. Larger budgets = more context for the agent but risk overwhelming
+# the compiler or exceeding model limits.
 compiler:
   source_context:
     budgets:
-      create_story: 120000
-      validate_story: 15000
-      validate_story_synthesis: 15000
-      dev_story: 50000
-      code_review: 40000
-      code_review_synthesis: 40000
-      default: 40000
+      create_story: 120000             # Large — needs full codebase view to write good specs
+      validate_story: 15000            # Small — validators only need the story + key files
+      validate_story_synthesis: 15000  # Small — synthesizer works from validator outputs
+      dev_story: 35000                 # Medium — agent can read additional files on demand
+      code_review: 40000               # Medium — reviewers need enough code to spot issues
+      code_review_synthesis: 40000     # Medium — synthesizer merges review findings
+      default: 40000                   # Fallback for unlisted phases
 
+  # Strategic context: high-level project docs included in every prompt
   strategic_context:
-    budget: 20000
-    tree_budget: 0
+    budget: 20000                      # Max tokens for strategic docs total
+    tree_budget: 0                     # Tokens for project file tree (0 = disabled)
     defaults:
-      include: [project-context] # [project-tree, project-context, architecture]
-      main_only: true
+      include: [project-context]       # Which docs to include by default
+      main_only: true                  # Only include from main branch (not feature branches)
     create_story:
-      include: [project-context] # [project-tree, project-context, architecture, prd]
+      include: [project-context]       # Story creation gets project context
     dev_story:
-      include: [project-context] # [project-tree, project-context, architecture]
+      include: [project-context]       # Dev gets project context (can read arch docs on demand)
     code_review:
-      include: [project-context] # project-tree, project-context, architecture]
+      include: [project-context]       # Reviewers get project context
 
-# Loop: standard cycle with synthesis, no TEA
+# --- Phase execution loop ---
+# Defines the sequence of phases for each story, and what runs when an epic ends.
 loop:
   story:
-    - create_story
-    - validate_story
-    - validate_story_synthesis
-    - dev_story
-    - code_review
-    - code_review_synthesis
+    - create_story                     # 1. Generate story spec from backlog
+    - validate_story                   # 2. Two reviewers validate the spec in parallel
+    - validate_story_synthesis         # 3. Synthesizer merges reviews, applies fixes
+    - dev_story                        # 4. Agent implements the story (code + tests)
+    - code_review                      # 5. Two reviewers review the implementation
+    - code_review_synthesis            # 6. Synthesizer merges reviews, agent applies fixes
   epic_teardown:
-    - retrospective
+    - retrospective                    # Runs once after all stories in an epic complete
 
+# --- Optional features (all disabled) ---
 testarch:
-  enabled: false
+  enabled: false                       # Test architecture analysis (TEA framework)
 
 deep_verify:
-  enabled: false
+  enabled: false                       # Deep verification of implementation against ACs
 
 security_agent:
-  enabled: false
+  enabled: false                       # Security-focused review pass
