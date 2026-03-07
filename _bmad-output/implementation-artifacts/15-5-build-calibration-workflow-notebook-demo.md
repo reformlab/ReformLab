@@ -417,6 +417,9 @@ None — implementation was straightforward.
 - ✅ All 6 static tests pass
 - ✅ Notebook executes via `pytest --nbmake` in 27s without errors
 - ✅ Full test suite: 2778 passed, 1 skipped, 0 failures (no regressions)
+- ✅ [Code Review Synthesis] `test_uses_public_api()` strengthened to block internal submodule imports (`reformlab.calibration.*`, `reformlab.discrete_choice.*`)
+- ✅ [Code Review Synthesis] Notebook s5-validate: hardcoded `rate_tolerance=0.05` replaced with `config.rate_tolerance` for consistency with training configuration
+- ✅ [Code Review Synthesis] Notebook s6-reference: `ref_entry` now included in `RunManifest.assumptions` via `manifest_assumptions = [*entries, ref_entry]`; post-fix test suite: 2778 passed, 1 skipped, 0 failures
 
 ### File List
 
@@ -427,9 +430,26 @@ New files:
 
 Modified files:
 - `.github/workflows/ci.yml` — add nbmake line for calibration notebook
+- `notebooks/guides/10_calibration_workflow.ipynb` — [Code Review] s5-validate: use config.rate_tolerance; s6-reference: include ref_entry in RunManifest
+- `tests/notebooks/test_epic15_notebook.py` — [Code Review] strengthen test_uses_public_api() to block internal submodule imports
 
 ### Change Log
 
 - 2026-03-07: Story 15.5 created — comprehensive developer guide with section-by-section notebook content, visualization specs, static test patterns, fixture data strategy, and anti-pattern prevention.
 - 2026-03-07: Post-validation fixes — (1) AC-3(c) tightened to specify choice probability matrix instead of vague "distributional outcomes"; (2) Task 1.10 corrected to use `compute_utilities()`/`compute_probabilities()` directly (removing inconsistent `LogitChoiceStep` reference that contradicted Section 8 dev notes and Data Flow diagram); (3) `LogitChoiceStep` removed from Key Imports block.
 - 2026-03-07: Story implemented — notebook created with 10 sections, holdout CSV created, static tests created, CI updated. All tests pass (2778 passed, 1 skipped).
+- 2026-03-07: Code review synthesis — 3 fixes applied: (1) `test_uses_public_api()` now blocks internal submodule imports; (2) holdout `rate_tolerance` derives from `config.rate_tolerance`; (3) `ref_entry` included in `RunManifest.assumptions`. All tests pass (2778 passed, 1 skipped, 0 failures).
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-07
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 5.15 (average of Reviewer A: 3.5 and Reviewer B: 6.8) → REJECT
+- **Issues Found:** 4 verified (1 high, 3 medium)
+- **Issues Fixed:** 3
+- **Action Items Created:** 1
+
+## Tasks / Subtasks (Review Follow-ups)
+
+#### Review Follow-ups (AI)
+- [ ] [AI-Review] MEDIUM: Visualization tolerance line in Section 4 is placed at y=0.05 on the rate axis, which sits below all bars (rates ~0.4–0.6) and is misleading. Consider plotting absolute errors |sim-observed| per target with a threshold line, or updating the markdown to explicitly note the visual limitation. (`notebooks/guides/10_calibration_workflow.ipynb`, cell `s4-chart`)

@@ -42,3 +42,12 @@
 | high | `extract_calibrated_parameters` crashes with `AttributeError` when a manifest entry has a non-dict `value` (e.g., `"value": "string"`) — `str` has no `.get()` method | Replaced list comprehension with explicit loop; validates `isinstance(value, dict)` and raises `CalibrationProvenanceError` with "non-dict" message before domain matching. |
 | low | `make_calibration_reference` validates `calibration_manifest_id` is not whitespace-only via `.strip()`, but stores the original un-stripped value — `"  uuid  "` passes validation and is stored with surrounding whitespace, breaking downstream equality checks | Changed `calibration_manifest_id` to `calibration_manifest_id.strip()` in the stored value dict. |
 | low | Missing test coverage for the AttributeError crash path (non-dict `value`) | Added `test_non_dict_value_raises_provenance_error` to `TestExtractCalibratedParameters`. |
+
+## Story 15-5 (2026-03-07)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| high | `test_uses_public_api()` claims to block internal imports but only checked for OpenFisca — `from reformlab.calibration.engine import ...` would have passed silently | Added `assert "from reformlab.calibration." not in source` and `assert "from reformlab.discrete_choice." not in source` |
+| medium | `make_calibration_reference()` result (`ref_entry`) was created and displayed but never included in `RunManifest.assumptions`, making the governance demonstration incomplete | Added `manifest_assumptions = [*entries, ref_entry]` and changed `assumptions=entries` → `assumptions=manifest_assumptions` |
+| medium | Holdout `validate_holdout()` call hardcoded `rate_tolerance=0.05` instead of `config.rate_tolerance`, creating drift risk if the training config is ever changed | Changed to `rate_tolerance=config.rate_tolerance` |
+| medium | Visualization tolerance line (`axhline(y=0.05)`) sits below all displayed bars (which range 0.4–0.6), making the tolerance indicator visually ineffective | Deferred — matches the story spec exactly; noted as future improvement |

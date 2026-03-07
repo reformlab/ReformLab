@@ -63,6 +63,9 @@ def test_uses_public_api() -> None:
     assert "from reformlab.calibration import (" in source
     # Imports from public discrete choice API
     assert "from reformlab.discrete_choice import (" in source
+    # No internal submodule imports (only top-level public API)
+    assert "from reformlab.calibration." not in source
+    assert "from reformlab.discrete_choice." not in source
     # No OpenFisca imports
     assert "from openfisca" not in source
     assert "import openfisca" not in source
