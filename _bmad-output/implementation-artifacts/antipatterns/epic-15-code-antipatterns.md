@@ -34,3 +34,11 @@
 | medium | `CostMatrix` imported at runtime in `validation.py` but only needed for type annotations (with `from __future__ import annotations` all annotations are strings) | Moved `from reformlab.discrete_choice.types import CostMatrix` under `if TYPE_CHECKING:` block; added `from typing import TYPE_CHECKING`. |
 | medium | AC-2 "unweighted regardless of `CalibrationTarget.weight`" had no test; a future weighted-metrics regression would pass | Added `test_metrics_are_unweighted` to `TestComputeFitMetrics` verifying hand-computed unweighted formula. |
 | low | No `caplog` assertions for structured log events | **Deferred** — logging works correctly; caplog tests would add coverage but the format is validated by the existing log strings. Low risk of silent regression on this dimension. |
+
+## Story 15-4 (2026-03-07)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| high | `extract_calibrated_parameters` crashes with `AttributeError` when a manifest entry has a non-dict `value` (e.g., `"value": "string"`) — `str` has no `.get()` method | Replaced list comprehension with explicit loop; validates `isinstance(value, dict)` and raises `CalibrationProvenanceError` with "non-dict" message before domain matching. |
+| low | `make_calibration_reference` validates `calibration_manifest_id` is not whitespace-only via `.strip()`, but stores the original un-stripped value — `"  uuid  "` passes validation and is stored with surrounding whitespace, breaking downstream equality checks | Changed `calibration_manifest_id` to `calibration_manifest_id.strip()` in the stored value dict. |
+| low | Missing test coverage for the AttributeError crash path (non-dict `value`) | Added `test_non_dict_value_raises_provenance_error` to `TestExtractCalibratedParameters`. |

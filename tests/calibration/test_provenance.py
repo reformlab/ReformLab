@@ -321,6 +321,20 @@ class TestExtractCalibratedParameters:
         with pytest.raises(CalibrationProvenanceError, match="float or int"):
             extract_calibrated_parameters(assumptions, "vehicle")
 
+    def test_non_dict_value_raises_provenance_error(self) -> None:
+        """Given a calibration_result entry with a non-dict value, raises CalibrationProvenanceError."""
+        # AC-3: malformed manifest entry must raise CalibrationProvenanceError, not AttributeError
+        assumptions = [
+            {
+                "key": "calibration_result",
+                "value": "not-a-dict",
+                "source": "calibration_engine",
+                "is_default": False,
+            }
+        ]
+        with pytest.raises(CalibrationProvenanceError, match="non-dict"):
+            extract_calibrated_parameters(assumptions, "vehicle")
+
     def test_integer_beta_cost_is_accepted(self) -> None:
         """Given optimized_beta_cost as int, extract returns TasteParameters with float beta."""
         assumptions = [

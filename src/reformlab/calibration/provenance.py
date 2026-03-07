@@ -123,7 +123,7 @@ def make_calibration_reference(
         )
 
     value: dict[str, str] = {
-        "calibration_manifest_id": calibration_manifest_id,
+        "calibration_manifest_id": calibration_manifest_id.strip(),
     }
     if calibration_integrity_hash:
         value["calibration_integrity_hash"] = calibration_integrity_hash
@@ -168,11 +168,18 @@ def extract_calibrated_parameters(
             "Cannot extract calibrated parameters from empty assumptions list"
         )
 
-    matches = [
-        entry for entry in assumptions
-        if entry.get("key") == "calibration_result"
-        and entry.get("value", {}).get("domain") == domain
-    ]
+    matches = []
+    for entry in assumptions:
+        if entry.get("key") != "calibration_result":
+            continue
+        value = entry.get("value")
+        if not isinstance(value, dict):
+            raise CalibrationProvenanceError(
+                f"calibration_result entry has a non-dict value of type "
+                f"{type(value).__name__!r}; manifest may be corrupted"
+            )
+        if value.get("domain") == domain:
+            matches.append(entry)
 
     if len(matches) > 1:
         raise CalibrationProvenanceError(
