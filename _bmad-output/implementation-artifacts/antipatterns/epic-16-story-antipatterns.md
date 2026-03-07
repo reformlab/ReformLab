@@ -33,3 +33,11 @@
 | medium | JSON serialization/parse failures not required to wrap in `ReplicationPackageError`, violating subsystem error hierarchy | Tasks 1.4/1.5 now require catching `TypeError` from `json.dumps` and re-raising as `ReplicationPackageError`. New test 6.16 added. |
 | low | Task 6.5 artifact count baseline "(4)" ambiguous given optional year manifests | Clarified to "4 core artifacts; optional year manifests not counted." |
 | low | Anti-patterns table missing entries for the two new failure modes | Two new anti-pattern rows added. |
+
+## Story 16-4 (2026-03-07)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| high | AC-5 references "YAML + notebook + manifest" but no YAML artifacts exist in the replication package contract — all config files are JSON (`policy.json`, `scenario-metadata.json`, `package-index.json`, `run-manifest.json`) | AC-5 rewritten to name the actual JSON artifacts and the exported package as the sharable unit |
+| high | `show()` helper has contradictory instructions — Task 1.2 imports `show` from `reformlab`, Dev Notes says "define inline ... alternatively import", Anti-Patterns section says "copy verbatim from 06_portfolio_comparison.ipynb" | Task 1.2 updated to remove `show` from reformlab imports and mandate local helper; Dev Notes updated to specify copy-verbatim as the only approach |
+| medium | CI Task 11.1 says "after line 22" — brittle reference that breaks when ci.yml is edited | Both Task 11.1 and the CI Configuration Update section now use anchor-based instruction ("within the `ci` job, immediately after the existing pytest step(s)") |

@@ -1,0 +1,119 @@
+record_id: 61773031-6be3-4b89-8840-65af260c7f2e
+created_at: '2026-03-07T18:42:22.293639+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 16
+  story_num: 4
+  title: Story 16.4
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: gemini
+  model: gemini-2.5-flash
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-03-07T18:38:12.937458Z'
+  end_time: '2026-03-07T18:38:48.655458Z'
+  duration_ms: 35718
+  input_tokens: 0
+  output_tokens: 2261
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 9047
+  heading_count: 23
+  list_depth_max: 2
+  code_block_count: 0
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 0.0'
+  - 🎯 Ruthless Story Validation 16.4
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 0.0 → PASS'
+  - 🚨 Critical Issues (Must Fix)
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Clarify `show()` helper function source
+  - 2. Refine AC-5 Wording for Clarity
+  - ✨ Optimizations (Nice to Have)
+  - 🤖 LLM Optimization Improvements
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.33
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 16743eb5b47f
+findings:
+  total_count: 2
+  by_severity:
+    critical: 0
+    major: 0
+    minor: 2
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 0
+    completeness: 0
+    clarity: 2
+    testability: 0
+  has_fix_count: 2
+  has_location_count: 2
+  has_evidence_count: 2
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 0
+  confidence_phrases_count: 2
+linguistic:
+  avg_sentence_length: 21.58490566037736
+  vocabulary_richness: 0.3618881118881119
+  flesch_reading_ease: 16.385863636363666
+  vague_terms_count: 0
+  formality_score: 0.75
+  sentiment: positive
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.95
+  evidence_quality: 0.95
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
