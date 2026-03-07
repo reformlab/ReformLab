@@ -17,7 +17,7 @@ import json
 import logging
 import os
 from dataclasses import asdict, dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -91,6 +91,25 @@ class ResultStore:
         self._base_dir = base_dir
         self._base_dir.mkdir(parents=True, exist_ok=True)
 
+    def _resolve_safe(self, run_id: str) -> Path:
+        """Resolve the run directory path and guard against path traversal.
+
+        Args:
+            run_id: Caller-supplied run identifier.
+
+        Returns:
+            Resolved absolute path to the run directory.
+
+        Raises:
+            ResultStoreError: If the resolved path escapes the base directory.
+        """
+        run_dir = (self._base_dir / run_id).resolve()
+        try:
+            run_dir.relative_to(self._base_dir.resolve())
+        except ValueError:
+            raise ResultStoreError(f"Invalid run_id: {run_id!r}") from None
+        return run_dir
+
     # ------------------------------------------------------------------
     # Write
     # ------------------------------------------------------------------
@@ -104,7 +123,7 @@ class ResultStore:
             run_id: Unique run identifier (UUID).
             metadata: Run metadata to persist.
         """
-        run_dir = self._base_dir / run_id
+        run_dir = self._resolve_safe(run_id)
         run_dir.mkdir(parents=True, exist_ok=True)
 
         target = run_dir / "metadata.json"
@@ -136,7 +155,7 @@ class ResultStore:
         Raises:
             ResultNotFound: If the run directory or metadata file is missing.
         """
-        run_dir = self._base_dir / run_id
+        run_dir = self._resolve_safe(run_id)
         metadata_path = run_dir / "metadata.json"
 
         if not run_dir.exists() or not metadata_path.exists():
@@ -197,7 +216,7 @@ class ResultStore:
         Raises:
             ResultNotFound: If the run directory does not exist.
         """
-        run_dir = self._base_dir / run_id
+        run_dir = self._resolve_safe(run_id)
         if not run_dir.exists():
             raise ResultNotFound(f"No metadata found for run_id={run_id!r}")
 
@@ -247,4 +266,4 @@ def _parse_timestamp(ts: str) -> datetime:
         normalized = ts.replace("Z", "+00:00")
         return datetime.fromisoformat(normalized)
     except (ValueError, AttributeError):
-        return datetime.min
+        return datetime.min.replace(tzinfo=timezone.utc)

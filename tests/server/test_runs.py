@@ -167,6 +167,49 @@ class TestRunMetadataAutoSaveSuccess:
 # ---------------------------------------------------------------------------
 
 
+class TestRunMetadataAutoSaveFailurePath:
+    """Verify metadata is saved with status=failed when simulation raises."""
+
+    def test_metadata_saved_on_simulation_exception(
+        self,
+        tmp_store: ResultStore,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """When run_scenario raises, metadata must still be saved with status='failed'."""
+        import reformlab.server.dependencies as deps
+
+        monkeypatch.setattr(deps, "_adapter", MockAdapter())
+        monkeypatch.setattr(deps, "_result_store", tmp_store)
+
+        def failing_sim(*args: object, **kwargs: object) -> None:
+            raise RuntimeError("Simulated simulation failure")
+
+        monkeypatch.setattr("reformlab.interfaces.api.run_scenario", failing_sim)
+
+        from reformlab.server.app import create_app
+        from reformlab.server.dependencies import get_result_store
+
+        app = create_app()
+        app.dependency_overrides[get_result_store] = lambda: tmp_store
+
+        # raise_server_exceptions=False: get the 500 response instead of re-raising
+        with TestClient(app, raise_server_exceptions=False) as client:
+            login_response = client.post("/api/auth/login", json={"password": "test-password-123"})
+            token = login_response.json()["token"]
+            headers = {"Authorization": f"Bearer {token}"}
+
+            response = client.post("/api/runs", headers=headers, json=_SIMPLE_RUN_BODY)
+            assert response.status_code == 500
+
+        # Metadata must still be saved with failed status despite the exception
+        results = tmp_store.list_results()
+        assert len(results) == 1
+        assert results[0].status == "failed"
+        assert results[0].row_count == 0
+        assert results[0].started_at != ""
+        assert results[0].finished_at != ""
+
+
 class TestRunMetadataSaveFailureDoesNotMaskRunResult:
     """If metadata save fails, the run response must still be returned."""
 

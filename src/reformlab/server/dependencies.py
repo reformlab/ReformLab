@@ -36,6 +36,10 @@ class ResultCache:
             self._cache.move_to_end(run_id)  # Mark as recently used
         return result
 
+    def delete(self, run_id: str) -> None:
+        """Remove a result from the cache if present."""
+        self._cache.pop(run_id, None)
+
 
 # Global singletons
 _result_cache = ResultCache(max_size=10)

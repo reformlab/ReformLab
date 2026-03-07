@@ -25,7 +25,7 @@ from fastapi.responses import StreamingResponse
 
 from reformlab.server.dependencies import ResultCache, get_result_cache, get_result_store
 from reformlab.server.models import ResultDetailResponse, ResultListItem
-from reformlab.server.result_store import ResultMetadata, ResultNotFound, ResultStore
+from reformlab.server.result_store import ResultMetadata, ResultNotFound, ResultStore, ResultStoreError
 
 logger = logging.getLogger(__name__)
 
@@ -146,6 +146,15 @@ async def get_result(
                 "fix": "Check the run ID or re-run the simulation",
             },
         )
+    except ResultStoreError:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "what": f"Invalid run_id: {run_id!r}",
+                "why": "run_id contains disallowed characters",
+                "fix": "Use a valid run ID obtained from POST /api/runs",
+            },
+        )
     return _metadata_to_detail(meta, cache)
 
 
@@ -172,8 +181,16 @@ async def delete_result(
                 "fix": "Check the run ID",
             },
         )
-    # Best-effort cache eviction (cache has no public remove; store None-ify)
-    # The ResultCache does not expose a delete method; simply do not error if missing.
+    except ResultStoreError:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "what": f"Invalid run_id: {run_id!r}",
+                "why": "run_id contains disallowed characters",
+                "fix": "Use a valid run ID obtained from POST /api/runs",
+            },
+        )
+    cache.delete(run_id)
     logger.info("event=result_deleted run_id=%s", run_id)
 
 
@@ -203,6 +220,15 @@ async def export_csv(
                 "what": f"Result not found: {run_id!r}",
                 "why": "No metadata file exists for this run ID",
                 "fix": "Check the run ID or re-run the simulation",
+            },
+        )
+    except ResultStoreError:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "what": f"Invalid run_id: {run_id!r}",
+                "why": "run_id contains disallowed characters",
+                "fix": "Use a valid run ID obtained from POST /api/runs",
             },
         )
 
@@ -256,6 +282,15 @@ async def export_parquet(
                 "what": f"Result not found: {run_id!r}",
                 "why": "No metadata file exists for this run ID",
                 "fix": "Check the run ID or re-run the simulation",
+            },
+        )
+    except ResultStoreError:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "what": f"Invalid run_id: {run_id!r}",
+                "why": "run_id contains disallowed characters",
+                "fix": "Use a valid run ID obtained from POST /api/runs",
             },
         )
 

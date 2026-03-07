@@ -29,3 +29,13 @@
 | medium | Bad rate_schedule year key raises unhandled 500 — `int("bad")` raises `ValueError` with no exception handler | Wrapped in `try/except ValueError` → `HTTPException(422)` |
 | medium | AC-5 gap — saved portfolios list is read-only; no delete/load/clone buttons in GUI | Added delete button per portfolio row; wired `deletePortfolio` API call with toast feedback; load/clone deferred (see action items) |
 | low | AC-2 gap — `parameterSchemas` prop exists in `PortfolioCompositionPanel` but is never populated by `PortfolioDesignerScreen`; ParameterRow editing non-functional | Deferred (requires fetching `GET /api/templates/{id}` per template; added as action item). `YearScheduleEditor` now always shown in expanded panel, covering the main AC-4 use case. |
+
+## Story 17-3 (2026-03-07)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | Path traversal via `run_id` — `self._base_dir / run_id` in `ResultStore` accepts user-supplied run IDs from URL paths, allowing `../../etc` to escape the base directory via URL-encoded separators | Added `_resolve_safe()` using `Path.resolve()` + `relative_to()` check; added `ResultStoreError` handling (400) in all route handlers |
+| critical | `DELETE /api/results/{run_id}` accepted `cache` parameter but never evicted from it (comment acknowledged the gap) | Added `ResultCache.delete()` method; called in delete route handler |
+| critical | No test for simulation failure metadata path — `TestRunMetadataAutoSaveFailurePath` was missing entirely | Added `test_metadata_saved_on_simulation_exception` using `raise_server_exceptions=False` |
+| high | Export callbacks in `ResultDetailView` not wired — buttons rendered but `onExportCsv`/`onExportParquet` were `undefined` in `SimulationRunnerScreen` | Imported `exportResultCsv`/`exportResultParquet`; passed as callbacks to both `ResultDetailView` instances |
+| medium | Timestamp sort bug — `_parse_timestamp` returned timezone-naive `datetime.min` as fallback while all valid timestamps are timezone-aware, causing `TypeError` in `list.sort()` when any corrupt entry exists | Changed fallback to `datetime.min.replace(tzinfo=timezone.utc)`; added `timezone` import |

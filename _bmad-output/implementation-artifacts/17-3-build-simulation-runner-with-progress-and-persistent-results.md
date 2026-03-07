@@ -663,6 +663,7 @@ None — all issues resolved inline during implementation.
 - Export endpoints return HTTP 409 (Conflict) when run_id exists in persistent store but `SimulationResult` has been evicted from `ResultCache`.
 - `refetchResults()` is called once on auth in `AppContext.tsx` (duplicate call removed during lint pass).
 - All 3028 pytest tests pass; all 154 frontend Vitest tests pass.
+- Code review synthesis (2026-03-08): fixed path traversal vulnerability in ResultStore, fixed naive/aware datetime sort bug in _parse_timestamp, added ResultCache.delete() and wired it in DELETE route, added simulation failure metadata test, wired export callbacks in SimulationRunnerScreen.
 
 ### File List
 
@@ -690,4 +691,19 @@ None — all issues resolved inline during implementation.
 - `frontend/src/hooks/useApi.ts`
 - `frontend/src/contexts/AppContext.tsx`
 - `frontend/src/App.tsx`
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-08
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 16.0 (Reviewer A) / 7.6 (Reviewer B) → REJECT
+- **Issues Found:** 8 verified (4 fixed, 4 deferred)
+- **Issues Fixed:** 4
+- **Action Items Created:** 4
+
+#### Review Follow-ups (AI)
+- [ ] [AI-Review] IMPORTANT: `frontend/src/api/types.ts` `RunRequest.parameters` does not match backend `RunRequest.policy` field — simulation runs from runner always use empty policy config (`frontend/src/components/screens/SimulationRunnerScreen.tsx:111`)
+- [ ] [AI-Review] IMPORTANT: `ResultDetailView` Indicators tab does not reuse `DistributionalChart` or `SummaryStatCard` as specified in AC-4; backend returns `{columns, row_count}` dict rather than distributional data shape (`frontend/src/components/simulation/ResultDetailView.tsx:63`)
+- [ ] [AI-Review] IMPORTANT: Export tests only cover 404 and 409 paths; success (200) path with cached `SimulationResult` is untested (`tests/server/test_results.py:290`)
+- [ ] [AI-Review] LOW: `exportResultCsv`/`exportResultParquet` in `results.ts` duplicate auth/error-handling logic — extract shared download helper (`frontend/src/api/results.ts:23`)
 

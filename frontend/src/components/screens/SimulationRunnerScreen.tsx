@@ -15,7 +15,7 @@ import { RunProgressBar } from "@/components/simulation/RunProgressBar";
 import { ResultDetailView } from "@/components/simulation/ResultDetailView";
 import { ResultsListPanel } from "@/components/simulation/ResultsListPanel";
 import { runScenario } from "@/api/runs";
-import { listResults } from "@/api/results";
+import { listResults, exportResultCsv, exportResultParquet } from "@/api/results";
 import type { ResultDetailResponse, ResultListItem } from "@/api/types";
 
 // ============================================================================
@@ -266,7 +266,11 @@ export function SimulationRunnerScreen({
         ) : null}
 
         {selectedDetail !== null ? (
-          <ResultDetailView detail={selectedDetail} />
+          <ResultDetailView
+            detail={selectedDetail}
+            onExportCsv={() => void exportResultCsv(selectedDetail.run_id)}
+            onExportParquet={() => void exportResultParquet(selectedDetail.run_id)}
+          />
         ) : null}
       </section>
     );
@@ -322,7 +326,11 @@ export function SimulationRunnerScreen({
       ) : null}
 
       {lastRunDetail !== null || selectedDetail !== null ? (
-        <ResultDetailView detail={(selectedDetail ?? lastRunDetail)!} />
+        <ResultDetailView
+          detail={(selectedDetail ?? lastRunDetail)!}
+          onExportCsv={() => { const d = selectedDetail ?? lastRunDetail; if (d) void exportResultCsv(d.run_id); }}
+          onExportParquet={() => { const d = selectedDetail ?? lastRunDetail; if (d) void exportResultParquet(d.run_id); }}
+        />
       ) : null}
 
       <ResultsListPanel
