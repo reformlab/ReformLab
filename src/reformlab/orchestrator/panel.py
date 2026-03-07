@@ -1,6 +1,7 @@
 """Panel output generation from orchestrator results.
 
 Story 3-7: Produce Scenario-Year Panel Output
+Story 14-6: Extend panel with decision record columns
 
 This module provides:
 - PanelOutput: Dataclass representing a household-by-year panel dataset
@@ -8,7 +9,8 @@ This module provides:
 
 The panel is built from yearly computation outputs stored in YearState.data
 under COMPUTATION_RESULT_KEY, with each row containing household_id, year,
-and computed output fields.
+and computed output fields. When decision records are present in yearly states,
+domain-prefixed decision columns are injected per year.
 """
 
 from __future__ import annotations
@@ -21,10 +23,13 @@ import pyarrow as pa
 import pyarrow.csv as pa_csv
 import pyarrow.parquet as pq
 
+from reformlab.discrete_choice.decision_record import DECISION_LOG_KEY
+from reformlab.discrete_choice.errors import DiscreteChoiceError
 from reformlab.orchestrator.computation_step import COMPUTATION_RESULT_KEY
 from reformlab.orchestrator.runner import SEED_LOG_KEY, STEP_EXECUTION_LOG_KEY
 
 if TYPE_CHECKING:
+    from reformlab.discrete_choice.decision_record import DecisionRecord
     from reformlab.orchestrator.types import OrchestratorResult
 
 
@@ -72,6 +77,8 @@ class PanelOutput:
         configured_household_id_field = _household_id_field_from_metadata(
             result.metadata
         )
+        all_domain_alternatives: dict[str, list[str]] = {}
+        has_any_decision_columns = False
 
         # Process years in sorted order for deterministic output
         for year in sorted(result.yearly_states.keys()):
@@ -83,6 +90,16 @@ class PanelOutput:
                 continue
 
             output_table = comp_result.output_fields
+
+            # Story 14-6: Decision record columns
+            decision_log = year_state.data.get(DECISION_LOG_KEY)
+            if isinstance(decision_log, tuple) and decision_log:
+                output_table, year_domain_alts = _build_decision_columns(
+                    output_table, decision_log
+                )
+                all_domain_alternatives.update(year_domain_alts)
+                has_any_decision_columns = True
+
             output_table = _ensure_household_id_column(
                 output_table,
                 configured_household_id_field,
@@ -100,17 +117,28 @@ class PanelOutput:
                     "year": pa.array([], type=pa.int64()),
                 }
             )
+        elif has_any_decision_columns:
+            # Use promote_options for schema flexibility when some years
+            # have decision columns and others don't
+            panel_table = pa.concat_tables(
+                yearly_tables, promote_options="permissive"
+            )
         else:
             # Concatenate all yearly tables
             panel_table = pa.concat_tables(yearly_tables)
 
         # Build metadata from orchestrator result
         metadata = _build_panel_metadata(result)
+        if all_domain_alternatives:
+            metadata["decision_domain_alternatives"] = all_domain_alternatives
 
         return cls(table=panel_table, metadata=metadata)
 
     def to_csv(self, path: str | Path) -> Path:
         """Export panel to CSV file.
+
+        List columns (e.g., probabilities, utilities) are cast to string
+        before writing since PyArrow CSV does not support list types.
 
         Args:
             path: Path for output CSV file.
@@ -119,7 +147,8 @@ class PanelOutput:
             Path to the written CSV file.
         """
         path = Path(path)
-        pa_csv.write_csv(self.table, path)
+        table = _cast_list_columns_to_string(self.table)
+        pa_csv.write_csv(table, path)
         return path
 
     def to_parquet(
@@ -161,6 +190,83 @@ class PanelOutput:
 
         pq.write_table(table_with_metadata, path)
         return path
+
+
+def _build_decision_columns(
+    output_table: pa.Table,
+    decision_log: tuple[DecisionRecord, ...],
+) -> tuple[pa.Table, dict[str, list[str]]]:
+    """Add decision columns from the decision log to the output table.
+
+    For each DecisionRecord, appends domain-prefixed columns for chosen
+    alternative, probabilities (as list<float64>), and utilities
+    (as list<float64>). Also adds a decision_domains list column.
+
+    Args:
+        output_table: Yearly output table to extend.
+        decision_log: Tuple of DecisionRecords for this year.
+
+    Returns:
+        Extended table and domain→alternative_ids mapping for metadata.
+
+    Raises:
+        DiscreteChoiceError: If duplicate domain names detected.
+    """
+    # Validate unique domain names
+    domain_names_seen = [r.domain_name for r in decision_log]
+    duplicates = {n for n in domain_names_seen if domain_names_seen.count(n) > 1}
+    if duplicates:
+        raise DiscreteChoiceError(
+            f"Duplicate domain_name(s) in decision log: {sorted(duplicates)}. "
+            "Each domain must appear at most once per year."
+        )
+
+    domain_alternatives: dict[str, list[str]] = {}
+
+    for record in decision_log:
+        domain = record.domain_name
+        alt_ids = record.alternative_ids
+        domain_alternatives[domain] = list(alt_ids)
+        n = len(record.chosen)
+
+        # {domain}_chosen: string column
+        output_table = output_table.append_column(
+            f"{domain}_chosen", record.chosen
+        )
+
+        # {domain}_probabilities: list<float64> column
+        prob_lists: list[list[float]] = []
+        for i in range(n):
+            row = [
+                record.probabilities.column(aid)[i].as_py() for aid in alt_ids
+            ]
+            prob_lists.append(row)
+        output_table = output_table.append_column(
+            f"{domain}_probabilities",
+            pa.array(prob_lists, type=pa.list_(pa.float64())),
+        )
+
+        # {domain}_utilities: list<float64> column
+        util_lists: list[list[float]] = []
+        for i in range(n):
+            row = [
+                record.utilities.column(aid)[i].as_py() for aid in alt_ids
+            ]
+            util_lists.append(row)
+        output_table = output_table.append_column(
+            f"{domain}_utilities",
+            pa.array(util_lists, type=pa.list_(pa.float64())),
+        )
+
+    # decision_domains: list<string> column (same value for all rows)
+    domain_names = [r.domain_name for r in decision_log]
+    n_rows = output_table.num_rows
+    output_table = output_table.append_column(
+        "decision_domains",
+        pa.array([domain_names] * n_rows, type=pa.list_(pa.string())),
+    )
+
+    return output_table, domain_alternatives
 
 
 def _build_panel_metadata(result: OrchestratorResult) -> dict[str, Any]:
@@ -242,6 +348,24 @@ def _set_year_column(table: pa.Table, year: int) -> pa.Table:
         year_idx = table.schema.get_field_index("year")
         return table.set_column(year_idx, "year", year_array)
     return table.append_column("year", year_array)
+
+
+def _cast_list_columns_to_string(table: pa.Table) -> pa.Table:
+    """Serialize list-typed columns to string for CSV export compatibility.
+
+    PyArrow CSV writer does not support list types. Each list value
+    is serialized as a bracket-delimited string (e.g., "[0.5, 0.3, 0.2]").
+    """
+    for i, field in enumerate(table.schema):
+        if pa.types.is_list(field.type):
+            string_values = [
+                str(v) if v is not None else None
+                for v in table.column(i).to_pylist()
+            ]
+            table = table.set_column(
+                i, field.name, pa.array(string_values, type=pa.string())
+            )
+    return table
 
 
 def _ensure_join_keys_present(

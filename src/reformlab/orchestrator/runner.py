@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, Any, TypedDict, cast
 
 from reformlab.governance.capture import (
     capture_assumptions,
+    capture_discrete_choice_parameters,
     capture_mappings,
     capture_policy,
     capture_unsupported_config_warning,
@@ -563,6 +564,11 @@ class OrchestratorRunner:
         }
         if manifest_capture["scenario_version"]:
             metadata["scenario_version"] = manifest_capture["scenario_version"]
+
+        # Story 14-6: Extract discrete choice parameters from decision log
+        dc_params = capture_discrete_choice_parameters(result.yearly_states)
+        if dc_params:
+            metadata["discrete_choice_parameters"] = dc_params
 
         return WorkflowResult(
             success=result.success,

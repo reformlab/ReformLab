@@ -1,0 +1,132 @@
+record_id: 85900942-9e74-44fb-be1c-4d83c7c5560d
+created_at: '2026-03-07T06:53:48.019279+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 14
+  story_num: 6
+  title: Story 14.6
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: true
+    requires_migration: true
+evaluator:
+  provider: codex
+  model: gpt-5.3-codex
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-03-07T06:50:00.165503Z'
+  end_time: '2026-03-07T06:52:48.180503Z'
+  duration_ms: 168015
+  input_tokens: 0
+  output_tokens: 3311
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 13247
+  heading_count: 36
+  list_depth_max: 3
+  code_block_count: 6
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 11.6'
+  - 🎯 Ruthless Story Validation 14.6
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 11.6 → REJECT'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Missing Pipeline Contract for Per-Domain Recording
+  - 2. Incorrect Manifest Semantics for Year-Varying Seed
+  - 3. Missing Data Integrity Invariants in Panel Injection
+  - 4. No Scale Guardrail for Decision Column Materialization
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Formal Metadata Schema Contract
+  - 2. Strengthen Immutability Semantics in `DecisionRecord`
+  - 3. Add `compare_panels()` Compatibility Criterion
+  - 4. Clarify Empty/Always-Present Manifest Key Behavior
+  - ✨ Optimizations (Nice to Have)
+  - 1. Split Delivery into Two Stories
+  - 2. Add Deterministic Ordering Rule for `decision_domains`
+  - 3. Add Property-Based Schema-Permutation Tests
+  - 🤖 LLM Optimization Improvements
+  - 1. Reduce Redundant Algorithm Blocks
+  - 2. Convert Guardrails to Compact Constraint Matrix
+  - 3. Promote Normative vs Informative Markers
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.33
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 83aaf8a9c1ae
+findings:
+  total_count: 15
+  by_severity:
+    critical: 4
+    major: 5
+    minor: 6
+    nit: 0
+  by_category:
+    security: 0
+    performance: 1
+    correctness: 5
+    completeness: 5
+    clarity: 3
+    testability: 1
+  has_fix_count: 15
+  has_location_count: 13
+  has_evidence_count: 11
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 5
+  confidence_phrases_count: 4
+linguistic:
+  avg_sentence_length: 14.86111111111111
+  vocabulary_richness: 0.40498442367601245
+  flesch_reading_ease: 10.517769332452076
+  vague_terms_count: 3
+  formality_score: 0.76
+  sentiment: mixed
+quality:
+  actionable_ratio: 0.93
+  specificity_score: 0.8
+  evidence_quality: 0.78
+  follows_template: true
+  internal_consistency: 0.91
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: true
+    requires_migration: true

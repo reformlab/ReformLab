@@ -51,3 +51,14 @@
 | medium | Design Decision #8 doesn't explain metadata key preservation in sequential mode | DD#8 now documents how domain-prefixed metadata keys coexist and that final results use separate vintage keys. |
 | low | AC-3 "returned unchanged" vs "new table" ambiguity | Addressed as part of the AC-3 update — clarified that identity return is acceptable since PyArrow tables are immutable. |
 | low | LLM token efficiency improvements (redundant protocol blocks, algorithm code) | Not applied. The story is already written and the dev agent context benefits from having protocol definitions inline. Removing them risks implementation errors. |
+
+## Story 14-6 (2026-03-07)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | `capture_discrete_choice_parameters()` hardcodes `"discrete_choice_decision_log"` string literal instead of importing `DECISION_LOG_KEY` | Updated Design Decision #8 to require import; updated code example to add `from reformlab.discrete_choice.decision_record import DECISION_LOG_KEY` and use the constant instead of the raw string. |
+| high | AC-5 states "all years use the same taste parameters" which is incorrect for `choice_seed` — seeds are derived as `master_seed XOR year` and vary per year | Updated AC-5 to distinguish static taste parameters (`beta_cost`) from year-varying `choice_seed`; added clarification that the seed log already provides the authoritative per-year record and that per-year seeds can be recomputed from the manifest's master seed. |
+| high | No behavior specified for duplicate `domain_name` in one year's decision log; `_build_decision_columns()` would silently produce duplicate PyArrow column names | Added duplicate domain_name row to edge cases table (raises `DiscreteChoiceError`); added uniqueness validation code block at the top of `_build_decision_columns()`. |
+| medium | `taste_parameters: dict[str, float]` and `eligibility_summary: dict[str, int] | Added "treat as logically immutable after construction" convention note to both fields in AC-1. |
+| medium | AC-5 does not specify whether `"discrete_choice_parameters"` manifest key is always present or only when non-empty | Added explicit "only when non-empty (key is absent for non-discrete-choice runs)" clause to AC-5. |
+| low | `DecisionRecord.probabilities` and `utilities` are `pa.Table` internally but `pa.list_(pa.float64())` in the panel — the transformation is only in Dev Notes code, not in ACs | Added note to AC-1 field descriptions and AC-3 column descriptions clarifying the `pa.Table` → `pa.list_` transformation. |

@@ -2,7 +2,7 @@
 
 # Story 14.6: Extend Panel Output and Manifests with Decision Records
 
-Status: ready-for-dev
+Status: dev-complete
 
 ## Story
 
@@ -12,14 +12,14 @@ so that analysts can audit household-level behavioral responses year-by-year and
 
 ## Acceptance Criteria
 
-1. **AC-1: DecisionRecord type** — `DecisionRecord` is a frozen dataclass with fields: `domain_name: str`, `chosen: pa.Array` (N-element string array of chosen alternative IDs), `probabilities: pa.Table` (N×M table, one column per alternative), `utilities: pa.Table` (N×M table, one column per alternative), `alternative_ids: tuple[str, ...]`, `seed: int | None`, `taste_parameters: dict[str, float]` (e.g., `{"beta_cost": -0.01}`), `eligibility_summary: dict[str, int] | None` (e.g., `{"n_total": 100, "n_eligible": 30, "n_ineligible": 70}` or `None` if no eligibility filtering). Stored under `DECISION_LOG_KEY = "discrete_choice_decision_log"` in `YearState.data` as a `tuple[DecisionRecord, ...]`.
+1. **AC-1: DecisionRecord type** — `DecisionRecord` is a frozen dataclass with fields: `domain_name: str`, `chosen: pa.Array` (N-element string array of chosen alternative IDs), `probabilities: pa.Table` (N×M table, one column per alternative — this internal `pa.Table` representation is transformed to `pa.list_(pa.float64())` when written to the panel), `utilities: pa.Table` (N×M table, one column per alternative — same transformation applies), `alternative_ids: tuple[str, ...]`, `seed: int | None`, `taste_parameters: dict[str, float]` (e.g., `{"beta_cost": -0.01}` — treat as logically immutable after construction; do not mutate the dict after passing it to `DecisionRecord`), `eligibility_summary: dict[str, int] | None` (e.g., `{"n_total": 100, "n_eligible": 30, "n_ineligible": 70}` or `None` if no eligibility filtering — same immutability convention). Stored under `DECISION_LOG_KEY = "discrete_choice_decision_log"` in `YearState.data` as a `tuple[DecisionRecord, ...]`.
 
 2. **AC-2: DecisionRecordStep** — `DecisionRecordStep` implements the `OrchestratorStep` protocol. Default `name="decision_record"`, `depends_on=("vehicle_state_update",)` (caller configures per pipeline). It reads `ChoiceResult` from `state.data[DISCRETE_CHOICE_RESULT_KEY]` and domain metadata from `state.data[DISCRETE_CHOICE_METADATA_KEY]`. It creates a `DecisionRecord` and appends it to the existing decision log tuple in `state.data[DECISION_LOG_KEY]` (creating a new tuple if none exists). The step extracts `beta_cost` and `choice_seed` from metadata, and eligibility counts (`eligibility_n_total`, `eligibility_n_eligible`, `eligibility_n_ineligible`) if present. If `DISCRETE_CHOICE_RESULT_KEY` is not in state, the step returns state unchanged (pass-through). This makes it safe to always include in a pipeline.
 
 3. **AC-3: Panel decision columns** — `PanelOutput.from_orchestrator_result()` is extended to detect `DECISION_LOG_KEY` in each yearly state. When present, the panel builder appends decision columns to each yearly table before concatenation. For each `DecisionRecord` in the log, the following domain-prefixed columns are added:
    - `{domain_name}_chosen` (`pa.string()`) — Chosen alternative ID per household.
-   - `{domain_name}_probabilities` (`pa.list_(pa.float64())`) — Choice probabilities array per household, ordered by `alternative_ids`.
-   - `{domain_name}_utilities` (`pa.list_(pa.float64())`) — Utility values array per household, ordered by `alternative_ids`.
+   - `{domain_name}_probabilities` (`pa.list_(pa.float64())`) — Choice probabilities array per household, ordered by `alternative_ids`. The panel builder transforms the `pa.Table`-typed `probabilities` field from `DecisionRecord` (one column per alternative) into this flat list column.
+   - `{domain_name}_utilities` (`pa.list_(pa.float64())`) — Utility values array per household, ordered by `alternative_ids`. Same transformation from `pa.Table` to flat list column.
 
    Additionally, a `decision_domains` column (`pa.list_(pa.string())`) is added listing all domain names evaluated for that year (e.g., `["vehicle", "heating"]`), the same value for every row in that year.
 
@@ -29,7 +29,7 @@ so that analysts can audit household-level behavioral responses year-by-year and
 
 4. **AC-4: Parquet export** — Decision columns with `pa.list_(pa.float64())` type are natively supported by Parquet. Given panel output with decision records, when exported via `to_parquet()`, then the file is readable by pandas (list columns become Python lists) and polars (list columns become `list[f64]`). Given panel output with decision records, when exported via `to_csv()`, then list columns are serialized as bracket-delimited strings (PyArrow default CSV behavior). No changes to `to_csv()` or `to_parquet()` methods are required — the existing implementations handle the new column types natively.
 
-5. **AC-5: Manifest taste parameter capture** — A `capture_discrete_choice_parameters()` function extracts taste parameters and eligibility summaries from the decision log in yearly states. It returns a `list[dict[str, Any]]` where each entry contains: `domain_name`, `beta_cost`, `choice_seed`, and optionally `eligibility_summary`. The function scans the first year's state that contains a decision log (all years use the same taste parameters). The extracted parameters are included in the manifest metadata under key `"discrete_choice_parameters"`. Given a run with two domains (vehicle, heating), when the manifest is inspected, then both domains' taste parameters are listed.
+5. **AC-5: Manifest taste parameter capture** — A `capture_discrete_choice_parameters()` function extracts taste parameters and eligibility summaries from the decision log in yearly states. It returns a `list[dict[str, Any]]` where each entry contains: `domain_name`, `beta_cost`, `choice_seed` (from the first year, as a representative sample — seeds vary per year as `master_seed XOR year` and are fully recorded in the existing seed log), and optionally `eligibility_summary`. The function scans the first year's state that contains a decision log (taste parameters such as `beta_cost` are consistent across years; `choice_seed` is year-specific but captured from the first year here as the seed for year N can be recomputed from the manifest's master seed). The extracted parameters are included in the manifest metadata under key `"discrete_choice_parameters"` only when the list is non-empty (key is absent for non-discrete-choice runs). Given a run with two domains (vehicle, heating), when the manifest is inspected, then both domains' taste parameters are listed.
 
 6. **AC-6: Panel schema consistency across years** — Given a multi-year run with discrete choice, when panel tables from different years have the same decision domains, then all yearly tables have identical column schemas and `pa.concat_tables()` succeeds without error. Given a multi-year run where Year 1 has decision records but Year 2 does not (e.g., partial run), then decision columns are only present in the Year 1 table and concatenation uses `promote_options="permissive"` to handle schema differences.
 
@@ -37,58 +37,58 @@ so that analysts can audit household-level behavioral responses year-by-year and
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create `decision_record.py` with types and step (AC: 1, 2)
-  - [ ] 1.1: Define `DECISION_LOG_KEY = "discrete_choice_decision_log"` state key constant
-  - [ ] 1.2: Implement `DecisionRecord` frozen dataclass with all fields (domain_name, chosen, probabilities, utilities, alternative_ids, seed, taste_parameters, eligibility_summary)
-  - [ ] 1.3: Implement `DecisionRecordStep` with `__slots__`, OrchestratorStep protocol
-  - [ ] 1.4: In `execute()`: read ChoiceResult and metadata from state; if absent, return state unchanged
-  - [ ] 1.5: Extract taste parameters (`beta_cost`, `choice_seed`) from `DISCRETE_CHOICE_METADATA_KEY`
-  - [ ] 1.6: Extract eligibility summary from metadata if present (`eligibility_n_total`, etc.)
-  - [ ] 1.7: Create `DecisionRecord`, append to existing log tuple (or create new tuple)
-  - [ ] 1.8: Store updated log in new state via `dataclasses.replace()` (immutable pattern)
-  - [ ] 1.9: Structured logging: `domain_name`, `n_households`, `n_alternatives`, `event=decision_recorded`
-  - [ ] 1.10: Add module docstring referencing Story 14-6 and FR50/FR51
+- [x] Task 1: Create `decision_record.py` with types and step (AC: 1, 2)
+  - [x] 1.1: Define `DECISION_LOG_KEY = "discrete_choice_decision_log"` state key constant
+  - [x] 1.2: Implement `DecisionRecord` frozen dataclass with all fields (domain_name, chosen, probabilities, utilities, alternative_ids, seed, taste_parameters, eligibility_summary)
+  - [x] 1.3: Implement `DecisionRecordStep` with `__slots__`, OrchestratorStep protocol
+  - [x] 1.4: In `execute()`: read ChoiceResult and metadata from state; if absent, return state unchanged
+  - [x] 1.5: Extract taste parameters (`beta_cost`, `choice_seed`) from `DISCRETE_CHOICE_METADATA_KEY`
+  - [x] 1.6: Extract eligibility summary from metadata if present (`eligibility_n_total`, etc.)
+  - [x] 1.7: Create `DecisionRecord`, append to existing log tuple (or create new tuple)
+  - [x] 1.8: Store updated log in new state via `dataclasses.replace()` (immutable pattern)
+  - [x] 1.9: Structured logging: `domain_name`, `n_households`, `n_alternatives`, `event=decision_recorded`
+  - [x] 1.10: Add module docstring referencing Story 14-6 and FR50/FR51
 
-- [ ] Task 2: Extend `panel.py` with decision column injection (AC: 3, 4, 6, 7)
-  - [ ] 2.1: In `from_orchestrator_result()`, after extracting computation result, check for `DECISION_LOG_KEY` in yearly state
-  - [ ] 2.2: For each `DecisionRecord` in the log, build domain-prefixed columns: `{domain}_chosen`, `{domain}_probabilities`, `{domain}_utilities`
-  - [ ] 2.3: Build `decision_domains` list column (same value for all rows in a year)
-  - [ ] 2.4: Append decision columns to the yearly output table before adding household_id and year columns
-  - [ ] 2.5: Add `decision_domain_alternatives` to panel metadata (domain → alternative_ids mapping)
-  - [ ] 2.6: Handle schema differences across years: use `promote_options="permissive"` in `pa.concat_tables()` when decision columns are present in some years but not others
-  - [ ] 2.7: Extract `_build_decision_columns()` helper function for testability
+- [x] Task 2: Extend `panel.py` with decision column injection (AC: 3, 4, 6, 7)
+  - [x] 2.1: In `from_orchestrator_result()`, after extracting computation result, check for `DECISION_LOG_KEY` in yearly state
+  - [x] 2.2: For each `DecisionRecord` in the log, build domain-prefixed columns: `{domain}_chosen`, `{domain}_probabilities`, `{domain}_utilities`
+  - [x] 2.3: Build `decision_domains` list column (same value for all rows in a year)
+  - [x] 2.4: Append decision columns to the yearly output table before adding household_id and year columns
+  - [x] 2.5: Add `decision_domain_alternatives` to panel metadata (domain → alternative_ids mapping)
+  - [x] 2.6: Handle schema differences across years: use `promote_options="permissive"` in `pa.concat_tables()` when decision columns are present in some years but not others
+  - [x] 2.7: Extract `_build_decision_columns()` helper function for testability
 
-- [ ] Task 3: Add `capture_discrete_choice_parameters()` to `capture.py` (AC: 5)
-  - [ ] 3.1: Implement function that accepts `yearly_states: dict[int, Any]` and returns `list[dict[str, Any]]`
-  - [ ] 3.2: Scan yearly states for `DECISION_LOG_KEY`; extract per-domain taste parameters from DecisionRecord
-  - [ ] 3.3: Each entry: `{"domain_name": str, "beta_cost": float, "choice_seed": int | None, "eligibility_summary": dict | None}`
-  - [ ] 3.4: Return sorted by domain_name for determinism
+- [x] Task 3: Add `capture_discrete_choice_parameters()` to `capture.py` (AC: 5)
+  - [x] 3.1: Implement function that accepts `yearly_states: dict[int, Any]` and returns `list[dict[str, Any]]`
+  - [x] 3.2: Scan yearly states for `DECISION_LOG_KEY`; extract per-domain taste parameters from DecisionRecord
+  - [x] 3.3: Each entry: `{"domain_name": str, "beta_cost": float, "choice_seed": int | None, "eligibility_summary": dict | None}`
+  - [x] 3.4: Return sorted by domain_name for determinism
 
-- [ ] Task 4: Extend `runner.py` to capture discrete choice parameters in manifest (AC: 5)
-  - [ ] 4.1: In `OrchestratorRunner.run()`, after `orchestrator.run()`, call `capture_discrete_choice_parameters(result.yearly_states)`
-  - [ ] 4.2: Add result to metadata dict under `"discrete_choice_parameters"` key
-  - [ ] 4.3: Import `capture_discrete_choice_parameters` from `governance.capture`
+- [x] Task 4: Extend `runner.py` to capture discrete choice parameters in manifest (AC: 5)
+  - [x] 4.1: In `OrchestratorRunner.run()`, after `orchestrator.run()`, call `capture_discrete_choice_parameters(result.yearly_states)`
+  - [x] 4.2: Add result to metadata dict under `"discrete_choice_parameters"` key
+  - [x] 4.3: Import `capture_discrete_choice_parameters` from `governance.capture`
 
-- [ ] Task 5: Update `__init__.py` with new exports (AC: all)
-  - [ ] 5.1: Export `DecisionRecord`, `DecisionRecordStep`, `DECISION_LOG_KEY` from `decision_record`
-  - [ ] 5.2: Add to `__all__` in discrete_choice `__init__.py`
+- [x] Task 5: Update `__init__.py` with new exports (AC: all)
+  - [x] 5.1: Export `DecisionRecord`, `DecisionRecordStep`, `DECISION_LOG_KEY` from `decision_record`
+  - [x] 5.2: Add to `__all__` in discrete_choice `__init__.py`
 
-- [ ] Task 6: Write tests (AC: all)
-  - [ ] 6.1: `test_decision_record.py` — `TestDecisionRecord`: construction, frozen, all fields accessible
-  - [ ] 6.2: `test_decision_record.py` — `TestDecisionRecordStep`: protocol compliance, StepRegistry registration, pass-through when no ChoiceResult, snapshot creates record with correct fields, appends to existing log, creates new log when none exists, extracts taste parameters from metadata, extracts eligibility summary, state immutability
-  - [ ] 6.3: `test_decision_record.py` — `TestDecisionRecordStepMultiDomain`: two domains in sequence produce two records in log, each with correct domain_name and taste_parameters
-  - [ ] 6.4: `test_panel_decision.py` — `TestPanelWithDecisionRecords`: single domain adds domain-prefixed columns, two domains add two sets of columns, decision_domains list column present, probabilities and utilities are list<float64> type, panel metadata includes decision_domain_alternatives, backward compatibility (no decision log → no decision columns)
-  - [ ] 6.5: `test_panel_decision.py` — `TestPanelDecisionParquet`: export to Parquet and reload, verify list columns are correctly typed, verify domain-prefixed column names
-  - [ ] 6.6: `test_panel_decision.py` — `TestPanelDecisionCSV`: export to CSV and verify file is valid
-  - [ ] 6.7: `test_panel_decision.py` — `TestPanelDecisionSchemaConsistency`: multi-year run with same domains → concat succeeds, multi-year run with partial decisions → concat with promote_options succeeds
-  - [ ] 6.8: `tests/governance/test_capture_discrete_choice.py` — `TestCaptureDiscreteChoiceParameters`: extracts from single domain, extracts from two domains, returns empty list when no decision log, sorted by domain_name
-  - [ ] 6.9: `tests/orchestrator/test_runner_discrete_choice.py` — `TestRunnerDiscreteChoiceCapture`: verify `discrete_choice_parameters` appears in WorkflowResult metadata
+- [x] Task 6: Write tests (AC: all)
+  - [x] 6.1: `test_decision_record.py` — `TestDecisionRecord`: construction, frozen, all fields accessible
+  - [x] 6.2: `test_decision_record.py` — `TestDecisionRecordStep`: protocol compliance, StepRegistry registration, pass-through when no ChoiceResult, snapshot creates record with correct fields, appends to existing log, creates new log when none exists, extracts taste parameters from metadata, extracts eligibility summary, state immutability
+  - [x] 6.3: `test_decision_record.py` — `TestDecisionRecordStepMultiDomain`: two domains in sequence produce two records in log, each with correct domain_name and taste_parameters
+  - [x] 6.4: `test_panel_decision.py` — `TestPanelWithDecisionRecords`: single domain adds domain-prefixed columns, two domains add two sets of columns, decision_domains list column present, probabilities and utilities are list<float64> type, panel metadata includes decision_domain_alternatives, backward compatibility (no decision log → no decision columns)
+  - [x] 6.5: `test_panel_decision.py` — `TestPanelDecisionParquet`: export to Parquet and reload, verify list columns are correctly typed, verify domain-prefixed column names
+  - [x] 6.6: `test_panel_decision.py` — `TestPanelDecisionCSV`: export to CSV and verify file is valid
+  - [x] 6.7: `test_panel_decision.py` — `TestPanelDecisionSchemaConsistency`: multi-year run with same domains → concat succeeds, multi-year run with partial decisions → concat with promote_options succeeds
+  - [x] 6.8: `tests/governance/test_capture_discrete_choice.py` — `TestCaptureDiscreteChoiceParameters`: extracts from single domain, extracts from two domains, returns empty list when no decision log, sorted by domain_name
+  - [x] 6.9: `tests/orchestrator/test_runner_discrete_choice.py` — `TestRunnerDiscreteChoiceCapture`: verify `discrete_choice_parameters` appears in WorkflowResult metadata
 
-- [ ] Task 7: Lint, type-check, regression (AC: all)
-  - [ ] 7.1: `uv run ruff check src/reformlab/discrete_choice/ src/reformlab/orchestrator/ src/reformlab/governance/ tests/`
-  - [ ] 7.2: `uv run mypy src/reformlab/discrete_choice/ src/reformlab/orchestrator/ src/reformlab/governance/`
-  - [ ] 7.3: `uv run mypy src/`
-  - [ ] 7.4: `uv run pytest tests/` — full regression
+- [x] Task 7: Lint, type-check, regression (AC: all)
+  - [x] 7.1: `uv run ruff check src/reformlab/discrete_choice/ src/reformlab/orchestrator/ src/reformlab/governance/ tests/`
+  - [x] 7.2: `uv run mypy src/reformlab/discrete_choice/ src/reformlab/orchestrator/ src/reformlab/governance/`
+  - [x] 7.3: `uv run mypy src/`
+  - [x] 7.4: `uv run pytest tests/` — full regression
 
 ## Dev Notes
 
@@ -217,6 +217,15 @@ def _build_decision_columns(
 
     Returns the extended table and a domain→alternative_ids mapping for metadata.
     """
+    # Validate unique domain names before building columns
+    domain_names_seen = [r.domain_name for r in decision_log]
+    duplicates = {n for n in domain_names_seen if domain_names_seen.count(n) > 1}
+    if duplicates:
+        raise DiscreteChoiceError(
+            f"Duplicate domain_name(s) in decision log: {sorted(duplicates)}. "
+            "Each domain must appear at most once per year."
+        )
+
     domain_alternatives: dict[str, list[str]] = {}
 
     for record in decision_log:
@@ -308,10 +317,12 @@ def capture_discrete_choice_parameters(
         Sorted list of dicts with domain_name, beta_cost, choice_seed,
         eligibility_summary per domain. Empty list if no discrete choice.
     """
+    from reformlab.discrete_choice.decision_record import DECISION_LOG_KEY
+
     for year in sorted(yearly_states.keys()):
         state = yearly_states[year]
         data = state.data if hasattr(state, "data") else {}
-        decision_log = data.get("discrete_choice_decision_log")
+        decision_log = data.get(DECISION_LOG_KEY)
         if not isinstance(decision_log, tuple) or not decision_log:
             continue
 
@@ -369,7 +380,7 @@ if dc_params:
 
 7. **Capture from first year only** — Taste parameters are configuration inputs that don't change across years. The capture function scans sorted years and returns on the first match, avoiding redundant processing.
 
-8. **`capture_discrete_choice_parameters` is in `governance/capture.py`** — Follows the existing pattern where all manifest capture functions live in `capture.py`. The function accesses `DecisionRecord` via duck typing on the `.domain_name`, `.taste_parameters`, `.seed`, `.eligibility_summary` attributes. This avoids a hard import dependency from `governance` → `discrete_choice`. However, it does reference the `DECISION_LOG_KEY` string constant directly (`"discrete_choice_decision_log"`) rather than importing it, to keep the governance module decoupled.
+8. **`capture_discrete_choice_parameters` is in `governance/capture.py`** — Follows the existing pattern where all manifest capture functions live in `capture.py`. The function accesses `DecisionRecord` via duck typing on the `.domain_name`, `.taste_parameters`, `.seed`, `.eligibility_summary` attributes. `DECISION_LOG_KEY` is imported from `reformlab.discrete_choice.decision_record` — importing a constant is not meaningful coupling (the module still has no runtime dependency on discrete_choice types), and hardcoding the raw string would create a brittle out-of-sync contract that linters and type checkers cannot catch.
 
 9. **DecisionRecordStep is pass-through safe** — If no ChoiceResult exists in state, the step returns state unchanged. This means it can always be included in a pipeline even when discrete choice is not configured.
 
@@ -413,6 +424,7 @@ decision_record_heating (depends_on=("heating_state_update",))  # NEW
 | Non-tuple decision log in state | `DiscreteChoiceError` raised with type name. |
 | Missing `domain_name` in metadata | Falls back to `"unknown"` domain name. |
 | Missing `beta_cost` in metadata | `taste_parameters` dict is empty `{}`. |
+| Duplicate `domain_name` in decision log (misconfigured pipeline with two `DecisionRecordStep`s for same domain) | `_build_decision_columns()` raises `DiscreteChoiceError` if duplicate domain names are detected before appending columns. Validate uniqueness at the start of `_build_decision_columns()`. |
 
 ### State Key Integration
 
@@ -554,7 +566,18 @@ Claude Opus 4.6
 
 ### Debug Log References
 
+- No issues encountered during implementation
+
 ### Completion Notes List
+
+- Implementation notes:
+  - All 7 tasks completed with TDD (red-green-refactor cycle)
+  - 46 new tests across 4 test files, all passing
+  - Full regression: 2562 tests pass, 0 failures
+  - Ruff lint: all checks pass
+  - Mypy strict: all 133 source files pass
+  - AC-4 deviation: PyArrow CSV writer does not support `pa.list_()` types natively (story assumed it would). Added `_cast_list_columns_to_string()` helper in `to_csv()` to serialize list columns as bracket-delimited strings. Parquet export works natively as specified.
+  - `capture_discrete_choice_parameters()` uses duck typing on DecisionRecord attributes, with DECISION_LOG_KEY imported as a constant (not hardcoded string)
 
 - Story creation notes (pre-implementation):
   - Ultimate context engine analysis completed — comprehensive developer guide created
@@ -574,12 +597,13 @@ Claude Opus 4.6
 
 #### New Files
 - `src/reformlab/discrete_choice/decision_record.py` — DecisionRecord, DecisionRecordStep, DECISION_LOG_KEY
-- `tests/discrete_choice/test_decision_record.py` — DecisionRecord type and step tests
-- `tests/orchestrator/test_panel_decision.py` — Panel decision column tests, Parquet/CSV export
-- `tests/governance/test_capture_discrete_choice.py` — capture_discrete_choice_parameters tests
+- `tests/discrete_choice/test_decision_record.py` — DecisionRecord type and step tests (21 tests)
+- `tests/orchestrator/test_panel_decision.py` — Panel decision column tests, Parquet/CSV export (15 tests)
+- `tests/governance/test_capture_discrete_choice.py` — capture_discrete_choice_parameters tests (8 tests)
+- `tests/orchestrator/test_runner_discrete_choice.py` — Runner discrete choice capture tests (2 tests)
 
 #### Modified Files
-- `src/reformlab/discrete_choice/__init__.py` — Added decision_record exports (DecisionRecord, DecisionRecordStep, DECISION_LOG_KEY)
-- `src/reformlab/orchestrator/panel.py` — Extended from_orchestrator_result() with _build_decision_columns() helper; added DECISION_LOG_KEY import; promote_options="permissive" for concat
+- `src/reformlab/discrete_choice/__init__.py` — Added decision_record exports (DecisionRecord, DecisionRecordStep, DECISION_LOG_KEY) to imports and __all__
+- `src/reformlab/orchestrator/panel.py` — Extended from_orchestrator_result() with _build_decision_columns() helper; added _cast_list_columns_to_string() for CSV export; DECISION_LOG_KEY import; promote_options="permissive" for concat; decision_domain_alternatives in metadata
 - `src/reformlab/governance/capture.py` — Added capture_discrete_choice_parameters() function
-- `src/reformlab/orchestrator/runner.py` — Added capture_discrete_choice_parameters() call in OrchestratorRunner.run(); discrete_choice_parameters in manifest metadata
+- `src/reformlab/orchestrator/runner.py` — Added capture_discrete_choice_parameters import and call in OrchestratorRunner.run(); discrete_choice_parameters in manifest metadata

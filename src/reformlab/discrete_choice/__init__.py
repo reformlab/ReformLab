@@ -10,10 +10,16 @@ Story 14-2: Conditional logit model with seed-controlled draws.
 Story 14-3: Vehicle investment decision domain and state update step.
 Story 14-4: Heating system investment decision domain and state update step.
 Story 14-5: Eligibility filtering for performance optimization.
+Story 14-6: Decision record types and step for audit trail.
 """
 
 from __future__ import annotations
 
+from reformlab.discrete_choice.decision_record import (
+    DECISION_LOG_KEY,
+    DecisionRecord,
+    DecisionRecordStep,
+)
 from reformlab.discrete_choice.domain import DecisionDomain
 from reformlab.discrete_choice.domain_utils import (
     apply_choices_to_population,
@@ -84,7 +90,10 @@ __all__ = [
     "compute_utilities",
     "CostMatrix",
     "create_vintage_entries",
+    "DECISION_LOG_KEY",
     "DecisionDomain",
+    "DecisionRecord",
+    "DecisionRecordStep",
     "default_heating_domain_config",
     "default_vehicle_domain_config",
     "DISCRETE_CHOICE_COST_MATRIX_KEY",

@@ -3,8 +3,8 @@
 Provides functions to capture assumptions, mappings, parameters, and warnings
 at orchestrator execution time for immutable manifest storage.
 
-This module implements the capture logic for FR26 (assumption/mapping transparency)
-and FR27 (unvalidated template warnings).
+This module implements the capture logic for FR26 (assumption/mapping transparency),
+FR27 (unvalidated template warnings), and FR50/FR51 (discrete choice parameters).
 """
 
 from __future__ import annotations
@@ -327,3 +327,50 @@ def capture_warnings(
         )
 
     return warnings
+
+
+def capture_discrete_choice_parameters(
+    yearly_states: dict[int, Any],
+) -> list[dict[str, Any]]:
+    """Extract taste parameters per domain from decision log in yearly states.
+
+    Scans yearly states for DECISION_LOG_KEY and extracts per-domain
+    taste parameters, seed, and eligibility summary. Uses the first year
+    containing a decision log (parameters are consistent across years).
+
+    Story 14-6, AC-5.
+
+    Args:
+        yearly_states: Dict mapping year to YearState (or state-like objects
+            with .data attribute).
+
+    Returns:
+        Sorted list of dicts with domain_name, alternative_ids, taste params,
+        choice_seed, eligibility_summary per domain. Empty list if no
+        discrete choice.
+    """
+    from reformlab.discrete_choice.decision_record import DECISION_LOG_KEY
+
+    for year in sorted(yearly_states.keys()):
+        state = yearly_states[year]
+        data = state.data if hasattr(state, "data") else {}
+        decision_log = data.get(DECISION_LOG_KEY)
+        if not isinstance(decision_log, tuple) or not decision_log:
+            continue
+
+        entries: list[dict[str, Any]] = []
+        for record in decision_log:
+            entry: dict[str, Any] = {
+                "domain_name": record.domain_name,
+                "alternative_ids": list(record.alternative_ids),
+            }
+            entry.update(record.taste_parameters)
+            if record.seed is not None:
+                entry["choice_seed"] = record.seed
+            if record.eligibility_summary is not None:
+                entry["eligibility_summary"] = dict(record.eligibility_summary)
+            entries.append(entry)
+
+        return sorted(entries, key=lambda x: x.get("domain_name", ""))
+
+    return []
