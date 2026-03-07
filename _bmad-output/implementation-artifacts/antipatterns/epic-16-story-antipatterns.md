@@ -15,3 +15,10 @@
 | medium | Task 3.4 says "validate output_path parent directory exists" but `output_path` IS the parent — the package subdirectory goes inside it, so this validation as written is wrong | Reworded to "Validate `output_path` exists as a directory — the package subdirectory `{package_id}/` is created inside it." |
 | medium | AC-5 says "every listed artifact's hash can be verified" but it's unclear whether `package-index.json` is listed in its own artifacts array (which would be circular) | Added explicit Implementation Note: `package-index.json` is NOT in the `artifacts` array; AC-5 applies only to the listed files. |
 | medium | Task 2.6 says "only if yearly manifests are available in the result metadata" — untestable without knowing which metadata key and what type | Task 2.6 now specifies `result.metadata.get("child_manifests", {})` with type `dict[int, str]`, and specifies to log `event=child_manifests_absent` when absent. |
+
+## Story 16-2 (2026-03-07)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| high | ZIP root directory validation missing — `import_replication_package()` specified "single subdirectory expected" but gave no error path for 0 entries, 2+ entries, or a top-level file | Task 2.2 updated with explicit `ReplicationPackageError` on non-conforming structure; Algorithm step 2a extended with enumerated error condition. |
+| medium | `_compare_panel_tables` sort fallback and NaN semantics unspecified — if `household_id`/`year` columns are absent the sort would raise; NaN comparison semantics (False for NaN == NaN) not documented | Algorithm step 3 updated with explicit fallback (skip sort + warning log) and NaN/null treatment documented. |

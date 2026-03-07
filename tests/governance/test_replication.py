@@ -1,11 +1,18 @@
-"""Tests for replication package export (Story 16.1 / FR54).
+"""Tests for replication package export, import, and reproduction.
 
-Covers AC-1 through AC-5:
+Story 16.1 / FR54 — AC-1 through AC-5 (export):
     AC-1: Self-contained package directory structure
     AC-2: Manifest index with role, artifact_type, path, hash per artifact
     AC-3: Optional compression to ZIP archive
     AC-4: Calibration assumptions present in exported run-manifest.json
     AC-5: Manifest index integrity (UUID, ISO timestamp, version, artifact hashes)
+
+Story 16.2 — AC-1 through AC-5 (import and reproduction):
+    AC-1: Package import with artifact restoration
+    AC-2: Simulation reproduction within tolerance
+    AC-3: Manifest integrity verification
+    AC-4: Corrupted artifact detection
+    AC-5: Reproduction comparison report
 """
 
 from __future__ import annotations
@@ -26,7 +33,10 @@ from reformlab.governance.replication import (
     PackageArtifact,
     PackageIndex,
     ReplicationPackageMetadata,
+    ReproductionResult,
     export_replication_package,
+    import_replication_package,
+    reproduce_from_package,
 )
 
 # ============================================================
@@ -667,3 +677,565 @@ class TestSimulationResultConvenience:
         result = _make_result()
         meta = result.export_replication_package(tmp_path)
         assert meta.artifact_count == 4
+
+
+# ============================================================
+# Story 16.2 helpers
+# ============================================================
+
+
+def _make_fixed_adapter() -> Any:
+    """MockAdapter that always returns a fixed panel table."""
+    from reformlab.computation.mock_adapter import MockAdapter
+
+    output = pa.table(
+        {
+            "household_id": pa.array([1, 2, 3], type=pa.int64()),
+            "year": pa.array([2025, 2025, 2025], type=pa.int64()),
+            "carbon_tax": pa.array([150.0, 200.0, 250.0], type=pa.float64()),
+        }
+    )
+    return MockAdapter(default_output=output, version_string="mock-1.0.0")
+
+
+def _export_and_import(tmp_path: Path, *, compress: bool = False) -> Any:
+    """Helper: export a package then import it, returning ImportedPackage."""
+    result = _make_result()
+    meta = export_replication_package(result, tmp_path, compress=compress)
+    return import_replication_package(meta.package_path)
+
+
+# ============================================================
+# TestImportedPackage — Story 16.2 / AC-1
+# ============================================================
+
+
+class TestImportedPackage:
+    """Story 16.2 / AC-1: ImportedPackage type correctness."""
+
+    def test_creation_with_all_fields(self, tmp_path: Path) -> None:
+        """ImportedPackage has all required typed fields."""
+        pkg = _export_and_import(tmp_path)
+        assert isinstance(pkg.package_id, str)
+        assert isinstance(pkg.source_manifest_id, str)
+        assert isinstance(pkg.source_path, Path)
+        assert isinstance(pkg.index, PackageIndex)
+        assert isinstance(pkg.manifest, RunManifest)
+        assert isinstance(pkg.panel_table, pa.Table)
+        assert isinstance(pkg.policy, dict)
+        assert isinstance(pkg.scenario_metadata, dict)
+        assert isinstance(pkg.integrity_verified, bool)
+
+    def test_frozen_immutability(self, tmp_path: Path) -> None:
+        """ImportedPackage is frozen."""
+        pkg = _export_and_import(tmp_path)
+        with pytest.raises((AttributeError, TypeError)):
+            pkg.package_id = "mutated"  # type: ignore[misc]
+
+    def test_all_fields_present_in_imported_package(self, tmp_path: Path) -> None:
+        """All AC-1 required fields are accessible."""
+        pkg = _export_and_import(tmp_path)
+        # Policy field
+        assert "carbon_tax_rate" in pkg.policy
+        # Scenario metadata
+        assert "seeds" in pkg.scenario_metadata
+        # Manifest
+        assert pkg.manifest.manifest_id == "test-manifest-001"
+        # Panel table schema
+        assert "household_id" in pkg.panel_table.column_names
+        assert "year" in pkg.panel_table.column_names
+
+
+# ============================================================
+# TestReproductionResult — Story 16.2 / AC-5
+# ============================================================
+
+
+class TestReproductionResult:
+    """Story 16.2 / AC-5: ReproductionResult type and summary format."""
+
+    def _make_result_obj(self, *, passed: bool = True) -> ReproductionResult:
+        return ReproductionResult(
+            passed=passed,
+            integrity_passed=True,
+            numerical_match=passed,
+            tolerance_used=0.0,
+            discrepancies=() if passed else ("Column 'x' row 0: 1.0 vs 2.0 (diff=1.0)",),
+            original_manifest_id="abc-123",
+            reproduced_result=None,
+        )
+
+    def test_creation_with_all_fields(self) -> None:
+        result = self._make_result_obj()
+        assert result.passed is True
+        assert result.integrity_passed is True
+        assert result.numerical_match is True
+        assert result.tolerance_used == 0.0
+        assert result.discrepancies == ()
+        assert result.original_manifest_id == "abc-123"
+        assert result.reproduced_result is None
+
+    def test_frozen_immutability(self) -> None:
+        result = self._make_result_obj()
+        with pytest.raises((AttributeError, TypeError)):
+            result.passed = False  # type: ignore[misc]
+
+    def test_summary_passed_format(self) -> None:
+        """summary() output for a passing reproduction."""
+        result = self._make_result_obj(passed=True)
+        s = result.summary()
+        assert "PASSED" in s
+        assert "abc-123" in s
+        assert "Integrity check: PASSED" in s
+        assert "Numerical match: PASSED" in s
+        assert "Discrepancies: 0" in s
+
+    def test_summary_failed_format(self) -> None:
+        """summary() output for a failing reproduction includes discrepancy detail."""
+        result = self._make_result_obj(passed=False)
+        s = result.summary()
+        assert "FAILED" in s
+        assert "Discrepancies: 1" in s
+        assert "Column 'x' row 0" in s
+
+    def test_summary_tolerance_shown(self) -> None:
+        result = ReproductionResult(
+            passed=True,
+            integrity_passed=True,
+            numerical_match=True,
+            tolerance_used=1.5,
+            discrepancies=(),
+            original_manifest_id="xyz",
+            reproduced_result=None,
+        )
+        assert "tolerance=1.5" in result.summary()
+
+
+# ============================================================
+# TestImportFromDirectory — Story 16.2 / AC-1, AC-3
+# ============================================================
+
+
+class TestImportFromDirectory:
+    """Story 16.2 / AC-1, AC-3: round-trip via directory format."""
+
+    def test_imported_package_manifest_matches(self, tmp_path: Path) -> None:
+        result = _make_result(manifest_id="abc-import-dir")
+        meta = export_replication_package(result, tmp_path)
+        pkg = import_replication_package(meta.package_path)
+
+        assert pkg.manifest.manifest_id == "abc-import-dir"
+        assert pkg.source_manifest_id == "abc-import-dir"
+        assert pkg.package_id == meta.package_id
+
+    def test_imported_package_policy_matches(self, tmp_path: Path) -> None:
+        pkg = _export_and_import(tmp_path)
+        assert pkg.policy["carbon_tax_rate"] == 44.6
+
+    def test_imported_package_panel_table_schema_matches(self, tmp_path: Path) -> None:
+        pkg = _export_and_import(tmp_path)
+        assert "household_id" in pkg.panel_table.column_names
+        assert "year" in pkg.panel_table.column_names
+        assert "carbon_tax" in pkg.panel_table.column_names
+        assert pkg.panel_table.num_rows == 3
+
+    def test_imported_package_index_matches(self, tmp_path: Path) -> None:
+        result = _make_result()
+        meta = export_replication_package(result, tmp_path)
+        pkg = import_replication_package(meta.package_path)
+
+        assert pkg.index.package_id == meta.package_id
+        assert len(pkg.index.artifacts) == meta.artifact_count
+
+    def test_integrity_verified_true(self, tmp_path: Path) -> None:
+        """AC-3: integrity_verified is True when all hashes match."""
+        pkg = _export_and_import(tmp_path)
+        assert pkg.integrity_verified is True
+
+    def test_source_path_is_directory(self, tmp_path: Path) -> None:
+        pkg = _export_and_import(tmp_path)
+        assert pkg.source_path.is_dir()
+
+
+# ============================================================
+# TestImportFromZip — Story 16.2 / AC-1
+# ============================================================
+
+
+class TestImportFromZip:
+    """Story 16.2 / AC-1: round-trip via ZIP format handled transparently."""
+
+    def test_imported_package_from_zip_matches_directory(self, tmp_path: Path) -> None:
+        result = _make_result(manifest_id="zip-test-001")
+        meta = export_replication_package(result, tmp_path, compress=True)
+        pkg = import_replication_package(meta.package_path)
+
+        assert pkg.manifest.manifest_id == "zip-test-001"
+        assert pkg.integrity_verified is True
+        assert pkg.policy["carbon_tax_rate"] == 44.6
+        assert pkg.panel_table.num_rows == 3
+
+    def test_imported_package_zip_source_path_is_zip(self, tmp_path: Path) -> None:
+        pkg = _export_and_import(tmp_path, compress=True)
+        assert pkg.source_path.suffix == ".zip"
+
+    def test_zip_and_directory_produce_equivalent_imports(self, tmp_path: Path) -> None:
+        result = _make_result()
+        dir_meta = export_replication_package(result, tmp_path)
+        zip_meta = export_replication_package(result, tmp_path, compress=True)
+
+        dir_pkg = import_replication_package(dir_meta.package_path)
+        zip_pkg = import_replication_package(zip_meta.package_path)
+
+        # Same policy
+        assert dir_pkg.policy == zip_pkg.policy
+        # Same panel shape
+        assert dir_pkg.panel_table.schema == zip_pkg.panel_table.schema
+        assert dir_pkg.panel_table.num_rows == zip_pkg.panel_table.num_rows
+
+
+# ============================================================
+# TestImportIntegrityVerification — Story 16.2 / AC-4
+# ============================================================
+
+
+class TestImportIntegrityVerification:
+    """Story 16.2 / AC-4: corrupted artifact raises ReplicationPackageError."""
+
+    def test_corrupted_artifact_raises_error_with_path_info(
+        self, tmp_path: Path
+    ) -> None:
+        result = _make_result()
+        meta = export_replication_package(result, tmp_path)
+        pkg_dir = meta.package_path
+
+        # Corrupt the panel parquet file
+        parquet_path = pkg_dir / "data" / "panel-output.parquet"
+        parquet_path.write_bytes(b"CORRUPTED_CONTENT")
+
+        with pytest.raises(
+            ReplicationPackageError,
+            match="Integrity check failed for data/panel-output.parquet",
+        ):
+            import_replication_package(pkg_dir)
+
+    def test_corrupted_artifact_error_contains_expected_hash(
+        self, tmp_path: Path
+    ) -> None:
+        result = _make_result()
+        meta = export_replication_package(result, tmp_path)
+        pkg_dir = meta.package_path
+
+        # Find the expected hash for the policy file
+        policy_artifact = next(
+            a for a in meta.index.artifacts if a.path == "config/policy.json"
+        )
+        policy_path = pkg_dir / "config" / "policy.json"
+        policy_path.write_text('{"corrupted": true}', encoding="utf-8")
+
+        with pytest.raises(
+            ReplicationPackageError, match=policy_artifact.hash[:10]
+        ):
+            import_replication_package(pkg_dir)
+
+
+# ============================================================
+# TestImportMissingArtifact — Story 16.2 / AC-4
+# ============================================================
+
+
+class TestImportMissingArtifact:
+    """Story 16.2 / AC-4: missing artifact raises ReplicationPackageError."""
+
+    def test_missing_parquet_raises_error(self, tmp_path: Path) -> None:
+        result = _make_result()
+        meta = export_replication_package(result, tmp_path)
+        pkg_dir = meta.package_path
+
+        parquet_path = pkg_dir / "data" / "panel-output.parquet"
+        parquet_path.unlink()
+
+        with pytest.raises(
+            ReplicationPackageError,
+            match="Artifact missing: data/panel-output.parquet",
+        ):
+            import_replication_package(pkg_dir)
+
+    def test_missing_policy_json_raises_error(self, tmp_path: Path) -> None:
+        result = _make_result()
+        meta = export_replication_package(result, tmp_path)
+        pkg_dir = meta.package_path
+
+        (pkg_dir / "config" / "policy.json").unlink()
+
+        with pytest.raises(
+            ReplicationPackageError,
+            match="Artifact missing: config/policy.json",
+        ):
+            import_replication_package(pkg_dir)
+
+
+# ============================================================
+# TestImportMissingIndex — Story 16.2 / AC-4
+# ============================================================
+
+
+class TestImportMissingIndex:
+    """Story 16.2 / AC-4: missing package-index.json raises ReplicationPackageError."""
+
+    def test_missing_index_raises_error(self, tmp_path: Path) -> None:
+        result = _make_result()
+        meta = export_replication_package(result, tmp_path)
+        pkg_dir = meta.package_path
+
+        (pkg_dir / "package-index.json").unlink()
+
+        with pytest.raises(
+            ReplicationPackageError,
+            match="package-index.json not found",
+        ):
+            import_replication_package(pkg_dir)
+
+
+# ============================================================
+# TestImportInvalidPath — Story 16.2 / AC-4
+# ============================================================
+
+
+class TestImportInvalidPath:
+    """Story 16.2 / AC-4: invalid paths raise ReplicationPackageError."""
+
+    def test_nonexistent_path_raises_error(self, tmp_path: Path) -> None:
+        missing = tmp_path / "no_such_package"
+        with pytest.raises(
+            ReplicationPackageError,
+            match="does not exist",
+        ):
+            import_replication_package(missing)
+
+    def test_file_not_zip_raises_error(self, tmp_path: Path) -> None:
+        not_a_zip = tmp_path / "package.txt"
+        not_a_zip.write_text("not a zip", encoding="utf-8")
+        with pytest.raises(
+            ReplicationPackageError,
+            match="must be a directory or .zip archive",
+        ):
+            import_replication_package(not_a_zip)
+
+    def test_zip_with_multiple_root_dirs_raises_error(self, tmp_path: Path) -> None:
+        """ZIP with multiple root dirs raises ReplicationPackageError."""
+        bad_zip = tmp_path / "bad.zip"
+        with zipfile.ZipFile(bad_zip, "w") as zf:
+            zf.writestr("dir_a/file.txt", "a")
+            zf.writestr("dir_b/file.txt", "b")
+
+        with pytest.raises(
+            ReplicationPackageError,
+            match="Expected a single root directory",
+        ):
+            import_replication_package(bad_zip)
+
+
+# ============================================================
+# TestReproduceFromPackage — Story 16.2 / AC-2
+# ============================================================
+
+
+class TestReproduceFromPackage:
+    """Story 16.2 / AC-2: export → import → reproduce → passed=True."""
+
+    def test_reproduce_passes_with_same_adapter(self, tmp_path: Path) -> None:
+        adapter = _make_fixed_adapter()
+        result = _make_result()
+        meta = export_replication_package(result, tmp_path)
+        pkg = import_replication_package(meta.package_path)
+        repro = reproduce_from_package(pkg, adapter)
+
+        assert repro.passed is True
+        assert repro.numerical_match is True
+        assert repro.integrity_passed is True
+        assert repro.discrepancies == ()
+
+    def test_reproduce_returns_reproduction_result_type(self, tmp_path: Path) -> None:
+        adapter = _make_fixed_adapter()
+        pkg = _export_and_import(tmp_path)
+        repro = reproduce_from_package(pkg, adapter)
+        assert isinstance(repro, ReproductionResult)
+
+    def test_reproduce_original_manifest_id_matches(self, tmp_path: Path) -> None:
+        adapter = _make_fixed_adapter()
+        result = _make_result(manifest_id="repro-manifest-001")
+        meta = export_replication_package(result, tmp_path)
+        pkg = import_replication_package(meta.package_path)
+        repro = reproduce_from_package(pkg, adapter)
+
+        assert repro.original_manifest_id == "repro-manifest-001"
+
+    def test_reproduce_result_stored_on_success(self, tmp_path: Path) -> None:
+        adapter = _make_fixed_adapter()
+        pkg = _export_and_import(tmp_path)
+        repro = reproduce_from_package(pkg, adapter)
+
+        assert repro.reproduced_result is not None
+
+
+# ============================================================
+# TestReproduceWithTolerance — Story 16.2 / AC-2
+# ============================================================
+
+
+class TestReproduceWithTolerance:
+    """Story 16.2 / AC-2: tolerance=0 fails, tolerance=1 passes for small diff."""
+
+    def test_strict_tolerance_fails_on_different_output(self, tmp_path: Path) -> None:
+        """Adapter producing slightly different values fails strict comparison."""
+        from reformlab.computation.mock_adapter import MockAdapter
+
+        # Export with original adapter
+        original_adapter = _make_fixed_adapter()
+        result = _make_result()
+        meta = export_replication_package(result, tmp_path)
+        pkg = import_replication_package(meta.package_path)
+
+        # Reproduce with slightly different adapter output (+0.001 offset)
+        different_output = pa.table(
+            {
+                "household_id": pa.array([1, 2, 3], type=pa.int64()),
+                "year": pa.array([2025, 2025, 2025], type=pa.int64()),
+                "carbon_tax": pa.array([150.001, 200.001, 250.001], type=pa.float64()),
+            }
+        )
+        different_adapter = MockAdapter(
+            default_output=different_output, version_string="mock-1.0.0"
+        )
+
+        repro_strict = reproduce_from_package(pkg, different_adapter, tolerance=0.0)
+        assert repro_strict.passed is False
+        assert repro_strict.numerical_match is False
+        assert len(repro_strict.discrepancies) > 0
+
+        _ = original_adapter  # referenced to avoid linter warnings
+
+    def test_wide_tolerance_passes_on_small_diff(self, tmp_path: Path) -> None:
+        """Adapter with 0.001 diff passes with tolerance=1.0."""
+        from reformlab.computation.mock_adapter import MockAdapter
+
+        result = _make_result()
+        meta = export_replication_package(result, tmp_path)
+        pkg = import_replication_package(meta.package_path)
+
+        different_output = pa.table(
+            {
+                "household_id": pa.array([1, 2, 3], type=pa.int64()),
+                "year": pa.array([2025, 2025, 2025], type=pa.int64()),
+                "carbon_tax": pa.array([150.001, 200.001, 250.001], type=pa.float64()),
+            }
+        )
+        different_adapter = MockAdapter(
+            default_output=different_output, version_string="mock-1.0.0"
+        )
+
+        repro_loose = reproduce_from_package(pkg, different_adapter, tolerance=1.0)
+        assert repro_loose.passed is True
+        assert repro_loose.numerical_match is True
+
+
+# ============================================================
+# TestReproduceComparisonReport — Story 16.2 / AC-5
+# ============================================================
+
+
+class TestReproduceComparisonReport:
+    """Story 16.2 / AC-5: ReproductionResult.summary() contains expected sections."""
+
+    def test_summary_contains_status_section(self, tmp_path: Path) -> None:
+        adapter = _make_fixed_adapter()
+        pkg = _export_and_import(tmp_path)
+        repro = reproduce_from_package(pkg, adapter)
+        s = repro.summary()
+        assert "Status:" in s
+
+    def test_summary_contains_integrity_section(self, tmp_path: Path) -> None:
+        adapter = _make_fixed_adapter()
+        pkg = _export_and_import(tmp_path)
+        repro = reproduce_from_package(pkg, adapter)
+        s = repro.summary()
+        assert "Integrity check:" in s
+
+    def test_summary_contains_match_info(self, tmp_path: Path) -> None:
+        adapter = _make_fixed_adapter()
+        pkg = _export_and_import(tmp_path)
+        repro = reproduce_from_package(pkg, adapter)
+        s = repro.summary()
+        assert "Numerical match:" in s
+        assert "tolerance=" in s
+
+    def test_summary_contains_original_manifest_id(self, tmp_path: Path) -> None:
+        result = _make_result(manifest_id="summary-manifest-001")
+        meta = export_replication_package(result, tmp_path)
+        pkg = import_replication_package(meta.package_path)
+        adapter = _make_fixed_adapter()
+        repro = reproduce_from_package(pkg, adapter)
+        s = repro.summary()
+        assert "summary-manifest-001" in s
+
+
+# ============================================================
+# TestReproduceFailure — Story 16.2 / AC-2
+# ============================================================
+
+
+class TestReproduceFailure:
+    """Story 16.2 / AC-2: adapter exception → passed=False, error in discrepancies."""
+
+    def test_failing_adapter_produces_failed_result(self, tmp_path: Path) -> None:
+        from reformlab.computation.mock_adapter import MockAdapter
+        from reformlab.computation.types import PolicyConfig, PopulationData
+
+        def _always_fails(
+            pop: PopulationData, pol: PolicyConfig, period: int
+        ) -> pa.Table:
+            raise RuntimeError("Adapter exploded")
+
+        failing_adapter = MockAdapter(
+            compute_fn=_always_fails, version_string="failing-1.0.0"
+        )
+        pkg = _export_and_import(tmp_path)
+        repro = reproduce_from_package(pkg, failing_adapter)
+
+        assert repro.passed is False
+        assert repro.numerical_match is False
+        assert repro.reproduced_result is None
+        assert len(repro.discrepancies) > 0
+        assert "failed" in repro.discrepancies[0].lower()
+
+
+# ============================================================
+# TestImportedPackageConvenience — Story 16.2 / AC-2
+# ============================================================
+
+
+class TestImportedPackageConvenience:
+    """Story 16.2 / AC-2: ImportedPackage.reproduce() delegates to reproduce_from_package()."""
+
+    def test_convenience_reproduce_returns_reproduction_result(
+        self, tmp_path: Path
+    ) -> None:
+        adapter = _make_fixed_adapter()
+        pkg = _export_and_import(tmp_path)
+        repro = pkg.reproduce(adapter)
+        assert isinstance(repro, ReproductionResult)
+
+    def test_convenience_reproduce_passes_with_same_adapter(
+        self, tmp_path: Path
+    ) -> None:
+        adapter = _make_fixed_adapter()
+        pkg = _export_and_import(tmp_path)
+        repro = pkg.reproduce(adapter)
+        assert repro.passed is True
+
+    def test_convenience_reproduce_forwards_tolerance(self, tmp_path: Path) -> None:
+        adapter = _make_fixed_adapter()
+        pkg = _export_and_import(tmp_path)
+        repro = pkg.reproduce(adapter, tolerance=0.5)
+        assert repro.tolerance_used == 0.5

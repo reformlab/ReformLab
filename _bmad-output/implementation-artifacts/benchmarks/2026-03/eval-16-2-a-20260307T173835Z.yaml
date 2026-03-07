@@ -1,0 +1,134 @@
+record_id: 7a247348-69c9-4f1c-838e-e63347d5449b
+created_at: '2026-03-07T17:38:35.601345+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 16
+  story_num: 2
+  title: Story 16.2
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: true
+    requires_migration: false
+evaluator:
+  provider: codex
+  model: gpt-5.3-codex
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-03-07T17:34:12.285141Z'
+  end_time: '2026-03-07T17:37:43.006141Z'
+  duration_ms: 210721
+  input_tokens: 0
+  output_tokens: 3446
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 13784
+  heading_count: 38
+  list_depth_max: 2
+  code_block_count: 8
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 6.8'
+  - 🎯 Ruthless Story Validation 16.2
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 6.8 → MAJOR REWORK'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Reproduction Preconditions Contradict Story Promise
+  - 2. Numerical Comparison Contract Is Unsafe
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Clarify “All Artifacts Loaded” Scope
+  - 2. Define Adapter Compatibility Contract
+  - 3. Specify Scenario Reconstruction Source-of-Truth
+  - 4. Add Index/Manifest Consistency Checks
+  - 5. Mandate Safe ZIP Extraction Policy
+  - 6. Add Forward-Compatibility Rule for New Artifact Types
+  - ✨ Optimizations (Nice to Have)
+  - 1. Reuse Existing Governance Helpers
+  - 2. Add Performance Guardrails for Table Comparison
+  - 3. Parametrize Test Matrix
+  - 🤖 LLM Optimization Improvements
+  - 1. Move Preconditions to Top
+  - Mandatory Preconditions
+  - 2. Compress Duplicate Algorithm Narratives
+  - Execution Contract
+  - 3. Replace Long Test Bullet List with Matrix
+  - 4. Tighten AC-5 Output Contract
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.33
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: efae311f4080
+findings:
+  total_count: 15
+  by_severity:
+    critical: 2
+    major: 7
+    minor: 6
+    nit: 0
+  by_category:
+    security: 2
+    performance: 1
+    correctness: 8
+    completeness: 7
+    clarity: 7
+    testability: 2
+  has_fix_count: 15
+  has_location_count: 14
+  has_evidence_count: 12
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 3
+  confidence_phrases_count: 4
+linguistic:
+  avg_sentence_length: 11.591549295774648
+  vocabulary_richness: 0.3845686512758202
+  flesch_reading_ease: 5.803793010285801
+  vague_terms_count: 1
+  formality_score: 0.72
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.85
+  evidence_quality: 0.82
+  follows_template: true
+  internal_consistency: 0.95
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: true
+    requires_migration: false

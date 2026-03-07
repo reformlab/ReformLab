@@ -10,7 +10,7 @@ Public API:
     ManifestValidationError: Raised on schema validation failures
     LineageIntegrityError: Raised on lineage validation failures
     ReproducibilityValidationError: Raised on reproducibility input contract errors
-    ReplicationPackageError: Raised on replication package export failures
+    ReplicationPackageError: Raised on replication package export/import failures
     LineageGraph: Lineage graph query model
     get_lineage: Extract lineage graph from manifest
     validate_lineage: Validate bidirectional lineage integrity
@@ -34,7 +34,11 @@ Public API:
     PackageArtifact: Single artifact entry in a replication package index
     PackageIndex: Manifest index for a replication package
     ReplicationPackageMetadata: Metadata returned after package export
+    ImportedPackage: Loaded replication package with all typed artifacts
+    ReproductionResult: Result of reproduce_from_package() with diagnostics
     export_replication_package: Export a simulation run as a replication package
+    import_replication_package: Import a replication package from disk
+    reproduce_from_package: Re-execute simulation from an imported package
 """
 
 from reformlab.governance.benchmarking import (
@@ -79,10 +83,14 @@ from reformlab.governance.memory import (
     get_available_memory,
 )
 from reformlab.governance.replication import (
+    ImportedPackage,
     PackageArtifact,
     PackageIndex,
     ReplicationPackageMetadata,
+    ReproductionResult,
     export_replication_package,
+    import_replication_package,
+    reproduce_from_package,
 )
 from reformlab.governance.reproducibility import (
     ReproducibilityResult,
@@ -124,5 +132,9 @@ __all__ = [
     "PackageIndex",
     "ReplicationPackageMetadata",
     "ReplicationPackageError",
+    "ImportedPackage",
+    "ReproductionResult",
     "export_replication_package",
+    "import_replication_package",
+    "reproduce_from_package",
 ]
