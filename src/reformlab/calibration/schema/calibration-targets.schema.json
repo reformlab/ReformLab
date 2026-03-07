@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://reformlab.io/schema/calibration-targets.schema.json",
+  "title": "CalibrationTargets",
+  "description": "Schema for calibration target files specifying observed transition rates (Story 15.1 / FR52).",
+  "type": "object",
+  "required": ["targets"],
+  "additionalProperties": false,
+  "properties": {
+    "targets": {
+      "type": "array",
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "required": ["domain", "period", "from_state", "to_state", "observed_rate", "source_label"],
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Decision domain identifier (e.g., 'vehicle', 'heating')."
+          },
+          "period": {
+            "type": "integer",
+            "description": "Reference year for the observation (e.g., 2022)."
+          },
+          "from_state": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Origin state of the transition (e.g., 'petrol', 'gas')."
+          },
+          "to_state": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Destination alternative ID (e.g., 'buy_electric', 'heat_pump')."
+          },
+          "observed_rate": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "description": "Fraction of households in from_state that chose to_state. Must be in [0.0, 1.0]."
+          },
+          "source_label": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Human-readable data source identifier (e.g., 'SDES vehicle fleet 2022')."
+          },
+          "source_metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Optional key-value metadata (dataset id, URL, vintage year, etc.)."
+          },
+          "weight": {
+            "type": "number",
+            "minimum": 0.0,
+            "description": "Optional weight for this observation in calibration (reserved for Story 15.2+)."
+          }
+        }
+      }
+    }
+  }
+}

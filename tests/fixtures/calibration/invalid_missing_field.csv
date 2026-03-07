@@ -1,0 +1,3 @@
+domain,period,from_state,to_state,observed_rate
+vehicle,2022,petrol,buy_electric,0.03
+vehicle,2022,petrol,keep_current,0.85

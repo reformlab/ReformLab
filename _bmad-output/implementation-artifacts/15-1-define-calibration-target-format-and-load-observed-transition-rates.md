@@ -1,6 +1,6 @@
 # Story 15.1: Define Calibration Target Format and Load Observed Transition Rates
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -11,53 +11,53 @@ so that I can calibrate discrete choice taste parameters against real-world data
 ## Acceptance Criteria
 
 1. **AC-1: Target format specification** — Given observed transition rate data (e.g., vehicle adoption rates from ADEME/SDES), when formatted as calibration targets, then the format specifies: decision domain, time period, transition type (from → to), observed rate, and source metadata.
-2. **AC-2: File loading with validation** — Given a calibration target file (CSV or YAML), when loaded by the calibration engine, then targets are validated for completeness (all required fields present) and consistency (rates sum to ≤1.0 per origin state).
+2. **AC-2: File loading with validation** — Given a calibration target file (CSV, Parquet, or YAML), when loaded by the calibration engine, then targets are validated for completeness (all required fields present) and consistency (rates sum to ≤1.0 per origin state).
 3. **AC-3: Multi-domain access** — Given calibration targets for multiple decision domains, when loaded, then each domain's targets are accessible independently.
-4. **AC-4: Error reporting** — Given a calibration target with a missing or malformed field, when loaded, then a clear error message identifies the field and row.
+4. **AC-4: Error reporting** — Given a calibration target with a missing or malformed field, when loaded, then a clear error message identifies the field name, record location (`row=N` for CSV/Parquet; `targets[N].field_name` for YAML), and source file path.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create `src/reformlab/calibration/` module structure (AC: 1)
-  - [ ] 1.1: Create `__init__.py` with module docstring referencing Epic 15 / FR52
-  - [ ] 1.2: Create `types.py` with frozen dataclasses: `CalibrationTarget`, `CalibrationTargetSet`
-  - [ ] 1.3: Create `errors.py` with `CalibrationError` base, `CalibrationTargetValidationError`, `CalibrationTargetLoadError`
+- [x] Task 1: Create `src/reformlab/calibration/` module structure (AC: 1)
+  - [x] 1.1: Create `__init__.py` with module docstring referencing Epic 15 / FR52
+  - [x] 1.2: Create `types.py` with frozen dataclasses: `CalibrationTarget`, `CalibrationTargetSet`
+  - [x] 1.3: Create `errors.py` with `CalibrationError` base, `CalibrationTargetValidationError`, `CalibrationTargetLoadError`
 
-- [ ] Task 2: Define calibration target dataclasses (AC: 1, 3)
-  - [ ] 2.1: `CalibrationTarget` frozen dataclass with fields: `domain: str`, `period: int`, `from_state: str`, `to_state: str`, `observed_rate: float`, `source_label: str`, `source_metadata: dict[str, str]`
-  - [ ] 2.2: `CalibrationTargetSet` frozen dataclass wrapping `tuple[CalibrationTarget, ...]` with `by_domain(domain: str) -> CalibrationTargetSet` filtering method
-  - [ ] 2.3: `__post_init__` validation on `CalibrationTarget`: rate in [0.0, 1.0], non-empty domain/from_state/to_state
-  - [ ] 2.4: `CalibrationTargetSet.validate_consistency()` method: assert rates sum ≤ 1.0 per (domain, period, from_state) group — raise `CalibrationTargetValidationError` on violation
+- [x] Task 2: Define calibration target dataclasses (AC: 1, 3)
+  - [x] 2.1: `CalibrationTarget` frozen dataclass with fields: `domain: str`, `period: int`, `from_state: str`, `to_state: str`, `observed_rate: float`, `source_label: str`, `source_metadata: dict[str, str]` (optional, use `field(default_factory=dict)`)
+  - [x] 2.2: `CalibrationTargetSet` frozen dataclass wrapping `tuple[CalibrationTarget, ...]` with `by_domain(domain: str) -> CalibrationTargetSet` filtering method
+  - [x] 2.3: `__post_init__` validation on `CalibrationTarget`: rate in [0.0, 1.0], non-empty domain/from_state/to_state
+  - [x] 2.4: `CalibrationTargetSet.validate_consistency()` method: assert rates sum ≤ 1.0 per (domain, period, from_state) group — use tolerance of `1e-9` to handle floating-point precision (i.e., reject if `sum > 1.0 + 1e-9`) — raise `CalibrationTargetValidationError` on violation; raise `CalibrationTargetLoadError` if duplicate `(domain, period, from_state, to_state)` rows are detected (duplicates are always an error — the analyst must deduplicate before loading)
 
-- [ ] Task 3: Define JSON Schema for YAML calibration target files (AC: 2, 4)
-  - [ ] 3.1: Create `src/reformlab/calibration/schema/calibration-targets.schema.json` (Draft 2020-12)
-  - [ ] 3.2: Schema requires `targets` array, each item with required fields: `domain`, `period`, `from_state`, `to_state`, `observed_rate`, `source_label`; optional: `source_metadata`, `weight`
-  - [ ] 3.3: Numeric constraints: `observed_rate` minimum 0.0, maximum 1.0; `period` integer
+- [x] Task 3: Define JSON Schema for YAML calibration target files (AC: 2, 4)
+  - [x] 3.1: Create `src/reformlab/calibration/schema/calibration-targets.schema.json` (Draft 2020-12)
+  - [x] 3.2: Schema requires `targets` array, each item with required fields: `domain`, `period`, `from_state`, `to_state`, `observed_rate`, `source_label`; optional: `source_metadata` (typed as `{type: object, additionalProperties: {type: string}}`), `weight`
+  - [x] 3.3: Numeric constraints: `observed_rate` minimum 0.0, maximum 1.0; `period` integer
 
-- [ ] Task 4: Implement target loader (AC: 2, 3, 4)
-  - [ ] 4.1: Create `loader.py` with `load_calibration_targets(path: Path) -> CalibrationTargetSet`
-  - [ ] 4.2: Support CSV loading via `computation/ingestion.py` `ingest()` function with a `CALIBRATION_TARGET_SCHEMA` DataSchema constant
-  - [ ] 4.3: Support YAML loading via `yaml.safe_load()` + jsonschema validation against the schema from Task 3
-  - [ ] 4.4: Format dispatch by file extension (`.csv`, `.csv.gz`, `.parquet` → ingest path; `.yaml`, `.yml` → YAML path)
-  - [ ] 4.5: Convert raw records to `CalibrationTarget` objects, then build `CalibrationTargetSet`
-  - [ ] 4.6: Call `CalibrationTargetSet.validate_consistency()` after construction
-  - [ ] 4.7: Error messages must identify the exact field name and row number for malformed data
+- [x] Task 4: Implement target loader (AC: 2, 3, 4)
+  - [x] 4.1: Create `loader.py` with `load_calibration_targets(path: Path) -> CalibrationTargetSet`
+  - [x] 4.2: Support CSV loading via `computation/ingestion.py` `ingest()` function with a `CALIBRATION_TARGET_SCHEMA` DataSchema constant
+  - [x] 4.3: Support YAML loading via `yaml.safe_load()` + jsonschema validation against the schema from Task 3; load schema file via `importlib.resources.files("reformlab.calibration.schema").joinpath("calibration-targets.schema.json")` to support packaged (installed wheel) execution
+  - [x] 4.4: Format dispatch by file extension (`.csv`, `.csv.gz`, `.parquet` → ingest path; `.yaml`, `.yml` → YAML path)
+  - [x] 4.5: Convert raw records to `CalibrationTarget` objects, then build `CalibrationTargetSet`
+  - [x] 4.6: Call `CalibrationTargetSet.validate_consistency()` after construction
+  - [x] 4.7: Errors must include: field name, record location (`row=N` for CSV/Parquet using 0-based index; `targets[N].field_name` for YAML), and source file path — use `CalibrationTargetLoadError(f"field={field!r} location={location!r} file={path!r}: {reason}")`
 
-- [ ] Task 5: Add governance integration (AC: 1)
-  - [ ] 5.1: `CalibrationTargetSet.to_governance_entry(source_label: str) -> dict[str, Any]` returning `AssumptionEntry`-compatible dict with key `"calibration_targets"`, domain list, target count, and source metadata summary
+- [x] Task 5: Add governance integration (AC: 1)
+  - [x] 5.1: `CalibrationTargetSet.to_governance_entry(source_label: str) -> dict[str, Any]` returning `AssumptionEntry`-compatible dict with key `"calibration_targets"`, domain list, target count, and source metadata summary
 
-- [ ] Task 6: Write tests (AC: all)
-  - [ ] 6.1: Create `tests/calibration/__init__.py` and `conftest.py` with fixtures: sample target dicts, sample CSV bytes, sample YAML strings, `tmp_path` fixture files
-  - [ ] 6.2: `test_types.py` — `TestCalibrationTarget`: frozen immutability, valid construction, rate bounds validation (`observed_rate < 0` raises, `> 1.0` raises), empty domain/state raises; `TestCalibrationTargetSet`: by_domain filtering, multi-domain access, validate_consistency passes for valid data, fails when rates sum > 1.0 with clear error
-  - [ ] 6.3: `test_loader.py` — `TestCSVLoading`: valid CSV loads correctly, missing column raises with column name in message, malformed rate value raises with row number; `TestYAMLLoading`: valid YAML loads correctly, schema validation catches invalid fields, round-trip stability; `TestFormatDispatch`: `.csv` dispatches to CSV path, `.yaml` dispatches to YAML path, unknown extension raises
-  - [ ] 6.4: `test_errors.py` — error hierarchy, `CalibrationTargetValidationError` is subclass of `CalibrationError`
-  - [ ] 6.5: Create fixture files in `tests/fixtures/calibration/` — at least: `valid_vehicle_targets.csv`, `valid_heating_targets.csv`, `valid_multi_domain_targets.yaml`, `invalid_missing_field.csv`, `invalid_rate_sum.yaml`
-  - [ ] 6.6: `test_governance.py` — `to_governance_entry()` returns correct structure with key, value, source, is_default fields
+- [x] Task 6: Write tests (AC: all)
+  - [x] 6.1: Create `tests/calibration/__init__.py` and `conftest.py` with fixtures: sample target dicts, sample CSV bytes, sample YAML strings, `tmp_path` fixture files
+  - [x] 6.2: `test_types.py` — `TestCalibrationTarget`: frozen immutability, valid construction, rate bounds validation (`observed_rate < 0` raises, `> 1.0` raises), empty domain/state raises, `source_metadata` defaults to `{}`; `TestCalibrationTargetSet`: by_domain filtering, multi-domain access, validate_consistency passes for valid data, fails when rates sum > 1.0 + 1e-9 with clear error, passes at exactly 1.0, duplicate rows raise `CalibrationTargetLoadError`
+  - [x] 6.3: `test_loader.py` — `TestCSVLoading`: valid CSV loads correctly, missing column raises with column name in message, malformed rate value raises with `row=N` in message; `TestParquetLoading`: `.parquet` file loads correctly using same CSV path; `TestYAMLLoading`: valid YAML loads correctly, schema validation catches invalid fields with `targets[N].field_name` in message, round-trip stability, schema loads via `importlib.resources` (no path hardcoding); `TestFormatDispatch`: `.csv` dispatches to CSV path, `.yaml` dispatches to YAML path, `.parquet` dispatches to ingest path, unknown extension raises
+  - [x] 6.4: `test_errors.py` — error hierarchy, `CalibrationTargetValidationError` is subclass of `CalibrationError`
+  - [x] 6.5: Create fixture files in `tests/fixtures/calibration/` — at least: `valid_vehicle_targets.csv`, `valid_heating_targets.csv`, `valid_multi_domain_targets.yaml`, `invalid_missing_field.csv`, `invalid_rate_sum.yaml`
+  - [x] 6.6: `test_governance.py` — `to_governance_entry()` returns correct structure with key, value, source, is_default fields
 
-- [ ] Task 7: Lint, type-check, regression (AC: all)
-  - [ ] 7.1: `uv run ruff check src/reformlab/calibration/ tests/calibration/`
-  - [ ] 7.2: `uv run mypy src/reformlab/calibration/`
-  - [ ] 7.3: `uv run mypy src/`
-  - [ ] 7.4: `uv run pytest tests/` — full regression, zero failures
+- [x] Task 7: Lint, type-check, regression (AC: all)
+  - [x] 7.1: `uv run ruff check src/reformlab/calibration/ tests/calibration/` — clean
+  - [x] 7.2: `uv run mypy src/reformlab/calibration/` — no issues in 5 source files
+  - [x] 7.3: `uv run mypy src/` — no issues in 138 source files
+  - [x] 7.4: `uv run pytest tests/` — 2639 passed, 1 skipped, zero failures
 
 ## Dev Notes
 
@@ -193,6 +193,10 @@ heating,2022,gas,heat_pump,0.05,ADEME heating transitions 2022
 
 For each unique (domain, period, from_state) group, the sum of `observed_rate` values must be ≤ 1.0. This reflects that a household starting from state X can transition to multiple states, but total probability cannot exceed 1.0 (the remainder is implicitly "keep current" or uncaptured transitions).
 
+**Floating-point tolerance:** Use `sum > 1.0 + 1e-9` as the rejection condition to avoid false failures from binary floating-point accumulation. Boundary test cases must cover: sum = 0.999999999 (valid), sum = 1.0 (valid), sum = 1.0 + 1e-9 (valid, at tolerance boundary), sum = 1.0 + 2e-9 (invalid).
+
+**Duplicate rows:** Duplicate `(domain, period, from_state, to_state)` entries are always an error — they indicate double-counting. Raise `CalibrationTargetLoadError` (not validation error) immediately on detection, before consistency checks.
+
 Example valid group: `(vehicle, 2022, petrol)` → rates sum to 0.95 ≤ 1.0 ✓
 Example invalid group: `(vehicle, 2022, petrol)` → rates sum to 1.05 > 1.0 ✗
 
@@ -257,7 +261,7 @@ The `CalibrationTargetSet` object produced by this story's loader is the primary
 - New module `src/reformlab/calibration/` is consistent with the flat subsystem layout (`computation/`, `orchestrator/`, `templates/`, `indicators/`, `governance/`, `population/`, `discrete_choice/`, `vintage/`, `interfaces/`).
 - Test directory `tests/calibration/` mirrors source with `__init__.py` + `conftest.py`.
 - Fixture files in `tests/fixtures/calibration/` follow the existing convention (`tests/fixtures/templates/`, `tests/fixtures/` for golden files).
-- Schema file in `src/reformlab/calibration/schema/` follows the `templates/schema/` convention.
+- Schema file in `src/reformlab/calibration/schema/` follows the `templates/schema/` convention. The `schema/` directory must include `__init__.py` so `importlib.resources` can locate it as a package; also add `"reformlab/calibration/schema/*.json"` to `[tool.hatch.build.targets.wheel]` include patterns in `pyproject.toml` to ensure the JSON file ships in the wheel.
 - Must add `calibration` to mypy overrides in `pyproject.toml` if needed (check existing `[[tool.mypy.overrides]]` patterns).
 
 ### Testing Standards Summary
@@ -294,27 +298,30 @@ The `CalibrationTargetSet` object produced by this story's loader is the primary
 
 ### Agent Model Used
 
-Claude Opus 4.6
+Claude Sonnet 4.6
 
 ### Debug Log References
 
+n/a — clean implementation, no debug sessions required.
+
 ### Completion Notes List
 
-- Ultimate context engine analysis completed — comprehensive developer guide created
-- All Epic 14 discrete choice code analyzed for alignment with calibration target format
-- CSV and YAML loading patterns extracted from existing codebase (ingestion.py, loader.py)
-- Governance integration pattern extracted from population/validation.py
-- JSON Schema conventions extracted from templates/schema/
-- Error hierarchy pattern extracted from discrete_choice/errors.py
-- Cross-story dependency map built covering stories 14.2–14.6 and 15.2–15.5
+- Story 15.1 fully implemented and validated — all 70 new tests pass, zero regressions across 2639 total tests.
+- Module docstring ordering fix: project convention is docstring-first, then `from __future__ import annotations` (following `discrete_choice/errors.py` pattern), not the inverse. All calibration files follow this convention.
+- JSON Schema loaded via `importlib.resources.files("reformlab.calibration.schema")` — no path hardcoding; schema `__init__.py` makes the directory a Python package so wheel packaging works correctly.
+- PyArrow CSV type-error row extraction: PyArrow `read_csv` with `ConvertOptions(column_types=...)` embeds `Row #N` (1-based) in its `ArrowInvalid` message; `_extract_row_from_message()` converts to 0-based `row=N` for `CalibrationTargetLoadError`.
+- `source_metadata: dict[str, str]` field in frozen dataclass passes mypy strict (consistent with existing `IngestionResult.metadata: dict[str, Any]` pattern in the codebase).
+- `pyproject.toml` updated with wheel include for JSON schema: `include = ["reformlab/calibration/schema/*.json"]`.
+- `validate_consistency()` dual-check design: duplicate detection first (raises `CalibrationTargetLoadError`) then rate-sum check (raises `CalibrationTargetValidationError`) — correctly separates data-integrity errors from semantic consistency violations.
 
 ### File List
 
-New files to create:
+New files created:
 - `src/reformlab/calibration/__init__.py`
 - `src/reformlab/calibration/types.py`
 - `src/reformlab/calibration/errors.py`
 - `src/reformlab/calibration/loader.py`
+- `src/reformlab/calibration/schema/__init__.py`
 - `src/reformlab/calibration/schema/calibration-targets.schema.json`
 - `tests/calibration/__init__.py`
 - `tests/calibration/conftest.py`
@@ -327,3 +334,10 @@ New files to create:
 - `tests/fixtures/calibration/valid_multi_domain_targets.yaml`
 - `tests/fixtures/calibration/invalid_missing_field.csv`
 - `tests/fixtures/calibration/invalid_rate_sum.yaml`
+
+Modified files:
+- `pyproject.toml` — added wheel include for JSON schema file
+
+### Change Log
+
+- 2026-03-07: Story 15.1 implemented — calibration module created, 70 tests written and passing, ruff/mypy clean, full regression suite green.

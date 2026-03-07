@@ -1,0 +1,7 @@
+domain,period,from_state,to_state,observed_rate,source_label
+vehicle,2022,petrol,buy_electric,0.03,SDES vehicle fleet 2022
+vehicle,2022,petrol,keep_current,0.85,SDES vehicle fleet 2022
+vehicle,2022,petrol,buy_hybrid,0.05,SDES vehicle fleet 2022
+vehicle,2022,petrol,buy_diesel,0.02,SDES vehicle fleet 2022
+vehicle,2022,ev,keep_current,0.92,SDES vehicle fleet 2022
+vehicle,2022,ev,buy_electric,0.05,SDES vehicle fleet 2022

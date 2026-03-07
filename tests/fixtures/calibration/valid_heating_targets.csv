@@ -1,0 +1,6 @@
+domain,period,from_state,to_state,observed_rate,source_label
+heating,2022,gas,heat_pump,0.05,ADEME heating transitions 2022
+heating,2022,gas,keep_current,0.90,ADEME heating transitions 2022
+heating,2022,gas,electric,0.02,ADEME heating transitions 2022
+heating,2022,wood,keep_current,0.95,ADEME heating transitions 2022
+heating,2022,wood,heat_pump,0.02,ADEME heating transitions 2022

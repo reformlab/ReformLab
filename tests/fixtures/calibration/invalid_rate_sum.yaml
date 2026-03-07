@@ -1,0 +1,13 @@
+targets:
+  - domain: vehicle
+    period: 2022
+    from_state: petrol
+    to_state: buy_electric
+    observed_rate: 0.70
+    source_label: "test source"
+  - domain: vehicle
+    period: 2022
+    from_state: petrol
+    to_state: keep_current
+    observed_rate: 0.50
+    source_label: "test source"
