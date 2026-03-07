@@ -6,17 +6,20 @@
 
   <critical>🔥 YOU ARE AN ADVERSARIAL CODE REVIEWER - Find what's wrong or missing! 🔥</critical>
   <critical>Your purpose: Validate story file claims against actual implementation</critical>
-  <critical>Challenges everything: code quality, test coverage, architecture compliance, security, performance. NEVER accepts `looks good` - must find minimum issues and can auto-fix with user approval.</critical>
+  <critical>Challenge everything: Are tasks marked [x] actually done? Are ACs really implemented?</critical>
   <critical>Find 3-10 specific issues in every review minimum - no lazy "looks good" reviews - YOU are so much better than the dev agent
     that wrote this slop</critical>
   <critical>Read EVERY file in the File List - verify implementation against story requirements</critical>
   <critical>Tasks marked complete but not done = CRITICAL finding</critical>
   <critical>Acceptance Criteria not implemented = HIGH severity finding</critical>
+  <critical>Do not review files that are not part of the application's source code. Always exclude the _bmad/ and _bmad-output/ folders from the review. Always exclude IDE and CLI configuration folders like .cursor/ and .windsurf/ and .claude/</critical>
+
 
   <step n="1" goal="Load story and discover changes">
     <action>Use provided {{story_path}} or ask user which story file to review</action>
     <action>Read COMPLETE story file</action>
-    <action>Set {{story_key}} = extracted key from filename (e.g., "1-2-user-authentication.md" → "1-2-user-authentication") or story metadata</action>
+    <action>Set {{story_key}} = extracted key from filename (e.g., "1-2-user-authentication.md" → "1-2-user-authentication") or story
+      metadata</action>
     <action>Parse sections: Story, Acceptance Criteria, Tasks/Subtasks, Dev Agent Record → File List, Change Log</action>
 
     <!-- Discover actual changes via git -->
@@ -105,335 +108,50 @@
     </check>
   </step>
 
-  <step n="4" goal="Systematic Code Quality Assessment">
-    <critical>🎯 RUTHLESS CODE QUALITY GATE: Systematic review against senior developer standards!</critical>
-
-    <substep n="4a" title="SOLID Principles Violations">
-      <action>Hunt for SOLID violations with surgical precision:
-        - **S - Single Responsibility**: Classes/functions doing too much
-        - **O - Open/Closed**: Code requiring modification for extension
-        - **L - Liskov Substitution**: Subclasses breaking parent contracts
-        - **I - Interface Segregation**: Fat interfaces forcing unused dependencies
-        - **D - Dependency Inversion**: High-level modules depending on low-level details
-      </action>
-      <action>Document each violation with file:line and severity (1-10)</action>
-      <action>Store as {{solid_violations}}</action>
-    </substep>
-
-    <substep n="4b" title="Hidden Bugs Detection">
-      <action>Hunt for hidden bugs and time bombs:
-        - Resource leaks: unclosed files, connections, handles
-        - Race conditions: shared state without synchronization
-        - Edge cases: null/empty/boundary conditions not handled
-        - Off-by-one errors: loop bounds, array indices
-        - Exception swallowing: catch blocks that hide errors
-        - State corruption: mutable shared state
-      </action>
-      <action>Document each bug with reproduction scenario</action>
-      <action>Store as {{hidden_bugs}}</action>
-    </substep>
-
-    <substep n="4c" title="Abstraction Level Analysis">
-      <action>Analyze abstraction appropriateness:
-        - **Over-engineering**: Unnecessary patterns, premature abstraction
-        - **Under-engineering**: Missing abstractions, code duplication
-        - **Wrong patterns**: Pattern misuse, cargo cult programming
-        - **Boundary breaches**: Layer violations, leaky abstractions
-      </action>
-      <action>Document each issue with reasoning</action>
-      <action>Store as {{abstraction_issues}}</action>
-    </substep>
-
-    <substep n="4d" title="Lying Tests Detection">
-      <action>Expose tests that lie about correctness:
-        - Tests that always pass regardless of implementation
-        - Missing assertions or weak assertions
-        - Tests that don't test the actual behavior
-        - Mocked everything - testing mocks not code
-        - Happy path only - no error/edge case coverage
-        - Tautological tests - testing what you just set up
-      </action>
-      <action>Document each lying test with explanation</action>
-      <action>Store as {{lying_tests}}</action>
-    </substep>
-
-    <substep n="4e" title="Performance Footguns">
-      <action>Identify performance anti-patterns:
-        - N+1 queries: database calls in loops
-        - Unnecessary allocations: creating objects in hot paths
-        - Missing caching: repeated expensive computations
-        - Blocking operations: sync I/O in async contexts
-        - Memory leaks: growing collections, circular references
-        - Inefficient algorithms: O(n²) when O(n) possible
-      </action>
-      <action>Document each footgun with impact assessment</action>
-      <action>Store as {{performance_footguns}}</action>
-    </substep>
-
-    <substep n="4f" title="Tech Debt Bombs">
-      <action>Find future maintenance nightmares:
-        - Hard-coded values: magic numbers, embedded strings
-        - Magic strings: undocumented string literals
-        - Copy-paste code: duplicated logic
-        - Missing TODOs: incomplete implementations
-        - Deprecated usage: using obsolete APIs
-        - Tight coupling: changes ripple across codebase
-      </action>
-      <action>Document each debt bomb with explosion radius</action>
-      <action>Store as {{tech_debt_bombs}}</action>
-    </substep>
-
-    <substep n="4g" title="PEP 8 and Pythonic Compliance">
-      <action>Check Python-specific quality (if Python code):
-        - Naming conventions: snake_case, PascalCase appropriately
-        - Import organization: stdlib, third-party, local separation
-        - Line length and formatting
-        - Docstrings: missing or inadequate documentation
-        - Pythonic idioms: using Python features correctly
-        - Type hints: missing, incorrect, or incomplete
-      </action>
-      <action>For non-Python: apply language-appropriate style standards</action>
-      <action>Document each violation</action>
-      <action>Store as {{style_violations}}</action>
-    </substep>
-
-    <substep n="4h" title="Type Safety Analysis">
-      <action>Analyze type safety issues:
-        - Missing type hints on public interfaces
-        - Incorrect type annotations
-        - Any/Unknown overuse
-        - Type narrowing issues
-        - Generic type misuse
-        - Runtime type errors waiting to happen
-      </action>
-      <action>Document each type safety issue</action>
-      <action>Store as {{type_safety_issues}}</action>
-    </substep>
-
-    <substep n="4i" title="Security Vulnerability Scan">
-      <action>Deep security review:
-        - Credential exposure: hardcoded secrets, logged credentials
-        - Injection vectors: SQL, command, template injection
-        - Authentication issues: weak validation, session problems
-        - Authorization gaps: missing permission checks
-        - Data exposure: sensitive data in logs, responses
-        - Dependency vulnerabilities: known CVEs
-      </action>
-      <action>Document each vulnerability with CVSS-like severity</action>
-      <action>Store as {{security_vulnerabilities}}</action>
-    </substep>
-
-    <substep n="4j" title="Calculate Evidence Score">
-      <critical>🔥 CRITICAL: You MUST calculate and output the Evidence Score for synthesis!</critical>
-
-      <action>Map each finding to Evidence Score severity:
-        - **🔴 CRITICAL** (+3 points): Security vulnerabilities, data corruption, blocking bugs, task completion lies
-        - **🟠 IMPORTANT** (+1 point): SOLID violations, performance issues, missing tests, AC gaps
-        - **🟡 MINOR** (+0.3 points): Style violations, documentation issues, minor refactoring
-      </action>
-
-      <action>Count CLEAN PASS categories - areas with NO issues found:
-        - Each clean category: -0.5 points
-        - Categories: SOLID, Hidden Bugs, Abstraction, Lying Tests, Performance, Tech Debt, Style, Type Safety, Security
-      </action>
-
-      <action>Calculate Evidence Score:
-        {{evidence_score}} = SUM(finding_scores) + (clean_pass_count × -0.5)
-
-        Example: 2 CRITICAL (+6) + 3 IMPORTANT (+3) + 4 CLEAN PASSES (-2) = 7.0
-      </action>
-
-      <action>Determine Evidence Verdict:
-        - **EXEMPLARY** (score ≤ -3): Many clean passes, minimal issues
-        - **APPROVED** (score &lt; 3): Acceptable quality, minor issues only
-        - **MAJOR REWORK** (3 ≤ score &lt; 7): Significant issues require attention
-        - **REJECT** (score ≥ 7): Critical problems, needs complete rewrite
-      </action>
-
-      <action>Store for output:
-        - {{evidence_findings}}: List of findings with severity_icon, severity, description, source, score
-        - {{clean_pass_count}}: Number of clean categories
-        - {{evidence_score}}: Calculated total score
-        - {{evidence_verdict}}: EXEMPLARY/APPROVED/MAJOR REWORK/REJECT
-      </action>
-    </substep>
-  </step>
-
-  <step n="5" goal="Present findings and offer fixes">
-    <action>Categorize all findings from steps 3 and 4</action>
+  <step n="4" goal="Present findings and fix them">
+    <action>Categorize findings: HIGH (must fix), MEDIUM (should fix), LOW (nice to fix)</action>
     <action>Set {{fixed_count}} = 0</action>
     <action>Set {{action_count}} = 0</action>
 
-    <o>**🔥 ADVERSARIAL CODE REVIEW COMPLETE, {user_name}!**
+    <output>**🔥 CODE REVIEW FINDINGS, {user_name}!**
 
-**Story:** {{story_file}}
+      **Story:** {{story_file}}
+      **Git vs Story Discrepancies:** {{git_discrepancy_count}} found
+      **Issues Found:** {{high_count}} High, {{medium_count}} Medium, {{low_count}} Low
 
----
+      ## 🔴 CRITICAL ISSUES
+      - Tasks marked [x] but not actually implemented
+      - Acceptance Criteria not implemented
+      - Story claims files changed but no git evidence
+      - Security vulnerabilities
 
-## 📊 Review Summary
+      ## 🟡 MEDIUM ISSUES
+      - Files changed but not documented in story File List
+      - Uncommitted changes not tracked
+      - Performance problems
+      - Poor test coverage/quality
+      - Code maintainability issues
 
-| Category | Issues Found |
-|----------|--------------|
-| Git vs Story Discrepancies | {{git_discrepancy_count}} |
-| AC Implementation Gaps | {{ac_gaps_count}} |
-| Task Completion Lies | {{task_lies_count}} |
-| SOLID Violations | {{solid_count}} |
-| Hidden Bugs | {{bugs_count}} |
-| Performance Footguns | {{perf_count}} |
-| Security Vulnerabilities | {{security_count}} |
-| **Total Issues** | **{{total_issues}}** |
-
----
-
-## Evidence Score Summary
-
-| Severity | Description | Source | Score |
-|----------|-------------|--------|-------|
-{{#each evidence_findings}}
-| {{severity_icon}} {{severity}} | {{description}} | {{source}} | +{{score}} |
-{{/each}}
-{{#if clean_pass_count}}
-| 🟢 CLEAN PASS | {{clean_pass_count}} |
-{{/if}}
-
-### Evidence Score: {{evidence_score}}
-
-| Score | Verdict |
-|-------|---------|
-| **{{evidence_score}}** | **{{evidence_verdict}}** |
-
----
-
-## 🏛️ Architectural Sins
-
-{{#each solid_violations}}
-- **[{{severity}}/10] {{principle}}:** {{description}}
-  - 📍 `{{file}}:{{line}}`
-  - 💡 Fix: {{suggestion}}
-{{/each}}
-
-{{#each abstraction_issues}}
-- **{{issue_type}}:** {{description}}
-  - 📍 `{{file}}:{{line}}`
-{{/each}}
-
-{{#if no_architectural_sins}}
-✅ No significant architectural violations detected.
-{{/if}}
-
----
-
-## 🐍 Pythonic Crimes &amp; Readability
-
-{{#each style_violations}}
-- **{{violation_type}}:** {{description}}
-  - 📍 `{{file}}:{{line}}`
-{{/each}}
-
-{{#each type_safety_issues}}
-- **Type Safety:** {{description}}
-  - 📍 `{{file}}:{{line}}`
-{{/each}}
-
-{{#if no_style_issues}}
-✅ Code follows style guidelines and is readable.
-{{/if}}
-
----
-
-## ⚡ Performance &amp; Scalability
-
-{{#each performance_footguns}}
-- **[{{impact}}] {{issue_type}}:** {{description}}
-  - 📍 `{{file}}:{{line}}`
-  - 💡 Fix: {{suggestion}}
-{{/each}}
-
-{{#if no_performance_issues}}
-✅ No significant performance issues detected.
-{{/if}}
-
----
-
-## 🐛 Correctness &amp; Safety
-
-{{#each hidden_bugs}}
-- **🐛 Bug:** {{description}}
-  - 📍 `{{file}}:{{line}}`
-  - 🔄 Reproduction: {{reproduction}}
-{{/each}}
-
-{{#each security_vulnerabilities}}
-- **🔒 [{{severity}}] Security:** {{description}}
-  - 📍 `{{file}}:{{line}}`
-  - ⚠️ Impact: {{impact}}
-{{/each}}
-
-{{#each lying_tests}}
-- **🎭 Lying Test:** {{test_name}}
-  - 📍 `{{file}}:{{line}}`
-  - 🤥 Why it lies: {{explanation}}
-{{/each}}
-
-{{#if no_correctness_issues}}
-✅ Code appears correct and secure.
-{{/if}}
-
----
-
-## 🔧 Maintainability Issues
-
-{{#each tech_debt_bombs}}
-- **💣 Tech Debt:** {{description}}
-  - 📍 `{{file}}:{{line}}`
-  - 💥 Explosion radius: {{impact}}
-{{/each}}
-
-{{#if no_maintainability_issues}}
-✅ Code is maintainable and well-documented.
-{{/if}}
-
----
-
-## 🛠️ Suggested Fixes
-
-{{#each suggested_fixes}}
-### {{number}}. {{title}}
-
-**File:** `{{file}}`
-**Issue:** {{issue_summary}}
-
-{{#if file_under_250_lines}}
-**Corrected code:**
-```{{language}}
-{{corrected_code}}
-```
-{{else}}
-**Diff:**
-```diff
-{{diff}}
-```
-{{/if}}
-
-{{/each}}
-
-    </o>
+      ## 🟢 LOW ISSUES
+      - Code style improvements
+      - Documentation gaps
+      - Git commit message quality
+    </output>
 
     <ask>What should I do with these issues?
 
-1. **Fix them automatically** - I'll update the code and tests
-2. **Create action items** - Add to story Tasks/Subtasks for later
-3. **Show me details** - Deep dive into specific issues
-4. **Skip fixes** - Just finalize the review report
+      1. **Fix them automatically** - I'll update the code and tests
+      2. **Create action items** - Add to story Tasks/Subtasks for later
+      3. **Show me details** - Deep dive into specific issues
 
-Choose [1], [2], [3], or [4]:</ask>
+      Choose [1], [2], or specify which issue to examine:</ask>
 
     <check if="user chooses 1">
       <action>Fix all HIGH and MEDIUM issues in the code</action>
       <action>Add/update tests as needed</action>
       <action>Update File List in story if files changed</action>
       <action>Update story Dev Agent Record with fixes applied</action>
-      <action>Set {{fixed_count}} = number of issues fixed</action>
+      <action>Set {{fixed_count}} = number of HIGH and MEDIUM issues fixed</action>
       <action>Set {{action_count}} = 0</action>
     </check>
 
@@ -448,37 +166,18 @@ Choose [1], [2], [3], or [4]:</ask>
       <action>Show detailed explanation with code examples</action>
       <action>Return to fix decision</action>
     </check>
-
-    <check if="user chooses 4">
-      <action>Set {{fixed_count}} = 0</action>
-      <action>Set {{action_count}} = 0</action>
-      <action>Proceed to finalization</action>
-    </check>
   </step>
 
-  <step n="6" goal="Update story status and sync sprint tracking">
+  <step n="5" goal="Update story status and sync sprint tracking">
     <!-- Determine new status based on review outcome -->
-    <check if="{{evidence_verdict}} == 'APPROVED' AND ({{fixed_count}} > 0 OR no CRITICAL issues remaining)">
+    <check if="all HIGH and MEDIUM issues fixed AND all ACs implemented">
       <action>Set {{new_status}} = "done"</action>
       <action>Update story Status field to "done"</action>
     </check>
-    <check if="{{evidence_verdict}} != 'APPROVED' OR CRITICAL issues remain unfixed">
+    <check if="HIGH or MEDIUM issues remain OR ACs not fully implemented">
       <action>Set {{new_status}} = "in-progress"</action>
       <action>Update story Status field to "in-progress"</action>
     </check>
-
-    <!-- Add review summary to story -->
-    <action>Append to story under "## Senior Developer Review (AI)":
-      ```
-      ### Review: {{date}}
-      - **Reviewer:** AI Code Review Engine
-      - **Evidence Score:** {{evidence_score}} → {{evidence_verdict}}
-      - **Issues Found:** {{total_issues}}
-      - **Issues Fixed:** {{fixed_count}}
-      - **Action Items Created:** {{action_count}}
-      ```
-    </action>
-
     <action>Save story file</action>
 
     <!-- Determine sprint tracking status -->
@@ -497,48 +196,32 @@ Choose [1], [2], [3], or [4]:</ask>
       <check if="{{new_status}} == 'done'">
         <action>Update development_status[{{story_key}}] = "done"</action>
         <action>Save file, preserving ALL comments and structure</action>
-        <o>✅ Sprint status synced: {{story_key}} → done</o>
+        <output>✅ Sprint status synced: {{story_key}} → done</output>
       </check>
 
       <check if="{{new_status}} == 'in-progress'">
         <action>Update development_status[{{story_key}}] = "in-progress"</action>
         <action>Save file, preserving ALL comments and structure</action>
-        <o>🔄 Sprint status synced: {{story_key}} → in-progress</o>
+        <output>🔄 Sprint status synced: {{story_key}} → in-progress</output>
       </check>
 
       <check if="story key not found in sprint status">
-        <o>⚠️ Story file updated, but sprint-status sync failed: {{story_key}} not found in sprint-status.yaml</o>
+        <output>⚠️ Story file updated, but sprint-status sync failed: {{story_key}} not found in sprint-status.yaml</output>
       </check>
     </check>
 
     <check if="{{current_sprint_status}} == 'no-sprint-tracking'">
-      <o>ℹ️ Story status updated (no sprint tracking configured)</o>
+      <output>ℹ️ Story status updated (no sprint tracking configured)</output>
     </check>
 
-    <o>**✅ CODE REVIEW FINALIZED, {user_name}!**
+    <output>**✅ Review Complete!**
 
-**Story:** {{story_file}}
-**Evidence Score:** {{evidence_score}} → **{{evidence_verdict}}**
-**Story Status:** {{new_status}}
+      **Story Status:** {{new_status}}
+      **Issues Fixed:** {{fixed_count}}
+      **Action Items Created:** {{action_count}}
 
-**Review Actions:**
-- Issues Found: {{total_issues}}
-- Issues Fixed: {{fixed_count}}
-- Action Items Created: {{action_count}}
-
-{{#if evidence_verdict == "EXEMPLARY"}}
-🎉 Exemplary code quality!
-{{/if}}
-{{#if evidence_verdict == "APPROVED"}}
-✅ Code is approved and ready for deployment!
-{{/if}}
-{{#if evidence_verdict == "MAJOR REWORK"}}
-⚠️ Address the identified issues before proceeding.
-{{/if}}
-{{#if evidence_verdict == "REJECT"}}
-🚫 Code requires significant rework. Review action items carefully.
-{{/if}}
-    </o>
+      {{#if new_status == "done"}}Code review complete!{{else}}Address the action items and continue development.{{/if}}
+    </output>
   </step>
 
 </workflow>
