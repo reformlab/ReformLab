@@ -383,6 +383,7 @@ function Workspace() {
           templates={templates}
           savedPortfolios={portfolios}
           onSaved={() => { void refetchPortfolios(); }}
+          onDeleted={() => { void refetchPortfolios(); }}
         />
       ) : null}
     </>

@@ -72,6 +72,11 @@ so that I can design multi-policy bundles for simulation without writing code or
   - [x] 7.4: Run `uv run pytest tests/` — 2986 passed, 1 skipped
   - [x] 7.5: Run `cd frontend && npm test` — 119 passed across 21 test files
 
+#### Review Follow-ups (AI)
+- [ ] [AI-Review] HIGH: AC-2 inline parameter editing — `PortfolioCompositionPanel` always shows rate schedule editor but `parameterSchemas` are never populated because `PortfolioDesignerScreen` doesn't fetch individual template details from `GET /api/templates/{id}`; ParameterRow editing is structurally dead (`frontend/src/components/screens/PortfolioDesignerScreen.tsx`)
+- [ ] [AI-Review] MEDIUM: AC-5 load/clone not in GUI — saved portfolios list has delete button (added in synthesis) but no "load" or "clone" action; load requires resetting composition state; clone requires a name input dialog (`frontend/src/components/screens/PortfolioDesignerScreen.tsx`)
+- [ ] [AI-Review] MEDIUM: Error envelope mismatch — `HTTPException(detail={...})` is returned as `{"detail": {...}}` by FastAPI but `client.ts` parses `errorBody.what` (top-level), so structured portfolio errors fall back to a generic error string; this is pre-existing across the whole API layer (`frontend/src/api/client.ts`, `src/reformlab/server/routes/portfolios.py`)
+
 ## Dev Notes
 
 ### Architecture Patterns (MUST FOLLOW)
@@ -612,6 +617,7 @@ claude-sonnet-4-6
 - Frontend: 4 new components + 4 test suites; AppContext extended with `portfolios`/`portfoliosLoading`/`refetchPortfolios`; App.tsx wired with `"portfolio"` view mode.
 - `selectedPortfolioName` and `currentComposition` from the story task were not added to AppContext because `PortfolioDesignerScreen` manages its own composition state internally — no global state coordination is needed for MVP.
 - ESLint warning `react-refresh/only-export-components` in `AppContext.tsx` is pre-existing (not introduced by this story).
+- **Code review synthesis (2026-03-07):** 4 backend bugs fixed + AC-4/AC-5 GUI gaps addressed. See Senior Developer Review section for details.
 
 ### File List
 
@@ -637,3 +643,12 @@ claude-sonnet-4-6
 - `frontend/src/hooks/useApi.ts` (added usePortfolios, useValidatePortfolio hooks)
 - `frontend/src/contexts/AppContext.tsx` (added portfolios state)
 - `frontend/src/App.tsx` (added "portfolio" view mode, Portfolio nav button, screen render)
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-07
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 14.0 (Reviewer A) / 0.5 (Reviewer B) → **REJECT** (Reviewer A dominant)
+- **Issues Found:** 9 verified (4 backend bugs, 3 AC gaps, 1 false positive dismissed)
+- **Issues Fixed:** 6 (4 backend bugs fixed, AC-4 rate_schedule wired, AC-5 delete added)
+- **Action Items Created:** 3

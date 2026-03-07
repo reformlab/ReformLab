@@ -13,7 +13,7 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
-import { ChevronLeft, ChevronRight, Save, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Save, AlertTriangle, CheckCircle2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,7 @@ import { PortfolioCompositionPanel } from "@/components/simulation/PortfolioComp
 import type { CompositionEntry } from "@/components/simulation/PortfolioCompositionPanel";
 import { cn } from "@/lib/utils";
 import { ApiError } from "@/api/client";
-import { createPortfolio, validatePortfolio } from "@/api/portfolios";
+import { createPortfolio, deletePortfolio, validatePortfolio } from "@/api/portfolios";
 import type { Template } from "@/data/mock-data";
 import type { PortfolioConflict, PortfolioListItem } from "@/api/types";
 
@@ -142,12 +142,14 @@ interface PortfolioDesignerScreenProps {
   templates: Template[];
   savedPortfolios?: PortfolioListItem[];
   onSaved?: (portfolioName: string) => void;
+  onDeleted?: () => void;
 }
 
 export function PortfolioDesignerScreen({
   templates,
   savedPortfolios = [],
   onSaved,
+  onDeleted,
 }: PortfolioDesignerScreenProps) {
   const [activeStep, setActiveStep] = useState<DesignerStep>("select");
   const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
@@ -169,7 +171,7 @@ export function PortfolioDesignerScreen({
         .filter((id) => !prev.some((e) => e.templateId === id))
         .map((id) => {
           const t = templates.find((tmpl) => tmpl.id === id);
-          return { templateId: id, name: t?.name ?? id, parameters: {} };
+          return { templateId: id, name: t?.name ?? id, parameters: {}, rateSchedule: {} };
         });
 
       // Remove deselected templates
@@ -213,6 +215,15 @@ export function PortfolioDesignerScreen({
     [],
   );
 
+  const handleRateScheduleChange = useCallback(
+    (index: number, schedule: Record<string, number>) => {
+      setComposition((prev) =>
+        prev.map((e, i) => (i === index ? { ...e, rateSchedule: schedule } : e)),
+      );
+    },
+    [],
+  );
+
   const runValidation = useCallback(async () => {
     if (composition.length < 2) {
       setConflicts([]);
@@ -227,7 +238,7 @@ export function PortfolioDesignerScreen({
           return {
             name: e.name,
             policy_type: (t?.type ?? "carbon_tax").replace(/-/g, "_"),
-            rate_schedule: {},
+            rate_schedule: e.rateSchedule,
             exemptions: [],
             thresholds: [],
             covered_categories: [],
@@ -285,7 +296,7 @@ export function PortfolioDesignerScreen({
           return {
             name: e.name,
             policy_type: (t?.type ?? "carbon_tax").replace(/-/g, "_"),
-            rate_schedule: {},
+            rate_schedule: e.rateSchedule,
             exemptions: [],
             thresholds: [],
             covered_categories: [],
@@ -306,6 +317,20 @@ export function PortfolioDesignerScreen({
       }
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDeletePortfolio = async (name: string) => {
+    try {
+      await deletePortfolio(name);
+      toast.success(`Portfolio '${name}' deleted`);
+      onDeleted?.();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        toast.error(`${err.what} — ${err.why}`, { description: err.fix });
+      } else if (err instanceof Error) {
+        toast.error("Delete failed", { description: err.message });
+      }
     }
   };
 
@@ -404,6 +429,7 @@ export function PortfolioDesignerScreen({
               onReorder={handleReorder}
               onRemove={handleRemove}
               onParameterChange={handleParameterChange}
+              onRateScheduleChange={handleRateScheduleChange}
             />
           </section>
         ) : null}
@@ -483,9 +509,18 @@ export function PortfolioDesignerScreen({
                 </p>
                 {savedPortfolios.map((p) => (
                   <div key={p.name} className="flex items-center gap-2 text-xs text-slate-700">
-                    <span className="font-mono">{p.name}</span>
-                    <Badge variant="default" className="text-xs">{p.policy_count} policies</Badge>
-                    <span className="text-slate-400 truncate">{p.description}</span>
+                    <span className="font-mono flex-1 truncate">{p.name}</span>
+                    <Badge variant="default" className="text-xs shrink-0">{p.policy_count} policies</Badge>
+                    <span className="text-slate-400 truncate flex-1">{p.description}</span>
+                    <button
+                      type="button"
+                      onClick={() => void handleDeletePortfolio(p.name)}
+                      className="shrink-0 border border-slate-200 p-1 text-red-500 hover:bg-red-50"
+                      aria-label={`Delete portfolio ${p.name}`}
+                      title="Delete"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
                   </div>
                 ))}
               </div>

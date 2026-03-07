@@ -17,3 +17,15 @@
 | medium | Task 1.3 column schema contract — `ColumnInfo` missing `type` field; task specifies `(name, type, description)` | Added `type: str = ""` to backend `ColumnInfo`; added `type: string` to frontend `ColumnInfo` interface |
 | medium | Determinism test only asserts `record_count` equality on a fully mocked pipeline; proves nothing about reproducibility | Deferred — mock design is intentional; fixing properly requires a content-hash assertion; added as AI-Review follow-up |
 | low | AC-1 — `record_count` always `None` in source listing; card conditionally hides the badge | Deferred — catalog metadata doesn't expose record counts without loading data; added as AI-Review follow-up |
+
+## Story 17-2 (2026-03-07)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | Delete endpoint fails-open — if `get_entry_type` raises an exception, `entry_type` defaults to `"portfolio"` and `shutil.rmtree` proceeds, potentially deleting non-portfolio entries | Changed fallback to `entry_type = "unknown"` so the `entry_type != "portfolio"` guard fails closed |
+| high | AC-4 gap — `rate_schedule` always sent as `{}` in both `validatePortfolio` and `createPortfolio` API calls; user-edited schedule values discarded | Added `rateSchedule: Record<string, number>` to `CompositionEntry`, wired `YearScheduleEditor` into the composition panel, propagated values to API payloads |
+| medium | `validate_compatibility` exception swallowed — broad `except Exception` returns empty conflicts (`is_compatible=True`), masking errors | Re-raised as `HTTPException(500)` with structured error detail |
+| medium | Falsy value serialization — `if val:` drops zero-valued parameters (e.g., a `rate = 0` or empty thresholds) from detail response | Changed to `if val is not None and val != () and val != {}:` |
+| medium | Bad rate_schedule year key raises unhandled 500 — `int("bad")` raises `ValueError` with no exception handler | Wrapped in `try/except ValueError` → `HTTPException(422)` |
+| medium | AC-5 gap — saved portfolios list is read-only; no delete/load/clone buttons in GUI | Added delete button per portfolio row; wired `deletePortfolio` API call with toast feedback; load/clone deferred (see action items) |
+| low | AC-2 gap — `parameterSchemas` prop exists in `PortfolioCompositionPanel` but is never populated by `PortfolioDesignerScreen`; ParameterRow editing non-functional | Deferred (requires fetching `GET /api/templates/{id}` per template; added as action item). `YearScheduleEditor` now always shown in expanded panel, covering the main AC-4 use case. |

@@ -8,6 +8,7 @@ const baseEntry = (id: string): CompositionEntry => ({
   templateId: id,
   name: mockTemplates.find((t) => t.id === id)?.name ?? id,
   parameters: {},
+  rateSchedule: {},
 });
 
 describe("PortfolioCompositionPanel", () => {
@@ -19,6 +20,7 @@ describe("PortfolioCompositionPanel", () => {
         onReorder={() => {}}
         onRemove={() => {}}
         onParameterChange={() => {}}
+        onRateScheduleChange={() => {}}
       />,
     );
 
@@ -33,6 +35,7 @@ describe("PortfolioCompositionPanel", () => {
         onReorder={() => {}}
         onRemove={() => {}}
         onParameterChange={() => {}}
+        onRateScheduleChange={() => {}}
       />,
     );
 
@@ -50,6 +53,7 @@ describe("PortfolioCompositionPanel", () => {
         onReorder={() => {}}
         onRemove={() => {}}
         onParameterChange={() => {}}
+        onRateScheduleChange={() => {}}
       />,
     );
 
@@ -68,6 +72,7 @@ describe("PortfolioCompositionPanel", () => {
         onReorder={() => {}}
         onRemove={() => {}}
         onParameterChange={() => {}}
+        onRateScheduleChange={() => {}}
       />,
     );
 
@@ -87,6 +92,7 @@ describe("PortfolioCompositionPanel", () => {
         onReorder={() => {}}
         onRemove={() => {}}
         onParameterChange={() => {}}
+        onRateScheduleChange={() => {}}
       />,
     );
 
@@ -107,6 +113,7 @@ describe("PortfolioCompositionPanel", () => {
         onReorder={onReorder}
         onRemove={() => {}}
         onParameterChange={() => {}}
+        onRateScheduleChange={() => {}}
       />,
     );
 
@@ -127,6 +134,7 @@ describe("PortfolioCompositionPanel", () => {
         onReorder={() => {}}
         onRemove={onRemove}
         onParameterChange={() => {}}
+        onRateScheduleChange={() => {}}
       />,
     );
 

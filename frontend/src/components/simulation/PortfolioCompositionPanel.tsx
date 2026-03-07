@@ -14,6 +14,7 @@ import { useState } from "react";
 import { ArrowUp, ArrowDown, Trash2, ChevronDown, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ParameterRow } from "@/components/simulation/ParameterRow";
+import { YearScheduleEditor } from "@/components/simulation/YearScheduleEditor";
 import { cn } from "@/lib/utils";
 import type { Template, Parameter } from "@/data/mock-data";
 
@@ -37,6 +38,8 @@ export interface CompositionEntry {
   templateId: string;
   name: string;
   parameters: Record<string, number>;
+  /** Year-indexed rate schedule; keys are year strings for JSON wire format. */
+  rateSchedule: Record<string, number>;
 }
 
 interface PortfolioCompositionPanelProps {
@@ -45,6 +48,7 @@ interface PortfolioCompositionPanelProps {
   onReorder: (fromIndex: number, toIndex: number) => void;
   onRemove: (index: number) => void;
   onParameterChange: (index: number, paramId: string, value: number) => void;
+  onRateScheduleChange: (index: number, schedule: Record<string, number>) => void;
   /** Optional parameter schemas per template — used for inline editing */
   parameterSchemas?: Record<string, Parameter[]>;
 }
@@ -55,6 +59,7 @@ export function PortfolioCompositionPanel({
   onReorder,
   onRemove,
   onParameterChange,
+  onRateScheduleChange,
   parameterSchemas = {},
 }: PortfolioCompositionPanelProps) {
   const [expandedIndices, setExpandedIndices] = useState<Set<number>>(new Set());
@@ -204,7 +209,30 @@ export function PortfolioCompositionPanel({
 
             {/* Expanded parameter editing */}
             {isExpanded ? (
-              <div className="border-t border-slate-200">
+              <div className="border-t border-slate-200 p-3 space-y-3">
+                {/* Year-indexed rate schedule editor (AC-4) */}
+                <div>
+                  <p className="text-xs font-semibold text-slate-700 mb-1">
+                    Rate Schedule
+                  </p>
+                  <YearScheduleEditor
+                    schedule={
+                      Object.fromEntries(
+                        Object.entries(entry.rateSchedule).map(([k, v]) => [Number(k), v]),
+                      ) as Record<number, number>
+                    }
+                    onChange={(sched) => {
+                      onRateScheduleChange(
+                        index,
+                        Object.fromEntries(
+                          Object.entries(sched).map(([k, v]) => [String(k), v]),
+                        ),
+                      );
+                    }}
+                    unit={template?.type === "carbon_tax" || template?.type === "carbon-tax" ? "€/tonne" : "€"}
+                  />
+                </div>
+                {/* ParameterRow editing (when schemas available) */}
                 {schemas.length > 0 ? (
                   schemas
                     .filter((p) => p.type === "number" || p.type === "slider")
@@ -216,13 +244,7 @@ export function PortfolioCompositionPanel({
                         onChange={(val) => onParameterChange(index, param.id, val)}
                       />
                     ))
-                ) : (
-                  <div className="p-3">
-                    <p className="text-xs text-slate-400">
-                      No configurable parameters for this template.
-                    </p>
-                  </div>
-                )}
+                ) : null}
               </div>
             ) : null}
           </div>

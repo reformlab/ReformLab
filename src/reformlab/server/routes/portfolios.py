@@ -120,7 +120,17 @@ def _build_policy_config(req: PortfolioPolicyRequest) -> Any:
     }.get(policy_type, PolicyParameters)
 
     # Convert string keys to int for rate_schedule
-    rate_schedule = {int(k): v for k, v in req.rate_schedule.items()}
+    try:
+        rate_schedule = {int(k): v for k, v in req.rate_schedule.items()}
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "what": "Invalid rate_schedule key",
+                "why": f"Rate schedule keys must be integer years: {exc}",
+                "fix": "Use integer year strings as keys, e.g. '2025', '2026'",
+            },
+        ) from exc
 
     # Build extra kwargs from extra_params (policy-specific fields)
     extra: dict[str, Any] = {}
@@ -205,7 +215,7 @@ def _portfolio_to_detail(name: str, portfolio: Any, version_id: str) -> Portfoli
             if field_name == "rate_schedule":
                 continue
             val = getattr(raw, field_name)
-            if val:  # Skip empty tuples/dicts
+            if val is not None and val != () and val != {}:  # Skip empty collections, not zeros
                 # Convert tuples/frozensets to lists for JSON
                 if isinstance(val, (tuple, frozenset)):
                     params[field_name] = list(val)
@@ -279,7 +289,14 @@ async def validate_portfolio(body: ValidatePortfolioRequest) -> ValidatePortfoli
         conflicts_raw = validate_compatibility(portfolio)
     except Exception as exc:
         logger.error("event=validate_compatibility_error error=%s", str(exc))
-        conflicts_raw = ()
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "what": "Conflict validation failed unexpectedly",
+                "why": str(exc),
+                "fix": "Check server logs and retry",
+            },
+        ) from exc
 
     conflicts = [
         PortfolioConflict(
@@ -452,11 +469,11 @@ async def delete_portfolio(name: str) -> None:
             },
         )
 
-    # Confirm it's a portfolio before deleting
+    # Confirm it's a portfolio before deleting — fail-closed on registry error
     try:
         entry_type = registry.get_entry_type(name)
     except Exception:
-        entry_type = "portfolio"
+        entry_type = "unknown"
 
     if entry_type != "portfolio":
         raise HTTPException(
