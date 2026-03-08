@@ -65,6 +65,10 @@ nav:
   - Architecture:
       - System Architecture: architecture.md
       - Source Tree: source-tree-analysis.md
+      - Domain Model Reference: domain-model-reference.md
+      - Extending ReformLab: extending-reformlab.md
+  - API:
+      - API Reference: api-reference.md
   - Product:
       - Requirements (PRD): prd.md
       - UX Design: ux-design-specification.md
