@@ -13,7 +13,7 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
-import { ChevronLeft, ChevronRight, Save, AlertTriangle, CheckCircle2, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Save, AlertTriangle, CheckCircle2, Trash2, FolderOpen, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,7 @@ import { PortfolioCompositionPanel } from "@/components/simulation/PortfolioComp
 import type { CompositionEntry } from "@/components/simulation/PortfolioCompositionPanel";
 import { cn } from "@/lib/utils";
 import { ApiError } from "@/api/client";
-import { createPortfolio, deletePortfolio, validatePortfolio } from "@/api/portfolios";
+import { clonePortfolio, createPortfolio, deletePortfolio, getPortfolio, validatePortfolio } from "@/api/portfolios";
 import type { Template } from "@/data/mock-data";
 import type { PortfolioConflict, PortfolioListItem } from "@/api/types";
 
@@ -334,6 +334,71 @@ export function PortfolioDesignerScreen({
     }
   };
 
+  // Clone dialog state
+  const [cloneDialogName, setCloneDialogName] = useState<string | null>(null);
+  const [cloneNewName, setCloneNewName] = useState("");
+  const [cloneNameError, setCloneNameError] = useState<string | null>(null);
+  const [cloning, setCloning] = useState(false);
+
+  const handleLoadPortfolio = async (name: string) => {
+    try {
+      const detail = await getPortfolio(name);
+      // Map portfolio policies back to composition entries
+      const entries: CompositionEntry[] = detail.policies.map((p) => {
+        // Try to find matching template by policy_type
+        const t = templates.find((tmpl) => tmpl.type.replace(/-/g, "_") === p.policy_type);
+        return {
+          templateId: t?.id ?? p.policy_type,
+          name: p.name,
+          parameters: Object.fromEntries(
+            Object.entries(p.parameters).filter(([, v]) => typeof v === "number"),
+          ) as Record<string, number>,
+          rateSchedule: p.rate_schedule,
+        };
+      });
+
+      setComposition(entries);
+      setSelectedTemplateIds(entries.map((e) => e.templateId));
+      setResolutionStrategy(
+        VALID_STRATEGIES.includes(detail.resolution_strategy as ResolutionStrategy)
+          ? (detail.resolution_strategy as ResolutionStrategy)
+          : "error",
+      );
+      setActiveStep("compose");
+      toast.success(`Loaded portfolio '${name}'`);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        toast.error(`${err.what} — ${err.why}`, { description: err.fix });
+      } else if (err instanceof Error) {
+        toast.error("Load failed", { description: err.message });
+      }
+    }
+  };
+
+  const handleClonePortfolio = async () => {
+    if (!cloneDialogName) return;
+    const err = validatePortfolioName(cloneNewName);
+    setCloneNameError(err);
+    if (err) return;
+
+    setCloning(true);
+    try {
+      await clonePortfolio(cloneDialogName, { new_name: cloneNewName });
+      toast.success(`Cloned '${cloneDialogName}' as '${cloneNewName}'`);
+      setCloneDialogName(null);
+      setCloneNewName("");
+      onSaved?.(cloneNewName);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        toast.error(`${err.what} — ${err.why}`, { description: err.fix });
+      } else if (err instanceof Error) {
+        toast.error("Clone failed", { description: err.message });
+      }
+    } finally {
+      setCloning(false);
+    }
+  };
+
   const canSave = composition.length >= 2 &&
     (resolutionStrategy !== "error" || conflicts.length === 0);
 
@@ -514,6 +579,24 @@ export function PortfolioDesignerScreen({
                     <span className="text-slate-400 truncate flex-1">{p.description}</span>
                     <button
                       type="button"
+                      onClick={() => void handleLoadPortfolio(p.name)}
+                      className="shrink-0 border border-slate-200 p-1 text-blue-500 hover:bg-blue-50"
+                      aria-label={`Load portfolio ${p.name}`}
+                      title="Load into editor"
+                    >
+                      <FolderOpen className="h-3 w-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setCloneDialogName(p.name); setCloneNewName(`${p.name}-copy`); setCloneNameError(null); }}
+                      className="shrink-0 border border-slate-200 p-1 text-slate-500 hover:bg-slate-50"
+                      aria-label={`Clone portfolio ${p.name}`}
+                      title="Clone"
+                    >
+                      <Copy className="h-3 w-3" />
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => void handleDeletePortfolio(p.name)}
                       className="shrink-0 border border-slate-200 p-1 text-red-500 hover:bg-red-50"
                       aria-label={`Delete portfolio ${p.name}`}
@@ -606,6 +689,69 @@ export function PortfolioDesignerScreen({
                 disabled={saving || !!nameError || !portfolioName.trim() || (resolutionStrategy === "error" && conflicts.length > 0)}
               >
                 {saving ? "Saving..." : "Save"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Clone dialog */}
+      {cloneDialogName !== null ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Clone portfolio"
+          className="fixed inset-0 z-50 flex items-center justify-center"
+        >
+          <div
+            className="absolute inset-0 bg-black/30"
+            onClick={() => setCloneDialogName(null)}
+            aria-hidden="true"
+          />
+          <div className="relative z-10 w-full max-w-sm border border-slate-200 bg-white p-6 shadow-lg">
+            <h3 className="text-sm font-semibold text-slate-900 mb-4">
+              Clone &ldquo;{cloneDialogName}&rdquo;
+            </h3>
+
+            <div>
+              <label className="text-xs font-medium text-slate-700 block mb-1" htmlFor="clone-name">
+                New name <span className="text-red-500">*</span>
+              </label>
+              <Input
+                id="clone-name"
+                type="text"
+                value={cloneNewName}
+                onChange={(e) => {
+                  setCloneNewName(e.target.value);
+                  setCloneNameError(validatePortfolioName(e.target.value));
+                }}
+                placeholder="my-portfolio-copy"
+                className={cloneNameError ? "border-red-400" : ""}
+              />
+              {cloneNameError ? (
+                <p className="mt-0.5 text-xs text-red-600">{cloneNameError}</p>
+              ) : (
+                <p className="mt-0.5 text-xs text-slate-400">
+                  Lowercase slug: letters, digits, hyphens (max 64 chars)
+                </p>
+              )}
+            </div>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCloneDialogName(null)}
+                disabled={cloning}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => void handleClonePortfolio()}
+                disabled={cloning || !!cloneNameError || !cloneNewName.trim()}
+              >
+                {cloning ? "Cloning..." : "Clone"}
               </Button>
             </div>
           </div>

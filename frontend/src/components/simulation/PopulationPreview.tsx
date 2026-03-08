@@ -2,7 +2,6 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { PopulationDistributionChart } from "./PopulationDistributionChart";
 import type { GenerationResult } from "@/api/types";
 
 interface PopulationPreviewProps {
@@ -10,14 +9,7 @@ interface PopulationPreviewProps {
 }
 
 export function PopulationPreview({ result }: PopulationPreviewProps) {
-  const { summary, assumption_chain } = result;
-
-  // Build mock distribution data from column names for display
-  // Real values require downloading the population data — not in scope for 17.1
-  const columnChartData = summary.columns.slice(0, 8).map((col, i) => ({
-    name: col.length > 10 ? col.slice(0, 10) + "…" : col,
-    value: 100 - i * 8, // placeholder counts
-  }));
+  const { summary, step_log, assumption_chain } = result;
 
   return (
     <section aria-label="Population preview" className="border border-slate-200 bg-white p-3">
@@ -32,7 +24,7 @@ export function PopulationPreview({ result }: PopulationPreviewProps) {
       <Tabs defaultValue="summary">
         <TabsList>
           <TabsTrigger value="summary">Summary</TabsTrigger>
-          <TabsTrigger value="distributions">Distributions</TabsTrigger>
+          <TabsTrigger value="columns">Columns</TabsTrigger>
           <TabsTrigger value="assumptions">Assumptions</TabsTrigger>
         </TabsList>
 
@@ -59,34 +51,41 @@ export function PopulationPreview({ result }: PopulationPreviewProps) {
               </div>
             </div>
 
-            <div>
-              <p className="mb-1 text-xs font-semibold text-slate-600">Columns</p>
-              <div className="flex flex-wrap gap-1">
-                {summary.columns.map((col) => (
-                  <Badge key={col} variant="default" className="data-mono text-xs">
-                    {col}
-                  </Badge>
-                ))}
+            {step_log.length > 0 ? (
+              <div>
+                <p className="mb-1 text-xs font-semibold text-slate-600">Pipeline Steps</p>
+                <div className="space-y-1">
+                  {step_log.map((step) => (
+                    <div key={step.step_index} className="flex items-center gap-2 text-xs text-slate-600">
+                      <span className="font-mono text-slate-400">{step.step_index}.</span>
+                      <span className="font-medium">{step.label}</span>
+                      <span className="text-slate-400">{step.step_type}</span>
+                      {step.method_name ? (
+                        <Badge variant="default" className="text-xs">{step.method_name}</Badge>
+                      ) : null}
+                      <span className="ml-auto text-slate-400 data-mono">
+                        {step.output_rows.toLocaleString()} rows · {step.duration_ms}ms
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            ) : null}
           </div>
         </TabsContent>
 
-        <TabsContent value="distributions">
+        <TabsContent value="columns">
           <div className="mt-3 space-y-3">
-            <p className="text-xs text-slate-500">
-              Distribution charts show the relative presence of columns in the population.
-              Full statistical distributions require running an indicator pass (Story 17.6).
+            <p className="mb-1 text-xs font-semibold text-slate-600">
+              {summary.column_count} columns in merged population
             </p>
-            {columnChartData.length > 0 ? (
-              <PopulationDistributionChart
-                title="Column coverage (placeholder)"
-                data={columnChartData}
-                valueLabel="Relative weight"
-              />
-            ) : (
-              <p className="text-xs text-slate-400">No columns available to visualize.</p>
-            )}
+            <div className="flex flex-wrap gap-1">
+              {summary.columns.map((col) => (
+                <Badge key={col} variant="default" className="data-mono text-xs">
+                  {col}
+                </Badge>
+              ))}
+            </div>
           </div>
         </TabsContent>
 

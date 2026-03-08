@@ -8,6 +8,26 @@ import { mockTemplates } from "@/data/mock-data";
 vi.mock("@/api/portfolios", () => ({
   validatePortfolio: vi.fn().mockResolvedValue({ conflicts: [], is_compatible: true }),
   createPortfolio: vi.fn().mockResolvedValue("v-abc123"),
+  deletePortfolio: vi.fn().mockResolvedValue(undefined),
+  getPortfolio: vi.fn().mockResolvedValue({
+    name: "green-deal-2030",
+    description: "Green deal",
+    version_id: "v1",
+    policies: [
+      { name: "Carbon Tax", policy_type: "carbon_tax", rate_schedule: { "2025": 44 }, parameters: {} },
+      { name: "Vehicle Bonus", policy_type: "vehicle_bonus_malus", rate_schedule: {}, parameters: {} },
+    ],
+    resolution_strategy: "sum",
+    policy_count: 2,
+  }),
+  clonePortfolio: vi.fn().mockResolvedValue({
+    name: "green-deal-copy",
+    description: "Green deal",
+    version_id: "v2",
+    policies: [],
+    resolution_strategy: "sum",
+    policy_count: 2,
+  }),
 }));
 
 function renderScreen(props: Partial<React.ComponentProps<typeof PortfolioDesignerScreen>> = {}) {
@@ -147,5 +167,30 @@ describe("PortfolioDesignerScreen", () => {
     fireEvent.click(screen.getByText(/3\. Review & Save/i));
     expect(screen.getByText("green-deal-2030")).toBeInTheDocument();
     expect(screen.getByText(/3 policies/i)).toBeInTheDocument();
+  });
+
+  it("shows Load and Clone buttons for saved portfolios (AC-5)", () => {
+    renderScreen({
+      savedPortfolios: [
+        { name: "green-deal-2030", description: "Green deal", version_id: "v1", policy_count: 3 },
+      ],
+    });
+    fireEvent.click(screen.getByText(/3\. Review & Save/i));
+    expect(screen.getByRole("button", { name: /load portfolio green-deal-2030/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /clone portfolio green-deal-2030/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /delete portfolio green-deal-2030/i })).toBeInTheDocument();
+  });
+
+  it("opens clone dialog when Clone button clicked (AC-5)", () => {
+    renderScreen({
+      savedPortfolios: [
+        { name: "green-deal-2030", description: "Green deal", version_id: "v1", policy_count: 3 },
+      ],
+    });
+    fireEvent.click(screen.getByText(/3\. Review & Save/i));
+    fireEvent.click(screen.getByRole("button", { name: /clone portfolio green-deal-2030/i }));
+
+    expect(screen.getByRole("dialog", { name: /clone portfolio/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/new name/i)).toBeInTheDocument();
   });
 });

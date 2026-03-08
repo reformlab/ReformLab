@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import { PopulationPreview } from "@/components/simulation/PopulationPreview";
 import type { GenerationResult } from "@/api/types";
@@ -44,16 +45,24 @@ describe("PopulationPreview", () => {
     expect(screen.getAllByText("4")[0]).toBeInTheDocument();
   });
 
-  it("shows column list as badges (AC-5)", () => {
+  it("shows column list as badges on Columns tab (AC-5)", async () => {
+    const user = userEvent.setup();
     render(<PopulationPreview result={mockResult} />);
+    await user.click(screen.getByRole("tab", { name: /columns/i }));
     expect(screen.getByText("commune_code")).toBeInTheDocument();
     expect(screen.getByText("median_income")).toBeInTheDocument();
   });
 
-  it("has tabs for Summary, Distributions, Assumptions (AC-5)", () => {
+  it("has tabs for Summary, Columns, Assumptions (AC-5)", () => {
     render(<PopulationPreview result={mockResult} />);
     expect(screen.getByRole("tab", { name: /summary/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /distributions/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /columns/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /assumptions/i })).toBeInTheDocument();
+  });
+
+  it("shows pipeline step log in summary tab (AC-5)", () => {
+    render(<PopulationPreview result={mockResult} />);
+    expect(screen.getByText("source_0")).toBeInTheDocument();
+    expect(screen.getByText("5,000 rows · 12.5ms")).toBeInTheDocument();
   });
 });
