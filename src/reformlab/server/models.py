@@ -455,3 +455,47 @@ class PortfolioComparisonResponse(BaseModel):
     portfolio_labels: list[str]
     metadata: dict[str, Any]
     warnings: list[str]
+
+
+# ---------------------------------------------------------------------------
+# Decision viewer models — Story 17.5
+# ---------------------------------------------------------------------------
+
+
+class DecisionSummaryRequest(BaseModel):
+    """Request for decision outcome summary."""
+
+    run_id: str
+    domain_name: str | None = None  # None = all domains
+    group_by: str | None = None  # "decile" or None
+    group_value: str | None = None  # e.g., "3" for D3; None = all
+    year: int | None = None  # If set, include mean probabilities in response
+
+
+class YearlyOutcome(BaseModel):
+    """Decision outcomes for a single year."""
+
+    year: int
+    total_households: int
+    counts: dict[str, int]  # alternative_id → count
+    percentages: dict[str, float]  # alternative_id → percentage (0–100)
+    mean_probabilities: dict[str, float] | None = None  # only when year detail requested
+
+
+class DomainSummary(BaseModel):
+    """Summary of decision outcomes for a single domain across years."""
+
+    domain_name: str
+    alternative_ids: list[str]
+    alternative_labels: dict[str, str]
+    yearly_outcomes: list[YearlyOutcome]
+    eligibility: dict[str, int] | None = None  # keys: n_total, n_eligible, n_ineligible
+
+
+class DecisionSummaryResponse(BaseModel):
+    """Response for decision outcome summary."""
+
+    run_id: str
+    domains: list[DomainSummary]
+    metadata: dict[str, Any]
+    warnings: list[str]

@@ -373,3 +373,40 @@ export interface PortfolioComparisonResponse {
   metadata: Record<string, unknown>;
   warnings: string[];
 }
+
+
+// ============================================================================
+// Decision viewer types — Story 17.5
+// ============================================================================
+
+export interface DecisionSummaryRequest {
+  run_id: string;
+  domain_name?: string | null;
+  group_by?: string | null;
+  group_value?: string | null;
+  year?: number | null;
+}
+
+export interface YearlyOutcome {
+  year: number;
+  total_households: number;
+  counts: Record<string, number>;
+  percentages: Record<string, number>;
+  mean_probabilities: Record<string, number> | null;
+}
+
+export interface DomainSummary {
+  domain_name: string;
+  alternative_ids: string[];
+  alternative_labels: Record<string, string>;
+  yearly_outcomes: YearlyOutcome[];
+  /** Keys: n_total, n_eligible, n_ineligible. Null when domain has no eligibility concept. */
+  eligibility: { n_total: number; n_eligible: number; n_ineligible: number } | null;
+}
+
+export interface DecisionSummaryResponse {
+  run_id: string;
+  domains: DomainSummary[];
+  metadata: Record<string, unknown>;
+  warnings: string[];
+}

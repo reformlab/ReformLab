@@ -63,3 +63,18 @@
 | medium | Pydantic mutable default `list[str] = ["distributional", "fiscal"]` — mypy strict would flag this | Changed to `Field(default_factory=lambda: [...])` in both Task 1.1 and the Pydantic model snippet. |
 | medium | `models.py` listed in "New files" section but it already exists | Removed from "New files", kept in "Modified files". |
 | low | Testing rules from project-context.md (class-based grouping, AC references) not mentioned in test spec | Added class-based grouping examples to Task 1.3. |
+
+## Story 17-5 (2026-03-08)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | AC-3 says "client-side" filtering but Task 5.4, Dev Notes pseudocode, and Anti-Patterns all mandate server-side | AC-3 rewritten to describe server-side refetch with `group_by`/`group_value`; Task 5.6 updated to handle `what="NoIncomeData"` 422 for filter disable |
+| critical | `DecisionDetailResponse` mentioned in Task 1.1 and 2.1 but absent from Pydantic/TypeScript sections — two conflicting design approaches coexist | Removed `DecisionDetailResponse` from Task 1.1 and 2.1; clarified that year-level detail flows through `YearlyOutcome.mean_probabilities` in the unified `DecisionSummaryResponse` |
+| critical | Task 1.2(f) has no error path when `income` column is absent during `group_by="decile"` request — backend would crash | Task 1.2(f) updated with explicit 422 check for missing `income` column with `what="NoIncomeData"` error; added to HTTP status matrix, test list, and state machine |
+| critical | Eligibility keys inconsistent — Pydantic comment says `total/eligible/ineligible` but mock data uses `n_total/n_eligible/n_ineligible` | Pydantic comment standardized to `n_total, n_eligible, n_ineligible`; TypeScript `DomainSummary.eligibility` changed from `Record<string, number>` to explicit struct `{ n_total: number; n_eligible: number; n_ineligible: number } \| null` |
+| high | No-data detection inconsistency — AC-1 checks `decision_domains` column, pseudocode checks `decision_domain_alternatives` metadata key | Task 1.2(c) and pseudocode updated to use metadata key as canonical detection; clarified with comment "canonical no-data detection check" |
+| high | AC-4 implies `mean_probabilities` always available; model has it optional | AC-4 rewritten to state probabilities are populated by year-specific re-fetch; specifies "Probability data not available" UI fallback; Task 4.1 updated |
+| high | AC-2 says "project chart color palette" but Dev Notes define separate `DECISION_COLORS` | AC-2 updated to say "dedicated decision color palette (`DECISION_COLORS`, distinct from the comparison chart palette)" |
+| high | `stackOffset="expand"` must use `counts` not `percentages`; easy to get wrong | Added `**CRITICAL:**` note immediately after the chartData code snippet explaining that `outcome.counts` must be used, not `outcome.percentages` |
+| medium | NumPy referenced for decile computation but is not a declared project dependency | Dev Notes income decile section updated to specify PyArrow compute functions only; "Do not use NumPy — it is not a declared dependency" |
+| medium | Missing-probabilities column fallback not defined | Mean probabilities section updated with explicit step 2 check; returns `mean_probabilities=None` and appends warning to `DecisionSummaryResponse.warnings`; Anti-Patterns table entry added |

@@ -17,6 +17,7 @@ import {
   type ConfigStep,
   ModelConfigStepper,
 } from "@/components/simulation/ModelConfigStepper";
+import { BehavioralDecisionViewerScreen } from "@/components/screens/BehavioralDecisionViewerScreen";
 import { ComparisonDashboardScreen } from "@/components/screens/ComparisonDashboardScreen";
 // ComparisonView (Phase 1 mock-driven prototype) is kept but no longer imported in workspace
 import { DistributionalChart } from "@/components/simulation/DistributionalChart";
@@ -43,7 +44,7 @@ const STEP_ORDER: ConfigStep["key"][] = [
 const LEFT_COLLAPSE_STORAGE_KEY = "reformlab-left-panel-collapsed";
 const RIGHT_COLLAPSE_STORAGE_KEY = "reformlab-right-panel-collapsed";
 
-type ViewMode = "configuration" | "run" | "progress" | "results" | "comparison" | "data-fusion" | "portfolio" | "runner";
+type ViewMode = "configuration" | "run" | "progress" | "results" | "comparison" | "decisions" | "data-fusion" | "portfolio" | "runner";
 
 function readStoredBool(key: string): boolean {
   const value = window.localStorage.getItem(key);
@@ -226,6 +227,15 @@ function Workspace() {
     setViewMode(previousViewMode === "comparison" ? "results" : previousViewMode);
   };
 
+  const openDecisions = () => {
+    setPreviousViewMode(viewMode);
+    setViewMode("decisions");
+  };
+
+  const backFromDecisions = () => {
+    setViewMode(previousViewMode === "decisions" ? "results" : previousViewMode);
+  };
+
   const selectedScenario = useMemo(
     () => scenarios.find((s) => s.id === selectedScenarioId),
     [scenarios, selectedScenarioId],
@@ -243,7 +253,7 @@ function Workspace() {
           </p>
         </div>
         <div className="flex gap-2">
-          {viewMode !== "configuration" && viewMode !== "comparison" && viewMode !== "data-fusion" && viewMode !== "portfolio" && viewMode !== "runner" ? (
+          {viewMode !== "configuration" && viewMode !== "comparison" && viewMode !== "decisions" && viewMode !== "data-fusion" && viewMode !== "portfolio" && viewMode !== "runner" ? (
             <Button variant="outline" onClick={() => setViewMode("configuration")}>
               Configuration
             </Button>
@@ -356,6 +366,9 @@ function Workspace() {
           </div>
           <div className="flex gap-2">
             <Button onClick={openComparison}>Open Comparison</Button>
+            {runResult?.run_id ? (
+              <Button variant="outline" onClick={openDecisions}>Behavioral Decisions</Button>
+            ) : null}
             <Button variant="outline" onClick={handleStartRun}>Run Again</Button>
             <Button variant="outline" onClick={handleExportCsv}>Export CSV</Button>
             <Button variant="outline" onClick={handleExportParquet}>Export Parquet</Button>
@@ -367,6 +380,13 @@ function Workspace() {
         <ComparisonDashboardScreen
           results={results}
           onBack={backFromComparison}
+        />
+      ) : null}
+
+      {viewMode === "decisions" && runResult?.run_id ? (
+        <BehavioralDecisionViewerScreen
+          runId={runResult.run_id}
+          onBack={backFromDecisions}
         />
       ) : null}
 

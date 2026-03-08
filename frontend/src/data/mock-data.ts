@@ -614,3 +614,54 @@ export const mockComparisonResponse: PortfolioComparisonResponse = {
   metadata: { baseline_label: "Run A", indicator_types: ["distributional", "fiscal"] },
   warnings: [],
 };
+
+// ============================================================================
+// Decision viewer mock data — Story 17.5
+// ============================================================================
+
+import type { DecisionSummaryResponse } from "../api/types";
+
+export const mockDecisionSummaryResponse: DecisionSummaryResponse = {
+  run_id: "mock-decision-run",
+  domains: [
+    {
+      domain_name: "vehicle",
+      alternative_ids: ["keep_current", "buy_petrol", "buy_diesel", "buy_hybrid", "buy_ev", "buy_no_vehicle"],
+      alternative_labels: {
+        keep_current: "Keep Current",
+        buy_petrol: "Petrol",
+        buy_diesel: "Diesel",
+        buy_hybrid: "Hybrid",
+        buy_ev: "Electric (EV)",
+        buy_no_vehicle: "No Vehicle",
+      },
+      yearly_outcomes: [
+        { year: 2025, total_households: 10000, counts: { keep_current: 7000, buy_petrol: 800, buy_diesel: 400, buy_hybrid: 600, buy_ev: 1000, buy_no_vehicle: 200 }, percentages: { keep_current: 70, buy_petrol: 8, buy_diesel: 4, buy_hybrid: 6, buy_ev: 10, buy_no_vehicle: 2 }, mean_probabilities: null },
+        { year: 2026, total_households: 10000, counts: { keep_current: 6200, buy_petrol: 700, buy_diesel: 300, buy_hybrid: 700, buy_ev: 1800, buy_no_vehicle: 300 }, percentages: { keep_current: 62, buy_petrol: 7, buy_diesel: 3, buy_hybrid: 7, buy_ev: 18, buy_no_vehicle: 3 }, mean_probabilities: null },
+        { year: 2027, total_households: 10000, counts: { keep_current: 5500, buy_petrol: 600, buy_diesel: 200, buy_hybrid: 800, buy_ev: 2600, buy_no_vehicle: 300 }, percentages: { keep_current: 55, buy_petrol: 6, buy_diesel: 2, buy_hybrid: 8, buy_ev: 26, buy_no_vehicle: 3 }, mean_probabilities: null },
+        { year: 2028, total_households: 10000, counts: { keep_current: 4800, buy_petrol: 500, buy_diesel: 100, buy_hybrid: 900, buy_ev: 3400, buy_no_vehicle: 300 }, percentages: { keep_current: 48, buy_petrol: 5, buy_diesel: 1, buy_hybrid: 9, buy_ev: 34, buy_no_vehicle: 3 }, mean_probabilities: null },
+        { year: 2029, total_households: 10000, counts: { keep_current: 4000, buy_petrol: 400, buy_diesel: 50, buy_hybrid: 1000, buy_ev: 4250, buy_no_vehicle: 300 }, percentages: { keep_current: 40, buy_petrol: 4, buy_diesel: 0.5, buy_hybrid: 10, buy_ev: 42.5, buy_no_vehicle: 3 }, mean_probabilities: null },
+      ],
+      eligibility: { n_total: 10000, n_eligible: 7000, n_ineligible: 3000 },
+    },
+    {
+      domain_name: "heating",
+      alternative_ids: ["keep_current", "gas_boiler", "heat_pump", "electric", "wood_pellet"],
+      alternative_labels: {
+        keep_current: "Keep Current",
+        gas_boiler: "Gas Boiler",
+        heat_pump: "Heat Pump",
+        electric: "Electric",
+        wood_pellet: "Wood/Pellet",
+      },
+      yearly_outcomes: [
+        { year: 2025, total_households: 10000, counts: { keep_current: 8000, gas_boiler: 500, heat_pump: 1000, electric: 300, wood_pellet: 200 }, percentages: { keep_current: 80, gas_boiler: 5, heat_pump: 10, electric: 3, wood_pellet: 2 }, mean_probabilities: null },
+        { year: 2026, total_households: 10000, counts: { keep_current: 7200, gas_boiler: 400, heat_pump: 1700, electric: 400, wood_pellet: 300 }, percentages: { keep_current: 72, gas_boiler: 4, heat_pump: 17, electric: 4, wood_pellet: 3 }, mean_probabilities: null },
+        { year: 2027, total_households: 10000, counts: { keep_current: 6500, gas_boiler: 300, heat_pump: 2400, electric: 500, wood_pellet: 300 }, percentages: { keep_current: 65, gas_boiler: 3, heat_pump: 24, electric: 5, wood_pellet: 3 }, mean_probabilities: null },
+      ],
+      eligibility: null,
+    },
+  ],
+  metadata: { start_year: 2025, end_year: 2029 },
+  warnings: [],
+};
