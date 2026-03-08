@@ -1,0 +1,117 @@
+record_id: c60e5383-f203-4e8c-ac03-69f07a6b3e20
+created_at: '2026-03-08T00:08:34.801284+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 17
+  story_num: '4'
+  title: Story 17.4
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: true
+    requires_migration: false
+evaluator:
+  provider: codex
+  model: gpt-5.3-codex
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-03-08T00:00:43.243711Z'
+  end_time: '2026-03-08T00:07:33.133711Z'
+  duration_ms: 409890
+  input_tokens: 0
+  output_tokens: 2665
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 10661
+  heading_count: 17
+  list_depth_max: 1
+  code_block_count: 0
+  sections_detected:
+  - Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: **15.0**'
+  - Architectural Sins
+  - Pythonic Crimes & Readability
+  - Performance & Scalability
+  - Correctness & Safety
+  - Maintainability Issues
+  - Suggested Fixes
+  - 1. Validate `baseline_run_id` strictly
+  - 2. Fix API error contract end-to-end
+  - 3. Implement real AC-3 interactions
+  - 4. Implement sign-based bar coloring in relative mode
+  - 5. Harden CSV export
+  - 6. Replace Welfare table with summary cards per task spec
+  - 7. Fix ranking sort by criterion direction
+  - 8. Add missing tests
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.33
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 20e39dd471ca
+findings:
+  total_count: 10
+  by_severity:
+    critical: 3
+    major: 7
+    minor: 0
+    nit: 0
+  by_category:
+    security: 1
+    performance: 0
+    correctness: 6
+    completeness: 2
+    clarity: 0
+    testability: 1
+  has_fix_count: 10
+  has_location_count: 10
+  has_evidence_count: 10
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 0
+  confidence_phrases_count: 3
+linguistic:
+  avg_sentence_length: 33.21951219512195
+  vocabulary_richness: 0.2907488986784141
+  flesch_reading_ease: -77.69691339276963
+  vague_terms_count: 0
+  formality_score: 0.75
+  sentiment: negative
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.95
+  evidence_quality: 0.9
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: true
+    requires_migration: false
+  phase: code-review
+  file_count: 14
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

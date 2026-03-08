@@ -7,14 +7,19 @@ import { RightPanel } from "@/components/layout/RightPanel";
 import { WorkspaceLayout } from "@/components/layout/WorkspaceLayout";
 import { PasswordPrompt } from "@/components/auth/PasswordPrompt";
 import { AssumptionsReviewScreen } from "@/components/screens/AssumptionsReviewScreen";
+import { DataFusionWorkbench } from "@/components/screens/DataFusionWorkbench";
 import { ParameterEditingScreen } from "@/components/screens/ParameterEditingScreen";
 import { PopulationSelectionScreen } from "@/components/screens/PopulationSelectionScreen";
+import { PortfolioDesignerScreen } from "@/components/screens/PortfolioDesignerScreen";
+import { SimulationRunnerScreen } from "@/components/screens/SimulationRunnerScreen";
 import { TemplateSelectionScreen } from "@/components/screens/TemplateSelectionScreen";
 import {
   type ConfigStep,
   ModelConfigStepper,
 } from "@/components/simulation/ModelConfigStepper";
-import { ComparisonView } from "@/components/simulation/ComparisonView";
+import { BehavioralDecisionViewerScreen } from "@/components/screens/BehavioralDecisionViewerScreen";
+import { ComparisonDashboardScreen } from "@/components/screens/ComparisonDashboardScreen";
+// ComparisonView (Phase 1 mock-driven prototype) is kept but no longer imported in workspace
 import { DistributionalChart } from "@/components/simulation/DistributionalChart";
 import { RunProgressBar } from "@/components/simulation/RunProgressBar";
 import { ScenarioCard } from "@/components/simulation/ScenarioCard";
@@ -39,7 +44,7 @@ const STEP_ORDER: ConfigStep["key"][] = [
 const LEFT_COLLAPSE_STORAGE_KEY = "reformlab-left-panel-collapsed";
 const RIGHT_COLLAPSE_STORAGE_KEY = "reformlab-right-panel-collapsed";
 
-type ViewMode = "configuration" | "run" | "progress" | "results" | "comparison";
+type ViewMode = "configuration" | "run" | "progress" | "results" | "comparison" | "decisions" | "data-fusion" | "portfolio" | "runner";
 
 function readStoredBool(key: string): boolean {
   const value = window.localStorage.getItem(key);
@@ -75,11 +80,18 @@ function Workspace() {
     runResult,
     cloneScenario,
     deleteScenario,
+    dataFusionSources,
+    dataFusionMethods,
+    dataFusionResult,
+    setDataFusionResult,
+    portfolios,
+    refetchPortfolios,
+    selectedPortfolioName,
+    results,
   } = useAppState();
 
   const [activeStep, setActiveStep] = useState<ConfigStep["key"]>("population");
   const [viewMode, setViewMode] = useState<ViewMode>("configuration");
-  const [selectedScenarioIds, setSelectedScenarioIds] = useState<string[]>(["baseline", "reform-a"]);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const [isNarrow, setIsNarrow] = useState(false);
@@ -215,6 +227,15 @@ function Workspace() {
     setViewMode(previousViewMode === "comparison" ? "results" : previousViewMode);
   };
 
+  const openDecisions = () => {
+    setPreviousViewMode(viewMode);
+    setViewMode("decisions");
+  };
+
+  const backFromDecisions = () => {
+    setViewMode(previousViewMode === "decisions" ? "results" : previousViewMode);
+  };
+
   const selectedScenario = useMemo(
     () => scenarios.find((s) => s.id === selectedScenarioId),
     [scenarios, selectedScenarioId],
@@ -232,7 +253,7 @@ function Workspace() {
           </p>
         </div>
         <div className="flex gap-2">
-          {viewMode !== "configuration" && viewMode !== "comparison" ? (
+          {viewMode !== "configuration" && viewMode !== "comparison" && viewMode !== "decisions" && viewMode !== "data-fusion" && viewMode !== "portfolio" && viewMode !== "runner" ? (
             <Button variant="outline" onClick={() => setViewMode("configuration")}>
               Configuration
             </Button>
@@ -245,6 +266,16 @@ function Workspace() {
           {viewMode === "comparison" ? (
             <Button variant="outline" onClick={backFromComparison}>
               Back to Results
+            </Button>
+          ) : null}
+          {viewMode === "data-fusion" ? (
+            <Button variant="outline" onClick={() => setViewMode("configuration")}>
+              Configure Policy
+            </Button>
+          ) : null}
+          {viewMode === "portfolio" ? (
+            <Button variant="outline" onClick={() => setViewMode("configuration")}>
+              Configure Policy
             </Button>
           ) : null}
         </div>
@@ -335,6 +366,9 @@ function Workspace() {
           </div>
           <div className="flex gap-2">
             <Button onClick={openComparison}>Open Comparison</Button>
+            {runResult?.run_id ? (
+              <Button variant="outline" onClick={openDecisions}>Behavioral Decisions</Button>
+            ) : null}
             <Button variant="outline" onClick={handleStartRun}>Run Again</Button>
             <Button variant="outline" onClick={handleExportCsv}>Export CSV</Button>
             <Button variant="outline" onClick={handleExportParquet}>Export Parquet</Button>
@@ -343,11 +377,43 @@ function Workspace() {
       ) : null}
 
       {viewMode === "comparison" ? (
-        <ComparisonView
-          scenarios={scenarios}
-          selectedScenarioIds={selectedScenarioIds}
-          onChangeSelectedScenarioIds={setSelectedScenarioIds}
-          decileData={decileData}
+        <ComparisonDashboardScreen
+          results={results}
+          onBack={backFromComparison}
+        />
+      ) : null}
+
+      {viewMode === "decisions" && runResult?.run_id ? (
+        <BehavioralDecisionViewerScreen
+          runId={runResult.run_id}
+          onBack={backFromDecisions}
+        />
+      ) : null}
+
+      {viewMode === "data-fusion" ? (
+        <DataFusionWorkbench
+          sources={dataFusionSources}
+          methods={dataFusionMethods}
+          initialResult={dataFusionResult}
+          onPopulationGenerated={setDataFusionResult}
+        />
+      ) : null}
+
+      {viewMode === "portfolio" ? (
+        <PortfolioDesignerScreen
+          templates={templates}
+          savedPortfolios={portfolios}
+          onSaved={() => { void refetchPortfolios(); }}
+          onDeleted={() => { void refetchPortfolios(); }}
+        />
+      ) : null}
+
+      {viewMode === "runner" ? (
+        <SimulationRunnerScreen
+          selectedPopulationId={selectedPopulationId || null}
+          selectedPortfolioName={selectedPortfolioName}
+          selectedTemplateName={selectedTemplateId || null}
+          onCancel={() => setViewMode("configuration")}
         />
       ) : null}
     </>
@@ -367,6 +433,30 @@ function Workspace() {
         leftPanel={
           <LeftPanel collapsed={isNarrow ? true : leftCollapsed} onToggle={() => setLeftCollapsed((current) => !current)}>
             <div className="space-y-2">
+              <Button
+                variant={viewMode === "data-fusion" ? "default" : "outline"}
+                className="w-full"
+                onClick={() => setViewMode("data-fusion")}
+              >
+                Population
+              </Button>
+
+              <Button
+                variant={viewMode === "portfolio" ? "default" : "outline"}
+                className="w-full"
+                onClick={() => setViewMode("portfolio")}
+              >
+                Portfolio
+              </Button>
+
+              <Button
+                variant={viewMode === "runner" ? "default" : "outline"}
+                className="w-full"
+                onClick={() => setViewMode("runner")}
+              >
+                Simulation
+              </Button>
+
               <Button
                 variant={viewMode === "configuration" ? "default" : "outline"}
                 className="w-full"
@@ -397,7 +487,6 @@ function Workspace() {
                   }}
                   onCompare={(id) => {
                     setSelectedScenarioId(id);
-                    setSelectedScenarioIds(["baseline", id]);
                     setPreviousViewMode(viewMode);
                     setViewMode("comparison");
                   }}

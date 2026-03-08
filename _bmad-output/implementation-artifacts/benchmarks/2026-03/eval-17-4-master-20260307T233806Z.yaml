@@ -1,0 +1,49 @@
+record_id: cc1f5f1c-e08a-48c3-a711-e37d35483090
+created_at: '2026-03-07T23:38:06.046851+00:00'
+workflow:
+  id: create-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 17
+  story_num: 4
+  title: Story 17.4
+  complexity_flags: {}
+evaluator:
+  provider: claude-subprocess
+  model: opus
+  role: master
+  role_id: null
+  session_id: d2bf7b2a-fbe6-4afe-ae8d-5e17d32e189d
+execution:
+  start_time: '2026-03-07T23:30:27.682843Z'
+  end_time: '2026-03-07T23:38:06.016207Z'
+  duration_ms: 458333
+  input_tokens: 0
+  output_tokens: 0
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 3005
+  heading_count: 0
+  list_depth_max: 2
+  code_block_count: 0
+  sections_detected: []
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.33
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 29db2f99d176
+findings: null
+reasoning: null
+linguistic: null
+quality: null
+consensus: null
+ground_truth: null
+custom: null

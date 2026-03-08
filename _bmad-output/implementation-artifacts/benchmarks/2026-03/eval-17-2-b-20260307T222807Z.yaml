@@ -1,0 +1,113 @@
+record_id: 7c464608-599b-4bdb-b64a-cf58abf30e6d
+created_at: '2026-03-07T22:28:07.823748+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 17
+  story_num: '2'
+  title: Story 17.2
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: gemini
+  model: gemini-2.5-flash
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-03-07T22:20:56.937321Z'
+  end_time: '2026-03-07T22:21:57.460321Z'
+  duration_ms: 60523
+  input_tokens: 0
+  output_tokens: 3615
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 14460
+  heading_count: 13
+  list_depth_max: 2
+  code_block_count: 4
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: 0.5'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes &amp; Readability
+  - ⚡ Performance &amp; Scalability
+  - 🐛 Correctness &amp; Safety
+  - 🔧 Maintainability Issues
+  - 🛠️ Suggested Fixes
+  - '1. AC-1: Category Tags not displayed'
+  - 2. Python Backend - Explicit Type Hint for PolicyConfig
+  - 3. Frontend - Defensive Programming for API Hook Mock Data
+  - 4. Frontend - Improve Save Button Tooltip/Disabled State
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.33
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: f708e887ce36
+findings:
+  total_count: 7
+  by_severity:
+    critical: 1
+    major: 3
+    minor: 2
+    nit: 1
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 4
+    completeness: 2
+    clarity: 1
+    testability: 0
+  has_fix_count: 6
+  has_location_count: 7
+  has_evidence_count: 7
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 1
+  confidence_phrases_count: 1
+linguistic:
+  avg_sentence_length: 33.659574468085104
+  vocabulary_richness: 0.3552465233881163
+  flesch_reading_ease: 9.185043909889288
+  vague_terms_count: 3
+  formality_score: 0.58
+  sentiment: mixed
+quality:
+  actionable_ratio: 0.86
+  specificity_score: 0.87
+  evidence_quality: 0.82
+  follows_template: true
+  internal_consistency: 0.7
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 19
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

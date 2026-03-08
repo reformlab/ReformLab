@@ -97,6 +97,13 @@ async def get_template(name: str) -> TemplateDetailResponse:
     try:
         template = registry.get(name)
     except Exception as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "what": f"Template '{name}' not found",
+                "why": str(exc),
+                "fix": "Check the template name",
+            },
+        ) from exc
 
     return _template_to_detail(name, template)

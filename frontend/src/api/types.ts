@@ -129,3 +129,284 @@ export interface ErrorResponse {
 }
 
 export type IndicatorType = "distributional" | "geographic" | "welfare" | "fiscal";
+
+// ============================================================================
+// Data fusion types — Story 17.1
+// ============================================================================
+
+export interface DataSourceItem {
+  id: string;
+  provider: string;
+  name: string;
+  description: string;
+  variable_count: number;
+  record_count: number | null;
+  source_url: string;
+}
+
+export interface ColumnInfo {
+  name: string;
+  type: string;
+  description: string;
+}
+
+export interface DataSourceDetail extends DataSourceItem {
+  columns: ColumnInfo[];
+}
+
+export interface VariableInfo {
+  name: string;
+  description: string;
+  present_in: string[];
+}
+
+export interface MergeMethodParam {
+  name: string;
+  type: string;
+  description: string;
+  required: boolean;
+}
+
+export interface MergeMethodInfo {
+  id: string;
+  name: string;
+  what_it_does: string;
+  assumption: string;
+  when_appropriate: string;
+  tradeoff: string;
+  parameters: MergeMethodParam[];
+}
+
+export interface IPFConstraintRequest {
+  dimension: string;
+  targets: Record<string, number>;
+}
+
+export interface GenerationRequest {
+  sources: Array<{ provider: string; dataset_id: string }>;
+  merge_method: string;
+  seed: number;
+  ipf_constraints?: IPFConstraintRequest[];
+  strata_columns?: string[];
+}
+
+export interface StepLogItem {
+  step_index: number;
+  step_type: string;
+  label: string;
+  input_labels: string[];
+  output_rows: number;
+  output_columns: string[];
+  method_name: string | null;
+  duration_ms: number;
+}
+
+export interface AssumptionRecordItem {
+  step_index: number;
+  step_label: string;
+  method: string;
+  description: string;
+}
+
+export interface MarginalResultResponse {
+  dimension: string;
+  passed: boolean;
+  max_deviation: number;
+  tolerance: number;
+  observed: Record<string, number>;
+  expected: Record<string, number>;
+  deviations: Record<string, number>;
+}
+
+export interface ValidationResultResponse {
+  all_passed: boolean;
+  total_constraints: number;
+  failed_count: number;
+  marginal_results: MarginalResultResponse[];
+}
+
+export interface PopulationSummary {
+  record_count: number;
+  column_count: number;
+  columns: string[];
+}
+
+export interface GenerationResult {
+  success: boolean;
+  summary: PopulationSummary;
+  step_log: StepLogItem[];
+  assumption_chain: AssumptionRecordItem[];
+  validation_result: ValidationResultResponse | null;
+}
+
+// ============================================================================
+// Portfolio types — Story 17.2
+// ============================================================================
+
+export interface PortfolioPolicyRequest {
+  name: string;
+  policy_type: string;
+  rate_schedule: Record<string, number>;
+  exemptions: string[];
+  thresholds: number[];
+  covered_categories: string[];
+  extra_params: Record<string, unknown>;
+}
+
+export interface CreatePortfolioRequest {
+  name: string;
+  description?: string;
+  policies: PortfolioPolicyRequest[];
+  resolution_strategy?: string;
+}
+
+export interface UpdatePortfolioRequest {
+  description?: string;
+  policies: PortfolioPolicyRequest[];
+  resolution_strategy?: string;
+}
+
+export interface ClonePortfolioRequest {
+  new_name: string;
+}
+
+export interface PortfolioConflict {
+  conflict_type: string;
+  policy_indices: number[];
+  parameter_name: string;
+  description: string;
+}
+
+export interface ValidatePortfolioRequest {
+  policies: PortfolioPolicyRequest[];
+  resolution_strategy?: string;
+}
+
+export interface ValidatePortfolioResponse {
+  conflicts: PortfolioConflict[];
+  is_compatible: boolean;
+}
+
+export interface PortfolioPolicyItem {
+  name: string;
+  policy_type: string;
+  rate_schedule: Record<string, number>;
+  parameters: Record<string, unknown>;
+}
+
+export interface PortfolioDetailResponse {
+  name: string;
+  description: string;
+  version_id: string;
+  policies: PortfolioPolicyItem[];
+  resolution_strategy: string;
+  policy_count: number;
+}
+
+export interface PortfolioListItem {
+  name: string;
+  description: string;
+  version_id: string;
+  policy_count: number;
+}
+
+// ============================================================================
+// Result types — Story 17.3
+// ============================================================================
+
+export interface ResultListItem {
+  run_id: string;
+  timestamp: string;
+  run_kind: string;              // "scenario" | "portfolio"
+  start_year: number;
+  end_year: number;
+  row_count: number;
+  status: string;
+  data_available: boolean;
+  template_name: string | null;  // scenario runs only
+  policy_type: string | null;    // scenario runs only
+  portfolio_name: string | null; // portfolio runs only
+}
+
+export interface ResultDetailResponse extends ResultListItem {
+  population_id: string | null;
+  seed: number | null;
+  manifest_id: string;
+  scenario_id: string;
+  adapter_version: string;
+  started_at: string;
+  finished_at: string;
+  indicators: Record<string, unknown> | null;
+  columns: string[] | null;
+  column_count: number | null;
+}
+
+// ============================================================================
+// Multi-run comparison types — Story 17.4
+// ============================================================================
+
+export interface PortfolioComparisonRequest {
+  run_ids: string[];
+  baseline_run_id?: string | null;
+  indicator_types?: string[];
+  include_welfare?: boolean;
+  include_deltas?: boolean;
+  include_pct_deltas?: boolean;
+}
+
+export interface ComparisonData {
+  columns: string[];
+  data: Record<string, unknown[]>;
+}
+
+export interface CrossMetricItem {
+  criterion: string;
+  best_portfolio: string;
+  value: number;
+  all_values: Record<string, number>;
+}
+
+export interface PortfolioComparisonResponse {
+  comparisons: Record<string, ComparisonData>;
+  cross_metrics: CrossMetricItem[];
+  portfolio_labels: string[];
+  metadata: Record<string, unknown>;
+  warnings: string[];
+}
+
+
+// ============================================================================
+// Decision viewer types — Story 17.5
+// ============================================================================
+
+export interface DecisionSummaryRequest {
+  run_id: string;
+  domain_name?: string | null;
+  group_by?: string | null;
+  group_value?: string | null;
+  year?: number | null;
+}
+
+export interface YearlyOutcome {
+  year: number;
+  total_households: number;
+  counts: Record<string, number>;
+  percentages: Record<string, number>;
+  mean_probabilities: Record<string, number> | null;
+}
+
+export interface DomainSummary {
+  domain_name: string;
+  alternative_ids: string[];
+  alternative_labels: Record<string, string>;
+  yearly_outcomes: YearlyOutcome[];
+  /** Keys: n_total, n_eligible, n_ineligible. Null when domain has no eligibility concept. */
+  eligibility: { n_total: number; n_eligible: number; n_ineligible: number } | null;
+}
+
+export interface DecisionSummaryResponse {
+  run_id: string;
+  domains: DomainSummary[];
+  metadata: Record<string, unknown>;
+  warnings: string[];
+}

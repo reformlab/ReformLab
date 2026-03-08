@@ -6,12 +6,17 @@ import io
 import logging
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
-from reformlab.server.dependencies import ResultCache, get_result_cache
+from reformlab.server.dependencies import ResultCache, get_result_cache, get_result_store
 from reformlab.server.models import ExportRequest
+from reformlab.server.result_store import ResultNotFound, ResultStoreError
+
+if TYPE_CHECKING:
+    from reformlab.server.result_store import ResultStore
 
 logger = logging.getLogger(__name__)
 
@@ -28,13 +33,15 @@ def _file_response(path: Path, media_type: str, filename: str) -> StreamingRespo
     response is streamed to the client.  Rejects files over 500 MB.
     """
     size = path.stat().st_size
+    limit_mb = _MAX_EXPORT_BYTES // 1024 // 1024
     if size > _MAX_EXPORT_BYTES:
         raise HTTPException(
             status_code=422,
-            detail=(
-                f"Export file too large ({size / 1024 / 1024:.0f} MB, "
-                f"limit {_MAX_EXPORT_BYTES // 1024 // 1024} MB)"
-            ),
+            detail={
+                "what": "Export file too large",
+                "why": f"File is {size / 1024 / 1024:.0f} MB, limit is {limit_mb} MB",
+                "fix": "Filter the dataset or use a smaller population",
+            },
         )
     data = path.read_bytes()
     return StreamingResponse(
@@ -44,24 +51,57 @@ def _file_response(path: Path, media_type: str, filename: str) -> StreamingRespo
     )
 
 
+def _lookup_run(
+    run_id: str,
+    cache: ResultCache,
+    store: ResultStore,
+) -> Any:
+    """Two-step store/cache lookup. Returns SimulationResult with panel_output.
+
+    Raises HTTPException(404) if unknown, HTTPException(409) if evicted.
+    """
+    try:
+        store.get_metadata(run_id)
+    except ResultNotFound:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "what": f"Run '{run_id}' not found",
+                "why": "No metadata record exists for this run_id",
+                "fix": "Check the run_id and ensure the simulation has been executed",
+            },
+        )
+    except ResultStoreError:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "what": f"Invalid run_id: {run_id!r}",
+                "why": "run_id contains disallowed characters",
+                "fix": "Use a valid run ID obtained from POST /api/runs",
+            },
+        )
+
+    result = cache.get_or_load(run_id, store)
+    if result is None or result.panel_output is None:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "what": f"Run '{run_id}' data is not available",
+                "why": "The simulation result has been evicted from the in-memory cache",
+                "fix": "Re-run the simulation or select runs with data_available=true",
+            },
+        )
+    return result
+
+
 @router.post("/csv")
 async def export_csv(
     body: ExportRequest,
     cache: ResultCache = Depends(get_result_cache),
+    store: ResultStore = Depends(get_result_store),
 ) -> StreamingResponse:
     """Export a cached simulation result as CSV."""
-    result = cache.get(body.run_id)
-    if result is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Run ID '{body.run_id}' not found in cache",
-        )
-
-    if result.panel_output is None:
-        raise HTTPException(
-            status_code=422,
-            detail="No panel output available for this run",
-        )
+    result = _lookup_run(body.run_id, cache, store)
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         csv_path = Path(tmp_dir) / f"reformlab-{body.run_id[:8]}.csv"
@@ -73,20 +113,10 @@ async def export_csv(
 async def export_parquet(
     body: ExportRequest,
     cache: ResultCache = Depends(get_result_cache),
+    store: ResultStore = Depends(get_result_store),
 ) -> StreamingResponse:
     """Export a cached simulation result as Parquet."""
-    result = cache.get(body.run_id)
-    if result is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Run ID '{body.run_id}' not found in cache",
-        )
-
-    if result.panel_output is None:
-        raise HTTPException(
-            status_code=422,
-            detail="No panel output available for this run",
-        )
+    result = _lookup_run(body.run_id, cache, store)
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         parquet_path = Path(tmp_dir) / f"reformlab-{body.run_id[:8]}.parquet"

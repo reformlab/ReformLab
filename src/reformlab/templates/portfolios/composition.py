@@ -330,7 +330,7 @@ def _dict_to_policy_parameters(
                 invalid_fields=(f"{field_path}.redistribution",),
             )
 
-        redistribution_type = redistribution_data.get("type", "lump_sum")
+        redistribution_type = redistribution_data.get("type", "")
         income_weights_data = redistribution_data.get("income_weights", {})
         if not isinstance(income_weights_data, dict):
             raise PortfolioValidationError(

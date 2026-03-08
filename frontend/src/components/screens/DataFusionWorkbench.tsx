@@ -1,0 +1,332 @@
+/**
+ * Data Fusion Workbench screen (Story 17.1, AC-1 through AC-6).
+ *
+ * Orchestrates a step-flow: Source Selection → Variable Review →
+ * Method Selection → Generation → Population Preview.
+ */
+
+import { useState, useCallback } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { DataSourceBrowser } from "@/components/simulation/DataSourceBrowser";
+import { VariableOverlapView } from "@/components/simulation/VariableOverlapView";
+import { MergeMethodSelector } from "@/components/simulation/MergeMethodSelector";
+import { MergeParametersPanel } from "@/components/simulation/MergeParametersPanel";
+import { PopulationGenerationProgress } from "@/components/simulation/PopulationGenerationProgress";
+import { PopulationPreview } from "@/components/simulation/PopulationPreview";
+import { PopulationValidationPanel } from "@/components/simulation/PopulationValidationPanel";
+import { generatePopulation } from "@/api/data-fusion";
+import { ApiError } from "@/api/client";
+import { cn } from "@/lib/utils";
+import type { MockDataSource, MockMergeMethod } from "@/data/mock-data";
+import type { GenerationResult } from "@/api/types";
+
+// ============================================================================
+// Step definitions
+// ============================================================================
+
+type WorkbenchStep = "sources" | "overlap" | "method" | "generate" | "preview";
+
+const STEPS: Array<{ key: WorkbenchStep; label: string }> = [
+  { key: "sources", label: "1. Sources" },
+  { key: "overlap", label: "2. Variables" },
+  { key: "method", label: "3. Method" },
+  { key: "generate", label: "4. Generate" },
+  { key: "preview", label: "5. Preview" },
+];
+
+interface SelectedSource {
+  provider: string;
+  dataset_id: string;
+}
+
+// ============================================================================
+// WorkbenchStepper nav
+// ============================================================================
+
+function WorkbenchStepper({
+  activeStep,
+  onStepSelect,
+}: {
+  activeStep: WorkbenchStep;
+  onStepSelect: (step: WorkbenchStep) => void;
+}) {
+  return (
+    <nav aria-label="Workbench steps" className="border-b border-slate-200 bg-white p-3">
+      <ol className="flex gap-1 overflow-x-auto">
+        {STEPS.map((step) => {
+          const isActive = step.key === activeStep;
+          return (
+            <li key={step.key} className="shrink-0">
+              <button
+                type="button"
+                onClick={() => onStepSelect(step.key)}
+                className={cn(
+                  "border px-3 py-1.5 text-xs",
+                  isActive
+                    ? "border-blue-500 bg-blue-50 text-blue-700 font-medium"
+                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+                )}
+              >
+                {step.label}
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
+}
+
+// ============================================================================
+// Main workbench component
+// ============================================================================
+
+interface DataFusionWorkbenchProps {
+  sources: Record<string, MockDataSource[]>;
+  methods: MockMergeMethod[];
+  initialResult?: GenerationResult | null;
+  onPopulationGenerated?: (result: GenerationResult) => void;
+}
+
+export function DataFusionWorkbench({
+  sources,
+  methods,
+  initialResult = null,
+  onPopulationGenerated,
+}: DataFusionWorkbenchProps) {
+  // Step state
+  const [activeStep, setActiveStep] = useState<WorkbenchStep>("sources");
+
+  // Source selection state (AC-1, AC-2)
+  const [selectedSources, setSelectedSources] = useState<SelectedSource[]>([]);
+
+  // Method + parameters state (AC-3)
+  const [selectedMethodId, setSelectedMethodId] = useState("uniform");
+  const [seed, setSeed] = useState(42);
+  const [strataColumns, setStrataColumns] = useState("");
+
+  // Generation state (AC-4)
+  const [generating, setGenerating] = useState(false);
+  const [result, setResult] = useState<GenerationResult | null>(initialResult);
+  const [genError, setGenError] = useState<string | null>(null);
+  const [genErrorDetail, setGenErrorDetail] = useState<{
+    what: string;
+    why: string;
+    fix: string;
+  } | null>(null);
+
+  // Source toggle
+  const handleToggleSource = useCallback((provider: string, datasetId: string) => {
+    setSelectedSources((prev) => {
+      const exists = prev.some((s) => s.provider === provider && s.dataset_id === datasetId);
+      if (exists) {
+        return prev.filter((s) => !(s.provider === provider && s.dataset_id === datasetId));
+      }
+      return [...prev, { provider, dataset_id: datasetId }];
+    });
+  }, []);
+
+  // Generation handler (AC-4, AC-6)
+  const handleGenerate = useCallback(async () => {
+    if (selectedSources.length < 2) {
+      toast.error("Select at least 2 data sources before generating");
+      return;
+    }
+
+    setGenerating(true);
+    setGenError(null);
+    setGenErrorDetail(null);
+    setResult(null);
+    setActiveStep("generate");
+
+    try {
+      const strataList = strataColumns
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      const generated = await generatePopulation({
+        sources: selectedSources,
+        merge_method: selectedMethodId,
+        seed,
+        strata_columns: strataList,
+      });
+
+      setResult(generated);
+      onPopulationGenerated?.(generated);
+      setActiveStep("preview");
+      toast.success("Population generated successfully");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setGenErrorDetail({ what: err.what, why: err.why, fix: err.fix });
+        toast.error(`${err.what} — ${err.why}`, { description: err.fix });
+      } else if (err instanceof Error) {
+        setGenError(err.message);
+        toast.error("Generation failed", { description: err.message });
+      }
+    } finally {
+      setGenerating(false);
+    }
+  }, [selectedSources, selectedMethodId, seed, strataColumns, onPopulationGenerated]);
+
+  // Step navigation helpers
+  const stepIndex = STEPS.findIndex((s) => s.key === activeStep);
+  const canGoBack = stepIndex > 0;
+  const isLastStep = activeStep === "preview";
+
+  const goBack = () => {
+    const prev = STEPS[stepIndex - 1];
+    if (prev) setActiveStep(prev.key);
+  };
+
+  const goNext = () => {
+    if (activeStep === "sources") {
+      if (selectedSources.length < 2) {
+        toast.error("Select at least 2 data sources to proceed");
+        return;
+      }
+      setActiveStep("overlap");
+    } else if (activeStep === "overlap") {
+      setActiveStep("method");
+    } else if (activeStep === "method") {
+      void handleGenerate();
+    } else if (activeStep === "generate" && result) {
+      setActiveStep("preview");
+    }
+  };
+
+  const canProceed =
+    (activeStep === "sources" && selectedSources.length >= 2) ||
+    activeStep === "overlap" ||
+    activeStep === "method" ||
+    (activeStep === "generate" && result !== null) ||
+    activeStep === "preview";
+
+  return (
+    <section aria-label="Data Fusion Workbench" className="space-y-3">
+      <div className="border border-slate-200 bg-white p-3">
+        <h2 className="text-sm font-semibold text-slate-900">Data Fusion Workbench</h2>
+        <p className="text-xs text-slate-600">
+          Browse institutional data sources, select datasets, choose a merge method, and generate
+          a synthetic population for policy simulation.
+        </p>
+      </div>
+
+      <WorkbenchStepper activeStep={activeStep} onStepSelect={setActiveStep} />
+
+      <div className="space-y-3">
+        {/* Step 1: Source Browser */}
+        {activeStep === "sources" ? (
+          <div className="space-y-2">
+            <p className="text-xs text-slate-500">
+              Select 2 or more datasets to merge into a synthetic population.{" "}
+              <span className="font-medium">{selectedSources.length} selected.</span>
+            </p>
+            <DataSourceBrowser
+              sources={sources}
+              selectedIds={selectedSources}
+              onToggleSource={handleToggleSource}
+            />
+          </div>
+        ) : null}
+
+        {/* Step 2: Variable Overlap */}
+        {activeStep === "overlap" ? (
+          <div className="space-y-2">
+            {selectedSources.length >= 2 ? (
+              <VariableOverlapView sources={sources} selectedSources={selectedSources} />
+            ) : (
+              <p className="text-xs text-slate-500">
+                Select 2 or more datasets to see variable overlap.
+              </p>
+            )}
+          </div>
+        ) : null}
+
+        {/* Step 3: Merge Method + Parameters */}
+        {activeStep === "method" ? (
+          <div className="space-y-3">
+            <MergeMethodSelector
+              methods={methods}
+              selectedMethodId={selectedMethodId}
+              onSelectMethod={setSelectedMethodId}
+            />
+            <MergeParametersPanel
+              methodId={selectedMethodId}
+              seed={seed}
+              strataColumns={strataColumns}
+              onSeedChange={setSeed}
+              onStrataColumnsChange={setStrataColumns}
+            />
+          </div>
+        ) : null}
+
+        {/* Step 4: Generation Progress */}
+        {activeStep === "generate" ? (
+          <PopulationGenerationProgress
+            loading={generating}
+            result={result}
+            error={genError}
+            errorDetail={genErrorDetail}
+          />
+        ) : null}
+
+        {/* Step 5: Preview + Validation */}
+        {activeStep === "preview" && result ? (
+          <div className="space-y-3">
+            <PopulationPreview result={result} />
+            {result.validation_result ? (
+              <PopulationValidationPanel validation={result.validation_result} />
+            ) : (
+              <div className="border border-slate-200 bg-white p-3">
+                <p className="text-xs text-slate-500">
+                  No marginal validation was performed. Catalog marginals will be applied
+                  automatically when the pipeline has marginals configured.
+                </p>
+              </div>
+            )}
+          </div>
+        ) : null}
+
+        {/* Navigation */}
+        {!isLastStep ? (
+          <div className="flex justify-between">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={goBack}
+              disabled={!canGoBack}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Back
+            </Button>
+            <Button
+              size="sm"
+              onClick={goNext}
+              disabled={generating || (!canProceed && activeStep !== "method")}
+            >
+              {activeStep === "method" ? "Generate Population" : "Next"}
+              {activeStep !== "method" ? <ChevronRight className="h-4 w-4" /> : null}
+            </Button>
+          </div>
+        ) : (
+          <div className="flex justify-between">
+            <Button variant="outline" size="sm" onClick={() => setActiveStep("method")}>
+              <ChevronLeft className="h-4 w-4" />
+              Adjust Parameters
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => void handleGenerate()}
+              disabled={generating}
+            >
+              Regenerate
+            </Button>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}

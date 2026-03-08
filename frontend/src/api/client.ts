@@ -70,15 +70,26 @@ export async function apiFetch<T>(
   }
 
   if (!response.ok) {
-    let errorBody: ErrorResponse | undefined;
+    let rawBody: Record<string, unknown> | undefined;
     try {
-      errorBody = (await response.json()) as ErrorResponse;
+      rawBody = (await response.json()) as Record<string, unknown>;
     } catch {
       // Response body wasn't valid JSON
     }
 
-    if (errorBody?.what) {
-      throw new ApiError(errorBody);
+    // Top-level what/why/fix — from custom exception handlers (ConfigurationError etc.)
+    const topLevel = rawBody as Partial<ErrorResponse> | undefined;
+    if (topLevel?.what) {
+      throw new ApiError(topLevel as ErrorResponse);
+    }
+
+    // Nested under "detail" — from FastAPI HTTPException(detail={...})
+    const detail = rawBody?.detail;
+    if (detail !== null && typeof detail === "object" && !Array.isArray(detail) && "what" in detail) {
+      throw new ApiError({
+        ...(detail as Partial<ErrorResponse>),
+        status_code: response.status,
+      } as ErrorResponse);
     }
 
     throw new Error(`API request failed: ${response.status} ${response.statusText}`);
@@ -119,15 +130,24 @@ export async function apiFetchBlob(
   }
 
   if (!response.ok) {
-    let errorBody: ErrorResponse | undefined;
+    let rawBody: Record<string, unknown> | undefined;
     try {
-      errorBody = (await response.json()) as ErrorResponse;
+      rawBody = (await response.json()) as Record<string, unknown>;
     } catch {
       // Response body wasn't valid JSON
     }
 
-    if (errorBody?.what) {
-      throw new ApiError(errorBody);
+    const topLevel = rawBody as Partial<ErrorResponse> | undefined;
+    if (topLevel?.what) {
+      throw new ApiError(topLevel as ErrorResponse);
+    }
+
+    const detail = rawBody?.detail;
+    if (detail !== null && typeof detail === "object" && !Array.isArray(detail) && "what" in detail) {
+      throw new ApiError({
+        ...(detail as Partial<ErrorResponse>),
+        status_code: response.status,
+      } as ErrorResponse);
     }
 
     throw new Error(`Export failed: ${response.status} ${response.statusText}`);

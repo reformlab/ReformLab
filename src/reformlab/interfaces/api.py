@@ -168,16 +168,24 @@ class SimulationResult:
         indicator_type_lower = indicator_type.lower()
 
         if indicator_type_lower == "distributional":
-            return compute_distributional_indicators(
-                self.panel_output,
-                **kwargs,
+            from reformlab.indicators.types import DistributionalConfig
+
+            config = DistributionalConfig(
+                income_field=kwargs.pop("income_field", "income"),
+                by_year=kwargs.pop("by_year", False),
             )
+            return compute_distributional_indicators(self.panel_output, config=config)
         elif indicator_type_lower == "geographic":
-            return compute_geographic_indicators(
-                self.panel_output,
-                **kwargs,
+            from reformlab.indicators.types import GeographicConfig
+
+            config_geo = GeographicConfig(
+                region_field=kwargs.pop("region_field", "region_code"),
+                by_year=kwargs.pop("by_year", False),
             )
+            return compute_geographic_indicators(self.panel_output, config=config_geo)
         elif indicator_type_lower == "welfare":
+            from reformlab.indicators.types import WelfareConfig
+
             reform_panel = kwargs.pop("reform_panel", None)
             reform_result = kwargs.pop("reform_result", None)
 
@@ -190,16 +198,33 @@ class SimulationResult:
                     fix="Pass reform_result=<SimulationResult> or reform_panel=<PanelOutput>",
                 )
 
+            config_welfare = WelfareConfig(
+                welfare_field=kwargs.pop("welfare_field", "disposable_income"),
+                threshold=kwargs.pop("threshold", 0.0),
+            )
             return compute_welfare_indicators(
                 self.panel_output,
                 reform_panel,
-                **kwargs,
+                config=config_welfare,
             )
         elif indicator_type_lower == "fiscal":
-            return compute_fiscal_indicators(
-                self.panel_output,
-                **kwargs,
+            from reformlab.indicators.types import FiscalConfig
+
+            revenue_fields = list(kwargs.pop("revenue_fields", None) or [])
+            cost_fields = list(kwargs.pop("cost_fields", None) or [])
+            # Auto-detect fiscal columns when none explicitly configured
+            if not revenue_fields and not cost_fields:
+                _rev_suffixes = ("_revenue", "_tax", "_levy", "_duty")
+                column_names = self.panel_output.table.schema.names
+                revenue_fields = [
+                    c for c in column_names if any(c.endswith(s) for s in _rev_suffixes)
+                ]
+            config_fiscal = FiscalConfig(
+                revenue_fields=revenue_fields,
+                cost_fields=cost_fields,
+                by_year=kwargs.pop("by_year", False),
             )
+            return compute_fiscal_indicators(self.panel_output, config=config_fiscal)
         else:
             raise SimulationError(
                 f"Indicator computation failed — Unknown indicator type '{indicator_type}' — Use one of: distributional, geographic, welfare, fiscal",
