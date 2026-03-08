@@ -13,7 +13,7 @@ from fastapi.responses import StreamingResponse
 
 from reformlab.server.dependencies import ResultCache, get_result_cache, get_result_store
 from reformlab.server.models import ExportRequest
-from reformlab.server.result_store import ResultNotFound
+from reformlab.server.result_store import ResultNotFound, ResultStoreError
 
 if TYPE_CHECKING:
     from reformlab.server.result_store import ResultStore
@@ -69,6 +69,15 @@ def _lookup_run(
                 "what": f"Run '{run_id}' not found",
                 "why": "No metadata record exists for this run_id",
                 "fix": "Check the run_id and ensure the simulation has been executed",
+            },
+        )
+    except ResultStoreError:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "what": f"Invalid run_id: {run_id!r}",
+                "why": "run_id contains disallowed characters",
+                "fix": "Use a valid run ID obtained from POST /api/runs",
             },
         )
 

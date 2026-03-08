@@ -26,7 +26,7 @@ class ResultCache:
         self._max_size = max_size
 
     def store(self, run_id: str, result: SimulationResult) -> None:
-        if len(self._cache) >= self._max_size:
+        if run_id not in self._cache and len(self._cache) >= self._max_size:
             self._cache.popitem(last=False)  # Evict oldest
         self._cache[run_id] = result
 

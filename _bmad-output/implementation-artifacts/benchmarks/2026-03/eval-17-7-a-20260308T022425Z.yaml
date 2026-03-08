@@ -1,0 +1,105 @@
+record_id: c9b3b3e7-9a0b-4542-b197-b3bce77c734a
+created_at: '2026-03-08T02:24:25.349920+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 17
+  story_num: '7'
+  title: Story 17.7
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: true
+    has_security_impact: true
+    requires_migration: true
+evaluator:
+  provider: codex
+  model: gpt-5.3-codex
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-03-08T02:20:29.575548Z'
+  end_time: '2026-03-08T02:23:24.511548Z'
+  duration_ms: 174936
+  input_tokens: 0
+  output_tokens: 1595
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 6383
+  heading_count: 5
+  list_depth_max: 2
+  code_block_count: 0
+  sections_detected:
+  - Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: **8.8**'
+  - Findings (Ordered by Severity)
+  - Suggested Fixes
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.33
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: e3dfa870c9d3
+findings:
+  total_count: 8
+  by_severity:
+    critical: 1
+    major: 6
+    minor: 1
+    nit: 0
+  by_category:
+    security: 1
+    performance: 1
+    correctness: 4
+    completeness: 0
+    clarity: 1
+    testability: 1
+  has_fix_count: 8
+  has_location_count: 8
+  has_evidence_count: 7
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 0
+  confidence_phrases_count: 1
+linguistic:
+  avg_sentence_length: 21.72972972972973
+  vocabulary_richness: 0.4054726368159204
+  flesch_reading_ease: -16.609704403370472
+  vague_terms_count: 0
+  formality_score: 0.75
+  sentiment: negative
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.9
+  evidence_quality: 0.8
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: true
+    has_security_impact: true
+    requires_migration: true
+  phase: code-review
+  file_count: 9
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

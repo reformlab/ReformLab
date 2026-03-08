@@ -232,8 +232,12 @@ class ResultStore:
         schema_metadata: dict[str, str | bytes] = {
             "reformlab_panel_metadata": json.dumps(panel_output.metadata)
         }
-        panel_output.to_parquet(tmp, schema_metadata=schema_metadata)
-        os.replace(tmp, target)
+        try:
+            panel_output.to_parquet(tmp, schema_metadata=schema_metadata)
+            os.replace(tmp, target)
+        except Exception:
+            tmp.unlink(missing_ok=True)
+            raise
         logger.info("event=panel_saved run_id=%s", run_id)
 
     def save_manifest(self, run_id: str, manifest_json: str) -> None:
@@ -247,8 +251,12 @@ class ResultStore:
         run_dir.mkdir(parents=True, exist_ok=True)
         target = run_dir / "manifest.json"
         tmp = run_dir / ".manifest.json.tmp"
-        tmp.write_text(manifest_json, encoding="utf-8")
-        os.replace(tmp, target)
+        try:
+            tmp.write_text(manifest_json, encoding="utf-8")
+            os.replace(tmp, target)
+        except Exception:
+            tmp.unlink(missing_ok=True)
+            raise
         logger.info("event=manifest_saved run_id=%s", run_id)
 
     def has_panel(self, run_id: str) -> bool:
@@ -307,6 +315,7 @@ class ResultStore:
         try:
             panel_metadata: dict[str, Any] = json.loads(panel_meta_bytes)
         except (json.JSONDecodeError, ValueError):
+            logger.warning("event=panel_metadata_corrupt run_id=%s", run_id)
             panel_metadata = {}
         return PanelOutput(table=table, metadata=panel_metadata)
 
@@ -378,7 +387,7 @@ class ResultStore:
             manifest = _make_minimal_manifest(metadata)
 
         return SimulationResult(
-            success=True,
+            success=metadata.status == "completed",
             scenario_id=metadata.scenario_id,
             yearly_states={},
             panel_output=panel,

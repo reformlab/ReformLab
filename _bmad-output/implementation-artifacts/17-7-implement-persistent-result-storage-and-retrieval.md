@@ -116,6 +116,9 @@ Story 17.7 closes this gap by **persisting panel data (Parquet) and manifest (JS
   - [x] 6.4: `npm run typecheck && npm run lint` — 0 errors (4 pre-existing fast-refresh warnings)
   - [x] 6.5: `npm test` — 211 passed
 
+#### Review Follow-ups (AI)
+- [ ] [AI-Review] MEDIUM: Add integration tests for `POST /api/runs` panel+manifest persistence path — verify panel.parquet written on success and that save failures don't alter API response (`tests/server/test_runs.py`)
+
 ## Dev Notes
 
 ### Architecture — Disk Layout After This Story
@@ -474,6 +477,7 @@ None — implementation was straightforward with no blocking issues.
 - Corrupt `panel.parquet` handled in `load_from_disk()` — catches `ResultStoreError`, logs `event=panel_load_corrupt`, returns `None`.
 - mypy type annotation fix: `schema_metadata: dict[str, str | bytes]` instead of inferred `dict[str, str]`.
 - 39 new tests added (24 unit + 15 integration); 3143 total passing; 0 regressions.
+- Code review synthesis fixes (2026-03-08): (1) `runs.py` — `store` now injected via `Depends(get_result_store)` instead of direct call; (2) `exports.py` `_lookup_run()` — added `ResultStoreError` → 400 handler for invalid run_ids; (3) `result_store.py` `load_from_disk()` — `success` now derived from `metadata.status == "completed"` instead of hardcoded `True`; (4) `result_store.py` `save_panel/save_manifest` — `.tmp` files cleaned up on write failure via try/except+unlink; (5) `result_store.py` `load_panel()` — corrupt Parquet metadata now logs warning instead of silently coercing; (6) `dependencies.py` `ResultCache.store()` — LRU eviction skipped when run_id already in cache. 3143 tests pass; ruff+mypy clean.
 
 ### File List
 
@@ -489,3 +493,12 @@ None — implementation was straightforward with no blocking issues.
 **New test files:**
 - `tests/server/test_result_store_persistence.py`
 - `tests/server/test_cache_disk_loading.py`
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-08
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 8.8 (Reviewer A) / 2.9 (Reviewer B) → weighted consensus → Changes Requested
+- **Issues Found:** 7 verified (1 false positive dismissed)
+- **Issues Fixed:** 6
+- **Action Items Created:** 1

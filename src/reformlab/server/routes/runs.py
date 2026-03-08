@@ -7,10 +7,14 @@ import os
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends
 
 from reformlab.server.dependencies import ResultCache, get_adapter, get_result_cache, get_result_store
+
+if TYPE_CHECKING:
+    from reformlab.server.result_store import ResultStore
 from reformlab.server.models import (
     MemoryCheckRequest,
     MemoryCheckResponse,
@@ -43,6 +47,7 @@ def _resolve_population_path(population_id: str | None) -> Path | None:
 async def run_simulation(
     body: RunRequest,
     cache: ResultCache = Depends(get_result_cache),
+    store: ResultStore = Depends(get_result_store),
 ) -> RunResponse:
     """Execute a simulation synchronously and return the result.
 
@@ -82,7 +87,6 @@ async def run_simulation(
         row_count = result.panel_output.table.num_rows if result.panel_output else 0
     finally:
         finished_at = datetime.now(timezone.utc).isoformat()
-        store = get_result_store()
         try:
             run_kind = "portfolio" if body.portfolio_name else "scenario"
             store.save_metadata(

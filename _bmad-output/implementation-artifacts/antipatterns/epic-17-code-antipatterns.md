@@ -74,3 +74,14 @@
 | critical | `POST /api/indicators/welfare` is runtime-broken — `welfare` in `VALID_INDICATOR_TYPES` allows the single-run endpoint to reach `result.indicators("welfare")` without `reform_result`, crashing at the computation layer | Added explicit 422 before store/cache checks, directing users to `POST /api/comparison` |
 | high | `except ResultStoreError:` in `compare_portfolio_runs()` catches all store I/O errors, converting disk failures into false 404 "not found" responses | Changed to `except ResultNotFound:` — other `ResultStoreError` subclasses now bubble up correctly as 500 |
 | medium | `TestIndicatorWelfare` tests expected 404/409 from welfare endpoint, but Fix 1 causes 422 to fire before any store/cache lookup, breaking 2 tests | Replaced both tests with a single `test_welfare_single_run_returns_422_with_structured_error` that verifies the correct 422 response and message content |
+
+## Story 17-7 (2026-03-08)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| high | `run_simulation()` in `runs.py` bypassed DI for `ResultStore` — called `get_result_store()` directly inside `finally`, preventing `app.dependency_overrides` from working in tests | Added `store: ResultStore = Depends(get_result_store)` to function signature; removed `store = get_result_store()` from `finally` block |
+| high | `_lookup_run()` in `exports.py` only caught `ResultNotFound` — path traversal or malformed `run_id` would raise uncaught `ResultStoreError` → 500 instead of structured 400 | Added `except ResultStoreError:` → 400 handler matching the pattern used in all other routes |
+| medium | `load_from_disk()` hardcoded `success=True` — misrepresents runs if a failed run somehow has `panel.parquet` (defensive correctness) | Changed to `success=metadata.status == "completed"` |
+| medium | `save_panel()` and `save_manifest()` left `.tmp` files on failure — `to_parquet()` or `write_text()` exceptions orphaned temp artifacts | Wrapped write+replace in `try/except` with `tmp.unlink(missing_ok=True)` in exception handler before re-raising |
+| medium | `ResultCache.store()` evicted an unrelated LRU entry when `run_id` already existed in cache and cache was at capacity | Guard changed to `if run_id not in self._cache and len(self._cache) >= self._max_size` |
+| medium | Corrupt Parquet schema metadata was silently coerced to `{}` with no logging — `except (json.JSONDecodeError, ValueError): panel_metadata = {}` | Added `logger.warning("event=panel_metadata_corrupt run_id=%s", run_id)` before fallback |
