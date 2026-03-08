@@ -61,6 +61,9 @@ htmlcov/
 .pytest_cache/
 .nyc_output/
 
+# === MkDocs ===
+site/
+
 # === Build / Logs ===
 logs/
 *.log

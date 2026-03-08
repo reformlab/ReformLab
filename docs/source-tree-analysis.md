@@ -1,249 +1,388 @@
 # Source Tree Analysis — ReformLab
 
-**Generated:** 2026-02-28
-**Status:** Phase 1 Complete (fully implemented)
+**Generated:** 2026-03-08
+**Status:** Phase 2 Complete (Epics 1–17 implemented)
 
-## Project Structure
+## How to Read This Document
 
-```
+This annotated source tree shows every directory and its purpose. Think of it as a map: the top-level directories are neighborhoods, and each subsystem is a building with a specific responsibility. Arrows (→) indicate key integration points between parts.
+
+---
+
+## Project Root
+
+```text
 reformlab/
-├── src/reformlab/                    # Python package root (72 modules)
-│   ├── __init__.py                   # Public API exports (run_scenario, etc.)
-│   ├── computation/                  # EPIC-1: Adapter layer (11 modules)
-│   │   ├── __init__.py
-│   │   ├── adapter.py                # ComputationAdapter protocol (runtime_checkable)
-│   │   ├── openfisca_adapter.py      # Pre-computed CSV/Parquet backend
-│   │   ├── openfisca_api_adapter.py  # Live OpenFisca Python API backend
-│   │   ├── openfisca_common.py       # Shared version detection utilities
-│   │   ├── mock_adapter.py           # Deterministic test backend
-│   │   ├── compat_matrix.py          # Version compatibility governance
-│   │   ├── ingestion.py              # CSV/Parquet loading + schema validation
-│   │   ├── mapping.py                # OpenFisca ↔ project field translation
-│   │   ├── quality.py                # Output validation (range, null, type checks)
-│   │   ├── types.py                  # PopulationData, PolicyConfig, ComputationResult
-│   │   └── exceptions.py             # CompatibilityError, ApiMappingError
-│   ├── data/                         # EPIC-1: Data layer (3 modules)
-│   │   ├── __init__.py
-│   │   ├── schemas.py                # SYNTHETIC_POPULATION_SCHEMA, EMISSION_FACTOR_SCHEMA
-│   │   ├── emission_factors.py       # EmissionFactorIndex (category/year lookup)
-│   │   └── pipeline.py               # DatasetRegistry, load_dataset, hash_file
-│   ├── templates/                    # EPIC-2: Scenario templates (14 modules)
-│   │   ├── __init__.py               # Re-exports for template loading
-│   │   ├── schema.py                 # PolicyType enum, YearSchedule, parameter classes
-│   │   ├── loader.py                 # YAML load/dump with validation
-│   │   ├── registry.py               # Content-addressable scenario versioning
-│   │   ├── reform.py                 # Reform-as-delta resolution
-│   │   ├── migration.py              # Schema version compatibility + migration
-│   │   ├── workflow.py               # WorkflowConfig, YAML/JSON orchestration
-│   │   ├── exceptions.py             # ScenarioError
-│   │   ├── carbon_tax/               # Carbon tax template pack
-│   │   │   ├── __init__.py
-│   │   │   └── compute.py            # Tax burden, redistribution computation
-│   │   │   └── compare.py            # Baseline vs reform comparison
-│   │   ├── subsidy/                  # Subsidy template pack
-│   │   │   ├── __init__.py
-│   │   │   └── compute.py, compare.py
-│   │   ├── rebate/                   # Rebate template pack
-│   │   │   ├── __init__.py
-│   │   │   └── compute.py, compare.py
-│   │   ├── feebate/                  # Feebate template pack
-│   │   │   ├── __init__.py
-│   │   │   └── compute.py, compare.py
-│   │   └── packs/                    # Pack discovery and loading
-│   │       └── __init__.py
-│   ├── orchestrator/                 # EPIC-3: Dynamic orchestrator (7 modules)
-│   │   ├── __init__.py
-│   │   ├── runner.py                 # Orchestrator class, OrchestratorRunner
-│   │   ├── step.py                   # OrchestratorStep protocol, StepRegistry, @step
-│   │   ├── types.py                  # YearState, OrchestratorConfig, OrchestratorResult
-│   │   ├── carry_forward.py          # CarryForwardStep (state propagation)
-│   │   ├── computation_step.py       # ComputationStep (adapter invocation)
-│   │   ├── panel.py                  # PanelOutput (household-by-year dataset)
-│   │   └── errors.py                 # OrchestratorError
-│   ├── vintage/                      # EPIC-3: Vintage tracking (4 modules)
-│   │   ├── __init__.py
-│   │   ├── types.py                  # VintageCohort, VintageState, VintageSummary
-│   │   ├── config.py                 # VintageTransitionRule, VintageConfig
-│   │   ├── transition.py             # VintageTransitionStep
-│   │   └── errors.py                 # VintageConfigError, VintageTransitionError
-│   ├── indicators/                   # EPIC-4: Indicator engine (8 modules)
-│   │   ├── __init__.py
-│   │   ├── distributional.py         # Decile-based distributional indicators
-│   │   ├── geographic.py             # Region-based aggregation
-│   │   ├── welfare.py                # Winner/loser analysis
-│   │   ├── fiscal.py                 # Revenue/cost/balance tracking
-│   │   ├── comparison.py             # Multi-scenario comparison
-│   │   ├── custom.py                 # Custom derived formula indicators
-│   │   ├── deciles.py                # Decile assignment utilities
-│   │   └── types.py                  # IndicatorResult, config classes
-│   ├── governance/                   # EPIC-5: Governance layer (8 modules)
-│   │   ├── __init__.py
-│   │   ├── manifest.py               # RunManifest (immutable, integrity-hashed)
-│   │   ├── hashing.py                # SHA-256 artifact hashing (streaming)
-│   │   ├── lineage.py                # LineageGraph, run lineage tracking
-│   │   ├── reproducibility.py        # Re-execute + verify check
-│   │   ├── capture.py                # Assumption/parameter/mapping capture
-│   │   ├── benchmarking.py           # BenchmarkSuiteResult, benchmark runner
-│   │   ├── memory.py                 # Memory estimation, system memory check
-│   │   └── errors.py                 # ManifestIntegrityError, etc.
-│   └── interfaces/                   # EPIC-6: User-facing API (3 modules)
-│       ├── __init__.py
-│       ├── api.py                    # run_scenario, create_scenario, SimulationResult
-│       └── errors.py                 # ConfigurationError, SimulationError, MemoryWarning
-│
-├── tests/                            # Test suite (93 files, 1374 tests)
-│   ├── computation/                  # Adapter tests (17 files, 242 tests)
-│   ├── data/                         # Data layer tests (3 files, 39 tests)
-│   ├── templates/                    # Template tests (11+ files, 365 tests)
-│   │   ├── carbon_tax/               # Carbon tax sub-tests (5 files)
-│   │   ├── subsidy/                  # Subsidy sub-tests
-│   │   ├── rebate/                   # Rebate sub-tests
-│   │   └── feebate/                  # Feebate sub-tests
-│   ├── orchestrator/                 # Orchestrator tests (9 files, 197 tests)
-│   ├── vintage/                      # Vintage tests (4 files, 72 tests)
-│   ├── indicators/                   # Indicator tests (6 files, 136 tests)
-│   ├── governance/                   # Governance tests (6 files, 168 tests)
-│   ├── interfaces/                   # Interface tests (2 files, 63 tests)
-│   ├── benchmarks/                   # Performance tests (1 file, 7 tests)
-│   ├── notebooks/                    # Notebook validation (2 files, 14 tests)
-│   ├── docs/                         # Doc contract tests (2 files, 7 tests)
-│   ├── test_scaffold.py              # Project structure validation (3 tests)
-│   └── test_ci_quality_gates.py      # CI config validation (3 tests)
-│
-├── frontend/                         # React No-Code GUI (46 source files)
-│   ├── src/
-│   │   ├── main.tsx                  # React 19 entry point
-│   │   ├── App.tsx                   # Root state manager (11 state vars)
-│   │   ├── index.css                 # Tailwind CSS entry
-│   │   ├── components/
-│   │   │   ├── layout/               # 3-column resizable workspace
-│   │   │   │   ├── WorkspaceLayout.tsx   # ResizablePanel container
-│   │   │   │   ├── LeftPanel.tsx         # Collapsible scenario sidebar
-│   │   │   │   ├── MainContent.tsx       # Central scrollable area
-│   │   │   │   └── RightPanel.tsx        # Collapsible context sidebar
-│   │   │   ├── simulation/           # Simulation workflow components
-│   │   │   │   ├── ModelConfigStepper.tsx # 4-step progress indicator
-│   │   │   │   ├── ParameterRow.tsx      # Slider + input parameter editor
-│   │   │   │   ├── ScenarioCard.tsx      # Scenario item with actions
-│   │   │   │   ├── RunProgressBar.tsx    # Progress bar with ETA
-│   │   │   │   ├── DistributionalChart.tsx # Recharts bar chart
-│   │   │   │   ├── SummaryStatCard.tsx   # KPI indicator card
-│   │   │   │   ├── ComparisonView.tsx    # Multi-scenario comparison
-│   │   │   │   ├── ParametersStep.tsx    # Alt parameter group view
-│   │   │   │   ├── PopulationStep.tsx    # Alt population selection
-│   │   │   │   ├── ReviewStep.tsx        # Alt review view
-│   │   │   │   └── TemplateStep.tsx      # Alt template selection
-│   │   │   ├── screens/              # Step-specific full views
-│   │   │   │   ├── PopulationSelectionScreen.tsx
-│   │   │   │   ├── TemplateSelectionScreen.tsx
-│   │   │   │   ├── ParameterEditingScreen.tsx
-│   │   │   │   └── AssumptionsReviewScreen.tsx
-│   │   │   └── ui/                   # 20 UI primitives (shadcn-inspired)
-│   │   │       ├── button.tsx, card.tsx, badge.tsx, input.tsx
-│   │   │       ├── table.tsx, tabs.tsx, slider.tsx, select.tsx
-│   │   │       ├── collapsible.tsx, resizable.tsx, separator.tsx
-│   │   │       ├── dialog.tsx, popover.tsx, tooltip.tsx
-│   │   │       ├── sheet.tsx, scroll-area.tsx, switch.tsx
-│   │   │       └── sonner.tsx
-│   │   ├── data/
-│   │   │   └── mock-data.ts          # Mock populations, templates, scenarios
-│   │   ├── lib/
-│   │   │   └── utils.ts              # cn() class merge utility
-│   │   ├── test/
-│   │   │   └── setup.ts              # Vitest/testing-library setup
-│   │   └── __tests__/                # Component tests
-│   ├── index.html                    # SPA entry point
-│   ├── package.json                  # React 19, Vite 7, Tailwind 4
-│   ├── vite.config.ts                # Build + test config
-│   ├── tsconfig.json                 # TypeScript config
-│   └── eslint.config.js              # ESLint config
-│
-├── notebooks/                        # Jupyter notebooks
-│   ├── quickstart.ipynb              # User-facing quickstart tutorial
-│   ├── advanced.ipynb                # Advanced multi-year scenarios
-│   └── demo/                         # Per-epic demo notebooks
-│       ├── epic1_demo.ipynb
-│       ├── epic2_demo.ipynb
-│       ├── epic3_demo.ipynb
-│       ├── epic4_demo.ipynb
-│       └── epic5_demo.ipynb
-│
-├── examples/                         # Workflow configuration examples
-│   └── workflows/
-│       ├── carbon_tax_analysis.yaml  # Single scenario analysis
-│       ├── scenario_comparison.yaml  # Baseline vs reform comparison
-│       ├── batch_sensitivity.json    # Multi-scenario batch analysis
-│       └── README.md                 # Workflow documentation
-│
-├── config/
-│   └── deploy.yml                    # Kamal 2 deployment configuration
-│
-├── .github/workflows/
-│   ├── ci.yml                        # CI pipeline (lint, type-check, test, notebooks)
-│   └── deploy.yml                    # Deploy pipeline (Kamal to Hetzner)
-│
-├── docs/                             # Generated project documentation
-│   ├── index.md                      # Master documentation index
-│   ├── project-overview.md           # Executive summary
-│   ├── architecture.md               # Architecture deep-dive
-│   ├── source-tree-analysis.md       # This file
-│   ├── development-guide.md          # Setup and conventions
-│   ├── deployment-guide.md           # Docker + Kamal deployment
-│   ├── compatibility.md              # OpenFisca version matrix
-│   ├── planning-artifacts-inventory.md
-│   ├── pilot-checklist.md            # Pilot bundle checklist
-│   ├── phase-1-exit-checklist.md     # Phase 1 exit criteria
-│   └── project-scan-report.json      # Workflow state
-│
-├── dist/                             # Built Python package
-│   ├── reformlab-0.1.0.tar.gz
-│   └── reformlab-0.1.0-py3-none-any.whl
-│
-├── _bmad-output/                     # BMAD workflow outputs
-│   ├── planning-artifacts/           # 18 planning documents
-│   │   ├── prd.md, architecture.md, ux-design-specification.md
-│   │   ├── phase-1-implementation-backlog-2026-02-25.md
-│   │   └── research/                 # 5 research documents
-│   ├── implementation-artifacts/     # 46 story files + sprint-status.yaml
-│   ├── brainstorming/                # 3 brainstorming sessions
-│   ├── branding/                     # Logo and visual identity
-│   ├── communication/                # Outreach and narrative assets
-│   ├── presentations/                # Pitch deck content
-│   ├── roadmap/                      # Delivery roadmap, GTM strategy
-│   └── website-content/              # Homepage, features, FAQ, use cases
-│
-├── pyproject.toml                    # Python package config (hatchling)
-├── uv.lock                          # Locked dependencies
-├── Dockerfile                       # Python 3.13-slim container
-├── README.md                        # Project readme
-├── CLAUDE.md                        # AI assistant instructions
-├── LICENSE                           # Apache-2.0
-└── .gitignore                        # Git exclusion rules
+├── src/reformlab/           # Python package — all domain logic lives here
+├── frontend/src/            # React 19 SPA — no-code GUI
+├── tests/                   # Python test suite (3,143 tests)
+├── notebooks/               # Jupyter guides and demos
+├── examples/                # API, population, and workflow examples
+├── config/                  # Deployment configuration (Kamal)
+├── scripts/                 # Utility scripts
+├── data/                    # Data files (populations, emission factors)
+├── docs/                    # Generated project documentation (you are here)
+├── _bmad/                   # BMAD framework (do not edit)
+├── _bmad-output/            # Planning and implementation artifacts
+├── .github/workflows/       # CI/CD pipelines
+├── Dockerfile               # Backend container
+├── pyproject.toml           # Python project manifest
+└── README.md                # Project introduction
 ```
 
-## Critical Folders Summary
+---
 
-| Folder | Purpose | Files | Status |
-|--------|---------|-------|--------|
-| `src/reformlab/computation/` | Adapter layer, ingestion, mapping, quality | 11 | Complete |
-| `src/reformlab/data/` | Data schemas, emission factors, pipeline | 3 | Complete |
-| `src/reformlab/templates/` | Scenario templates, registry, workflow config | 14 | Complete |
-| `src/reformlab/orchestrator/` | Dynamic yearly loop, step pipeline | 7 | Complete |
-| `src/reformlab/vintage/` | Cohort-based asset tracking | 4 | Complete |
-| `src/reformlab/indicators/` | Distributional, fiscal, welfare indicators | 8 | Complete |
-| `src/reformlab/governance/` | Manifests, hashing, lineage, reproducibility | 8 | Complete |
-| `src/reformlab/interfaces/` | Python API surface | 3 | Complete |
-| `frontend/src/` | React no-code GUI | 46 | Complete |
-| `tests/` | Full test suite | 93 | 1374 tests |
-| `notebooks/` | Jupyter tutorials and demos | 7 | Complete |
+## Python Backend: `src/reformlab/`
 
-## Entry Points
+The backend follows a **layered architecture**. Each subsystem is a Python package with its own `__init__.py` that exports the public API. Dependencies flow downward — upper layers depend on lower layers, never the reverse.
 
-| Entry Point | Path | Purpose |
-|-------------|------|---------|
-| Python API | `src/reformlab/__init__.py` | `run_scenario()`, `create_scenario()`, etc. |
-| Interfaces module | `src/reformlab/interfaces/api.py` | Full API with SimulationResult |
-| Frontend | `frontend/src/main.tsx` | React SPA entry |
-| Docker | `Dockerfile` | `uvicorn src.reformlab.api:app` |
-| CI | `.github/workflows/ci.yml` | Lint → type-check → test → notebooks |
-| Deploy | `.github/workflows/deploy.yml` | Kamal deploy on push to master |
+```text
+src/reformlab/
+│
+├── interfaces/              # Layer 7: Stable Python API facade
+│   ├── api.py               #   run_scenario(), create_scenario(), run_benchmarks()
+│   └── errors.py            #   ConfigurationError, SimulationError, MemoryWarning
+│
+├── server/                  # Layer 6: FastAPI HTTP facade → wraps interfaces/
+│   ├── app.py               #   FastAPI app factory, CORS, router mounting
+│   ├── auth.py              #   Shared-password authentication middleware
+│   ├── dependencies.py      #   Dependency injection (ResultCache, ResultStore, Adapter)
+│   ├── models.py            #   Pydantic v2 request/response models
+│   ├── result_store.py      #   ResultCache (LRU) + ResultStore (disk persistence)
+│   └── routes/              #   10 route modules:
+│       ├── runs.py          #     POST /api/runs — execute simulation
+│       ├── indicators.py    #     POST /api/indicators/{type} — compute indicators
+│       ├── scenarios.py     #     GET/POST /api/scenarios — CRUD
+│       ├── templates.py     #     GET /api/templates — list/get templates
+│       ├── portfolios.py    #     GET/POST/PUT /api/portfolios — portfolio CRUD
+│       ├── data_fusion.py   #     GET/POST /api/data-fusion — population generation
+│       ├── results.py       #     GET /api/results — list saved results
+│       ├── exports.py       #     POST /api/exports — CSV export
+│       ├── decisions.py     #     GET /api/decisions — decision audit trail
+│       └── populations.py   #     GET /api/populations — list populations
+│
+├── orchestrator/            # Layer 5: Multi-year yearly-loop engine
+│   ├── runner.py            #   Orchestrator class — runs year-by-year projection
+│   ├── step.py              #   OrchestratorStep protocol, @step decorator, StepRegistry
+│   ├── types.py             #   YearState, OrchestratorConfig, OrchestratorResult
+│   ├── panel.py             #   PanelOutput — household×year panel dataset
+│   ├── computation_step.py  #   ComputationStep — invokes adapter each year
+│   ├── portfolio_step.py    #   PortfolioComputationStep — multi-policy execution
+│   ├── carry_forward.py     #   CarryForwardStep — deterministic state carry
+│   └── errors.py            #   OrchestratorError, StepValidationError
+│
+├── discrete_choice/         # Layer 4: Behavioral modeling (conditional logit)
+│   ├── step.py              #   DiscreteChoiceStep — pipeline integration
+│   ├── expansion.py         #   Population expansion (N → N×M rows)
+│   ├── reshape.py           #   Cost matrix reshape
+│   ├── logit.py             #   LogitChoiceStep — seed-controlled draws
+│   ├── domain.py            #   DecisionDomain base + domain registry
+│   ├── vehicle.py           #   VehicleInvestmentDomain + state updates
+│   ├── heating.py           #   HeatingInvestmentDomain + state updates
+│   ├── eligibility.py       #   EligibilityFilter — performance optimization
+│   ├── decision_record.py   #   DecisionRecord audit trail
+│   ├── types.py             #   Alternative, ChoiceSet, CostMatrix, TasteParameters
+│   └── errors.py            #   DiscreteChoiceError hierarchy
+│
+├── calibration/             # Layer 4: Parameter calibration against observed data
+│   ├── engine.py            #   CalibrationEngine — scipy optimization
+│   ├── types.py             #   CalibrationTarget, CalibrationResult, FitMetrics
+│   ├── loader.py            #   Load calibration targets from JSON schema
+│   ├── validation.py        #   Holdout validation (train/test split)
+│   ├── provenance.py        #   Governance integration for calibrated params
+│   ├── schema/              #   JSON schemas for calibration target format
+│   └── errors.py            #   CalibrationError hierarchy
+│
+├── templates/               # Layer 3: Policy scenario definitions
+│   ├── schema.py            #   PolicyType enum, PolicyParameters, ScenarioTemplate
+│   ├── loader.py            #   YAML load/dump for scenario templates
+│   ├── registry.py          #   ScenarioRegistry — immutable versioning
+│   ├── reform.py            #   Reform-as-delta resolution logic
+│   ├── migration.py         #   Schema version migration
+│   ├── workflow.py          #   WorkflowConfig — YAML-driven run definitions
+│   ├── exceptions.py        #   TemplateError, ScenarioError
+│   ├── portfolios/          #   Multi-policy portfolio composition
+│   │   ├── portfolio.py     #     PolicyPortfolio, PolicyConfig
+│   │   ├── composition.py   #     Conflict detection and resolution
+│   │   ├── enums.py         #     ConflictType, ResolutionStrategy
+│   │   └── exceptions.py    #     PortfolioError, PortfolioValidationError
+│   ├── packs/               #   Template pack loaders (list/load per type)
+│   ├── carbon_tax/          #   CarbonTaxParameters + compute/compare
+│   ├── subsidy/             #   SubsidyParameters + compute/compare
+│   ├── rebate/              #   RebateParameters + compute/compare
+│   ├── feebate/             #   FeebateParameters + compute/compare
+│   ├── vehicle_malus/       #   Custom template: vehicle malus
+│   └── energy_poverty_aid/  #   Custom template: energy poverty aid
+│
+├── indicators/              # Layer 3: Post-simulation analytics
+│   ├── distributional.py    #   Decile-based indicators
+│   ├── geographic.py        #   Region-based indicators
+│   ├── welfare.py           #   Winner/loser analysis
+│   ├── fiscal.py            #   Revenue, cost, balance
+│   ├── comparison.py        #   Baseline vs reform comparison
+│   ├── portfolio_comparison.py  # Multi-portfolio cross-comparison
+│   ├── custom.py            #   User-defined formula indicators
+│   ├── types.py             #   DecileIndicators, IndicatorResult, configs
+│   └── deciles.py           #   Decile computation utilities
+│
+├── governance/              # Cross-cutting: Reproducibility and auditability
+│   ├── manifest.py          #   RunManifest — immutable run record
+│   ├── capture.py           #   Assumption, mapping, policy capture
+│   ├── hashing.py           #   SHA-256 artifact integrity
+│   ├── lineage.py           #   Run lineage graph (parent/child)
+│   ├── reproducibility.py   #   Reproducibility verification
+│   ├── benchmarking.py      #   Benchmark validation suite
+│   ├── memory.py            #   Memory estimation and preflight checks
+│   ├── replication.py       #   Replication package export/import
+│   └── errors.py            #   ManifestIntegrityError, etc.
+│
+├── population/              # Layer 2: Realistic population generation
+│   ├── pipeline.py          #   PopulationPipeline — composable builder
+│   ├── validation.py        #   PopulationValidator — marginal checks
+│   ├── assumptions.py       #   Assumption chain recording
+│   ├── loaders/             #   Institutional data source loaders
+│   │   ├── base.py          #     CachedLoader base, DataSourceLoader protocol
+│   │   ├── cache.py         #     SourceCache — disk-based caching
+│   │   ├── insee.py         #     INSEELoader — French national statistics
+│   │   ├── eurostat.py      #     EurostatLoader — EU statistics
+│   │   ├── ademe.py         #     ADEMELoader — energy/environment agency
+│   │   ├── sdes.py          #     SDESLoader — transport statistics
+│   │   └── errors.py        #     DataSourceError hierarchy
+│   └── methods/             #   Statistical fusion methods
+│       ├── base.py          #     MergeMethod protocol
+│       ├── uniform.py       #     UniformMergeMethod — random matching
+│       ├── ipf.py           #     IPFMergeMethod — iterative proportional fitting
+│       ├── conditional.py   #     ConditionalSamplingMethod — stratum-based
+│       └── errors.py        #     MergeError hierarchy
+│
+├── computation/             # Layer 1: Tax-benefit backend adapter
+│   ├── adapter.py           #   ComputationAdapter protocol (core interface)
+│   ├── types.py             #   PopulationData, PolicyConfig, ComputationResult
+│   ├── ingestion.py         #   CSV/Parquet data ingestion
+│   ├── mapping.py           #   Variable mapping (OpenFisca ↔ project)
+│   ├── quality.py           #   Data quality checks
+│   ├── openfisca_adapter.py #   OpenFiscaAdapter — file-based implementation
+│   ├── openfisca_api_adapter.py  # OpenFiscaApiAdapter — API-based
+│   ├── openfisca_common.py  #   Shared OpenFisca utilities
+│   ├── mock_adapter.py      #   MockAdapter — for testing
+│   ├── compat_matrix.py     #   Version compatibility matrix
+│   └── exceptions.py        #   ComputationError hierarchy
+│
+├── data/                    # Layer 1: Data access and synthetic generation
+│   ├── schemas.py           #   CSV/Parquet schema contracts
+│   ├── emission_factors.py  #   EmissionFactorIndex — lookup service
+│   ├── synthetic.py         #   Synthetic population generator
+│   └── pipeline.py          #   DatasetManifest, DatasetRegistry
+│
+├── vintage/                 # Layer 2: Asset cohort tracking
+│   ├── types.py             #   VintageCohort, VintageState, VintageSummary
+│   ├── config.py            #   VintageConfig, VintageTransitionRule
+│   ├── transition.py        #   VintageTransitionStep — orchestrator integration
+│   └── errors.py            #   VintageConfigError, VintageTransitionError
+│
+└── visualization/           # Utility: Plotting and display
+    ├── display.py           #   show() — formatted PyArrow table display
+    └── styling.py           #   Matplotlib figure creation and styling
+```
+
+**Key dependency flow:**
+
+```text
+interfaces → orchestrator → {computation, discrete_choice, vintage, templates}
+                          → governance (cross-cutting)
+server     → interfaces   → indicators → orchestrator.panel
+population (independent)  → data
+calibration              → discrete_choice + governance
+```
+
+---
+
+## React Frontend: `frontend/src/`
+
+The frontend is a **single-page application** with centralized state management. Components are organized by responsibility: layout (structure), screens (full views), simulation (domain building blocks), and ui (design system primitives).
+
+```text
+frontend/src/
+│
+├── main.tsx                 # Entry point — mounts <App /> in <AppProvider>
+├── App.tsx                  # Root component — auth gate + workspace + view routing
+├── index.css                # Tailwind v4 theme (colors, fonts, chart variables)
+│
+├── api/                     # Typed API client layer → maps to backend routes
+│   ├── client.ts            #   apiFetch<T>() — generic fetch with auth + error handling
+│   ├── types.ts             #   All TypeScript interfaces (413 lines)
+│   ├── auth.ts              #   login() → POST /api/auth/login
+│   ├── runs.ts              #   runScenario(), checkMemory()
+│   ├── templates.ts         #   listTemplates(), getTemplate()
+│   ├── populations.ts       #   listPopulations()
+│   ├── scenarios.ts         #   createScenario(), cloneScenario()
+│   ├── indicators.ts        #   getIndicators(), compareScenarios(), comparePortfolios()
+│   ├── data-fusion.ts       #   listDataSources(), generatePopulation()
+│   ├── portfolios.ts        #   CRUD + validatePortfolio()
+│   ├── results.ts           #   listResults(), exportResultCsv()
+│   ├── decisions.ts         #   getDecisionSummary()
+│   └── exports.ts           #   exportCsv(), exportParquet()
+│
+├── contexts/                # Global state management
+│   └── AppContext.tsx        #   Single context: auth, data, selections, runs (476 lines)
+│
+├── hooks/                   # Custom data-fetching hooks
+│   └── useApi.ts            #   usePopulations, useTemplates, useResults, etc. (437 lines)
+│
+├── components/
+│   ├── auth/
+│   │   └── PasswordPrompt.tsx       # Shared-password login modal
+│   │
+│   ├── layout/                      # Workspace structure
+│   │   ├── WorkspaceLayout.tsx      #   3-panel resizable layout
+│   │   ├── LeftPanel.tsx            #   Scenario sidebar (collapsible)
+│   │   ├── MainContent.tsx          #   Main content wrapper
+│   │   └── RightPanel.tsx           #   Context sidebar
+│   │
+│   ├── screens/                     # Full-page views (9 screens)
+│   │   ├── PopulationSelectionScreen.tsx   # Step 1: Pick population
+│   │   ├── TemplateSelectionScreen.tsx     # Step 2: Pick policy template
+│   │   ├── ParameterEditingScreen.tsx      # Step 3: Tune parameters
+│   │   ├── AssumptionsReviewScreen.tsx     # Step 4: Review before run
+│   │   ├── SimulationRunnerScreen.tsx      # Batch run orchestration
+│   │   ├── DataFusionWorkbench.tsx         # 5-step population generation
+│   │   ├── PortfolioDesignerScreen.tsx     # Portfolio CRUD + composition
+│   │   ├── ComparisonDashboardScreen.tsx   # Multi-run comparison + export
+│   │   └── BehavioralDecisionViewerScreen.tsx  # Decision audit viewer
+│   │
+│   ├── simulation/                  # Domain components (29 components)
+│   │   ├── ModelConfigStepper.tsx    #   4-step progress indicator
+│   │   ├── DistributionalChart.tsx   #   2-series bar chart (Recharts)
+│   │   ├── MultiRunChart.tsx         #   2–5 series grouped bars
+│   │   ├── TransitionChart.tsx       #   Year-over-year transitions
+│   │   ├── PopulationDistributionChart.tsx  # Demographics chart
+│   │   ├── DataSourceBrowser.tsx     #   Searchable source picker
+│   │   ├── VariableOverlapView.tsx   #   Variable presence matrix
+│   │   ├── MergeMethodSelector.tsx   #   Merge method picker
+│   │   ├── MergeParametersPanel.tsx  #   Method parameter config
+│   │   ├── PopulationGenerationProgress.tsx # Real-time step log
+│   │   ├── PopulationValidationPanel.tsx   # Marginal constraint results
+│   │   ├── PortfolioTemplateBrowser.tsx    # Policy template picker
+│   │   ├── PortfolioCompositionPanel.tsx   # Portfolio policies + conflicts
+│   │   ├── ResultsListPanel.tsx      #   Paginated result list
+│   │   ├── ResultDetailView.tsx      #   Full result metadata
+│   │   ├── CrossMetricPanel.tsx      #   Cross-portfolio ranking
+│   │   ├── ScenarioCard.tsx          #   Scenario selector card
+│   │   ├── SummaryStatCard.tsx       #   KPI metric card
+│   │   ├── RunProgressBar.tsx        #   Progress bar with ETA
+│   │   ├── YearDetailPanel.tsx       #   Year-level decision breakdown
+│   │   ├── YearScheduleEditor.tsx    #   Year range editor
+│   │   ├── PopulationPreview.tsx     #   Population data preview
+│   │   ├── ComparisonView.tsx        #   Comparison result view
+│   │   ├── ParameterRow.tsx          #   Single parameter editor
+│   │   ├── ParametersStep.tsx        #   Parameter editing substep
+│   │   ├── PopulationStep.tsx        #   Population selection substep
+│   │   ├── ReviewStep.tsx            #   Review substep
+│   │   └── TemplateStep.tsx          #   Template selection substep
+│   │
+│   └── ui/                          # Shadcn/Radix design system (18 primitives)
+│       ├── badge.tsx, button.tsx, card.tsx, input.tsx
+│       ├── dialog.tsx, popover.tsx, select.tsx, collapsible.tsx
+│       ├── tabs.tsx, slider.tsx, switch.tsx, table.tsx
+│       ├── scroll-area.tsx, sheet.tsx, resizable.tsx
+│       ├── separator.tsx, tooltip.tsx, sonner.tsx
+│       └── (each wraps Radix headless + Tailwind styling)
+│
+├── data/
+│   └── mock-data.ts         # Fallback mock data for offline development
+│
+├── lib/
+│   └── utils.ts             # cn() — Tailwind class merge utility
+│
+└── test/
+    └── setup.ts             # Vitest setup — jest-dom matchers
+```
+
+**View modes in App.tsx:** configuration → run → progress → results → comparison → decisions → data-fusion → portfolio → runner
+
+---
+
+## Test Suite: `tests/`
+
+Tests mirror the `src/` structure. Each subsystem has its own test directory with focused unit tests plus integration tests where subsystems interact.
+
+```text
+tests/                           # 190 files, 3,143 tests
+├── computation/                 #   Adapter, ingestion, mapping, quality tests
+├── data/                        #   Emission factors, synthetic population
+├── templates/                   #   Schema, loader, registry, packs, portfolios
+│   ├── carbon_tax/              #     Carbon tax template tests
+│   ├── subsidy/                 #     Subsidy template tests
+│   ├── rebate/                  #     Rebate template tests
+│   ├── feebate/                 #     Feebate template tests
+│   ├── vehicle_malus/           #     Vehicle malus custom template tests
+│   ├── energy_poverty_aid/      #     Energy poverty aid custom template tests
+│   └── portfolios/              #     Portfolio composition and conflict tests
+├── orchestrator/                #   Yearly loop, steps, panel output
+├── discrete_choice/             #   Expansion, logit, vehicle/heating domains
+├── calibration/                 #   Engine, targets, holdout validation
+├── indicators/                  #   Distributional, geographic, welfare, fiscal, custom
+├── governance/                  #   Manifest, hashing, lineage, replication
+├── interfaces/                  #   Python API facade tests
+├── population/                  #   Pipeline, validation, loaders, merge methods
+│   ├── loaders/                 #     INSEE, Eurostat, ADEME, SDES loader tests
+│   └── methods/                 #     Uniform, IPF, conditional sampling tests
+├── vintage/                     #   Cohort types, transitions, config
+├── visualization/               #   Display, plotting, styling tests
+├── server/                      #   FastAPI route tests (TestClient)
+├── benchmarks/                  #   Benchmark validation suite
+│   └── references/              #     Reference data for benchmarks
+├── docs/                        #   Documentation validation tests
+├── notebooks/                   #   Notebook execution tests (nbmake)
+└── fixtures/                    #   Shared test data
+    ├── populations/             #     Sample population files
+    ├── templates/               #     Sample template files
+    ├── calibration/             #     Calibration target data
+    ├── insee/, eurostat/        #     Mock institutional data
+    ├── ademe/, sdes/            #     Mock agency data
+    └── (various .parquet/.csv)  #     Test data files
+```
+
+---
+
+## Supporting Directories
+
+```text
+notebooks/
+├── quickstart.ipynb             # Getting started guide (run a simulation)
+├── advanced.ipynb               # Multi-year, vintage, discrete choice
+└── guides/                      # Topic-specific notebooks
+    ├── 08_discrete_choice_model.ipynb
+    ├── 09_population_generation.ipynb
+    ├── 10_calibration_workflow.ipynb
+    └── 11_replication_workflow.ipynb
+
+examples/
+├── api/                         # Python API usage examples
+├── populations/                 # Population data examples
+└── workflows/                   # YAML workflow examples
+
+config/
+└── deploy.yml                   # Kamal 2 deployment manifest
+
+scripts/
+├── generate_synthetic_population.py   # CLI population generator
+└── check_ai_usage.py                  # AI provider usage monitor
+
+.github/workflows/
+├── ci.yml                       # CI: lint + type-check + test + notebooks
+└── deploy.yml                   # CD: Docker build + Kamal deploy to Hetzner
+```
+
+---
+
+## File Counts Summary
+
+| Area | Files | Description |
+| ---- | ----: | ----------- |
+| Python source | 147 | 13 subsystem packages |
+| Python tests | 190 | Unit + integration + benchmark |
+| Frontend source | 80 | Components, API, hooks, context |
+| Frontend tests | 35 | Component + workflow tests |
+| Notebooks | 6 | Guides and demos |
+| Total | **458** | Excluding config, docs, CI |

@@ -1,281 +1,565 @@
 # Architecture — ReformLab
 
-**Generated:** 2026-02-28
-**Status:** Phase 1 Complete (all subsystems implemented)
+**Generated:** 2026-03-08
+**Status:** Phase 2 Complete (Epics 1–17)
 
-## Strategic Direction
+## How to Read This Document
 
-ReformLab does **not** build a replacement tax-benefit microsimulation core. OpenFisca is the policy-calculation foundation, accessed through a clean adapter interface. This project builds differentiated layers above it: data preparation, environmental policy orchestration, multi-year projection with vintage tracking, indicators, governance, and user interfaces.
+This architecture document is organized to answer questions in order of increasing depth:
 
-**The dynamic orchestrator is the core product** — not a computation engine.
+1. **What does this system do?** (System Overview)
+2. **How is it structured?** (Layered Architecture)
+3. **What are the key design decisions?** (Architecture Patterns)
+4. **How do the pieces connect?** (Data Flow and Integration)
+5. **How does each subsystem work?** (Subsystem Reference)
 
-## Active Scope
+If you are new to the project, read sections 1–4 first. Section 5 is a reference you can consult when working on a specific subsystem.
 
-- Data ingestion and harmonization (OpenFisca outputs, synthetic population inputs, environmental datasets)
-- Scenario/template layer for environmental policies (carbon tax, subsidies, rebates, feebates)
-- Step-pluggable dynamic orchestrator for multi-year execution (10+ years) with vintage/cohort tracking
-- Indicator layer (distributional, welfare, fiscal, geographic, custom metrics)
-- Run governance (manifests, assumption logs, lineage, reproducibility checks, benchmarking)
-- Python API, Jupyter notebooks, and React no-code GUI
+---
 
-## Out Of Scope (MVP)
+## 1. System Overview
 
-- Reimplementing OpenFisca internals
-- Custom formula compiler or policy engine
-- Endogenous market-clearing/equilibrium simulation
-- Physical system loop simulation (climate/energy stock-flow engines)
+ReformLab is an environmental policy analysis platform. You give it a population (households), a policy (carbon tax, subsidies, etc.), and a time horizon — it simulates the multi-year effects and produces indicators (who wins, who loses, fiscal impact, distributional effects).
 
-## Layered Architecture
+**The core insight:** ReformLab is **not** a computation engine. It is an **orchestration platform** that wraps OpenFisca (or any tax-benefit engine) and adds everything above: scenario management, multi-year simulation, behavioral modeling, portfolio comparison, reproducibility, and a GUI.
 
-```
-┌─────────────────────────────────────────────────────┐
-│  Interfaces (Python API, Notebooks, No-Code GUI)     │
-├─────────────────────────────────────────────────────┤
-│  Indicator Engine (distributional/welfare/fiscal)    │
-├─────────────────────────────────────────────────────┤
-│  Governance (manifests, assumptions, lineage)        │
-├─────────────────────────────────────────────────────┤
-│  Dynamic Orchestrator (year loop + step pipeline)    │
-│  ├── Vintage Transitions                             │
-│  ├── State Carry-Forward                             │
-│  └── [Phase 2: Behavioral Response Steps]            │
-├─────────────────────────────────────────────────────┤
-│  Scenario Template Layer (environmental policies)    │
-├─────────────────────────────────────────────────────┤
-│  Data Layer (ingestion, open data, synthetic pop)    │
-├─────────────────────────────────────────────────────┤
-│  Computation Adapter Interface                       │
-│  └── OpenFiscaAdapter (primary implementation)       │
-└─────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    User[User / Analyst]
+    GUI[React GUI]
+    API[FastAPI Server]
+    PY[Python API]
+    ORCH[Orchestrator]
+    COMP[OpenFisca]
+    IND[Indicators]
+    GOV[Governance]
+
+    User --> GUI --> API --> PY --> ORCH
+    ORCH --> COMP
+    ORCH --> IND
+    ORCH --> GOV
 ```
 
-## Subsystem Details
+---
 
-### 1. Computation Adapter (`src/reformlab/computation/`)
+## 2. Layered Architecture
 
-The orchestrator never calls OpenFisca directly. All tax-benefit computation goes through a clean adapter interface:
+The system is organized in layers. Each layer depends only on the layers below it. This makes each layer independently testable and replaceable.
+
+```mermaid
+flowchart TB
+    subgraph "User-Facing"
+        GUI["React GUI (frontend/)"]
+        NB["Jupyter Notebooks"]
+    end
+
+    subgraph "API Layer"
+        SRV["FastAPI Server (server/)"]
+        INT["Python API (interfaces/)"]
+    end
+
+    subgraph "Orchestration Layer"
+        ORCH["Orchestrator (orchestrator/)"]
+        DC["Discrete Choice (discrete_choice/)"]
+        VIN["Vintage Tracking (vintage/)"]
+        CAL["Calibration (calibration/)"]
+    end
+
+    subgraph "Domain Layer"
+        TPL["Templates (templates/)"]
+        IND["Indicators (indicators/)"]
+        POP["Population (population/)"]
+    end
+
+    subgraph "Foundation Layer"
+        COMP["Computation Adapter (computation/)"]
+        DATA["Data Access (data/)"]
+        GOV["Governance (governance/)"]
+        VIS["Visualization (visualization/)"]
+    end
+
+    GUI --> SRV
+    NB --> INT
+    SRV --> INT
+    INT --> ORCH
+    ORCH --> DC
+    ORCH --> VIN
+    ORCH --> COMP
+    ORCH --> TPL
+    INT --> IND
+    DC --> CAL
+    POP --> DATA
+    ORCH -.-> GOV
+    IND -.-> GOV
+    CAL -.-> GOV
+```
+
+**Reading the diagram:** Solid arrows = direct dependency. Dotted arrows = cross-cutting concern (governance is used by many layers but does not own any business logic).
+
+### Layer Responsibilities
+
+| Layer | Purpose | Key Question It Answers |
+| ----- | ------- | ----------------------- |
+| User-Facing | Present results, accept input | "What does the user see?" |
+| API | Expose stable interfaces | "How do I call the system?" |
+| Orchestration | Run multi-year simulations | "What happens year by year?" |
+| Domain | Define policies, compute indicators | "What policies exist? What do the results mean?" |
+| Foundation | Access data, compute taxes, ensure reproducibility | "Where does the data come from? Can I trust the results?" |
+
+---
+
+## 3. Architecture Patterns
+
+These are the key design decisions that shape the entire codebase. Understanding them helps you predict how any new feature should be built.
+
+### 3.1 Adapter Pattern — Backend Swapping
+
+**Problem:** We do not want to be locked into OpenFisca. Other engines (PolicyEngine, custom models) should be pluggable.
+
+**Solution:** The `ComputationAdapter` protocol defines a two-method contract. Any class that implements `compute()` and `version()` works — no inheritance needed.
 
 ```python
+# This is the entire contract. Nothing else required.
 class ComputationAdapter(Protocol):
-    """Interface for tax-benefit computation backends."""
-    def compute(self, population: PopulationData, policy: PolicyConfig,
-                period: int) -> ComputationResult: ...
+    def compute(self, population: PopulationData, policy: PolicyConfig, period: int) -> ComputationResult: ...
     def version(self) -> str: ...
 ```
 
-**Implementations:**
-- `OpenFiscaAdapter` — Reads pre-computed CSV/Parquet files (primary Phase 1 mode)
-- `OpenFiscaApiAdapter` — Live computation via OpenFisca Python API (lazy import, optional dependency)
-- `MockAdapter` — Deterministic test backend for orchestrator isolation
+**Consequence:** No module outside `computation/` imports OpenFisca directly. The orchestrator only sees the protocol.
 
-**Supporting modules:**
-- `ingestion.py` — CSV/Parquet loading with `DataSchema` validation, gzip support, type coercion
-- `mapping.py` — Bidirectional field translation between OpenFisca and project schemas (`FieldMapping`, `MappingConfig`)
-- `quality.py` — Output validation with `RangeRule`, null detection, type checks (`QualityCheckResult`)
-- `compat_matrix.py` — Version governance via YAML compatibility matrix (`CompatibilityInfo`)
-- `types.py` — Core data structures: `PopulationData` (PyArrow), `PolicyConfig`, `ComputationResult`
+### 3.2 Protocol-Driven Design — Structural Typing
 
-**Key design decisions:**
-- Protocol-based (structural typing, `runtime_checkable`) — no class inheritance required
-- All data uses PyArrow Tables for memory-efficient columnar processing
-- OpenFisca is an optional dependency — core code works without it installed
-- Version compatibility is checked at adapter construction time
+**Problem:** Traditional inheritance creates tight coupling. Subclasses must know about base classes.
 
-### 2. Data Layer (`src/reformlab/data/`)
+**Solution:** Use Python `Protocol` (PEP 544) for all extension points. Any class with the right methods satisfies the contract — no registration, no base class.
 
-**Schema contracts:**
-- `SYNTHETIC_POPULATION_SCHEMA` — Required: household_id, person_id, age, income. Optional: region_code, housing_status, energy columns
-- `EMISSION_FACTOR_SCHEMA` — Required: category, factor_value, unit. Optional: year, subcategory, source
+**Four core protocols:**
 
-**Pipeline:**
-- `DatasetRegistry` — Mutable append-only registry keyed by unique `dataset_key`
-- `load_dataset()` — Load with schema validation, SHA-256 hashing, and manifest recording
-- `DatasetManifest` — Provenance record (hash, path, format, row count, loaded_at)
-- Path safety enforcement (allowed roots checking)
+| Protocol | Methods | Used By |
+| -------- | ------- | ------- |
+| `ComputationAdapter` | `compute()`, `version()` | Orchestrator → tax-benefit engine |
+| `OrchestratorStep` | `name`, `execute(year, state)` | Orchestrator → pluggable pipeline steps |
+| `DataSourceLoader` | `load()` | Population → institutional data sources |
+| `MergeMethod` | `merge()` | Population → statistical fusion methods |
 
-**Emission factors:**
-- `EmissionFactorIndex` — Frozen index wrapping PyArrow table with `by_category()`, `by_category_and_year()` lookups
+### 3.3 Frozen Dataclasses — Immutability by Default
 
-### 3. Scenario Templates (`src/reformlab/templates/`)
+**Problem:** Mutable state causes bugs that are hard to trace, especially in multi-year simulations where the same data passes through many steps.
 
-**Template schema (`schema.py`):**
-- `PolicyType` enum: CARBON_TAX, SUBSIDY, REBATE, FEEBATE
-- `YearSchedule` — Year range with duration, years iteration, containment check
-- Typed parameter classes per policy: `CarbonTaxParameters`, `SubsidyParameters`, `RebateParameters`, `FeebateParameters`
-- `BaselineScenario` and `ReformScenario` with reform-as-delta pattern
+**Solution:** Every domain type uses `@dataclass(frozen=True)`. Once created, an object cannot be modified. You create new objects instead.
 
-**Template packs:**
-Each policy type has a pack with `compute.py` (tax burden, redistribution) and `compare.py` (baseline vs reform):
-- `carbon_tax/` — Flat/progressive rates, lump-sum/progressive redistribution, exemptions
-- `subsidy/` — Income caps, eligible categories
-- `rebate/` — Lump-sum and progressive rebate distribution
-- `feebate/` — Pivot-point fee/rebate with symmetric/asymmetric rates
-
-**Registry (`registry.py`):**
-- Content-addressable version IDs (SHA-256 prefix)
-- Immutable: once saved, cannot modify
-- Version history with timestamps and change descriptions
-
-**Workflow configuration (`workflow.py`):**
-- `WorkflowConfig` — Full orchestration definition (YAML/JSON)
-- `OutputType` enum: distributional_indicators, comparison_table, panel_export, summary_report
-- JSON Schema validation support
-
-**Migration (`migration.py`):**
-- `SchemaVersion` — Semantic version with `check_compatibility()`
-- Pure-function migration: `migrate_scenario_dict()`
-
-### 4. Dynamic Orchestrator (`src/reformlab/orchestrator/`)
-
-The orchestrator runs a yearly loop (t to t+n) where each year executes a pipeline of pluggable steps:
-
-```
-For each year t in [start_year .. end_year]:
-  For each step in pipeline:
-    state = step.execute(year=t, state=state)
-  Record year-t results
-  Feed updated state into year t+1
+```python
+@dataclass(frozen=True)
+class YearState:
+    year: int
+    data: dict[str, Any]
+    seed: int
+    metadata: dict[str, Any]
 ```
 
-**Core types:**
-- `YearState` — State carried between years (year, data dict, seed, metadata)
-- `OrchestratorConfig` — Configuration with start_year, end_year, initial_state, seed, step_pipeline
-- `OrchestratorResult` — Execution result with yearly_states, errors, failed_year
+**Consequence:** All domain types are hashable (can be used as dict keys), safe for caching, and safe to share across threads.
 
-**Step interface (`step.py`):**
-- `OrchestratorStep` protocol — `name` property + `execute(year, state) -> YearState`
-- `StepRegistry` — Registration and dependency ordering
-- `@step` decorator — Function-based step creation
-- `adapt_callable()` — Adapter for bare `YearStep` functions
+### 3.4 PyArrow-First Data Model
+
+**Problem:** Pandas DataFrames are convenient but memory-hungry, slow to serialize, and loosely typed.
+
+**Solution:** All tabular data uses PyArrow Tables. This gives columnar storage (memory-efficient), zero-copy serialization, type safety, and native Parquet support.
+
+**Where PyArrow is used:**
+
+- `PopulationData.tables` — input households
+- `ComputationResult.output_fields` — tax-benefit computation output
+- `PanelOutput.table` — household-by-year panel (main simulation output)
+- `CostMatrix.table` — discrete choice cost matrix
+- `IndicatorResult.data` — indicator computation output
+
+### 3.5 Manifest-First Governance
+
+**Problem:** In policy analysis, you need to prove that a result is reproducible. "Run it again and see" is not good enough.
+
+**Solution:** Every simulation run produces a `RunManifest` — an immutable record that captures everything needed to reproduce the result:
+
+- **Seeds:** All random seeds (master + per-year)
+- **Policy:** Complete parameter snapshot
+- **Hashes:** SHA-256 of all inputs and outputs
+- **Assumptions:** Every assumption with its source (default vs. user-specified)
+- **Lineage:** Parent/child relationships between runs
+- **Integrity hash:** SHA-256 of the manifest itself (tamper detection)
+
+**Consequence:** You can export a "replication package" and anyone can reproduce the exact same result.
+
+### 3.6 Error Responses — What / Why / Fix
+
+**Problem:** Generic error messages like "Internal Server Error" or "Invalid input" don't help users fix the problem.
+
+**Solution:** Every error response follows a three-field pattern:
+
+```python
+{
+    "what": "Run 'abc123' not found",           # What happened
+    "why": "No metadata record for this run_id", # Why it happened
+    "fix": "Check the run_id; ensure the simulation was executed"  # How to fix it
+}
+```
+
+This pattern is used consistently in both the HTTP API (`HTTPException`) and domain exceptions.
+
+---
+
+## 4. Data Flow
+
+### 4.1 Simulation Run — End to End
+
+This is the most important data flow. It shows what happens when a user clicks "Run Simulation" in the GUI.
+
+```mermaid
+sequenceDiagram
+    participant U as User / GUI
+    participant S as FastAPI Server
+    participant I as interfaces.api
+    participant O as Orchestrator
+    participant A as ComputationAdapter
+    participant G as Governance
+
+    U->>S: POST /api/runs
+    S->>I: run_scenario(config)
+    I->>I: Load template + memory check
+    I->>O: Orchestrator.run(config)
+
+    loop For each year
+        O->>A: adapter.compute(population, policy, year)
+        A-->>O: ComputationResult
+        O->>O: DiscreteChoiceStep (if configured)
+        O->>O: VintageTransitionStep (if configured)
+        O->>O: CarryForwardStep
+    end
+
+    O-->>I: OrchestratorResult (yearly_states)
+    I->>I: Stack → PanelOutput (pa.Table)
+    I->>G: capture_assumptions() + hash_artifacts()
+    G-->>I: RunManifest
+    I-->>S: SimulationResult
+    S->>S: Store in ResultCache + ResultStore
+    S-->>U: RunResponse (run_id, manifest_id)
+```
+
+### 4.2 Indicator Computation
+
+After a run completes, the user requests indicators. These are computed from the stored panel data.
+
+```mermaid
+sequenceDiagram
+    participant U as User / GUI
+    participant S as FastAPI Server
+    participant C as ResultCache
+    participant IND as Indicators
+
+    U->>S: POST /api/indicators/distributional
+    S->>C: get_or_load(run_id, store)
+    C-->>S: SimulationResult (from cache or disk)
+    S->>IND: compute_distributional_indicators(panel)
+    IND-->>S: IndicatorResult (pa.Table)
+    S-->>U: IndicatorResponse (columnar JSON)
+```
+
+### 4.3 Frontend-Backend Integration
+
+The frontend communicates with the backend through a typed API client layer.
+
+```mermaid
+flowchart LR
+    subgraph "Frontend (React)"
+        CTX[AppContext] --> HOOKS[useApi hooks]
+        HOOKS --> CLIENT[apiFetch client]
+    end
+
+    subgraph "Backend (FastAPI)"
+        ROUTES[Route handlers] --> DEPS[Dependencies]
+        DEPS --> CACHE[ResultCache]
+        DEPS --> STORE[ResultStore]
+        DEPS --> ADAPT[ComputationAdapter]
+    end
+
+    CLIENT -->|HTTP + Bearer token| ROUTES
+```
+
+**API proxy:** In development, Vite proxies `/api/*` to `http://localhost:8000`. In production, Traefik routes `api.reformlab.fr` to the backend container.
+
+### 4.4 Result Persistence
+
+Results are persisted in two tiers: a fast in-memory LRU cache and a durable filesystem store.
+
+```text
+ResultCache (in-memory, LRU, max 10 entries)
+    ↓ cache miss
+ResultStore (filesystem)
+    ~/.reformlab/results/{run_id}/
+    ├── metadata.json     # Immutable metadata (status, row_count, manifest_id)
+    ├── panel.parquet      # Household-by-year panel (PyArrow)
+    └── manifest.json      # Full run manifest (assumptions, hashes, lineage)
+```
+
+`get_or_load(run_id, store)` checks the cache first, then falls back to disk. This means results survive server restarts.
+
+---
+
+## 5. Subsystem Reference
+
+This section describes each subsystem in detail. Consult it when you need to understand or modify a specific part of the system.
+
+### 5.1 Computation (`computation/`)
+
+**Purpose:** Abstract interface to tax-benefit backends.
+
+**Key types:**
+
+| Type | Role |
+| ---- | ---- |
+| `ComputationAdapter` | Protocol — the swap point for backends |
+| `PopulationData` | Input: PyArrow tables keyed by entity (individu, menage) |
+| `PolicyConfig` | Input: policy parameters for a single period |
+| `ComputationResult` | Output: computed fields + per-entity tables |
+| `OpenFiscaApiAdapter` | Concrete implementation for OpenFisca |
+| `MockAdapter` | Test double for orchestrator tests |
+
+**Data contracts:** `DataSchema` validates CSV/Parquet at ingestion boundaries. `FieldMapping` maps between OpenFisca variable names and project schema.
+
+### 5.2 Templates (`templates/`)
+
+**Purpose:** Define what policies look like and how they are configured.
+
+**Policy type hierarchy:**
+
+```text
+PolicyParameters (base: rate_schedule, exemptions, thresholds, covered_categories)
+├── CarbonTaxParameters (+redistribution_type, +income_weights)
+├── SubsidyParameters (+eligible_categories, +income_caps)
+├── RebateParameters (+rebate_type, +income_weights)
+├── FeebateParameters (+pivot_point, +fee_rate, +rebate_rate)
+├── VehicleMalusParameters (custom template)
+└── EnergyPovertyAidParameters (custom template)
+```
+
+**Portfolio composition:** A `PolicyPortfolio` bundles 2+ policies together. Conflict detection identifies overlapping parameters, and resolution strategies (error, sum, first_wins, last_wins, max) handle them.
+
+**Scenario versioning:** `ScenarioRegistry` provides immutable version tracking. Each save creates a new version — no overwrites.
+
+### 5.3 Orchestrator (`orchestrator/`)
+
+**Purpose:** Execute multi-year projections as a pluggable step pipeline.
+
+**How it works:** The `Orchestrator` takes a `YearState` and runs it through a pipeline of steps for each year. Each step transforms the state and passes it to the next.
+
+```text
+Year 2025: state₀ → [ComputationStep] → [DiscreteChoiceStep] → [VintageStep] → [CarryForward] → state₁
+Year 2026: state₁ → [ComputationStep] → [DiscreteChoiceStep] → [VintageStep] → [CarryForward] → state₂
+...
+```
 
 **Built-in steps:**
-- `ComputationStep` — Wraps `ComputationAdapter` for per-year computation
-- `CarryForwardStep` — State propagation with configurable rules (`CarryForwardRule`)
-- `VintageTransitionStep` — Cohort aging and retirement (from vintage module)
 
-**Panel output (`panel.py`):**
-- `PanelOutput` — Household-by-year panel dataset
-- `compare_panels()` — Compare baseline and reform panels
+| Step | Purpose |
+| ---- | ------- |
+| `ComputationStep` | Invokes the adapter to compute taxes/benefits |
+| `DiscreteChoiceStep` | Expands population, computes choice probabilities |
+| `VintageTransitionStep` | Ages asset cohorts, applies transition rules |
+| `CarryForwardStep` | Deterministic state carry-over between years |
+| `PortfolioComputationStep` | Runs multiple policies in sequence |
 
-### 5. Vintage Tracking (`src/reformlab/vintage/`)
+**Extensibility:** Any class with a `name` property and an `execute(year, state)` method satisfies the `OrchestratorStep` protocol. You can also use bare functions via `adapt_callable()`.
 
-Cohort-based asset tracking for multi-year simulations:
+### 5.4 Discrete Choice (`discrete_choice/`)
 
-- `VintageCohort` — Single age cohort (age, count, attributes)
-- `VintageState` — Collection of cohorts for an asset class with total_count, age_distribution
-- `VintageSummary` — Derived metrics (mean_age, max_age, cohort_count)
-- `VintageTransitionStep` — OrchestratorStep for year-over-year aging
-- `VintageConfig` — Transition rules per asset class
+**Purpose:** Model household behavioral responses to policy changes (e.g., vehicle investment, heating system choice).
 
-### 6. Indicator Engine (`src/reformlab/indicators/`)
+**The pipeline:**
 
-Computes analysis metrics from panel output:
+1. **Expansion** — N households × M alternatives = N×M rows
+2. **Cost matrix** — Compute cost of each alternative for each household
+3. **Logit model** — Conditional logit with seed-controlled random draws
+4. **State update** — Apply chosen alternative to household state
 
-| Indicator Type | Module | Key Metrics |
-|---------------|--------|-------------|
-| Distributional | `distributional.py` | Per-decile count, mean, median, sum, min, max |
-| Geographic | `geographic.py` | Per-region aggregation with reference table validation |
-| Welfare | `welfare.py` | Winner/loser count, mean gain/loss, threshold-based |
-| Fiscal | `fiscal.py` | Revenue, cost, balance, cumulative totals |
-| Comparison | `comparison.py` | Multi-scenario side-by-side analysis |
-| Custom | `custom.py` | User-defined derived formulas |
+**Decision domains:** `VehicleInvestmentDomain` and `HeatingInvestmentDomain` are the concrete implementations. Each defines its alternatives, cost function, and state update logic.
 
-**Common types:**
-- `IndicatorResult` — Container with indicators, metadata, warnings, excluded_count
-- Export methods: `export_csv()`, `export_parquet()`, `to_table()`
-- `DecileIndicators`, `RegionIndicators`, `WelfareIndicators`, `FiscalIndicators`
+**Eligibility filtering:** `EligibilityFilter` pre-screens households to skip those with no viable alternatives, improving performance on large populations.
 
-### 7. Governance (`src/reformlab/governance/`)
+### 5.5 Calibration (`calibration/`)
 
-Every run produces transparent, verifiable governance artifacts:
+**Purpose:** Tune discrete choice taste parameters so simulated transition rates match observed real-world rates.
 
-**Run Manifests (`manifest.py`):**
-- `RunManifest` — Immutable frozen dataclass with manifest_id, run_timestamp, scenario config, parameters, data sources, artifact hashes, assumptions, warnings
-- Integrity hashing for tamper detection
-- Canonical JSON serialization for Git-diffable output
+**Workflow:**
 
-**Artifact Hashing (`hashing.py`):**
-- SHA-256 streaming hashing (64KB chunks) for memory efficiency
-- `hash_input_artifacts()`, `hash_output_artifacts()`, `verify_artifact_hashes()`
+1. Load `CalibrationTargetSet` — observed transition rates (e.g., "5% of households switched to EV in 2024")
+2. `CalibrationEngine` optimizes `TasteParameters` via scipy to minimize divergence
+3. `validate_holdout()` tests calibrated parameters against held-out data
+4. `capture_calibration_provenance()` records everything in the run manifest
 
-**Lineage (`lineage.py`):**
-- `LineageGraph` — Parent-child manifest relationships
-- Bidirectional lineage integrity validation
+### 5.6 Population (`population/`)
 
-**Reproducibility (`reproducibility.py`):**
-- `check_reproducibility()` — Re-execute and verify outputs match
-- `ReproducibilityResult` with detailed diff reporting
+**Purpose:** Generate realistic household populations by fusing institutional data sources.
 
-**Benchmarking (`benchmarking.py`):**
-- `run_benchmark_suite()` — Fiscal aggregate and distributional validation
-- 100k-household reference population
+**Data sources (4 loaders):**
 
-**Memory (`memory.py`):**
-- `estimate_memory_usage()` — Pre-flight memory estimation
-- `get_available_memory()` — System memory check
+| Loader | Source | Data |
+| ------ | ------ | ---- |
+| `INSEELoader` | French national statistics | Demographics, income |
+| `EurostatLoader` | EU statistics | Cross-country data |
+| `ADEMELoader` | Energy/environment agency | Energy consumption, emissions |
+| `SDESLoader` | Transport statistics | Vehicle ownership, mobility |
 
-### 8. Interfaces (`src/reformlab/interfaces/`)
+**Merge methods (3 strategies):**
 
-**Python API (`api.py`):**
-```python
-# Core functions (re-exported from __init__.py)
-run_scenario(config: RunConfig) -> SimulationResult
-create_scenario(name, params, ...) -> str
-clone_scenario(scenario_id, new_name) -> str
-list_scenarios() -> list[dict]
-get_scenario(scenario_id) -> dict
-run_benchmarks() -> BenchmarkSuiteResult
-check_memory_requirements(config) -> MemoryCheckResult
-create_quickstart_adapter() -> MockAdapter
+| Method | How It Works |
+| ------ | ------------ |
+| `UniformMergeMethod` | Random matching with replacement |
+| `IPFMergeMethod` | Iterative Proportional Fitting to known marginals |
+| `ConditionalSamplingMethod` | Stratum-based conditional sampling |
+
+**Pipeline:** `PopulationPipeline` composes loaders and methods into a reproducible generation workflow with assumption chain recording.
+
+### 5.7 Indicators (`indicators/`)
+
+**Purpose:** Compute analytics from simulation panel output.
+
+**Indicator types:**
+
+| Type | What It Computes |
+| ---- | ---------------- |
+| Distributional | Per-decile metrics (count, mean, median, sum, min, max) |
+| Geographic | Per-region aggregations |
+| Welfare | Winner/loser analysis (who gains, who loses) |
+| Fiscal | Revenue, cost, balance, cumulative effects |
+| Custom | User-defined formulas over panel columns |
+| Comparison | Baseline vs. reform deltas |
+| Portfolio comparison | Cross-portfolio ranking on multiple criteria |
+
+### 5.8 Governance (`governance/`)
+
+**Purpose:** Ensure every result is reproducible, auditable, and tamper-evident.
+
+**Capabilities:**
+
+- **Manifests** — Immutable run records with all parameters and seeds
+- **Hashing** — SHA-256 integrity for inputs, outputs, and the manifest itself
+- **Lineage** — Parent/child graph between runs
+- **Reproducibility** — Re-run and verify identical output
+- **Benchmarking** — Validate outputs against reference data
+- **Memory estimation** — Preflight checks before large runs
+- **Replication packages** — Export/import complete run bundles
+
+### 5.9 Server (`server/`)
+
+**Purpose:** HTTP facade over the Python API. Thin layer — no business logic in routes.
+
+**API surface (10 route modules, 20+ endpoints):**
+
+| Route prefix | Key endpoints |
+| ------------ | ------------- |
+| `/api/runs` | `POST /` execute, `POST /memory-check` preflight |
+| `/api/indicators/{type}` | `POST /` compute indicators |
+| `/api/comparison` | `POST /` baseline vs reform, `POST /portfolios` multi-run |
+| `/api/scenarios` | `GET /`, `GET /{name}`, `POST /`, `POST /{name}/clone` |
+| `/api/templates` | `GET /`, `GET /{name}` |
+| `/api/portfolios` | `GET /`, `POST /`, `PUT /{name}`, `POST /validate` |
+| `/api/data-fusion` | `GET /sources/{provider}`, `POST /generate` |
+| `/api/results` | `GET /` list saved results |
+| `/api/exports` | `POST /` CSV export |
+| `/api/decisions` | `GET /` decision audit trail |
+
+**Dependency injection:** Three global singletons — `ResultCache` (LRU), `ResultStore` (disk), `ComputationAdapter` (backend) — initialized lazily and overridable in tests.
+
+### 5.10 Frontend (`frontend/`)
+
+**Purpose:** No-code GUI for analysts who prefer a visual interface over notebooks or API calls.
+
+**Architecture:** React 19 SPA with centralized state (`AppContext`), typed API client, and Shadcn/Radix component library.
+
+**9 screen components (full-page views):**
+
+| Screen | Purpose |
+| ------ | ------- |
+| PopulationSelectionScreen | Pick or generate a population |
+| TemplateSelectionScreen | Choose a policy template |
+| ParameterEditingScreen | Tune policy parameters with sliders |
+| AssumptionsReviewScreen | Review all assumptions before running |
+| SimulationRunnerScreen | Execute batch simulations |
+| DataFusionWorkbench | 5-step population generation pipeline |
+| PortfolioDesignerScreen | Create and manage policy portfolios |
+| ComparisonDashboardScreen | Compare 2–5 runs with charts and CSV export |
+| BehavioralDecisionViewerScreen | Inspect discrete choice outcomes |
+
+**State management:** Single `AppContext` (476 lines) manages auth, data fetching, selections, and run execution. Custom hooks in `useApi.ts` (437 lines) handle individual data domains with loading/error/mock-fallback patterns.
+
+**Design system:** 18 Shadcn/Radix UI primitives styled with Tailwind v4. Chart colors defined as CSS custom properties (`--chart-baseline`, `--chart-reform-a` through `-d`).
+
+---
+
+## 6. Technology Stack
+
+### Backend
+
+| Category | Technology | Version | Role |
+| -------- | ---------- | ------- | ---- |
+| Language | Python | 3.13+ | Core runtime |
+| Package manager | uv | latest | Fast dependency resolution |
+| Build | hatchling | latest | Package build backend |
+| Web framework | FastAPI | 0.133+ | HTTP API |
+| ASGI server | uvicorn | 0.41+ | Production server |
+| Data | PyArrow | 18.0+ | Columnar data and Parquet I/O |
+| Computation | OpenFisca | optional | Tax-benefit engine (adapter pattern) |
+| Optimization | scipy | 1.14+ | Calibration engine |
+| Validation | jsonschema | 4.23+ | Schema validation |
+| Serialization | PyYAML | 6.0+ | YAML scenario files |
+| Plotting | matplotlib | 3.8+ | Notebook visualizations |
+| Linting | ruff | 0.15+ | Fast Python linter |
+| Type checking | mypy | 1.19+ | Strict mode enabled |
+| Testing | pytest | 8.3+ | 3,143 tests, 80%+ coverage |
+| Notebooks | nbmake | 1.4+ | Notebook execution tests |
+
+### Frontend
+
+| Category | Technology | Version | Role |
+| -------- | ---------- | ------- | ---- |
+| Framework | React | 19.1 | UI rendering |
+| Language | TypeScript | 5.9 | Type safety |
+| Build | Vite | 7.1 | Dev server + bundler |
+| Styling | Tailwind CSS | v4 | Utility-first CSS |
+| Charts | Recharts | 3.1 | Data visualization |
+| UI primitives | Radix UI | various | Headless accessible components |
+| Icons | Lucide React | 0.542 | Icon library |
+| Toasts | Sonner | 2.0 | Toast notifications |
+| Layout | react-resizable-panels | 3.0 | Resizable 3-panel workspace |
+| Testing | Vitest | 3.2 | Test runner |
+| Testing | Testing Library | 16.3 | Component testing |
+| Linting | ESLint | 9.34 | Code quality |
+
+### Infrastructure
+
+| Category | Technology | Role |
+| -------- | ---------- | ---- |
+| CI | GitHub Actions | Lint, type-check, test, notebook validation |
+| CD | Kamal 2 | Docker-based deployment |
+| Containerization | Docker | Backend (python:3.13-slim) + Frontend (nginx:alpine) |
+| Hosting | Hetzner VPS | Single-machine deployment |
+| Proxy | Traefik | HTTPS routing, Let's Encrypt SSL |
+| Domains | api.reformlab.fr / app.reformlab.fr | Production URLs |
+
+---
+
+## 7. Quality Checks
+
+Run these before marking any work as done:
+
+```bash
+# Backend
+uv run ruff check src/ tests/     # Lint (0 errors required)
+uv run mypy src/                   # Type check (strict mode)
+uv run pytest tests/               # 3,143 tests
+
+# Frontend
+npm run typecheck                  # TypeScript check
+npm run lint                       # ESLint
+npm test                           # Vitest
 ```
 
-- `SimulationResult` — With `indicators(indicator_type, **kwargs)` method for on-demand computation
-- `RunConfig`, `ScenarioConfig` — Configuration dataclasses
-
-**Error design:**
-- Canonical format: `[What] — [Why] — [How to fix]`
-- `ConfigurationError` — Invalid config before execution (field_path, expected, actual, fix)
-- `SimulationError` — Execution failure with partial states
-- `ValidationErrors` — Aggregated validation issues
-- `MemoryWarning` — Memory risk warning
-
-**React Frontend (`frontend/`):**
-- React 19 + TypeScript + Vite 7 + Tailwind CSS 4
-- 3-column resizable workspace layout (left scenarios, main content, right context)
-- 4-step configuration flow: Population → Template → Parameters → Assumptions
-- 5 view modes: configuration, run, progress, results, comparison
-- Recharts distributional bar chart visualization
-- Mock data layer (to be wired to backend API)
-
-## Data Contracts
-
-- **Input:** Synthetic populations (CSV/Parquet), emission factors, OpenFisca outputs
-- **Output:** Yearly panel datasets, scenario comparison tables, indicator exports (CSV/Parquet)
-- **Contract failures** are explicit, field-level, and blocking
-- Adapter interface defines the computation contract boundary
-
-## Cross-Cutting Concerns
-
-1. **Frozen dataclasses** — Immutability throughout for NFR16 compliance
-2. **Structured errors** — Canonical `[What] — [Why] — [Fix]` format
-3. **PyArrow-first** — All data uses PyArrow Tables for efficiency
-4. **Protocol-based design** — Runtime-checkable protocols for flexibility without inheritance
-5. **Content-addressable versioning** — SHA-256 prefixes for scenario versions
-6. **Streaming hashing** — 64KB chunks for memory-efficient artifact verification
-7. **Lazy imports** — Optional dependencies imported only when needed
-8. **Deterministic execution** — Seed-controlled, logged in manifests
-
-## Technical Constraints
-
-- Python 3.13+
-- OpenFisca as optional computation dependency
-- CSV/Parquet as interoperability contracts
-- Fully offline operation in user environment
-- Single-machine target (16GB laptop) for MVP
-
-## Phase 2+ Architecture Extensions
-
-- **Behavioral responses:** New orchestrator step applying elasticities between yearly computation runs
-- **System dynamics bridge:** Aggregate stock-flow outputs derived from microsimulation vintage tracking results
-- **Alternative computation backends:** Swap adapter implementations without changing orchestrator or indicator layers
-- **Production OpenFisca-France:** Real tax-benefit system integration with national data
+All checks run automatically in CI on every push.

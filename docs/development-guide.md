@@ -1,216 +1,234 @@
 # Development Guide — ReformLab
 
-**Generated:** 2026-02-28
-**Status:** Phase 1 Complete
+**Generated:** 2026-03-08
+**Status:** Phase 2 Complete
 
 ## Prerequisites
 
-| Requirement | Version | Notes |
-|-------------|---------|-------|
-| Python | 3.13+ | Required by architecture spec |
-| uv | Latest | Python package manager |
-| Node.js | 18+ | For frontend development (optional) |
-| Git | Latest | Version control |
+| Tool | Version | Purpose |
+| ---- | ------- | ------- |
+| Python | 3.13+ | Backend runtime |
+| uv | latest | Python package manager (replaces pip) |
+| Node.js | 22+ | Frontend runtime |
+| npm | 10+ | Frontend package manager |
+| Git | 2.40+ | Version control |
 
-OpenFisca is an **optional** dependency — core functionality works without it.
+## Getting Started
 
-## Quick Start
+### Backend Setup
 
 ```bash
-# Clone the repository
-git clone https://github.com/lucas-vivier/reformlab.git
+# Clone and enter the project
+git clone <repo-url> reformlab
 cd reformlab
 
-# Install Python dependencies
-uv sync
+# Install Python dependencies (uv resolves from pyproject.toml)
+uv sync --all-extras --dev
 
-# Run tests (1374 tests)
-uv run pytest
-
-# Type check
-uv run mypy src
-
-# Lint
-uv run ruff check src tests
+# Verify installation
+uv run pytest tests/ -x --tb=short
 ```
 
-## Frontend Setup (Optional)
+**What `--all-extras` does:** Installs optional dependency groups — `openfisca` (tax-benefit engine), `server` (FastAPI + uvicorn), and `dev` (pytest, ruff, mypy, nbmake).
+
+### Frontend Setup
 
 ```bash
 cd frontend
 
 # Install Node dependencies
-npm install
+npm ci
 
-# Start dev server
+# Start development server (proxies /api/* to localhost:8000)
 npm run dev
-
-# Run frontend tests
-npm test
-
-# Type check
-npm run typecheck
-
-# Lint
-npm run lint
-
-# Build for production
-npm run build
 ```
 
-## Package Configuration
+### Running the Full Stack
 
-### Python (pyproject.toml)
-
-| Tool | Purpose | Command |
-|------|---------|---------|
-| uv | Dependency management | `uv sync` |
-| pytest | Test framework (1374 tests) | `uv run pytest` |
-| pytest-cov | Coverage (80%+ enforced) | `uv run pytest --cov` |
-| nbmake | Notebook validation | `uv run pytest --nbmake notebooks/*.ipynb` |
-| ruff | Linting (E, F, I, W rules) | `uv run ruff check src tests` |
-| mypy | Type checking (strict mode) | `uv run mypy src` |
-
-### Frontend (package.json)
-
-| Tool | Purpose | Command |
-|------|---------|---------|
-| Vite 7 | Dev server + build | `npm run dev` / `npm run build` |
-| Vitest | Component tests | `npm test` |
-| TypeScript 5.9 | Type checking | `npm run typecheck` |
-| ESLint | Linting | `npm run lint` |
-
-## Build Commands
+Open two terminals:
 
 ```bash
-# === Python ===
+# Terminal 1: Backend API server
+uv run uvicorn reformlab.server.app:create_app --factory --reload --port 8000
 
-# Run all tests
-uv run pytest
+# Terminal 2: Frontend dev server
+cd frontend && npm run dev
+```
 
-# Run with coverage report
-uv run pytest --cov=src/reformlab --cov-report=term-missing
+The frontend dev server runs on `http://localhost:5173` and proxies API calls to the backend on port 8000.
 
-# Run specific subsystem tests
-uv run pytest tests/computation/
-uv run pytest tests/templates/
-uv run pytest tests/orchestrator/
-uv run pytest tests/indicators/
-uv run pytest tests/governance/
+## Quality Checks
 
-# Run benchmarks only
-uv run pytest -m benchmark
+Run all of these before submitting work. CI enforces them automatically.
 
-# Validate notebooks (no kernel execution)
-uv run pytest --nbmake notebooks/quickstart.ipynb -v
-uv run pytest --nbmake notebooks/advanced.ipynb -v
+### Backend
 
-# Lint
-uv run ruff check src tests
+```bash
+# Linting — must produce 0 errors
+uv run ruff check src/ tests/
 
-# Type check
-uv run mypy src
+# Type checking — strict mode, all files
+uv run mypy src/
 
-# Build Python package
-uv build
+# Tests — 3,143 tests, 80%+ coverage required
+uv run pytest tests/
 
-# === Frontend ===
+# Tests with coverage report
+uv run pytest --cov=src/reformlab --cov-report=term-missing tests/
 
+# Notebook validation (CI runs these too)
+uv run pytest --nbmake notebooks/quickstart.ipynb notebooks/advanced.ipynb
+```
+
+### Frontend
+
+```bash
 cd frontend
-npm run dev          # Start dev server (Vite)
-npm run build        # Production build (tsc + vite)
-npm test             # Run vitest
-npm run typecheck    # TypeScript check
-npm run lint         # ESLint
+
+# TypeScript type checking
+npm run typecheck
+
+# ESLint
+npm run lint
+
+# Tests
+npm test
+
+# Tests in watch mode (during development)
+npm run test:watch
 ```
 
-## CI Pipeline
+### All-in-One Check
 
-The CI runs on every push and pull request (`.github/workflows/ci.yml`):
+```bash
+# Backend quality gate
+uv run ruff check src/ tests/ && uv run mypy src/ && uv run pytest tests/
 
-1. **Setup:** Python 3.13 via uv with caching
-2. **Lint:** `uv run ruff check src tests`
-3. **Type check:** `uv run mypy src`
-4. **Test:** `uv run pytest --cov=src/reformlab --cov-report=term-missing tests/`
-5. **Notebooks:** `uv run pytest --nbmake notebooks/quickstart.ipynb -v`
-6. **Notebooks:** `uv run pytest --nbmake notebooks/advanced.ipynb -v`
-
-Coverage threshold: **80%** (enforced in `pyproject.toml`).
-
-## Deployment
-
-Deployment is automated on push to `master` (`.github/workflows/deploy.yml`):
-
-1. **Build:** Docker image from `Dockerfile` (Python 3.13-slim)
-2. **Deploy:** Kamal 2 to Hetzner VPS
-3. **Domains:** `api.reformlab.fr` (backend), `app.reformlab.fr` (frontend)
-4. **TLS:** Let's Encrypt via Traefik
-
-See [Deployment Guide](./deployment-guide.md) for full details.
-
-## Project Structure
-
+# Frontend quality gate
+cd frontend && npm run typecheck && npm run lint && npm test
 ```
-src/reformlab/          # 72 Python modules across 8 subsystems
-tests/                  # 93 test files, 1374 tests
-frontend/src/           # 46 TypeScript/React files
-notebooks/              # 7 Jupyter notebooks
-examples/workflows/     # 3 workflow configuration examples
+
+## Project Layout
+
+```text
+reformlab/
+├── src/reformlab/         # Python package (13 subsystems)
+├── frontend/src/          # React SPA (9 screens, 48 components)
+├── tests/                 # Python tests (190 files, 3,143 tests)
+├── notebooks/             # Jupyter guides
+├── examples/              # API/workflow examples
+├── config/                # Deployment config (Kamal)
+├── scripts/               # Utilities
+├── data/                  # Population data, emission factors
+└── docs/                  # Generated documentation
 ```
 
 See [Source Tree Analysis](./source-tree-analysis.md) for the full annotated tree.
 
-## Development Conventions
+## Coding Conventions
 
-### Code Style
+### Python
 
-- **Line length:** 110 characters (ruff)
-- **Import sorting:** isort-compatible (ruff I rules)
-- **Type annotations:** Required on all public functions (mypy strict)
-- **Docstrings:** On public API only — internal code uses self-documenting names
+- **Style:** ruff with rules E, F, I, W. Line length 110.
+- **Types:** mypy strict mode. All public functions fully typed.
+- **Immutability:** Domain types use `@dataclass(frozen=True)`.
+- **Data:** PyArrow Tables for all tabular data. No pandas in core.
+- **Errors:** Three-field pattern: `what`, `why`, `fix`.
+- **Testing:** pytest. Test files mirror source structure. Fixtures in `tests/fixtures/`.
+- **Imports:** Absolute imports only. No circular dependencies between subsystems.
 
-### Architecture Rules
+### TypeScript / React
 
-1. **Never call OpenFisca directly** — Always go through `ComputationAdapter`
-2. **Environmental policy logic is Python code** — No YAML formula strings or custom compilers
-3. **Steps are plugins** — Register new orchestrator steps without modifying the engine
-4. **Contract failures are blocking** — Field-level validation errors at every ingestion boundary
-5. **Manifests are mandatory** — Every run produces a JSON manifest with full lineage
-6. **Frozen dataclasses** — All data structures are immutable
-7. **Structured errors** — Follow `[What] — [Why] — [How to fix]` pattern
+- **Style:** ESLint with typescript-eslint strict rules. React hooks enforcement.
+- **Types:** TypeScript 5.9 strict mode. All API types in `api/types.ts`.
+- **Components:** Functional components only. React 19 (ref as regular prop).
+- **Styling:** Tailwind v4 utility classes. CSS variables for chart colors.
+- **State:** Centralized via `AppContext`. Custom hooks for data fetching.
+- **Testing:** Vitest + Testing Library. Mock API calls with `vi.mock()`.
 
-### Testing Requirements
+### Git
 
-- All code changes require tests
-- Tests mirror the source structure (`tests/computation/` tests `src/reformlab/computation/`)
-- Adapter interface changes require contract test updates
-- Scenario template changes require validation test updates
-- Run manifests must be reproducible (seed-controlled)
-- Golden file tests validate output determinism
+- **Commits:** Conventional commits (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`).
+- **Branches:** Feature branches off `master`. PRs for all changes.
+- **CI:** All checks must pass before merge.
 
-### Git Workflow
+## Test Markers
 
-- Branch protection on `master` with required status check `check`
-- Require branches to be up to date before merging
-- All CI checks must pass before merge
+The backend test suite uses pytest markers to separate test categories:
 
-## Key Files Reference
+```bash
+# Default: runs unit tests only (skips integration, scale, network)
+uv run pytest tests/
 
-| File | Purpose |
-|------|---------|
-| `pyproject.toml` | Package config, dependencies, tool settings |
-| `uv.lock` | Locked dependency versions |
-| `Dockerfile` | Container build for deployment |
-| `config/deploy.yml` | Kamal deployment configuration |
-| `.github/workflows/ci.yml` | CI pipeline definition |
-| `.github/workflows/deploy.yml` | Deploy pipeline definition |
-| `CLAUDE.md` | AI assistant project instructions |
-| `README.md` | Public-facing project readme |
+# Include integration tests (requires openfisca-france installed)
+uv run pytest -m integration tests/
 
-## Related Documentation
+# Include scale tests (100k–500k population, may be slow)
+uv run pytest -m scale tests/
 
-- [Project Overview](./project-overview.md) — Executive summary
-- [Architecture](./architecture.md) — Design decisions and subsystem details
-- [Source Tree Analysis](./source-tree-analysis.md) — Annotated directory structure
-- [Deployment Guide](./deployment-guide.md) — Docker + Kamal deployment
-- [Compatibility Matrix](./compatibility.md) — OpenFisca version support
+# Include network tests (requires real API access)
+uv run pytest -m network tests/
+
+# Include benchmark validation tests
+uv run pytest -m benchmark tests/
+```
+
+## Common Tasks
+
+### Add a New Policy Template
+
+1. Create a new package under `src/reformlab/templates/your_template/`
+2. Define parameter class extending `PolicyParameters`
+3. Implement `compute()` and `compare()` functions
+4. Register with `register_custom_template()` and `register_policy_type()`
+5. Add pack loader functions in `templates/packs/`
+6. Add tests in `tests/templates/your_template/`
+
+### Add a New API Endpoint
+
+1. Create route function in `src/reformlab/server/routes/`
+2. Add request/response models in `server/models.py`
+3. Register router in `server/app.py`
+4. Add TypeScript types in `frontend/src/api/types.ts`
+5. Add API function in `frontend/src/api/`
+6. Add tests in `tests/server/`
+
+### Add a New Orchestrator Step
+
+1. Create a class with `name` property and `execute(year, state)` method
+2. It automatically satisfies the `OrchestratorStep` protocol — no registration needed
+3. Add it to the step pipeline in your scenario configuration
+4. Add tests in `tests/orchestrator/`
+
+## Useful Scripts
+
+```bash
+# Generate a synthetic population (Parquet file)
+uv run python scripts/generate_synthetic_population.py --size 100000 --seed 42
+
+# Check AI provider usage (Claude, Codex, Gemini)
+uv run python scripts/check_ai_usage.py
+
+# Build Docker image
+docker build -t reformlab .
+
+# Run overnight build (BMAD story-driven development)
+./overnight-build.sh <epic-number>
+```
+
+## CI/CD Pipeline
+
+### CI (on every push/PR)
+
+1. Install Python 3.13 + uv
+2. `uv sync --locked --all-extras --dev`
+3. `ruff check` → `mypy` → `pytest --cov` → `nbmake` (6 notebooks)
+
+### CD (on push to master)
+
+1. Ruby 3.3 + Kamal gem installed
+2. Docker Buildx multi-platform build
+3. `kamal deploy` to Hetzner VPS
+4. Traefik handles HTTPS (Let's Encrypt) for `api.reformlab.fr` and `app.reformlab.fr`
+
+See [Deployment Guide](./deployment-guide.md) for full deployment details.

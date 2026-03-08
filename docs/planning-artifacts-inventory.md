@@ -1,202 +1,184 @@
 # Planning Artifacts Inventory — ReformLab
 
-**Generated:** 2026-02-28
-**Status:** Phase 1 Complete (all planning + implementation artifacts present)
+**Generated:** 2026-03-08
+**Status:** Phase 2 Complete (all planning + implementation artifacts present)
 
-## Overview
+## How to Use This Inventory
 
-ReformLab has a comprehensive set of planning and implementation artifacts organized across the `_bmad-output/` directory. This inventory covers all documents produced during the project lifecycle from initial brainstorming through Phase 1 completion.
+This document catalogs every planning and implementation artifact produced during the project. Use it to find context for decisions, understand implementation history, or locate specific story specifications.
 
-## Core Product Documents
-
-| Document | Path | Date | Purpose |
-|----------|------|------|---------|
-| Product Brief | `_bmad-output/planning-artifacts/product-brief-ReformLab-2026-02-23.md` | Feb 23 | Strategic direction and vision |
-| PRD | `_bmad-output/planning-artifacts/prd.md` | Feb 23 | Full product requirements (35 FRs, 21 NFRs) |
-| Architecture | `_bmad-output/planning-artifacts/architecture.md` | Feb 24 | Original architecture decisions |
-| Architecture Diagrams | `_bmad-output/planning-artifacts/architecture-diagrams.md` | Feb 24 | Visual architecture representations |
-| UX Design | `_bmad-output/planning-artifacts/ux-design-specification.md` | Feb 24 | Persona-driven UX design |
-
-## Implementation Planning
-
-| Document | Path | Date | Purpose |
-|----------|------|------|---------|
-| Phase 1 Backlog | `_bmad-output/planning-artifacts/phase-1-implementation-backlog-2026-02-25.md` | Feb 25 | 7 epics with prioritized stories |
-| Implementation Readiness | `_bmad-output/planning-artifacts/implementation-readiness-report-2026-02-25.md` | Feb 25 | Readiness assessment |
-| Sprint Change Proposal | `_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-25.md` | Feb 25 | OpenFisca-first pivot rationale |
-| Sprint Readiness | `_bmad-output/planning-artifacts/sprint-change-proposal-readiness-2026-02-25.md` | Feb 25 | Pivot readiness validation |
-
-## Validation
-
-| Document | Path | Date | Purpose |
-|----------|------|------|---------|
-| PRD Validation | `_bmad-output/planning-artifacts/prd-validation-report.md` | Feb 24 | PRD quality validation |
-| General Validation | `_bmad-output/planning-artifacts/validation-report-2026-02-24.md` | Feb 24 | Cross-artifact validation |
-| Stakeholder Review | `_bmad-output/planning-artifacts/stakeholder-review-brief-ReformLab-2026-02-24.md` | Feb 24 | Stakeholder feedback brief |
-
-## Research
-
-| Document | Path | Date | Topic |
-|----------|------|------|-------|
-| Domain Research | `_bmad-output/planning-artifacts/research/domain-generic-microsimulation-frameworks-research-2026-02-23.md` | Feb 23 | Microsimulation frameworks landscape |
-| Technical Research | `_bmad-output/planning-artifacts/research/technical-entity-graph-data-modeling-and-vectorized-simulation-engines-research-2026-02-23.md` | Feb 23 | Entity graph and vectorized engines |
-| French Open Data | `_bmad-output/planning-artifacts/research/domain-french-open-data-microsimulation-research-2026-02-25.md` | Feb 25 | French open-data sources |
-| Market Research | `_bmad-output/planning-artifacts/research/market-microsimulation-platform-research-2026-02-25.md` | Feb 25 | Market landscape and positioning |
-| French Models | `_bmad-output/planning-artifacts/research/market-french-microsimulation-models-research-2026-02-27.md` | Feb 27 | French microsimulation models |
-| GovTech Funding | `_bmad-output/planning-artifacts/research/market-funding-and-credits-for-govtech-policy-tools-research-2026-02-28.md` | Feb 28 | Funding and credits for govtech |
-
-## Implementation Artifacts (46 Story Files)
-
-All story files are in `_bmad-output/implementation-artifacts/`. Sprint status tracked in `sprint-status.yaml`.
-
-### EPIC-1: Computation Adapter and Data Layer (8 stories)
-
-| Story | File | Status |
-|-------|------|--------|
-| 1-1 Define ComputationAdapter interface | `1-1-define-computationadapter-interface-and-openfiscaadapter-implementation.md` | Done |
-| 1-2 Implement CSV/Parquet ingestion | `1-2-implement-csv-parquet-ingestion.md` | Done |
-| 1-3 Build input-output mapping | `1-3-build-input-output-mapping-configuration.md` | Done |
-| 1-4 Implement open-data ingestion | `1-4-implement-open-data-ingestion-pipeline.md` | Done |
-| 1-5 Add data quality checks | `1-5-add-data-quality-checks.md` | Done |
-| 1-6 Add OpenFisca API mode | `1-6-add-direct-openfisca-api-orchestration-mode.md` | Done |
-| 1-7 Create compatibility matrix | `1-7-create-compatibility-matrix.md` | Done |
-| 1-8 Set up project scaffold | `1-8-set-up-project-scaffold.md` | Done |
-
-### EPIC-2: Scenario Templates and Registry (7 stories)
-
-| Story | File | Status |
-|-------|------|--------|
-| 2-1 Define scenario template schema | `2-1-define-scenario-template-schema.md` | Done |
-| 2-2 Implement carbon tax template | `2-2-implement-carbon-tax-template-pack.md` | Done |
-| 2-3 Implement subsidy/rebate/feebate | `2-3-implement-subsidy-rebate-feebate-template-pack.md` | Done |
-| 2-4 Build scenario registry | `2-4-build-scenario-registry.md` | Done |
-| 2-5 Implement scenario cloning | `2-5-implement-scenario-cloning.md` | Done |
-| 2-6 Add schema migration | `2-6-add-schema-migration-helper.md` | Done |
-| 2-7 Implement YAML/JSON workflow | `2-7-implement-yaml-json-workflow-configuration.md` | Done |
-
-### EPIC-3: Dynamic Orchestrator and Vintage Tracking (7 stories)
-
-| Story | File | Status |
-|-------|------|--------|
-| 3-1 Implement yearly loop | `3-1-implement-yearly-loop-orchestrator.md` | Done |
-| 3-2 Define orchestrator step interface | `3-2-define-orchestrator-step-interface.md` | Done |
-| 3-3 Implement carry-forward step | `3-3-implement-carry-forward-step.md` | Done |
-| 3-4 Implement vintage transition | `3-4-implement-vintage-transition-step.md` | Done |
-| 3-5 Integrate ComputationAdapter | `3-5-integrate-computationadapter-calls.md` | Done |
-| 3-6 Log seed controls | `3-6-log-seed-controls.md` | Done |
-| 3-7 Produce panel output | `3-7-produce-scenario-year-panel-output.md` | Done |
-
-### EPIC-4: Indicators and Scenario Comparison (6 stories)
-
-| Story | File | Status |
-|-------|------|--------|
-| 4-1 Distributional indicators | `4-1-implement-distributional-indicators.md` | Done |
-| 4-2 Geographic aggregation | `4-2-implement-geographic-aggregation-indicators.md` | Done |
-| 4-3 Welfare indicators | `4-3-implement-welfare-indicators.md` | Done |
-| 4-4 Fiscal indicators | `4-4-implement-fiscal-indicators.md` | Done |
-| 4-5 Scenario comparison tables | `4-5-implement-scenario-comparison-tables.md` | Done |
-| 4-6 Custom derived indicators | `4-6-implement-custom-derived-indicator-formulas.md` | Done |
-
-### EPIC-5: Governance and Reproducibility (6 stories)
-
-| Story | File | Status |
-|-------|------|--------|
-| 5-1 Define run manifest schema | `5-1-define-immutable-run-manifest-schema.md` | Done |
-| 5-2 Capture assumptions/mappings | `5-2-capture-assumptions-mappings-parameters.md` | Done |
-| 5-3 Implement run lineage graph | `5-3-implement-run-lineage-graph.md` | Done |
-| 5-4 Hash input/output artifacts | `5-4-hash-input-output-artifacts.md` | Done |
-| 5-5 Add reproducibility harness | `5-5-add-reproducibility-check-harness.md` | Done |
-| 5-6 Add warning system | `5-6-add-warning-system-for-unvalidated-templates.md` | Done |
-
-### EPIC-6: Interfaces (7 stories)
-
-| Story | File | Status |
-|-------|------|--------|
-| 6-1 Implement stable Python API | `6-1-implement-stable-python-api.md` | Done |
-| 6-2 Build quickstart notebook | `6-2-build-quickstart-notebook.md` | Done |
-| 6-3 Build advanced notebook | `6-3-build-advanced-notebook.md` | Done |
-| 6-4a Build static GUI prototype | `6-4a-build-static-gui-prototype.md` | Done |
-| 6-4b Wire GUI to backend | `6-4b-wire-gui-prototype-to-backend.md` | Done |
-| 6-5 Add export actions | `6-5-add-export-actions.md` | Done |
-| 6-6 Improve operational error UX | `6-6-improve-operational-error-ux.md` | Done |
-
-### EPIC-7: Quality Gates and Pilot Readiness (5 stories)
-
-| Story | File | Status |
-|-------|------|--------|
-| 7-1 Verify against benchmarks | `7-1-verify-simulation-outputs-against-benchmarks.md` | Done |
-| 7-2 Warn before memory limits | `7-2-warn-before-exceeding-memory-limits.md` | Done |
-| 7-3 Enforce CI quality gates | `7-3-enforce-ci-quality-gates.md` | Done |
-| 7-4 External pilot run | `7-4-external-pilot-run-carbon-tax-workflow.md` | Done |
-| 7-5 Define Phase 1 exit checklist | `7-5-define-phase-1-exit-checklist.md` | Done |
-
-## Communication and Outreach
-
-| Document | Path | Date |
-|----------|------|------|
-| Audience Narratives | `_bmad-output/communication/audience-narratives-2026-02-25.md` | Feb 25 |
-| Email Outreach (French) | `_bmad-output/communication/email-outreach-french-2026-02-25.md` | Feb 25 |
-| Market One-Pager | `_bmad-output/communication/market-one-pager-2026-02-25.md` | Feb 25 |
-
-## Branding
-
-| Document | Path | Date |
-|----------|------|------|
-| Logo Prompt | `_bmad-output/branding/logo-prompt.md` | Feb 25 |
-| Visual Identity | `_bmad-output/branding/visual-identity-guide.md` | Feb 25 |
-
-## Presentations
-
-| Document | Path | Date |
-|----------|------|------|
-| Pitch Deck Content | `_bmad-output/presentations/pitch-deck-content-2026-02-25.md` | Feb 25 |
-| Presentation Design | `_bmad-output/presentations/presentation-design-prompt.md` | Feb 25 |
-
-## Website Content
-
-| Document | Path | Date |
-|----------|------|------|
-| Homepage Narrative | `_bmad-output/website-content/homepage-narrative-2026-02-25.md` | Feb 25 |
-| Features | `_bmad-output/website-content/features-2026-02-25.md` | Feb 25 |
-| How It Works | `_bmad-output/website-content/how-it-works-2026-02-25.md` | Feb 25 |
-| Use Cases | `_bmad-output/website-content/use-cases-2026-02-25.md` | Feb 25 |
-| FAQ | `_bmad-output/website-content/faq-2026-02-25.md` | Feb 25 |
-| Copy Variations | `_bmad-output/website-content/copy-variations-2026-02-25.md` | Feb 25 |
-
-## Roadmap
-
-| Document | Path | Date |
-|----------|------|------|
-| Product Delivery Roadmap | `_bmad-output/roadmap/product-delivery-roadmap-2026-02-25.md` | Feb 25 |
-| Go-to-Market Strategy | `_bmad-output/roadmap/go-to-market-and-ecosystem-strategy-2026-02-25.md` | Feb 25 |
-
-## Brainstorming
-
-| Document | Path | Date |
-|----------|------|------|
-| Initial Session | `_bmad-output/brainstorming/brainstorming-session-2026-02-23.md` | Feb 23 |
-| Second Session | `_bmad-output/brainstorming/brainstorming-session-2026-02-25.md` | Feb 25 |
-| Third Session | `_bmad-output/brainstorming/brainstorming-session-2026-02-27.md` | Feb 27 |
-
-## Other
-
-| Document | Path | Date |
-|----------|------|------|
-| Project Context | `_bmad-output/project-context.md` | Feb 27 |
+---
 
 ## Summary
 
 | Category | Count |
-|----------|-------|
-| Core product docs | 5 |
-| Implementation planning | 4 |
-| Validation reports | 3 |
-| Research documents | 6 |
-| Story files | 46 |
-| Communication/outreach | 3 |
-| Branding | 2 |
-| Presentations | 2 |
-| Website content | 6 |
-| Roadmap | 2 |
-| Brainstorming | 3 |
-| **Total** | **82** |
+| -------- | ----: |
+| Planning artifacts | 16 |
+| Implementation artifacts (story files) | 105 |
+| Retrospectives | 4 |
+| Brainstorming sessions | 4 |
+| Other artifacts (branding, communication, presentations, website) | 6+ dirs |
+| **Total** | **135+** |
+
+---
+
+## Planning Artifacts
+
+Located in `_bmad-output/planning-artifacts/`:
+
+| Artifact | Purpose |
+| -------- | ------- |
+| `prd.md` | Product Requirements Document — full feature requirements |
+| `architecture.md` | Technical architecture design decisions |
+| `architecture-diagrams.md` | Mermaid diagrams for architecture |
+| `ux-design-specification.md` | UX patterns and interface specifications |
+| `epics.md` | Epic and story breakdown (Epics 1–17) |
+| `product-brief-ReformLab-2026-02-23.md` | Initial product brief |
+| `phase-1-implementation-backlog-2026-02-25.md` | Phase 1 backlog with prioritized stories |
+| `sprint-change-proposal-2026-02-25.md` | OpenFisca pivot rationale |
+| `sprint-change-proposal-2026-03-02.md` | Phase 2 scope adjustment |
+| `sprint-change-proposal-readiness-2026-02-25.md` | Readiness check for sprint change |
+| `phase-2-design-note-discrete-choice-household-decisions.md` | Discrete choice modeling design |
+| `implementation-readiness-report-2026-02-25.md` | Phase 1 readiness assessment |
+| `implementation-readiness-report-2026-03-03.md` | Phase 2 readiness assessment |
+| `prd-validation-report.md` | PRD validation results |
+| `validation-report-2026-02-24.md` | Early validation report |
+| `stakeholder-review-brief-ReformLab-2026-02-24.md` | Stakeholder review brief |
+
+---
+
+## Implementation Artifacts
+
+Located in `_bmad-output/implementation-artifacts/`:
+
+### Epic 1 — Computation Adapter and Data Layer (8 stories)
+
+Stories 1.1–1.8: ComputationAdapter protocol, CSV/Parquet ingestion, field mapping, open-data pipeline, quality checks, OpenFisca API mode, compatibility matrix, project scaffold.
+
+### Epic 2 — Scenario Templates (7 stories)
+
+Stories 2.1–2.7: Template schema, carbon tax pack, subsidy/rebate/feebate packs, scenario registry, cloning, schema migration, YAML workflow configuration.
+
+### Epic 3 — Dynamic Orchestrator (7 stories)
+
+Stories 3.1–3.7: Yearly loop, step interface, carry-forward, vintage transitions, adapter integration, seed/log controls, panel output.
+
+### Epic 4 — Indicators (6 stories)
+
+Stories 4.1–4.6: Distributional, geographic, welfare, fiscal indicators, scenario comparison, custom formula indicators.
+
+### Epic 5 — Governance (6 stories)
+
+Stories 5.1–5.6: Run manifest, assumption capture, lineage graph, artifact hashing, reproducibility checks, warning system.
+
+### Epic 6 — Interfaces (7 stories)
+
+Stories 6.1–6.7: Python API, quickstart notebook, advanced notebook, static GUI prototype, backend wiring, export actions, error UX.
+
+### Epic 7 — Validation and Pilot (5 stories)
+
+Stories 7.1–7.5: Benchmark validation, memory limits, CI quality gates, pilot run, Phase 1 exit checklist.
+
+### Epic 8 — OpenFisca Integration Spike (2 stories)
+
+Stories 8.1–8.2: E2E integration spike, scale validation (100k population).
+
+### Epic 9 — OpenFisca Compatibility (4 stories)
+
+Stories 9.2–9.5: Multi-entity output arrays, variable periodicity, population 4-entity format, reference test suite.
+
+### Epic 10 — Template Refactoring (2 stories)
+
+Stories 10.1–10.2: Rename parameters to policy, infer policy type from parameters class.
+
+### Epic 11 — Population Generation (8 stories)
+
+Stories 11.1–11.8: DataSourceLoader protocol, INSEE/Eurostat/ADEME/SDES loaders, merge methods (uniform, IPF, conditional sampling), population pipeline, validation against marginals, French household example.
+
+### Epic 12 — Policy Portfolios (5 stories)
+
+Stories 12.1–12.5: PolicyPortfolio dataclass, compatibility validation, orchestrator extension, registry versioning, multi-portfolio comparison notebook.
+
+### Epic 13 — Custom Templates (4 stories)
+
+Stories 13.1–13.4: Custom template API, vehicle malus template, energy poverty aid template, portfolio validation + notebook.
+
+### Epic 14 — Discrete Choice Modeling (7 stories)
+
+Stories 14.1–14.7: DiscreteChoiceStep, conditional logit, vehicle/heating domains, eligibility filtering, panel output extension, 10-year behavioral notebook.
+
+### Epic 15 — Calibration (5 stories)
+
+Stories 15.1–15.5: Calibration target format, CalibrationEngine, holdout validation, manifest integration, calibration workflow notebook.
+
+### Epic 16 — Replication Packages (4 stories)
+
+Stories 16.1–16.4: Package export, import/reproduction, provenance inclusion, replication workflow notebook.
+
+### Epic 17 — No-Code GUI (8 stories)
+
+Stories 17.1–17.8: Data fusion workbench, portfolio designer, simulation runner with persistence, comparison dashboard, behavioral decision viewer, year schedule editor, result persistence and cache-disk loading, code review/refactoring.
+
+---
+
+## Retrospectives
+
+Located in `_bmad-output/implementation-artifacts/retrospectives/`:
+
+| Retrospective | Epic | Date |
+| ------------- | ---- | ---- |
+| `epic-9-retro-20260302.md` | Epic 9 — OpenFisca Compatibility | 2026-03-02 |
+| `epic-15-retro-20260307.md` | Epic 15 — Calibration | 2026-03-07 |
+| `epic-16-retro-20260307.md` | Epic 16 — Replication Packages | 2026-03-07 |
+| `epic-17-retro-20260308.md` | Epic 17 — No-Code GUI | 2026-03-08 |
+
+Additional retrospective: `phase-1-retro-2026-02-28.md` (Phase 1 overall).
+
+---
+
+## Brainstorming Sessions
+
+Located in `_bmad-output/brainstorming/`:
+
+| Session | Date | Topic |
+| ------- | ---- | ----- |
+| `brainstorming-session-2026-02-23.md` | 2026-02-23 | Initial project ideation |
+| `brainstorming-session-2026-02-25.md` | 2026-02-25 | OpenFisca pivot strategy |
+| `brainstorming-session-2026-02-27.md` | 2026-02-27 | Phase 2 features |
+| `brainstorming-session-2026-03-03-1300.md` | 2026-03-03 | Advanced features scoping |
+
+---
+
+## Other Artifacts
+
+| Directory | Contents |
+| --------- | -------- |
+| `_bmad-output/branding/` | Brand identity and visual assets |
+| `_bmad-output/communication/` | Communication deliverables |
+| `_bmad-output/presentations/` | Presentation materials |
+| `_bmad-output/website-content/` | Website copy and content |
+| `_bmad-output/roadmap/` | Roadmap documents |
+| `_bmad-output/test-artifacts/` | Test-related artifacts |
+
+---
+
+## Docs Directory
+
+Located in `docs/` (generated by Document Project workflow):
+
+| File | Purpose |
+| ---- | ------- |
+| `index.md` | Master documentation index |
+| `project-overview.md` | Project summary and scale |
+| `architecture.md` | System design and patterns |
+| `source-tree-analysis.md` | Annotated directory structure |
+| `development-guide.md` | Setup, commands, conventions |
+| `deployment-guide.md` | Docker, Kamal, CI/CD |
+| `planning-artifacts-inventory.md` | This document |
+| `project-context.md` | AI project context rules |
+| `prd.md` | Product requirements (copy) |
+| `ux-design-specification.md` | UX specification (copy) |
+| `epics.md` | Epic breakdown (copy) |
+| `phase-1-exit-checklist.md` | Phase 1 exit criteria |
+| `pilot-checklist.md` | Pilot run checklist |
+| `compatibility.md` | OpenFisca compatibility notes |
