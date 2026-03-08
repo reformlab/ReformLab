@@ -5,15 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-NOTEBOOK_PATH = (
-    Path(__file__).resolve().parents[2]
-    / "notebooks"
-    / "guides"
-    / "10_calibration_workflow.ipynb"
-)
-CI_WORKFLOW_PATH = (
-    Path(__file__).resolve().parents[2] / ".github" / "workflows" / "ci.yml"
-)
+NOTEBOOK_PATH = Path(__file__).resolve().parents[2] / "notebooks" / "guides" / "10_calibration_workflow.ipynb"
+CI_WORKFLOW_PATH = Path(__file__).resolve().parents[2] / ".github" / "workflows" / "ci.yml"
 
 
 def _load_notebook() -> dict[str, object]:
@@ -104,7 +97,4 @@ def test_key_api_calls() -> None:
 def test_ci_includes_notebook() -> None:
     """CI workflow includes nbmake execution of this notebook."""
     ci_workflow = CI_WORKFLOW_PATH.read_text(encoding="utf-8")
-    assert (
-        "uv run pytest --nbmake notebooks/guides/10_calibration_workflow.ipynb -v"
-        in ci_workflow
-    )
+    assert "uv run pytest --nbmake notebooks/guides/10_calibration_workflow.ipynb -v" in ci_workflow

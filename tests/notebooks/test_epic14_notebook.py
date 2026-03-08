@@ -10,14 +10,9 @@ import json
 from pathlib import Path
 
 NOTEBOOK_PATH = (
-    Path(__file__).resolve().parents[2]
-    / "notebooks"
-    / "guides"
-    / "08_discrete_choice_model.ipynb"
+    Path(__file__).resolve().parents[2] / "notebooks" / "guides" / "08_discrete_choice_model.ipynb"
 )
-CI_WORKFLOW_PATH = (
-    Path(__file__).resolve().parents[2] / ".github" / "workflows" / "ci.yml"
-)
+CI_WORKFLOW_PATH = Path(__file__).resolve().parents[2] / ".github" / "workflows" / "ci.yml"
 
 
 def _load_notebook() -> dict[str, object]:
@@ -116,7 +111,7 @@ def test_behavioral_response_logic_is_wired_correctly() -> None:
     assert "vehicle_emissions_gkm" in source
     assert "heating_emissions_kgco2_kwh" in source
     assert "energy_consumption" in source
-    assert "current_population = state.data[\"population_data\"]" in source
+    assert 'current_population = state.data["population_data"]' in source
     assert "COMPUTATION_RESULT_KEY" in source
     assert "ComputationStep(" not in source
     assert "orchestrator_rerun.run()" in source
@@ -126,7 +121,4 @@ def test_behavioral_response_logic_is_wired_correctly() -> None:
 def test_ci_includes_notebook() -> None:
     """CI workflow includes nbmake execution of this notebook."""
     ci_workflow = CI_WORKFLOW_PATH.read_text(encoding="utf-8")
-    assert (
-        "uv run pytest --nbmake notebooks/guides/08_discrete_choice_model.ipynb -v"
-        in ci_workflow
-    )
+    assert "uv run pytest --nbmake notebooks/guides/08_discrete_choice_model.ipynb -v" in ci_workflow
