@@ -1,8 +1,8 @@
-"""Results CRUD routes — Story 17.3.
+"""Results CRUD routes — Story 17.3, Story 17.7.
 
 Exposes saved simulation run metadata via REST endpoints. Full SimulationResult
-objects are served from the in-memory ResultCache when available; metadata-only
-responses are returned when the cache has been evicted.
+objects are served from the in-memory ResultCache when available; on cache miss,
+panel data is loaded from disk (panel.parquet) when present (Story 17.7).
 
 Endpoint table:
     GET    /api/results                       — list all saved results (metadata)
@@ -11,7 +11,7 @@ Endpoint table:
     GET    /api/results/{run_id}/export/csv   — download panel data as CSV
     GET    /api/results/{run_id}/export/parquet — download panel data as Parquet
 
-References: Story 17.3, AC-2, AC-3, AC-4
+References: Story 17.3, Story 17.7, AC-2, AC-3, AC-4
 """
 
 from __future__ import annotations
@@ -59,10 +59,11 @@ def _metadata_to_list_item(
 def _metadata_to_detail(
     meta: ResultMetadata,
     cache: ResultCache,
+    store: ResultStore,
 ) -> ResultDetailResponse:
-    """Build a ResultDetailResponse, enriching with cache data if available."""
-    sim_result = cache.get(meta.run_id)
-    data_available = sim_result is not None
+    """Build a ResultDetailResponse, enriching with cache/disk data if available."""
+    sim_result = cache.get_or_load(meta.run_id, store)
+    data_available = sim_result is not None and sim_result.panel_output is not None
 
     indicators: dict[str, Any] | None = None
     columns: list[str] | None = None
@@ -110,12 +111,22 @@ async def list_results(
     cache: ResultCache = Depends(get_result_cache),
     store: ResultStore = Depends(get_result_store),
 ) -> list[ResultListItem]:
-    """List all saved simulation results in reverse chronological order."""
+    """List all saved simulation results in reverse chronological order.
+
+    data_available is True for any run that has a panel.parquet on disk or
+    a SimulationResult with panel_output in the in-memory cache.
+    Avoids loading panels into memory for listing (uses has_panel() only).
+    """
     items = store.list_results()
-    return [
-        _metadata_to_list_item(meta, data_available=cache.get(meta.run_id) is not None)
-        for meta in items
-    ]
+    result_items = []
+    for meta in items:
+        cache_result = cache.get(meta.run_id)
+        data_available = (
+            store.has_panel(meta.run_id)
+            or (cache_result is not None and cache_result.panel_output is not None)
+        )
+        result_items.append(_metadata_to_list_item(meta, data_available=data_available))
+    return result_items
 
 
 # ---------------------------------------------------------------------------
@@ -131,9 +142,9 @@ async def get_result(
 ) -> ResultDetailResponse:
     """Return detail for a single simulation result.
 
-    If the SimulationResult is still in the in-memory cache, full data
-    (indicators, columns) is included. Otherwise metadata-only with
-    data_available=False.
+    If the SimulationResult is in cache or on disk, full data (indicators,
+    columns) is included with data_available=True. Otherwise metadata-only
+    with data_available=False.
     """
     try:
         meta = store.get_metadata(run_id)
@@ -155,7 +166,7 @@ async def get_result(
                 "fix": "Use a valid run ID obtained from POST /api/runs",
             },
         )
-    return _metadata_to_detail(meta, cache)
+    return _metadata_to_detail(meta, cache, store)
 
 
 # ---------------------------------------------------------------------------
@@ -208,7 +219,7 @@ async def export_csv(
     """Stream the panel data table as a CSV download.
 
     Returns 404 if run_id not found in persistent store.
-    Returns 409 if result has been evicted from the in-memory cache.
+    Returns 409 if result has no panel data (failed run or pre-17.7 run).
     """
     # Verify run exists in persistent store
     try:
@@ -232,7 +243,7 @@ async def export_csv(
             },
         )
 
-    sim_result = cache.get(run_id)
+    sim_result = cache.get_or_load(run_id, store)
     if sim_result is None or sim_result.panel_output is None:
         raise HTTPException(
             status_code=409,
@@ -270,7 +281,7 @@ async def export_parquet(
     """Stream the panel data table as a Parquet download.
 
     Returns 404 if run_id not found in persistent store.
-    Returns 409 if result has been evicted from the in-memory cache.
+    Returns 409 if result has no panel data (failed run or pre-17.7 run).
     """
     # Verify run exists in persistent store
     try:
@@ -294,7 +305,7 @@ async def export_parquet(
             },
         )
 
-    sim_result = cache.get(run_id)
+    sim_result = cache.get_or_load(run_id, store)
     if sim_result is None or sim_result.panel_output is None:
         raise HTTPException(
             status_code=409,

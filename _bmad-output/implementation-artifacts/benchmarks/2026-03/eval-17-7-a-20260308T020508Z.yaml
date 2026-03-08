@@ -1,0 +1,120 @@
+record_id: ace4b349-bf4f-4e4f-9d56-8fe183bcf78c
+created_at: '2026-03-08T02:05:08.064537+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 17
+  story_num: 7
+  title: Story 17.7
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: true
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: gemini
+  model: gemini-2.5-flash
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-03-08T02:01:45.354740Z'
+  end_time: '2026-03-08T02:02:24.139740Z'
+  duration_ms: 38785
+  input_tokens: 0
+  output_tokens: 2184
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 8736
+  heading_count: 24
+  list_depth_max: 2
+  code_block_count: 0
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: -4.2'
+  - 🎯 Ruthless Story Validation 17.7
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: -4.2 → EXCELLENT'
+  - 🚨 Critical Issues (Must Fix)
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Clarify Atomic Write Purpose
+  - 2. Explicit Logging Reminder for Persistence
+  - ✨ Optimizations (Nice to Have)
+  - 🤖 LLM Optimization Improvements
+  - 1. Condense Repetitive Dev Note Sections
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.33
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 2758b8806caf
+findings:
+  total_count: 3
+  by_severity:
+    critical: 0
+    major: 0
+    minor: 2
+    nit: 1
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 0
+    completeness: 1
+    clarity: 2
+    testability: 0
+  has_fix_count: 3
+  has_location_count: 3
+  has_evidence_count: 3
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 3
+  confidence_phrases_count: 2
+linguistic:
+  avg_sentence_length: 23.70212765957447
+  vocabulary_richness: 0.44703770197486536
+  flesch_reading_ease: 15.53232887597963
+  vague_terms_count: 1
+  formality_score: 0.8
+  sentiment: positive
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.8
+  evidence_quality: 0.85
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: true
+    has_security_impact: false
+    requires_migration: false

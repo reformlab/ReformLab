@@ -1,0 +1,133 @@
+record_id: b049d66b-3127-4b91-8b74-d25ac8f1d5f2
+created_at: '2026-03-08T02:05:08.077674+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 17
+  story_num: 7
+  title: Story 17.7
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true
+evaluator:
+  provider: codex
+  model: gpt-5.3-codex
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-03-08T02:01:45.354740Z'
+  end_time: '2026-03-08T02:04:20.305740Z'
+  duration_ms: 154951
+  input_tokens: 0
+  output_tokens: 4110
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 16441
+  heading_count: 37
+  list_depth_max: 3
+  code_block_count: 8
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 11.6'
+  - 🎯 Ruthless Story Validation 17.7
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 11.6 → REJECT'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Manifest Contract Is Contradictory
+  - 2. `data_available` Rule Can Be Wrong
+  - 3. Corrupt Artifact Handling Missing
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Add Endpoint Behavior Matrix Post-Restart
+  - 2. Define Legacy Run Policy Explicitly
+  - 3. Specify Manifest Integrity Validation Behavior
+  - 4. Add Restart Integration Tests for Multi-Run Comparison
+  - 5. Add Structured Logging Requirements for Disk Fallback
+  - 6. Clarify Failure-Tolerant Save Semantics in ACs
+  - ✨ Optimizations (Nice to Have)
+  - 1. Use One Shared Store/Cache Lookup Helper Across Routes
+  - 2. Split Story into Two Deliverables
+  - 3. Add Cold-Load Performance Smoke Test
+  - 🤖 LLM Optimization Improvements
+  - 1. Remove Contradictory Method Contracts
+  - 2. Convert Broad AC-4 Into Endpoint Assertions
+  - 3. Collapse Repeated “replace cache.get” Tasks
+  - 4. Promote “Must” Constraints to a Short Guardrail Block
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.33
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 2758b8806caf
+findings:
+  total_count: 16
+  by_severity:
+    critical: 3
+    major: 8
+    minor: 5
+    nit: 0
+  by_category:
+    security: 0
+    performance: 1
+    correctness: 4
+    completeness: 7
+    clarity: 4
+    testability: 3
+  has_fix_count: 16
+  has_location_count: 14
+  has_evidence_count: 14
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 5
+  confidence_phrases_count: 4
+linguistic:
+  avg_sentence_length: 17.39830508474576
+  vocabulary_richness: 0.32489040428641014
+  flesch_reading_ease: -12.198000000000008
+  vague_terms_count: 0
+  formality_score: 0.78
+  sentiment: mixed
+quality:
+  actionable_ratio: 0.94
+  specificity_score: 0.75
+  evidence_quality: 0.81
+  follows_template: true
+  internal_consistency: 0.95
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true

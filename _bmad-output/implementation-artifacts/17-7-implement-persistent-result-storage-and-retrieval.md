@@ -2,7 +2,7 @@
 
 # Story 17.7: Implement Persistent Result Storage and Retrieval
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -44,7 +44,7 @@ Story 17.7 closes this gap by **persisting panel data (Parquet) and manifest (JS
 
 ## Acceptance Criteria
 
-1. **AC-1: Panel data persisted on run completion** — Given a completed simulation, when results are stored, then the panel data table is written as a Parquet file to `~/.reformlab/results/{run_id}/panel.parquet` alongside the existing `metadata.json`. Failed runs (no panel_output) do NOT write a panel file.
+1. **AC-1: Panel data persisted on run completion** — Given a completed simulation, when results are stored, then the panel data table is written as a Parquet file to `~/.reformlab/results/{run_id}/panel.parquet` alongside the existing `metadata.json`. Failed runs (no panel_output) do NOT write a panel file. Persistence failures (I/O errors writing panel or manifest) must NOT propagate to the API response — the simulation result is returned to the client successfully regardless of whether disk persistence succeeds.
 
 2. **AC-2: Manifest persisted on run completion** — Given a completed simulation with a manifest, when results are stored, then the run manifest is written as JSON to `~/.reformlab/results/{run_id}/manifest.json`.
 
@@ -60,59 +60,61 @@ Story 17.7 closes this gap by **persisting panel data (Parquet) and manifest (JS
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Extend ResultStore with panel and manifest persistence (AC: 1, 2)
-  - [ ] 1.1: Add `save_panel(run_id, panel_output)` method to `ResultStore` — writes `panel.parquet` atomically (write to `.panel.parquet.tmp`, then `os.replace()`). Uses `PanelOutput.to_parquet()`.
-  - [ ] 1.2: Add `save_manifest(run_id, manifest_json)` method to `ResultStore` — writes `manifest.json` atomically. Accepts the JSON string from `RunManifest.to_json()`.
-  - [ ] 1.3: Add `has_panel(run_id)` method — returns `bool` indicating whether `panel.parquet` exists.
-  - [ ] 1.4: Add `load_panel(run_id)` method — reads `panel.parquet` via `pyarrow.parquet.read_table()`, returns `PanelOutput` with metadata from `panel_output.metadata` (stored in Parquet schema metadata). Raises `ResultNotFound` if file missing.
-  - [ ] 1.5: Add `load_manifest(run_id)` method — reads `manifest.json`, returns parsed JSON dict. Raises `ResultNotFound` if file missing.
+- [x] Task 1: Extend ResultStore with panel and manifest persistence (AC: 1, 2)
+  - [x] 1.1: Add `save_panel(run_id, panel_output)` method to `ResultStore` — writes `panel.parquet` atomically (write to `.panel.parquet.tmp`, then `os.replace()`). Uses `PanelOutput.to_parquet()`.
+  - [x] 1.2: Add `save_manifest(run_id, manifest_json)` method to `ResultStore` — writes `manifest.json` atomically. Accepts the JSON string from `RunManifest.to_json()`.
+  - [x] 1.3: Add `has_panel(run_id)` method — returns `bool` indicating whether `panel.parquet` exists.
+  - [x] 1.4: Add `load_panel(run_id)` method — reads `panel.parquet` via `pyarrow.parquet.read_table()`, returns `PanelOutput` with metadata from `panel_output.metadata` (stored in Parquet schema metadata). Raises `ResultNotFound` if file missing. Raises `ResultStoreError` if the file is corrupt or unreadable (PyArrow I/O error).
+  - [x] 1.5: Add `load_manifest(run_id)` method — reads `manifest.json` as a string and calls `RunManifest.from_json()` to return a `RunManifest` instance. Raises `ResultNotFound` if file missing. Raises `ResultStoreError` if the file is unreadable or `RunManifest.from_json()` fails (e.g., corrupt JSON or schema mismatch).
 
-- [ ] Task 2: Persist panel and manifest during simulation run (AC: 1, 2)
-  - [ ] 2.1: In `runs.py` `run_simulation()`, after `cache.store(run_id, result)` succeeds and `result.panel_output` is not None, call `store.save_panel(run_id, result.panel_output)` and `store.save_manifest(run_id, result.manifest.to_json())`. Wrap in try/except like metadata save — failure must not mask run result.
-  - [ ] 2.2: Add `store` dependency to `run_simulation()` via `Depends(get_result_store)` (currently only accessed via `get_result_store()` in the finally block — refactor to use consistent DI pattern).
+- [x] Task 2: Persist panel and manifest during simulation run (AC: 1, 2)
+  - [x] 2.1: In `runs.py` `run_simulation()`, after `cache.store(run_id, result)` succeeds and `result.panel_output` is not None, call `store.save_panel(run_id, result.panel_output)` and `store.save_manifest(run_id, result.manifest.to_json())`. Wrap in try/except like metadata save — failure must not mask run result.
+  - [x] 2.2: Add `store` dependency to `run_simulation()` via `Depends(get_result_store)` (currently only accessed via `get_result_store()` in the finally block — refactor to use consistent DI pattern).
 
-- [ ] Task 3: Implement disk-backed loading on cache miss (AC: 3, 4)
-  - [ ] 3.1: Add `load_from_disk(run_id)` method to `ResultStore` — combines `load_panel()` and `load_manifest()` to reconstruct a minimal `SimulationResult` (with `panel_output` and manifest, `yearly_states={}`, `success=True`). Returns `None` if panel file doesn't exist.
-  - [ ] 3.2: Add `get_or_load(run_id, store)` method to `ResultCache` — checks cache first; on miss, calls `store.load_from_disk(run_id)`, stores in cache, and returns the result. Returns `None` only if neither cache nor disk has the data.
-  - [ ] 3.3: Update `results.py` `_metadata_to_detail()` — replace `cache.get(meta.run_id)` with `cache.get_or_load(meta.run_id, store)` so detail view loads from disk on cache miss.
-  - [ ] 3.4: Update `results.py` `export_csv()` and `export_parquet()` — replace `cache.get(run_id)` with `cache.get_or_load(run_id, store)`. The 409 branch remains for runs that truly have no panel data (failed runs).
-  - [ ] 3.5: Update `indicators.py` `compute_indicator()` and `compute_comparison()` — replace `cache.get()` with `cache.get_or_load()`. Pass `store` dependency (already injected via `Depends`).
-  - [ ] 3.6: Update `exports.py` `_lookup_run()` — replace `cache.get()` with `cache.get_or_load()`.
-  - [ ] 3.7: Update `decisions.py` — replace `cache.get()` with `cache.get_or_load()`.
-  - [ ] 3.8: Update `indicators.py` `compare_portfolio_runs()` — replace `cache.get()` with `cache.get_or_load()`.
+- [x] Task 3: Implement disk-backed loading on cache miss (AC: 3, 4)
+  - [x] 3.1: Add `load_from_disk(run_id)` method to `ResultStore` — combines `load_panel()` and `load_manifest()` to reconstruct a minimal `SimulationResult` (with `panel_output` and manifest, `yearly_states={}`, `success=True`). Returns `None` if panel file doesn't exist. If `load_panel()` raises `ResultStoreError` (corrupt file), log a warning (`event=panel_load_corrupt`) and return `None` — treat corrupt disk artifacts the same as missing.
+  - [x] 3.2: Add `get_or_load(run_id, store)` method to `ResultCache` — checks cache first; on miss, calls `store.load_from_disk(run_id)`, stores in cache, and returns the result. Returns `None` only if neither cache nor disk has the data.
+  - [x] 3.3: Update `results.py` `_metadata_to_detail()` — replace `cache.get(meta.run_id)` with `cache.get_or_load(meta.run_id, store)` so detail view loads from disk on cache miss.
+  - [x] 3.4: Update `results.py` `export_csv()` and `export_parquet()` — replace `cache.get(run_id)` with `cache.get_or_load(run_id, store)`. The 409 branch remains for runs that truly have no panel data (failed runs).
+  - [x] 3.5: Update `indicators.py` `compute_indicator()` and `compute_comparison()` — replace `cache.get()` with `cache.get_or_load()`. Pass `store` dependency (already injected via `Depends`).
+  - [x] 3.6: Update `exports.py` `_lookup_run()` — replace `cache.get()` with `cache.get_or_load()`.
+  - [x] 3.7: Update `decisions.py` — replace `cache.get()` with `cache.get_or_load()`.
+  - [x] 3.8: Update `indicators.py` `compare_portfolio_runs()` — replace `cache.get()` with `cache.get_or_load()`.
 
-- [ ] Task 4: Update listing to reflect disk availability (AC: 5)
-  - [ ] 4.1: Update `results.py` `list_results()` — for each result, check `store.has_panel(meta.run_id) or cache.get(meta.run_id) is not None` to set `data_available`. This avoids loading every panel into memory just for listing.
+- [x] Task 4: Update listing to reflect disk availability (AC: 5)
+  - [x] 4.1: Update `results.py` `list_results()` — for each result, compute `data_available` as `store.has_panel(meta.run_id) or (cache_result is not None and cache_result.panel_output is not None)` where `cache_result = cache.get(meta.run_id)`. This avoids loading every panel into memory just for listing, and correctly handles failed runs whose cache entry has `panel_output=None`.
 
-- [ ] Task 5: Write comprehensive tests (AC: 7)
-  - [ ] 5.1: Create `tests/server/test_result_store_persistence.py` — unit tests for new `ResultStore` methods:
+- [x] Task 5: Write comprehensive tests (AC: 7)
+  - [x] 5.1: Create `tests/server/test_result_store_persistence.py` — unit tests for new `ResultStore` methods:
     - `save_panel()` + `load_panel()` round-trip (Parquet content intact)
     - `save_manifest()` + `load_manifest()` round-trip (JSON content intact)
     - `has_panel()` returns `True`/`False` correctly
     - `load_from_disk()` returns `SimulationResult` with correct panel data
     - `load_panel()` raises `ResultNotFound` when file missing
+    - `load_panel()` raises `ResultStoreError` when file is corrupt (write invalid bytes, then call `load_panel()`)
+    - `load_from_disk()` returns `None` when `panel.parquet` is corrupt (does not propagate exception)
     - Atomic write safety (`.tmp` file cleaned up)
-  - [ ] 5.2: Create `tests/server/test_cache_disk_loading.py` — integration tests for disk-backed cache:
+  - [x] 5.2: Create `tests/server/test_cache_disk_loading.py` — integration tests for disk-backed cache:
     - `get_or_load()` returns cached result when in cache
     - `get_or_load()` loads from disk when not in cache
     - `get_or_load()` returns `None` when neither cache nor disk has data
     - Disk-loaded result is subsequently cached (second call hits cache)
     - Result listing shows `data_available: true` for disk-backed runs
-  - [ ] 5.3: Add to `tests/server/test_results.py` or new file — API integration tests:
+  - [x] 5.3: Add to `tests/server/test_results.py` or new file — API integration tests:
     - `GET /api/results/{run_id}` returns `data_available: true` for disk-backed run
     - `GET /api/results/{run_id}/export/csv` returns 200 for disk-backed run
     - `GET /api/results/{run_id}/export/parquet` returns 200 for disk-backed run
     - `POST /api/indicators/distributional` returns 200 for disk-backed run
     - `POST /api/comparison` returns 200 for disk-backed runs
     - `GET /api/results` listing shows `data_available: true` for runs with panel on disk
-  - [ ] 5.4: Regression tests — existing tests in `test_results.py`, `test_indicators_integration.py`, `test_exports_integration.py`, `test_runs.py` must continue to pass unchanged.
+  - [x] 5.4: Regression tests — existing tests in `test_results.py`, `test_indicators_integration.py`, `test_exports_integration.py`, `test_runs.py` must continue to pass unchanged.
 
-- [ ] Task 6: Run quality checks (AC: 7)
-  - [ ] 6.1: `uv run ruff check src/ tests/` — 0 errors
-  - [ ] 6.2: `uv run mypy src/` — 0 errors
-  - [ ] 6.3: `uv run pytest tests/` — all pass
-  - [ ] 6.4: `npm run typecheck && npm run lint` — 0 errors
-  - [ ] 6.5: `npm test` — all pass
+- [x] Task 6: Run quality checks (AC: 7)
+  - [x] 6.1: `uv run ruff check src/ tests/` — 0 errors
+  - [x] 6.2: `uv run mypy src/` — 0 errors
+  - [x] 6.3: `uv run pytest tests/` — all pass (3143 passed, 1 skipped)
+  - [x] 6.4: `npm run typecheck && npm run lint` — 0 errors (4 pre-existing fast-refresh warnings)
+  - [x] 6.5: `npm test` — 211 passed
 
 ## Dev Notes
 
@@ -131,7 +133,11 @@ Add these to `src/reformlab/server/result_store.py`:
 
 ```python
 def save_panel(self, run_id: str, panel_output: PanelOutput) -> None:
-    """Atomically persist panel data as Parquet."""
+    """Atomically persist panel data as Parquet.
+
+    Writes to a temp file then renames — prevents a crash mid-write from
+    leaving a corrupt panel.parquet that would be silently served on reload.
+    """
     run_dir = self._resolve_safe(run_id)
     run_dir.mkdir(parents=True, exist_ok=True)
     target = run_dir / "panel.parquet"
@@ -157,8 +163,8 @@ def load_panel(self, run_id: str) -> PanelOutput:
     """Load panel data from disk. Raises ResultNotFound if missing."""
     ...
 
-def load_manifest(self, run_id: str) -> dict[str, Any]:
-    """Load manifest JSON from disk. Raises ResultNotFound if missing."""
+def load_manifest(self, run_id: str) -> RunManifest:
+    """Load manifest from disk as RunManifest. Raises ResultNotFound if missing, ResultStoreError if corrupt."""
     ...
 
 def load_from_disk(self, run_id: str) -> SimulationResult | None:
@@ -177,10 +183,12 @@ def get_or_load(self, run_id: str, store: ResultStore) -> SimulationResult | Non
     if result is not None:
         return result
     # Try disk
-    from reformlab.server.result_store import ResultStore as RS  # avoid circular
     disk_result = store.load_from_disk(run_id)
     if disk_result is not None:
+        logger.info("event=cache_miss_disk_load run_id=%s", run_id)
         self.store(run_id, disk_result)
+    else:
+        logger.debug("event=disk_load_miss run_id=%s", run_id)
     return disk_result
 ```
 
@@ -213,8 +221,11 @@ def load_from_disk(self, run_id: str) -> SimulationResult | None:
         return None
     panel = self.load_panel(run_id)
 
-    # Load manifest if available, otherwise create a minimal mock
-    manifest = self._load_or_mock_manifest(run_id)
+    # Load manifest if available, otherwise fall back to a minimal mock manifest
+    try:
+        manifest = self.load_manifest(run_id)
+    except (ResultNotFound, ResultStoreError):
+        manifest = _make_minimal_manifest(metadata)  # fallback for pre-17.7 runs or corrupt manifest
 
     metadata = self.get_metadata(run_id)
 
@@ -233,9 +244,7 @@ def load_from_disk(self, run_id: str) -> SimulationResult | None:
 SimulationResult(success, scenario_id, yearly_states, panel_output, manifest, metadata)
 ```
 
-The `manifest` field expects a `RunManifest` instance. When loading from disk:
-- If `manifest.json` exists: parse JSON and reconstruct `RunManifest` via `RunManifest.from_json()` (class method exists at `manifest.py:372`).
-- If `manifest.json` does not exist (old runs before this story): create a minimal mock manifest using metadata fields.
+The `manifest` field expects a `RunManifest` instance. `load_manifest()` returns a `RunManifest` directly via `RunManifest.from_json()` (class method at `manifest.py:372`). For old runs (pre-17.7) without `manifest.json`, or if the file is corrupt, `load_from_disk()` falls back to `_make_minimal_manifest(metadata)` — a module-level helper that constructs a minimal `RunManifest` from the `ResultMetadata` fields. Define this helper alongside `load_from_disk`.
 
 ### runs.py — Saving Panel and Manifest
 
@@ -387,6 +396,7 @@ def client_with_deps(tmp_store, empty_cache):
 | Storing panel metadata loss through Parquet round-trip | Encode `PanelOutput.metadata` as JSON string in Parquet schema metadata |
 | `get_or_load` causing LRU eviction storm on listing | Only call `get_or_load()` for detail/export/indicator requests — listing uses `has_panel()` |
 | Importing `ResultStore` at top level in `dependencies.py` for `get_or_load` | Pass `store` as parameter to `get_or_load()` rather than importing directly |
+| Unhandled `ResultStoreError` (corrupt Parquet/JSON) propagating as 500 | Catch `ResultStoreError` in `load_from_disk()` — log `event=panel_load_corrupt` warning, return `None` |
 
 ### Existing Tests to NOT Break
 
@@ -447,11 +457,23 @@ All existing tests that seed the `ResultCache` directly will continue to work be
 
 ### Agent Model Used
 
-(to be filled by dev agent)
+claude-sonnet-4-6
 
 ### Debug Log References
 
+None — implementation was straightforward with no blocking issues.
+
 ### Completion Notes List
+
+- AC-1/AC-2: Panel and manifest written atomically (`.tmp` → rename) in `runs.py` `finally` block, guarded by `if result.panel_output is not None`. Each save wrapped in independent `try/except` to prevent masking run result.
+- AC-3/AC-4: `ResultCache.get_or_load()` checks cache first, then calls `ResultStore.load_from_disk()` on miss. All 7 routes updated (results, exports, indicators×4, decisions).
+- AC-5: `list_results()` uses `store.has_panel()` (filesystem check only — no panel loaded into memory) OR cache hit with non-None panel_output.
+- AC-6: Already satisfied by `shutil.rmtree()` which removes the entire run directory including panel.parquet and manifest.json.
+- `PanelOutput.metadata` preserved through Parquet round-trip via Parquet schema metadata key `reformlab_panel_metadata` (JSON-encoded).
+- Missing/corrupt `manifest.json` handled gracefully via `_make_minimal_manifest()` fallback — disk-loaded results always have a valid `RunManifest` instance.
+- Corrupt `panel.parquet` handled in `load_from_disk()` — catches `ResultStoreError`, logs `event=panel_load_corrupt`, returns `None`.
+- mypy type annotation fix: `schema_metadata: dict[str, str | bytes]` instead of inferred `dict[str, str]`.
+- 39 new tests added (24 unit + 15 integration); 3143 total passing; 0 regressions.
 
 ### File List
 

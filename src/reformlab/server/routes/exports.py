@@ -72,7 +72,7 @@ def _lookup_run(
             },
         )
 
-    result = cache.get(run_id)
+    result = cache.get_or_load(run_id, store)
     if result is None or result.panel_output is None:
         raise HTTPException(
             status_code=409,

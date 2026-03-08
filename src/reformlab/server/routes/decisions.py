@@ -83,8 +83,8 @@ async def get_decision_summary(
             },
         )
 
-    # 2. Check ResultCache (409 if evicted or panel_output is None)
-    sim_result = cache.get(body.run_id)
+    # 2. Check cache or disk (409 if no panel data available)
+    sim_result = cache.get_or_load(body.run_id, store)
     if sim_result is None or sim_result.panel_output is None:
         raise HTTPException(
             status_code=409,

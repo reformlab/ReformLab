@@ -86,8 +86,8 @@ async def compute_indicator(
             },
         )
 
-    # Step 2: Check ResultCache (409 if in store but evicted or panel_output is None)
-    result = cache.get(body.run_id)
+    # Step 2: Check cache or disk (409 if no panel data)
+    result = cache.get_or_load(body.run_id, store)
     if result is None or result.panel_output is None:
         raise HTTPException(
             status_code=409,
@@ -211,7 +211,7 @@ async def compare_portfolio_runs(
             },
         )
 
-    # 2. Resolve each run from store and cache
+    # 2. Resolve each run from store and cache/disk
     sim_results = []
     for run_id in body.run_ids:
         # Check store first (404 if completely unknown)
@@ -227,8 +227,8 @@ async def compare_portfolio_runs(
                 },
             )
 
-        # Check cache (409 if in store but evicted from cache)
-        sim_result = cache.get(run_id)
+        # Check cache or disk (409 if no panel data available)
+        sim_result = cache.get_or_load(run_id, store)
         if sim_result is None or sim_result.panel_output is None:
             raise HTTPException(
                 status_code=409,
@@ -347,7 +347,7 @@ async def compute_comparison(
             },
         )
 
-    baseline = cache.get(body.baseline_run_id)
+    baseline = cache.get_or_load(body.baseline_run_id, store)
     if baseline is None or baseline.panel_output is None:
         raise HTTPException(
             status_code=409,
@@ -371,7 +371,7 @@ async def compute_comparison(
             },
         )
 
-    reform = cache.get(body.reform_run_id)
+    reform = cache.get_or_load(body.reform_run_id, store)
     if reform is None or reform.panel_output is None:
         raise HTTPException(
             status_code=409,

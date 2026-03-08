@@ -1,14 +1,15 @@
 """Persistent result metadata storage for the ReformLab server.
 
-Stores lightweight run metadata on the filesystem so past simulation runs
-are discoverable across server restarts. Full SimulationResult objects
-remain in the in-memory ResultCache; this module persists only the metadata
-needed for listing and identification.
+Stores run metadata, panel data (Parquet), and manifest (JSON) on the
+filesystem so past simulation runs are discoverable and loadable across
+server restarts.
 
 Storage layout:
     ~/.reformlab/results/{run_id}/metadata.json
+    ~/.reformlab/results/{run_id}/panel.parquet   (Story 17.7)
+    ~/.reformlab/results/{run_id}/manifest.json   (Story 17.7)
 
-References: Story 17.3, AC-2, AC-3
+References: Story 17.3, Story 17.7, AC-2, AC-3
 """
 
 from __future__ import annotations
@@ -19,6 +20,12 @@ import os
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from reformlab.governance.manifest import RunManifest
+    from reformlab.interfaces.api import SimulationResult
+    from reformlab.orchestrator.panel import PanelOutput
 
 logger = logging.getLogger(__name__)
 
@@ -204,6 +211,182 @@ class ResultStore:
         return results
 
     # ------------------------------------------------------------------
+    # Panel persistence (Story 17.7)
+    # ------------------------------------------------------------------
+
+    def save_panel(self, run_id: str, panel_output: PanelOutput) -> None:
+        """Atomically persist panel data as Parquet.
+
+        Encodes PanelOutput.metadata as JSON in the Parquet schema metadata
+        so it survives the round-trip. Writes to a temp file then renames
+        to prevent a crash mid-write from leaving a corrupt panel.parquet.
+
+        Args:
+            run_id: Unique run identifier.
+            panel_output: Panel data to persist.
+        """
+        run_dir = self._resolve_safe(run_id)
+        run_dir.mkdir(parents=True, exist_ok=True)
+        target = run_dir / "panel.parquet"
+        tmp = run_dir / ".panel.parquet.tmp"
+        schema_metadata: dict[str, str | bytes] = {
+            "reformlab_panel_metadata": json.dumps(panel_output.metadata)
+        }
+        panel_output.to_parquet(tmp, schema_metadata=schema_metadata)
+        os.replace(tmp, target)
+        logger.info("event=panel_saved run_id=%s", run_id)
+
+    def save_manifest(self, run_id: str, manifest_json: str) -> None:
+        """Atomically persist manifest as JSON.
+
+        Args:
+            run_id: Unique run identifier.
+            manifest_json: Canonical JSON string from RunManifest.to_json().
+        """
+        run_dir = self._resolve_safe(run_id)
+        run_dir.mkdir(parents=True, exist_ok=True)
+        target = run_dir / "manifest.json"
+        tmp = run_dir / ".manifest.json.tmp"
+        tmp.write_text(manifest_json, encoding="utf-8")
+        os.replace(tmp, target)
+        logger.info("event=manifest_saved run_id=%s", run_id)
+
+    def has_panel(self, run_id: str) -> bool:
+        """Return True if panel.parquet exists for this run.
+
+        Only checks filesystem presence — does not load the file.
+
+        Args:
+            run_id: Unique run identifier.
+
+        Returns:
+            True if panel.parquet exists, False otherwise.
+        """
+        try:
+            run_dir = self._resolve_safe(run_id)
+        except ResultStoreError:
+            return False
+        return (run_dir / "panel.parquet").exists()
+
+    # ------------------------------------------------------------------
+    # Panel loading (Story 17.7)
+    # ------------------------------------------------------------------
+
+    def load_panel(self, run_id: str) -> PanelOutput:
+        """Load panel data from disk.
+
+        Reads panel.parquet and reconstructs PanelOutput including metadata
+        stored in the Parquet schema metadata under 'reformlab_panel_metadata'.
+
+        Args:
+            run_id: Unique run identifier.
+
+        Returns:
+            PanelOutput with table and metadata.
+
+        Raises:
+            ResultNotFound: If panel.parquet does not exist.
+            ResultStoreError: If the file is corrupt or unreadable.
+        """
+        import pyarrow.parquet as pq
+
+        from reformlab.orchestrator.panel import PanelOutput
+
+        run_dir = self._resolve_safe(run_id)
+        panel_path = run_dir / "panel.parquet"
+        if not panel_path.exists():
+            raise ResultNotFound(f"No panel.parquet found for run_id={run_id!r}")
+        try:
+            table = pq.read_table(panel_path)
+        except Exception as exc:
+            raise ResultStoreError(
+                f"Failed to read panel.parquet for run_id={run_id!r}: {exc}"
+            ) from exc
+        raw_meta = table.schema.metadata or {}
+        panel_meta_bytes = raw_meta.get(b"reformlab_panel_metadata", b"{}")
+        try:
+            panel_metadata: dict[str, Any] = json.loads(panel_meta_bytes)
+        except (json.JSONDecodeError, ValueError):
+            panel_metadata = {}
+        return PanelOutput(table=table, metadata=panel_metadata)
+
+    def load_manifest(self, run_id: str) -> RunManifest:
+        """Load manifest from disk.
+
+        Args:
+            run_id: Unique run identifier.
+
+        Returns:
+            RunManifest deserialized from manifest.json.
+
+        Raises:
+            ResultNotFound: If manifest.json does not exist.
+            ResultStoreError: If the file is unreadable or JSON is corrupt.
+        """
+        from reformlab.governance.errors import ManifestValidationError
+        from reformlab.governance.manifest import RunManifest
+
+        run_dir = self._resolve_safe(run_id)
+        manifest_path = run_dir / "manifest.json"
+        if not manifest_path.exists():
+            raise ResultNotFound(f"No manifest.json found for run_id={run_id!r}")
+        try:
+            manifest_json = manifest_path.read_text(encoding="utf-8")
+        except OSError as exc:
+            raise ResultStoreError(
+                f"Failed to read manifest.json for run_id={run_id!r}: {exc}"
+            ) from exc
+        try:
+            return RunManifest.from_json(manifest_json)
+        except (ManifestValidationError, Exception) as exc:
+            raise ResultStoreError(
+                f"Corrupt manifest.json for run_id={run_id!r}: {exc}"
+            ) from exc
+
+    def load_from_disk(self, run_id: str) -> SimulationResult | None:
+        """Reconstruct a minimal SimulationResult from disk artifacts.
+
+        Returns None if no panel.parquet exists (failed runs, pre-17.7 runs).
+        If the panel file is corrupt, logs a warning and returns None.
+
+        Args:
+            run_id: Unique run identifier.
+
+        Returns:
+            SimulationResult with panel_output and manifest, or None.
+        """
+        from reformlab.interfaces.api import SimulationResult
+
+        if not self.has_panel(run_id):
+            return None
+
+        try:
+            panel = self.load_panel(run_id)
+        except ResultStoreError:
+            logger.warning("event=panel_load_corrupt run_id=%s", run_id)
+            return None
+
+        try:
+            metadata = self.get_metadata(run_id)
+        except ResultStoreError:
+            logger.warning("event=metadata_load_failed run_id=%s", run_id)
+            return None
+
+        try:
+            manifest = self.load_manifest(run_id)
+        except (ResultNotFound, ResultStoreError):
+            manifest = _make_minimal_manifest(metadata)
+
+        return SimulationResult(
+            success=True,
+            scenario_id=metadata.scenario_id,
+            yearly_states={},
+            panel_output=panel,
+            manifest=manifest,
+            metadata={},
+        )
+
+    # ------------------------------------------------------------------
     # Delete
     # ------------------------------------------------------------------
 
@@ -267,3 +450,23 @@ def _parse_timestamp(ts: str) -> datetime:
         return datetime.fromisoformat(normalized)
     except (ValueError, AttributeError):
         return datetime.min.replace(tzinfo=timezone.utc)
+
+
+def _make_minimal_manifest(metadata: ResultMetadata) -> RunManifest:
+    """Construct a minimal RunManifest from ResultMetadata fields.
+
+    Used as a fallback when manifest.json is missing or corrupt (e.g.,
+    runs from before Story 17.7 or partial disk artifacts).
+    """
+    from reformlab.governance.manifest import RunManifest
+
+    manifest_id = metadata.manifest_id if metadata.manifest_id else "unknown"
+    adapter_version = metadata.adapter_version if metadata.adapter_version else "unknown"
+    return RunManifest(
+        manifest_id=manifest_id,
+        created_at=metadata.started_at or datetime.now(timezone.utc).isoformat(),
+        engine_version="unknown",
+        openfisca_version="unknown",
+        adapter_version=adapter_version,
+        scenario_version="unknown",
+    )

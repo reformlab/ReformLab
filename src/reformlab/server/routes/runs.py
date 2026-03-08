@@ -111,6 +111,19 @@ async def run_simulation(
             logger.exception("event=metadata_save_failed run_id=%s", run_id)
             # Do not propagate — metadata save failure should not mask run result
 
+        # Persist panel and manifest to disk (Story 17.7 — AC-1, AC-2)
+        # Each save is independent; failure must NOT propagate or mask run result.
+        if result is not None and result.panel_output is not None:
+            try:
+                store.save_panel(run_id, result.panel_output)
+            except Exception:
+                logger.exception("event=panel_save_failed run_id=%s", run_id)
+        if result is not None:
+            try:
+                store.save_manifest(run_id, result.manifest.to_json())
+            except Exception:
+                logger.exception("event=manifest_save_failed run_id=%s", run_id)
+
     if result is None:
         # Re-raise will have already propagated; this branch is unreachable
         # but satisfies type checker
