@@ -107,14 +107,15 @@ describe("Data Fusion workflow", () => {
       // Trigger generation
       await user.click(screen.getByRole("button", { name: /generate population/i }));
 
-      // Generation is async — wait for error state to appear.
-      // The component calls setGenErrorDetail when ApiError is thrown.
-      // The generate step (step 4) renders PopulationGenerationProgress with the error.
+      // Generation is async — wait for error section to appear.
+      // PopulationGenerationProgress renders aria-label="Generation failed" when errorDetail is set.
       await waitFor(() => {
-        // After error, generation flag is cleared and component renders error info.
-        // The Next/Generate button becomes available again (generating=false).
-        expect(vi.mocked(generatePopulation)).toHaveBeenCalledOnce();
+        expect(screen.getByLabelText("Generation failed")).toBeInTheDocument();
       });
+      expect(vi.mocked(generatePopulation)).toHaveBeenCalledOnce();
+      // Verify what/why/fix content is rendered (AC-3: regression detection)
+      expect(screen.getByText("Population generation failed")).toBeInTheDocument();
+      expect(screen.getByText("Incompatible variable schemas between sources")).toBeInTheDocument();
     });
   });
 

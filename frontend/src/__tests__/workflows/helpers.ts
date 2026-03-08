@@ -8,6 +8,7 @@
 import { vi } from "vitest";
 
 import type {
+  DecisionSummaryResponse,
   GenerationResult,
   PortfolioComparisonResponse,
   ResultDetailResponse,
@@ -109,6 +110,26 @@ export function mockGenerationResult(overrides: Partial<GenerationResult> = {}):
     step_log: [],
     assumption_chain: [],
     validation_result: null,
+    ...overrides,
+  };
+}
+
+export function mockDecisionSummary(
+  overrides: Partial<DecisionSummaryResponse> = {},
+): DecisionSummaryResponse {
+  return {
+    run_id: "run-001",
+    domains: [
+      {
+        domain_name: "housing",
+        alternative_ids: ["own", "rent"],
+        alternative_labels: { own: "Own", rent: "Rent" },
+        yearly_outcomes: [],
+        eligibility: { n_total: 1000, n_eligible: 850, n_ineligible: 150 },
+      },
+    ],
+    metadata: {},
+    warnings: [],
     ...overrides,
   };
 }

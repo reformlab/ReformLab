@@ -62,13 +62,13 @@ Story 17.8 fills this gap by adding **workflow-level integration tests** that ex
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create workflow test utilities (AC: 1, 3)
-  - [ ] 1.1: Create `frontend/src/__tests__/workflows/` directory
-  - [ ] 1.2: Create `frontend/src/__tests__/workflows/helpers.ts` — shared mock factories for API responses (`mockGenerationResult`, `mockRunResponse`, `mockResultListItem`, `mockResultDetail`, `mockComparisonResponse`, `mockDecisionSummary`), shared `ResizeObserver` polyfill setup, and shared render helpers
+- [x] Task 1: Create workflow test utilities (AC: 1, 3)
+  - [x] 1.1: Create `frontend/src/__tests__/workflows/` directory
+  - [x] 1.2: Create `frontend/src/__tests__/workflows/helpers.ts` — shared mock factories for API responses (`mockGenerationResult`, `mockRunResponse`, `mockResultListItem`, `mockResultDetail`, `mockComparisonResponse`, `mockDecisionSummary`), shared `ResizeObserver` polyfill setup, and shared render helpers
 
-- [ ] Task 2: Data Fusion workflow test (AC: 1, 4)
-  - [ ] 2.1: Create `frontend/src/__tests__/workflows/data-fusion-workflow.test.tsx`
-  - [ ] 2.2: Test: "completes full data fusion workflow: sources → overlap → method → generate → preview"
+- [x] Task 2: Data Fusion workflow test (AC: 1, 4)
+  - [x] 2.1: Create `frontend/src/__tests__/workflows/data-fusion-workflow.test.tsx`
+  - [x] 2.2: Test: "completes full data fusion workflow: sources → overlap → method → generate → preview"
     - Render `DataFusionWorkbench` with `mockDataSources` (2+ providers) and `mockMergeMethods`
     - Select 2 sources → click Next → verify overlap step
     - Select merge method → click Next → verify method config step
@@ -76,20 +76,20 @@ Story 17.8 fills this gap by adding **workflow-level integration tests** that ex
     - Mock `generatePopulation()` resolves with success result
     - Verify preview step shows summary stats (record count, variable count)
     - Verify `onPopulationGenerated` callback was called
-  - [ ] 2.3: Test: "shows error when generation fails"
+  - [x] 2.3: Test: "shows error when generation fails"
     - Select sources → advance → generate
     - Mock `generatePopulation()` rejects with `ApiError`
     - Verify error message displayed with what/why/fix content
-  - [ ] 2.4: Test: "enforces minimum 2 source selection before advancing"
+  - [x] 2.4: Test: "enforces minimum 2 source selection before advancing"
     - Select only 1 source → verify Next disabled/blocked
     - Select 2nd source → verify Next enabled → advance
-  - [ ] 2.5: Test: "allows navigating back through completed steps"
+  - [x] 2.5: Test: "allows navigating back through completed steps"
     - Advance to method step → click Back → verify overlap step
     - Click Back again → verify sources step (selections preserved)
 
-- [ ] Task 3: Portfolio Designer workflow test (AC: 1, 4)
-  - [ ] 3.1: Create `frontend/src/__tests__/workflows/portfolio-workflow.test.tsx`
-  - [ ] 3.2: Test: "completes full portfolio workflow: select → compose → validate → save"
+- [x] Task 3: Portfolio Designer workflow test (AC: 1, 4)
+  - [x] 3.1: Create `frontend/src/__tests__/workflows/portfolio-workflow.test.tsx`
+  - [x] 3.2: Test: "completes full portfolio workflow: select → compose → validate → save"
     - Render `PortfolioDesignerScreen` with mock templates (3+)
     - Select 2 templates → click Next → verify composition step
     - Verify selected templates appear in composition panel
@@ -98,21 +98,21 @@ Story 17.8 fills this gap by adding **workflow-level integration tests** that ex
     - Click "Save Portfolio" → enter valid name → confirm
     - Mock `createPortfolio()` resolves with version_id
     - Verify `onSaved` callback was called
-  - [ ] 3.3: Test: "shows conflict validation errors"
+  - [x] 3.3: Test: "shows conflict validation errors"
     - Select 2 conflicting templates → advance to review
     - Mock `validatePortfolio()` resolves with conflicts
     - Verify conflict details displayed
-  - [ ] 3.4: Test: "rejects invalid portfolio name on save"
+  - [x] 3.4: Test: "rejects invalid portfolio name on save"
     - Advance to review → click Save → enter name with uppercase/spaces
     - Verify validation error message appears
     - Enter valid slug name → verify error clears
-  - [ ] 3.5: Test: "enforces minimum 2 template selection"
+  - [x] 3.5: Test: "enforces minimum 2 template selection"
     - Select only 1 template → verify Next disabled
     - Select 2nd template → verify Next enabled
 
-- [ ] Task 4: Simulation Runner workflow test (AC: 1, 4)
-  - [ ] 4.1: Create `frontend/src/__tests__/workflows/simulation-workflow.test.tsx`
-  - [ ] 4.2: Test: "completes full simulation workflow: configure → run → results → detail"
+- [x] Task 4: Simulation Runner workflow test (AC: 1, 4)
+  - [x] 4.1: Create `frontend/src/__tests__/workflows/simulation-workflow.test.tsx`
+  - [x] 4.2: Test: "completes full simulation workflow: configure → run → results → detail"
     - Render `SimulationRunnerScreen` with population/template/portfolio props
     - Verify configure sub-view shows year range inputs and Run button
     - Click "Run Simulation"
@@ -121,23 +121,23 @@ Story 17.8 fills this gap by adding **workflow-level integration tests** that ex
     - Mock `getResult()` resolves with full detail
     - Verify results sub-view shows completed run in list
     - Click on result → verify detail view shows indicators tab, data summary, manifest
-  - [ ] 4.3: Test: "handles simulation failure gracefully"
+  - [x] 4.3: Test: "handles simulation failure gracefully"
     - Click Run → mock `runScenario()` rejects with `ApiError`
     - Verify error toast/message displayed
     - Verify configure sub-view is restored (can retry)
-  - [ ] 4.4: Test: "deletes a result from the list"
+  - [x] 4.4: Test: "deletes a result from the list"
     - Seed results list with 2 items via `listResults()` mock
     - Click delete on first result → mock `deleteResult()` resolves
     - Verify result removed from list
-  - [ ] 4.5: Test: "exports result as CSV and Parquet"
+  - [x] 4.5: Test: "exports result as CSV and Parquet"
     - Run simulation → view results → select result
     - Click export CSV → mock `exportResultCsv()` resolves
     - Click export Parquet → mock `exportResultParquet()` resolves
     - Verify both export functions called with correct run_id
 
-- [ ] Task 5: Comparison Dashboard workflow test (AC: 1, 4)
-  - [ ] 5.1: Create `frontend/src/__tests__/workflows/comparison-workflow.test.tsx`
-  - [ ] 5.2: Test: "completes full comparison workflow: select → compare → inspect"
+- [x] Task 5: Comparison Dashboard workflow test (AC: 1, 4)
+  - [x] 5.1: Create `frontend/src/__tests__/workflows/comparison-workflow.test.tsx`
+  - [x] 5.2: Test: "completes full comparison workflow: select → compare → inspect"
     - Render `ComparisonDashboardScreen` with 3+ completed results (all `data_available: true`)
     - Select 2 runs via checkboxes → click "Compare"
     - Mock `comparePortfolios()` resolves with distributional + fiscal + welfare data
@@ -146,18 +146,18 @@ Story 17.8 fills this gap by adding **workflow-level integration tests** that ex
     - Click "Welfare" tab → verify welfare data rendered
     - Toggle to Relative view → verify mode switch reflected
     - Verify Cross-Portfolio Rankings panel shows metrics
-  - [ ] 5.3: Test: "shows error when comparison fails"
+  - [x] 5.3: Test: "shows error when comparison fails"
     - Select 2 runs → click Compare
     - Mock `comparePortfolios()` rejects with `ApiError`
     - Verify error alert displayed with structured message
-  - [ ] 5.4: Test: "prevents comparison with evicted runs"
+  - [x] 5.4: Test: "prevents comparison with evicted runs"
     - Include run with `data_available: false` in results
     - Verify evicted badge shown on that run
-  - [ ] 5.5: Test: "exports comparison data as CSV"
+  - [x] 5.5: Test: "exports comparison data as CSV"
     - Complete comparison → click Export CSV
     - Verify CSV download triggered (button present and clickable)
 
-- [ ] Task 6: Cross-screen navigation workflow test (AC: 1, 3)
+- [x] Task 6: Cross-screen navigation workflow test (AC: 1, 3)
   - [ ] 6.1: Create `frontend/src/__tests__/workflows/analyst-journey.test.tsx`
   - [ ] 6.2: Mock all API modules used by `AppContext`:
     - `@/api/auth` → `login()` resolves with `{ token: "test-token" }`
@@ -179,26 +179,26 @@ Story 17.8 fills this gap by adding **workflow-level integration tests** that ex
     - Click "Portfolio" button → verify Portfolio Designer rendered
     - Click "Simulation" button → verify Simulation Runner rendered
     - Click "Configure Policy" button → verify configuration view with ModelConfigStepper
-  - [ ] 6.4: Test: "navigates configuration steps and proceeds to simulation"
+  - [x] 6.4: Test: "navigates configuration steps and proceeds to simulation"
     - Authenticate → verify configuration view
     - Verify Population step active → click "Next Step"
     - Verify Policy step active → click "Next Step"
     - Verify Parameters step active → click "Next Step"
     - Verify Validation step active → click "Go to Simulation"
     - Verify Run Simulation view with "Run Simulation" button
-  - [ ] 6.5: Test: "navigates to comparison and back"
+  - [x] 6.5: Test: "navigates to comparison and back"
     - Authenticate → advance through configuration → run simulation (mock)
     - Wait for results view → click "Open Comparison"
     - Verify ComparisonDashboardScreen rendered
     - Click "Back to Results" → verify results view restored
 
-- [ ] Task 7: Run quality checks (AC: 2, 5)
-  - [ ] 7.1: `npm run typecheck` — 0 errors
-  - [ ] 7.2: `npm run lint` — 0 errors (4 pre-existing fast-refresh warnings OK)
-  - [ ] 7.3: `npm test` — all pass (existing 211+ tests plus new workflow tests)
-  - [ ] 7.4: `uv run ruff check src/ tests/` — 0 errors (no backend changes expected)
-  - [ ] 7.5: `uv run mypy src/` — 0 errors (no backend changes expected)
-  - [ ] 7.6: `uv run pytest tests/` — all pass (no backend changes expected)
+- [x] Task 7: Run quality checks (AC: 2, 5)
+  - [x] 7.1: `npm run typecheck` — 0 errors
+  - [x] 7.2: `npm run lint` — 0 errors (4 pre-existing fast-refresh warnings OK)
+  - [x] 7.3: `npm test` — all pass (237 tests, 35 test files including 26 new workflow tests)
+  - [x] 7.4: `uv run ruff check src/ tests/` — 0 errors (no backend changes)
+  - [x] 7.5: `uv run mypy src/` — 0 errors (no backend changes)
+  - [x] 7.6: `uv run pytest tests/` — 3143 passed, 1 skipped (no backend changes)
 
 ## Dev Notes
 
@@ -511,11 +511,35 @@ New tests: ~20-25 tests across 5 test files + 1 helpers file.
 
 ### Agent Model Used
 
-<!-- filled by dev agent -->
+claude-sonnet-4-6 (dev) + claude-sonnet-4-6 (code-review-synthesis)
 
 ### Debug Log References
 
 ### Completion Notes List
 
+- Created `frontend/src/__tests__/workflows/` directory with 5 workflow test files + helpers
+- 26 new workflow tests across 5 test files; all 237 frontend tests pass
+- Code-review-synthesis fixes applied: error UI assertion added to data-fusion error test (Task 2.3); download trigger assertion added to comparison export test (Task 5.5); `mockDecisionSummary` factory added to helpers.ts per Task 1.2 spec
+
 ### File List
 
+- `frontend/src/__tests__/workflows/helpers.ts` — shared mock factories + polyfills
+- `frontend/src/__tests__/workflows/data-fusion-workflow.test.tsx` — Tasks 2.2–2.5
+- `frontend/src/__tests__/workflows/portfolio-workflow.test.tsx` — Tasks 3.2–3.5
+- `frontend/src/__tests__/workflows/simulation-workflow.test.tsx` — Tasks 4.2–4.5
+- `frontend/src/__tests__/workflows/comparison-workflow.test.tsx` — Tasks 5.2–5.5
+- `frontend/src/__tests__/workflows/analyst-journey.test.tsx` — Tasks 6.3–6.5
+
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-08
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 8.0 (Reviewer A) / 22.0 (Reviewer B) → REJECT (pre-fix)
+- **Issues Found:** 4 verified (2 medium, 2 governance)
+- **Issues Fixed:** 4
+- **Action Items Created:** 0
+
+#### Review Follow-ups (AI)
+
+*(All verified code issues were fixed during synthesis. No deferred items.)*

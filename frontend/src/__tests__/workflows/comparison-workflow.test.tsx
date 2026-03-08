@@ -190,7 +190,10 @@ describe("Comparison Dashboard workflow", () => {
   });
 
   describe("Task 5.5 — exports comparison data as CSV", () => {
-    it("shows Export CSV button after comparison loads and responds to click", async () => {
+    it("triggers a download when Export CSV is clicked", async () => {
+      // Track anchor click to verify the download was triggered (AC-3: regression detection)
+      const anchorClickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+
       vi.mocked(comparePortfolios).mockResolvedValueOnce(mockComparisonResponse());
       const user = userEvent.setup();
 
@@ -205,8 +208,10 @@ describe("Comparison Dashboard workflow", () => {
         expect(screen.getByRole("button", { name: /export csv/i })).toBeInTheDocument();
       });
 
-      // Button is clickable (no error thrown)
       await user.click(screen.getByRole("button", { name: /export csv/i }));
+
+      // Verify download was triggered via anchor.click() (CSV blob download path)
+      expect(anchorClickSpy).toHaveBeenCalledOnce();
     });
   });
 });

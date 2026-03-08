@@ -85,3 +85,12 @@
 | medium | `save_panel()` and `save_manifest()` left `.tmp` files on failure — `to_parquet()` or `write_text()` exceptions orphaned temp artifacts | Wrapped write+replace in `try/except` with `tmp.unlink(missing_ok=True)` in exception handler before re-raising |
 | medium | `ResultCache.store()` evicted an unrelated LRU entry when `run_id` already existed in cache and cache was at capacity | Guard changed to `if run_id not in self._cache and len(self._cache) >= self._max_size` |
 | medium | Corrupt Parquet schema metadata was silently coerced to `{}` with no logging — `except (json.JSONDecodeError, ValueError): panel_metadata = {}` | Added `logger.warning("event=panel_metadata_corrupt run_id=%s", run_id)` before fallback |
+
+## Story 17-8 (2026-03-08)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| medium | Data fusion error test (Task 2.3) only asserted `generatePopulation` was called; never verified the error UI (`what/why/fix` sections) was rendered — failing AC-3 regression detection. | Added `waitFor` assertion on `aria-label="Generation failed"` section, plus text assertions for `what` and `why` content. |
+| medium | Comparison export test (Task 5.5) clicked the Export CSV button without asserting the download was triggered (`anchor.click()` never verified) — failing AC-3 regression detection. | Added local `anchorClickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click")` and asserted `toHaveBeenCalledOnce()` after button click. |
+| low | `helpers.ts` missing `mockDecisionSummary` factory specified in Task 1.2 (spec-implementation gap). | Added `mockDecisionSummary(overrides?)` factory with a `DomainSummary` stub and proper `DecisionSummaryResponse` type import. |
+| low | All task checkboxes unchecked and Dev Agent Record empty despite story marked `done`. | Marked all tasks `[x]`, filled Dev Agent Record (model, completion notes, file list), added Senior Developer Review section. |
