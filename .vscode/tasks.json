@@ -208,7 +208,7 @@
     {
       "label": "CI: Notebook Advanced",
       "type": "shell",
-      "command": "uv run pytest --nbmake notebooks/advanced.ipynb -v",
+      "command": "uv run marimo export html notebooks/advanced.py --no-include-code -o /dev/null",
       "options": {
         "cwd": "${workspaceFolder}",
         "shell": {
@@ -225,6 +225,47 @@
         "clear": true
       },
       "group": "test"
+    },
+    {
+      "label": "Marimo: Advanced Notebook",
+      "type": "shell",
+      "command": "uv run marimo edit notebooks/advanced.py",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "/bin/zsh",
+          "args": [
+            "-lc"
+          ]
+        }
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "custom",
+        "fileLocation": [
+          "relative",
+          "${workspaceFolder}"
+        ],
+        "pattern": {
+          "regexp": "^(?!x)x$",
+          "file": 1,
+          "location": 2,
+          "message": 3
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^\\s*marimo",
+          "endsPattern": "URL"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": false
+      },
+      "runOptions": {
+        "reevaluateOnRerun": true
+      }
     },
     {
       "label": "CI: Notebook Population Example",
