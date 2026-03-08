@@ -26,6 +26,7 @@ from reformlab.server.models import (
     ValidatePortfolioRequest,
     ValidatePortfolioResponse,
 )
+from reformlab.templates.registry import RegistryError
 
 logger = logging.getLogger(__name__)
 
@@ -287,7 +288,7 @@ async def validate_portfolio(body: ValidatePortfolioRequest) -> ValidatePortfoli
 
     try:
         conflicts_raw = validate_compatibility(portfolio)
-    except Exception as exc:
+    except (ValueError, TypeError) as exc:
         logger.error("event=validate_compatibility_error error=%s", str(exc))
         raise HTTPException(
             status_code=500,
@@ -330,7 +331,7 @@ async def list_portfolios() -> list[PortfolioListItem]:
                 version_id=entry.latest_version,
                 policy_count=portfolio.policy_count,
             ))
-        except Exception:
+        except (KeyError, FileNotFoundError, ValueError, RegistryError):
             logger.warning("event=list_portfolios_skip name=%s reason=load_error", name)
             continue
     return result
@@ -342,7 +343,7 @@ async def get_portfolio(name: str) -> PortfolioDetailResponse:
     registry = _get_registry()
     try:
         portfolio = registry.get(name)
-    except Exception as exc:
+    except (KeyError, FileNotFoundError, ValueError, RegistryError) as exc:
         raise HTTPException(
             status_code=404,
             detail={
@@ -355,7 +356,7 @@ async def get_portfolio(name: str) -> PortfolioDetailResponse:
     # Confirm it's actually a portfolio
     try:
         entry_type = registry.get_entry_type(name)
-    except Exception:
+    except (KeyError, FileNotFoundError, ValueError, RegistryError):
         entry_type = "portfolio"
 
     if entry_type != "portfolio":
@@ -422,7 +423,7 @@ async def update_portfolio(name: str, body: UpdatePortfolioRequest) -> Portfolio
 
     try:
         entry_type = registry.get_entry_type(name)
-    except Exception:
+    except (KeyError, FileNotFoundError, ValueError, RegistryError):
         entry_type = "portfolio"
 
     if entry_type != "portfolio":
@@ -472,7 +473,7 @@ async def delete_portfolio(name: str) -> None:
     # Confirm it's a portfolio before deleting — fail-closed on registry error
     try:
         entry_type = registry.get_entry_type(name)
-    except Exception:
+    except (KeyError, FileNotFoundError, ValueError, RegistryError):
         entry_type = "unknown"
 
     if entry_type != "portfolio":
@@ -510,7 +511,7 @@ async def clone_portfolio(name: str, body: ClonePortfolioRequest) -> PortfolioDe
     # Verify source is a portfolio
     try:
         entry_type = registry.get_entry_type(name)
-    except Exception:
+    except (KeyError, FileNotFoundError, ValueError, RegistryError):
         entry_type = "portfolio"
 
     if entry_type != "portfolio":

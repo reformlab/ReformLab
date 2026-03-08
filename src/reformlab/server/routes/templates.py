@@ -8,6 +8,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 
 from reformlab.server.models import TemplateDetailResponse, TemplateListItem
+from reformlab.templates.registry import RegistryError
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +85,7 @@ async def list_templates() -> dict[str, list[TemplateListItem]]:
         try:
             template = registry.get(name)
             items.append(_template_to_list_item(name, template))
-        except Exception:
+        except (KeyError, FileNotFoundError, ValueError, AttributeError, RegistryError):
             logger.warning("Failed to load template '%s', skipping", name)
 
     return {"templates": items}
@@ -96,7 +97,7 @@ async def get_template(name: str) -> TemplateDetailResponse:
     registry = _get_registry()
     try:
         template = registry.get(name)
-    except Exception as exc:
+    except (KeyError, FileNotFoundError, ValueError, RegistryError) as exc:
         raise HTTPException(
             status_code=404,
             detail={

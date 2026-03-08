@@ -12,6 +12,7 @@ from reformlab.server.models import (
     CreateScenarioRequest,
     ScenarioResponse,
 )
+from reformlab.interfaces.errors import ConfigurationError
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +70,7 @@ async def get_scenario(name: str) -> ScenarioResponse:
 
     try:
         scenario = _get_scenario(name)
-    except Exception as exc:
+    except (KeyError, FileNotFoundError, ValueError, ConfigurationError) as exc:
         raise HTTPException(
             status_code=404,
             detail={
@@ -199,7 +200,7 @@ async def clone_scenario(name: str, body: CloneRequest) -> ScenarioResponse:
 
     try:
         cloned = _clone_scenario(name, new_name=body.new_name)
-    except Exception as exc:
+    except (KeyError, FileNotFoundError, ValueError, ConfigurationError) as exc:
         raise HTTPException(
             status_code=404,
             detail={

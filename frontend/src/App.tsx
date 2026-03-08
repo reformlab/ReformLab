@@ -117,8 +117,8 @@ function Workspace() {
   useEffect(() => {
     const onResize = () => {
       const width = window.innerWidth;
-      setIsNarrow(width < 1440);
-      if (width < 1440) {
+      setIsNarrow(width < 1024);
+      if (width < 1024) {
         setLeftCollapsed(true);
         setRightCollapsed(true);
       }

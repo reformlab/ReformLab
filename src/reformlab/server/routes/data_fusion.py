@@ -27,10 +27,12 @@ from reformlab.server.models import (
     DataSourceItem,
     GeneratePopulationRequest,
     GeneratePopulationResponse,
+    MarginalResultItem,
     MergeMethodInfo,
     MergeMethodParamSpec,
     PopulationSummary,
     StepLogItem,
+    ValidationResultResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -489,10 +491,49 @@ async def generate_population(request: GeneratePopulationRequest) -> GeneratePop
         table.num_columns,
     )
 
+    # Run population validation if IPF constraints were provided
+    validation_result_response: ValidationResultResponse | None = None
+    if request.ipf_constraints:
+        try:
+            from reformlab.population.validation import (
+                MarginalConstraint,
+                PopulationValidator,
+            )
+
+            constraints = [
+                MarginalConstraint(
+                    dimension=c.dimension,
+                    distribution=c.targets,
+                    tolerance=0.05,
+                )
+                for c in request.ipf_constraints
+            ]
+            validator = PopulationValidator(constraints)
+            validation = validator.validate(table)
+            validation_result_response = ValidationResultResponse(
+                all_passed=validation.all_passed,
+                total_constraints=validation.total_constraints,
+                failed_count=validation.failed_count,
+                marginal_results=[
+                    MarginalResultItem(
+                        dimension=mr.constraint.dimension,
+                        passed=mr.passed,
+                        max_deviation=mr.max_deviation,
+                        tolerance=mr.constraint.tolerance,
+                        observed=dict(mr.observed),
+                        expected=dict(mr.constraint.distribution),
+                        deviations=dict(mr.deviations),
+                    )
+                    for mr in validation.marginal_results
+                ],
+            )
+        except (KeyError, ValueError) as exc:
+            logger.warning("event=validation_skipped reason=%s", str(exc))
+
     return GeneratePopulationResponse(
         success=True,
         summary=summary,
         step_log=step_log,
         assumption_chain=assumption_chain,
-        validation_result=None,
+        validation_result=validation_result_response,
     )

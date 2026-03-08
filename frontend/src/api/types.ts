@@ -10,7 +10,7 @@ export interface LoginRequest {
 
 export interface RunRequest {
   template_name: string;
-  parameters: Record<string, unknown>;
+  policy: Record<string, unknown>;
   start_year: number;
   end_year: number;
   population_id?: string | null;
@@ -20,7 +20,7 @@ export interface RunRequest {
 
 export interface MemoryCheckRequest {
   template_name: string;
-  parameters?: Record<string, unknown>;
+  policy?: Record<string, unknown>;
   start_year: number;
   end_year: number;
   population_id?: string | null;
@@ -46,7 +46,7 @@ export interface ExportRequest {
 export interface CreateScenarioRequest {
   name: string;
   policy_type: string;
-  parameters: Record<string, unknown>;
+  policy: Record<string, unknown>;
   start_year: number;
   end_year: number;
   description?: string;

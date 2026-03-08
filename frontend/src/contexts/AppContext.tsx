@@ -307,7 +307,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         await apiCreateScenario({
           name: newId,
           policy_type: template?.type ?? "carbon_tax",
-          parameters: parameterValues,
+          policy: parameterValues,
           start_year: 2025,
           end_year: 2030,
           description: templateName,
@@ -330,7 +330,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       await executeRun({
         template_name: selectedTemplateId,
-        parameters: parameterValues,
+        policy: parameterValues,
         start_year: 2025,
         end_year: 2030,
         population_id: selectedPopulationId || null,

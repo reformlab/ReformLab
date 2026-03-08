@@ -108,7 +108,7 @@ export function SimulationRunnerScreen({
     try {
       const result = await runScenario({
         template_name: selectedTemplateName ?? selectedPortfolioName ?? "carbon_tax",
-        parameters: {},
+        policy: {},
         start_year: startYear,
         end_year: endYear,
         population_id: selectedPopulationId,
