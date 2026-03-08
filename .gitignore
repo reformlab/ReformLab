@@ -84,6 +84,7 @@ logs/
 # === Notebooks ===
 notebooks/data/
 notebooks/scratch/
+notebooks/__marimo__/
 
 # bmad-assist artifacts (redundant with _bmad/ rules above, kept for meta/tpl files outside _bmad)
 *.meta.yaml
