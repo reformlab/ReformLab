@@ -1,158 +1,142 @@
-"""Static checks for the advanced notebook content.
+"""Static checks for the advanced Marimo notebook content.
 
-These checks enforce story 6-3 acceptance criteria that can be validated
-without launching a Jupyter kernel in unit-test environments.
+These checks validate that the advanced notebook covers the full policy
+assessment pipeline: data fusion, policy definition, discrete choice,
+orchestration, indicators, governance, and export.
 """
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
-NOTEBOOK_PATH = Path(__file__).resolve().parents[2] / "notebooks" / "advanced.ipynb"
-CI_WORKFLOW_PATH = Path(__file__).resolve().parents[2] / ".github" / "workflows" / "ci.yml"
+NOTEBOOK_PATH = Path(__file__).resolve().parents[2] / "notebooks" / "advanced.py"
 
 
-def _load_notebook() -> dict[str, object]:
-    with NOTEBOOK_PATH.open(encoding="utf-8") as handle:
-        return json.load(handle)
-
-
-def _cell_source(cell: dict[str, object]) -> str:
-    source = cell.get("source", [])
-    if isinstance(source, list):
-        return "".join(part for part in source if isinstance(part, str))
-    if isinstance(source, str):
-        return source
-    return ""
-
-
-def _all_sources(notebook: dict[str, object]) -> str:
-    cells = notebook.get("cells", [])
-    if not isinstance(cells, list):
-        return ""
-    return "\n".join(_cell_source(cell) for cell in cells if isinstance(cell, dict))
+def _read_source() -> str:
+    return NOTEBOOK_PATH.read_text(encoding="utf-8")
 
 
 def test_advanced_notebook_exists() -> None:
-    """Notebook deliverable exists at the expected path."""
+    """Marimo notebook exists at the expected path."""
     assert NOTEBOOK_PATH.exists()
+    assert NOTEBOOK_PATH.suffix == ".py"
 
 
-def test_advanced_notebook_outputs_are_cleared() -> None:
-    """Committed notebook keeps outputs empty for CI execution."""
-    notebook = _load_notebook()
-    cells = notebook.get("cells", [])
-    assert isinstance(cells, list)
-    for cell in cells:
-        if not isinstance(cell, dict):
-            continue
-        if cell.get("cell_type") != "code":
-            continue
-        assert cell.get("execution_count") is None
-        assert cell.get("outputs") == []
+def test_advanced_notebook_is_valid_marimo() -> None:
+    """Notebook is a valid Marimo app (imports marimo, defines app)."""
+    source = _read_source()
+    assert "import marimo" in source
+    assert "app = marimo.App(" in source
+    assert "@app.cell" in source
 
 
-def test_advanced_notebook_uses_public_api_surfaces() -> None:
-    """Notebook should stay on public package imports and avoid internals."""
-    source = _all_sources(_load_notebook())
-    assert "from reformlab import (" in source
-    assert "run_scenario" in source
-    assert "RunConfig" in source
-    assert "ScenarioConfig" in source
-    assert "show," in source
-    assert "from reformlab.vintage import (" in source
-    assert "from reformlab.indicators import (" in source
-    assert "from reformlab.indicators.comparison import" not in source
-    assert "reformlab.computation" not in source
-    assert "from openfisca import" not in source
-    assert "import openfisca" not in source
+def test_advanced_notebook_section_1_builds_population_database() -> None:
+    """Section 1 covers data fusion from institutional sources."""
+    source = _read_source()
+    assert "Build the Population Database" in source
+    assert "PopulationPipeline" in source
+    assert "UniformMergeMethod" in source
+    assert "IPFMergeMethod" in source
+    assert "ConditionalSamplingMethod" in source
+    assert "FixtureLoader" in source
+    assert "income_loader" in source
+    assert "housing_loader" in source
+    assert "vehicle_loader" in source
+    assert "energy_loader" in source
+    assert "PopulationValidator" in source
+    assert "MarginalConstraint" in source
+    assert "assumption_chain" in source
 
 
-def test_advanced_notebook_uses_visualization_api() -> None:
-    """Notebook uses built-in visualization API instead of inline boilerplate."""
-    source = _all_sources(_load_notebook())
-    assert "plot_yearly(" in source
-    assert "plot_comparison(" in source
-    assert "create_figure(" in source
-    assert "def show(" not in source
+def test_advanced_notebook_section_2_defines_policy_portfolio() -> None:
+    """Section 2 defines carbon tax + subsidies with interactive sliders."""
+    source = _read_source()
+    assert "Define the Policy Portfolio" in source
+    assert "CARBON_TAX_SCHEDULE" in source
+    assert "EV_SUBSIDY" in source
+    assert "HEAT_PUMP_SUBSIDY" in source
+    assert "PolicyConfig" in source
+    assert "mo.ui.slider" in source
 
 
-def test_advanced_notebook_covers_multi_year_vintage_and_comparison_sections() -> None:
-    """Notebook includes core advanced workflow sections and scenario settings.
+def test_advanced_notebook_section_3_wires_discrete_choice() -> None:
+    """Section 3 configures vehicle and heating investment decisions."""
+    source = _read_source()
+    assert "Wire Investment Decisions" in source or "Discrete Choice" in source
+    assert "DiscreteChoiceStep" in source
+    assert "LogitChoiceStep" in source
+    assert "VehicleInvestmentDomain" in source
+    assert "HeatingInvestmentDomain" in source
+    assert "EligibilityFilter" in source
+    assert "EligibilityRule" in source
+    assert "TasteParameters" in source
+    assert "DecisionRecordStep" in source
+    assert "VehicleStateUpdateStep" in source
+    assert "HeatingStateUpdateStep" in source
+    assert "beta_cost" in source
 
-    Story 6.7 renamed Section 1 from "Multi-Year Simulation" to "Multi-Year Escalating Policy"
-    and added typed policy objects throughout.
-    """
-    source = _all_sources(_load_notebook())
-    assert "Section 1: Multi-Year Escalating Policy" in source
-    assert "CarbonTaxParameters(" in source
+
+def test_advanced_notebook_section_4_runs_simulation() -> None:
+    """Section 4 runs a 10-year orchestrated simulation."""
+    source = _read_source()
+    assert "OrchestratorConfig" in source
+    assert "Orchestrator" in source
     assert "start_year=2025" in source
     assert "end_year=2034" in source
-    assert "sorted(result_multi.yearly_states.keys())" in source
-    assert "Section 2: Vintage Tracking" in source
-    assert "VintageConfig(" in source
-    assert "VintageTransitionStep(" in source
-    assert "vintage_vehicle" in source
-    assert "VintageSummary.from_state(" in source
-    assert "Section 3: Baseline vs. Reform Comparison" in source
-    assert 'result_baseline.indicators("distributional")' in source
-    assert "result_baseline.indicators(" in source
-    assert '"fiscal"' in source
-    assert "fiscal_comparison = compare_scenarios(" in source
+    assert "PanelOutput" in source
+    assert "from_orchestrator_result" in source
 
 
-def test_advanced_notebook_covers_reproducibility_and_lineage() -> None:
-    """Notebook demonstrates reruns plus baseline/reform lineage visibility.
-
-    Story 6.7 renumbered this section from Section 4 to Section 5 to make room
-    for the new "Build Your Own Policy Type" Section 4.
-    """
-    source = _all_sources(_load_notebook())
-    assert "Section 5: Lineage and Reproducibility" in source
-    assert "result_rerun = run_scenario" in source
-    assert "if original_tax == rerun_tax" in source
-    assert "baseline_manifest = result_baseline.manifest" in source
-    assert "reform_manifest = result_vintage.manifest" in source
-    assert "steps=(vintage_step,)" in source
-    assert "child_manifests" in source
-    assert "quickstart notebook" in source.lower()
+def test_advanced_notebook_section_5_analyzes_results() -> None:
+    """Section 5 covers fleet evolution and distributional indicators."""
+    source = _read_source()
+    assert "Fleet Evolution" in source or "vehicle_fleet" in source
+    assert "stackplot" in source
+    assert "compute_distributional_indicators" in source
+    assert "carbon_tax" in source
+    assert "Income Decile" in source
 
 
-def test_advanced_notebook_includes_export_examples_and_roundtrip() -> None:
-    """Story 6-5/6-7: notebook shows export flows and Parquet round-trip verification.
-
-    Story 6.7 simplified the export section heading.
-    """
-    source = _all_sources(_load_notebook())
-    assert "Export simulation results for external analysis" in source
-    assert "result_vintage.export_parquet(" in source
-    assert "fiscal_reform.export_parquet(" in source
-    assert "fiscal_comparison.export_parquet(" in source
-    assert "pq.read_table(" in source
-    assert "schema_metadata" in source
-    assert "result_vintage.scenario.start_year" not in source
+def test_advanced_notebook_section_6_governance_and_export() -> None:
+    """Section 6 covers determinism verification, governance, and export."""
+    source = _read_source()
+    assert "Governance" in source
+    assert "Determinism" in source or "determinism" in source
+    assert "capture_discrete_choice_parameters" in source
+    assert "to_governance_entries" in source
+    assert "to_assumption" in source
+    assert "to_parquet" in source
+    assert "round-trip" in source.lower() or "Round-trip" in source
 
 
-def test_advanced_notebook_export_heading_precedes_export_code() -> None:
-    """Export section heading should come before export directory and artifact writes.
-
-    Story 6.7 simplified the export section heading.
-    """
-    source = _all_sources(_load_notebook())
-    heading = source.find("Export simulation results for external analysis")
-    export_dir = source.find("export_dir = Path(tempfile.mkdtemp())")
-    panel_export = source.find("result_vintage.export_parquet(")
-    indicator_export = source.find("fiscal_reform.export_parquet(")
-
-    assert heading != -1
-    assert export_dir != -1
-    assert panel_export != -1
-    assert indicator_export != -1
-    assert heading < export_dir < panel_export < indicator_export
+def test_advanced_notebook_uses_interactive_widgets() -> None:
+    """Marimo notebook uses interactive UI widgets for policy exploration."""
+    source = _read_source()
+    assert "mo.ui.slider" in source
+    assert "mo.md" in source
+    assert "mo.vstack" in source
 
 
-def test_ci_executes_advanced_notebook_with_nbmake() -> None:
-    """CI should execute the advanced notebook in fresh kernel mode."""
-    ci_workflow = CI_WORKFLOW_PATH.read_text(encoding="utf-8")
-    assert "uv run pytest --nbmake notebooks/advanced.ipynb -v" in ci_workflow
+def test_advanced_notebook_does_not_use_quickstart_adapter() -> None:
+    """Advanced notebook uses real pipeline, not the quickstart demo adapter."""
+    source = _read_source()
+    assert "create_quickstart_adapter" not in source
+
+
+def test_advanced_notebook_section_ordering() -> None:
+    """Sections appear in the correct order: data → policy → decisions → simulation → analysis → governance."""
+    source = _read_source()
+    pos_data = source.find("Build the Population Database")
+    pos_policy = source.find("Define the Policy Portfolio")
+    pos_decisions = source.find("Wire Investment Decisions")
+    pos_simulation = source.find("Run the 10-Year Simulation")
+    pos_analysis = source.find("Analyze Results")
+    pos_governance = source.find("Governance & Export")
+
+    assert pos_data != -1
+    assert pos_policy != -1
+    assert pos_decisions != -1
+    assert pos_simulation != -1
+    assert pos_analysis != -1
+    assert pos_governance != -1
+    assert pos_data < pos_policy < pos_decisions < pos_simulation < pos_analysis < pos_governance
