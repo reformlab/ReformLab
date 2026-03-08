@@ -234,3 +234,51 @@ class TestRunMetadataSaveFailureDoesNotMaskRunResult:
         # Run endpoint must succeed even though metadata save failed
         assert response.status_code == 200
         assert "run_id" in response.json()
+
+
+# ---------------------------------------------------------------------------
+# POST /api/runs/memory-check — Story 17.6, AC-1
+# ---------------------------------------------------------------------------
+
+
+class TestMemoryCheck:
+    """POST /api/runs/memory-check — success path and response schema."""
+
+    def test_memory_check_returns_200(
+        self, client_with_store: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        response = client_with_store.post(
+            "/api/runs/memory-check",
+            headers=auth_headers,
+            json={
+                "template_name": "carbon_tax",
+                "policy": {"rate_schedule": {"2025": 44}},
+                "start_year": 2025,
+                "end_year": 2025,
+            },
+        )
+        assert response.status_code == 200
+
+    def test_memory_check_response_has_expected_fields(
+        self, client_with_store: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        response = client_with_store.post(
+            "/api/runs/memory-check",
+            headers=auth_headers,
+            json={
+                "template_name": "carbon_tax",
+                "policy": {},
+                "start_year": 2025,
+                "end_year": 2030,
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "should_warn" in data
+        assert "estimated_gb" in data
+        assert "available_gb" in data
+        assert "message" in data
+        assert isinstance(data["should_warn"], bool)
+        assert isinstance(data["estimated_gb"], float)
+        assert isinstance(data["available_gb"], float)
+        assert isinstance(data["message"], str)

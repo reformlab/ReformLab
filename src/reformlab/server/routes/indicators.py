@@ -50,20 +50,42 @@ async def compute_indicator(
     indicator_type: str,
     body: IndicatorRequest,
     cache: ResultCache = Depends(get_result_cache),
+    store: ResultStore = Depends(get_result_store),
 ) -> IndicatorResponse:
     """Compute an indicator from a cached simulation result."""
     if indicator_type not in VALID_INDICATOR_TYPES:
         raise HTTPException(
             status_code=422,
-            detail=f"Invalid indicator type '{indicator_type}'. "
-            f"Must be one of: {', '.join(sorted(VALID_INDICATOR_TYPES))}",
+            detail={
+                "what": f"Invalid indicator type '{indicator_type}'",
+                "why": f"Must be one of: {sorted(VALID_INDICATOR_TYPES)}",
+                "fix": "Use a valid indicator type from the list",
+            },
         )
 
-    result = cache.get(body.run_id)
-    if result is None:
+    # Step 1: Check ResultStore metadata (404 if completely unknown)
+    try:
+        store.get_metadata(body.run_id)
+    except ResultNotFound:
         raise HTTPException(
             status_code=404,
-            detail=f"Run ID '{body.run_id}' not found in cache",
+            detail={
+                "what": f"Run '{body.run_id}' not found",
+                "why": "No metadata record exists for this run_id",
+                "fix": "Check the run_id and ensure the simulation has been executed",
+            },
+        )
+
+    # Step 2: Check ResultCache (409 if in store but evicted or panel_output is None)
+    result = cache.get(body.run_id)
+    if result is None or result.panel_output is None:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "what": f"Run '{body.run_id}' data is not available",
+                "why": "The simulation result has been evicted from the in-memory cache",
+                "fix": "Re-run the simulation or select runs with data_available=true",
+            },
         )
 
     kwargs: dict[str, Any] = {}
@@ -299,20 +321,55 @@ async def compare_portfolio_runs(
 async def compute_comparison(
     body: ComparisonRequest,
     cache: ResultCache = Depends(get_result_cache),
+    store: ResultStore = Depends(get_result_store),
 ) -> IndicatorResponse:
     """Compute welfare comparison between baseline and reform runs."""
-    baseline = cache.get(body.baseline_run_id)
-    if baseline is None:
+    # Two-step lookup for baseline
+    try:
+        store.get_metadata(body.baseline_run_id)
+    except ResultNotFound:
         raise HTTPException(
             status_code=404,
-            detail=f"Baseline run ID '{body.baseline_run_id}' not found in cache",
+            detail={
+                "what": f"Baseline run '{body.baseline_run_id}' not found",
+                "why": "No metadata record exists for this run_id",
+                "fix": "Check the baseline_run_id and ensure the simulation has been executed",
+            },
+        )
+
+    baseline = cache.get(body.baseline_run_id)
+    if baseline is None or baseline.panel_output is None:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "what": f"Baseline run '{body.baseline_run_id}' data is not available",
+                "why": "The simulation result has been evicted from the in-memory cache",
+                "fix": "Re-run the simulation or select runs with data_available=true",
+            },
+        )
+
+    # Two-step lookup for reform
+    try:
+        store.get_metadata(body.reform_run_id)
+    except ResultNotFound:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "what": f"Reform run '{body.reform_run_id}' not found",
+                "why": "No metadata record exists for this run_id",
+                "fix": "Check the reform_run_id and ensure the simulation has been executed",
+            },
         )
 
     reform = cache.get(body.reform_run_id)
-    if reform is None:
+    if reform is None or reform.panel_output is None:
         raise HTTPException(
-            status_code=404,
-            detail=f"Reform run ID '{body.reform_run_id}' not found in cache",
+            status_code=409,
+            detail={
+                "what": f"Reform run '{body.reform_run_id}' data is not available",
+                "why": "The simulation result has been evicted from the in-memory cache",
+                "fix": "Re-run the simulation or select runs with data_available=true",
+            },
         )
 
     indicator_result = baseline.indicators(

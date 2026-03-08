@@ -70,7 +70,14 @@ async def get_scenario(name: str) -> ScenarioResponse:
     try:
         scenario = _get_scenario(name)
     except Exception as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "what": f"Scenario '{name}' not found",
+                "why": str(exc),
+                "fix": "Check the scenario name",
+            },
+        ) from exc
 
     return _scenario_to_response(name, scenario)
 
@@ -96,19 +103,28 @@ async def create_scenario(body: CreateScenarioRequest) -> dict[str, str]:
     if raw_policy_type is None:
         raw_policy_type = body.policy.get("_type")
     if raw_policy_type is None:
+        valid_types = [e.value for e in PolicyType]
         raise HTTPException(
             status_code=422,
-            detail="policy_type is required. Provide it as a top-level field "
-            "or as a '_type' key inside the policy dict. "
-            f"Must be one of: {[e.value for e in PolicyType]}",
+            detail={
+                "what": "Missing policy_type",
+                "why": "policy_type is required but was not provided",
+                "fix": (
+                    "Provide policy_type as a top-level field or as a '_type' key "
+                    f"inside the policy dict. Must be one of: {valid_types}"
+                ),
+            },
         )
     try:
         policy_type = PolicyType(raw_policy_type)
     except ValueError:
         raise HTTPException(
             status_code=422,
-            detail=f"Invalid policy_type: '{raw_policy_type}'. "
-            f"Must be one of: {[e.value for e in PolicyType]}",
+            detail={
+                "what": f"Invalid policy_type '{raw_policy_type}'",
+                "why": f"'{raw_policy_type}' is not a recognized policy type",
+                "fix": f"Must be one of: {[e.value for e in PolicyType]}",
+            },
         )
     year_schedule = YearSchedule(body.start_year, body.end_year)
 
@@ -138,7 +154,11 @@ async def create_scenario(body: CreateScenarioRequest) -> dict[str, str]:
         if unknown:
             raise HTTPException(
                 status_code=422,
-                detail=f"Unknown parameters for {policy_type.value}: {sorted(unknown)}",
+                detail={
+                    "what": f"Unknown parameters for {policy_type.value}",
+                    "why": f"Unexpected fields: {sorted(unknown)}",
+                    "fix": "Remove unknown fields",
+                },
             )
 
     params = params_cls(
@@ -180,6 +200,13 @@ async def clone_scenario(name: str, body: CloneRequest) -> ScenarioResponse:
     try:
         cloned = _clone_scenario(name, new_name=body.new_name)
     except Exception as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "what": f"Scenario '{name}' not found",
+                "why": str(exc),
+                "fix": "Check the scenario name and ensure it exists",
+            },
+        ) from exc
 
     return _scenario_to_response(body.new_name, cloned)

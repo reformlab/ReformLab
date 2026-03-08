@@ -78,3 +78,13 @@
 | high | `stackOffset="expand"` must use `counts` not `percentages`; easy to get wrong | Added `**CRITICAL:**` note immediately after the chartData code snippet explaining that `outcome.counts` must be used, not `outcome.percentages` |
 | medium | NumPy referenced for decile computation but is not a declared project dependency | Dev Notes income decile section updated to specify PyArrow compute functions only; "Do not use NumPy — it is not a declared dependency" |
 | medium | Missing-probabilities column fallback not defined | Mean probabilities section updated with explicit step 2 check; returns `mean_probabilities=None` and appends warning to `DecisionSummaryResponse.warnings`; Anti-Patterns table entry added |
+
+## Story 17-6 (2026-03-08)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | Export status code contradiction — Task 1.2 specified `panel_output is None → 422`, but Task 2.3 and Task 4.4 both specified `panel_output is None → 409` | Task 1.2 rewritten to only convert the "file too large" error; explicitly states not to convert the run-not-found and panel_output branches (Task 2.3 replaces them wholesale). Specific Error Conversions table updated with Task column clarifying which task owns each change. |
+| critical | Welfare success test (Task 3.4) said "requires both baseline and reform SimulationResults in cache" but `POST /api/indicators/{type}` only accepts a single `run_id` — impossible to pass two results | Task 3.4 clarified to use a single `SimulationResult`; two-result pairwise welfare test directed to Task 3.7 (`POST /api/comparison`). |
+| critical | AC-2 "All error responses across the API" is unbounded — framework-generated FastAPI 422 validation errors and 401 auth errors use different formats and cannot be overridden at the route level | AC-2 scoped to "all application-raised `HTTPException` details in the targeted route modules" with explicit note that framework-generated errors are out of scope. |
+| high | No explicit task for updating `test_api.py:255` (`assert "policy_type is required" in response.json()["detail"]`), which becomes a failing assertion after Task 1.3 migrates `scenarios.py` error format | Added Task 1.5 with precise file/line reference and the exact assertion update required. Updated "Existing Tests to NOT Break" to acknowledge this intentional modification. Updated Anti-Patterns table with exact test name and line. |
+| high | Dev Notes store/cache pattern catches `ResultStoreError` broadly, masking genuine I/O failures (disk errors, permission errors) as 404 "not found" | Pattern updated to catch `ResultNotFound` specifically. Comment added explaining why broad catch is dangerous. Import line updated from `ResultStoreError` to `ResultNotFound`. |
