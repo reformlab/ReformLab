@@ -116,7 +116,40 @@ async def get_decision_summary(
         "decision_domain_alternatives"
     ]
 
-    # 4b. If group_by="decile": check income column exists (422 if absent)
+    # 4b. Validate group_by value and group_value range
+    if body.group_by is not None and body.group_by != "decile":
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "what": f"Unsupported group_by value '{body.group_by}'",
+                "why": "Only 'decile' grouping is currently supported",
+                "fix": "Use group_by='decile' or omit the group_by parameter",
+            },
+        )
+
+    if body.group_by == "decile" and body.group_value is not None:
+        try:
+            dv = int(body.group_value)
+        except ValueError:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "what": f"Invalid group_value '{body.group_value}'",
+                    "why": "group_value must be an integer string between 1 and 10",
+                    "fix": "Provide a group_value between '1' and '10'",
+                },
+            )
+        if not 1 <= dv <= 10:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "what": f"Invalid group_value '{body.group_value}'",
+                    "why": "group_value must be between 1 and 10 for decile grouping",
+                    "fix": "Provide a group_value between '1' and '10'",
+                },
+            )
+
+    # 4c. If group_by="decile": check income column exists (422 if absent)
     if body.group_by == "decile":
         if "income" not in panel_table.column_names:
             raise HTTPException(
@@ -215,7 +248,19 @@ def _build_domain_summary(
         total_households = year_table.num_rows
 
         # Count chosen alternatives using PyArrow value_counts
-        if chosen_col_name in year_table.column_names and total_households > 0:
+        if total_households > 0:
+            if chosen_col_name not in year_table.column_names:
+                raise HTTPException(
+                    status_code=500,
+                    detail={
+                        "what": f"Missing decision column '{chosen_col_name}'",
+                        "why": (
+                            f"Panel output declares domain '{domain_name}' in metadata "
+                            f"but column '{chosen_col_name}' is absent from the table"
+                        ),
+                        "fix": "Re-run the simulation to regenerate the panel output",
+                    },
+                )
             chosen_col = year_table.column(chosen_col_name)
             counts = _count_alternatives(chosen_col, alt_ids)
         else:

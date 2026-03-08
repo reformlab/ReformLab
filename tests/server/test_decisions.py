@@ -303,6 +303,62 @@ class TestDecisionSummaryValidation:
         assert "why" in detail
         assert "fix" in detail
 
+    def test_unsupported_group_by_returns_422(
+        self,
+        client_with_deps: TestClient,
+        tmp_store: ResultStore,
+        empty_cache: ResultCache,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """422 when group_by is an unsupported value."""
+        _seed(tmp_store, empty_cache, "run-badgroupby", panel=_make_vehicle_panel())
+        response = client_with_deps.post(
+            "/api/decisions/summary",
+            json={"run_id": "run-badgroupby", "group_by": "region"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 422
+        detail = response.json()["detail"]
+        assert "what" in detail
+        assert "region" in detail["what"]
+
+    def test_invalid_group_value_non_integer_returns_422(
+        self,
+        client_with_deps: TestClient,
+        tmp_store: ResultStore,
+        empty_cache: ResultCache,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """422 when group_value is not a valid integer."""
+        _seed(tmp_store, empty_cache, "run-badgv", panel=_make_vehicle_panel())
+        response = client_with_deps.post(
+            "/api/decisions/summary",
+            json={"run_id": "run-badgv", "group_by": "decile", "group_value": "abc"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 422
+        detail = response.json()["detail"]
+        assert "what" in detail
+        assert "abc" in detail["what"]
+
+    def test_invalid_group_value_out_of_range_returns_422(
+        self,
+        client_with_deps: TestClient,
+        tmp_store: ResultStore,
+        empty_cache: ResultCache,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """422 when group_value integer is outside 1–10 range."""
+        _seed(tmp_store, empty_cache, "run-oor", panel=_make_vehicle_panel())
+        response = client_with_deps.post(
+            "/api/decisions/summary",
+            json={"run_id": "run-oor", "group_by": "decile", "group_value": "0"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 422
+        detail = response.json()["detail"]
+        assert "what" in detail
+
     def test_decile_filter_without_income_column_returns_422(
         self,
         client_with_deps: TestClient,

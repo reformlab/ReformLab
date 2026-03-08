@@ -54,3 +54,15 @@
 | low | Test coverage gap — no test for `baseline_run_id` not in `run_ids` returning 422 | Added `test_baseline_run_id_not_in_run_ids_returns_422` |
 | low | "View as table" toggle missing — companion table is hardcoded visible | **Deferred** — table is functional and accessible; toggle is UX polish; added as AI-Review follow-up |
 | low | `ComparisonDashboardScreen` is 764 lines (SRP concern) | **Deferred** — noted as architectural improvement; added as AI-Review follow-up |
+
+## Story 17-5 (2026-03-08)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | `extractErrorDetail()` reads `err.body.detail.what` but `ApiError` stores `what/why/fix` directly — NoDecisionData/NoIncomeData UX paths never trigger in production | Rewrote to check `e["what"]` directly on the thrown object |
+| high | Frontend tests mock `{ body: { detail: {...} } }` (fake shape) instead of real `ApiError` instances — tests green but prove nothing about production | Changed to `new ApiError({...})` instances |
+| high | Invalid `group_value` (e.g., `"abc"`) causes unhandled `ValueError` → 500 | Added try/except + range validation before `int()` cast, returns 422 |
+| high | Unsupported `group_by` value (e.g., `"region"`) silently ignored — returns unfiltered data | Added 422 validation before income column check |
+| high | Missing `{domain}_chosen` column when households present returns zeroed counts instead of error — violates "data contracts fail loudly" rule | Raises HTTPException(500) when column absent but total_households > 0 |
+| high | AC-4 partial — `AreaChart` had no `onClick`; year detail only openable from table rows, not chart | Added `onClick` handler to `AreaChart` using `chartState.activeLabel` |
+| medium | Backend decile tests use `< 100` and `> 0` assertions — too weak to catch ranking errors | Added 3 new tests for invalid group_by, non-integer group_value, and out-of-range group_value (these catch the bugs fixed above) |

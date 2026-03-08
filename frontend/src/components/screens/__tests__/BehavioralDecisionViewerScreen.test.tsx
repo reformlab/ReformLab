@@ -10,6 +10,7 @@ vi.mock("@/api/decisions", () => ({
 }));
 
 import { getDecisionSummary } from "@/api/decisions";
+import { ApiError } from "@/api/client";
 import { BehavioralDecisionViewerScreen } from "@/components/screens/BehavioralDecisionViewerScreen";
 import type { DecisionSummaryResponse } from "@/api/types";
 
@@ -86,13 +87,21 @@ const mockResponseWithProbabilities: DecisionSummaryResponse = {
   ],
 };
 
-const noDecisionError = {
-  body: { detail: { what: "NoDecisionData", why: "No decision data", fix: "Run with decisions" } },
-};
+const noDecisionError = new ApiError({
+  what: "NoDecisionData",
+  why: "No decision data",
+  fix: "Run with decisions",
+  error: "NoDecisionData",
+  status_code: 422,
+});
 
-const noIncomeError = {
-  body: { detail: { what: "NoIncomeData", why: "No income column", fix: "Use income data" } },
-};
+const noIncomeError = new ApiError({
+  what: "NoIncomeData",
+  why: "No income column",
+  fix: "Use income data",
+  error: "NoIncomeData",
+  status_code: 422,
+});
 
 // ============================================================================
 // Tests
@@ -130,9 +139,9 @@ describe("BehavioralDecisionViewerScreen", () => {
     });
 
     it("shows error state for generic errors", async () => {
-      mockGetDecisionSummary.mockRejectedValueOnce({
-        body: { detail: { what: "ServerError", why: "Internal", fix: "Retry" } },
-      });
+      mockGetDecisionSummary.mockRejectedValueOnce(
+        new ApiError({ what: "ServerError", why: "Internal", fix: "Retry", error: "ServerError", status_code: 500 }),
+      );
       render(
         <BehavioralDecisionViewerScreen runId="run-001" onBack={vi.fn()} />,
       );

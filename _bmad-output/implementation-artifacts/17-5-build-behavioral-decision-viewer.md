@@ -591,6 +591,7 @@ claude-sonnet-4-6
 
 - Task 6.4 (ComparisonDashboardScreen link) skipped as optional stretch per story spec.
 - All 4 ACs fully implemented and verified via tests.
+- Code review synthesis (2026-03-08): Fixed 5 issues — extractErrorDetail used wrong err shape (critical); frontend tests mocked fake ApiError shape; backend group_by/group_value not validated (500 on bad input); missing {domain}_chosen column silently zeroed instead of failing loudly; AreaChart had no onClick for AC-4 chart year click. 3 new backend validation tests added (21 total). All 21 backend tests + 211 frontend tests pass.
 
 ### File List
 
@@ -611,3 +612,23 @@ claude-sonnet-4-6
 - `frontend/src/api/types.ts`
 - `frontend/src/data/mock-data.ts`
 - `frontend/src/App.tsx`
+
+**Code review synthesis modifications:**
+- `src/reformlab/server/routes/decisions.py` — group_by/group_value validation; fail-loud for missing chosen column
+- `tests/server/test_decisions.py` — 3 new validation tests
+- `frontend/src/components/screens/BehavioralDecisionViewerScreen.tsx` — fix extractErrorDetail
+- `frontend/src/components/screens/__tests__/BehavioralDecisionViewerScreen.test.tsx` — use ApiError instances
+- `frontend/src/components/simulation/TransitionChart.tsx` — add AreaChart onClick for AC-4 chart click
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-08
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 9.0 (Reviewer A), 7.3 (Reviewer B) → REJECT
+- **Issues Found:** 6 (after dismissing false positives)
+- **Issues Fixed:** 6
+- **Action Items Created:** 0
+
+#### Review Follow-ups (AI)
+
+All verified issues have been fixed in this synthesis pass. No outstanding action items.

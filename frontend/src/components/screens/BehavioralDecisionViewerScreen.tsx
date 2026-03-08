@@ -68,17 +68,13 @@ const NO_DECISION_DATA_MESSAGE =
 function extractErrorDetail(err: unknown): ErrorState | null {
   if (err == null || typeof err !== "object") return null;
   const e = err as Record<string, unknown>;
-  // ApiError shape: { body: { detail: { what, why, fix } } }
-  const body = e["body"] as Record<string, unknown> | undefined;
-  if (body) {
-    const detail = (body["detail"] ?? body) as Record<string, unknown> | undefined;
-    if (detail && typeof detail["what"] === "string") {
-      return {
-        what: String(detail["what"]),
-        why: String(detail["why"] ?? ""),
-        fix: String(detail["fix"] ?? ""),
-      };
-    }
+  // ApiError instance: { what, why, fix } directly on the error object
+  if (typeof e["what"] === "string") {
+    return {
+      what: String(e["what"]),
+      why: String(e["why"] ?? ""),
+      fix: String(e["fix"] ?? ""),
+    };
   }
   return null;
 }

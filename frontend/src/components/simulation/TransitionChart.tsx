@@ -90,7 +90,16 @@ export function TransitionChart({
       {/* Stacked area chart */}
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData} stackOffset="expand">
+          <AreaChart
+            data={chartData}
+            stackOffset="expand"
+            onClick={(chartState) => {
+              if (onYearClick && chartState?.activeLabel != null) {
+                onYearClick(Number(chartState.activeLabel));
+              }
+            }}
+            className={onYearClick ? "cursor-pointer" : ""}
+          >
             <CartesianGrid strokeDasharray="2 2" stroke="#e2e8f0" />
             <XAxis
               dataKey="year"

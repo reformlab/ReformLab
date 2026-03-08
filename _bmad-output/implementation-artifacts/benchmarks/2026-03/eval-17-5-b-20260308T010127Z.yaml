@@ -1,0 +1,115 @@
+record_id: 9423864a-7b8c-4c0d-937f-76e4cdd9980c
+created_at: '2026-03-08T01:01:27.222247+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 17
+  story_num: '5'
+  title: Story 17.5
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: gemini
+  model: gemini-2.5-flash
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-03-08T00:56:05.992779Z'
+  end_time: '2026-03-08T00:57:09.131779Z'
+  duration_ms: 63139
+  input_tokens: 0
+  output_tokens: 3267
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 13071
+  heading_count: 15
+  list_depth_max: 2
+  code_block_count: 3
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: 7.3'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes &amp; Readability
+  - ⚡ Performance &amp; Scalability
+  - 🐛 Correctness &amp; Safety
+  - 🔧 Maintainability Issues
+  - 🛠️ Suggested Fixes
+  - 1. Fix Backend Eligibility Data Population
+  - 2. Add Backend Tests for Eligibility Data
+  - In tests/server/test_decisions.py
+  - Extend _make_vehicle_panel helper
+  - Add this test case to TestDecisionSummarySuccess or a new section
+  - 3. Centralize `DECISION_COLORS`
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.33
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 25168f09873e
+findings:
+  total_count: 6
+  by_severity:
+    critical: 1
+    major: 4
+    minor: 1
+    nit: 0
+  by_category:
+    security: 0
+    performance: 1
+    correctness: 2
+    completeness: 1
+    clarity: 1
+    testability: 1
+  has_fix_count: 4
+  has_location_count: 6
+  has_evidence_count: 5
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 0
+  confidence_phrases_count: 4
+linguistic:
+  avg_sentence_length: 33.62222222222222
+  vocabulary_richness: 0.34170522141440846
+  flesch_reading_ease: -1.839485340015301
+  vague_terms_count: 1
+  formality_score: 0.5
+  sentiment: mixed
+quality:
+  actionable_ratio: 0.83
+  specificity_score: 0.85
+  evidence_quality: 0.83
+  follows_template: true
+  internal_consistency: 0.9
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 14
+  lines_of_code_reviewed: null
+  test_coverage_delta: null
