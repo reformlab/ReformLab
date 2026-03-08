@@ -151,7 +151,8 @@ def _policy_parameters_to_dict(policy: Any) -> dict[str, Any]:
     )
 
     _BUILTIN_TYPES = (CarbonTaxParameters, SubsidyParameters, RebateParameters, FeebateParameters)
-    if dataclasses.is_dataclass(policy) and type(policy) not in (*_BUILTIN_TYPES, PolicyParameters):
+    policy_type = type(policy)
+    if dataclasses.is_dataclass(policy) and policy_type not in (*_BUILTIN_TYPES, PolicyParameters):
         base_field_names = {"rate_schedule", "exemptions", "thresholds", "covered_categories"}
         for f in dataclasses.fields(policy):
             if f.name in base_field_names or f.name in result:
