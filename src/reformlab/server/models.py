@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # ---------------------------------------------------------------------------
 # Request models
@@ -411,3 +411,47 @@ class ResultDetailResponse(BaseModel):
     indicators: dict[str, Any] | None = None
     columns: list[str] | None = None
     column_count: int | None = None
+
+
+# ---------------------------------------------------------------------------
+# Portfolio comparison models — Story 17.4
+# ---------------------------------------------------------------------------
+
+
+class PortfolioComparisonRequest(BaseModel):
+    """Request for multi-run portfolio comparison."""
+
+    run_ids: list[str]  # 2-5 run IDs; duplicates rejected
+    baseline_run_id: str | None = None  # defaults to first run_id
+    indicator_types: list[str] = Field(
+        default_factory=lambda: ["distributional", "fiscal"]
+    )
+    include_welfare: bool = True
+    include_deltas: bool = True
+    include_pct_deltas: bool = True
+
+
+class ComparisonData(BaseModel):
+    """Comparison result for a single indicator type."""
+
+    columns: list[str]
+    data: dict[str, list[Any]]
+
+
+class CrossMetricItem(BaseModel):
+    """Single cross-comparison metric ranking portfolios."""
+
+    criterion: str
+    best_portfolio: str
+    value: float
+    all_values: dict[str, float]
+
+
+class PortfolioComparisonResponse(BaseModel):
+    """Response for multi-run portfolio comparison."""
+
+    comparisons: dict[str, ComparisonData]  # keyed by indicator type
+    cross_metrics: list[CrossMetricItem]
+    portfolio_labels: list[str]
+    metadata: dict[str, Any]
+    warnings: list[str]

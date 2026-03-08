@@ -17,7 +17,8 @@ import {
   type ConfigStep,
   ModelConfigStepper,
 } from "@/components/simulation/ModelConfigStepper";
-import { ComparisonView } from "@/components/simulation/ComparisonView";
+import { ComparisonDashboardScreen } from "@/components/screens/ComparisonDashboardScreen";
+// ComparisonView (Phase 1 mock-driven prototype) is kept but no longer imported in workspace
 import { DistributionalChart } from "@/components/simulation/DistributionalChart";
 import { RunProgressBar } from "@/components/simulation/RunProgressBar";
 import { ScenarioCard } from "@/components/simulation/ScenarioCard";
@@ -85,11 +86,11 @@ function Workspace() {
     portfolios,
     refetchPortfolios,
     selectedPortfolioName,
+    results,
   } = useAppState();
 
   const [activeStep, setActiveStep] = useState<ConfigStep["key"]>("population");
   const [viewMode, setViewMode] = useState<ViewMode>("configuration");
-  const [selectedScenarioIds, setSelectedScenarioIds] = useState<string[]>(["baseline", "reform-a"]);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const [isNarrow, setIsNarrow] = useState(false);
@@ -363,11 +364,9 @@ function Workspace() {
       ) : null}
 
       {viewMode === "comparison" ? (
-        <ComparisonView
-          scenarios={scenarios}
-          selectedScenarioIds={selectedScenarioIds}
-          onChangeSelectedScenarioIds={setSelectedScenarioIds}
-          decileData={decileData}
+        <ComparisonDashboardScreen
+          results={results}
+          onBack={backFromComparison}
         />
       ) : null}
 
@@ -468,7 +467,6 @@ function Workspace() {
                   }}
                   onCompare={(id) => {
                     setSelectedScenarioId(id);
-                    setSelectedScenarioIds(["baseline", id]);
                     setPreviousViewMode(viewMode);
                     setViewMode("comparison");
                   }}

@@ -6,6 +6,8 @@ import type {
   IndicatorRequest,
   IndicatorResponse,
   IndicatorType,
+  PortfolioComparisonRequest,
+  PortfolioComparisonResponse,
 } from "./types";
 
 /** Compute an indicator from a cached simulation result. */
@@ -24,6 +26,16 @@ export async function compareScenarios(
   request: ComparisonRequest,
 ): Promise<IndicatorResponse> {
   return apiFetch<IndicatorResponse>("/api/comparison", {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
+}
+
+/** Compare multiple portfolio simulation runs side-by-side. */
+export async function comparePortfolios(
+  request: PortfolioComparisonRequest,
+): Promise<PortfolioComparisonResponse> {
+  return apiFetch<PortfolioComparisonResponse>("/api/comparison/portfolios", {
     method: "POST",
     body: JSON.stringify(request),
   });

@@ -97,6 +97,10 @@ interface AppState {
   refetchResults: () => Promise<void>;
   selectedPortfolioName: string | null;
   setSelectedPortfolioName: (name: string | null) => void;
+
+  // Comparison (Story 17.4)
+  selectedComparisonRunIds: string[];
+  setSelectedComparisonRunIds: (ids: string[]) => void;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -150,6 +154,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Results hooks (Story 17.3)
   const { results, loading: resultsLoading, refetch: refetchResults } = useResults();
   const [selectedPortfolioName, setSelectedPortfolioName] = useState<string | null>(null);
+
+  // Comparison state (Story 17.4)
+  const [selectedComparisonRunIds, setSelectedComparisonRunIds] = useState<string[]>([]);
 
   // Selections
   const [selectedPopulationId, setSelectedPopulationId] = useState("");
@@ -422,6 +429,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       refetchResults,
       selectedPortfolioName,
       setSelectedPortfolioName,
+      selectedComparisonRunIds,
+      setSelectedComparisonRunIds,
     }),
     [
       isAuthenticated, authLoading, authenticate, logout,
@@ -437,6 +446,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       portfolios, portfoliosLoading, refetchPortfolios,
       results, resultsLoading, refetchResults,
       selectedPortfolioName, setSelectedPortfolioName,
+      selectedComparisonRunIds, setSelectedComparisonRunIds,
     ],
   );
 

@@ -556,3 +556,61 @@ export const mockSimulationSteps = [
   "Aggregating indicators...",
   "Finalizing results...",
 ];
+
+// ============================================================================
+// Comparison mock data — Story 17.4
+// ============================================================================
+
+import type { PortfolioComparisonResponse } from "@/api/types";
+
+/** Mock comparison response for ComparisonDashboardScreen development. */
+export const mockComparisonResponse: PortfolioComparisonResponse = {
+  comparisons: {
+    distributional: {
+      columns: ["field_name", "decile", "year", "metric", "Run A", "Run B", "delta_Run B"],
+      data: {
+        field_name: Array(10).fill("disposable_income") as string[],
+        decile: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        year: Array(10).fill(2025) as number[],
+        metric: Array(10).fill("mean") as string[],
+        "Run A": [-120, -180, -240, -310, -400, -520, -680, -890, -1200, -1800],
+        "Run B": [-80, -150, -210, -290, -390, -520, -690, -920, -1260, -1950],
+        "delta_Run B": [40, 30, 30, 20, 10, 0, -10, -30, -60, -150],
+      },
+    },
+    fiscal: {
+      columns: ["field_name", "year", "metric", "Run A", "Run B", "delta_Run B"],
+      data: {
+        field_name: ["tax_revenue", "tax_revenue", "tax_revenue"],
+        year: [2025, 2026, 2027],
+        metric: ["revenue", "revenue", "revenue"],
+        "Run A": [2100000000, 2300000000, 2500000000],
+        "Run B": [1800000000, 2000000000, 2200000000],
+        "delta_Run B": [-300000000, -300000000, -300000000],
+      },
+    },
+  },
+  cross_metrics: [
+    {
+      criterion: "max_fiscal_revenue",
+      best_portfolio: "Run A",
+      value: 6900000000,
+      all_values: { "Run A": 6900000000, "Run B": 6000000000 },
+    },
+    {
+      criterion: "min_fiscal_cost",
+      best_portfolio: "Run B",
+      value: 0,
+      all_values: { "Run A": 0, "Run B": 0 },
+    },
+    {
+      criterion: "max_fiscal_balance",
+      best_portfolio: "Run A",
+      value: 6900000000,
+      all_values: { "Run A": 6900000000, "Run B": 6000000000 },
+    },
+  ],
+  portfolio_labels: ["Run A", "Run B"],
+  metadata: { baseline_label: "Run A", indicator_types: ["distributional", "fiscal"] },
+  warnings: [],
+};

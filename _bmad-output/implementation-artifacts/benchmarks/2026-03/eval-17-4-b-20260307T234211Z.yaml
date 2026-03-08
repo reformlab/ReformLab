@@ -1,0 +1,127 @@
+record_id: 4684145a-fb4c-4ab6-9f00-0a0ab8d0952c
+created_at: '2026-03-07T23:42:11.889978+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 17
+  story_num: 4
+  title: Story 17.4
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: gemini
+  model: gemini-2.5-flash
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-03-07T23:38:06.439265Z'
+  end_time: '2026-03-07T23:39:13.138265Z'
+  duration_ms: 66699
+  input_tokens: 0
+  output_tokens: 2816
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 11264
+  heading_count: 31
+  list_depth_max: 2
+  code_block_count: 6
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: -0.8'
+  - 🎯 Ruthless Story Validation 17.4
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: -0.8 → PASS'
+  - 🚨 Critical Issues (Must Fix)
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. AC-2 Clarification on Welfare Data
+  - 2. Story Size and Splitting
+  - ✨ Optimizations (Nice to Have)
+  - 1. Client-Side CSV Export Utility
+  - 🤖 LLM Optimization Improvements
+  - 1. Condense Repeated Architectural/Frontend Patterns
+  - 2. Condense Repeated Shadcn/ui Components List
+  - Shadcn/ui Components Available
+  - Shadcn/ui Components Available
+  - 3. Condense Repeated Dependency Versions
+  - Dependency Versions (Current)
+  - Dependency Versions (Current)
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.33
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 0229f4664f0e
+findings:
+  total_count: 6
+  by_severity:
+    critical: 0
+    major: 2
+    minor: 4
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 1
+    completeness: 2
+    clarity: 4
+    testability: 1
+  has_fix_count: 6
+  has_location_count: 6
+  has_evidence_count: 6
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 5
+  confidence_phrases_count: 4
+linguistic:
+  avg_sentence_length: 22.765625
+  vocabulary_richness: 0.3816060398078243
+  flesch_reading_ease: 10.447754533601994
+  vague_terms_count: 3
+  formality_score: 0.68
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.95
+  evidence_quality: 0.82
+  follows_template: true
+  internal_consistency: 0.95
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false

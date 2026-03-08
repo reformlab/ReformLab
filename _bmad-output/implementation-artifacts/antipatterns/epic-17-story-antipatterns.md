@@ -50,3 +50,16 @@
 | high | Atomic write and corrupt-entry handling not specified for ResultStore — partial writes on crash could produce malformed JSON that breaks the entire results listing | Task 1.3 updated with atomic rename pattern; Task 1.4 updated with skip-and-log for corrupt entries; "ResultStore write safety" note added to Dev Notes |
 | high | ResultStore custom exceptions not defined — inconsistent error propagation to `what/why/fix` format | `ResultStoreError` and `ResultNotFound` exception classes added to schema section; Task 1.2 updated to require their definition; route handler contract documented |
 | medium | Testing standards missing failed-run and export test cases | Testing Standards section expanded with failed-run metadata tests, corrupt entry skip test, export endpoint tests (200/409/404), and `runs.py` regression tests |
+
+## Story 17-4 (2026-03-07)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | Welfare always excluded from API call | Changed Task 5.3 to pass `include_welfare: true` in the `comparePortfolios()` call. Also changed `PortfolioComparisonRequest.include_welfare` default from `False` to `True` in both Task 1.1 and the Pydantic model snippet — welfare is the expected default for this story's UI which always shows the Welfare tab. |
+| critical | 404 vs 409 eviction semantics ambiguous — backend flow says "look up in cache, if missing → 404" but an evicted run IS in the metadata store | Rewrote Task 1.2 to check `ResultStore` metadata first (404 if unknown), then `ResultCache` (409 if in metadata but not in cache or panel_output is None). Updated HTTP status code matrix. Updated backend flow code comment to reflect two-store lookup sequence. |
+| critical | Label safety not enforced in tasks — `compare_portfolios()` rejects reserved names and `delta_` prefix but Task 1.2 had no validation step | Rewrote Task 1.2 to include explicit label deduplication and reserved-name/prefix validation with 422 error. |
+| high | No duplicate `run_ids` validation — only size bounds (2–5) specified | Added duplicate run_ids check (422) to Task 1.2 and Task 1.3 tests. |
+| high | AC-3 methodology field not in API response contract — leaves dev to guess implementation | Added clarifying note to Task 5.7 that methodology descriptions are static frontend string constants keyed by indicator type, not returned by the API. |
+| medium | Pydantic mutable default `list[str] = ["distributional", "fiscal"]` — mypy strict would flag this | Changed to `Field(default_factory=lambda: [...])` in both Task 1.1 and the Pydantic model snippet. |
+| medium | `models.py` listed in "New files" section but it already exists | Removed from "New files", kept in "Modified files". |
+| low | Testing rules from project-context.md (class-based grouping, AC references) not mentioned in test spec | Added class-based grouping examples to Task 1.3. |

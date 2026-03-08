@@ -340,3 +340,36 @@ export interface ResultDetailResponse extends ResultListItem {
   columns: string[] | null;
   column_count: number | null;
 }
+
+// ============================================================================
+// Multi-run comparison types — Story 17.4
+// ============================================================================
+
+export interface PortfolioComparisonRequest {
+  run_ids: string[];
+  baseline_run_id?: string | null;
+  indicator_types?: string[];
+  include_welfare?: boolean;
+  include_deltas?: boolean;
+  include_pct_deltas?: boolean;
+}
+
+export interface ComparisonData {
+  columns: string[];
+  data: Record<string, unknown[]>;
+}
+
+export interface CrossMetricItem {
+  criterion: string;
+  best_portfolio: string;
+  value: number;
+  all_values: Record<string, number>;
+}
+
+export interface PortfolioComparisonResponse {
+  comparisons: Record<string, ComparisonData>;
+  cross_metrics: CrossMetricItem[];
+  portfolio_labels: string[];
+  metadata: Record<string, unknown>;
+  warnings: string[];
+}
