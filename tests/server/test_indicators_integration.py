@@ -276,18 +276,17 @@ class TestIndicatorFiscal:
 
 
 # ---------------------------------------------------------------------------
-# AC-1, AC-2, AC-3: Welfare indicator store/cache error path tests
-# Note: POST /api/indicators/welfare with a single run_id is an infrastructure
-# test only — the underlying welfare indicator requires a reform panel and will
-# error at the computation layer. Pairwise welfare success is tested in
-# TestPairwiseComparison below (POST /api/comparison).
+# AC-1, AC-2: Welfare indicator via single-run endpoint
+# POST /api/indicators/welfare is rejected immediately with 422 because welfare
+# requires two runs (baseline + reform). Users must use POST /api/comparison.
+# Pairwise welfare success is tested in TestPairwiseComparison below.
 # ---------------------------------------------------------------------------
 
 
 class TestIndicatorWelfare:
-    """POST /api/indicators/welfare — store/cache error paths (AC-2, AC-3)."""
+    """POST /api/indicators/welfare — always returns 422 (requires two runs)."""
 
-    def test_unknown_run_id_returns_404_with_structured_error(
+    def test_welfare_single_run_returns_422_with_structured_error(
         self,
         client_with_deps: TestClient,
         auth_headers: dict[str, str],
@@ -295,29 +294,13 @@ class TestIndicatorWelfare:
         response = client_with_deps.post(
             "/api/indicators/welfare",
             headers=auth_headers,
-            json={"run_id": "no-such-run"},
+            json={"run_id": "any-run-id"},
         )
-        assert response.status_code == 404
+        assert response.status_code == 422
         detail = response.json()["detail"]
         assert set(detail.keys()) >= {"what", "why", "fix"}
-
-    def test_evicted_run_returns_409_with_structured_error(
-        self,
-        client_with_deps: TestClient,
-        auth_headers: dict[str, str],
-        tmp_store: ResultStore,
-        empty_cache: ResultCache,
-    ) -> None:
-        # Metadata in store but nothing in cache
-        tmp_store.save_metadata("evicted-welfare", _make_metadata("evicted-welfare"))
-        response = client_with_deps.post(
-            "/api/indicators/welfare",
-            headers=auth_headers,
-            json={"run_id": "evicted-welfare"},
-        )
-        assert response.status_code == 409
-        detail = response.json()["detail"]
-        assert set(detail.keys()) >= {"what", "why", "fix"}
+        assert "two simulation runs" in detail["what"]
+        assert "/api/comparison" in detail["fix"]
 
 
 # ---------------------------------------------------------------------------

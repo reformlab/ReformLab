@@ -67,6 +67,11 @@ Stories 17.1–17.5 each implemented their own backend endpoints alongside their
 - [x] Task 6: Add scenario and template detail tests (AC: 1, 2)
   - [x] 6.1–6.3: Added `TestScenarioDetail`, `TestScenarioClone`, `TestTemplateDetail` to `tests/server/test_api.py`. Note: scenario detail/clone success paths skip due to pre-existing ScenarioRegistry hash integrity bug; error-path tests pass.
 
+#### Review Follow-ups (AI)
+- [ ] [AI-Review] HIGH: `except Exception` in `get_scenario()` and `clone_scenario()` swallows internal errors as false 404s (`src/reformlab/server/routes/scenarios.py`)
+- [ ] [AI-Review] MEDIUM: `except Exception` in `get_template()` converts server errors to false 404s (`src/reformlab/server/routes/templates.py`)
+- [ ] [AI-Review] LOW: Scenario clone success path untested — pre-existing ScenarioRegistry hash integrity bug (`tests/server/test_api.py`)
+
 - [x] Task 7: Run quality checks (AC: 4)
   - [x] 7.1: `uv run ruff check src/ tests/` — 0 errors
   - [x] 7.2: `uv run mypy src/` — 0 errors
@@ -414,3 +419,17 @@ For success path tests, verify:
 **Modified test files:**
 - `tests/server/test_runs.py`
 - `tests/server/test_api.py`
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-08
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 13.3 → REJECT
+- **Issues Found:** 5 verified
+- **Issues Fixed:** 3
+- **Action Items Created:** 3
+
+#### Review Follow-ups (AI)
+- [ ] [AI-Review] HIGH: `except Exception` in `get_scenario()` and `clone_scenario()` swallows internal registry/I/O errors as false 404s — catch only the domain-specific "not found" exception (`src/reformlab/server/routes/scenarios.py`)
+- [ ] [AI-Review] MEDIUM: `except Exception` in `get_template()` similarly converts server errors to false 404s — narrow to domain-specific exception (`src/reformlab/server/routes/templates.py`)
+- [ ] [AI-Review] LOW: Scenario clone success path is completely untested due to pre-existing ScenarioRegistry hash integrity bug — requires a fix in the registry or a mock-based workaround (`tests/server/test_api.py`, `TestScenarioClone`)

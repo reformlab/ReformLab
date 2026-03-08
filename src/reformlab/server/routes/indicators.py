@@ -17,7 +17,7 @@ from reformlab.server.models import (
     PortfolioComparisonRequest,
     PortfolioComparisonResponse,
 )
-from reformlab.server.result_store import ResultNotFound, ResultStoreError
+from reformlab.server.result_store import ResultNotFound
 
 if TYPE_CHECKING:
     from reformlab.server.result_store import ResultStore
@@ -60,6 +60,16 @@ async def compute_indicator(
                 "what": f"Invalid indicator type '{indicator_type}'",
                 "why": f"Must be one of: {sorted(VALID_INDICATOR_TYPES)}",
                 "fix": "Use a valid indicator type from the list",
+            },
+        )
+
+    if indicator_type == "welfare":
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "what": "Welfare indicator requires two simulation runs",
+                "why": "Welfare compares a baseline and reform run; a single run_id is insufficient",
+                "fix": "Use POST /api/comparison with baseline_run_id and reform_run_id instead",
             },
         )
 
@@ -207,7 +217,7 @@ async def compare_portfolio_runs(
         # Check store first (404 if completely unknown)
         try:
             store.get_metadata(run_id)
-        except ResultStoreError:
+        except ResultNotFound:
             raise HTTPException(
                 status_code=404,
                 detail={

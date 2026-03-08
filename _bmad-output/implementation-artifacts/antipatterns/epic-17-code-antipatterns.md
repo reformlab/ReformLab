@@ -66,3 +66,11 @@
 | high | Missing `{domain}_chosen` column when households present returns zeroed counts instead of error — violates "data contracts fail loudly" rule | Raises HTTPException(500) when column absent but total_households > 0 |
 | high | AC-4 partial — `AreaChart` had no `onClick`; year detail only openable from table rows, not chart | Added `onClick` handler to `AreaChart` using `chartState.activeLabel` |
 | medium | Backend decile tests use `< 100` and `> 0` assertions — too weak to catch ranking errors | Added 3 new tests for invalid group_by, non-integer group_value, and out-of-range group_value (these catch the bugs fixed above) |
+
+## Story 17-6 (2026-03-08)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | `POST /api/indicators/welfare` is runtime-broken — `welfare` in `VALID_INDICATOR_TYPES` allows the single-run endpoint to reach `result.indicators("welfare")` without `reform_result`, crashing at the computation layer | Added explicit 422 before store/cache checks, directing users to `POST /api/comparison` |
+| high | `except ResultStoreError:` in `compare_portfolio_runs()` catches all store I/O errors, converting disk failures into false 404 "not found" responses | Changed to `except ResultNotFound:` — other `ResultStoreError` subclasses now bubble up correctly as 500 |
+| medium | `TestIndicatorWelfare` tests expected 404/409 from welfare endpoint, but Fix 1 causes 422 to fire before any store/cache lookup, breaking 2 tests | Replaced both tests with a single `test_welfare_single_run_returns_422_with_structured_error` that verifies the correct 422 response and message content |
