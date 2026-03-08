@@ -2,7 +2,7 @@
 
 # Story 17.8: Build End-to-End GUI Workflow Tests
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -240,6 +240,19 @@ export function setupResizeObserver(): void {
 
 Call `setupResizeObserver()` in `beforeAll()` of tests that render charts.
 
+### Browser API Polyfills for Export Tests
+
+Tests that trigger CSV/Parquet exports (Tasks 4.5, 5.5) invoke browser APIs (`URL.createObjectURL`, `Blob`, anchor `click`) that are unavailable or incomplete in jsdom. Add to `helpers.ts` and call in `beforeAll()` of export-related test suites:
+
+```typescript
+export function setupExportMocks(): void {
+  globalThis.URL.createObjectURL ??= vi.fn(() => "blob:mock-url");
+  globalThis.URL.revokeObjectURL ??= vi.fn();
+}
+```
+
+If a test creates a download anchor and calls `.click()`, stub it via `vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {})` to prevent jsdom navigation errors.
+
 ### Mock Factory Pattern (helpers.ts)
 
 Follow the existing pattern from `test_exports_integration.py` / screen test files — factory functions with overrides:
@@ -404,7 +417,7 @@ Available for reuse in tests without creating new factories:
 - `mockScenarios` — `Scenario[]` with 3 scenarios
 - `mockSummaryStats` — `SummaryStatistic[]` with 3 stats
 
-**IMPORTANT**: The `mockTemplates` from `mock-data.ts` have the shape `{ id, name, type, description, parameterCount, parameterGroups }` which matches the `Template` type used by the workspace. However, the API types use `TemplateListItem` (snake_case fields). Screen components that receive props directly use the `Template` type; API mocks return `TemplateListItem`. Check the prop types for each screen.
+**CRITICAL**: The `mockTemplates` from `mock-data.ts` use the `Template` type (camelCase fields: `id, name, type, description, parameterCount, parameterGroups`) which is consumed directly by workspace component props. API mocks for `listTemplates()` / `getTemplate()` must return `TemplateListItem` (snake_case fields from `api/types.ts`). These are different types — always verify the prop type expected by each screen component and use the matching shape in API mocks vs direct props.
 
 ### Workflow vs Component Test Distinction
 
@@ -421,6 +434,7 @@ Available for reuse in tests without creating new factories:
 | Issue | Prevention |
 |---|---|
 | Testing implementation details (CSS classes, internal state) | Query by role/text/label, assert user-visible outcomes |
+| Fragile selectors on controls whose text may change (Export, Compare) | Prefer `getByRole("button", { name: /export/i })` with regex, or add stable `aria-label` to critical journey controls |
 | Forgetting ResizeObserver polyfill in chart tests | Import `setupResizeObserver` from helpers.ts, call in beforeAll |
 | Not clearing mocks between tests | Use `vi.clearAllMocks()` in `beforeEach` or `afterEach` |
 | Hardcoding mock data instead of using factories | Use `mockResultListItem(overrides)` pattern for maintainability |

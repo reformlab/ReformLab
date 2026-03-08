@@ -99,3 +99,11 @@
 | high | Failure-tolerant save semantics only in notes, not ACs | AC-1 updated to explicitly state persistence failures must not propagate to the API response. |
 | medium | Structured logging for `get_or_load` missing | Dev Notes `get_or_load` snippet updated with `event=cache_miss_disk_load` (info) and `event=disk_load_miss` (debug) log events. Also removed the unnecessary `from reformlab.server.result_store import ResultStore as RS` comment (the method already receives `store` as parameter — no circular import). |
 | medium | Atomic write purpose not explained | Added docstring note to `save_panel` in Dev Notes explaining that the write-to-temp-then-rename prevents a mid-write crash from leaving a corrupt `panel.parquet`. |
+
+## Story 17-8 (2026-03-08)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| medium | Template/TemplateListItem type discrepancy note too subtle | Elevated the IMPORTANT note to CRITICAL with explicit instructions on which type applies to component props vs API mocks — prevents a common integration bug for LLM agents. |
+| medium | Export tests lack `URL.createObjectURL` + anchor `.click()` guidance | Added a "Browser API Polyfills for Export Tests" section in Dev Notes with `setupExportMocks()` helper pattern and `vi.spyOn(HTMLAnchorElement.prototype, "click")` guidance for Tasks 4.5 and 5.5. |
+| low | Selector stability not addressed for export/compare controls | Added a row to the Anti-Patterns table recommending regex-based role selectors and `aria-label` for controls whose display text may change. |
