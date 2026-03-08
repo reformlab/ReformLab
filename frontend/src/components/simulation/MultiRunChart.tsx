@@ -4,6 +4,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   Legend,
   ResponsiveContainer,
   Tooltip,
@@ -29,6 +30,11 @@ export interface SeriesSpec {
   color?: string;
 }
 
+// Sign-based colors for relative mode bars
+const RELATIVE_POS_COLOR = "#10b981"; // emerald-500
+const RELATIVE_NEG_COLOR = "#ef4444"; // red-500
+const RELATIVE_ZERO_COLOR = "#94a3b8"; // slate-400
+
 interface MultiRunChartProps {
   /** Row-oriented data array. Each row has xKey plus one entry per series key. */
   data: Record<string, unknown>[];
@@ -42,6 +48,8 @@ interface MultiRunChartProps {
   title?: string;
   /** Whether to show the companion data table beneath the chart. */
   showTable?: boolean;
+  /** Called when a bar group is clicked; receives the row data for the clicked group. */
+  onBarClick?: (row: Record<string, unknown>) => void;
 }
 
 /** Columnar dict from API to row-oriented array for Recharts. */
@@ -76,6 +84,7 @@ export function MultiRunChart({
   mode = "absolute",
   title,
   showTable = true,
+  onBarClick,
 }: MultiRunChartProps) {
   // In relative mode, use delta_<key> columns instead of raw series columns
   const activeSeries =
@@ -100,18 +109,30 @@ export function MultiRunChart({
             <Tooltip formatter={(value: unknown) => formatValue(value)} />
             <Legend wrapperStyle={{ fontSize: 12, paddingTop: 4 }} />
             {activeSeries.map((s, i) => {
-              const color =
-                s.color ??
-                (mode === "relative"
-                  ? undefined // handled per-cell; use default
-                  : (CHART_COLORS[i] ?? CHART_COLORS[0]));
+              const baseColor = s.color ?? (CHART_COLORS[i] ?? CHART_COLORS[0]);
               return (
                 <Bar
                   key={s.key}
                   dataKey={s.key}
-                  fill={color ?? CHART_COLORS[i % CHART_COLORS.length]}
+                  fill={baseColor}
                   name={s.label}
-                />
+                  onClick={onBarClick ? (barData: Record<string, unknown>) => onBarClick(barData) : undefined}
+                  style={onBarClick ? { cursor: "pointer" } : undefined}
+                >
+                  {mode === "relative"
+                    ? data.map((row, rowIdx) => {
+                        const val = row[s.key];
+                        const numVal = typeof val === "number" ? val : 0;
+                        const fill =
+                          numVal > 0
+                            ? RELATIVE_POS_COLOR
+                            : numVal < 0
+                              ? RELATIVE_NEG_COLOR
+                              : RELATIVE_ZERO_COLOR;
+                        return <Cell key={rowIdx} fill={fill} />;
+                      })
+                    : null}
+                </Bar>
               );
             })}
           </BarChart>

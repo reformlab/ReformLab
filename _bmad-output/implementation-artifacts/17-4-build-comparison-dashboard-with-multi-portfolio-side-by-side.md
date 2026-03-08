@@ -596,6 +596,12 @@ None — all issues resolved inline during implementation.
 - **Task 7 (Quality)**: Resolved ruff E501 (line-too-long in test), ESLint unused-import (`CrossMetricItem`), and unused-variable (`idx`). Final state: ruff ✅, mypy ✅, typecheck ✅, lint (0 errors) ✅, pytest 3045 passed ✅, vitest 187 passed ✅.
 - **Scope note**: `useApi.ts` hook (listed as optional in source tree) was not created — comparison state is managed inline in `ComparisonDashboardScreen`, which is simpler given the single-screen usage pattern.
 - **Welfare filtering**: Domain `compare_portfolios()` raises `ValueError` if `"welfare"` appears in `indicator_types` (welfare is opt-in via `include_welfare` flag). Route handler filters welfare out of `indicator_types` before building config.
+- **Code Review Synthesis (2026-03-08)**: 6 bugs fixed + 1 new test: (1) `baseline_run_id` validation added (422 if not in run_ids), (2) `apiFetch`/`apiFetchBlob` in `client.ts` now unwrap `{"detail":{"what":…}}` FastAPI format so structured errors reach the screen, (3) `CrossMetricPanel` sort order fixed for `min_*` criteria (ascending), (4) `MultiRunChart` gains `onBarClick` prop and sign-colored `<Cell>` bars in relative mode (emerald/red), (5) `ComparisonDashboardScreen` AC-3 distributional click now passes the clicked bar's row to detail panel, (6) CSV export sanitized against injection and malformed output. Tests: 3046 passed ✅, 187 frontend passed ✅.
+
+#### Review Follow-ups (AI)
+- [ ] [AI-Review] MEDIUM: Welfare tab uses generic table instead of AC-2 summary cards (winner/loser/net-change per run) (`frontend/src/components/screens/ComparisonDashboardScreen.tsx:332`)
+- [ ] [AI-Review] LOW: "View as table" toggle missing from MultiRunChart — companion table is always visible with no toggle (`frontend/src/components/simulation/MultiRunChart.tsx`)
+- [ ] [AI-Review] LOW: ComparisonDashboardScreen SRP — 764-line god component mixes selection, networking, transforms and rendering; consider splitting into container + feature subcomponents
 
 ### File List
 
@@ -608,7 +614,7 @@ None — all issues resolved inline during implementation.
 - `frontend/src/components/simulation/__tests__/MultiRunChart.test.tsx`
 - `frontend/src/components/simulation/__tests__/CrossMetricPanel.test.tsx`
 
-**Modified files:**
+**Modified files (original dev):**
 - `src/reformlab/server/models.py`
 - `src/reformlab/server/routes/indicators.py`
 - `frontend/src/api/types.ts`
@@ -616,4 +622,21 @@ None — all issues resolved inline during implementation.
 - `frontend/src/data/mock-data.ts`
 - `frontend/src/contexts/AppContext.tsx`
 - `frontend/src/App.tsx`
+
+**Modified files (code review synthesis):**
+- `src/reformlab/server/routes/indicators.py` — baseline_run_id validation
+- `tests/server/test_comparison_portfolios.py` — added test_baseline_run_id_not_in_run_ids_returns_422
+- `frontend/src/api/client.ts` — error contract: unwrap nested detail.what/why/fix
+- `frontend/src/components/simulation/CrossMetricPanel.tsx` — fix min_* sort order
+- `frontend/src/components/simulation/MultiRunChart.tsx` — onBarClick prop + Cell sign-coloring
+- `frontend/src/components/screens/ComparisonDashboardScreen.tsx` — CSV safety + AC-3 click fix
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-08
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 15.0 (Reviewer A) / 5.0 (Reviewer B) → Changes Requested
+- **Issues Found:** 10 verified (merged from 2 reviewers)
+- **Issues Fixed:** 7 (6 code fixes + 1 new test)
+- **Action Items Created:** 3
 

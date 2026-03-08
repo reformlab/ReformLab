@@ -235,6 +235,30 @@ class TestComparePortfoliosValidation:
         assert "why" in detail
         assert "fix" in detail
 
+    def test_baseline_run_id_not_in_run_ids_returns_422(
+        self,
+        client_with_store_and_cache: TestClient,
+        tmp_store: ResultStore,
+        populated_cache: ResultCache,
+        auth_headers: dict[str, str],
+    ) -> None:
+        _seed_store_and_cache(tmp_store, populated_cache, "run-bl-a")
+        _seed_store_and_cache(tmp_store, populated_cache, "run-bl-b")
+        response = client_with_store_and_cache.post(
+            "/api/comparison/portfolios",
+            json={
+                "run_ids": ["run-bl-a", "run-bl-b"],
+                "baseline_run_id": "run-not-in-list",
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 422
+        detail = response.json()["detail"]
+        assert "what" in detail
+        assert "baseline_run_id" in detail["what"]
+        assert "why" in detail
+        assert "fix" in detail
+
     def test_reserved_label_returns_422(
         self,
         client_with_store_and_cache: TestClient,

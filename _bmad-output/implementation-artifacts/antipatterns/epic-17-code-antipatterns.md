@@ -39,3 +39,18 @@
 | critical | No test for simulation failure metadata path — `TestRunMetadataAutoSaveFailurePath` was missing entirely | Added `test_metadata_saved_on_simulation_exception` using `raise_server_exceptions=False` |
 | high | Export callbacks in `ResultDetailView` not wired — buttons rendered but `onExportCsv`/`onExportParquet` were `undefined` in `SimulationRunnerScreen` | Imported `exportResultCsv`/`exportResultParquet`; passed as callbacks to both `ResultDetailView` instances |
 | medium | Timestamp sort bug — `_parse_timestamp` returned timezone-naive `datetime.min` as fallback while all valid timestamps are timezone-aware, causing `TypeError` in `list.sort()` when any corrupt entry exists | Changed fallback to `datetime.min.replace(tzinfo=timezone.utc)`; added `timezone` import |
+
+## Story 17-4 (2026-03-08)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | CSV export vulnerable to formula injection and malformed output — no escaping for commas/quotes, no `=+-@` prefix protection | Added `escapeCsvField()` helper — prefixes formula characters with `'`, double-quotes fields containing commas/quotes/newlines |
+| high | `baseline_run_id` silently ignored when not in `run_ids` instead of returning 422 | Added explicit 422 validation before duplicate check |
+| high | Error contract mismatch — FastAPI serializes `HTTPException(detail={...})` as `{"detail":{...}}` but `apiFetch` checks top-level `errorBody.what`, so structured errors never reach the screen | `apiFetch` and `apiFetchBlob` now also check `rawBody.detail.what` and construct `ApiError` from nested detail |
+| medium | AC-3 partial — distributional detail panel always opens with `distRows[0]`, not the clicked bar/row | Added `onBarClick` prop to `MultiRunChart`; removed wrapper div; detail panel now receives actual clicked row |
+| medium | AC-4 partial — relative mode bars use series palette colors instead of sign-based emerald/red | Added `<Cell>` per bar in relative mode with emerald-500/red-500/slate-400 based on value sign |
+| medium | `CrossMetricPanel` mini-ranking always sorts descending, so `min_*` criteria display worst-to-best | Added `isMin` flag; sorts ascending for `min_*`, descending for `max_*` |
+| medium | Welfare tab uses generic table instead of AC-2 winner/loser/net-change summary cards | **Deferred** — domain welfare data structure must be understood before designing cards; added as AI-Review follow-up |
+| low | Test coverage gap — no test for `baseline_run_id` not in `run_ids` returning 422 | Added `test_baseline_run_id_not_in_run_ids_returns_422` |
+| low | "View as table" toggle missing — companion table is hardcoded visible | **Deferred** — table is functional and accessible; toggle is UX polish; added as AI-Review follow-up |
+| low | `ComparisonDashboardScreen` is 764 lines (SRP concern) | **Deferred** — noted as architectural improvement; added as AI-Review follow-up |

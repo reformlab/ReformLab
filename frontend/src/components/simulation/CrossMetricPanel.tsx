@@ -26,8 +26,10 @@ interface CrossMetricCardProps {
 
 function CrossMetricCard({ metric }: CrossMetricCardProps) {
   const label = CRITERION_LABELS[metric.criterion] ?? metric.criterion;
+  // min_* criteria rank ascending (lower = better); max_* rank descending
+  const isMin = metric.criterion.startsWith("min_");
   const allEntries = Object.entries(metric.all_values).sort(
-    ([, a], [, b]) => b - a,
+    ([, a], [, b]) => isMin ? a - b : b - a,
   );
 
   return (

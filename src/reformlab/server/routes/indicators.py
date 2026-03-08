@@ -155,7 +155,18 @@ async def compare_portfolio_runs(
             },
         )
 
-    # 1b. Validate no duplicates
+    # 1b. Validate baseline_run_id is in run_ids (if provided)
+    if body.baseline_run_id is not None and body.baseline_run_id not in body.run_ids:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "what": f"baseline_run_id '{body.baseline_run_id}' is not in run_ids",
+                "why": "The baseline run must be one of the selected run_ids",
+                "fix": "Set baseline_run_id to one of the provided run_ids, or omit it to use the first run",
+            },
+        )
+
+    # 1c. Validate no duplicates
     if len(body.run_ids) != len(set(body.run_ids)):
         seen: set[str] = set()
         dupes = [r for r in body.run_ids if r in seen or seen.add(r)]  # type: ignore[func-returns-value]

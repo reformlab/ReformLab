@@ -92,6 +92,20 @@ function buildSeries(labels: string[]): SeriesSpec[] {
   }));
 }
 
+/** Escape a CSV field: quote if it contains commas/quotes/newlines; prefix formula characters. */
+function escapeCsvField(val: unknown): string {
+  let s = String(val ?? "");
+  // Prefix formula-injection characters to prevent spreadsheet formula execution
+  if (s.length > 0 && "=+-@".includes(s[0])) {
+    s = `'${s}`;
+  }
+  // Wrap in double-quotes if the value contains commas, quotes, or newlines
+  if (s.includes(",") || s.includes('"') || s.includes("\n") || s.includes("\r")) {
+    s = `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
+}
+
 /** Export comparison data as CSV client-side. */
 function exportComparisonCsv(
   response: PortfolioComparisonResponse,
@@ -103,12 +117,9 @@ function exportComparisonCsv(
   const { columns, data } = compData;
   const rowCount = data[columns[0]]?.length ?? 0;
 
-  const rows: string[] = [columns.join(",")];
+  const rows: string[] = [columns.map(escapeCsvField).join(",")];
   for (let i = 0; i < rowCount; i++) {
-    const row = columns.map((col) => {
-      const val = data[col]?.[i];
-      return String(val ?? "");
-    });
+    const row = columns.map((col) => escapeCsvField(data[col]?.[i]));
     rows.push(row.join(","));
   }
 
@@ -694,31 +705,17 @@ export function ComparisonDashboardScreen({
               <div className="p-3">
                 <TabsContent value="distributional">
                   {distData ? (
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onClick={() =>
-                        handleDetailClick(
-                          "distributional",
-                          distRows[0] ?? {},
-                        )
+                    <MultiRunChart
+                      data={distRows}
+                      xKey="decile"
+                      series={distSeries}
+                      mode={viewMode}
+                      title="Income Decile Impact"
+                      showTable
+                      onBarClick={(row) =>
+                        handleDetailClick("distributional", row)
                       }
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter")
-                          handleDetailClick("distributional", distRows[0] ?? {});
-                      }}
-                      className="cursor-pointer"
-                      aria-label="Click to see distributional indicator details"
-                    >
-                      <MultiRunChart
-                        data={distRows}
-                        xKey="decile"
-                        series={distSeries}
-                        mode={viewMode}
-                        title="Income Decile Impact"
-                        showTable
-                      />
-                    </div>
+                    />
                   ) : (
                     <p className="text-xs text-slate-400">
                       No distributional data available.
