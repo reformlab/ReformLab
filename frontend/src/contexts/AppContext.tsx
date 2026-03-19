@@ -17,7 +17,7 @@ import {
 import { toast } from "sonner";
 
 import { AuthError } from "@/api/client";
-import { login } from "@/api/auth";
+import { login, logout as apiLogout } from "@/api/auth";
 import { getAuthToken, setAuthToken } from "@/api/client";
 import { createScenario as apiCreateScenario, cloneScenario as apiCloneScenario } from "@/api/scenarios";
 import {
@@ -135,6 +135,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
+    apiLogout();  // revoke token server-side (best-effort)
     setAuthToken(null);
     setIsAuthenticated(false);
   }, []);

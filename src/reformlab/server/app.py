@@ -14,7 +14,7 @@ import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 
 import reformlab
 from reformlab.server.auth import AuthMiddleware
@@ -43,25 +43,37 @@ def _cors_origins() -> list[str]:
     return origins
 
 
+def _is_dev() -> bool:
+    """Check if running in development mode."""
+    return os.environ.get("REFORMLAB_ENV", "production").lower() in ("dev", "development")
+
+
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
+    dev_mode = _is_dev()
     app = FastAPI(
         title="ReformLab API",
         version=reformlab.__version__,
-        docs_url="/api/docs",
-        openapi_url="/api/openapi.json",
+        # API docs only available in dev mode
+        docs_url="/api/docs" if dev_mode else None,
+        openapi_url="/api/openapi.json" if dev_mode else None,
     )
+
+    # Health endpoint (unauthenticated, used by Docker healthcheck and uptime monitors)
+    @app.get("/api/health")
+    async def health() -> PlainTextResponse:
+        return PlainTextResponse("ok")
 
     # CORS must be added BEFORE auth middleware
     app.add_middleware(
         CORSMiddleware,
         allow_origins=_cors_origins(),
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type"],
     )
 
-    # Auth middleware (skips /api/auth/login and /api/docs)
+    # Auth middleware (skips /api/auth/login, /api/health, and docs in dev mode)
     app.add_middleware(AuthMiddleware)
 
     # Register route groups

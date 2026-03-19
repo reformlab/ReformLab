@@ -12,12 +12,16 @@ RUN uv sync --frozen --no-dev
 # Copy application code
 COPY src/ ./src/
 
-# Create data directory mount point
-RUN mkdir -p /app/data
+# Create data directory and set ownership for non-root user
+RUN mkdir -p /app/data && \
+    adduser --disabled-password --gecos "" --uid 1000 appuser && \
+    chown -R appuser:appuser /app
+
+USER appuser
 
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')" || exit 1
 
-CMD ["uv", "run", "uvicorn", "src.reformlab.api:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uv", "run", "uvicorn", "reformlab.server.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]

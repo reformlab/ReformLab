@@ -10,6 +10,7 @@ import logging
 import os
 import secrets
 import time
+from collections import defaultdict
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
@@ -22,12 +23,33 @@ logger = logging.getLogger(__name__)
 
 SESSION_TTL_SECONDS = 24 * 60 * 60  # 24 hours
 
+# Rate limiting: max 5 login attempts per IP per 15-minute window
+_RATE_LIMIT_MAX = 5
+_RATE_LIMIT_WINDOW = 15 * 60  # seconds
+
 # In-memory session store — maps token to creation timestamp
 _active_sessions: dict[str, float] = {}
 
-SKIP_PATHS = {"/api/auth/login", "/api/docs", "/api/openapi.json"}
+# Rate limiting store — maps IP to list of attempt timestamps
+_login_attempts: dict[str, list[float]] = defaultdict(list)
+
+SKIP_PATHS = {"/api/auth/login", "/api/health", "/api/docs", "/api/openapi.json"}
 
 router = APIRouter()
+
+
+def _check_rate_limit(client_ip: str) -> bool:
+    """Return True if the IP is within rate limits, False if blocked."""
+    now = time.monotonic()
+    # Prune old attempts outside the window
+    attempts = _login_attempts[client_ip]
+    _login_attempts[client_ip] = [t for t in attempts if now - t < _RATE_LIMIT_WINDOW]
+    return len(_login_attempts[client_ip]) < _RATE_LIMIT_MAX
+
+
+def _record_attempt(client_ip: str) -> None:
+    """Record a login attempt for rate limiting."""
+    _login_attempts[client_ip].append(time.monotonic())
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
@@ -59,9 +81,19 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
 
 @router.post("/login", response_model=LoginResponse)
-async def login(body: LoginRequest) -> LoginResponse:
+async def login(body: LoginRequest, request: Request) -> LoginResponse:
     """Validate password and issue a session token."""
     from fastapi import HTTPException
+
+    client_ip = request.client.host if request.client else "unknown"
+
+    # Rate limit check
+    if not _check_rate_limit(client_ip):
+        logger.warning("Rate limit exceeded for IP %s", client_ip)
+        raise HTTPException(
+            status_code=429,
+            detail="Too many login attempts. Try again in 15 minutes.",
+        )
 
     expected = os.environ.get("REFORMLAB_PASSWORD", "")
     if not expected:
@@ -69,9 +101,20 @@ async def login(body: LoginRequest) -> LoginResponse:
         raise HTTPException(status_code=401, detail="Server misconfigured: no password set")
 
     if not secrets.compare_digest(body.password, expected):
+        _record_attempt(client_ip)
         raise HTTPException(status_code=401, detail="Invalid password")
 
     token = secrets.token_hex(32)
     _active_sessions[token] = time.monotonic()
     logger.info("New session created (active sessions: %d)", len(_active_sessions))
     return LoginResponse(token=token)
+
+
+@router.post("/logout")
+async def logout(request: Request) -> JSONResponse:
+    """Invalidate the current session token."""
+    token = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
+    if token and token in _active_sessions:
+        _active_sessions.pop(token, None)
+        logger.info("Session revoked (active sessions: %d)", len(_active_sessions))
+    return JSONResponse(content={"status": "ok"})
