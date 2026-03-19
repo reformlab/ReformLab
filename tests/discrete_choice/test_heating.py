@@ -796,6 +796,7 @@ class TestHeatingPipelineIntegration:
         )
         from reformlab.discrete_choice.logit import LogitChoiceStep
         from reformlab.discrete_choice.step import DiscreteChoiceStep
+        from reformlab.templates.schema import CarbonTaxParameters
 
         config = default_heating_domain_config()
         domain = HeatingInvestmentDomain(config)
@@ -828,7 +829,7 @@ class TestHeatingPipelineIntegration:
             version_string="mock-heating-1.0",
             compute_fn=heating_compute_fn,
         )
-        policy = PolicyConfig(policy={"carbon_tax_rate": 44.6}, name="test")
+        policy = PolicyConfig(policy=CarbonTaxParameters(rate_schedule={2025: 44.6}), name="test")
         taste = TasteParameters(beta_cost=-0.001)
 
         dc_step = DiscreteChoiceStep(
@@ -895,6 +896,7 @@ class TestSequentialDomainExecution:
             VehicleStateUpdateStep,
             default_vehicle_domain_config,
         )
+        from reformlab.templates.schema import CarbonTaxParameters
 
         # ---- Vehicle domain setup ----
         v_config = default_vehicle_domain_config()
@@ -958,7 +960,7 @@ class TestSequentialDomainExecution:
             version_string="mock-heating-1.0", compute_fn=heating_compute_fn
         )
 
-        policy = PolicyConfig(policy={"carbon_tax_rate": 44.6}, name="test")
+        policy = PolicyConfig(policy=CarbonTaxParameters(rate_schedule={2025: 44.6}), name="test")
         taste = TasteParameters(beta_cost=-0.001)
 
         # Vehicle pipeline steps

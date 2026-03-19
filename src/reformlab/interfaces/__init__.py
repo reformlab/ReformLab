@@ -17,6 +17,7 @@ from reformlab.interfaces.api import (
     generate_population,
     get_scenario,
     list_scenarios,
+    load_population,
     run_benchmarks,
     run_scenario,
 )
@@ -31,6 +32,7 @@ from reformlab.interfaces.errors import (
 __all__ = [
     # Core API functions
     "run_scenario",
+    "load_population",
     "run_benchmarks",
     "check_memory_requirements",
     "create_quickstart_adapter",

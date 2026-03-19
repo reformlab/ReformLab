@@ -8,6 +8,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from reformlab.computation.types import PolicyConfig, PopulationData
+from reformlab.templates.schema import CarbonTaxParameters
 
 FIXTURES_DIR = Path(__file__).parent.parent / "fixtures"
 
@@ -35,7 +36,7 @@ def sample_population(sample_table: pa.Table) -> PopulationData:
 @pytest.fixture()
 def sample_policy() -> PolicyConfig:
     return PolicyConfig(
-        policy={"carbon_tax_rate": 44.6},
+        policy=CarbonTaxParameters(rate_schedule={2025: 44.6}),
         name="carbon-tax-baseline",
     )
 

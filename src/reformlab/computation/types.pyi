@@ -5,6 +5,8 @@ from typing import Any, TypeAlias
 
 import pyarrow as pa
 
+from reformlab.templates.schema import PolicyParameters
+
 OutputFields: TypeAlias = pa.Table
 
 @dataclass(frozen=True)
@@ -17,9 +19,15 @@ class PopulationData:
 
 @dataclass(frozen=True)
 class PolicyConfig:
-    policy: dict[str, Any]
+    policy: PolicyParameters
     name: str = ...
     description: str = ...
+
+def serialize_policy(policy: PolicyParameters) -> dict[str, Any]: ...
+def deserialize_policy(
+    data: dict[str, Any],
+    policy_type: str | None = None,
+) -> PolicyParameters: ...
 
 @dataclass(frozen=True)
 class ComputationResult:

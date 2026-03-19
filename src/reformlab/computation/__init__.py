@@ -42,6 +42,8 @@ from reformlab.computation.types import (
     OutputFields,
     PolicyConfig,
     PopulationData,
+    deserialize_policy,
+    serialize_policy,
 )
 
 __all__ = [
@@ -78,5 +80,7 @@ __all__ = [
     "validate_mapping",
     "get_compatibility_info",
     "load_matrix",
+    "deserialize_policy",
+    "serialize_policy",
     "validate_output",
 ]

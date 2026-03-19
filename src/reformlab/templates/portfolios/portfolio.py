@@ -30,14 +30,16 @@ class PolicyConfig:
         name: Optional human-readable name for this policy within the portfolio
     """
 
-    policy_type: PolicyType | CustomPolicyType
     policy: PolicyParameters
+    policy_type: PolicyType | CustomPolicyType | None = None
     name: str = ""
 
     def __post_init__(self) -> None:
-        """Validate that policy matches declared policy_type."""
+        """Infer policy_type from policy if not provided, validate match."""
         inferred_type = infer_policy_type(self.policy)
-        if inferred_type != self.policy_type:
+        if self.policy_type is None:
+            object.__setattr__(self, "policy_type", inferred_type)
+        elif inferred_type != self.policy_type:
             raise PortfolioValidationError(
                 summary="PolicyConfig type mismatch",
                 reason=f"policy_type={self.policy_type.value} does not match "
@@ -53,6 +55,7 @@ class PolicyConfig:
         Returns:
             Dictionary with name, type, and rate_schedule_years.
         """
+        assert self.policy_type is not None  # guaranteed by __post_init__
         return {
             "name": self.name,
             "type": self.policy_type.value,
@@ -104,7 +107,7 @@ class PolicyPortfolio:
             )
 
     @property
-    def policy_types(self) -> tuple[PolicyType | CustomPolicyType, ...]:
+    def policy_types(self) -> tuple[PolicyType | CustomPolicyType | None, ...]:
         """Return tuple of policy types in order."""
         return tuple(p.policy_type for p in self.policies)
 
@@ -126,6 +129,7 @@ class PolicyPortfolio:
         """
         result = []
         for config in self.policies:
+            assert config.policy_type is not None  # guaranteed by __post_init__
             policy_dict: dict[str, Any] = {
                 "name": config.name,
                 "type": config.policy_type.value,

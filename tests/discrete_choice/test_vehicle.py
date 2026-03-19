@@ -903,6 +903,7 @@ class TestVehiclePipelineIntegration:
         )
         from reformlab.discrete_choice.logit import LogitChoiceStep
         from reformlab.discrete_choice.step import DiscreteChoiceStep
+        from reformlab.templates.schema import CarbonTaxParameters
 
         config = default_vehicle_domain_config()
         domain = VehicleInvestmentDomain(config)
@@ -935,7 +936,7 @@ class TestVehiclePipelineIntegration:
             version_string="mock-vehicle-1.0",
             compute_fn=vehicle_compute_fn,
         )
-        policy = PolicyConfig(policy={"carbon_tax_rate": 44.6}, name="test")
+        policy = PolicyConfig(policy=CarbonTaxParameters(rate_schedule={2025: 44.6}), name="test")
         taste = TasteParameters(beta_cost=-0.001)
 
         dc_step = DiscreteChoiceStep(

@@ -7,12 +7,12 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
+from reformlab.interfaces.errors import ConfigurationError
 from reformlab.server.models import (
     CloneRequest,
     CreateScenarioRequest,
     ScenarioResponse,
 )
-from reformlab.interfaces.errors import ConfigurationError
 
 logger = logging.getLogger(__name__)
 

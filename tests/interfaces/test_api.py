@@ -1290,6 +1290,7 @@ class TestPublicAPIImports:
 
         expected_exports = {
             "run_scenario",
+            "load_population",
             "run_benchmarks",
             "check_memory_requirements",
             "create_quickstart_adapter",

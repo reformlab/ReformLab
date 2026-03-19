@@ -100,10 +100,10 @@ def test_quickstart_notebook_includes_export_examples() -> None:
 
 
 def test_quickstart_notebook_includes_population_loading() -> None:
-    """Notebook demonstrates loading population CSV and the adapter pattern."""
+    """Notebook demonstrates loading population data and the adapter pattern."""
     source = _all_sources(_load_notebook())
     assert "POPULATION_PATH" in source
-    assert "population_path" in source
+    assert "load_population" in source
     assert "adapter pattern" in source.lower() or "adapter" in source.lower()
 
 

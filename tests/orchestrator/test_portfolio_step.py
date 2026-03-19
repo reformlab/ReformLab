@@ -683,8 +683,8 @@ class TestPolicyConfigBridge:
         comp_policy = _to_computation_policy(portfolio_policy)
         assert comp_policy.name == "test-ct"
         assert comp_policy.description == "carbon_tax policy"
-        assert comp_policy.policy["rate_schedule"] == {2025: 44.6, 2026: 50.0}
-        assert len(comp_policy.policy["exemptions"]) == 1
+        assert comp_policy.policy.rate_schedule == {2025: 44.6, 2026: 50.0}
+        assert len(comp_policy.policy.exemptions) == 1
 
     def test_name_fallback_to_policy_type(self) -> None:
         """Given portfolio PolicyConfig with no name, uses policy_type.value."""
@@ -696,7 +696,7 @@ class TestPolicyConfigBridge:
         assert comp_policy.name == "subsidy"
 
     def test_fields_preserved(self) -> None:
-        """Given rich PolicyParameters, all fields preserved in dict."""
+        """Given rich PolicyParameters, all fields preserved as typed attributes."""
         portfolio_policy = PortfolioPolicyConfig(
             policy_type=PolicyType.CARBON_TAX,
             policy=CarbonTaxParameters(
@@ -707,8 +707,8 @@ class TestPolicyConfigBridge:
             name="rich-ct",
         )
         comp_policy = _to_computation_policy(portfolio_policy)
-        assert comp_policy.policy["redistribution_type"] == "lump_sum"
-        assert comp_policy.policy["income_weights"] == {"decile_1": 1.5}
+        assert comp_policy.policy.redistribution_type == "lump_sum"
+        assert comp_policy.policy.income_weights == {"decile_1": 1.5}
 
 
 # ============================================================================

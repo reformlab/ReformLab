@@ -9,6 +9,7 @@ from reformlab.computation.types import (
     PolicyConfig,
     PopulationData,
 )
+from reformlab.templates.schema import PolicyParameters
 
 
 class TestComputationResult:
@@ -176,11 +177,11 @@ class TestPopulationData:
 
 class TestPolicyConfig:
     def test_policy_has_policy(self) -> None:
-        pol = PolicyConfig(policy={"rate": 0.1}, name="test")
-        assert pol.policy["rate"] == 0.1
+        pol = PolicyConfig(policy=PolicyParameters(rate_schedule={2025: 0.1}), name="test")
+        assert pol.policy.rate_schedule[2025] == 0.1
         assert pol.name == "test"
 
     def test_policy_default_fields(self) -> None:
-        pol = PolicyConfig(policy={})
+        pol = PolicyConfig(policy=PolicyParameters(rate_schedule={}))
         assert pol.name == ""
         assert pol.description == ""

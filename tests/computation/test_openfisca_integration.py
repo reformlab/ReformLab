@@ -24,6 +24,7 @@ from reformlab.computation.mapping import apply_output_mapping, load_mapping
 from reformlab.computation.openfisca_api_adapter import OpenFiscaApiAdapter
 from reformlab.computation.quality import validate_output
 from reformlab.computation.types import ComputationResult, PolicyConfig, PopulationData
+from reformlab.templates.schema import PolicyParameters
 
 # ---------------------------------------------------------------------------
 # Shared fixtures — TBS is expensive, cache at module scope
@@ -67,7 +68,7 @@ def single_person_population() -> PopulationData:
 
 @pytest.fixture()
 def empty_policy() -> PolicyConfig:
-    return PolicyConfig(policy={}, name="integration-test-policy")
+    return PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="integration-test-policy")
 
 
 def _build_entities_dict(salary: float = 30000.0, age: int = 30) -> dict[str, Any]:
@@ -514,9 +515,7 @@ class TestAdapterPluralKeyFix:
                 }),
             },
         )
-        policy = PolicyConfig(policy={}, name="test")
-
-        entity_dict = adapter._population_to_entity_dict(population, policy, "2024", local_tbs)
+        entity_dict = adapter._population_to_entity_dict(population, {}, "2024", local_tbs)
 
         assert "individus" in entity_dict, "Adapter should normalise to plural key"
         assert "individu" not in entity_dict, "Singular key should be normalised away"
@@ -774,7 +773,7 @@ class TestMultiEntityOutputArrays:
             },
             metadata={"source": "integration-test"},
         )
-        policy = PolicyConfig(policy={}, name="test")
+        policy = PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="test")
 
         result = adapter.compute(population, policy, 2024)
 
@@ -828,7 +827,7 @@ class TestMultiEntityOutputArrays:
                 }),
             },
         )
-        policy = PolicyConfig(policy={}, name="multi-entity-test")
+        policy = PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="multi-entity-test")
 
         result = adapter.compute(population, policy, 2024)
 
@@ -901,7 +900,7 @@ class TestVariablePeriodicityHandling:
                 }),
             },
         )
-        policy = PolicyConfig(policy={}, name="periodicity-test")
+        policy = PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="periodicity-test")
 
         result = adapter.compute(population, policy, 2024)
 
@@ -934,7 +933,7 @@ class TestVariablePeriodicityHandling:
                 }),
             },
         )
-        policy = PolicyConfig(policy={}, name="periodicity-test")
+        policy = PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="periodicity-test")
 
         result = adapter.compute(population, policy, 2024)
 
@@ -962,7 +961,7 @@ class TestVariablePeriodicityHandling:
                 }),
             },
         )
-        policy = PolicyConfig(policy={}, name="mixed-periodicity-test")
+        policy = PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="mixed-periodicity-test")
 
         result = periodicity_adapter.compute(population, policy, 2024)
 
@@ -997,7 +996,7 @@ class TestVariablePeriodicityHandling:
                 }),
             },
         )
-        policy = PolicyConfig(policy={}, name="monthly-e2e-test")
+        policy = PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="monthly-e2e-test")
 
         result = adapter.compute(population, policy, 2024)
 
@@ -1025,7 +1024,7 @@ class TestVariablePeriodicityHandling:
                 }),
             },
         )
-        policy = PolicyConfig(policy={}, name="metadata-test")
+        policy = PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="metadata-test")
 
         result = periodicity_adapter.compute(population, policy, 2024)
 
@@ -1104,7 +1103,7 @@ class TestFourEntityPopulationFormat:
                 }),
             },
         )
-        policy = PolicyConfig(policy={}, name="4entity-couple-test")
+        policy = PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="4entity-couple-test")
 
         result = adapter.compute(population, policy, 2024)
 
@@ -1154,7 +1153,7 @@ class TestFourEntityPopulationFormat:
                 }),
             },
         )
-        policy = PolicyConfig(policy={}, name="4entity-single-test")
+        policy = PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="4entity-single-test")
 
         result_with = adapter.compute(population_with_membership, policy, 2024)
         result_without = adapter.compute(population_without_membership, policy, 2024)
@@ -1194,7 +1193,7 @@ class TestFourEntityPopulationFormat:
                 }),
             },
         )
-        policy = PolicyConfig(policy={}, name="4entity-independent-test")
+        policy = PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="4entity-independent-test")
 
         result = adapter.compute(population, policy, 2024)
 
@@ -1241,11 +1240,9 @@ class TestFourEntityPopulationFormat:
                 }),
             },
         )
-        policy = PolicyConfig(policy={}, name="4entity-loyer-test")
-
         # Verify entity dict has loyer merged
         entity_dict = adapter._population_to_entity_dict(
-            population, policy, "2024", local_tbs
+            population, {}, "2024", local_tbs
         )
 
         assert "loyer" in entity_dict["menages"]["menage_0"]
@@ -1411,7 +1408,7 @@ class TestAdapterReferenceSinglePerson:
     ) -> None:
         """AC-1: Zero income → zero tax."""
         population = self._build_single_person_population(0.0)
-        policy = PolicyConfig(policy={}, name="ref-zero-income")
+        policy = PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="ref-zero-income")
 
         result = reference_irpp_adapter.compute(population, policy, 2024)
 
@@ -1430,7 +1427,7 @@ class TestAdapterReferenceSinglePerson:
     ) -> None:
         """AC-1: Low income (15k salaire_imposable) → decote may apply."""
         population = self._build_single_person_population(15000.0)
-        policy = PolicyConfig(policy={}, name="ref-low-income")
+        policy = PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="ref-low-income")
 
         result = reference_irpp_adapter.compute(population, policy, 2024)
 
@@ -1449,7 +1446,7 @@ class TestAdapterReferenceSinglePerson:
     ) -> None:
         """AC-1: Mid income (30k salaire_imposable) → 11-30% bracket."""
         population = self._build_single_person_population(30000.0)
-        policy = PolicyConfig(policy={}, name="ref-mid-income")
+        policy = PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="ref-mid-income")
 
         result = reference_irpp_adapter.compute(population, policy, 2024)
 
@@ -1468,7 +1465,7 @@ class TestAdapterReferenceSinglePerson:
     ) -> None:
         """AC-1: Upper bracket (75k salaire_imposable) → 30-41% bracket."""
         population = self._build_single_person_population(75000.0)
-        policy = PolicyConfig(policy={}, name="ref-upper-bracket")
+        policy = PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="ref-upper-bracket")
 
         result = reference_irpp_adapter.compute(population, policy, 2024)
 
@@ -1487,7 +1484,7 @@ class TestAdapterReferenceSinglePerson:
     ) -> None:
         """AC-1: High income (100k salaire_imposable) → top bracket."""
         population = self._build_single_person_population(100000.0)
-        policy = PolicyConfig(policy={}, name="ref-high-income")
+        policy = PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="ref-high-income")
 
         result = reference_irpp_adapter.compute(population, policy, 2024)
 
@@ -1510,7 +1507,7 @@ class TestAdapterReferenceSinglePerson:
         increases (becomes more negative) monotonically with income.
         This is a structural test that catches reference value errors.
         """
-        policy = PolicyConfig(policy={}, name="ref-monotonicity")
+        policy = PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="ref-monotonicity")
         salaries = sorted(self.REFERENCE_VALUES.keys())
 
         irpp_values: list[float] = []
@@ -1587,7 +1584,7 @@ class TestAdapterReferenceFamilies:
                 }),
             },
         )
-        policy = PolicyConfig(policy={}, name="ref-couple-40k-30k")
+        policy = PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="ref-couple-40k-30k")
 
         result = reference_irpp_adapter.compute(population, policy, 2024)
 
@@ -1627,7 +1624,7 @@ class TestAdapterReferenceFamilies:
                 }),
             },
         )
-        policy = PolicyConfig(policy={}, name="ref-family-1-child")
+        policy = PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="ref-family-1-child")
 
         result = reference_irpp_adapter.compute(population, policy, 2024)
 
@@ -1670,7 +1667,7 @@ class TestAdapterReferenceFamilies:
                 }),
             },
         )
-        policy = PolicyConfig(policy={}, name="ref-family-2-children")
+        policy = PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="ref-family-2-children")
 
         result = reference_irpp_adapter.compute(population, policy, 2024)
 
@@ -1692,7 +1689,7 @@ class TestAdapterReferenceFamilies:
         Structural invariant of French tax law: additional parts from
         children reduce the per-part taxable income, reducing total tax.
         """
-        policy = PolicyConfig(policy={}, name="ref-qf-invariant")
+        policy = PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="ref-qf-invariant")
 
         # Couple without children
         pop_couple = PopulationData(
@@ -1780,7 +1777,7 @@ class TestFourEntityCrossValidation:
         With membership columns explicitly specifying group assignment vs.
         without membership columns relying on auto-creation.
         """
-        policy = PolicyConfig(policy={}, name="cross-val-single")
+        policy = PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="cross-val-single")
 
         # With membership columns (4-entity explicit)
         pop_with = PopulationData(
@@ -1840,7 +1837,7 @@ class TestFourEntityCrossValidation:
 
         Uses asymmetric income (80k+0) to make QF benefit unambiguous.
         """
-        policy = PolicyConfig(policy={}, name="cross-val-qf")
+        policy = PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="cross-val-qf")
 
         # Couple via 4-entity format
         pop_couple = PopulationData(
@@ -1943,7 +1940,7 @@ class TestAdapterReferenceMultiEntity:
                 }),
             },
         )
-        policy = PolicyConfig(policy={}, name="ref-multi-entity-single")
+        policy = PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="ref-multi-entity-single")
 
         result = reference_multi_entity_adapter.compute(population, policy, 2024)
 
@@ -2019,7 +2016,7 @@ class TestAdapterReferenceMultiEntity:
                 }),
             },
         )
-        policy = PolicyConfig(policy={}, name="ref-multi-entity-couple")
+        policy = PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="ref-multi-entity-couple")
 
         result = reference_multi_entity_adapter.compute(population, policy, 2024)
 
@@ -2072,7 +2069,7 @@ class TestAdapterReferenceMultiEntity:
                 }),
             },
         )
-        policy = PolicyConfig(policy={}, name="ref-multi-entity-indep")
+        policy = PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="ref-multi-entity-indep")
 
         result = reference_multi_entity_adapter.compute(population, policy, 2024)
 

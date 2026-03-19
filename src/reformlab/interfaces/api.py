@@ -31,6 +31,7 @@ if TYPE_CHECKING:
     from matplotlib.figure import Figure
 
     from reformlab.computation.adapter import ComputationAdapter
+    from reformlab.computation.types import PopulationData
     from reformlab.data.pipeline import DatasetManifest
     from reformlab.governance.benchmarking import BenchmarkSuiteResult
     from reformlab.governance.manifest import RunManifest
@@ -39,6 +40,7 @@ if TYPE_CHECKING:
     from reformlab.indicators.types import IndicatorResult
     from reformlab.orchestrator.panel import PanelOutput
     from reformlab.orchestrator.types import PipelineStep, YearState
+    from reformlab.templates.schema import BaselineScenario, ReformScenario
 
 
 @dataclass(frozen=True)
@@ -471,7 +473,7 @@ def create_quickstart_adapter(
     import pyarrow as pa
 
     from reformlab.computation.mock_adapter import MockAdapter
-    from reformlab.computation.types import PolicyConfig, PopulationData
+    from reformlab.computation.types import PolicyConfig
     from reformlab.interfaces.errors import ConfigurationError
 
     if year < 0:
@@ -635,27 +637,46 @@ def check_memory_requirements(
 
 
 def run_scenario(
-    config: RunConfig | ScenarioConfig | Path | dict[str, Any],
+    config: RunConfig | ScenarioConfig | BaselineScenario | ReformScenario | Path | dict[str, Any],
     adapter: ComputationAdapter | None = None,
     *,
+    population: PopulationData | Path | None = None,
+    seed: int | None = None,
     steps: tuple[PipelineStep, ...] | None = None,
     initial_state: dict[str, Any] | None = None,
     skip_memory_check: bool = False,
+    baseline: BaselineScenario | None = None,
 ) -> SimulationResult:
     """Run a complete simulation scenario.
 
     This is the main entry point for executing simulations via the Python API.
-    It handles configuration normalization, validation, scenario loading,
-    orchestrator execution, and result packaging.
+    Supports two execution forms:
+
+    **Config-based** (existing)::
+
+        result = run_scenario(run_config, adapter=adapter)
+
+    **Direct scenario** (new)::
+
+        population = load_population(path)
+        result = run_scenario(scenario, population=population, adapter=adapter, seed=42)
 
     Args:
-        config: Scenario configuration as RunConfig, YAML path, or dict.
+        config: Scenario configuration as RunConfig, ScenarioConfig, BaselineScenario,
+            ReformScenario, YAML path, or dict.
         adapter: Optional computation adapter. If None, uses OpenFiscaAdapter.
-            Tests typically inject MockAdapter here.
+        population: Population data for direct-scenario execution. Required when
+            passing a BaselineScenario or ReformScenario. Accepts PopulationData
+            or a Path to CSV/Parquet (auto-loaded via load_population).
+        seed: Random seed for direct-scenario execution. For config-based execution,
+            use RunConfig.seed instead.
         steps: Optional additional pipeline steps to append after the default
             ComputationStep. For example, ``(VintageTransitionStep(vintage_config),)``.
         initial_state: Optional initial state dict passed to the orchestrator.
             Keys are state slot names (e.g., ``"vintage_vehicle"``).
+        skip_memory_check: Skip memory preflight check.
+        baseline: Baseline scenario for reform resolution. Required when
+            passing a ReformScenario without a registry-resolvable baseline_ref.
 
     Returns:
         SimulationResult with yearly states, panel output, and manifest.
@@ -665,20 +686,30 @@ def run_scenario(
         ValidationErrors: If multiple configuration validation issues are found.
         SimulationError: If simulation fails during execution.
 
-    Example:
-        >>> from reformlab import run_scenario, RunConfig, ScenarioConfig
-        >>> config = RunConfig(
-        ...     scenario=ScenarioConfig(
-        ...         template_name="carbon-tax",
-        ...         policy={"rate_schedule": {2025: 50.0}},
-        ...         start_year=2025,
-        ...         end_year=2030,
-        ...     ),
-        ...     seed=42,
-        ... )
-        >>> result = run_scenario(config)
-        >>> print(result)
-        SimulationResult(SUCCESS, scenario='carbon-tax', years=2025-2030, ...)
+    Examples:
+        Config-based::
+
+            >>> config = RunConfig(
+            ...     scenario=ScenarioConfig(
+            ...         template_name="carbon-tax",
+            ...         policy={"rate_schedule": {2025: 50.0}},
+            ...         start_year=2025,
+            ...         end_year=2030,
+            ...     ),
+            ...     seed=42,
+            ... )
+            >>> result = run_scenario(config)
+
+        Direct scenario::
+
+            >>> from reformlab.templates.schema import BaselineScenario, CarbonTaxParameters, YearSchedule
+            >>> scenario = BaselineScenario(
+            ...     name="carbon-tax-2025",
+            ...     year_schedule=YearSchedule(2025, 2030),
+            ...     policy=CarbonTaxParameters(rate_schedule={2025: 44.60}),
+            ... )
+            >>> population = load_population("data/population.csv")
+            >>> result = run_scenario(scenario, population=population, adapter=adapter, seed=42)
     """
     from reformlab.interfaces.errors import ConfigurationError, SimulationError
 
@@ -701,6 +732,22 @@ def run_scenario(
                     actual=f"{type(step).__name__}",
                     fix="Each step must be callable or implement the OrchestratorStep protocol",
                 )
+
+    # Direct-scenario path: BaselineScenario or ReformScenario
+    from reformlab.templates.schema import BaselineScenario as BS
+    from reformlab.templates.schema import ReformScenario as RS
+
+    if isinstance(config, (BS, RS)):
+        return _run_direct_scenario(
+            scenario=config,
+            adapter=adapter,
+            population=population,
+            seed=seed,
+            steps=steps,
+            initial_state=initial_state,
+            skip_memory_check=skip_memory_check,
+            baseline=baseline,
+        )
 
     # Step 1: Normalize config to RunConfig
     run_config = _normalize_config(config)
@@ -1294,6 +1341,247 @@ def _load_scenario(
     )
 
 
+def _run_direct_scenario(
+    scenario: BaselineScenario | ReformScenario,
+    adapter: ComputationAdapter | None,
+    population: PopulationData | Path | None,
+    seed: int | None,
+    steps: tuple[PipelineStep, ...] | None,
+    initial_state: dict[str, Any] | None,
+    skip_memory_check: bool,
+    baseline: BaselineScenario | None = None,
+) -> SimulationResult:
+    """Execute a typed scenario directly without config wrappers.
+
+    Bridges BaselineScenario/ReformScenario into the existing orchestration
+    pipeline. The typed policy flows directly to the computation layer.
+    """
+    from datetime import datetime, timezone
+
+    from reformlab import __version__
+    from reformlab.computation.types import PolicyConfig, serialize_policy
+    from reformlab.governance.manifest import RunManifest
+    from reformlab.interfaces.errors import ConfigurationError
+    from reformlab.orchestrator.computation_step import ComputationStep
+    from reformlab.orchestrator.panel import PanelOutput
+    from reformlab.orchestrator.runner import OrchestratorRunner
+    from reformlab.orchestrator.types import OrchestratorResult, YearState
+    from reformlab.templates.schema import BaselineScenario as BS
+    from reformlab.templates.schema import ReformScenario as RS
+    from reformlab.templates.workflow import WorkflowResult
+
+    # Resolve population
+    if population is None:
+        raise ConfigurationError(
+            field_path="population",
+            expected="PopulationData or Path to population file",
+            actual="None",
+            fix="Provide population data when using direct scenario execution: "
+            "run_scenario(scenario, population=load_population(path), ...)",
+        )
+
+    if isinstance(population, Path):
+        population = _load_population_data(population)
+
+    # Reform resolution: resolve ReformScenario against baseline
+    if isinstance(scenario, RS):
+        if baseline is not None:
+            from reformlab.templates.reform import resolve_reform_definition
+
+            scenario_resolved = resolve_reform_definition(scenario, baseline)
+            # Use the resolved policy and inherit year_schedule from baseline
+            resolved_policy = scenario_resolved.policy
+            year_schedule = scenario.year_schedule or baseline.year_schedule
+        else:
+            # Attempt registry lookup via baseline_ref
+            try:
+                from reformlab.templates.registry import ScenarioRegistry
+
+                registry = ScenarioRegistry()
+                baseline_obj = registry.get(scenario.baseline_ref)
+                if not isinstance(baseline_obj, BS):
+                    raise ConfigurationError(
+                        field_path="baseline",
+                        expected="BaselineScenario",
+                        actual=type(baseline_obj).__name__,
+                        fix="The baseline_ref must point to a BaselineScenario",
+                    )
+                from reformlab.templates.reform import resolve_reform_definition
+
+                scenario_resolved = resolve_reform_definition(scenario, baseline_obj)
+                resolved_policy = scenario_resolved.policy
+                year_schedule = scenario.year_schedule or baseline_obj.year_schedule
+            except ConfigurationError:
+                raise
+            except Exception:
+                raise ConfigurationError(
+                    field_path="baseline",
+                    expected="BaselineScenario (via baseline= or registry lookup)",
+                    actual="None",
+                    fix="Provide baseline= argument explicitly, or register the "
+                    f"baseline scenario '{scenario.baseline_ref}' before running",
+                )
+        # Use resolved policy for execution
+        execution_policy = resolved_policy
+        execution_name = scenario.name
+    elif isinstance(scenario, BS):
+        year_schedule = scenario.year_schedule
+        execution_policy = scenario.policy
+        execution_name = scenario.name
+    else:
+        raise ConfigurationError(
+            field_path="scenario",
+            expected="BaselineScenario or ReformScenario",
+            actual=type(scenario).__name__,
+            fix="Pass a BaselineScenario or ReformScenario object",
+        )
+
+    # Build typed PolicyConfig — the typed policy flows directly to adapters
+    policy = PolicyConfig(
+        policy=execution_policy,
+        name=execution_name,
+    )
+
+    # Serialize for manifest/workflow boundaries
+    serialized_policy = serialize_policy(execution_policy)
+
+    # Build workflow request
+    request: dict[str, Any] = {
+        "name": execution_name,
+        "version": scenario.version,
+        "run_config": {
+            "start_year": year_schedule.start_year,
+            "projection_years": year_schedule.duration,
+            "output_format": "parquet",
+        },
+        "scenarios": [{"role": "scenario", "reference": execution_name}],
+        "policy": serialized_policy,
+    }
+
+    # Create orchestrator runner
+    assert not isinstance(population, Path)  # resolved above
+    runner = OrchestratorRunner(
+        step_pipeline=(
+            ComputationStep(
+                adapter=adapter if adapter is not None else _initialize_default_adapter_for_direct(),
+                population=population,
+                policy=policy,
+            ),
+        ) + (steps or ()),
+        seed=seed,
+        initial_state=dict(initial_state or {}),
+        policy=serialized_policy,
+        scenario_name=execution_name,
+        scenario_version=scenario.version,
+    )
+
+    # Execute
+    workflow_result: WorkflowResult = runner.run(request)
+
+    # Extract yearly states
+    yearly_states_raw = workflow_result.outputs.get("yearly_states", {})
+    yearly_states: dict[int, YearState] = {}
+    if isinstance(yearly_states_raw, dict):
+        for year_key, state_raw in yearly_states_raw.items():
+            if not isinstance(state_raw, dict):
+                continue
+            year_value = state_raw.get("year", year_key)
+            year_int = _coerce_required_int(year_value, field_path="outputs.year")
+            yearly_states[year_int] = YearState(
+                year=year_int,
+                data=dict(state_raw.get("data", {})),
+                seed=_coerce_optional_int(state_raw.get("seed"), field_path="outputs.seed"),
+                metadata=dict(state_raw.get("metadata", {})),
+            )
+
+    failed_year = _coerce_optional_int(
+        workflow_result.metadata.get("failed_year"),
+        field_path="metadata.failed_year",
+    )
+    failed_step = (
+        workflow_result.metadata.get("failed_step")
+        if isinstance(workflow_result.metadata.get("failed_step"), str)
+        else None
+    )
+
+    if not workflow_result.success:
+        from reformlab.orchestrator.errors import OrchestratorError
+
+        reason = workflow_result.errors[0] if workflow_result.errors else "Unknown execution error"
+        raise OrchestratorError(
+            summary="Simulation workflow failed",
+            reason=reason,
+            year=failed_year,
+            step_name=failed_step,
+            partial_states=yearly_states,
+        )
+
+    orchestrator_result = OrchestratorResult(
+        success=workflow_result.success,
+        yearly_states=yearly_states,
+        errors=list(workflow_result.errors),
+        failed_year=failed_year,
+        failed_step=failed_step,
+        metadata=dict(workflow_result.metadata),
+    )
+    panel_output = PanelOutput.from_orchestrator_result(orchestrator_result)
+
+    parent_manifest_id = workflow_result.metadata.get("parent_manifest_id", "")
+    if not isinstance(parent_manifest_id, str):
+        parent_manifest_id = ""
+
+    child_manifests = _coerce_child_manifest_map(
+        workflow_result.metadata.get("child_manifests"),
+    )
+
+    adapter_version = _safe_adapter_version(adapter) if adapter else "unknown"
+
+    manifest = RunManifest(
+        manifest_id=parent_manifest_id or "direct-run",
+        created_at=datetime.now(timezone.utc).isoformat(),
+        engine_version=__version__,
+        openfisca_version=adapter_version,
+        adapter_version=adapter_version,
+        scenario_version=scenario.version,
+        policy=serialized_policy,
+        seeds={"master": seed} if seed is not None else {},
+        assumptions=_coerce_dict_list(workflow_result.metadata.get("assumptions")),  # type: ignore[arg-type]
+        mappings=_coerce_dict_list(workflow_result.metadata.get("mappings")),  # type: ignore[arg-type]
+        warnings=_coerce_string_list(workflow_result.metadata.get("warnings")),
+        step_pipeline=_coerce_string_list(workflow_result.metadata.get("step_pipeline")),
+        parent_manifest_id=parent_manifest_id,
+        child_manifests=child_manifests,
+        data_hashes=_coerce_hash_map(workflow_result.metadata.get("data_hashes")),
+        output_hashes=_coerce_hash_map(workflow_result.metadata.get("output_hashes")),
+    )
+
+    return SimulationResult(
+        success=workflow_result.success,
+        scenario_id=execution_name,
+        yearly_states=yearly_states,
+        panel_output=panel_output if workflow_result.success else None,
+        manifest=manifest,
+        metadata=workflow_result.metadata,
+    )
+
+
+def _initialize_default_adapter_for_direct() -> ComputationAdapter:
+    """Create a default adapter for direct-scenario execution."""
+    from reformlab.interfaces.errors import ConfigurationError
+
+    try:
+        from reformlab.computation.openfisca_adapter import OpenFiscaAdapter
+
+        return OpenFiscaAdapter(data_dir=Path("data"))
+    except Exception as exc:
+        raise ConfigurationError(
+            field_path="adapter",
+            expected="ComputationAdapter",
+            actual=str(exc),
+            fix="Provide an adapter argument, e.g. adapter=create_quickstart_adapter(carbon_tax_rate=44.6)",
+        ) from exc
+
+
 def _execute_orchestration(
     scenario: ScenarioConfig,
     run_config: RunConfig,
@@ -1322,7 +1610,7 @@ def _execute_orchestration(
     from datetime import datetime, timezone
 
     from reformlab import __version__
-    from reformlab.computation.types import PolicyConfig
+    from reformlab.computation.types import PolicyConfig, deserialize_policy, serialize_policy
     from reformlab.governance.manifest import RunManifest
     from reformlab.orchestrator.computation_step import ComputationStep
     from reformlab.orchestrator.panel import PanelOutput
@@ -1330,13 +1618,15 @@ def _execute_orchestration(
     from reformlab.orchestrator.types import OrchestratorResult, YearState
     from reformlab.templates.workflow import WorkflowResult
 
-    # Normalize policy to ensure manifest compatibility
-    # Convert any numeric keys to strings for JSON serialization
-    normalized_params = _normalize_policy(scenario.policy)
+    # Reconstruct typed PolicyParameters from the dict-based ScenarioConfig.
+    typed_policy = deserialize_policy(scenario.policy)
+
+    # Serialize for manifest/workflow boundaries (JSON-compatible dict)
+    normalized_params = serialize_policy(typed_policy)
 
     population = _load_population_data(scenario.population_path)
     policy = PolicyConfig(
-        policy=normalized_params,
+        policy=typed_policy,
         name=scenario.template_name,
     )
 
@@ -1513,6 +1803,34 @@ def _resolve_openfisca_data_dir(run_config: RunConfig) -> Path:
         actual=str(run_config.output_dir) if run_config.output_dir is not None else None,
         fix="Set REFORMLAB_OPENFISCA_DATA_DIR environment variable or pass adapter explicitly",
     )
+
+
+def load_population(path: Path) -> PopulationData:
+    """Load population data from a CSV or Parquet file.
+
+    This is the public helper for loading population data for direct-scenario
+    execution. It normalizes file paths into ``PopulationData`` objects.
+
+    Args:
+        path: Path to a population file (.csv, .csv.gz, .parquet, .pq).
+
+    Returns:
+        PopulationData wrapping the loaded table.
+
+    Raises:
+        ConfigurationError: If the file format is unsupported or unreadable.
+
+    Example::
+
+        >>> population = load_population(Path("data/households.csv"))
+        >>> result = run_scenario(scenario, population=population, adapter=adapter)
+    """
+    from reformlab.computation.types import PopulationData
+
+    result = _load_population_data(path)
+    if not isinstance(result, PopulationData):
+        return PopulationData(tables={"default": result}, metadata={"source": str(path)})
+    return result
 
 
 def _load_population_data(population_path: Path | None) -> Any:

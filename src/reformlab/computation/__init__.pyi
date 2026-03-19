@@ -94,5 +94,11 @@ from reformlab.computation.types import (
 from reformlab.computation.types import (
     PopulationData as PopulationData,
 )
+from reformlab.computation.types import (
+    deserialize_policy as deserialize_policy,
+)
+from reformlab.computation.types import (
+    serialize_policy as serialize_policy,
+)
 
 __all__: list[str]

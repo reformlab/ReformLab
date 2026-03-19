@@ -27,6 +27,7 @@ from reformlab.computation.adapter import ComputationAdapter
 from reformlab.computation.exceptions import ApiMappingError, CompatibilityError
 from reformlab.computation.openfisca_api_adapter import OpenFiscaApiAdapter
 from reformlab.computation.types import ComputationResult, PolicyConfig, PopulationData
+from reformlab.templates.schema import PolicyParameters
 
 # ---------------------------------------------------------------------------
 # Helpers / Fixtures
@@ -226,7 +227,7 @@ def sample_policy() -> PolicyConfig:
 
 @pytest.fixture()
 def empty_policy() -> PolicyConfig:
-    return PolicyConfig(policy={}, name="no-params")
+    return PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="no-params")
 
 
 # ---------------------------------------------------------------------------
@@ -734,7 +735,13 @@ class TestEntityMapping:
         assert "unknown_entity" in str(exc_info.value)
         assert exc_info.value.invalid_names == ("unknown_entity",)
 
-    def test_unknown_policy_parameter_raises_api_mapping_error(self) -> None:
+    def test_typed_policy_skips_variable_validation(self) -> None:
+        """Typed PolicyParameters don't inject as OpenFisca variables.
+
+        With the typed policy model, the adapter receives structured domain
+        parameters (rate_schedule, exemptions, etc.) rather than flat OpenFisca
+        variable names. The old-style validation and injection is bypassed.
+        """
         adapter = OpenFiscaApiAdapter(
             output_variables=("income_tax",),
             skip_version_check=True,
@@ -748,17 +755,22 @@ class TestEntityMapping:
                 "persons": pa.table({"salary": pa.array([30000.0])}),
             },
         )
-        bad_policy = PolicyConfig(
-            policy={"nonexistent_param": 100.0},
-            name="bad-policy",
+        # Typed policy — adapter should not attempt to inject these as variables
+        typed_policy = PolicyConfig(
+            policy=PolicyParameters(rate_schedule={2025: 100.0}),
+            name="typed-policy",
         )
 
         mock_builder_instance = MagicMock()
-        with _patch_simulation_builder(mock_builder_instance):
-            with pytest.raises(ApiMappingError) as exc_info:
-                adapter.compute(population, bad_policy, 2025)
+        mock_simulation = _make_mock_simulation(
+            results={"income_tax": np.array([3000.0])},
+        )
+        mock_builder_instance.build_from_entities.return_value = mock_simulation
 
-        assert "nonexistent_param" in str(exc_info.value)
+        with _patch_simulation_builder(mock_builder_instance):
+            result = adapter.compute(population, typed_policy, 2025)
+
+        assert result.output_fields.num_rows == 1
 
 
 # ===========================================================================
@@ -1421,7 +1433,7 @@ class TestPeriodicityMetadata:
 
         with _patch_simulation_builder(mock_builder_instance):
             result = adapter.compute(
-                population, PolicyConfig(policy={}, name="test"), 2024
+                population, PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="test"), 2024
             )
 
         assert "variable_periodicities" in result.metadata
@@ -1467,7 +1479,7 @@ class TestPeriodicityMetadata:
 
         with _patch_simulation_builder(mock_builder_instance):
             result = adapter.compute(
-                population, PolicyConfig(policy={}, name="test"), 2024
+                population, PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="test"), 2024
             )
 
         assert "calculation_methods" in result.metadata
@@ -1504,7 +1516,7 @@ class TestPeriodicityMetadata:
 
         with _patch_simulation_builder(mock_builder_instance):
             result = adapter.compute(
-                population, PolicyConfig(policy={}, name="test"), 2024
+                population, PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="test"), 2024
             )
 
         assert result.metadata["variable_periodicities"]["date_naissance"] == "eternity"
@@ -1580,7 +1592,7 @@ class TestComputeMultiEntity:
 
         with _patch_simulation_builder(mock_builder_instance):
             result = adapter.compute(
-                population, PolicyConfig(policy={}, name="test"), 2024
+                population, PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="test"), 2024
             )
 
         # Multi-entity: entity_tables populated
@@ -1630,7 +1642,7 @@ class TestComputeMultiEntity:
 
         with _patch_simulation_builder(mock_builder_instance):
             result = adapter.compute(
-                population, PolicyConfig(policy={}, name="test"), 2024
+                population, PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="test"), 2024
             )
 
         assert "output_entities" in result.metadata
@@ -1665,7 +1677,7 @@ class TestComputeMultiEntity:
         # No SimulationBuilder mock needed; the error fires before simulation construction.
         with pytest.raises(ApiMappingError, match="Cannot determine entity"):
             adapter.compute(
-                population, PolicyConfig(policy={}, name="test"), 2024
+                population, PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="test"), 2024
             )
 
 
@@ -2028,10 +2040,8 @@ class TestPopulationToEntityDict4Entity:
                 }),
             },
         )
-        policy = PolicyConfig(policy={}, name="test")
-
         entity_dict = adapter._population_to_entity_dict(
-            population, policy, "2024", mock_tbs
+            population, {}, "2024", mock_tbs
         )
 
         # Person instances with period-wrapped variable values
@@ -2094,10 +2104,8 @@ class TestPopulationToEntityDict4Entity:
                 }),
             },
         )
-        policy = PolicyConfig(policy={}, name="test")
-
         entity_dict = adapter._population_to_entity_dict(
-            population, policy, "2024", mock_tbs
+            population, {}, "2024", mock_tbs
         )
 
         # famille roles
@@ -2135,10 +2143,8 @@ class TestPopulationToEntityDict4Entity:
                 }),
             },
         )
-        policy = PolicyConfig(policy={}, name="test")
-
         entity_dict = adapter._population_to_entity_dict(
-            population, policy, "2024", mock_tbs
+            population, {}, "2024", mock_tbs
         )
 
         # Old behavior: all columns period-wrapped, no group entities
@@ -2172,10 +2178,8 @@ class TestPopulationToEntityDict4Entity:
                 }),
             },
         )
-        policy = PolicyConfig(policy={}, name="test")
-
         entity_dict = adapter._population_to_entity_dict(
-            population, policy, "2024", mock_tbs
+            population, {}, "2024", mock_tbs
         )
 
         # 2 familles, 2 foyers, 2 menages
@@ -2213,10 +2217,8 @@ class TestPopulationToEntityDict4Entity:
                 }),
             },
         )
-        policy = PolicyConfig(policy={}, name="test")
-
         entity_dict = adapter._population_to_entity_dict(
-            population, policy, "2024", mock_tbs
+            population, {}, "2024", mock_tbs
         )
 
         # menage entity should have role assignments AND period-wrapped loyer
@@ -2254,10 +2256,8 @@ class TestPopulationToEntityDict4Entity:
                 }),
             },
         )
-        policy = PolicyConfig(policy={}, name="test")
-
         entity_dict = adapter._population_to_entity_dict(
-            population, policy, "2024", mock_tbs
+            population, {}, "2024", mock_tbs
         )
 
         # Non-contiguous IDs: famille_0 and famille_2 (no famille_1)
@@ -2296,15 +2296,13 @@ class TestPopulationToEntityDict4Entity:
                 }),
             },
         )
-        policy = PolicyConfig(policy={}, name="test")
-
         with pytest.raises(ApiMappingError, match="Group entity table row count mismatch"):
             adapter._population_to_entity_dict(
-                population, policy, "2024", mock_tbs
+                population, {}, "2024", mock_tbs
             )
 
-    def test_policy_parameters_injected_in_4entity_mode(self) -> None:
-        """AC-1: Policy parameters are injected into person instances in 4-entity mode."""
+    def test_typed_policy_does_not_inject_variables(self) -> None:
+        """Typed policies (dict params) do not inject OpenFisca variables."""
         adapter = OpenFiscaApiAdapter(
             output_variables=("income_tax",),
             skip_version_check=True,
@@ -2312,7 +2310,7 @@ class TestPopulationToEntityDict4Entity:
         mock_tbs = _make_french_mock_tbs(
             variable_entities={"income_tax": "individu"},
         )
-        # Add the policy parameter variable to mock TBS
+        # Add a variable that could theoretically be injected
         policy_var = MagicMock()
         policy_var.entity = mock_tbs.entities[0]  # individu
         policy_var.definition_period = "year"
@@ -2332,13 +2330,11 @@ class TestPopulationToEntityDict4Entity:
                 }),
             },
         )
-        policy = PolicyConfig(policy={"custom_param": 42.0}, name="test")
-
         entity_dict = adapter._population_to_entity_dict(
-            population, policy, "2024", mock_tbs
+            population, {}, "2024", mock_tbs
         )
 
-        assert entity_dict["individus"]["individu_0"]["custom_param"] == {"2024": 42.0}
+        assert "custom_param" not in entity_dict["individus"]["individu_0"]
 
     def test_string_group_ids(self) -> None:
         """Edge case: String (utf8) group IDs work correctly."""
@@ -2364,10 +2360,8 @@ class TestPopulationToEntityDict4Entity:
                 }),
             },
         )
-        policy = PolicyConfig(policy={}, name="test")
-
         entity_dict = adapter._population_to_entity_dict(
-            population, policy, "2024", mock_tbs
+            population, {}, "2024", mock_tbs
         )
 
         assert "famille_fam_a" in entity_dict["familles"]
@@ -2404,10 +2398,8 @@ class TestPopulationToEntityDict4Entity:
                 }),
             },
         )
-        policy = PolicyConfig(policy={}, name="test")
-
         entity_dict = adapter._population_to_entity_dict(
-            population, policy, "2024", mock_tbs
+            population, {}, "2024", mock_tbs
         )
 
         # Person instance IDs use the original table key prefix ("individus")

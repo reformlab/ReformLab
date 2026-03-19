@@ -43,6 +43,7 @@ from reformlab.discrete_choice.types import (
 )
 from reformlab.orchestrator.step import StepRegistry, is_protocol_step
 from reformlab.orchestrator.types import YearState
+from reformlab.templates.schema import PolicyParameters
 
 # ============================================================================
 # Helpers
@@ -949,7 +950,7 @@ class TestDiscreteChoiceStepWithEligibility:
             version_string="test-1.0",
             compute_fn=_discrete_choice_compute_fn,
         )
-        policy = PolicyConfig(policy={}, name="test")
+        policy = PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="test")
         ef = EligibilityFilter(
             rules=(EligibilityRule(column="income", operator="gt", threshold=25000.0),),
             default_choice="keep_current",
@@ -978,7 +979,7 @@ class TestDiscreteChoiceStepWithEligibility:
             version_string="test-1.0",
             compute_fn=_discrete_choice_compute_fn,
         )
-        policy = PolicyConfig(policy={}, name="test")
+        policy = PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="test")
         step = DiscreteChoiceStep(
             adapter=adapter,
             domain=domain,
@@ -1000,7 +1001,7 @@ class TestDiscreteChoiceStepWithEligibility:
             version_string="test-1.0",
             compute_fn=_discrete_choice_compute_fn,
         )
-        policy = PolicyConfig(policy={}, name="test")
+        policy = PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="test")
         ef = EligibilityFilter(
             rules=(EligibilityRule(column="income", operator="ge", threshold=30000.0),),
         )
@@ -1028,7 +1029,7 @@ class TestDiscreteChoiceStepWithEligibility:
             version_string="test-1.0",
             compute_fn=_discrete_choice_compute_fn,
         )
-        policy = PolicyConfig(policy={}, name="test")
+        policy = PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="test")
         step = DiscreteChoiceStep(
             adapter=adapter,
             domain=domain,
@@ -1046,7 +1047,7 @@ class TestDiscreteChoiceStepWithEligibility:
             version_string="test-1.0",
             compute_fn=_discrete_choice_compute_fn,
         )
-        policy = PolicyConfig(policy={}, name="test")
+        policy = PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="test")
         ef = EligibilityFilter(
             rules=(EligibilityRule(column="income", operator="gt", threshold=25000.0),),
             description="Income > 25k",
@@ -1085,7 +1086,7 @@ class TestFullPipelineIntegration:
             version_string="test-1.0",
             compute_fn=_discrete_choice_compute_fn,
         )
-        policy = PolicyConfig(policy={}, name="test")
+        policy = PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="test")
         taste = TasteParameters(beta_cost=-0.01)
 
         ef = EligibilityFilter(
@@ -1193,7 +1194,7 @@ class TestFullPipelineIntegration:
             return pa.table(result_cols)
 
         adapter = MockAdapter(version_string="test-1.0", compute_fn=_vehicle_compute_fn)
-        policy = PolicyConfig(policy={}, name="test")
+        policy = PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="test")
         taste = TasteParameters(beta_cost=-0.01)
         domain = VehicleInvestmentDomain(config=config)
 
@@ -1270,7 +1271,7 @@ class TestPerformanceAssertion:
             version_string="test-1.0",
             compute_fn=_discrete_choice_compute_fn,
         )
-        policy = PolicyConfig(policy={}, name="test")
+        policy = PolicyConfig(policy=PolicyParameters(rate_schedule={}), name="test")
         ef = EligibilityFilter(
             rules=(EligibilityRule(column="income", operator="ge", threshold=70000.0),),
         )

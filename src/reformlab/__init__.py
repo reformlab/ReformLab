@@ -9,7 +9,8 @@ Public API:
 The stable Python API for running simulations and managing scenarios.
 
 Core functions:
-    - run_scenario: Execute a complete simulation
+    - run_scenario: Execute a complete simulation (accepts typed scenarios or RunConfig)
+    - load_population: Load population data from CSV/Parquet
     - run_benchmarks: Run benchmark validation suite
     - check_memory_requirements: Preflight memory-risk check before execution
     - create_scenario: Create and optionally register a scenario
@@ -21,8 +22,8 @@ Result types:
     - SimulationResult: Result of a simulation run
 
 Configuration types:
-    - RunConfig: Configuration for running a simulation
-    - ScenarioConfig: Configuration for a scenario
+    - RunConfig: Configuration for running a simulation (legacy path)
+    - ScenarioConfig: Configuration for a scenario (legacy path)
     - MemoryCheckResult: Result payload from memory preflight checks
 
 Error types:
@@ -30,8 +31,25 @@ Error types:
     - MemoryWarning: Memory-risk warning category for preflight alerts
     - SimulationError: Execution failure during simulation
 
-Example usage:
---------------
+Example usage (direct scenario):
+---------------------------------
+    >>> from reformlab import run_scenario, load_population
+    >>> from reformlab.templates.schema import (
+    ...     BaselineScenario, CarbonTaxParameters, PolicyType, YearSchedule,
+    ... )
+    >>> scenario = BaselineScenario(
+    ...     name="carbon-tax-2025",
+    ...     policy_type=PolicyType.CARBON_TAX,
+    ...     year_schedule=YearSchedule(start_year=2025, end_year=2030),
+    ...     policy=CarbonTaxParameters(rate_schedule={2025: 50.0}),
+    ... )
+    >>> population = load_population("data/populations/demo.csv")
+    >>> result = run_scenario(scenario, population=population, seed=42)
+    >>> print(result)
+    SimulationResult(SUCCESS, scenario='carbon-tax-2025', years=2025-2030, ...)
+
+Example usage (config-based, legacy):
+--------------------------------------
     >>> from reformlab import run_scenario, RunConfig, ScenarioConfig
     >>> config = RunConfig(
     ...     scenario=ScenarioConfig(
@@ -67,6 +85,7 @@ from reformlab.interfaces import (
     generate_population,
     get_scenario,
     list_scenarios,
+    load_population,
     run_benchmarks,
     run_scenario,
 )
@@ -87,6 +106,7 @@ __version__ = "0.1.0"
 __all__ = [
     # Core API functions
     "run_scenario",
+    "load_population",
     "run_benchmarks",
     "check_memory_requirements",
     "create_quickstart_adapter",

@@ -568,9 +568,9 @@ class TestCustomTemplateOrchestrator:
             name="Test Penalty",
         )
         comp_policy = _to_computation_policy(config)
-        assert comp_policy.policy["emission_threshold"] == 130.0
-        assert comp_policy.policy["malus_rate"] == 60.0
-        assert comp_policy.policy["rate_schedule"] == {2026: 50.0}
+        assert comp_policy.policy.emission_threshold == 130.0
+        assert comp_policy.policy.malus_rate == 60.0
+        assert comp_policy.policy.rate_schedule == {2026: 50.0}
 
     # AC5d / Task 5.3: integration test — custom template through orchestrator yearly loop
     def test_execute_with_custom_template(self) -> None:

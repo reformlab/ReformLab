@@ -63,6 +63,7 @@ def portfolio_to_dict(portfolio: PolicyPortfolio) -> dict[str, Any]:
     schema_path = Path(__file__).parent.parent / "schema" / "portfolio.schema.json"
     policies_data = []
     for config in portfolio.policies:
+        assert config.policy_type is not None  # guaranteed by __post_init__
         policy_dict: dict[str, Any] = {
             "name": config.name,
             "policy_type": config.policy_type.value,
@@ -544,15 +545,18 @@ def validate_compatibility(portfolio: PolicyPortfolio) -> tuple[Conflict, ...]:
     for i in range(len(portfolio.policies)):
         for j in range(i + 1, len(portfolio.policies)):
             if portfolio.policies[i].policy_type == portfolio.policies[j].policy_type:
+                pi_type = portfolio.policies[i].policy_type
+                pj_type = portfolio.policies[j].policy_type
+                assert pi_type is not None and pj_type is not None  # guaranteed by __post_init__
                 conflict = Conflict(
                     conflict_type=ConflictType.SAME_POLICY_TYPE,
                     policy_indices=(i, j),
                     parameter_name="policy_type",
                     conflicting_values=(
-                        portfolio.policies[i].policy_type.value,
-                        portfolio.policies[j].policy_type.value,
+                        pi_type.value,
+                        pj_type.value,
                     ),
-                    description=f"Both policies[{i}] and [{j}] are {portfolio.policies[i].policy_type.value}",
+                    description=f"Both policies[{i}] and [{j}] are {pi_type.value}",
                 )
                 conflicts.append(conflict)
 

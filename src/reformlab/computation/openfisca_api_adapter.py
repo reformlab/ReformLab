@@ -135,7 +135,18 @@ class OpenFiscaApiAdapter:
         # (fail fast — detect unsupported periodicity values early).
         var_periodicities = self._resolve_variable_periodicities(tbs)
 
-        simulation = self._build_simulation(population, policy, period, tbs)
+        # Typed PolicyParameters carry structured domain fields (rate_schedule,
+        # exemptions, etc.) — NOT flat OpenFisca variable names. The old-style
+        # policy injection (inserting dict keys as input variables) only applies
+        # to ad-hoc dict-based policies. For typed policies, we pass an empty
+        # dict so the adapter skips variable injection and validation.
+        #
+        # Future adapters may translate PolicyParameters into OpenFisca
+        # parameter reforms; for now, the computation is driven by the
+        # TaxBenefitSystem defaults and population data.
+        policy_params_dict: dict[str, Any] = {}
+
+        simulation = self._build_simulation(population, policy_params_dict, period, tbs)
         entity_tables = self._extract_results_by_entity(
             simulation, period, vars_by_entity, var_periodicities
         )
@@ -412,13 +423,13 @@ class OpenFiscaApiAdapter:
         else:
             return simulation.calculate(var_name, period_str)
 
-    def _validate_policy_parameters(self, policy: PolicyConfig, tbs: Any) -> None:
+    def _validate_policy_parameters(self, policy_params: dict[str, Any], tbs: Any) -> None:
         """Check that all policy parameter keys are valid input variables."""
-        if not policy.policy:
+        if not policy_params:
             return
 
         known_variables = set(tbs.variables.keys())
-        invalid = [k for k in policy.policy if k not in known_variables]
+        invalid = [k for k in policy_params if k not in known_variables]
 
         if not invalid:
             return
@@ -458,7 +469,7 @@ class OpenFiscaApiAdapter:
     def _build_simulation(
         self,
         population: PopulationData,
-        policy: PolicyConfig,
+        policy_params: dict[str, Any],
         period: int,
         tbs: Any,
     ) -> Any:
@@ -489,12 +500,12 @@ class OpenFiscaApiAdapter:
             )
 
         # Validate policy parameters
-        self._validate_policy_parameters(policy, tbs)
+        self._validate_policy_parameters(policy_params, tbs)
 
         # Build entity dict for SimulationBuilder.build_from_entities
         period_str = str(period)
         entities_dict = self._population_to_entity_dict(
-            population, policy, period_str, tbs
+            population, policy_params, period_str, tbs
         )
 
         builder = SimulationBuilder()
@@ -749,7 +760,7 @@ class OpenFiscaApiAdapter:
     def _population_to_entity_dict(
         self,
         population: PopulationData,
-        policy: PolicyConfig,
+        policy_params: dict[str, Any],
         period_str: str,
         tbs: Any,
     ) -> dict[str, Any]:
@@ -832,12 +843,12 @@ class OpenFiscaApiAdapter:
 
             # Inject policy parameters
             if (
-                policy.policy
+                policy_params
                 and person_entity_plural
                 and person_entity_plural in result
             ):
                 for instance_id in result[person_entity_plural]:
-                    for param_key, param_value in policy.policy.items():
+                    for param_key, param_value in policy_params.items():
                         result[person_entity_plural][instance_id][param_key] = {
                             period_str: param_value
                         }
@@ -1004,9 +1015,9 @@ class OpenFiscaApiAdapter:
                     result[group_plural][instance_id][col] = {period_str: value}
 
         # Step 5g: Inject policy parameters into person entity instances
-        if policy.policy and person_entity_plural in result:
+        if policy_params and person_entity_plural in result:
             for instance_id in result[person_entity_plural]:
-                for param_key, param_value in policy.policy.items():
+                for param_key, param_value in policy_params.items():
                     result[person_entity_plural][instance_id][param_key] = {
                         period_str: param_value
                     }

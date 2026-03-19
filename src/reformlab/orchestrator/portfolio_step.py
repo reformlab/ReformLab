@@ -12,7 +12,7 @@ Story 12.3 / FR44: Extend orchestrator to execute policy portfolios.
 from __future__ import annotations
 
 import logging
-from dataclasses import asdict, replace
+from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
@@ -89,13 +89,15 @@ def _to_computation_policy(
 ) -> ComputationPolicyConfig:
     """Convert a portfolio PolicyConfig to a computation PolicyConfig.
 
-    The portfolio layer uses typed PolicyParameters (frozen dataclass),
-    while the computation layer uses generic dict[str, Any].
+    Both layers now use typed PolicyParameters objects. The portfolio
+    PolicyConfig wraps policy with portfolio metadata; the computation
+    PolicyConfig wraps policy with name/description for the adapter.
     """
     from reformlab.computation.types import PolicyConfig as ComputationPolicyConfig
 
+    assert policy_config.policy_type is not None  # guaranteed by __post_init__
     return ComputationPolicyConfig(
-        policy=asdict(policy_config.policy),
+        policy=policy_config.policy,
         name=policy_config.name or policy_config.policy_type.value,
         description=f"{policy_config.policy_type.value} policy",
     )
@@ -141,6 +143,7 @@ def _merge_policy_results(
     for i, result in enumerate(results):
         table = result.output_fields
         policy_cfg = portfolio.policies[i]
+        assert policy_cfg.policy_type is not None  # guaranteed by __post_init__
         policy_name = policy_cfg.name or policy_cfg.policy_type.value
 
         if "household_id" not in table.column_names:
@@ -189,6 +192,7 @@ def _merge_policy_results(
     # Detect duplicate policy types to decide prefixing strategy
     type_counts: dict[str, int] = {}
     for policy_cfg in portfolio.policies:
+        assert policy_cfg.policy_type is not None  # guaranteed by __post_init__
         ptype = policy_cfg.policy_type.value
         type_counts[ptype] = type_counts.get(ptype, 0) + 1
 
@@ -201,6 +205,7 @@ def _merge_policy_results(
         zip(results, portfolio.policies, strict=True)
     ):
         table = result.output_fields
+        assert policy_cfg.policy_type is not None  # guaranteed by __post_init__
         ptype = policy_cfg.policy_type.value
         non_id_cols = [c for c in table.column_names if c != "household_id"]
 
@@ -309,6 +314,7 @@ class PortfolioComputationStep:
 
         # Validate each policy type at construction time (fail fast)
         for i, policy_cfg in enumerate(portfolio.policies):
+            assert policy_cfg.policy_type is not None  # guaranteed by __post_init__
             _validate_policy_type(policy_cfg.policy_type, i, policy_cfg)
 
     @property
@@ -352,6 +358,7 @@ class PortfolioComputationStep:
 
         for i, policy_cfg in enumerate(self._portfolio.policies):
             comp_policy = _to_computation_policy(policy_cfg)
+            assert policy_cfg.policy_type is not None  # guaranteed by __post_init__
             policy_name = policy_cfg.name or policy_cfg.policy_type.value
             policy_type_value = policy_cfg.policy_type.value
 

@@ -21,6 +21,7 @@ from reformlab.computation.ingestion import (
 )
 from reformlab.computation.openfisca_adapter import OpenFiscaAdapter
 from reformlab.computation.types import PolicyConfig, PopulationData
+from reformlab.templates.schema import CarbonTaxParameters
 
 
 @pytest.fixture()
@@ -56,7 +57,7 @@ def sample_population_for_adapter() -> PopulationData:
 
 @pytest.fixture()
 def sample_policy_for_adapter() -> PolicyConfig:
-    return PolicyConfig(policy={"carbon_tax_rate": 44.6}, name="baseline")
+    return PolicyConfig(policy=CarbonTaxParameters(rate_schedule={2025: 44.6}), name="baseline")
 
 
 class TestIngestionRoundTrips:

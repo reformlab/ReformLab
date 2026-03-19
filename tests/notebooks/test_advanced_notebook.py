@@ -124,7 +124,7 @@ def test_advanced_notebook_does_not_use_quickstart_adapter() -> None:
 
 
 def test_advanced_notebook_section_ordering() -> None:
-    """Sections appear in the correct order: data → policy → decisions → simulation → analysis → governance."""
+    """Sections in correct order: data → policy → decisions → simulation → analysis → governance."""
     source = _read_source()
     pos_data = source.find("Build the Population Database")
     pos_policy = source.find("Define the Policy Portfolio")

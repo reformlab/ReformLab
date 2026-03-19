@@ -7,6 +7,7 @@ import pyarrow as pa
 from reformlab.computation.adapter import ComputationAdapter
 from reformlab.computation.mock_adapter import MockAdapter
 from reformlab.computation.types import PolicyConfig, PopulationData
+from reformlab.templates.schema import PolicyParameters
 
 
 class TestMockAdapter:
@@ -87,7 +88,7 @@ class TestMockAdapter:
             metadata={},
         )
         adapter = MockAdapter(compute_fn=my_compute)
-        result = adapter.compute(pop, PolicyConfig(policy={}), period=2025)
+        result = adapter.compute(pop, PolicyConfig(policy=PolicyParameters(rate_schedule={})), period=2025)
 
         assert result.output_fields.column("doubled").to_pylist() == [2.0, 4.0, 6.0]
 
@@ -110,7 +111,7 @@ class TestMockAdapter:
         # Empty tables dict → compute_fn is called and handles fallback itself
         result = adapter.compute(
             PopulationData(tables={}, metadata={}),
-            PolicyConfig(policy={}),
+            PolicyConfig(policy=PolicyParameters(rate_schedule={})),
             period=2025,
         )
         assert call_count == 1
