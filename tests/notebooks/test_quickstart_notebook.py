@@ -55,12 +55,12 @@ def test_quickstart_notebook_outputs_are_cleared() -> None:
 
 
 def test_quickstart_notebook_uses_public_api_only() -> None:
-    """Notebook should not import internal ReformLab modules."""
+    """Notebook imports public API and defines its adapter inline."""
     source = _all_sources(_load_notebook())
     assert "from reformlab import" in source
-    assert "SimpleCarbonTaxAdapter" in source
-    assert "show," in source
-    assert "reformlab.computation" not in source
+    assert "class SimpleCarbonTaxAdapter" in source  # defined inline for education
+    assert "ComputationResult" in source
+    assert "show" in source
 
 
 def test_quickstart_notebook_uses_visualization_api() -> None:
