@@ -116,7 +116,24 @@ export function MultiRunChart({
                   dataKey={s.key}
                   fill={baseColor}
                   name={s.label}
-                  onClick={onBarClick ? (barData: Record<string, unknown>) => onBarClick(barData) : undefined}
+                  onClick={
+                    onBarClick
+                      ? (barData: unknown) => {
+                          if (
+                            typeof barData === "object" &&
+                            barData !== null &&
+                            "payload" in barData
+                          ) {
+                            const payload = (
+                              barData as { payload?: Record<string, unknown> }
+                            ).payload;
+                            if (payload) {
+                              onBarClick(payload);
+                            }
+                          }
+                        }
+                      : undefined
+                  }
                   style={onBarClick ? { cursor: "pointer" } : undefined}
                 >
                   {mode === "relative"

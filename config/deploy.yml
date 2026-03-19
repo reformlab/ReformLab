@@ -32,11 +32,11 @@ env:
   clear:
     REFORMLAB_DATA_DIR: /app/data
   secret:
-    - AUTH_PASSWORD
+    - REFORMLAB_PASSWORD
 
 accessories:
   frontend:
-    image: reformlab/reformlab-frontend
+    image: ghcr.io/reformlab/reformlab-frontend
     hosts:
       - 178.104.67.235
     port: 8080:8080

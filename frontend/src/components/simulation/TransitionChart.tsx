@@ -113,11 +113,11 @@ export function TransitionChart({
               axisLine={false}
             />
             <Tooltip
-              formatter={(value: number, name: string) => [
-                `${(value * 100).toFixed(1)}%`,
-                alternativeLabels[name] ?? name,
+              formatter={(value: number | string | undefined, name: string | undefined) => [
+                typeof value === "number" ? `${(value * 100).toFixed(1)}%` : String(value ?? ""),
+                name ? (alternativeLabels[name] ?? name) : "",
               ]}
-              labelFormatter={(label: number) => `Year ${label}`}
+              labelFormatter={(label: unknown) => `Year ${String(label ?? "")}`}
               contentStyle={{
                 fontSize: 12,
                 border: "1px solid #e2e8f0",

@@ -40,7 +40,10 @@ export function PopulationDistributionChart({
             <YAxis tick={{ fontSize: 10 }} />
             <Tooltip
               contentStyle={{ fontSize: 12 }}
-              formatter={(value: number) => [value.toLocaleString(), valueLabel]}
+              formatter={(value: number | string | undefined) => [
+                typeof value === "number" ? value.toLocaleString() : String(value ?? ""),
+                valueLabel,
+              ]}
             />
             <Bar dataKey="value" maxBarSize={40}>
               {data.map((_, index) => (

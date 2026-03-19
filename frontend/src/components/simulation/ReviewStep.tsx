@@ -3,7 +3,7 @@ import {
   TableBody,
   TableCell,
   TableHead,
-  TableHeader,
+  TableHeaderCell,
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -122,15 +122,15 @@ export default function ReviewStep({
         </h3>
         <div className="rounded border border-slate-200 overflow-hidden">
           <Table>
-            <TableHeader>
+            <TableHead>
               <TableRow className="bg-slate-50">
-                <TableHead className="text-xs font-semibold">Parameter</TableHead>
-                <TableHead className="text-xs font-semibold text-right">Value</TableHead>
-                <TableHead className="text-xs font-semibold text-right">Baseline</TableHead>
-                <TableHead className="text-xs font-semibold text-right">Unit</TableHead>
-                <TableHead className="text-xs font-semibold text-center">Status</TableHead>
+                <TableHeaderCell className="text-xs font-semibold">Parameter</TableHeaderCell>
+                <TableHeaderCell className="text-xs font-semibold text-right">Value</TableHeaderCell>
+                <TableHeaderCell className="text-xs font-semibold text-right">Baseline</TableHeaderCell>
+                <TableHeaderCell className="text-xs font-semibold text-right">Unit</TableHeaderCell>
+                <TableHeaderCell className="text-xs font-semibold text-center">Status</TableHeaderCell>
               </TableRow>
-            </TableHeader>
+            </TableHead>
             <TableBody>
               {parameters.map((param) => {
                 const isModified = param.value !== param.baseline;

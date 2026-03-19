@@ -305,7 +305,7 @@ export function DataFusionWorkbench({
             <Button
               size="sm"
               onClick={goNext}
-              disabled={generating || (!canProceed && activeStep !== "method")}
+              disabled={generating || !canProceed}
             >
               {activeStep === "method" ? "Generate Population" : "Next"}
               {activeStep !== "method" ? <ChevronRight className="h-4 w-4" /> : null}

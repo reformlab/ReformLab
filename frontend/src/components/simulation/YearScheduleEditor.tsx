@@ -208,7 +208,10 @@ export function YearScheduleEditor({
               <XAxis dataKey="year" tick={{ fontSize: 10 }} />
               <YAxis tick={{ fontSize: 10 }} width={40} />
               <Tooltip
-                formatter={(val: number) => [`${val}${unit ? ` ${unit}` : ""}`, "Value"]}
+                formatter={(val: number | string | undefined) => [
+                  `${val ?? ""}${unit ? ` ${unit}` : ""}`,
+                  "Value",
+                ]}
                 labelFormatter={(label) => `Year ${label}`}
               />
               <Line

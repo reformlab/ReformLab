@@ -154,6 +154,7 @@ describe("PortfolioCompositionPanel", () => {
         onReorder={() => {}}
         onRemove={() => {}}
         onParameterChange={() => {}}
+        onRateScheduleChange={() => {}}
         parameterSchemas={{
           "carbon-tax-flat": [
             { id: "tax_rate", label: "Tax Rate", value: 44, baseline: 44, unit: "%", group: "Tax Rates", type: "slider", min: 0, max: 200 },

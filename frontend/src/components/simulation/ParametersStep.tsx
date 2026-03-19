@@ -5,7 +5,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
-import ParameterRow from "./ParameterRow";
+import { ParameterRow } from "./ParameterRow";
 import type { Parameter } from "@/data/mock-data";
 
 interface ParametersStepProps {
@@ -47,7 +47,8 @@ export default function ParametersStep({
                 <ParameterRow
                   key={param.id}
                   parameter={param}
-                  onChange={onParameterChange}
+                  value={param.value}
+                  onChange={(nextValue) => onParameterChange(param.id, nextValue)}
                 />
               ))}
             </div>

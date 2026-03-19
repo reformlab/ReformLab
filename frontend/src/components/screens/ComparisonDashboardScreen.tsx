@@ -771,7 +771,7 @@ export function ComparisonDashboardScreen({
                     data={fiscalData}
                     portfolioLabels={comparisonData.portfolio_labels}
                     viewMode={viewMode}
-                    onDetailClick={(label, row) =>
+                    onDetailClick={(_label, row) =>
                       handleDetailClick("fiscal", row)
                     }
                   />

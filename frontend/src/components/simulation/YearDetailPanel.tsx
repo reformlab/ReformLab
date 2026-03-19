@@ -113,10 +113,25 @@ export function YearDetailPanel({
                   axisLine={false}
                 />
                 <Tooltip
-                  formatter={(value: number, _name: string, props: { payload?: { pct?: number } }) => [
-                    `${value.toLocaleString()} (${(props.payload?.pct ?? 0).toFixed(1)}%)`,
-                    "Count",
-                  ]}
+                  formatter={(value: number | string | undefined, _name, props) => {
+                    const percent =
+                      typeof props === "object" &&
+                      props !== null &&
+                      "payload" in props &&
+                      typeof props.payload === "object" &&
+                      props.payload !== null &&
+                      "pct" in props.payload &&
+                      typeof props.payload.pct === "number"
+                        ? props.payload.pct
+                        : 0;
+
+                    return [
+                      typeof value === "number"
+                        ? `${value.toLocaleString()} (${percent.toFixed(1)}%)`
+                        : String(value ?? ""),
+                      "Count",
+                    ];
+                  }}
                   contentStyle={{ fontSize: 11, border: "1px solid #e2e8f0", borderRadius: 4 }}
                 />
                 <Bar dataKey="count" radius={[0, 3, 3, 0]}>

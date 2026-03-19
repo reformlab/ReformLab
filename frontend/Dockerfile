@@ -1,7 +1,11 @@
 FROM node:22-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci && \
+    npm install --no-save \
+      @rollup/rollup-linux-arm64-gnu@4.59.0 \
+      lightningcss-linux-arm64-gnu@1.31.1 \
+      @tailwindcss/oxide-linux-arm64-gnu@4.2.1
 COPY . .
 RUN npm run build
 
