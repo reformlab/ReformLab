@@ -9,7 +9,7 @@ image: reformlab/reformlab
 servers:
   web:
     hosts:
-      - HETZNER_IP_HERE  # TODO: replace with your Hetzner server IP
+      - 178.104.67.235
     options:
       network: private
     labels:
@@ -42,7 +42,7 @@ env:
 accessories:
   frontend:
     image: reformlab/reformlab-frontend
-    host: HETZNER_IP_HERE  # TODO: replace with your Hetzner server IP
+    host: 178.104.67.235
     port: 8080
     labels:
       traefik.http.routers.reformlab-app.rule: Host(`app.reformlab.fr`)
