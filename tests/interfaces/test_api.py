@@ -1293,6 +1293,7 @@ class TestPublicAPIImports:
             "load_population",
             "run_benchmarks",
             "check_memory_requirements",
+            "SimpleCarbonTaxAdapter",
             "create_quickstart_adapter",
             "create_scenario",
             "clone_scenario",

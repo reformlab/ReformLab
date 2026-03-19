@@ -451,24 +451,158 @@ class SimulationResult:
         )
 
 
+class SimpleCarbonTaxAdapter:
+    """Transparent demo adapter that applies a flat carbon tax formula.
+
+    Reads ``income`` and ``carbon_emissions`` from population data and computes::
+
+        carbon_tax = carbon_emissions * (carbon_tax_rate / 44.0)
+        disposable_income = income - carbon_tax
+
+    This is the recommended adapter for quickstart demos and learning.
+    For production use, swap in an ``OpenFiscaApiAdapter``.
+
+    Example::
+
+        >>> adapter = SimpleCarbonTaxAdapter(carbon_tax_rate=44.0)
+        >>> result = run_scenario(scenario, adapter=adapter, population=pop, seed=42)
+    """
+
+    def __init__(
+        self,
+        *,
+        carbon_tax_rate: float,
+        year: int = 2025,
+        version_string: str = "quickstart-demo-v1",
+    ) -> None:
+        from reformlab.interfaces.errors import ConfigurationError
+
+        if year < 0:
+            raise ConfigurationError(
+                field_path="year",
+                expected="non-negative integer year",
+                actual=year,
+                fix="Provide a valid year (0 or greater)",
+            )
+        if carbon_tax_rate < 0:
+            raise ConfigurationError(
+                field_path="carbon_tax_rate",
+                expected="non-negative tax rate",
+                actual=carbon_tax_rate,
+                fix="Provide a non-negative tax rate value",
+            )
+
+        self._carbon_tax_rate = carbon_tax_rate
+        self._year = year
+        self._version_string = version_string
+        self._baseline_rate = 44.0
+        self._rate_multiplier = (
+            carbon_tax_rate / self._baseline_rate if self._baseline_rate else 1.0
+        )
+
+    def version(self) -> str:
+        """Return adapter version string."""
+        return self._version_string
+
+    def compute(
+        self,
+        population: PopulationData,
+        policy: Any,
+        period: int,
+    ) -> Any:
+        """Apply carbon tax formula to population data.
+
+        Args:
+            population: Population data with household_id, income, carbon_emissions.
+            policy: Policy configuration (used for call logging, not for rate).
+            period: Simulation year.
+
+        Returns:
+            ComputationResult with carbon_tax and disposable_income columns.
+        """
+        import pyarrow as pa
+
+        from reformlab.computation.types import ComputationResult
+        from reformlab.interfaces.errors import ConfigurationError
+
+        table = population.tables.get("default")
+        if table is None or table.num_rows == 0:
+            # Fallback for empty populations
+            output = self._build_fallback_output(period)
+        else:
+            required_columns = {"household_id", "income", "carbon_emissions"}
+            missing = required_columns - set(table.column_names)
+            if missing:
+                raise ConfigurationError(
+                    field_path="population.columns",
+                    expected=f"columns {sorted(required_columns)}",
+                    actual=f"missing {sorted(missing)} in {table.column_names}",
+                    fix="Ensure population CSV contains household_id, income, "
+                    "and carbon_emissions columns",
+                )
+
+            household_ids = table.column("household_id")
+            incomes = table.column("income").to_pylist()
+            emissions = table.column("carbon_emissions").to_pylist()
+            n = len(incomes)
+
+            carbon_taxes = [max(0.0, e * self._rate_multiplier) for e in emissions]
+            disposable = [incomes[i] - carbon_taxes[i] for i in range(n)]
+
+            output = pa.table(
+                {
+                    "household_id": household_ids,
+                    "year": pa.array([period] * n, type=pa.int64()),
+                    "income": pa.array(incomes, type=pa.float64()),
+                    "carbon_tax": pa.array(carbon_taxes, type=pa.float64()),
+                    "disposable_income": pa.array(disposable, type=pa.float64()),
+                }
+            )
+
+        return ComputationResult(
+            output_fields=output,
+            adapter_version=self._version_string,
+            period=period,
+            metadata={"source": "SimpleCarbonTaxAdapter"},
+        )
+
+    def _build_fallback_output(self, period: int) -> Any:
+        """Build synthetic fallback table for empty populations."""
+        import pyarrow as pa
+
+        size = 100
+        income_base = [15000.0 + (i * 800.0) for i in range(size)]
+        carbon_tax_base = [150.0 + (i * 0.5) for i in range(size)]
+        scaled = [max(0.0, tax * self._rate_multiplier) for tax in carbon_tax_base]
+
+        return pa.table(
+            {
+                "household_id": pa.array(range(size), type=pa.int64()),
+                "year": pa.array([period] * size, type=pa.int64()),
+                "income": pa.array(income_base, type=pa.float64()),
+                "carbon_tax": pa.array(scaled, type=pa.float64()),
+                "disposable_income": pa.array(
+                    [income_base[i] - scaled[i] for i in range(size)],
+                    type=pa.float64(),
+                ),
+            }
+        )
+
+
 def create_quickstart_adapter(
     *,
     carbon_tax_rate: float,
     year: int = 2025,
     version_string: str = "quickstart-demo-v1",
 ) -> ComputationAdapter:
-    """Create a population-aware adapter for quickstart notebook demos.
+    """Create a demo adapter for quickstart notebooks.
 
-    The returned adapter reads income and carbon_emissions from the
-    population data passed to ``compute()`` and applies a simple carbon
-    tax formula::
+    .. deprecated::
+        Use ``SimpleCarbonTaxAdapter`` directly instead. This function is
+        retained as a compatibility shim.
 
-        carbon_tax = carbon_emissions * (carbon_tax_rate / 44.0)
-        disposable_income = income - carbon_tax
-
-    When the population is empty (no rows), the adapter falls back to a
-    pre-built synthetic table with 100 households so that existing
-    call-sites without population data continue to work.
+    Returns a ``SimpleCarbonTaxAdapter`` wrapped in ``MockAdapter`` for
+    backward compatibility with existing call-sites.
     """
     import pyarrow as pa
 
