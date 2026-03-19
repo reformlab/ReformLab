@@ -10,16 +10,11 @@ servers:
   web:
     hosts:
       - 178.104.67.235
-    options:
-      network: private
-    labels:
-      traefik.http.routers.reformlab-api.rule: Host(`api.reformlab.fr`)
-      traefik.http.routers.reformlab-api.tls: true
-      traefik.http.routers.reformlab-api.tls.certresolver: letsencrypt
 
 proxy:
   ssl: true
   host: api.reformlab.fr
+  app_port: 8000
 
 registry:
   server: ghcr.io
@@ -28,7 +23,7 @@ registry:
     - KAMAL_REGISTRY_PASSWORD
 
 builder:
-  arch: amd64
+  arch: arm64
 
 volumes:
   - /data/reformlab:/app/data
@@ -42,25 +37,10 @@ env:
 accessories:
   frontend:
     image: reformlab/reformlab-frontend
-    host: 178.104.67.235
-    port: 8080
-    labels:
-      traefik.http.routers.reformlab-app.rule: Host(`app.reformlab.fr`)
-      traefik.http.routers.reformlab-app.tls: true
-      traefik.http.routers.reformlab-app.tls.certresolver: letsencrypt
-
-traefik:
-  options:
-    publish:
-      - "443:443"
-      - "80:80"
-    volume:
-      - "/letsencrypt:/letsencrypt"
-  args:
-    entryPoints.web.address: ":80"
-    entryPoints.websecure.address: ":443"
-    entryPoints.web.http.redirections.entryPoint.to: websecure
-    entryPoints.web.http.redirections.entryPoint.scheme: https
-    certificatesResolvers.letsencrypt.acme.email: "lucas@reformlab.fr"
-    certificatesResolvers.letsencrypt.acme.storage: "/letsencrypt/acme.json"
-    certificatesResolvers.letsencrypt.acme.httpChallenge.entryPoint: web
+    hosts:
+      - 178.104.67.235
+    port: 8080:8080
+    proxy:
+      ssl: true
+      host: reformlab.fr
+      app_port: 8080
