@@ -64,6 +64,11 @@ def create_app() -> FastAPI:
     async def health() -> PlainTextResponse:
         return PlainTextResponse("ok")
 
+    # Kamal proxy readiness endpoint.
+    @app.get("/up")
+    async def up() -> PlainTextResponse:
+        return PlainTextResponse("ok")
+
     # CORS must be added BEFORE auth middleware
     app.add_middleware(
         CORSMiddleware,

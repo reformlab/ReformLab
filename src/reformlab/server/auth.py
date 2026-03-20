@@ -33,7 +33,7 @@ _active_sessions: dict[str, float] = {}
 # Rate limiting store — maps IP to list of attempt timestamps
 _login_attempts: dict[str, list[float]] = defaultdict(list)
 
-SKIP_PATHS = {"/api/auth/login", "/api/health", "/api/docs", "/api/openapi.json"}
+SKIP_PATHS = {"/up", "/api/auth/login", "/api/health", "/api/docs", "/api/openapi.json"}
 
 router = APIRouter()
 
