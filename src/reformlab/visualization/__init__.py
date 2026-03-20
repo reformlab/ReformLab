@@ -17,17 +17,25 @@ from __future__ import annotations
 
 from reformlab.visualization.display import show
 from reformlab.visualization.plotting import (
+    create_figure_grid,
+    plot_bar_series,
     plot_comparison,
     plot_deciles,
+    plot_histogram,
     plot_yearly,
+    show_figure,
 )
 from reformlab.visualization.styling import create_figure, style_axes
 
 __all__ = [
     "show",
     "create_figure",
+    "create_figure_grid",
     "style_axes",
-    "plot_deciles",
-    "plot_yearly",
+    "plot_bar_series",
     "plot_comparison",
+    "plot_deciles",
+    "plot_histogram",
+    "plot_yearly",
+    "show_figure",
 ]

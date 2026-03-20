@@ -14,6 +14,108 @@ if TYPE_CHECKING:
     from matplotlib.figure import Figure
 
 
+def create_figure_grid(
+    nrows: int,
+    ncols: int,
+    *,
+    figsize: tuple[float, float] = (10, 6),
+) -> tuple[Figure, list[Axes]]:
+    """Create a grid of subplots and return (figure, flat list of axes).
+
+    Args:
+        nrows: Number of rows.
+        ncols: Number of columns.
+        figsize: Figure size in inches.
+
+    Returns:
+        Tuple of (Figure, list[Axes]).
+    """
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    fig, axes = plt.subplots(nrows, ncols, figsize=figsize)
+    flat = list(np.asarray(axes).flat) if nrows * ncols > 1 else [axes]
+    fig.tight_layout(pad=3.0)
+    return fig, flat
+
+
+def plot_histogram(
+    values: list[float],
+    *,
+    title: str = "",
+    xlabel: str = "",
+    ylabel: str = "Count",
+    bins: int | range | list[int] = 10,
+    color: str = "steelblue",
+    ax: Axes | None = None,
+) -> tuple[Figure, Axes]:
+    """Histogram of a list of numeric values.
+
+    Args:
+        values: Data to plot.
+        title: Chart title.
+        xlabel: X-axis label.
+        ylabel: Y-axis label.
+        bins: Number of bins or bin edges.
+        color: Bar color.
+        ax: Existing axes to plot on. Creates new figure if None.
+
+    Returns:
+        Tuple of (Figure, Axes).
+    """
+    from reformlab.visualization.styling import create_figure, style_axes
+
+    if ax is None:
+        fig, ax = create_figure()
+    else:
+        fig = ax.get_figure()  # type: ignore[assignment]
+    ax.hist(values, bins=bins, color=color, alpha=0.8, edgecolor="white")
+    style_axes(ax, title=title, xlabel=xlabel, ylabel=ylabel)
+    return fig, ax
+
+
+def plot_bar_series(
+    labels: list[str],
+    values: list[float],
+    *,
+    title: str = "",
+    xlabel: str = "",
+    ylabel: str = "",
+    colors: list[str] | str = "steelblue",
+    ax: Axes | None = None,
+) -> tuple[Figure, Axes]:
+    """Bar chart from labels and values.
+
+    Args:
+        labels: Category labels.
+        values: Bar heights.
+        title: Chart title.
+        xlabel: X-axis label.
+        ylabel: Y-axis label.
+        colors: Bar color(s).
+        ax: Existing axes to plot on. Creates new figure if None.
+
+    Returns:
+        Tuple of (Figure, Axes).
+    """
+    from reformlab.visualization.styling import create_figure, style_axes
+
+    if ax is None:
+        fig, ax = create_figure()
+    else:
+        fig = ax.get_figure()  # type: ignore[assignment]
+    ax.bar(labels, values, color=colors, alpha=0.8)
+    style_axes(ax, title=title, xlabel=xlabel, ylabel=ylabel)
+    return fig, ax
+
+
+def show_figure(fig: Figure) -> None:
+    """Display a matplotlib figure (calls plt.show in interactive contexts)."""
+    import matplotlib.pyplot as plt
+
+    plt.show()
+
+
 def plot_deciles(
     indicator_table: pa.Table,
     field: str,
