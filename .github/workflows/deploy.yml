@@ -27,12 +27,13 @@ jobs:
       - name: Set up SSH key
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          HETZNER_IP: ${{ secrets.HETZNER_IP }}
+          HETZNER_HOST_KEY: ${{ secrets.HETZNER_HOST_KEY }}
         run: |
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "$HETZNER_IP" >> ~/.ssh/known_hosts
+          echo "$HETZNER_HOST_KEY" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -67,12 +68,13 @@ jobs:
       - name: Set up SSH key
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          HETZNER_IP: ${{ secrets.HETZNER_IP }}
+          HETZNER_HOST_KEY: ${{ secrets.HETZNER_HOST_KEY }}
         run: |
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "$HETZNER_IP" >> ~/.ssh/known_hosts
+          echo "$HETZNER_HOST_KEY" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
