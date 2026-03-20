@@ -13,7 +13,7 @@ servers:
 
 proxy:
   ssl: true
-  host: api.reformlab.fr
+  host: api.reform-lab.eu
   app_port: 8000
 
 registry:
@@ -42,5 +42,5 @@ accessories:
     port: 8080:8080
     proxy:
       ssl: true
-      host: reformlab.fr
+      host: reform-lab.eu
       app_port: 8080
