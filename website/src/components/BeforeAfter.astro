@@ -1,0 +1,47 @@
+---
+const rows = [
+  { before: "Commission a study, wait months", after: "Run the analysis yourself, today" },
+  { before: "Chain scripts across R, Excel, VBA", after: "One integrated pipeline, no coding" },
+  { before: "Results you can't reproduce", after: "Every run produces a full manifest" },
+  { before: '"We didn\'t have time to check"', after: "Checking becomes routine" },
+  { before: "One scenario, one shot", after: "Compare variants, optimize targeting" },
+];
+---
+
+<section class="relative bg-paper py-24 lg:py-32">
+  <div class="absolute top-0 left-0 right-0 h-px bg-rule"></div>
+
+  <div class="max-w-5xl mx-auto px-6 lg:px-8">
+    <div class="reveal mb-16">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="h-px w-12 bg-amber"></div>
+        <span class="text-amber font-medium text-sm tracking-widest uppercase">The shift</span>
+      </div>
+      <h2 class="font-[family-name:var(--font-display)] text-4xl lg:text-5xl font-bold text-ink leading-tight">
+        From months to minutes
+      </h2>
+    </div>
+
+    <div class="reveal">
+      <!-- Header row -->
+      <div class="grid grid-cols-2 gap-6 lg:gap-16 mb-6">
+        <div class="text-sm font-bold text-slate-mid uppercase tracking-widest">Before</div>
+        <div class="text-sm font-bold text-amber uppercase tracking-widest">After</div>
+      </div>
+
+      <!-- Comparison rows -->
+      <div class="space-y-0 divide-y divide-rule/60">
+        {rows.map((row) => (
+          <div class="grid grid-cols-2 gap-6 lg:gap-16 py-6 group">
+            <div class="text-slate-mid text-base lg:text-lg line-through decoration-rule/80 decoration-1 group-hover:text-slate-light transition-colors duration-300">
+              {row.before}
+            </div>
+            <div class="text-ink text-base lg:text-lg font-medium group-hover:text-amber transition-colors duration-300">
+              {row.after}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>

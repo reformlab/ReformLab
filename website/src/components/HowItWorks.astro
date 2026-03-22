@@ -1,0 +1,99 @@
+---
+const stages = [
+  {
+    number: "01",
+    title: "Select your data",
+    description: "Connect to French and European open data sources — INSEE, Eurostat, EU-SILC — without downloading, cleaning, or joining files yourself.",
+    skip: "Download raw files. Write jointure scripts. Debug encoding issues.",
+    icon: `<svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="16" cy="16" r="12"/><path d="M 4 16 h 24 M 16 4 c -4 4, -4 8, 0 12 s 4 8, 0 12 M 16 4 c 4 4, 4 8, 0 12 s -4 8, 0 12"/></svg>`,
+    color: "teal"
+  },
+  {
+    number: "02",
+    title: "Define your policy",
+    description: "Pick from scenario templates (carbon tax, energy subsidies, social transfers) or build your own. No coding required.",
+    skip: "Encode policy logic from scratch. Write custom simulation scripts.",
+    icon: `<svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="6" y="4" width="20" height="24" rx="2"/><path d="M 10 10 h 12 M 10 15 h 8 M 10 20 h 10"/></svg>`,
+    color: "amber"
+  },
+  {
+    number: "03",
+    title: "See the results",
+    description: "Distributional charts, executive summaries, targeting analysis. Who wins, who loses, broken down by income, region, household type.",
+    skip: "Build Excel charts manually. Write methodology docs after the fact.",
+    icon: `<svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="18" width="5" height="10" rx="1"/><rect x="13" y="12" width="5" height="16" rx="1"/><rect x="22" y="6" width="5" height="22" rx="1"/></svg>`,
+    color: "teal"
+  },
+  {
+    number: "04",
+    title: "Go deeper",
+    description: "Compare multiple policy variants side by side. Optimize targeting given a budget constraint. Run multi-year projections with vintage tracking.",
+    skip: "Repeat entire analysis for each variant. Coordinate across teams.",
+    icon: `<svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="6"/><circle cx="22" cy="22" r="6"/><path d="M 14.5 14.5 L 17.5 17.5" stroke-dasharray="2 2"/></svg>`,
+    color: "amber"
+  }
+];
+---
+
+<section id="how-it-works" class="relative bg-surface-dark text-paper py-24 lg:py-32 overflow-hidden">
+  <!-- Dot grid subtle bg -->
+  <div class="absolute inset-0 opacity-[0.03]" style="background-image: radial-gradient(circle, rgba(250,248,245,0.8) 1px, transparent 1px); background-size: 40px 40px;"></div>
+
+  <div class="relative z-10 max-w-7xl mx-auto px-6 lg:px-8">
+    <!-- Section header -->
+    <div class="reveal mb-20 lg:mb-24">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="h-px w-12 bg-amber"></div>
+        <span class="text-amber font-medium text-sm tracking-widest uppercase">The pipeline</span>
+      </div>
+      <h2 class="font-[family-name:var(--font-display)] text-4xl lg:text-5xl font-bold text-paper leading-tight">
+        How it works
+      </h2>
+      <p class="mt-5 text-xl text-slate-light max-w-2xl font-light">
+        ReformLab handles the full pipeline — from open data ingestion to decision-ready&nbsp;reports.
+      </p>
+    </div>
+
+    <!-- Pipeline stages -->
+    <div class="space-y-8 lg:space-y-0 lg:grid lg:grid-cols-4 lg:gap-0 reveal-stagger">
+      {stages.map((stage, i) => (
+        <div class={`pipeline-step reveal relative group ${i < stages.length - 1 ? 'lg:pr-8' : ''}`}>
+          {/* Connector line between steps */}
+          {i < stages.length - 1 && (
+            <div class="hidden lg:block absolute top-12 right-0 w-8 h-px bg-slate/30">
+              <div class="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-slate/40"></div>
+            </div>
+          )}
+
+          <div class="relative pl-16 lg:pl-0">
+            {/* Mobile number badge */}
+            <div class="lg:hidden absolute left-0 top-0 w-10 h-10 rounded-full border border-slate/30 flex items-center justify-center">
+              <span class="text-xs font-bold text-slate-light">{stage.number}</span>
+            </div>
+
+            {/* Desktop number */}
+            <div class="hidden lg:flex items-center gap-3 mb-6">
+              <span class={`text-xs font-bold tracking-wider ${stage.color === 'amber' ? 'text-amber' : 'text-teal'}`}>{stage.number}</span>
+              <div class={`h-px flex-1 ${stage.color === 'amber' ? 'bg-amber/20' : 'bg-teal/20'}`}></div>
+            </div>
+
+            {/* Icon */}
+            <div class={`hidden lg:flex w-14 h-14 rounded-lg items-center justify-center mb-5 ${stage.color === 'amber' ? 'bg-amber-soft text-amber' : 'bg-teal-soft text-teal'}`} set:html={stage.icon} />
+
+            <h3 class="font-[family-name:var(--font-display)] text-xl lg:text-2xl font-semibold text-paper mb-3">
+              {stage.title}
+            </h3>
+
+            <p class="text-slate-light text-base leading-relaxed mb-4">
+              {stage.description}
+            </p>
+
+            <p class="text-sm text-slate-mid italic">
+              <span class="text-slate-light font-medium not-italic">Skip:</span> {stage.skip}
+            </p>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>

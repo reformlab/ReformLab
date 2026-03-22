@@ -1,0 +1,104 @@
+---
+const personas = [
+  {
+    role: "Policy analysts in government",
+    description: "You understand the policy deeply. You shouldn't need to become a data engineer to assess it. Open a browser, pick a scenario, get results you can trust.",
+    icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M 3 21 h 18"/><path d="M 5 21 V 7 l 7 -4 7 4 v 14"/><path d="M 9 21 v -6 h 6 v 6"/><path d="M 9 10 h 0.01 M 15 10 h 0.01 M 9 14 h 0.01 M 15 14 h 0.01"/></svg>`
+  },
+  {
+    role: "Researchers and economists",
+    description: "Full Python API and Jupyter integration. Reproducible runs with assumption manifests. Build on OpenFisca without rebuilding the infrastructure.",
+    icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M 9 3 v 2 M 15 3 v 2"/><path d="M 8 5 h 8 c 1 0 2 1 2 3 v 1 c 0 3 -2 6 -4 8 l -2 2 -2 -2 C 8 15 6 12 6 9 V 8 c 0 -2 1 -3 2 -3"/><circle cx="12" cy="9" r="1"/></svg>`
+  },
+  {
+    role: "Evaluation teams",
+    description: "Replace months of coordination, conventions, and budget transfers with self-service analysis. Iterate in real time instead of waiting for external reports.",
+    icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M 12 2 L 2 7 l 10 5 10 -5 Z"/><path d="M 2 17 l 10 5 10 -5"/><path d="M 2 12 l 10 5 10 -5"/></svg>`
+  }
+];
+
+const cases = [
+  {
+    title: "Carbon Tax Impact Assessment",
+    summary: "A ministry team needs distributional impact of a carbon tax reform with multiple redistribution options — broken down by income decile, household type, and region — ready for a director's briefing.",
+    result: "Same-day analysis. Full methodology manifest generated automatically. Easy to re-run when parameters change."
+  },
+  {
+    title: "Energy Renovation Subsidy Evaluation",
+    summary: "An evaluation department asks: does an energy renovation subsidy actually reach low-income homeowners with poorly insulated housing? Requires combining income, housing stock, and eligibility data.",
+    result: "Compare intended vs. actual targeting. Adjust eligibility thresholds and see how coverage changes — instantly."
+  },
+  {
+    title: "Multi-Year Carbon Tax Phase-In",
+    summary: "A researcher models a carbon tax increasing from 44 to 100 EUR/tCO2 over five years. How do distributional effects evolve as households adapt?",
+    result: "Year-by-year projections with vintage tracking. See fleet turnover, building insulation, and cumulative distributional effects."
+  },
+  {
+    title: "Academic Publication Workflow",
+    summary: "An economist needs reproducible distributional results for a journal submission. Co-author at another institution needs identical results.",
+    result: "Share manifest + notebook. Co-author runs it and gets identical results — verified by comparing manifest hashes."
+  }
+];
+---
+
+<section id="use-cases" class="relative bg-surface-dark text-paper py-24 lg:py-32">
+  <div class="max-w-7xl mx-auto px-6 lg:px-8">
+    <!-- Section header -->
+    <div class="reveal mb-16 lg:mb-20">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="h-px w-12 bg-amber"></div>
+        <span class="text-amber font-medium text-sm tracking-widest uppercase">Who it's for</span>
+      </div>
+      <h2 class="font-[family-name:var(--font-display)] text-4xl lg:text-5xl font-bold text-paper leading-tight">
+        Built for the people<br/>closest to policy
+      </h2>
+    </div>
+
+    <!-- Persona cards -->
+    <div class="reveal-stagger grid grid-cols-1 md:grid-cols-3 gap-6 mb-20 lg:mb-24">
+      {personas.map((persona) => (
+        <div class="reveal group rounded-xl border border-slate/20 bg-ink-light/50 p-8 hover:border-amber/30 transition-all duration-500">
+          <div class="w-11 h-11 rounded-lg bg-amber-soft text-amber flex items-center justify-center mb-5" set:html={persona.icon} />
+          <h3 class="font-[family-name:var(--font-display)] text-xl font-semibold text-paper mb-3">
+            {persona.role}
+          </h3>
+          <p class="text-slate-light leading-relaxed">
+            {persona.description}
+          </p>
+        </div>
+      ))}
+    </div>
+
+    <!-- Use case stories -->
+    <div class="reveal">
+      <h3 class="font-[family-name:var(--font-display)] text-2xl font-semibold text-paper mb-10">
+        In practice
+      </h3>
+
+      <div class="space-y-4">
+        {cases.map((c) => (
+          <details class="group rounded-xl border border-slate/20 bg-ink-light/30 overflow-hidden hover:border-slate/30 transition-colors duration-300">
+            <summary class="flex items-center justify-between p-6 lg:p-8 cursor-pointer">
+              <span class="font-[family-name:var(--font-display)] text-lg lg:text-xl font-semibold text-paper pr-8">
+                {c.title}
+              </span>
+              <svg class="w-5 h-5 text-slate-mid flex-shrink-0 transition-transform duration-300 group-open:rotate-45" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M 10 4 v 12 M 4 10 h 12"/>
+              </svg>
+            </summary>
+            <div class="px-6 lg:px-8 pb-8 -mt-2">
+              <p class="text-slate-light leading-relaxed mb-4">{c.summary}</p>
+              <div class="flex items-start gap-3 bg-amber-soft/50 rounded-lg p-4">
+                <svg class="w-5 h-5 text-amber flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M 10 2 l 8 16 H 2 Z" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="M 10 8 v 4 M 10 14 v 1"/>
+                </svg>
+                <p class="text-amber-glow text-sm font-medium">{c.result}</p>
+              </div>
+            </div>
+          </details>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>

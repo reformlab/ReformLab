@@ -1,0 +1,116 @@
+---
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = "ReformLab — Policy Impact Analysis for France and Europe",
+  description = "Open-source platform connecting European open data to policy simulation models. See distributional impact of carbon taxes, subsidies, and social transfers — no coding required."
+} = Astro.props;
+---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://www.reform-lab.eu" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title}</title>
+  </head>
+  <body class="overflow-x-hidden">
+    <slot />
+
+    <script>
+      // Intersection Observer for scroll-triggered reveals
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('visible');
+              observer.unobserve(entry.target);
+            }
+          });
+        },
+        { threshold: 0.1, rootMargin: '0px 0px -60px 0px' }
+      );
+
+      document.querySelectorAll('.reveal').forEach((el) => {
+        observer.observe(el);
+      });
+
+      // Smooth scroll for anchor links
+      document.querySelectorAll('a[href^="#"]').forEach((link) => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          const target = document.querySelector(link.getAttribute('href')!);
+          if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        });
+      });
+
+      // Pipeline scroll activation
+      const pipelineObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('active');
+            }
+          });
+        },
+        { threshold: 0.5, rootMargin: '0px 0px -100px 0px' }
+      );
+
+      document.querySelectorAll('.pipeline-step').forEach((el) => {
+        pipelineObserver.observe(el);
+      });
+
+      // Mobile nav toggle
+      const navToggle = document.getElementById('nav-toggle');
+      const navMenu = document.getElementById('nav-menu');
+      if (navToggle && navMenu) {
+        navToggle.addEventListener('click', () => {
+          navMenu.classList.toggle('hidden');
+          navMenu.classList.toggle('flex');
+        });
+        navMenu.querySelectorAll('a').forEach((link) => {
+          link.addEventListener('click', () => {
+            navMenu.classList.add('hidden');
+            navMenu.classList.remove('flex');
+          });
+        });
+      }
+
+      // Navbar background on scroll
+      const nav = document.getElementById('main-nav');
+      if (nav) {
+        window.addEventListener('scroll', () => {
+          if (window.scrollY > 80) {
+            nav.classList.add('nav-scrolled');
+          } else {
+            nav.classList.remove('nav-scrolled');
+          }
+        });
+      }
+    </script>
+  </body>
+</html>
+
+<style is:global>
+  #main-nav {
+    transition: background-color 0.3s ease, backdrop-filter 0.3s ease;
+  }
+  .nav-scrolled {
+    background-color: rgba(15, 23, 42, 0.92) !important;
+    backdrop-filter: blur(12px) !important;
+  }
+</style>
