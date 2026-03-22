@@ -120,8 +120,7 @@ development_status:
   13-1-define-custom-template-authoring-api-and-registration: done
   13-2-implement-vehicle-malus-template: done
   13-3-implement-energy-poverty-aid-template: done
-  13-4-validate-custom-templates-in-portfolios-and-build-notebook-demo: 
-    in-progress
+  13-4-validate-custom-templates-in-portfolios-and-build-notebook-demo: review
   epic-13-retrospective: optional
   # Epic 14
   epic-14: done
@@ -160,3 +159,13 @@ development_status:
   17-7-implement-persistent-result-storage-and-retrieval: done
   17-8-build-end-to-end-gui-workflow-tests: done
   epic-17-retrospective: done
+  # Epic 18
+  epic-18: in-progress
+  18-1-implement-workflow-navigation-rail: ready-for-dev
+  18-2-visual-polish-pass: backlog
+  18-3-extract-shared-components: backlog
+  18-4-restructure-results-view: backlog
+  18-5-consolidate-config-flow-split-dense-screens: backlog
+  18-6-standardize-form-inputs-and-loading-skeletons: backlog
+  18-7-repurpose-right-panel-contextual-help: backlog
+  18-8-chart-polish-and-color-palette-refinement: backlog
