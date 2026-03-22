@@ -397,6 +397,14 @@ None.
 - Replaced inline results JSX in `App.tsx:360-381` with `<ResultsOverviewScreen>`; removed unused `DistributionalChart` import; kept `mockSummaryStats` import (still used in "run" view)
 - Updated `analyst-journey.test.tsx` to use new button label "Compare Runs" (was "Open Comparison")
 - 40 new tests added; all 311 tests pass (271 baseline + 40 new); typecheck 0 errors; lint 0 errors (pre-existing fast-refresh warnings only)
+- **[Code Review Synthesis 2026-03-22]** Fixed stale detail race: `activeRunIdRef` added to guard `setResultDetail`/`setDetailError`/`setDetailLoading` commits after run switches
+- **[Code Review Synthesis 2026-03-22]** Fixed AC-1 mock mode label: now shows `{reformLabel}` instead of hardcoded "Results"; added year badge "—" in mock branch
+- **[Code Review Synthesis 2026-03-22]** Fixed AC-1 year range badge: always rendered with "—" fallback when `runResult.years` is empty
+- **[Code Review Synthesis 2026-03-22]** Fixed AC-4: added "No indicator data available." note below stat cards in placeholder state
+- **[Code Review Synthesis 2026-03-22]** Fixed `+0` display: trendValue uses `roundedMean` variable; shows "0" (not "+0") for zero mean
+- **[Code Review Synthesis 2026-03-22]** Fixed two tests encoding wrong behavior (mock label, year range) to match AC-1
+- **[Code Review Synthesis 2026-03-22]** Added `aria-pressed={active}` to WorkflowNavRail nav buttons (recurring accessibility antipattern)
+- All 311 tests pass post-review; typecheck 0 errors; lint 0 errors
 
 ### File List
 
@@ -407,3 +415,16 @@ None.
 **Modified files:**
 - `frontend/src/App.tsx` — replaced inline results JSX with `<ResultsOverviewScreen>`, removed unused `DistributionalChart` import
 - `frontend/src/__tests__/workflows/analyst-journey.test.tsx` — updated button label from "Open Comparison" to "Compare Runs"
+- `frontend/src/components/layout/WorkflowNavRail.tsx` — added `aria-pressed={active}` to nav buttons [code review synthesis]
+
+#### Review Follow-ups (AI)
+_(none — all verified issues addressed)_
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-22
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 8.5 (Reviewer B REJECT) / -0.2 (Reviewer A APPROVED) → Composite: **Changes Requested** (real issues confirmed)
+- **Issues Found:** 7 verified (1 HIGH race condition, 3 MEDIUM AC gaps, 2 MEDIUM test defects, 1 MEDIUM accessibility, 1 LOW display bug, 1 LOW missing note)
+- **Issues Fixed:** 7 (all)
+- **Action Items Created:** 0 (all resolved in synthesis)

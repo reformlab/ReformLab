@@ -32,3 +32,16 @@
 | medium | `SelectionGrid` buttons missing `aria-pressed` — selected state is visual-only, invisible to screen readers | Added `aria-pressed={selected}` |
 | medium | `Number(...) | Replaced with `Number.isFinite(Number(v)) ? Number(v) : 0` |
 | low | `WorkbenchStepper` buttons lack `focus-visible:ring` — missing consistent keyboard focus style (antipattern from Story 18.1) | Added `focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2` |
+
+## Story 18-4 (2026-03-22)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| high | Stale detail race condition — `getResult(runA)` response commits to state after run switches to B, overwriting the reset from `useEffect` | Added `activeRunIdRef`, capture `capturedRunId` before await, guard all three state commits with `activeRunIdRef.current === capturedRunId` |
+| medium | AC-1 mock mode shows hardcoded `"Results"` instead of `reformLabel` | Changed to `{reformLabel}` and added "—" year badge in mock branch |
+| medium | AC-1 year range badge suppressed (null) instead of showing "—" when `years` is empty | Always render badge; `{yearRange ?? "—"}` |
+| medium | Test at line 123 asserts `"Results"` (wrong requirement encoding) | Updated to assert `reformLabel` value and absence of "Results" |
+| medium | Test at line 129 asserts no badge instead of "—" badge (wrong requirement encoding) | Updated to assert `getByText("—")` |
+| medium | `WorkflowNavRail` nav buttons missing `aria-pressed` (recurring antipattern from 18.1/18.3) | Added `aria-pressed={active}` |
+| low | `+0` displayed when non-zero deltas average to exactly zero (rounded) | Extract `roundedMean`, use `roundedMean === 0 ? "0" : ...` |
+| low | AC-4 requires "No indicator data" note for empty/all-zero `decileData`; note missing | Added `isPlaceholder` flag; conditionally render `<p>No indicator data available.</p>` |

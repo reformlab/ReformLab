@@ -120,10 +120,12 @@ describe("AC-1: Run metadata header", () => {
     expect(screen.getByText("failed")).toBeInTheDocument();
   });
 
-  it("renders 'Results' and 'mock data' badge when runResult is null", () => {
+  it("renders reformLabel and 'mock data' badge when runResult is null", () => {
     render(<ResultsOverviewScreen {...defaultProps} runResult={null} />);
-    expect(screen.getByText("Results")).toBeInTheDocument();
+    // AC-1: shows selected scenario name (reformLabel), not static "Results"
+    expect(screen.getByText("Carbon Tax — With Dividend")).toBeInTheDocument();
     expect(screen.getByText("mock data")).toBeInTheDocument();
+    expect(screen.queryByText("Results")).not.toBeInTheDocument();
   });
 
   it("shows '—' for year range when years array is empty", () => {
@@ -133,8 +135,10 @@ describe("AC-1: Run metadata header", () => {
         runResult={mockRunResult({ years: [] })}
       />,
     );
-    // Year range badge should not be rendered when no years
-    expect(screen.queryByText(/–/)).not.toBeInTheDocument();
+    // AC-1: year range badge shows "—" when years array is empty
+    expect(screen.getByText("—")).toBeInTheDocument();
+    // No en-dash range should appear
+    expect(screen.queryByText(/\d–\d/)).not.toBeInTheDocument();
   });
 });
 

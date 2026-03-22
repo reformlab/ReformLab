@@ -8,7 +8,7 @@
  *   - Tabbed content: Overview | Data & Export | Detail
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Download } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -58,6 +58,7 @@ function computeSummaryStats(data: DecileData[]): SummaryStatistic[] {
   if (allZero) return placeholderStats();
 
   const meanDelta = deltas.reduce((a, b) => a + b, 0) / deltas.length;
+  const roundedMean = Math.round(meanDelta);
   const maxPos = data.reduce((best, d) => (d.delta > best.delta ? d : best), data[0]);
   const maxNeg = data.reduce((best, d) => (d.delta < best.delta ? d : best), data[0]);
 
@@ -65,9 +66,9 @@ function computeSummaryStats(data: DecileData[]): SummaryStatistic[] {
     {
       id: "mean-impact",
       label: "Mean impact",
-      value: `€${Math.round(meanDelta).toLocaleString()}/yr`,
+      value: `€${roundedMean.toLocaleString()}/yr`,
       trend: meanDelta > 0 ? "up" : meanDelta < 0 ? "down" : "neutral",
-      trendValue: `${meanDelta >= 0 ? "+" : ""}${Math.round(meanDelta).toLocaleString()}`,
+      trendValue: roundedMean === 0 ? "0" : `${roundedMean > 0 ? "+" : ""}${roundedMean.toLocaleString()}`,
     },
     {
       id: "most-benefit",
@@ -104,24 +105,36 @@ export function ResultsOverviewScreen({
   const [resultDetail, setResultDetail] = useState<ResultDetailResponse | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState(false);
+  // Tracks the most recent run_id to discard stale in-flight responses after a run switch.
+  const activeRunIdRef = useRef<string | null>(null);
 
-  // Reset cached detail when the active run changes
+  // Reset cached detail when the active run changes; update ref so async callbacks
+  // can guard against committing results for a superseded run.
   useEffect(() => {
+    activeRunIdRef.current = runResult?.run_id ?? null;
     setResultDetail(null);
     setDetailError(false);
   }, [runResult?.run_id]);
 
   const loadDetail = useCallback(async () => {
     if (!runResult?.run_id || resultDetail !== null || detailLoading) return;
+    const capturedRunId = runResult.run_id;
     setDetailLoading(true);
     setDetailError(false);
     try {
-      const detail = await getResult(runResult.run_id);
-      setResultDetail(detail);
+      const detail = await getResult(capturedRunId);
+      // Guard: discard if the user switched to a different run while this was in-flight.
+      if (activeRunIdRef.current === capturedRunId) {
+        setResultDetail(detail);
+      }
     } catch {
-      setDetailError(true);
+      if (activeRunIdRef.current === capturedRunId) {
+        setDetailError(true);
+      }
     } finally {
-      setDetailLoading(false);
+      if (activeRunIdRef.current === capturedRunId) {
+        setDetailLoading(false);
+      }
     }
   }, [runResult, resultDetail, detailLoading]);
 
@@ -134,6 +147,7 @@ export function ResultsOverviewScreen({
   };
 
   const summaryStats = computeSummaryStats(decileData);
+  const isPlaceholder = decileData.length === 0 || decileData.every((d) => d.delta === 0);
 
   // Year range badge label
   const yearRange =
@@ -158,18 +172,17 @@ export function ResultsOverviewScreen({
                 {runResult.run_id.slice(0, 8)}
               </span>
               <span className="truncate text-sm font-semibold text-slate-900">{reformLabel}</span>
-              {yearRange !== null ? (
-                <Badge variant="secondary" className="text-xs">
-                  {yearRange}
-                </Badge>
-              ) : null}
+              <Badge variant="secondary" className="text-xs">
+                {yearRange ?? "—"}
+              </Badge>
               <Badge variant={statusVariant} className="text-xs">
                 {statusLabel}
               </Badge>
             </>
           ) : (
             <>
-              <span className="text-sm font-semibold text-slate-900">Results</span>
+              <span className="text-sm font-semibold text-slate-900">{reformLabel}</span>
+              <Badge variant="secondary" className="text-xs">—</Badge>
               <Badge variant="default" className="text-xs">
                 mock data
               </Badge>
@@ -210,6 +223,9 @@ export function ResultsOverviewScreen({
                     <SummaryStatCard key={stat.id} stat={stat} />
                   ))}
                 </div>
+                {isPlaceholder ? (
+                  <p className="text-xs text-slate-400">No indicator data available.</p>
+                ) : null}
               </div>
             </TabsContent>
 

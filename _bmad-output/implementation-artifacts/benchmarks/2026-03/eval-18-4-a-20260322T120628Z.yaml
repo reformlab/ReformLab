@@ -1,0 +1,112 @@
+record_id: 532e931c-657e-4de2-81e9-7e6f09646536
+created_at: '2026-03-22T12:06:28.045250+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 18
+  story_num: '4'
+  title: Story 18.4
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: gemini
+  model: gemini-2.5-flash
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-03-22T12:01:28.228128Z'
+  end_time: '2026-03-22T12:02:48.494128Z'
+  duration_ms: 80266
+  input_tokens: 0
+  output_tokens: 3453
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 13813
+  heading_count: 12
+  list_depth_max: 1
+  code_block_count: 3
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: -0.2'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes & Readability
+  - ⚡ Performance & Scalability
+  - 🐛 Correctness & Safety
+  - 🔧 Maintainability Issues
+  - 🛠️ Suggested Fixes
+  - 1. Improve Accessibility for WorkflowNavRail
+  - 2. Standardize Zero Value Display in Summary Stats
+  - 3. Replace Magic Number with Named Constant
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.33
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 20362ccce311
+findings:
+  total_count: 7
+  by_severity:
+    critical: 0
+    major: 1
+    minor: 5
+    nit: 1
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 1
+    completeness: 1
+    clarity: 5
+    testability: 0
+  has_fix_count: 3
+  has_location_count: 7
+  has_evidence_count: 3
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: false
+  uses_conditionals: true
+  uncertainty_phrases_count: 1
+  confidence_phrases_count: 0
+linguistic:
+  avg_sentence_length: 30.953488372093023
+  vocabulary_richness: 0.34034560480841475
+  flesch_reading_ease: -8.578453807499017
+  vague_terms_count: 1
+  formality_score: 0.65
+  sentiment: positive
+quality:
+  actionable_ratio: 0.95
+  specificity_score: 0.9
+  evidence_quality: 0.43
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 4
+  lines_of_code_reviewed: null
+  test_coverage_delta: null
