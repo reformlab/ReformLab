@@ -13,6 +13,7 @@ import { Download } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DistributionalChart } from "@/components/simulation/DistributionalChart";
 import { SummaryStatCard } from "@/components/simulation/SummaryStatCard";
@@ -278,7 +279,12 @@ export function ResultsOverviewScreen({
             {/* Detail tab */}
             <TabsContent value="detail">
               {detailLoading ? (
-                <p className="text-xs text-slate-400">Loading detail...</p>
+                <div className="space-y-2">
+                  <Skeleton className="h-3 w-full" />
+                  <Skeleton className="h-3 w-5/6" />
+                  <Skeleton className="h-3 w-full" />
+                  <Skeleton className="h-3 w-2/3" />
+                </div>
               ) : detailError ? (
                 <p className="text-xs text-slate-400">Detail unavailable.</p>
               ) : resultDetail !== null ? (

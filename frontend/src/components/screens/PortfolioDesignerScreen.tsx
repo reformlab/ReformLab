@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Select } from "@/components/ui/select";
 import { PortfolioTemplateBrowser } from "@/components/simulation/PortfolioTemplateBrowser";
 import { PortfolioCompositionPanel } from "@/components/simulation/PortfolioCompositionPanel";
 import type { CompositionEntry } from "@/components/simulation/PortfolioCompositionPanel";
@@ -431,16 +432,16 @@ export function PortfolioDesignerScreen({
             {/* Resolution strategy */}
             <div className="rounded-lg border border-slate-200 p-3">
               <p className="text-xs font-semibold text-slate-700 mb-1.5">Conflict Resolution</p>
-              <select
+              <Select
                 value={resolutionStrategy}
                 onChange={(e) => setResolutionStrategy(e.target.value as ResolutionStrategy)}
-                className="w-full border border-slate-200 px-2 py-1.5 text-xs bg-white"
+                className="text-xs"
                 aria-label="Resolution strategy"
               >
                 {VALID_STRATEGIES.map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
-              </select>
+              </Select>
               <p className="mt-1 text-xs text-slate-500">
                 {resolutionStrategy === "error" && "Save blocked if conflicts detected"}
                 {resolutionStrategy === "sum" && "Add conflicting rate values"}

@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ErrorAlert, type ErrorState } from "@/components/simulation/ErrorAlert";
 import { RunProgressBar } from "@/components/simulation/RunProgressBar";
 import { ResultDetailView } from "@/components/simulation/ResultDetailView";
@@ -206,34 +207,34 @@ export function SimulationRunnerScreen({
             </span>
 
             <span className="text-slate-500">Start year</span>
-            <input
+            <Input
               type="number"
               value={startYear}
               min={2020}
               max={endYear - 1}
               onChange={(e) => setStartYear(Number(e.target.value))}
-              className="w-24 border border-slate-200 px-1.5 py-0.5 text-xs font-mono"
+              className="w-24 h-auto py-0.5 text-xs font-mono"
               aria-label="Start year"
             />
 
             <span className="text-slate-500">End year</span>
-            <input
+            <Input
               type="number"
               value={endYear}
               min={startYear + 1}
               max={2050}
               onChange={(e) => setEndYear(Number(e.target.value))}
-              className="w-24 border border-slate-200 px-1.5 py-0.5 text-xs font-mono"
+              className="w-24 h-auto py-0.5 text-xs font-mono"
               aria-label="End year"
             />
 
             <span className="text-slate-500">Seed</span>
-            <input
+            <Input
               type="number"
               value={seed ?? ""}
               placeholder="random"
               onChange={(e) => setSeed(e.target.value === "" ? null : Number(e.target.value))}
-              className="w-24 border border-slate-200 px-1.5 py-0.5 text-xs font-mono"
+              className="w-24 h-auto py-0.5 text-xs font-mono"
               aria-label="Random seed"
             />
           </div>

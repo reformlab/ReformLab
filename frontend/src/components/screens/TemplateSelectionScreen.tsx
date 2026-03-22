@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Plus, Trash2, X } from "lucide-react";
 import { SelectionGrid } from "@/components/simulation/SelectionGrid";
 import type { Template } from "@/data/mock-data";
@@ -147,15 +148,15 @@ export function TemplateSelectionScreen({
                         placeholder="param_name"
                         className="flex-1"
                       />
-                      <select
+                      <Select
                         value={param.type}
                         onChange={(e) => updateParam(i, "type", e.target.value)}
-                        className="h-9 rounded-md border border-input bg-transparent px-2 text-sm"
+                        className="w-auto flex-shrink-0"
                       >
                         <option value="float">float</option>
                         <option value="int">int</option>
                         <option value="str">str</option>
-                      </select>
+                      </Select>
                       <Input
                         value={param.default_value}
                         onChange={(e) => updateParam(i, "default_value", e.target.value)}

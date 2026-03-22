@@ -34,3 +34,12 @@
 | high | Export buttons enabled on failed run** (`disabled={!runResult}` passes when `success === false`) | Export button `disabled` changed to `!runResult?.success` in Data & Export snippet. |
 | medium | Detail tab error/loading states unspecified | `Result Detail Loading Pattern` snippet now includes `detailError` state and sets it in the catch block; loading guard prevents duplicate requests. |
 | medium | Test plan missing async correctness cases | Tasks 5.8–5.10 added (lazy fetch trigger, single-fetch cache, run_id change reset); prior checks renumbered to 5.11–5.13. |
+
+## Story 18-6 (2026-03-22)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| high | Test breakage for skeleton replacements | AC-6 reworded to explicitly require updating loading-text assertions; Task 7.1 added as the first verification step to audit and fix those tests before running the suite. |
+| medium | `320 tests` hardcoded count | AC-6 changed to "full test suite passes" with no hardcoded count. |
+| medium | AC-1 compact height ambiguity | AC-1 now explicitly states the original compact height must be preserved and names `h-auto py-0.5` as the fix (moved from "if needed" in Dev Notes to a clear AC requirement). |
+| medium | Checkbox has no unit tests | AC-7 expanded to cover both Skeleton and Checkbox tests; Task 6.2 added for `checkbox.test.tsx`. |

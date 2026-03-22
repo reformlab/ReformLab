@@ -17,6 +17,7 @@ import { Download } from "lucide-react";
 import { ErrorAlert, type ErrorState } from "@/components/simulation/ErrorAlert";
 
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CrossMetricPanel } from "@/components/simulation/CrossMetricPanel";
 import {
@@ -184,8 +185,10 @@ export function ComparisonDashboardScreen({
 
       {/* Loading */}
       {loading ? (
-        <div className="rounded-lg border border-slate-200 bg-white p-6 text-center">
-          <p className="text-sm text-slate-500">Loading comparison data…</p>
+        <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-6">
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-1/2" />
         </div>
       ) : null}
 

@@ -1,7 +1,7 @@
 
 # Story 18.6: Standardize Form Inputs and Add Loading Skeletons
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -13,7 +13,7 @@ so that the interface feels polished and cohesive, and I always know when conten
 
 ## Acceptance Criteria
 
-1. **AC-1: Number inputs standardized** — Given the 3 raw `<input type="number">` elements in `SimulationRunnerScreen.tsx` (lines 209, 220, 231 — start year, end year, seed), when rendered, then they use the `<Input>` component from `@/components/ui/input` with `type="number"` and consistent styling (inheriting the component's `rounded-md border-slate-300 focus:border-blue-500` classes). The compact sizing (`w-24 text-xs font-mono`) is applied via the `className` prop override.
+1. **AC-1: Number inputs standardized** — Given the 3 raw `<input type="number">` elements in `SimulationRunnerScreen.tsx` (lines 209, 220, 231 — start year, end year, seed), when rendered, then they use the `<Input>` component from `@/components/ui/input` with `type="number"` and consistent styling (inheriting the component's `rounded-md border-slate-300 focus:border-blue-500` classes). The compact sizing (`w-24 text-xs font-mono`) is applied via the `className` prop override. The original compact height must be preserved — if the `Input` base height (`h-8`) renders taller than the original `py-0.5` compact inputs, add `h-auto py-0.5` to the className.
 
 2. **AC-2: Select elements standardized** — Given the 2 raw `<select>` elements in `PortfolioDesignerScreen.tsx` (line 434, conflict resolution strategy) and `TemplateSelectionScreen.tsx` (line 150, parameter type picker), when rendered, then they use the `<Select>` component from `@/components/ui/select`. Children `<option>` elements remain native HTML. The `Select` component receives `rounded-md` in its base classes (currently missing, unlike `Input`).
 
@@ -27,44 +27,48 @@ so that the interface feels polished and cohesive, and I always know when conten
    - `VariableOverlapView.tsx` (line 90): "Loading column details..." → 2 skeleton rows matching column list layout
 
 6. **AC-6: No regressions** — Given all changes, when tests run, then:
-   - All pre-existing 320 tests pass (0 failures)
+   - The full test suite passes (0 failures); any existing tests asserting on "Loading comparison data…", "Loading detail...", or "Loading column details..." text are updated to query by container, testid, or skeleton presence instead (these strings are removed from the DOM)
    - `npm run typecheck` reports 0 errors
    - `npm run lint` reports 0 errors (pre-existing fast-refresh warnings OK)
 
-7. **AC-7: Skeleton component tests** — Given the new `Skeleton` component, when tested, then a test file at `frontend/src/components/ui/__tests__/skeleton.test.tsx` verifies: renders with default classes (`animate-pulse`, `bg-slate-200`), accepts custom `className`, renders as a `div` element.
+7. **AC-7: New UI component tests** — Given the new `Skeleton` and `Checkbox` components, when tested, then:
+   - `frontend/src/components/ui/__tests__/skeleton.test.tsx` verifies: renders with default classes (`animate-pulse`, `bg-slate-200`), accepts custom `className`, renders as a `div` element.
+   - `frontend/src/components/ui/__tests__/checkbox.test.tsx` verifies: renders as `input[type="checkbox"]`, applies `cursor-pointer` from base classes, accepts and merges custom `className`, and has `disabled` styling (`opacity-50`) when the `disabled` prop is set.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Fix `Select` component and create `Checkbox` and `Skeleton` components (AC: 2, 3, 4)
-  - [ ] 1.1: Update `frontend/src/components/ui/select.tsx` — add `rounded-md` to base classes to match `Input` component
-  - [ ] 1.2: Create `frontend/src/components/ui/checkbox.tsx` — thin wrapper around `<input type="checkbox">` with consistent styling (`h-4 w-4 cursor-pointer rounded border border-slate-300 accent-blue-500 disabled:cursor-not-allowed disabled:opacity-50`)
-  - [ ] 1.3: Create `frontend/src/components/ui/skeleton.tsx` — `div` with `animate-pulse rounded-md bg-slate-200`, accepts `className` for sizing
+- [x] Task 1: Fix `Select` component and create `Checkbox` and `Skeleton` components (AC: 2, 3, 4)
+  - [x] 1.1: Update `frontend/src/components/ui/select.tsx` — add `rounded-md` to base classes to match `Input` component
+  - [x] 1.2: Create `frontend/src/components/ui/checkbox.tsx` — thin wrapper around `<input type="checkbox">` with consistent styling (`h-4 w-4 cursor-pointer rounded border border-slate-300 accent-blue-500 disabled:cursor-not-allowed disabled:opacity-50`)
+  - [x] 1.3: Create `frontend/src/components/ui/skeleton.tsx` — `div` with `animate-pulse rounded-md bg-slate-200`, accepts `className` for sizing
 
-- [ ] Task 2: Standardize number inputs in SimulationRunnerScreen (AC: 1)
-  - [ ] 2.1: Import `Input` from `@/components/ui/input` in `SimulationRunnerScreen.tsx`
-  - [ ] 2.2: Replace raw `<input type="number">` at line 209 (start year) with `<Input type="number" className="w-24 text-xs font-mono" ... />`
-  - [ ] 2.3: Replace raw `<input type="number">` at line 220 (end year) with `<Input type="number" className="w-24 text-xs font-mono" ... />`
-  - [ ] 2.4: Replace raw `<input type="number">` at line 231 (seed) with `<Input type="number" className="w-24 text-xs font-mono" ... />`
+- [x] Task 2: Standardize number inputs in SimulationRunnerScreen (AC: 1)
+  - [x] 2.1: Import `Input` from `@/components/ui/input` in `SimulationRunnerScreen.tsx`
+  - [x] 2.2: Replace raw `<input type="number">` at line 209 (start year) with `<Input type="number" className="w-24 text-xs font-mono" ... />`
+  - [x] 2.3: Replace raw `<input type="number">` at line 220 (end year) with `<Input type="number" className="w-24 text-xs font-mono" ... />`
+  - [x] 2.4: Replace raw `<input type="number">` at line 231 (seed) with `<Input type="number" className="w-24 text-xs font-mono" ... />`
 
-- [ ] Task 3: Standardize select elements (AC: 2)
-  - [ ] 3.1: Import `Select` from `@/components/ui/select` in `PortfolioDesignerScreen.tsx`; replace raw `<select>` at line 434 with `<Select>` keeping the same props and children `<option>` elements; remove bespoke classes (`border-slate-200 px-2 py-1.5 text-xs bg-white`)
-  - [ ] 3.2: Import `Select` from `@/components/ui/select` in `TemplateSelectionScreen.tsx`; replace raw `<select>` at line 150 with `<Select>` keeping the same props and children `<option>` elements; remove bespoke classes (`h-9 rounded-md border border-input bg-transparent px-2 text-sm`); use `className="flex-shrink-0 w-auto"` for inline sizing
+- [x] Task 3: Standardize select elements (AC: 2)
+  - [x] 3.1: Import `Select` from `@/components/ui/select` in `PortfolioDesignerScreen.tsx`; replace raw `<select>` at line 434 with `<Select>` keeping the same props and children `<option>` elements; remove bespoke classes (`border-slate-200 px-2 py-1.5 text-xs bg-white`)
+  - [x] 3.2: Import `Select` from `@/components/ui/select` in `TemplateSelectionScreen.tsx`; replace raw `<select>` at line 150 with `<Select>` keeping the same props and children `<option>` elements; remove bespoke classes (`h-9 rounded-md border border-input bg-transparent px-2 text-sm`); use `className="flex-shrink-0 w-auto"` for inline sizing
 
-- [ ] Task 4: Standardize checkbox in RunSelector (AC: 3)
-  - [ ] 4.1: Import `Checkbox` from `@/components/ui/checkbox` in `RunSelector.tsx`; replace raw `<input type="checkbox">` at line 53 with `<Checkbox>` keeping the same `checked`, `disabled`, `onChange`, `aria-label` props; remove bespoke classes (`h-3.5 w-3.5 cursor-pointer`)
+- [x] Task 4: Standardize checkbox in RunSelector (AC: 3)
+  - [x] 4.1: Import `Checkbox` from `@/components/ui/checkbox` in `RunSelector.tsx`; replace raw `<input type="checkbox">` at line 53 with `<Checkbox>` keeping the same `checked`, `disabled`, `onChange`, `aria-label` props; remove bespoke classes (`h-3.5 w-3.5 cursor-pointer`)
 
-- [ ] Task 5: Add loading skeletons (AC: 5)
-  - [ ] 5.1: In `ComparisonDashboardScreen.tsx` (line 186-190), replace the "Loading comparison data…" text block with a skeleton card containing 3 horizontal bars (`<Skeleton className="h-4 w-full" />` etc.) inside the existing `rounded-lg border` container
-  - [ ] 5.2: In `ResultsOverviewScreen.tsx` (line 280-281), replace "Loading detail..." text with 4 skeleton rows (`<Skeleton className="h-3 w-full" />` spaced with `space-y-2`) to approximate the detail table layout
-  - [ ] 5.3: In `VariableOverlapView.tsx` (line 89-90), replace "Loading column details..." text with 2 skeleton rows to approximate the column list
+- [x] Task 5: Add loading skeletons (AC: 5)
+  - [x] 5.1: In `ComparisonDashboardScreen.tsx` (line 186-190), replace the "Loading comparison data…" text block with a skeleton card containing 3 horizontal bars (`<Skeleton className="h-4 w-full" />` etc.) inside the existing `rounded-lg border` container
+  - [x] 5.2: In `ResultsOverviewScreen.tsx` (line 280-281), replace "Loading detail..." text with 4 skeleton rows (`<Skeleton className="h-3 w-full" />` spaced with `space-y-2`) to approximate the detail table layout
+  - [x] 5.3: In `VariableOverlapView.tsx` (line 89-90), replace "Loading column details..." text with 2 skeleton rows to approximate the column list
 
-- [ ] Task 6: Write Skeleton tests (AC: 7)
-  - [ ] 6.1: Create `frontend/src/components/ui/__tests__/skeleton.test.tsx` with tests: renders with `animate-pulse` class, renders with `bg-slate-200` class, accepts and merges custom `className`, renders as a `div` element
+- [x] Task 6: Write new component tests (AC: 7)
+  - [x] 6.1: Create `frontend/src/components/ui/__tests__/skeleton.test.tsx` with tests: renders with `animate-pulse` class, renders with `bg-slate-200` class, accepts and merges custom `className`, renders as a `div` element
+  - [x] 6.2: Create `frontend/src/components/ui/__tests__/checkbox.test.tsx` with tests: renders as `input[type="checkbox"]`, has `cursor-pointer` class, merges custom `className`, applies `disabled:opacity-50` styling when `disabled` prop is set
 
-- [ ] Task 7: Verify no regressions (AC: 6)
-  - [ ] 7.1: Run `npm test` — all pre-existing tests pass; new tests pass
-  - [ ] 7.2: Run `npm run typecheck` — 0 errors
-  - [ ] 7.3: Run `npm run lint` — 0 errors (pre-existing fast-refresh warnings OK)
+- [x] Task 7: Verify no regressions (AC: 6)
+  - [x] 7.1: Audit `ComparisonDashboardScreen.test.tsx`, `ResultsOverviewScreen.test.tsx`, and any test covering `VariableOverlapView.tsx` for assertions on the exact loading strings ("Loading comparison data…", "Loading detail...", "Loading column details..."); update any found to query by `data-testid` or container class instead
+  - [x] 7.2: Run `npm test` — full test suite passes (0 failures); new tests pass
+  - [x] 7.3: Run `npm run typecheck` — 0 errors
+  - [x] 7.4: Run `npm run lint` — 0 errors (pre-existing fast-refresh warnings OK)
 
 ## Dev Notes
 
@@ -361,10 +365,11 @@ describe("Skeleton", () => {
 
 ### Project Structure Notes
 
-**New files (3):**
+**New files (4):**
 - `frontend/src/components/ui/checkbox.tsx`
 - `frontend/src/components/ui/skeleton.tsx`
 - `frontend/src/components/ui/__tests__/skeleton.test.tsx`
+- `frontend/src/components/ui/__tests__/checkbox.test.tsx`
 
 **Modified files (8):**
 - `frontend/src/components/ui/select.tsx` — add `rounded-md` to base classes
@@ -410,8 +415,38 @@ These are all non-interactive decorative indicators — not form inputs.
 
 ### Agent Model Used
 
+claude-sonnet-4-6
+
 ### Debug Log References
+
+None.
 
 ### Completion Notes
 
+All 7 tasks completed:
+- Created `Checkbox` and `Skeleton` UI components following the thin-wrapper pattern
+- Added `rounded-md` to `Select` base classes to match `Input`
+- Replaced 3 raw `<input type="number">` in `SimulationRunnerScreen` with `<Input>` (using `h-auto py-0.5` to preserve compact height)
+- Replaced raw `<select>` in `PortfolioDesignerScreen` and `TemplateSelectionScreen` with `<Select>`
+- Replaced raw `<input type="checkbox">` in `RunSelector` with `<Checkbox>`
+- Replaced 3 "Loading…" text nodes with `<Skeleton>` bars in `ComparisonDashboardScreen`, `ResultsOverviewScreen`, and `VariableOverlapView`
+- No existing tests asserted on loading strings — no test updates needed
+- 328/328 tests pass; 0 typecheck errors; 0 lint errors
+
 ### File List
+
+**New files (4):**
+- `frontend/src/components/ui/checkbox.tsx`
+- `frontend/src/components/ui/skeleton.tsx`
+- `frontend/src/components/ui/__tests__/skeleton.test.tsx`
+- `frontend/src/components/ui/__tests__/checkbox.test.tsx`
+
+**Modified files (8):**
+- `frontend/src/components/ui/select.tsx`
+- `frontend/src/components/screens/SimulationRunnerScreen.tsx`
+- `frontend/src/components/screens/PortfolioDesignerScreen.tsx`
+- `frontend/src/components/screens/TemplateSelectionScreen.tsx`
+- `frontend/src/components/comparison/RunSelector.tsx`
+- `frontend/src/components/screens/ComparisonDashboardScreen.tsx`
+- `frontend/src/components/screens/ResultsOverviewScreen.tsx`
+- `frontend/src/components/simulation/VariableOverlapView.tsx`

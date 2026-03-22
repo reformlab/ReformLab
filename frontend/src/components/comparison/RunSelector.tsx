@@ -4,6 +4,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { CHART_COLORS } from "@/components/simulation/MultiRunChart";
 import type { ResultListItem } from "@/api/types";
 import { MAX_RUNS, runLabel, statusVariant } from "./comparison-helpers";
@@ -50,13 +51,12 @@ export function RunSelector({
 
             return (
               <li key={item.run_id} className="flex items-center gap-2 px-3 py-2">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={isSelected}
                   disabled={isDisabled}
                   onChange={() => !isDisabled && onToggle(item.run_id)}
                   aria-label={`Select run ${item.run_id.slice(0, 8)}`}
-                  className="h-3.5 w-3.5 cursor-pointer"
+                  className="h-3.5 w-3.5"
                 />
                 <span
                   className={`data-mono w-16 shrink-0 text-xs ${isDisabled ? "text-slate-400" : "text-slate-500"}`}
