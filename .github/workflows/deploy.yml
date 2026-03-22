@@ -47,6 +47,12 @@ jobs:
           printf "KAMAL_REGISTRY_PASSWORD=%s\nREFORMLAB_PASSWORD=%s\n" \
             "$KAMAL_REGISTRY_PASSWORD" "$REFORMLAB_PASSWORD" > .kamal/secrets
 
+      - name: Generate Dozzle users file
+        env:
+          REFORMLAB_PASSWORD: ${{ secrets.REFORMLAB_PASSWORD }}
+        run: |
+          docker run --rm amir20/dozzle generate admin --password "$REFORMLAB_PASSWORD" --name Admin > config/dozzle-users.yml
+
       - name: Deploy with Kamal
         run: kamal deploy
 
@@ -159,3 +165,49 @@ jobs:
 
       - name: Reboot website accessory
         run: kamal accessory reboot website
+
+  deploy-monitoring:
+    runs-on: ubuntu-latest
+    needs: deploy-backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+
+      - name: Install Kamal
+        run: gem install kamal
+
+      - name: Set up SSH key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          HETZNER_HOST_KEY: ${{ secrets.HETZNER_HOST_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          echo "$HETZNER_HOST_KEY" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Write Kamal secrets
+        env:
+          KAMAL_REGISTRY_PASSWORD: ${{ secrets.KAMAL_REGISTRY_PASSWORD }}
+          REFORMLAB_PASSWORD: ${{ secrets.REFORMLAB_PASSWORD }}
+        run: |
+          mkdir -p .kamal
+          printf "KAMAL_REGISTRY_PASSWORD=%s\nREFORMLAB_PASSWORD=%s\n" \
+            "$KAMAL_REGISTRY_PASSWORD" "$REFORMLAB_PASSWORD" > .kamal/secrets
+
+      - name: Generate Dozzle users file
+        env:
+          REFORMLAB_PASSWORD: ${{ secrets.REFORMLAB_PASSWORD }}
+        run: |
+          docker run --rm amir20/dozzle generate admin --password "$REFORMLAB_PASSWORD" --name Admin > config/dozzle-users.yml
+
+      - name: Reboot monitoring accessories
+        run: |
+          kamal accessory reboot dozzle
+          kamal accessory reboot glances
