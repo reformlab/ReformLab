@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Trash2, X } from "lucide-react";
+import { SelectionGrid } from "@/components/simulation/SelectionGrid";
 import type { Template } from "@/data/mock-data";
 import { createCustomTemplate } from "@/api/templates";
 
@@ -186,38 +187,32 @@ export function TemplateSelectionScreen({
         </div>
       )}
 
-      <div className="grid gap-2 xl:grid-cols-2">
-        {templates.map((template) => {
-          const selected = selectedTemplateId === template.id;
-          return (
-            <button
-              type="button"
-              key={template.id}
-              onClick={() => onSelectTemplate(template.id)}
-              className="text-left"
-            >
-              <Card className={selected ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white"}>
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <CardTitle>{template.name}</CardTitle>
-                    {template.is_custom && (
-                      <Badge variant="outline" className="text-xs bg-violet-50 text-violet-700 border-violet-200">
-                        custom
-                      </Badge>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-slate-700">{template.description}</p>
-                  <p className="data-mono mt-1 text-xs text-slate-500">
-                    {template.parameterCount} parameters
-                  </p>
-                </CardContent>
-              </Card>
-            </button>
-          );
-        })}
-      </div>
+      <SelectionGrid
+        items={templates}
+        selectedId={selectedTemplateId}
+        onSelect={onSelectTemplate}
+        getId={(t) => t.id}
+        renderCard={(template, selected) => (
+          <Card className={selected ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white"}>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <CardTitle>{template.name}</CardTitle>
+                {template.is_custom && (
+                  <Badge variant="outline" className="text-xs bg-violet-50 text-violet-700 border-violet-200">
+                    custom
+                  </Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-slate-700">{template.description}</p>
+              <p className="data-mono mt-1 text-xs text-slate-500">
+                {template.parameterCount} parameters
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      />
     </section>
   );
 }

@@ -18,7 +18,7 @@ import { PopulationPreview } from "@/components/simulation/PopulationPreview";
 import { PopulationValidationPanel } from "@/components/simulation/PopulationValidationPanel";
 import { generatePopulation } from "@/api/data-fusion";
 import { ApiError } from "@/api/client";
-import { cn } from "@/lib/utils";
+import { WorkbenchStepper } from "@/components/simulation/WorkbenchStepper";
 import type { MockDataSource, MockMergeMethod } from "@/data/mock-data";
 import type { GenerationResult } from "@/api/types";
 
@@ -39,44 +39,6 @@ const STEPS: Array<{ key: WorkbenchStep; label: string }> = [
 interface SelectedSource {
   provider: string;
   dataset_id: string;
-}
-
-// ============================================================================
-// WorkbenchStepper nav
-// ============================================================================
-
-function WorkbenchStepper({
-  activeStep,
-  onStepSelect,
-}: {
-  activeStep: WorkbenchStep;
-  onStepSelect: (step: WorkbenchStep) => void;
-}) {
-  return (
-    <nav aria-label="Workbench steps" className="border-b border-slate-200 bg-white p-3">
-      <ol className="flex gap-1 overflow-x-auto">
-        {STEPS.map((step) => {
-          const isActive = step.key === activeStep;
-          return (
-            <li key={step.key} className="shrink-0">
-              <button
-                type="button"
-                onClick={() => onStepSelect(step.key)}
-                className={cn(
-                  "border px-3 py-1.5 text-xs",
-                  isActive
-                    ? "border-blue-500 bg-blue-50 text-blue-700 font-medium"
-                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
-                )}
-              >
-                {step.label}
-              </button>
-            </li>
-          );
-        })}
-      </ol>
-    </nav>
-  );
 }
 
 // ============================================================================
@@ -214,7 +176,7 @@ export function DataFusionWorkbench({
         </p>
       </div>
 
-      <WorkbenchStepper activeStep={activeStep} onStepSelect={setActiveStep} />
+      <WorkbenchStepper steps={STEPS} activeStep={activeStep} onStepSelect={setActiveStep} ariaLabel="Workbench steps" />
 
       <div className="space-y-3">
         {/* Step 1: Source Browser */}

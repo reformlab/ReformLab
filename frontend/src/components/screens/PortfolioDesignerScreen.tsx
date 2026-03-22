@@ -21,7 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { PortfolioTemplateBrowser } from "@/components/simulation/PortfolioTemplateBrowser";
 import { PortfolioCompositionPanel } from "@/components/simulation/PortfolioCompositionPanel";
 import type { CompositionEntry } from "@/components/simulation/PortfolioCompositionPanel";
-import { cn } from "@/lib/utils";
+import { WorkbenchStepper } from "@/components/simulation/WorkbenchStepper";
 import { ApiError } from "@/api/client";
 import { clonePortfolio, createPortfolio, deletePortfolio, getPortfolio, validatePortfolio } from "@/api/portfolios";
 import type { Template } from "@/data/mock-data";
@@ -41,44 +41,6 @@ const STEPS: Array<{ key: DesignerStep; label: string }> = [
 
 const VALID_STRATEGIES = ["error", "sum", "first_wins", "last_wins", "max"] as const;
 type ResolutionStrategy = (typeof VALID_STRATEGIES)[number];
-
-// ============================================================================
-// WorkbenchStepper nav
-// ============================================================================
-
-function WorkbenchStepper({
-  activeStep,
-  onStepSelect,
-}: {
-  activeStep: DesignerStep;
-  onStepSelect: (step: DesignerStep) => void;
-}) {
-  return (
-    <nav aria-label="Designer steps" className="border-b border-slate-200 bg-white p-3">
-      <ol className="flex gap-1 overflow-x-auto">
-        {STEPS.map((step) => {
-          const isActive = step.key === activeStep;
-          return (
-            <li key={step.key} className="shrink-0">
-              <button
-                type="button"
-                onClick={() => onStepSelect(step.key)}
-                className={cn(
-                  "border px-3 py-1.5 text-xs",
-                  isActive
-                    ? "border-blue-500 bg-blue-50 text-blue-700 font-medium"
-                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
-                )}
-              >
-                {step.label}
-              </button>
-            </li>
-          );
-        })}
-      </ol>
-    </nav>
-  );
-}
 
 // ============================================================================
 // Conflict list display
@@ -408,7 +370,7 @@ export function PortfolioDesignerScreen({
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white">
-      <WorkbenchStepper activeStep={activeStep} onStepSelect={setActiveStep} />
+      <WorkbenchStepper steps={STEPS} activeStep={activeStep} onStepSelect={setActiveStep} ariaLabel="Designer steps" />
 
       <div className="p-3">
         {/* Step 1: Select Templates */}

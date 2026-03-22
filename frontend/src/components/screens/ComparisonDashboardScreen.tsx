@@ -11,7 +11,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { AlertCircle, Download, X } from "lucide-react";
+import { Download, X } from "lucide-react";
+import { ErrorAlert, type ErrorState } from "@/components/simulation/ErrorAlert";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,12 +37,6 @@ import type {
 
 type ViewMode = "absolute" | "relative";
 type ActiveTab = "distributional" | "fiscal" | "welfare";
-
-interface ErrorState {
-  what: string;
-  why: string;
-  fix: string;
-}
 
 interface DetailTarget {
   indicator: string;
@@ -665,17 +660,7 @@ export function ComparisonDashboardScreen({
 
       {/* Error display */}
       {error ? (
-        <div
-          className="flex items-start gap-2 border border-red-200 bg-red-50 p-3"
-          role="alert"
-        >
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
-          <div className="space-y-0.5 text-xs">
-            <p className="font-semibold text-red-800">{error.what}</p>
-            <p className="text-red-700">{error.why}</p>
-            <p className="text-red-600">{error.fix}</p>
-          </div>
-        </div>
+        <ErrorAlert what={error.what} why={error.why} fix={error.fix} />
       ) : null}
 
       {/* Loading */}
