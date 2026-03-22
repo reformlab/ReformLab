@@ -114,6 +114,7 @@ function mapTemplate(item: TemplateListItem): Template {
     parameterCount: item.parameter_count,
     description: item.description,
     parameterGroups: item.parameter_groups,
+    is_custom: item.is_custom,
   };
 }
 
@@ -153,7 +154,7 @@ export function useTemplateDetails(templateId: string) {
 
 function mapTemplateParameters(detail: TemplateDetailResponse): Parameter[] {
   const params: Parameter[] = [];
-  const defaults = detail.default_parameters;
+  const defaults = detail.default_policy;
 
   for (const [key, value] of Object.entries(defaults)) {
     if (typeof value !== "number") continue;

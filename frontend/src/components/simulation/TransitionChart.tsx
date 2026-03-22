@@ -24,19 +24,7 @@ import {
 } from "recharts";
 
 import type { YearlyOutcome } from "@/api/types";
-
-// ============================================================================
-// Decision color palette — distinct from comparison chart colors
-// ============================================================================
-
-export const DECISION_COLORS = [
-  "#64748b", // slate-500  — keep_current (status quo / neutral)
-  "#3b82f6", // blue-500
-  "#8b5cf6", // violet-500
-  "#10b981", // emerald-500
-  "#f59e0b", // amber-500
-  "#ef4444", // red-500
-];
+import { DECISION_COLORS, GRID_PROPS, AXIS_TICK, TOOLTIP_STYLE } from "./chart-theme";
 
 // ============================================================================
 // Types
@@ -100,15 +88,16 @@ export function TransitionChart({
             }}
             className={onYearClick ? "cursor-pointer" : ""}
           >
-            <CartesianGrid strokeDasharray="2 2" stroke="#e2e8f0" />
+            <CartesianGrid {...GRID_PROPS} />
             <XAxis
               dataKey="year"
-              tick={{ fontSize: 12, fill: "#64748b" }}
+              tick={AXIS_TICK}
               tickLine={false}
+              axisLine={false}
             />
             <YAxis
               tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`}
-              tick={{ fontSize: 12, fill: "#64748b" }}
+              tick={AXIS_TICK}
               tickLine={false}
               axisLine={false}
             />
@@ -118,11 +107,7 @@ export function TransitionChart({
                 name ? (alternativeLabels[name] ?? name) : "",
               ]}
               labelFormatter={(label: unknown) => `Year ${String(label ?? "")}`}
-              contentStyle={{
-                fontSize: 12,
-                border: "1px solid #e2e8f0",
-                borderRadius: 6,
-              }}
+              contentStyle={TOOLTIP_STYLE}
             />
             <Legend
               wrapperStyle={{ fontSize: 12, paddingTop: 4 }}

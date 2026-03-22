@@ -14,28 +14,23 @@ persona:
   principles: []
 
 # Add custom critical actions (appended after standard config loading)
-critical_actions: []
+critical_actions:
+  - "Always load and apply the ReformLab visual identity guide from _bmad-output/branding/visual-identity-guide.md"
 
 # Add persistent memories for the agent
-memories: []
-# Example:
-# memories:
-#   - "User prefers detailed technical explanations"
-#   - "Current project uses React and TypeScript"
+memories:
+  - "ReformLab uses Inter (headings/body) + IBM Plex Mono (data/code). No serif fonts."
+  - "Presentation chart color order: emerald leads (emerald-500, blue-500, violet-500, amber-500)."
+  - "No gradients. No photography. Brand mark: Slate 700 + Emerald 500."
+  - "Refer to _bmad-output/branding/visual-identity-guide.md for complete visual identity."
 
 # Add custom menu items (appended to base menu)
 # Don't include * prefix or help/exit - auto-injected
 menu: []
-# Example:
-# menu:
-#   - trigger: my-workflow
-#     workflow: "{project-root}/custom/my.yaml"
-#     description: My custom workflow
 
 # Add custom prompts (for action="#id" handlers)
 prompts: []
-# Example:
-# prompts:
-# - id: my-prompt
-#   content: |
-#     Prompt instructions here
+
+# Context files to load
+context_files:
+  - _bmad-output/branding/visual-identity-guide.md

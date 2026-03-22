@@ -1,7 +1,8 @@
 /** Population generation progress, step log, and error display (Story 17.1, AC-4). */
 
-import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { CheckCircle2, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { ErrorAlert } from "@/components/simulation/ErrorAlert";
 import type { GenerationResult, StepLogItem } from "@/api/types";
 
 interface PopulationGenerationProgressProps {
@@ -59,29 +60,9 @@ export function PopulationGenerationProgress({
 
   if (error || errorDetail) {
     return (
-      <section
-        aria-label="Generation failed"
-        className="border border-red-200 bg-red-50 p-3 space-y-2"
-      >
-        <div className="flex items-center gap-2">
-          <XCircle className="h-5 w-5 text-red-500" />
-          <p className="text-sm font-semibold text-red-800">Generation failed</p>
-        </div>
+      <section aria-label="Generation failed" className="space-y-2">
         {errorDetail ? (
-          <div className="space-y-1 text-xs">
-            <p>
-              <span className="font-semibold text-red-700">What: </span>
-              <span className="text-red-600">{errorDetail.what}</span>
-            </p>
-            <p>
-              <span className="font-semibold text-red-700">Why: </span>
-              <span className="text-red-600">{errorDetail.why}</span>
-            </p>
-            <p>
-              <span className="font-semibold text-red-700">Fix: </span>
-              <span className="text-red-600">{errorDetail.fix}</span>
-            </p>
-          </div>
+          <ErrorAlert what={errorDetail.what} why={errorDetail.why} fix={errorDetail.fix} />
         ) : (
           <p className="text-xs text-red-600">{error}</p>
         )}

@@ -200,17 +200,14 @@ describe("Analyst Journey — cross-screen navigation", () => {
       });
     });
 
-    it("navigates to Configure Policy view", async () => {
+    it("shows Configure Policy stepper as the default view on load", async () => {
       const user = userEvent.setup();
       renderApp();
       await authenticate(user);
 
-      // Navigate away via left panel, then back via Configure Policy
-      await user.click(within(getLeftPanel()).getByRole("button", { name: /^simulation$/i }));
-      await user.click(within(getLeftPanel()).getByRole("button", { name: /^configure policy$/i }));
-
+      // Default viewMode is "configuration" — ModelConfigStepper renders immediately.
+      // Configure Policy is now folded into the Simulation stage (Story 18.1).
       await waitFor(() => {
-        // ModelConfigStepper renders Population step by default
         expect(screen.getByRole("button", { name: /next step/i })).toBeInTheDocument();
       });
     });
@@ -279,11 +276,11 @@ describe("Analyst Journey — cross-screen navigation", () => {
 
       // After startRun() resolves, viewMode → "results" → "Open Comparison" button
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: /open comparison/i })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /compare runs/i })).toBeInTheDocument();
       });
 
       // Open Comparison → ComparisonDashboardScreen
-      await user.click(screen.getByRole("button", { name: /open comparison/i }));
+      await user.click(screen.getByRole("button", { name: /compare runs/i }));
       await waitFor(() => {
         // ComparisonDashboardScreen renders a RunSelector with this heading.
         // (ScenarioCard "Compare" buttons in the left panel share the name "Compare",
@@ -294,7 +291,7 @@ describe("Analyst Journey — cross-screen navigation", () => {
       // Header "Back to Results" button (shown in comparison viewMode)
       await user.click(screen.getByRole("button", { name: /back to results/i }));
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: /open comparison/i })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /compare runs/i })).toBeInTheDocument();
       });
     });
   });

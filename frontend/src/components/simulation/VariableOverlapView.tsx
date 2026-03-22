@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getDataSourceDetail } from "@/api/data-fusion";
 import type { MockDataSource } from "@/data/mock-data";
 
@@ -87,7 +88,11 @@ export function VariableOverlapView({ sources, selectedSources }: VariableOverla
       <p className="text-sm font-semibold text-slate-900">Variable Overlap</p>
 
       {loading ? (
-        <p className="text-xs text-slate-500">Loading column details...</p>
+        <div aria-busy="true" role="status" className="space-y-2">
+          <span className="sr-only">Loading column details</span>
+          <Skeleton className="h-3 w-full" />
+          <Skeleton className="h-3 w-3/4" />
+        </div>
       ) : hasOverlap ? (
         <div className="space-y-2">
           <p className="text-xs text-emerald-700">

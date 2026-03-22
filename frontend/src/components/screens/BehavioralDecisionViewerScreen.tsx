@@ -10,6 +10,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AlertCircle, ArrowLeft } from "lucide-react";
+import { ErrorAlert, type ErrorState } from "@/components/simulation/ErrorAlert";
 
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -23,16 +24,6 @@ import type {
   DomainSummary,
   YearlyOutcome,
 } from "@/api/types";
-
-// ============================================================================
-// Types
-// ============================================================================
-
-interface ErrorState {
-  what: string;
-  why: string;
-  fix: string;
-}
 
 // ============================================================================
 // Constants
@@ -257,14 +248,7 @@ export function BehavioralDecisionViewerScreen({
         <div className="flex-1 overflow-y-auto px-6 py-5">
           {/* Error state */}
           {error && (
-            <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg mb-5">
-              <AlertCircle size={16} className="text-red-500 flex-shrink-0 mt-0.5" />
-              <div className="space-y-1 min-w-0">
-                <p className="text-sm font-medium text-red-700">{error.what}</p>
-                <p className="text-xs text-red-600">{error.why}</p>
-                <p className="text-xs text-slate-500">{error.fix}</p>
-              </div>
-            </div>
+            <ErrorAlert what={error.what} why={error.why} fix={error.fix} className="mb-5" />
           )}
 
           {/* No decision data state */}

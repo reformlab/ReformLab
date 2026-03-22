@@ -18,10 +18,11 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Select } from "@/components/ui/select";
 import { PortfolioTemplateBrowser } from "@/components/simulation/PortfolioTemplateBrowser";
 import { PortfolioCompositionPanel } from "@/components/simulation/PortfolioCompositionPanel";
 import type { CompositionEntry } from "@/components/simulation/PortfolioCompositionPanel";
-import { cn } from "@/lib/utils";
+import { WorkbenchStepper } from "@/components/simulation/WorkbenchStepper";
 import { ApiError } from "@/api/client";
 import { clonePortfolio, createPortfolio, deletePortfolio, getPortfolio, validatePortfolio } from "@/api/portfolios";
 import type { Template } from "@/data/mock-data";
@@ -41,44 +42,6 @@ const STEPS: Array<{ key: DesignerStep; label: string }> = [
 
 const VALID_STRATEGIES = ["error", "sum", "first_wins", "last_wins", "max"] as const;
 type ResolutionStrategy = (typeof VALID_STRATEGIES)[number];
-
-// ============================================================================
-// WorkbenchStepper nav
-// ============================================================================
-
-function WorkbenchStepper({
-  activeStep,
-  onStepSelect,
-}: {
-  activeStep: DesignerStep;
-  onStepSelect: (step: DesignerStep) => void;
-}) {
-  return (
-    <nav aria-label="Designer steps" className="border-b border-slate-200 bg-white p-3">
-      <ol className="flex gap-1 overflow-x-auto">
-        {STEPS.map((step) => {
-          const isActive = step.key === activeStep;
-          return (
-            <li key={step.key} className="shrink-0">
-              <button
-                type="button"
-                onClick={() => onStepSelect(step.key)}
-                className={cn(
-                  "border px-3 py-1.5 text-xs",
-                  isActive
-                    ? "border-blue-500 bg-blue-50 text-blue-700 font-medium"
-                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
-                )}
-              >
-                {step.label}
-              </button>
-            </li>
-          );
-        })}
-      </ol>
-    </nav>
-  );
-}
 
 // ============================================================================
 // Conflict list display
@@ -407,8 +370,8 @@ export function PortfolioDesignerScreen({
   // ============================================================================
 
   return (
-    <div className="border border-slate-200 bg-white">
-      <WorkbenchStepper activeStep={activeStep} onStepSelect={setActiveStep} />
+    <div className="rounded-lg border border-slate-200 bg-white">
+      <WorkbenchStepper steps={STEPS} activeStep={activeStep} onStepSelect={setActiveStep} ariaLabel="Designer steps" />
 
       <div className="p-3">
         {/* Step 1: Select Templates */}
@@ -467,18 +430,18 @@ export function PortfolioDesignerScreen({
             </div>
 
             {/* Resolution strategy */}
-            <div className="border border-slate-200 p-3">
+            <div className="rounded-lg border border-slate-200 p-3">
               <p className="text-xs font-semibold text-slate-700 mb-1.5">Conflict Resolution</p>
-              <select
+              <Select
                 value={resolutionStrategy}
                 onChange={(e) => setResolutionStrategy(e.target.value as ResolutionStrategy)}
-                className="w-full border border-slate-200 px-2 py-1.5 text-xs bg-white"
+                className="text-xs"
                 aria-label="Resolution strategy"
               >
                 {VALID_STRATEGIES.map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
-              </select>
+              </Select>
               <p className="mt-1 text-xs text-slate-500">
                 {resolutionStrategy === "error" && "Save blocked if conflicts detected"}
                 {resolutionStrategy === "sum" && "Add conflicting rate values"}
@@ -533,7 +496,7 @@ export function PortfolioDesignerScreen({
             </div>
 
             {/* Conflict validation */}
-            <div className="border border-slate-200 p-3 space-y-2">
+            <div className="rounded-lg border border-slate-200 p-3 space-y-2">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-slate-700">Conflict Check</p>
                 <Button
@@ -550,7 +513,7 @@ export function PortfolioDesignerScreen({
             </div>
 
             {/* Policy summary */}
-            <div className="border border-slate-200 p-3 space-y-1.5">
+            <div className="rounded-lg border border-slate-200 p-3 space-y-1.5">
               <p className="text-xs font-semibold text-slate-700">Policies ({composition.length})</p>
               {composition.map((entry, i) => {
                 const t = templates.find((tmpl) => tmpl.id === entry.templateId);
@@ -568,7 +531,7 @@ export function PortfolioDesignerScreen({
 
             {/* Saved portfolios */}
             {savedPortfolios.length > 0 ? (
-              <div className="border border-slate-200 p-3 space-y-1.5">
+              <div className="rounded-lg border border-slate-200 p-3 space-y-1.5">
                 <p className="text-xs font-semibold text-slate-700">
                   Saved Portfolios ({savedPortfolios.length})
                 </p>
@@ -625,7 +588,7 @@ export function PortfolioDesignerScreen({
             onClick={() => setSaveDialogOpen(false)}
             aria-hidden="true"
           />
-          <div className="relative z-10 w-full max-w-md border border-slate-200 bg-white p-6 shadow-lg">
+          <div className="relative z-10 w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-lg">
             <h3 className="text-sm font-semibold text-slate-900 mb-4">Save Portfolio</h3>
 
             <div className="space-y-3">
@@ -708,7 +671,7 @@ export function PortfolioDesignerScreen({
             onClick={() => setCloneDialogName(null)}
             aria-hidden="true"
           />
-          <div className="relative z-10 w-full max-w-sm border border-slate-200 bg-white p-6 shadow-lg">
+          <div className="relative z-10 w-full max-w-sm rounded-lg border border-slate-200 bg-white p-6 shadow-lg">
             <h3 className="text-sm font-semibold text-slate-900 mb-4">
               Clone &ldquo;{cloneDialogName}&rdquo;
             </h3>

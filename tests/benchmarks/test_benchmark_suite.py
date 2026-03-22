@@ -29,14 +29,26 @@ def _build_panel_with_carbon_tax(
     *,
     carbon_tax_rate: float,
 ) -> PanelOutput:
-    """Build single-year benchmark panel with computed carbon tax field."""
-    carbon_tax = pc.multiply(
-        benchmark_population.column("carbon_emissions"),
-        pa.scalar(carbon_tax_rate, type=pa.float64()),
+    """Build single-year benchmark panel with computed carbon tax field.
+
+    Simplified benchmark formula: tax = sum(energy columns) * rate.
+    """
+    total_energy = pc.add(
+        pc.add(
+            benchmark_population.column("energy_transport_fuel"),
+            benchmark_population.column("energy_heating_fuel"),
+        ),
+        benchmark_population.column("energy_natural_gas"),
     )
-    panel_table = benchmark_population.append_column("carbon_tax", carbon_tax)
-    panel_table = panel_table.append_column(
-        "year", pa.array([2025] * panel_table.num_rows, type=pa.int64())
+    carbon_tax = pc.multiply(total_energy, pa.scalar(carbon_tax_rate, type=pa.float64()))
+    n = benchmark_population.num_rows
+    panel_table = pa.table(
+        {
+            "household_id": benchmark_population.column("household_id"),
+            "income": benchmark_population.column("income"),
+            "carbon_tax": carbon_tax,
+            "year": pa.array([2025] * n, type=pa.int64()),
+        }
     )
     return PanelOutput(
         table=panel_table,

@@ -1,0 +1,59 @@
+---
+---
+
+<nav id="main-nav" class="fixed top-0 left-0 right-0 z-50 bg-transparent">
+  <div class="max-w-7xl mx-auto px-6 lg:px-8">
+    <div class="flex items-center justify-between h-18 lg:h-20">
+      <!-- Logo -->
+      <a href="#" class="flex items-center gap-3 group">
+        <div class="w-8 h-8 rounded-sm bg-cta flex items-center justify-center">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" class="text-white">
+            <rect x="2" y="10" width="3" height="6" rx="0.5" fill="currentColor" opacity="0.6"/>
+            <rect x="7" y="6" width="3" height="10" rx="0.5" fill="currentColor" opacity="0.8"/>
+            <rect x="12" y="2" width="3" height="14" rx="0.5" fill="currentColor"/>
+          </svg>
+        </div>
+        <span class="font-sans text-xl font-semibold text-paper tracking-tight">
+          ReformLab
+        </span>
+      </a>
+
+      <!-- Desktop links -->
+      <div class="hidden lg:flex items-center gap-8">
+        <a href="#how-it-works" class="text-slate-light hover:text-paper text-[0.9375rem] font-medium transition-colors duration-200">How it works</a>
+        <a href="#features" class="text-slate-light hover:text-paper text-[0.9375rem] font-medium transition-colors duration-200">Features</a>
+        <a href="#use-cases" class="text-slate-light hover:text-paper text-[0.9375rem] font-medium transition-colors duration-200">Use cases</a>
+        <a href="#faq" class="text-slate-light hover:text-paper text-[0.9375rem] font-medium transition-colors duration-200">FAQ</a>
+
+        <!-- Language placeholder -->
+        <div class="flex items-center gap-1 text-slate-mid text-sm border border-slate/30 rounded px-2 py-1">
+          <span class="text-paper font-medium">EN</span>
+          <span class="text-slate-mid">/</span>
+          <span class="opacity-50 cursor-not-allowed" title="Coming soon">FR</span>
+        </div>
+
+        <a href="#early-access" class="btn-primary !py-2.5 !px-5 !text-[0.9375rem]">
+          Get Early Access
+        </a>
+      </div>
+
+      <!-- Mobile toggle -->
+      <button id="nav-toggle" class="lg:hidden text-paper p-2" aria-label="Toggle menu">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Mobile menu -->
+    <div id="nav-menu" class="hidden lg:!hidden flex-col gap-4 pb-6 border-t border-slate/20 pt-4">
+      <a href="#how-it-works" class="text-slate-light hover:text-paper text-base transition-colors">How it works</a>
+      <a href="#features" class="text-slate-light hover:text-paper text-base transition-colors">Features</a>
+      <a href="#use-cases" class="text-slate-light hover:text-paper text-base transition-colors">Use cases</a>
+      <a href="#faq" class="text-slate-light hover:text-paper text-base transition-colors">FAQ</a>
+      <a href="#early-access" class="btn-primary !py-2.5 text-center mt-2">Get Early Access</a>
+    </div>
+  </div>
+</nav>

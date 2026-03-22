@@ -1,0 +1,123 @@
+record_id: 660a82de-2e54-4028-a614-716a6107f0f7
+created_at: '2026-03-22T12:27:38.364744+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 18
+  story_num: 5
+  title: Story 18.5
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: gemini
+  model: gemini-2.5-flash
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-03-22T12:23:42.505468Z'
+  end_time: '2026-03-22T12:24:46.894468Z'
+  duration_ms: 64389
+  input_tokens: 0
+  output_tokens: 3142
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 12568
+  heading_count: 27
+  list_depth_max: 3
+  code_block_count: 4
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 0.1'
+  - 🎯 Ruthless Story Validation 18.5
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 0.1 → PASS'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Missing Type Consolidation for ErrorState
+  - 2. Incomplete `comparison-helpers.ts` Imports
+  - 3. ComparisonDashboardScreen Test Resilience
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Module-Level Docstrings for New Files
+  - ✨ Optimizations (Nice to Have)
+  - 🤖 LLM Optimization Improvements
+  - 1. Concise Descriptions for File Movements
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.33
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: b7a74d3fcf2d
+findings:
+  total_count: 5
+  by_severity:
+    critical: 3
+    major: 0
+    minor: 1
+    nit: 1
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 2
+    completeness: 0
+    clarity: 2
+    testability: 1
+  has_fix_count: 5
+  has_location_count: 5
+  has_evidence_count: 5
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 4
+  confidence_phrases_count: 3
+linguistic:
+  avg_sentence_length: 20.87012987012987
+  vocabulary_richness: 0.35905413814561293
+  flesch_reading_ease: 17.64795482856627
+  vague_terms_count: 4
+  formality_score: 0.72
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.85
+  evidence_quality: 0.8
+  follows_template: true
+  internal_consistency: 0.85
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false

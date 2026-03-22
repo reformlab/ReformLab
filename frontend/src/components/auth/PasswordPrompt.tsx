@@ -27,14 +27,15 @@ export function PasswordPrompt({ onSubmit, loading }: PasswordPromptProps) {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-      <div className="w-full max-w-sm border border-slate-200 bg-white p-6">
-        <div className="mb-4 flex items-center gap-2">
-          <LockKeyhole className="h-5 w-5 text-slate-600" />
-          <h1 className="text-lg font-semibold">ReformLab</h1>
+      <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-8 shadow-lg">
+        <div className="mb-2">
+          <h1 className="text-2xl font-bold text-slate-900">ReformLab</h1>
+          <p className="text-sm text-slate-500">Environmental Policy Analysis</p>
         </div>
-        <p className="mb-4 text-sm text-slate-600">
-          Enter the shared workspace password to continue.
-        </p>
+        <div className="mb-6 mt-4 flex items-center gap-2 text-sm text-slate-600">
+          <LockKeyhole className="h-4 w-4 text-slate-400" />
+          <span>Enter the shared workspace password to continue.</span>
+        </div>
         <form onSubmit={handleSubmit} className="space-y-3">
           <label htmlFor="password" className="sr-only">Password</label>
           <Input

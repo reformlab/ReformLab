@@ -1,0 +1,128 @@
+record_id: 0e7b9352-fa86-4715-b222-34068c87b715
+created_at: '2026-03-22T13:01:17.231407+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 18
+  story_num: 6
+  title: Story 18.6
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: gemini
+  model: gemini-2.5-flash
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-03-22T12:57:22.670641Z'
+  end_time: '2026-03-22T12:58:35.617641Z'
+  duration_ms: 72947
+  input_tokens: 0
+  output_tokens: 4893
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 19574
+  heading_count: 32
+  list_depth_max: 3
+  code_block_count: 10
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 6.5'
+  - 🎯 Ruthless Story Validation 18.6
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 6.5 → MAJOR REWORK'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Missing Explicit Requirement for `Select` Component Modification
+  - 2. Underspecified Test Updates for Skeleton Replacements
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Clarify Compact Input Height Preservation
+  - 2. Explicit Styling AC for New Checkbox Component
+  - 3. Enhance AC-5 with Visual Mimicry for Skeletons
+  - ✨ Optimizations (Nice to Have)
+  - 🤖 LLM Optimization Improvements
+  - 1. Elevate `Select` component modification to AC
+  - 2. Explicitly require test updates for skeleton replacements
+  - 3. Formalize compact input height preservation in AC-1
+  - 4. Add explicit styling AC for new Checkbox
+  - 5. Refine AC-5 for skeleton visual approximation
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.33
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 98c1d0896d98
+findings:
+  total_count: 10
+  by_severity:
+    critical: 2
+    major: 3
+    minor: 5
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 0
+    completeness: 4
+    clarity: 4
+    testability: 2
+  has_fix_count: 10
+  has_location_count: 10
+  has_evidence_count: 10
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 4
+  confidence_phrases_count: 8
+linguistic:
+  avg_sentence_length: 27.46
+  vocabulary_richness: 0.22760378732702113
+  flesch_reading_ease: 24.579669329585528
+  vague_terms_count: 2
+  formality_score: 0.72
+  sentiment: positive
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.95
+  evidence_quality: 0.9
+  follows_template: true
+  internal_consistency: 0.95
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false

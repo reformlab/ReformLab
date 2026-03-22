@@ -1,0 +1,77 @@
+---
+const rows = [
+  { feature: "Self-service for analysts", reformlab: "No-code GUI + Python API", policyengine: "Web calculator", euromod: "Desktop, training required", adhoc: "Code only" },
+  { feature: "Environmental policy", reformlab: "Carbon tax, subsidies, feebates", policyengine: "Tax-benefit only", euromod: "Tax-benefit only", adhoc: "Custom each time" },
+  { feature: "Multi-year projections", reformlab: "Built-in orchestrator with vintage tracking", policyengine: "Static snapshots", euromod: "Static snapshots", adhoc: "Manual" },
+  { feature: "Open data integration", reformlab: "End-to-end pipeline", policyengine: "US/UK focused", euromod: "EU-SILC locked", adhoc: "Manual" },
+  { feature: "Reproducibility", reformlab: "Automatic run manifests", policyengine: "Partial", euromod: "Manual", adhoc: "Nonexistent" },
+  { feature: "Europe / France", reformlab: "Native support", policyengine: "US/UK only", euromod: "EU-wide, complex setup", adhoc: "Depends" },
+  { feature: "Customizable", reformlab: "Bring your own models and data", policyengine: "Fixed models", euromod: "Fixed models", adhoc: "Fully custom but fragile" },
+];
+
+const descriptions = [
+  { name: "PolicyEngine", text: "Proved the model in the US and UK — web-native, self-service policy analysis. In continental Europe, starting with France, there's nothing equivalent." },
+  { name: "EUROMOD", text: "The institutional standard for EU tax-benefit analysis — powerful but desktop-based, tightly coupled to EU-SILC, and not designed for self-service or environmental policy." },
+  { name: "OpenFisca", text: "The computation engine we build on — mature, open-source, and well-maintained. But it's an engine, not a product." },
+];
+---
+
+<section class="relative bg-paper py-24 lg:py-32">
+  <div class="absolute top-0 left-0 right-0 h-px bg-rule"></div>
+
+  <div class="max-w-7xl mx-auto px-6 lg:px-8">
+    <div class="reveal mb-16">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="h-px w-12 bg-cta"></div>
+        <span class="text-cta font-medium text-sm tracking-widest uppercase">The landscape</span>
+      </div>
+      <h2 class="font-sans text-4xl lg:text-5xl font-bold text-ink leading-tight">
+        Nothing like this exists<br/>in Europe
+      </h2>
+    </div>
+
+    <!-- Table with horizontal scroll on mobile -->
+    <div class="reveal table-scroll-wrapper overflow-x-auto -mx-6 px-6 lg:mx-0 lg:px-0 mb-16">
+      <table class="w-full min-w-[700px] border-collapse">
+        <thead>
+          <tr class="border-b-2 border-ink/10">
+            <th class="text-left py-4 pr-6 text-sm font-bold text-slate-mid uppercase tracking-wider w-[20%]"></th>
+            <th class="text-left py-4 pr-6 text-sm font-bold text-cta uppercase tracking-wider">ReformLab</th>
+            <th class="text-left py-4 pr-6 text-sm font-bold text-slate-mid uppercase tracking-wider">PolicyEngine</th>
+            <th class="text-left py-4 pr-6 text-sm font-bold text-slate-mid uppercase tracking-wider">EUROMOD</th>
+            <th class="text-left py-4 text-sm font-bold text-slate-mid uppercase tracking-wider">Ad-hoc scripts</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-rule/40">
+          {rows.map((row) => (
+            <tr class="group hover:bg-emerald-500/4 transition-colors duration-200">
+              <td class="py-4 pr-6 text-sm font-semibold text-ink">{row.feature}</td>
+              <td class="py-4 pr-6 text-sm text-ink font-medium">{row.reformlab}</td>
+              <td class="py-4 pr-6 text-sm text-slate-mid">{row.policyengine}</td>
+              <td class="py-4 pr-6 text-sm text-slate-mid">{row.euromod}</td>
+              <td class="py-4 text-sm text-slate-mid">{row.adhoc}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Scroll hint on mobile -->
+    <div class="flex lg:hidden items-center gap-2 text-slate-mid text-sm mb-12 -mt-8">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M 3 8 h 10 M 10 5 l 3 3 -3 3"/>
+      </svg>
+      <span>Scroll to see all columns</span>
+    </div>
+
+    <!-- Competitor descriptions -->
+    <div class="reveal grid grid-cols-1 md:grid-cols-3 gap-8">
+      {descriptions.map((d) => (
+        <div class="border-t border-rule pt-6">
+          <h4 class="font-sans text-lg font-semibold text-ink mb-2">{d.name}</h4>
+          <p class="text-slate text-base leading-relaxed">{d.text}</p>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>

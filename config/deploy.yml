@@ -42,5 +42,51 @@ accessories:
     port: 8080:8080
     proxy:
       ssl: true
-      host: reform-lab.eu
+      host: app.reform-lab.eu
       app_port: 8080
+  website:
+    image: ghcr.io/reformlab/reformlab-website
+    hosts:
+      - 178.104.67.235
+    port: 8090:8090
+    proxy:
+      ssl: true
+      hosts:
+        - www.reform-lab.eu
+        - reform-lab.eu
+      app_port: 8090
+  dozzle:
+    image: amir20/dozzle:latest
+    hosts:
+      - 178.104.67.235
+    port: 9080:8080
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    env:
+      clear:
+        DOZZLE_AUTH_PROVIDER: simple
+    files:
+      - config/dozzle-users.yml:/data/users.yml:ro
+    proxy:
+      ssl: true
+      host: logs.reform-lab.eu
+      app_port: 8080
+  glances:
+    image: nicolargo/glances:latest
+    hosts:
+      - 178.104.67.235
+    port: 9081:61208
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    options:
+      pid: host
+    env:
+      clear:
+        GLANCES_OPT: "-w"
+    proxy:
+      ssl: true
+      host: monitor.reform-lab.eu
+      app_port: 61208
+      healthcheck:
+        path: /api/4/status
+        interval: 5

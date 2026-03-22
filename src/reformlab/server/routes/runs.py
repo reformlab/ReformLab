@@ -9,12 +9,19 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
-from reformlab.server.dependencies import ResultCache, get_adapter, get_result_cache, get_result_store
+from reformlab.server.dependencies import (
+    ResultCache,
+    get_adapter,
+    get_registry,
+    get_result_cache,
+    get_result_store,
+)
 
 if TYPE_CHECKING:
     from reformlab.server.result_store import ResultStore
+    from reformlab.templates.registry import ScenarioRegistry
 from reformlab.server.models import (
     MemoryCheckRequest,
     MemoryCheckResponse,
@@ -48,40 +55,65 @@ async def run_simulation(
     body: RunRequest,
     cache: ResultCache = Depends(get_result_cache),
     store: ResultStore = Depends(get_result_store),
+    registry: ScenarioRegistry = Depends(get_registry),
 ) -> RunResponse:
     """Execute a simulation synchronously and return the result.
 
     MVP: Blocks until simulation completes (<10s for 100k households).
     Auto-saves run metadata to persistent store on both success and failure.
+
+    Dispatch logic:
+    - ``portfolio_name`` provided → load portfolio from registry, execute
+      all policies via PortfolioComputationStep
+    - ``template_name`` provided → existing single-policy path
+    - Both provided → 422 error
     """
     from reformlab.interfaces.api import RunConfig, ScenarioConfig, run_scenario
     from reformlab.server.result_store import ResultMetadata
 
+    # Mutual exclusion: portfolio_name XOR template_name
+    if body.portfolio_name and body.template_name:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "what": "Ambiguous run request",
+                "why": "Both portfolio_name and template_name provided",
+                "fix": "Specify portfolio_name or template_name, not both",
+            },
+        )
+
     adapter = get_adapter()
-
     population_path = _resolve_population_path(body.population_id)
-
     template_name = body.template_name or ""
-
-    scenario_config = ScenarioConfig(
-        template_name=template_name,
-        policy=body.policy,
-        start_year=body.start_year,
-        end_year=body.end_year,
-        population_path=population_path,
-        seed=body.seed,
-    )
-
-    run_config = RunConfig(scenario=scenario_config, seed=body.seed)
 
     run_id = str(uuid.uuid4())
     started_at = datetime.now(timezone.utc).isoformat()
     result = None
     status = "failed"
     row_count = 0
+    portfolio_policy_count: int | None = None
+    portfolio_resolution_strategy: str | None = None
 
     try:
-        result = run_scenario(run_config, adapter=adapter)
+        if body.portfolio_name:
+            result, portfolio_policy_count, portfolio_resolution_strategy = _run_portfolio(
+                body=body,
+                adapter=adapter,
+                registry=registry,
+                population_path=population_path,
+            )
+        else:
+            scenario_config = ScenarioConfig(
+                template_name=template_name,
+                policy=body.policy,
+                start_year=body.start_year,
+                end_year=body.end_year,
+                population_path=population_path,
+                seed=body.seed,
+            )
+            run_config = RunConfig(scenario=scenario_config, seed=body.seed)
+            result = run_scenario(run_config, adapter=adapter)
+
         cache.store(run_id, result)
         status = "completed" if result.success else "failed"
         row_count = result.panel_output.table.num_rows if result.panel_output else 0
@@ -109,6 +141,8 @@ async def run_simulation(
                     started_at=started_at,
                     finished_at=finished_at,
                     status=status,
+                    portfolio_policy_count=portfolio_policy_count,
+                    portfolio_resolution_strategy=portfolio_resolution_strategy,
                 ),
             )
         except Exception:
@@ -143,6 +177,91 @@ async def run_simulation(
         row_count=row_count,
         manifest_id=result.manifest.manifest_id,
     )
+
+
+def _run_portfolio(
+    body: RunRequest,
+    adapter: object,
+    registry: ScenarioRegistry,
+    population_path: Path | None,
+) -> tuple[object, int, str]:
+    """Load a portfolio from the registry and execute via PortfolioComputationStep.
+
+    The portfolio step is appended after the default ComputationStep (which runs
+    the first policy as a baseline). The portfolio step then overwrites
+    COMPUTATION_RESULT_KEY with the merged multi-policy result.
+
+    Returns (SimulationResult, policy_count, resolution_strategy).
+    """
+    from reformlab.interfaces.api import (
+        RunConfig,
+        ScenarioConfig,
+        _load_population_data,
+        run_scenario,
+    )
+    from reformlab.orchestrator.portfolio_step import PortfolioComputationStep
+    from reformlab.templates.portfolios.portfolio import PolicyPortfolio
+    from reformlab.templates.registry import ScenarioNotFoundError
+
+    assert body.portfolio_name is not None  # guaranteed by caller
+
+    try:
+        entry = registry.get(body.portfolio_name)
+    except ScenarioNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "what": "Portfolio not found",
+                "why": f"No portfolio named '{body.portfolio_name}' in registry",
+                "fix": "Check portfolio name or create the portfolio first via POST /api/portfolios",
+            },
+        )
+
+    if not isinstance(entry, PolicyPortfolio):
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "what": "Not a portfolio",
+                "why": f"Registry entry '{body.portfolio_name}' is a scenario, not a portfolio",
+                "fix": "Use template_name for single-policy scenarios",
+            },
+        )
+
+    population = _load_population_data(population_path)
+
+    portfolio_step = PortfolioComputationStep(
+        adapter=adapter,
+        population=population,
+        portfolio=entry,
+    )
+
+    # Use the first policy's type as the template_name for the scenario config.
+    # The default ComputationStep runs this single policy, then the portfolio
+    # step overwrites results with the full multi-policy merge.
+    first_policy = entry.policies[0]
+    pt = first_policy.policy_type
+    template_name = pt.value if hasattr(pt, "value") else str(pt or "portfolio")
+
+    from reformlab.computation.types import serialize_policy
+
+    first_policy_dict = serialize_policy(first_policy.policy)
+
+    scenario_config = ScenarioConfig(
+        template_name=template_name,
+        policy=first_policy_dict,
+        start_year=body.start_year,
+        end_year=body.end_year,
+        population_path=population_path,
+        seed=body.seed,
+    )
+    run_config = RunConfig(scenario=scenario_config, seed=body.seed)
+
+    sim_result = run_scenario(
+        run_config,
+        adapter=adapter,
+        steps=(portfolio_step,),
+    )
+    return sim_result, entry.policy_count, entry.resolution_strategy
 
 
 @router.post("/memory-check", response_model=MemoryCheckResponse)

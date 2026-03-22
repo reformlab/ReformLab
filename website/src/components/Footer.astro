@@ -1,0 +1,61 @@
+---
+const year = new Date().getFullYear();
+---
+
+<footer class="bg-surface-darker text-slate-mid py-16">
+  <div class="max-w-7xl mx-auto px-6 lg:px-8">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-8">
+      <!-- Logo + tagline -->
+      <div>
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-7 h-7 rounded-sm bg-cta/80 flex items-center justify-center">
+            <svg width="14" height="14" viewBox="0 0 18 18" fill="none" class="text-white">
+              <rect x="2" y="10" width="3" height="6" rx="0.5" fill="currentColor" opacity="0.6"/>
+              <rect x="7" y="6" width="3" height="10" rx="0.5" fill="currentColor" opacity="0.8"/>
+              <rect x="12" y="2" width="3" height="14" rx="0.5" fill="currentColor"/>
+            </svg>
+          </div>
+          <span class="font-sans text-lg font-semibold text-slate-light tracking-tight">
+            ReformLab
+          </span>
+        </div>
+        <p class="text-sm text-slate-mid max-w-xs">
+          Open-source policy impact analysis. Built on OpenFisca. Powered by European open data.
+        </p>
+      </div>
+
+      <!-- Links -->
+      <div class="flex flex-wrap gap-x-8 gap-y-3 text-sm">
+        <a href="https://github.com/reformlab/reformlab" target="_blank" rel="noopener noreferrer" class="hover:text-paper transition-colors">GitHub</a>
+        <a href="mailto:contact@reform-lab.eu" class="hover:text-paper transition-colors">Contact</a>
+        <span class="text-slate/40 cursor-not-allowed" title="Coming soon">Privacy</span>
+      </div>
+    </div>
+
+    <!-- Bottom rule -->
+    <div class="h-px bg-slate/15 my-8"></div>
+
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 text-sm">
+      <p>&copy; {year} ReformLab. Open-source under MIT License.</p>
+
+      <!-- EU identity mark -->
+      <div class="flex items-center gap-2 text-xs text-slate/60">
+        <svg width="20" height="14" viewBox="0 0 20 14" fill="none" aria-label="European flag">
+          <rect width="20" height="14" rx="1.5" fill="#003399"/>
+          <g fill="#FFCC00">
+            <circle cx="10" cy="3" r="0.8"/>
+            <circle cx="12.5" cy="3.8" r="0.8"/>
+            <circle cx="13.8" cy="5.8" r="0.8"/>
+            <circle cx="13.2" cy="8.2" r="0.8"/>
+            <circle cx="11.2" cy="10" r="0.8"/>
+            <circle cx="8.8" cy="10" r="0.8"/>
+            <circle cx="6.8" cy="8.2" r="0.8"/>
+            <circle cx="6.2" cy="5.8" r="0.8"/>
+            <circle cx="7.5" cy="3.8" r="0.8"/>
+          </g>
+        </svg>
+        <span>Made in Europe</span>
+      </div>
+    </div>
+  </div>
+</footer>

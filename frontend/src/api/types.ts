@@ -94,7 +94,7 @@ export interface ScenarioResponse {
   policy_type: string;
   description: string;
   version: string;
-  parameters: Record<string, unknown>;
+  policy: Record<string, unknown>;
   year_schedule: Record<string, number>;
   baseline_ref?: string | null;
 }
@@ -106,10 +106,33 @@ export interface TemplateListItem {
   parameter_count: number;
   description: string;
   parameter_groups: string[];
+  is_custom: boolean;
 }
 
 export interface TemplateDetailResponse extends TemplateListItem {
-  default_parameters: Record<string, unknown>;
+  default_policy: Record<string, unknown>;
+}
+
+export interface CustomTemplateParameterSpec {
+  name: string;
+  type: string;
+  default?: number | string | null;
+  unit?: string;
+  min?: number | null;
+  max?: number | null;
+}
+
+export interface CreateCustomTemplateRequest {
+  name: string;
+  description?: string;
+  parameters: CustomTemplateParameterSpec[];
+}
+
+export interface CustomTemplateResponse {
+  name: string;
+  description: string;
+  parameter_count: number;
+  is_custom: boolean;
 }
 
 export interface PopulationItem {

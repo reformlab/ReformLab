@@ -27,7 +27,7 @@ export function ParameterEditingScreen({
   return (
     <section className="space-y-4">
       {grouped.map(([groupName, groupParameters]) => (
-        <div key={groupName} className="border border-slate-200 bg-white">
+        <div key={groupName} className="rounded-lg border border-slate-200 bg-white">
           <h3 className="border-b border-slate-200 bg-slate-50 p-3 text-sm font-semibold">{groupName}</h3>
           {groupParameters.map((parameter) => (
             <ParameterRow

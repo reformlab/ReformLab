@@ -1,4 +1,4 @@
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, HelpCircle } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ export function RightPanel({ collapsed, onToggle, children }: RightPanelProps) {
           <Button variant="ghost" size="icon" onClick={onToggle} aria-label="Expand right panel">
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="-rotate-90 pt-16 text-xs uppercase tracking-wide text-slate-500">Context</span>
+          <span className="-rotate-90 pt-16 text-xs uppercase tracking-wide text-slate-500">Help</span>
         </div>
       </aside>
     );
@@ -26,7 +26,10 @@ export function RightPanel({ collapsed, onToggle, children }: RightPanelProps) {
   return (
     <aside className="h-full border-l border-slate-200 bg-slate-50">
       <div className="flex h-10 items-center justify-between border-b border-slate-200 px-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Run Context</p>
+        <div className="flex items-center gap-1.5">
+          <HelpCircle className="h-3.5 w-3.5 text-slate-400" />
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Help</p>
+        </div>
         <Button variant="ghost" size="icon" onClick={onToggle} aria-label="Collapse right panel">
           <ChevronLeft className="h-4 w-4" />
         </Button>

@@ -1,8 +1,10 @@
-"""Regression tests for POST /api/runs — Story 17.3.
+"""Regression tests for POST /api/runs — Story 17.3 + Integration hardening Story 1.
 
 Verifies that the metadata auto-save integration does not break the existing
 run endpoint response shape, and that metadata is saved for both success and
 failure paths.
+
+Story 1 additions: portfolio execution via portfolio_name field.
 
 MockAdapter is injected by patching the global _adapter singleton so that
 OpenFisca data files are not required.
@@ -282,3 +284,84 @@ class TestMemoryCheck:
         assert isinstance(data["estimated_gb"], float)
         assert isinstance(data["available_gb"], float)
         assert isinstance(data["message"], str)
+
+
+# ---------------------------------------------------------------------------
+# Story 1: Portfolio execution via POST /api/runs
+# ---------------------------------------------------------------------------
+
+
+class TestPortfolioExecution:
+    """Story 1: Wire portfolio execution into run endpoint."""
+
+    def test_422_when_both_portfolio_and_template(
+        self, client_with_store: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """422 when both portfolio_name and template_name provided."""
+        response = client_with_store.post(
+            "/api/runs",
+            headers=auth_headers,
+            json={
+                "portfolio_name": "test-portfolio",
+                "template_name": "carbon_tax",
+                "start_year": 2025,
+                "end_year": 2025,
+            },
+        )
+        assert response.status_code == 422
+        detail = response.json()["detail"]
+        assert "portfolio_name" in detail["why"]
+        assert "template_name" in detail["why"]
+
+    def test_404_when_portfolio_not_found(
+        self,
+        tmp_store: ResultStore,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """404 when portfolio_name not in registry."""
+        import reformlab.server.dependencies as deps
+
+        monkeypatch.setattr(deps, "_adapter", MockAdapter())
+        monkeypatch.setattr(deps, "_result_store", tmp_store)
+
+        # Create an empty registry backed by tmp_path
+        from reformlab.templates.registry import ScenarioRegistry
+
+        empty_registry = ScenarioRegistry(registry_path=tmp_store._base_dir / "empty_registry")
+        monkeypatch.setattr(deps, "_registry", empty_registry)
+
+        from reformlab.server.app import create_app
+        from reformlab.server.dependencies import get_registry, get_result_store
+
+        app = create_app()
+        app.dependency_overrides[get_result_store] = lambda: tmp_store
+        app.dependency_overrides[get_registry] = lambda: empty_registry
+
+        client = TestClient(app)
+        login = client.post("/api/auth/login", json={"password": "test-password-123"})
+        headers = {"Authorization": f"Bearer {login.json()['token']}"}
+
+        response = client.post(
+            "/api/runs",
+            headers=headers,
+            json={
+                "portfolio_name": "nonexistent-portfolio",
+                "start_year": 2025,
+                "end_year": 2025,
+            },
+        )
+        assert response.status_code == 404
+        assert "not found" in response.json()["detail"]["what"].lower()
+
+    def test_existing_template_runs_unchanged(
+        self, client_with_store: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """Existing template_name-based runs still work (regression)."""
+        response = client_with_store.post(
+            "/api/runs",
+            headers=auth_headers,
+            json=_SIMPLE_RUN_BODY,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True

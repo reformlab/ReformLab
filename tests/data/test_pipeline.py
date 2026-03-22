@@ -15,6 +15,7 @@ from reformlab.data.pipeline import (
     DataSourceMetadata,
     hash_file,
     load_dataset,
+    load_population,
 )
 
 
@@ -486,3 +487,55 @@ class TestLoadDataset:
         ) as exc_info:
             load_dataset(population_csv, population_schema, source)
         assert "Ensure the file is readable and retry" in str(exc_info.value)
+
+
+class TestLoadPopulation:
+    """Tests for load_population() convenience wrapper."""
+
+    def test_returns_population_data(
+        self,
+        population_csv: Path,
+        population_schema: DataSchema,
+    ) -> None:
+        """Given a valid CSV, load_population returns PopulationData."""
+        from reformlab.computation.types import PopulationData
+
+        source = DataSourceMetadata(
+            name="households",
+            version="1.0",
+            url="",
+            description="",
+        )
+        pop = load_population(population_csv, population_schema, source)
+        assert isinstance(pop, PopulationData)
+        assert pop.row_count == 5
+
+    def test_entity_type_from_source_name(
+        self,
+        population_csv: Path,
+        population_schema: DataSchema,
+    ) -> None:
+        """Entity type key derived from source name when valid identifier."""
+        source = DataSourceMetadata(
+            name="individu",
+            version="1.0",
+            url="",
+            description="",
+        )
+        pop = load_population(population_csv, population_schema, source)
+        assert "individu" in pop.tables
+
+    def test_primary_table_accessible(
+        self,
+        population_csv: Path,
+        population_schema: DataSchema,
+    ) -> None:
+        """Primary table is accessible regardless of entity key."""
+        source = DataSourceMetadata(
+            name="households",
+            version="1.0",
+            url="",
+            description="",
+        )
+        pop = load_population(population_csv, population_schema, source)
+        assert pop.primary_table.num_rows == 5

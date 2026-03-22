@@ -1,7 +1,12 @@
 /** Template listing API functions. */
 
 import { apiFetch } from "./client";
-import type { TemplateDetailResponse, TemplateListItem } from "./types";
+import type {
+  CreateCustomTemplateRequest,
+  CustomTemplateResponse,
+  TemplateDetailResponse,
+  TemplateListItem,
+} from "./types";
 
 /** List available policy templates. */
 export async function listTemplates(): Promise<TemplateListItem[]> {
@@ -18,4 +23,21 @@ export async function getTemplate(
   return apiFetch<TemplateDetailResponse>(
     `/api/templates/${encodeURIComponent(name)}`,
   );
+}
+
+/** Create a custom template. */
+export async function createCustomTemplate(
+  request: CreateCustomTemplateRequest,
+): Promise<CustomTemplateResponse> {
+  return apiFetch<CustomTemplateResponse>("/api/templates/custom", {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
+}
+
+/** Delete a custom template. */
+export async function deleteCustomTemplate(name: string): Promise<void> {
+  await apiFetch<void>(`/api/templates/custom/${encodeURIComponent(name)}`, {
+    method: "DELETE",
+  });
 }

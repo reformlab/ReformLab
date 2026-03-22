@@ -8,9 +8,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { AlertCircle } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ErrorAlert, type ErrorState } from "@/components/simulation/ErrorAlert";
 import { RunProgressBar } from "@/components/simulation/RunProgressBar";
 import { ResultDetailView } from "@/components/simulation/ResultDetailView";
 import { ResultsListPanel } from "@/components/simulation/ResultsListPanel";
@@ -23,12 +23,6 @@ import type { ResultDetailResponse, ResultListItem } from "@/api/types";
 // ============================================================================
 
 type SubView = "configure" | "progress" | "post-run";
-
-interface ErrorState {
-  what: string;
-  why: string;
-  fix: string;
-}
 
 interface SimulationRunnerScreenProps {
   selectedPopulationId: string | null;
@@ -188,7 +182,7 @@ export function SimulationRunnerScreen({
   if (subView === "configure") {
     return (
       <section className="space-y-3" aria-label="Simulation runner configuration">
-        <div className="border border-slate-200 bg-white p-3">
+        <div className="rounded-lg border border-slate-200 bg-white p-3">
           <h2 className="text-base font-semibold text-slate-900">Run Simulation</h2>
           <p className="mt-1 text-xs text-slate-500">
             Configure and execute a full multi-year simulation run.
@@ -196,7 +190,7 @@ export function SimulationRunnerScreen({
         </div>
 
         {/* Configuration summary */}
-        <div className="border border-slate-200 bg-white p-3 space-y-2">
+        <div className="rounded-lg border border-slate-200 bg-white p-3 space-y-2">
           <p className="text-xs font-semibold uppercase text-slate-500 mb-2">Run Configuration</p>
 
           <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
@@ -213,34 +207,34 @@ export function SimulationRunnerScreen({
             </span>
 
             <span className="text-slate-500">Start year</span>
-            <input
+            <Input
               type="number"
               value={startYear}
               min={2020}
               max={endYear - 1}
               onChange={(e) => setStartYear(Number(e.target.value))}
-              className="w-24 border border-slate-200 px-1.5 py-0.5 text-xs font-mono"
+              className="w-24 h-auto py-0.5 text-xs font-mono"
               aria-label="Start year"
             />
 
             <span className="text-slate-500">End year</span>
-            <input
+            <Input
               type="number"
               value={endYear}
               min={startYear + 1}
               max={2050}
               onChange={(e) => setEndYear(Number(e.target.value))}
-              className="w-24 border border-slate-200 px-1.5 py-0.5 text-xs font-mono"
+              className="w-24 h-auto py-0.5 text-xs font-mono"
               aria-label="End year"
             />
 
             <span className="text-slate-500">Seed</span>
-            <input
+            <Input
               type="number"
               value={seed ?? ""}
               placeholder="random"
               onChange={(e) => setSeed(e.target.value === "" ? null : Number(e.target.value))}
-              className="w-24 border border-slate-200 px-1.5 py-0.5 text-xs font-mono"
+              className="w-24 h-auto py-0.5 text-xs font-mono"
               aria-label="Random seed"
             />
           </div>
@@ -283,20 +277,11 @@ export function SimulationRunnerScreen({
   if (subView === "progress") {
     if (error !== null) {
       return (
-        <section className="border border-red-200 bg-red-50 p-3" aria-label="Simulation error">
-          <div className="flex items-start gap-2">
-            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-500" />
-            <div className="space-y-1">
-              <p className="text-sm font-semibold text-red-900">{error.what}</p>
-              <p className="text-xs text-red-700"><span className="font-medium">Why:</span> {error.why}</p>
-              <p className="text-xs text-red-700"><span className="font-medium">Fix:</span> {error.fix}</p>
-            </div>
-          </div>
-          <div className="mt-3">
-            <Button variant="outline" onClick={() => { setSubView("configure"); setError(null); }}>
-              Back to Configuration
-            </Button>
-          </div>
+        <section aria-label="Simulation error" className="space-y-3">
+          <ErrorAlert what={error.what} why={error.why} fix={error.fix} />
+          <Button variant="outline" onClick={() => { setSubView("configure"); setError(null); }}>
+            Back to Configuration
+          </Button>
         </section>
       );
     }

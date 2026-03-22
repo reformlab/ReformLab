@@ -120,10 +120,39 @@ class TemplateListItem(BaseModel):
     parameter_count: int
     description: str
     parameter_groups: list[str]
+    is_custom: bool = False
 
 
 class TemplateDetailResponse(TemplateListItem):
     default_policy: dict[str, Any]
+
+
+class CustomTemplateParameterSpec(BaseModel):
+    """Specification for a single parameter of a custom template."""
+
+    name: str
+    type: str = "float"  # float | int | str
+    default: float | int | str | None = None
+    unit: str = ""
+    min: float | None = None
+    max: float | None = None
+
+
+class CreateCustomTemplateRequest(BaseModel):
+    """Request body for POST /api/templates/custom."""
+
+    name: str
+    description: str = ""
+    parameters: list[CustomTemplateParameterSpec]
+
+
+class CustomTemplateResponse(BaseModel):
+    """Response for custom template creation."""
+
+    name: str
+    description: str
+    parameter_count: int
+    is_custom: bool = True
 
 
 class PopulationItem(BaseModel):

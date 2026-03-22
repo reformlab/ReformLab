@@ -318,6 +318,42 @@ kamal app boot        # restart backend
 kamal accessory boot frontend  # restart frontend
 ```
 
+## Monitoring
+
+Two lightweight dashboards are deployed as Kamal accessories:
+
+- **Dozzle** — real-time Docker log viewer: `https://logs.reform-lab.eu`
+  - Login: `admin` / same password as `REFORMLAB_PASSWORD`
+  - Shows logs from all containers (backend, frontend, website, Traefik)
+  - Search, filter, and tail logs in the browser
+
+- **Glances** — system monitoring dashboard: `https://monitor.reform-lab.eu`
+  - Shows CPU, RAM, disk, network, and per-container stats
+  - No authentication (read-only system metrics)
+
+### Monitoring CLI
+
+```bash
+# Reboot monitoring accessories
+kamal accessory reboot dozzle
+kamal accessory reboot glances
+
+# View monitoring logs
+kamal accessory logs dozzle
+kamal accessory logs glances
+```
+
+### DNS setup for monitoring
+
+Add these A records pointing to `178.104.67.235`:
+
+| Type | Name | Value |
+| --- | --- | --- |
+| A | logs | 178.104.67.235 |
+| A | monitor | 178.104.67.235 |
+
+Traefik will handle HTTPS certificates automatically once DNS propagates.
+
 ## Backup
 
 The data directory `/data/reformlab` on the Hetzner server contains all scenario configs, run outputs, and manifests. Back it up periodically:

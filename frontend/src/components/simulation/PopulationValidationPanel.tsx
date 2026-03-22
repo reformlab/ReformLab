@@ -16,7 +16,7 @@ export function PopulationValidationPanel({ validation }: PopulationValidationPa
   );
 
   return (
-    <section aria-label="Population validation" className="border border-slate-200 bg-white p-3 space-y-3">
+    <section aria-label="Population validation" className="rounded-lg border border-slate-200 bg-white p-3 space-y-3">
       <div className="flex items-center gap-2">
         {overallIcon}
         <p className="text-sm font-semibold text-slate-900">Validation</p>
@@ -29,19 +29,19 @@ export function PopulationValidationPanel({ validation }: PopulationValidationPa
       </div>
 
       <div className="grid grid-cols-3 gap-2 text-center">
-        <div className="border border-slate-200 p-2">
+        <div className="rounded-lg border border-slate-200 p-2">
           <p className="data-mono text-lg font-semibold text-slate-900">
             {validation.total_constraints}
           </p>
           <p className="text-xs text-slate-500">Total checks</p>
         </div>
-        <div className="border border-slate-200 p-2">
+        <div className="rounded-lg border border-slate-200 p-2">
           <p className="data-mono text-lg font-semibold text-emerald-600">
             {validation.total_constraints - validation.failed_count}
           </p>
           <p className="text-xs text-slate-500">Passed</p>
         </div>
-        <div className="border border-slate-200 p-2">
+        <div className="rounded-lg border border-slate-200 p-2">
           <p className="data-mono text-lg font-semibold text-red-600">
             {validation.failed_count}
           </p>
@@ -56,7 +56,7 @@ export function PopulationValidationPanel({ validation }: PopulationValidationPa
             {validation.marginal_results.map((m, i) => (
               <div
                 key={i}
-                className="flex items-start gap-2 border border-slate-200 p-2"
+                className="flex items-start gap-2 rounded-lg border border-slate-200 p-2"
               >
                 {m.passed ? (
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />

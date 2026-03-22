@@ -1,0 +1,5 @@
+users:
+  admin:
+    name: admin
+    # Real hash is generated at deploy time from REFORMLAB_PASSWORD
+    password: "placeholder-replaced-at-deploy-time"

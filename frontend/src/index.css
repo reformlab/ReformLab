@@ -1,23 +1,7 @@
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap");
+@import "@fontsource-variable/inter";
+@import "@fontsource/ibm-plex-mono";
+@import "@brand/theme.css";
 @import "tailwindcss";
-
-@theme {
-  --color-validated: var(--color-emerald-500);
-  --color-warning: var(--color-amber-500);
-  --color-unreviewed: var(--color-stone-400);
-  --color-error: var(--color-red-500);
-  --color-selection: var(--color-blue-500);
-  --color-lineage: var(--color-violet-500);
-  --color-reform: var(--color-sky-500);
-}
-
-:root {
-  --chart-baseline: var(--color-slate-500);
-  --chart-reform-a: var(--color-blue-500);
-  --chart-reform-b: var(--color-violet-500);
-  --chart-reform-c: var(--color-emerald-500);
-  --chart-reform-d: var(--color-amber-500);
-}
 
 * {
   box-sizing: border-box;
@@ -32,11 +16,11 @@ body,
 }
 
 body {
-  font-family: Inter, sans-serif;
+  font-family: var(--font-sans);
   background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
   color: #0f172a;
 }
 
 .data-mono {
-  font-family: "IBM Plex Mono", monospace;
+  font-family: var(--font-mono);
 }

@@ -22,7 +22,7 @@ export function WorkspaceLayout({
   rightCollapsed,
 }: WorkspaceLayoutProps) {
   return (
-    <div className="h-[calc(100vh-5.5rem)] border border-slate-200 bg-white">
+    <div className="h-[calc(100vh-5.5rem)] rounded-lg border border-slate-200 bg-white overflow-hidden">
       <ResizablePanelGroup direction="horizontal">
         <ResizablePanel
           defaultSize={22}

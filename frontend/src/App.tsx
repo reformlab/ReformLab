@@ -6,40 +6,29 @@ import { MainContent } from "@/components/layout/MainContent";
 import { RightPanel } from "@/components/layout/RightPanel";
 import { WorkspaceLayout } from "@/components/layout/WorkspaceLayout";
 import { PasswordPrompt } from "@/components/auth/PasswordPrompt";
-import { AssumptionsReviewScreen } from "@/components/screens/AssumptionsReviewScreen";
+import { ConfigurationScreen } from "@/components/screens/ConfigurationScreen";
 import { DataFusionWorkbench } from "@/components/screens/DataFusionWorkbench";
-import { ParameterEditingScreen } from "@/components/screens/ParameterEditingScreen";
-import { PopulationSelectionScreen } from "@/components/screens/PopulationSelectionScreen";
 import { PortfolioDesignerScreen } from "@/components/screens/PortfolioDesignerScreen";
 import { SimulationRunnerScreen } from "@/components/screens/SimulationRunnerScreen";
-import { TemplateSelectionScreen } from "@/components/screens/TemplateSelectionScreen";
-import {
-  type ConfigStep,
-  ModelConfigStepper,
-} from "@/components/simulation/ModelConfigStepper";
+import type { ConfigStepKey } from "@/components/simulation/ModelConfigStepper";
 import { BehavioralDecisionViewerScreen } from "@/components/screens/BehavioralDecisionViewerScreen";
 import { ComparisonDashboardScreen } from "@/components/screens/ComparisonDashboardScreen";
+import { ResultsOverviewScreen } from "@/components/screens/ResultsOverviewScreen";
 // ComparisonView (Phase 1 mock-driven prototype) is kept but no longer imported in workspace
-import { DistributionalChart } from "@/components/simulation/DistributionalChart";
 import { RunProgressBar } from "@/components/simulation/RunProgressBar";
 import { ScenarioCard } from "@/components/simulation/ScenarioCard";
 import { SummaryStatCard } from "@/components/simulation/SummaryStatCard";
+import { WorkflowNavRail } from "@/components/layout/WorkflowNavRail";
 import { Toaster } from "@/components/ui/sonner";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ContextualHelpPanel } from "@/components/help/ContextualHelpPanel";
+import { Separator } from "@/components/ui/separator";
 import { useAppState } from "@/contexts/AppContext";
 import { ApiError } from "@/api/client";
 import { exportCsv, exportParquet } from "@/api/exports";
 import {
   mockSummaryStats,
 } from "@/data/mock-data";
-
-const STEP_ORDER: ConfigStep["key"][] = [
-  "population",
-  "template",
-  "parameters",
-  "assumptions",
-];
 
 const LEFT_COLLAPSE_STORAGE_KEY = "reformlab-left-panel-collapsed";
 const RIGHT_COLLAPSE_STORAGE_KEY = "reformlab-right-panel-collapsed";
@@ -49,15 +38,6 @@ type ViewMode = "configuration" | "run" | "progress" | "results" | "comparison" 
 function readStoredBool(key: string): boolean {
   const value = window.localStorage.getItem(key);
   return value === "true";
-}
-
-function getConfigSteps(activeStep: ConfigStep["key"]): ConfigStep[] {
-  return [
-    { key: "population", label: "Population", status: activeStep === "population" ? "incomplete" : "complete" },
-    { key: "template", label: "Policy", status: activeStep === "template" ? "incomplete" : "complete" },
-    { key: "parameters", label: "Parameters", status: activeStep === "parameters" ? "incomplete" : "complete" },
-    { key: "assumptions", label: "Validation", status: activeStep === "assumptions" ? "incomplete" : "complete" },
-  ];
 }
 
 function Workspace() {
@@ -86,32 +66,22 @@ function Workspace() {
     setDataFusionResult,
     portfolios,
     refetchPortfolios,
+    refetchTemplates,
     selectedPortfolioName,
     results,
   } = useAppState();
 
-  const [activeStep, setActiveStep] = useState<ConfigStep["key"]>("population");
+  const [activeStep, setActiveStep] = useState<ConfigStepKey>("population");
   const [viewMode, setViewMode] = useState<ViewMode>("configuration");
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const [isNarrow, setIsNarrow] = useState(false);
   const [previousViewMode, setPreviousViewMode] = useState<ViewMode>("results");
 
-  const configSteps = useMemo(() => getConfigSteps(activeStep), [activeStep]);
-  const selectedPopulation = useMemo(
-    () => populations.find((p) => p.id === selectedPopulationId),
-    [populations, selectedPopulationId],
-  );
   const selectedTemplate = useMemo(
     () => templates.find((t) => t.id === selectedTemplateId),
     [templates, selectedTemplateId],
   );
-
-  // Filter parameters based on selected template's parameter groups
-  const filteredParameters = useMemo(() => {
-    if (!selectedTemplate) return parameters;
-    return parameters.filter((p) => selectedTemplate.parameterGroups.includes(p.group));
-  }, [selectedTemplate, parameters]);
 
   // Layout effects
   useEffect(() => {
@@ -154,17 +124,6 @@ function Workspace() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
-
-  // Navigation
-  const nextStep = () => {
-    const currentIndex = STEP_ORDER.indexOf(activeStep);
-    if (currentIndex >= STEP_ORDER.length - 1) {
-      setViewMode("run");
-      return;
-    }
-    const next = STEP_ORDER[currentIndex + 1] ?? activeStep;
-    setActiveStep(next);
-  };
 
   // Run simulation using real API
   const handleStartRun = async () => {
@@ -241,14 +200,12 @@ function Workspace() {
     [scenarios, selectedScenarioId],
   );
 
-  const isLastStep = activeStep === STEP_ORDER[STEP_ORDER.length - 1];
-
   const mainPanelContent = (
     <>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border border-slate-200 bg-white p-3">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-gradient-to-r from-white to-indigo-50 p-3 shadow-sm">
         <div>
-          <h1 className="text-lg font-semibold">ReformLab</h1>
-          <p className="text-sm text-slate-600">
+          <h1 className="text-xl font-bold">ReformLab</h1>
+          <p className="text-sm text-indigo-700">
             Environmental policy analysis workspace
           </p>
         </div>
@@ -282,52 +239,25 @@ function Workspace() {
       </div>
 
       {viewMode === "configuration" ? (
-        <section className="space-y-3">
-          <ModelConfigStepper activeStep={activeStep} steps={configSteps} onStepSelect={setActiveStep} />
-
-          {activeStep === "population" ? (
-            <PopulationSelectionScreen
-              populations={populations}
-              selectedPopulationId={selectedPopulationId}
-              onSelectPopulation={setSelectedPopulationId}
-            />
-          ) : null}
-
-          {activeStep === "template" ? (
-            <TemplateSelectionScreen
-              templates={templates}
-              selectedTemplateId={selectedTemplateId}
-              onSelectTemplate={selectTemplate}
-            />
-          ) : null}
-
-          {activeStep === "parameters" ? (
-            <ParameterEditingScreen
-              parameters={filteredParameters}
-              parameterValues={parameterValues}
-              onParameterChange={setParameterValue}
-            />
-          ) : null}
-
-          {activeStep === "assumptions" ? (
-            <AssumptionsReviewScreen
-              population={selectedPopulation}
-              template={selectedTemplate}
-              parameters={filteredParameters}
-              parameterValues={parameterValues}
-            />
-          ) : null}
-
-          <div className="flex justify-end">
-            <Button onClick={nextStep}>
-              {isLastStep ? "Go to Simulation" : "Next Step"}
-            </Button>
-          </div>
-        </section>
+        <ConfigurationScreen
+          activeStep={activeStep}
+          onStepSelect={setActiveStep}
+          populations={populations}
+          selectedPopulationId={selectedPopulationId}
+          onSelectPopulation={setSelectedPopulationId}
+          templates={templates}
+          selectedTemplateId={selectedTemplateId}
+          onSelectTemplate={selectTemplate}
+          onTemplatesChanged={refetchTemplates}
+          parameters={parameters}
+          parameterValues={parameterValues}
+          onParameterChange={setParameterValue}
+          onGoToSimulation={() => setViewMode("run")}
+        />
       ) : null}
 
       {viewMode === "run" ? (
-        <section className="space-y-3 border border-slate-200 bg-white p-3">
+        <section className="space-y-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
           <h2 className="text-lg font-semibold">Run Simulation</h2>
           <p className="text-sm text-slate-600">
             Ready to compute baseline and reform results for{" "}
@@ -354,26 +284,16 @@ function Workspace() {
       ) : null}
 
       {viewMode === "results" ? (
-        <section className="space-y-3">
-          <DistributionalChart
-            data={decileData}
-            reformLabel={selectedScenario?.templateName ?? selectedScenario?.name ?? "Reform"}
-          />
-          <div className="grid gap-2 xl:grid-cols-3">
-            {mockSummaryStats.map((stat) => (
-              <SummaryStatCard key={stat.id} stat={stat} />
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <Button onClick={openComparison}>Open Comparison</Button>
-            {runResult?.run_id ? (
-              <Button variant="outline" onClick={openDecisions}>Behavioral Decisions</Button>
-            ) : null}
-            <Button variant="outline" onClick={handleStartRun}>Run Again</Button>
-            <Button variant="outline" onClick={handleExportCsv}>Export CSV</Button>
-            <Button variant="outline" onClick={handleExportParquet}>Export Parquet</Button>
-          </div>
-        </section>
+        <ResultsOverviewScreen
+          decileData={decileData}
+          runResult={runResult}
+          reformLabel={selectedScenario?.templateName ?? selectedScenario?.name ?? "Reform"}
+          onCompare={openComparison}
+          onViewDecisions={openDecisions}
+          onRunAgain={handleStartRun}
+          onExportCsv={handleExportCsv}
+          onExportParquet={handleExportParquet}
+        />
       ) : null}
 
       {viewMode === "comparison" ? (
@@ -433,37 +353,17 @@ function Workspace() {
         leftPanel={
           <LeftPanel collapsed={isNarrow ? true : leftCollapsed} onToggle={() => setLeftCollapsed((current) => !current)}>
             <div className="space-y-2">
-              <Button
-                variant={viewMode === "data-fusion" ? "default" : "outline"}
-                className="w-full"
-                onClick={() => setViewMode("data-fusion")}
-              >
-                Population
-              </Button>
+              <WorkflowNavRail
+                viewMode={viewMode}
+                setViewMode={setViewMode}
+                collapsed={isNarrow ? true : leftCollapsed}
+                selectedPopulationId={selectedPopulationId}
+                dataFusionResult={dataFusionResult}
+                portfolios={portfolios}
+                results={results}
+              />
 
-              <Button
-                variant={viewMode === "portfolio" ? "default" : "outline"}
-                className="w-full"
-                onClick={() => setViewMode("portfolio")}
-              >
-                Portfolio
-              </Button>
-
-              <Button
-                variant={viewMode === "runner" ? "default" : "outline"}
-                className="w-full"
-                onClick={() => setViewMode("runner")}
-              >
-                Simulation
-              </Button>
-
-              <Button
-                variant={viewMode === "configuration" ? "default" : "outline"}
-                className="w-full"
-                onClick={() => setViewMode("configuration")}
-              >
-                Configure Policy
-              </Button>
+              {scenarios.length > 0 && <Separator className="my-1" />}
 
               {scenarios.map((scenario) => (
                 <ScenarioCard
@@ -500,48 +400,7 @@ function Workspace() {
         mainPanel={<MainContent>{mainPanelContent}</MainContent>}
         rightPanel={
           <RightPanel collapsed={isNarrow ? true : rightCollapsed} onToggle={() => setRightCollapsed((current) => !current)}>
-            <div className="space-y-3">
-              {selectedScenario ? (
-                <section className="border border-slate-200 bg-white p-3">
-                  <p className="text-xs font-semibold uppercase text-slate-500">Selected Scenario</p>
-                  <p className="text-sm font-medium text-slate-800">{selectedScenario.name}</p>
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    <Badge variant={selectedScenario.status === "completed" ? "success" : "default"}>
-                      {selectedScenario.status}
-                    </Badge>
-                  </div>
-                  {selectedScenario.lastRun ? (
-                    <p className="mt-1 text-xs text-slate-500">Last run: {selectedScenario.lastRun}</p>
-                  ) : null}
-                  {selectedScenario.templateName ? (
-                    <p className="mt-1 text-xs text-slate-500">Policy: {selectedScenario.templateName}</p>
-                  ) : null}
-                  <p className="mt-1 text-xs text-slate-500">
-                    {selectedScenario.parameterChanges} parameter{selectedScenario.parameterChanges === 1 ? "" : "s"} changed
-                  </p>
-                </section>
-              ) : null}
-
-              <section className="border border-slate-200 bg-white p-3">
-                <p className="text-xs font-semibold uppercase text-slate-500">Population</p>
-                <p className="text-sm text-slate-800">{selectedPopulation?.name}</p>
-              </section>
-
-              <section className="border border-slate-200 bg-white p-3">
-                <p className="text-xs font-semibold uppercase text-slate-500">Template</p>
-                <p className="text-sm text-slate-800">{selectedTemplate?.name}</p>
-              </section>
-
-              <section className="border border-slate-200 bg-white p-3">
-                <p className="text-xs font-semibold uppercase text-slate-500">Workspace State</p>
-                <div className="mt-2 flex flex-wrap gap-1">
-                  <Badge variant="info">{viewMode}</Badge>
-                  {viewMode === "configuration" ? (
-                    <Badge variant="violet">{activeStep}</Badge>
-                  ) : null}
-                </div>
-              </section>
-            </div>
+            <ContextualHelpPanel viewMode={viewMode} activeStep={activeStep} />
           </RightPanel>
         }
       />
