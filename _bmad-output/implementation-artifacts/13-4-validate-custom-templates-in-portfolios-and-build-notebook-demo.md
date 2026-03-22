@@ -1,7 +1,7 @@
 
 # Story 13.4: Validate custom templates in portfolios and build notebook demo
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -29,17 +29,17 @@ so that I can confidently author, register, and deploy custom policy templates i
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Write portfolio integration tests** (AC: #1, #2, #3, #7)
-  - [ ] 1.1 Create `tests/templates/test_custom_template_portfolio_integration.py` with test classes:
+- [x] **Task 1: Write portfolio integration tests** (AC: #1, #2, #3, #7)
+  - [x] 1.1 Create `tests/templates/test_custom_template_portfolio_integration.py` with test classes:
     - `TestCustomTemplatePortfolioExecution`: portfolio with VehicleMalusParameters + CarbonTaxParameters + SubsidyParameters constructs and validates without conflict; portfolio with VehicleMalusParameters + EnergyPovertyAidParameters + CarbonTaxParameters constructs successfully
     - `TestCustomTemplateConflictDetection`: two VehicleMalusParameters with overlapping rate_schedule years triggers same_policy_type + overlapping_years conflicts; two EnergyPovertyAidParameters triggers same_policy_type conflict
     - `TestPortfolioComputationWithCustomTemplates`: `PortfolioComputationStep` executes a portfolio with custom templates using MockAdapter; verify `asdict()` conversion produces complete dict with custom fields (emission_threshold, income_ceiling, etc.); assert non-zero malus and aid totals from seeded population
     - `TestPortfolioYamlRoundTripWithCustomTemplates`: `dump_portfolio()` + `load_portfolio()` round-trip preserves custom template fields; import custom template modules before `load_portfolio()` to ensure registration
-  - [ ] 1.2 Use `MockAdapter` from existing test infrastructure — never use real OpenFisca
-  - [ ] 1.3 Reference AC IDs in test docstrings
+  - [x] 1.2 Use `MockAdapter` from existing test infrastructure — never use real OpenFisca
+  - [x] 1.3 Reference AC IDs in test docstrings
 
-- [ ] **Task 2: Build notebook demo** (AC: #4, #5)
-  - [ ] 2.1 Create `notebooks/demo/epic13_custom_templates.ipynb` following the Epic 12 demo pattern:
+- [x] **Task 2: Build notebook demo** (AC: #4, #5)
+  - [x] 2.1 Create `notebooks/guides/07_custom_templates.ipynb` following the Epic 12 demo pattern:
     - Section 0: Introduction (what you'll learn, prerequisites, ~15 min)
     - Section 1: Setup (path resolution, imports, output directory)
     - Section 2: "The Custom Template API" — explain the lifecycle with a diagram-like markdown
@@ -50,14 +50,14 @@ so that I can confidently author, register, and deploy custom policy templates i
     - Section 7: "Compare Portfolios" — compare a "Green Transition" portfolio (carbon tax + vehicle malus + energy poverty aid) against a "Carbon Tax Only" portfolio, show distributional differences
     - Section 8: "YAML Round-Trip" — dump portfolio to YAML, reload, verify custom fields preserved
     - Section 9: Next Steps
-  - [ ] 2.2 Create synthetic population data inline using `random.seed(42)` (same pattern as Epic 12 demo), with columns: `household_id`, `income`, `carbon_emissions`, `vehicle_emissions_gkm`, `energy_expenditure`. Target ~30% eligible for energy poverty aid, ~40% above vehicle malus emission threshold (> 118 gCO2/km)
-  - [ ] 2.3 Use `show()` helper function for table display (inline definition, same as Epic 12)
-  - [ ] 2.4 All code cells must have `execution_count: null` and `outputs: []` (committed clean)
-  - [ ] 2.5 Use public API imports only — `from reformlab.templates.schema import ...`, `from reformlab.templates.vehicle_malus import ...`, `from reformlab.templates.energy_poverty_aid import ...`, `from reformlab.templates.portfolios import ...`
-  - [ ] 2.6 Include plain-language markdown explanation before every code cell explaining what it does and why
+  - [x] 2.2 Create synthetic population data inline using `random.seed(42)` (same pattern as Epic 12 demo), with columns: `household_id`, `income`, `carbon_emissions`, `vehicle_emissions_gkm`, `energy_expenditure`. Target ~30% eligible for energy poverty aid, ~40% above vehicle malus emission threshold (> 118 gCO2/km)
+  - [x] 2.3 Use `show()` helper function for table display (inline definition, same as Epic 12)
+  - [x] 2.4 All code cells must have `execution_count: null` and `outputs: []` (committed clean)
+  - [x] 2.5 Use public API imports only — `from reformlab.templates.schema import ...`, `from reformlab.templates.vehicle_malus import ...`, `from reformlab.templates.energy_poverty_aid import ...`, `from reformlab.templates.portfolios import ...`
+  - [x] 2.6 Include plain-language markdown explanation before every code cell explaining what it does and why
 
-- [ ] **Task 3: Write static notebook tests** (AC: #6)
-  - [ ] 3.1 Create `tests/notebooks/test_epic13_demo_notebook.py` following `test_advanced_notebook.py` pattern:
+- [x] **Task 3: Write static notebook tests** (AC: #6)
+  - [x] 3.1 Create `tests/notebooks/test_epic13_demo_notebook.py` following `test_advanced_notebook.py` pattern:
     - `test_epic13_notebook_exists()` — file at expected path
     - `test_epic13_notebook_outputs_are_cleared()` — all code cells have execution_count=None, outputs=[]
     - `test_epic13_notebook_uses_public_api_only()` — contains `register_policy_type`, `register_custom_template`, `PolicyPortfolio`, `validate_compatibility`; does NOT contain `reformlab.computation`, `from openfisca import`
@@ -65,14 +65,14 @@ so that I can confidently author, register, and deploy custom policy templates i
     - `test_epic13_notebook_covers_portfolio_comparison()` — contains `compare_` or portfolio comparison code
     - `test_epic13_notebook_covers_yaml_round_trip()` — contains `dump_portfolio` or `dump_scenario_template` and `load_`
 
-- [ ] **Task 4: Update CI workflow** (AC: #4, #6)
-  - [ ] 4.1 Add `uv run pytest --nbmake notebooks/demo/epic13_custom_templates.ipynb -v` to `.github/workflows/ci.yml` (after existing notebook lines)
+- [x] **Task 4: Update CI workflow** (AC: #4, #6)
+  - [x] 4.1 Add `uv run pytest --nbmake notebooks/guides/07_custom_templates.ipynb -v` to `.github/workflows/ci.yml` (after existing notebook lines)
 
-- [ ] **Task 5: Run verification** (AC: #1-#7)
-  - [ ] 5.1 Run `uv run ruff check src/ tests/`
-  - [ ] 5.2 Run `uv run mypy src/`
-  - [ ] 5.3 Run `uv run pytest tests/ -x` to verify no regressions
-  - [ ] 5.4 Run `uv run pytest --nbmake notebooks/demo/epic13_custom_templates.ipynb -v` to verify notebook executes
+- [x] **Task 5: Run verification** (AC: #1-#7)
+  - [x] 5.1 Run `uv run ruff check src/ tests/`
+  - [x] 5.2 Run `uv run mypy src/`
+  - [x] 5.3 Run `uv run pytest tests/ -x` to verify no regressions
+  - [x] 5.4 Run `uv run pytest --nbmake notebooks/guides/07_custom_templates.ipynb -v` to verify notebook executes
 
 ## Dev Notes
 
@@ -312,10 +312,22 @@ Claude Opus 4.6
 - Notebook section plan designed: 10 sections covering full custom template lifecycle + portfolio integration
 - 4 new files to create, 1 file to modify (CI workflow)
 - No new source code under src/ — this story validates and demonstrates existing functionality
+- **Implementation (2026-03-20):** Found that notebook (07_custom_templates.ipynb) and portfolio integration tests were already created in prior sessions. Created static notebook tests (test_epic13_demo_notebook.py) with 7 test functions covering AC6. Added nbmake CI line for notebook. Adapted paths from story spec (notebooks/demo/ → notebooks/guides/) to match project convention.
+- All 3154 tests pass, ruff clean, mypy clean, nbmake execution passes
+- 11 portfolio integration tests pass (AC1-AC3, AC7)
+- 7 static notebook tests pass (AC6)
+- Notebook executes cleanly via nbmake (AC4)
 
 ### File List
 
-- `notebooks/demo/epic13_custom_templates.ipynb` — CREATE: Pedagogical notebook demo
-- `tests/notebooks/test_epic13_demo_notebook.py` — CREATE: Static notebook validation tests
-- `tests/templates/test_custom_template_portfolio_integration.py` — CREATE: Portfolio integration tests
-- `.github/workflows/ci.yml` — MODIFY: Add nbmake line for Epic 13 notebook
+- `notebooks/guides/07_custom_templates.ipynb` — EXISTS: Pedagogical notebook demo (created in prior session)
+- `tests/notebooks/test_epic13_demo_notebook.py` — CREATE: Static notebook validation tests (7 tests covering AC6)
+- `tests/templates/test_custom_template_portfolio_integration.py` — EXISTS: Portfolio integration tests (created in prior session, 11 tests covering AC1-AC3, AC7)
+- `.github/workflows/ci.yml` — MODIFY: Add nbmake execution line for Epic 13 notebook
+
+### Change Log
+
+- 2026-03-20: Created `tests/notebooks/test_epic13_demo_notebook.py` — 7 static tests for notebook structure validation (AC6)
+- 2026-03-20: Added `uv run pytest --nbmake notebooks/guides/07_custom_templates.ipynb -v` to CI workflow
+- 2026-03-20: All verification passed: ruff clean, mypy clean, 3154 tests pass, nbmake passes
+- 2026-03-20: Story marked review — all tasks complete, all ACs satisfied
