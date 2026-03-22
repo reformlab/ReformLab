@@ -371,7 +371,7 @@ export function PortfolioDesignerScreen({
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white">
-      <WorkbenchStepper steps={STEPS} activeStep={activeStep} onStepSelect={setActiveStep} ariaLabel="Designer steps" />
+      <WorkbenchStepper steps={STEPS} activeStep={activeStep} onStepSelect={(key) => setActiveStep(key as DesignerStep)} ariaLabel="Designer steps" />
 
       <div className="p-3">
         {/* Step 1: Select Templates */}

@@ -19,7 +19,6 @@ from reformlab.data.synthetic import (
     save_synthetic_population,
 )
 
-
 EXPECTED_COLUMNS = [
     "household_id",
     "person_id",

@@ -104,7 +104,6 @@ class TestFillMissingEnergyColumns:
         self, population_without_energy_table: pa.Table, caplog: logging.LogCaptureFixture
     ) -> None:
         """Filling missing energy columns emits a warning log."""
-        import pytest
 
         with caplog.at_level(logging.WARNING, logger="reformlab.data.schemas"):
             fill_missing_energy_columns(population_without_energy_table)

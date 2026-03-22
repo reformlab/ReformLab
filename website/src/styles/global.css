@@ -1,6 +1,6 @@
 @import "@fontsource-variable/inter";
 @import "@fontsource/ibm-plex-mono";
-@import "@brand/theme.css";
+@import "./brand-theme.css";
 @import "tailwindcss";
 
 @theme {

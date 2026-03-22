@@ -176,7 +176,7 @@ export function DataFusionWorkbench({
         </p>
       </div>
 
-      <WorkbenchStepper steps={STEPS} activeStep={activeStep} onStepSelect={setActiveStep} ariaLabel="Workbench steps" />
+      <WorkbenchStepper steps={STEPS} activeStep={activeStep} onStepSelect={(key) => setActiveStep(key as WorkbenchStep)} ariaLabel="Workbench steps" />
 
       <div className="space-y-3">
         {/* Step 1: Source Browser */}
