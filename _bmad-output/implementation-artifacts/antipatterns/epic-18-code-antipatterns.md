@@ -52,3 +52,11 @@
 |----------|-------|-----|
 | medium | `Select` component missing `focus-visible:ring` keyboard focus indicator — `outline-none` removes the browser default with only a subtle border-color change as replacement, which fails the keyboard accessibility standard documented as a recurring Epic 18 antipattern (first flagged in Story 18-1 for nav buttons, 18-2 for `button.tsx`/`input.tsx`) | Added `focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2` to base class string |
 | low | The 3 skeleton loading containers replaced visible "Loading…" text (which is readable by screen readers) with purely visual pulses, creating a semantic loading state regression for assistive technology | Added `aria-busy="true" role="status"` to each container with a `<span className="sr-only">Loading …</span>` inside |
+
+## Story 18-7 (2026-03-22)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| high | `conceptsOpen` state never resets when `viewMode`/`activeStep` changes — once "Key Concepts" is opened in one stage it remains expanded when the user navigates to another stage that also has concepts, violating AC-3 "collapsed by default" | Added `useEffect(() => { setConceptsOpen(false); }, [viewMode, activeStep])` and `useEffect` import. |
+| medium | No test for AC-3 default-collapsed state or expand-on-click behavior; tests only checked text presence of trigger | Added tests: "Key Concepts section is collapsed by default (AC-3)", "Key Concepts section expands when trigger is clicked (AC-3)", "resets Key Concepts to collapsed when navigating (AC-3)". |
+| medium | No rerender test for AC-1 "updates automatically when user navigates to a different stage" | Added test "updates content automatically when viewMode changes (AC-1)" using `rerender`. |

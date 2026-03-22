@@ -544,12 +544,25 @@ None — implementation was straightforward with all spec provided verbatim.
 - Updated `RightPanel.tsx`: collapsed label "Context" → "Help"; header "Run Context" → "Help" with `HelpCircle` icon wrapped in flex container.
 - Updated `App.tsx`: replaced entire right panel `<div className="space-y-3">` block with `<ContextualHelpPanel viewMode={viewMode} activeStep={activeStep} />`; removed `Badge` import; removed `selectedPopulation` useMemo; `selectedTemplate` and `selectedScenario` retained (used in `mainPanelContent`).
 - All 342 tests pass (44 test files); `tsc --noEmit` 0 errors; ESLint 0 errors (4 pre-existing fast-refresh warnings).
+- Code review synthesis (2026-03-22): fixed concepts panel state-reset bug (added `useEffect` with `[viewMode, activeStep]` deps); added 4 missing tests covering AC-3 default-collapsed state, expand-on-click, state-reset-on-navigate, and AC-1 auto-update via rerender. Total tests: 346.
 
 ### File List
 
 - `frontend/src/components/help/help-content.ts` — new
-- `frontend/src/components/help/ContextualHelpPanel.tsx` — new
-- `frontend/src/components/help/__tests__/ContextualHelpPanel.test.tsx` — new
+- `frontend/src/components/help/ContextualHelpPanel.tsx` — new (modified by synthesis: added useEffect reset)
+- `frontend/src/components/help/__tests__/ContextualHelpPanel.test.tsx` — new (modified by synthesis: added 4 tests)
 - `frontend/src/components/layout/__tests__/RightPanel.test.tsx` — new
 - `frontend/src/components/layout/RightPanel.tsx` — modified
 - `frontend/src/App.tsx` — modified
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-22
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 3.1 (Reviewer A) / 4.1 (Reviewer B) → REJECT (one or more reviewers exceeded threshold)
+- **Issues Found:** 3 verified (1 HIGH bug, 2 MEDIUM test gaps)
+- **Issues Fixed:** 3 (all applied)
+- **Action Items Created:** 0
+
+#### Review Follow-ups (AI)
+<!-- All verified issues were fixed in synthesis. No remaining action items. -->

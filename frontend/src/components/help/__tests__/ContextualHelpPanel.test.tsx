@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 import { ContextualHelpPanel } from "@/components/help/ContextualHelpPanel";
 
@@ -62,5 +62,34 @@ describe("ContextualHelpPanel", () => {
   it("does not render Key Concepts for entries without concepts", () => {
     render(<ContextualHelpPanel viewMode="progress" />);
     expect(screen.queryByText("Key Concepts")).not.toBeInTheDocument();
+  });
+
+  it("Key Concepts section is collapsed by default (AC-3)", () => {
+    render(<ContextualHelpPanel viewMode="data-fusion" />);
+    const trigger = screen.getByText("Key Concepts").closest("button");
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("Key Concepts section expands when trigger is clicked (AC-3)", () => {
+    render(<ContextualHelpPanel viewMode="data-fusion" />);
+    const trigger = screen.getByText("Key Concepts");
+    fireEvent.click(trigger);
+    expect(trigger.closest("button")).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("resets Key Concepts to collapsed when navigating to a new stage (AC-3)", () => {
+    const { rerender } = render(<ContextualHelpPanel viewMode="data-fusion" />);
+    fireEvent.click(screen.getByText("Key Concepts"));
+    expect(screen.getByText("Key Concepts").closest("button")).toHaveAttribute("aria-expanded", "true");
+    rerender(<ContextualHelpPanel viewMode="comparison" />);
+    expect(screen.getByText("Key Concepts").closest("button")).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("updates content automatically when viewMode changes (AC-1)", () => {
+    const { rerender } = render(<ContextualHelpPanel viewMode="data-fusion" />);
+    expect(screen.getByText("Population Builder")).toBeInTheDocument();
+    rerender(<ContextualHelpPanel viewMode="results" />);
+    expect(screen.getByText("Results Overview")).toBeInTheDocument();
+    expect(screen.queryByText("Population Builder")).not.toBeInTheDocument();
   });
 });

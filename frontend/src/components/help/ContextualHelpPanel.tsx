@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -17,6 +17,10 @@ interface ContextualHelpPanelProps {
 export function ContextualHelpPanel({ viewMode, activeStep }: ContextualHelpPanelProps) {
   const help = getHelpEntry(viewMode, activeStep);
   const [conceptsOpen, setConceptsOpen] = useState(false);
+
+  useEffect(() => {
+    setConceptsOpen(false);
+  }, [viewMode, activeStep]);
 
   return (
     <div className="space-y-3">
