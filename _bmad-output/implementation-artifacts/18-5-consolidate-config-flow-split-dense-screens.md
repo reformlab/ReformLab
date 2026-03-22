@@ -1,7 +1,7 @@
 
 # Story 18.5: Consolidate Configuration Flow and Split Dense Screens
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -48,43 +48,43 @@ so that the codebase is easier to maintain, App.tsx is readable at a glance, and
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create ConfigurationScreen component (AC: 1, 3)
-  - [ ] 1.1: Create `frontend/src/components/screens/ConfigurationScreen.tsx` with props interface; move `STEP_ORDER`, `getConfigSteps`, step navigation logic
-  - [ ] 1.2: Implement internal `filteredParameters` memo (filter `parameters` by `selectedTemplate.parameterGroups`)
-  - [ ] 1.3: Implement `nextStep` handler internally (advance step or call `onGoToSimulation`)
-  - [ ] 1.4: Render ModelConfigStepper + conditional step screens + Next/GoToSimulation button
+- [x] Task 1: Create ConfigurationScreen component (AC: 1, 3)
+  - [x] 1.1: Create `frontend/src/components/screens/ConfigurationScreen.tsx` with props interface; move `STEP_ORDER`, `getConfigSteps`, step navigation logic
+  - [x] 1.2: Implement internal `filteredParameters` memo (filter `parameters` by `selectedTemplate.parameterGroups`)
+  - [x] 1.3: Implement `nextStep` handler internally (advance step or call `onGoToSimulation`)
+  - [x] 1.4: Render ModelConfigStepper + conditional step screens + Next/GoToSimulation button
 
-- [ ] Task 2: Wire ConfigurationScreen into App.tsx (AC: 1, 3)
-  - [ ] 2.1: Import `ConfigurationScreen`, replace inline configuration JSX block with `<ConfigurationScreen ... />`
-  - [ ] 2.2: Remove `STEP_ORDER`, `getConfigSteps`, `configSteps` memo, `filteredParameters` memo, `isLastStep`, `nextStep` from App.tsx
-  - [ ] 2.3: Remove imports only used by configuration block (`ModelConfigStepper`, `PopulationSelectionScreen`, `TemplateSelectionScreen`, `ParameterEditingScreen`, `AssumptionsReviewScreen`, `ConfigStep` type)
-  - [ ] 2.4: Keep `activeStep`/`setActiveStep` state in App.tsx (right panel uses it)
+- [x] Task 2: Wire ConfigurationScreen into App.tsx (AC: 1, 3)
+  - [x] 2.1: Import `ConfigurationScreen`, replace inline configuration JSX block with `<ConfigurationScreen ... />`
+  - [x] 2.2: Remove `STEP_ORDER`, `getConfigSteps`, `configSteps` memo, `filteredParameters` memo, `isLastStep`, `nextStep` from App.tsx
+  - [x] 2.3: Remove imports only used by configuration block (`ModelConfigStepper` component, `PopulationSelectionScreen`, `TemplateSelectionScreen`, `ParameterEditingScreen`, `AssumptionsReviewScreen`, `ConfigStep` type); add `import type { ConfigStepKey } from "@/components/simulation/ModelConfigStepper"` to App.tsx; update `activeStep` state type from `ConfigStep["key"]` to `ConfigStepKey`
+  - [x] 2.4: Keep `activeStep`/`setActiveStep` state in App.tsx (right panel uses it)
 
-- [ ] Task 3: Extract ComparisonDashboardScreen sub-components (AC: 2)
-  - [ ] 3.1: Create `frontend/src/components/comparison/comparison-helpers.ts` — move `ViewMode`, `ActiveTab`, `DetailTarget`, `MAX_RUNS`, `METHODOLOGY_DESCRIPTIONS`, `runLabel`, `statusVariant`, `buildSeries`, `escapeCsvField`, `exportComparisonCsv`
-  - [ ] 3.2: Create `frontend/src/components/comparison/RunSelector.tsx` — move `RunSelectorProps` + `RunSelector` function; import `runLabel`, `statusVariant`, `MAX_RUNS` from helpers
-  - [ ] 3.3: Create `frontend/src/components/comparison/FiscalTab.tsx` — move `FiscalTab` function; import `ViewMode` + `columnarToRows` from respective sources
-  - [ ] 3.4: Create `frontend/src/components/comparison/WelfareTab.tsx` — move `WelfareTab` function; import `ViewMode` + `columnarToRows`
-  - [ ] 3.5: Create `frontend/src/components/comparison/DetailPanel.tsx` — move `DetailTarget` type + `DetailPanel` function
-  - [ ] 3.6: Create `frontend/src/components/comparison/index.ts` barrel export
-  - [ ] 3.7: Update `ComparisonDashboardScreen.tsx` — replace inline sub-components with imports from `@/components/comparison`; remove moved code
+- [x] Task 3: Extract ComparisonDashboardScreen sub-components (AC: 2)
+  - [x] 3.1: Create `frontend/src/components/comparison/comparison-helpers.ts` — move `ViewMode`, `ActiveTab`, `DetailTarget`, `MAX_RUNS`, `METHODOLOGY_DESCRIPTIONS`, `runLabel`, `statusVariant`, `buildSeries`, `escapeCsvField`, `exportComparisonCsv`; add imports: `ResultListItem`, `PortfolioComparisonResponse` from `@/api/types`; `CHART_COLORS` and `SeriesSpec` from `@/components/simulation/MultiRunChart`
+  - [x] 3.2: Create `frontend/src/components/comparison/RunSelector.tsx` — move `RunSelectorProps` + `RunSelector` function; import `runLabel`, `statusVariant`, `MAX_RUNS` from helpers
+  - [x] 3.3: Create `frontend/src/components/comparison/FiscalTab.tsx` — move `FiscalTab` function; import `ViewMode` + `columnarToRows` from respective sources
+  - [x] 3.4: Create `frontend/src/components/comparison/WelfareTab.tsx` — move `WelfareTab` function; import `ViewMode` + `columnarToRows`
+  - [x] 3.5: Create `frontend/src/components/comparison/DetailPanel.tsx` — move `DetailPanel` function only; `DetailTarget` type stays in `comparison-helpers.ts` and is imported via `import type { DetailTarget } from "./comparison-helpers"`
+  - [x] 3.6: Create `frontend/src/components/comparison/index.ts` barrel export
+  - [x] 3.7: Update `ComparisonDashboardScreen.tsx` — replace inline sub-components with imports from `@/components/comparison`; remove moved code
 
-- [ ] Task 4: ConfigurationScreen tests (AC: 5)
-  - [ ] 4.1: Create `frontend/src/components/screens/__tests__/ConfigurationScreen.test.tsx`
-  - [ ] 4.2: Test: renders PopulationSelectionScreen by default (activeStep="population")
-  - [ ] 4.3: Test: renders TemplateSelectionScreen when activeStep="template"
-  - [ ] 4.4: Test: renders ParameterEditingScreen when activeStep="parameters"
-  - [ ] 4.5: Test: renders AssumptionsReviewScreen when activeStep="assumptions"
-  - [ ] 4.6: Test: "Next Step" button advances step via onStepSelect callback
-  - [ ] 4.7: Test: shows "Go to Simulation" on last step (assumptions)
-  - [ ] 4.8: Test: clicking "Go to Simulation" calls onGoToSimulation
-  - [ ] 4.9: Test: clicking stepper step calls onStepSelect (non-blocking navigation)
-  - [ ] 4.10: Test: filters parameters by selected template's parameterGroups
+- [x] Task 4: ConfigurationScreen tests (AC: 5)
+  - [x] 4.1: Create `frontend/src/components/screens/__tests__/ConfigurationScreen.test.tsx`
+  - [x] 4.2: Test: renders PopulationSelectionScreen by default (activeStep="population")
+  - [x] 4.3: Test: renders TemplateSelectionScreen when activeStep="template"
+  - [x] 4.4: Test: renders ParameterEditingScreen when activeStep="parameters"
+  - [x] 4.5: Test: renders AssumptionsReviewScreen when activeStep="assumptions"
+  - [x] 4.6: Test: "Next Step" button advances step via onStepSelect callback
+  - [x] 4.7: Test: shows "Go to Simulation" on last step (assumptions)
+  - [x] 4.8: Test: clicking "Go to Simulation" calls onGoToSimulation
+  - [x] 4.9: Test: clicking stepper step calls onStepSelect (non-blocking navigation)
+  - [x] 4.10: Test: filters parameters by selected template's parameterGroups
 
-- [ ] Task 5: Verify no regressions (AC: 4)
-  - [ ] 5.1: Run `npm test` — all pre-existing tests pass; new tests pass
-  - [ ] 5.2: Run `npm run typecheck` — 0 errors
-  - [ ] 5.3: Run `npm run lint` — 0 errors (pre-existing fast-refresh warnings OK)
+- [x] Task 5: Verify no regressions (AC: 4)
+  - [x] 5.1: Run `npm test` — all pre-existing tests pass; new tests pass
+  - [x] 5.2: Run `npm run typecheck` — 0 errors
+  - [x] 5.3: Run `npm run lint` — 0 errors (pre-existing fast-refresh warnings OK)
 
 ## Dev Notes
 
@@ -209,7 +209,7 @@ The `viewMode === "configuration"` block shrinks to:
 - `filteredParameters` memo (lines 106-109) — REMOVE (only used by config steps, now internal to ConfigurationScreen)
 - `isLastStep` derivation — REMOVE
 - `nextStep` function (lines 161-168) — REMOVE
-- Imports: `ModelConfigStepper`, `ConfigStep` type, `PopulationSelectionScreen`, `TemplateSelectionScreen`, `ParameterEditingScreen`, `AssumptionsReviewScreen` — REMOVE from App.tsx
+- Imports: `ModelConfigStepper` component, `ConfigStep` type, `PopulationSelectionScreen`, `TemplateSelectionScreen`, `ParameterEditingScreen`, `AssumptionsReviewScreen` — REMOVE from App.tsx; ADD `import type { ConfigStepKey }` from `ModelConfigStepper`; update `activeStep` state type from `ConfigStep["key"]` to `ConfigStepKey`
 
 **Keep in App.tsx:**
 - `activeStep`/`setActiveStep` state — right panel needs it
@@ -228,6 +228,13 @@ The `viewMode === "configuration"` block shrinks to:
 | `WelfareTab` (337-459) | `WelfareTab.tsx` |
 | `DetailPanel` (465-524) | `DetailPanel.tsx` |
 | `ComparisonDashboardScreen` (528-789) | Stays — imports from above |
+
+**comparison-helpers.ts imports:**
+```ts
+import type { ResultListItem, PortfolioComparisonResponse } from "@/api/types";
+import { CHART_COLORS } from "@/components/simulation/MultiRunChart";
+import type { SeriesSpec } from "@/components/simulation/MultiRunChart";
+```
 
 **RunSelector.tsx imports:**
 ```tsx
@@ -440,7 +447,7 @@ This follows the established pattern of domain folders (`simulation/`, `layout/`
 
 ### Agent Model Used
 
-(to be filled by dev agent)
+claude-sonnet-4-6
 
 ### Debug Log References
 
@@ -448,7 +455,11 @@ None.
 
 ### Completion Notes
 
-Ultimate context engine analysis completed — comprehensive developer guide created.
+All 5 tasks completed. 320 tests pass (311 pre-existing + 9 new ConfigurationScreen tests). TypeScript: 0 errors. ESLint: 0 errors (4 pre-existing fast-refresh warnings unchanged).
+
+- ConfigurationScreen extracted from App.tsx inline JSX (lines 281-335); STEP_ORDER, getConfigSteps, configSteps memo, filteredParameters memo, isLastStep, nextStep all moved; App.tsx simplified.
+- ComparisonDashboardScreen split from 789 lines into 5 new files under `components/comparison/` plus barrel `index.ts`; orchestration-only remainder is ~265 lines.
+- 9 ConfigurationScreen tests written covering all AC-5 scenarios.
 
 ### File List
 

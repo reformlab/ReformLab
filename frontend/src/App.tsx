@@ -6,17 +6,11 @@ import { MainContent } from "@/components/layout/MainContent";
 import { RightPanel } from "@/components/layout/RightPanel";
 import { WorkspaceLayout } from "@/components/layout/WorkspaceLayout";
 import { PasswordPrompt } from "@/components/auth/PasswordPrompt";
-import { AssumptionsReviewScreen } from "@/components/screens/AssumptionsReviewScreen";
+import { ConfigurationScreen } from "@/components/screens/ConfigurationScreen";
 import { DataFusionWorkbench } from "@/components/screens/DataFusionWorkbench";
-import { ParameterEditingScreen } from "@/components/screens/ParameterEditingScreen";
-import { PopulationSelectionScreen } from "@/components/screens/PopulationSelectionScreen";
 import { PortfolioDesignerScreen } from "@/components/screens/PortfolioDesignerScreen";
 import { SimulationRunnerScreen } from "@/components/screens/SimulationRunnerScreen";
-import { TemplateSelectionScreen } from "@/components/screens/TemplateSelectionScreen";
-import {
-  type ConfigStep,
-  ModelConfigStepper,
-} from "@/components/simulation/ModelConfigStepper";
+import type { ConfigStepKey } from "@/components/simulation/ModelConfigStepper";
 import { BehavioralDecisionViewerScreen } from "@/components/screens/BehavioralDecisionViewerScreen";
 import { ComparisonDashboardScreen } from "@/components/screens/ComparisonDashboardScreen";
 import { ResultsOverviewScreen } from "@/components/screens/ResultsOverviewScreen";
@@ -36,13 +30,6 @@ import {
   mockSummaryStats,
 } from "@/data/mock-data";
 
-const STEP_ORDER: ConfigStep["key"][] = [
-  "population",
-  "template",
-  "parameters",
-  "assumptions",
-];
-
 const LEFT_COLLAPSE_STORAGE_KEY = "reformlab-left-panel-collapsed";
 const RIGHT_COLLAPSE_STORAGE_KEY = "reformlab-right-panel-collapsed";
 
@@ -51,15 +38,6 @@ type ViewMode = "configuration" | "run" | "progress" | "results" | "comparison" 
 function readStoredBool(key: string): boolean {
   const value = window.localStorage.getItem(key);
   return value === "true";
-}
-
-function getConfigSteps(activeStep: ConfigStep["key"]): ConfigStep[] {
-  return [
-    { key: "population", label: "Population", status: activeStep === "population" ? "incomplete" : "complete" },
-    { key: "template", label: "Policy", status: activeStep === "template" ? "incomplete" : "complete" },
-    { key: "parameters", label: "Parameters", status: activeStep === "parameters" ? "incomplete" : "complete" },
-    { key: "assumptions", label: "Validation", status: activeStep === "assumptions" ? "incomplete" : "complete" },
-  ];
 }
 
 function Workspace() {
@@ -93,14 +71,13 @@ function Workspace() {
     results,
   } = useAppState();
 
-  const [activeStep, setActiveStep] = useState<ConfigStep["key"]>("population");
+  const [activeStep, setActiveStep] = useState<ConfigStepKey>("population");
   const [viewMode, setViewMode] = useState<ViewMode>("configuration");
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const [isNarrow, setIsNarrow] = useState(false);
   const [previousViewMode, setPreviousViewMode] = useState<ViewMode>("results");
 
-  const configSteps = useMemo(() => getConfigSteps(activeStep), [activeStep]);
   const selectedPopulation = useMemo(
     () => populations.find((p) => p.id === selectedPopulationId),
     [populations, selectedPopulationId],
@@ -109,12 +86,6 @@ function Workspace() {
     () => templates.find((t) => t.id === selectedTemplateId),
     [templates, selectedTemplateId],
   );
-
-  // Filter parameters based on selected template's parameter groups
-  const filteredParameters = useMemo(() => {
-    if (!selectedTemplate) return parameters;
-    return parameters.filter((p) => selectedTemplate.parameterGroups.includes(p.group));
-  }, [selectedTemplate, parameters]);
 
   // Layout effects
   useEffect(() => {
@@ -157,17 +128,6 @@ function Workspace() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
-
-  // Navigation
-  const nextStep = () => {
-    const currentIndex = STEP_ORDER.indexOf(activeStep);
-    if (currentIndex >= STEP_ORDER.length - 1) {
-      setViewMode("run");
-      return;
-    }
-    const next = STEP_ORDER[currentIndex + 1] ?? activeStep;
-    setActiveStep(next);
-  };
 
   // Run simulation using real API
   const handleStartRun = async () => {
@@ -244,8 +204,6 @@ function Workspace() {
     [scenarios, selectedScenarioId],
   );
 
-  const isLastStep = activeStep === STEP_ORDER[STEP_ORDER.length - 1];
-
   const mainPanelContent = (
     <>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-gradient-to-r from-white to-indigo-50 p-3 shadow-sm">
@@ -285,49 +243,21 @@ function Workspace() {
       </div>
 
       {viewMode === "configuration" ? (
-        <section className="space-y-3">
-          <ModelConfigStepper activeStep={activeStep} steps={configSteps} onStepSelect={setActiveStep} />
-
-          {activeStep === "population" ? (
-            <PopulationSelectionScreen
-              populations={populations}
-              selectedPopulationId={selectedPopulationId}
-              onSelectPopulation={setSelectedPopulationId}
-            />
-          ) : null}
-
-          {activeStep === "template" ? (
-            <TemplateSelectionScreen
-              templates={templates}
-              selectedTemplateId={selectedTemplateId}
-              onSelectTemplate={selectTemplate}
-              onTemplatesChanged={refetchTemplates}
-            />
-          ) : null}
-
-          {activeStep === "parameters" ? (
-            <ParameterEditingScreen
-              parameters={filteredParameters}
-              parameterValues={parameterValues}
-              onParameterChange={setParameterValue}
-            />
-          ) : null}
-
-          {activeStep === "assumptions" ? (
-            <AssumptionsReviewScreen
-              population={selectedPopulation}
-              template={selectedTemplate}
-              parameters={filteredParameters}
-              parameterValues={parameterValues}
-            />
-          ) : null}
-
-          <div className="flex justify-end">
-            <Button onClick={nextStep}>
-              {isLastStep ? "Go to Simulation" : "Next Step"}
-            </Button>
-          </div>
-        </section>
+        <ConfigurationScreen
+          activeStep={activeStep}
+          onStepSelect={setActiveStep}
+          populations={populations}
+          selectedPopulationId={selectedPopulationId}
+          onSelectPopulation={setSelectedPopulationId}
+          templates={templates}
+          selectedTemplateId={selectedTemplateId}
+          onSelectTemplate={selectTemplate}
+          onTemplatesChanged={refetchTemplates}
+          parameters={parameters}
+          parameterValues={parameterValues}
+          onParameterChange={setParameterValue}
+          onGoToSimulation={() => setViewMode("run")}
+        />
       ) : null}
 
       {viewMode === "run" ? (
