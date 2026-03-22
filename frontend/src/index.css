@@ -17,6 +17,9 @@
   --chart-reform-b: var(--color-violet-500);
   --chart-reform-c: var(--color-emerald-500);
   --chart-reform-d: var(--color-amber-500);
+  --chart-positive: var(--color-emerald-500);
+  --chart-negative: var(--color-red-500);
+  --chart-neutral: var(--color-slate-400);
 }
 
 * {

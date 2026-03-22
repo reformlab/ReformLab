@@ -12,14 +12,15 @@ import {
   YAxis,
 } from "recharts";
 
-/** CSS color variables for chart series (matches project UX spec). */
-export const CHART_COLORS = [
-  "var(--chart-baseline)",  // index 0 — baseline
-  "var(--chart-reform-a)",  // index 1
-  "var(--chart-reform-b)",  // index 2
-  "var(--chart-reform-c)",  // index 3
-  "var(--chart-reform-d)",  // index 4
-];
+import {
+  CHART_COLORS,
+  RELATIVE_COLORS,
+  GRID_PROPS,
+  AXIS_TICK,
+  TOOLTIP_STYLE,
+} from "./chart-theme";
+
+export { CHART_COLORS };
 
 export interface SeriesSpec {
   /** Column key in the data array. */
@@ -29,11 +30,6 @@ export interface SeriesSpec {
   /** Optional CSS color override. Defaults to CHART_COLORS[index]. */
   color?: string;
 }
-
-// Sign-based colors for relative mode bars
-const RELATIVE_POS_COLOR = "#10b981"; // emerald-500
-const RELATIVE_NEG_COLOR = "#ef4444"; // red-500
-const RELATIVE_ZERO_COLOR = "#94a3b8"; // slate-400
 
 interface MultiRunChartProps {
   /** Row-oriented data array. Each row has xKey plus one entry per series key. */
@@ -103,10 +99,10 @@ export function MultiRunChart({
       <div className="h-[280px] rounded-lg border border-slate-200 bg-white p-3">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ bottom: 5 }}>
-            <CartesianGrid strokeDasharray="2 2" />
-            <XAxis dataKey={xKey} tick={{ fontSize: 12 }} />
-            <YAxis tick={{ fontSize: 12 }} tickFormatter={formatValue} />
-            <Tooltip formatter={(value: unknown) => formatValue(value)} />
+            <CartesianGrid {...GRID_PROPS} />
+            <XAxis dataKey={xKey} tick={AXIS_TICK} tickLine={false} axisLine={false} />
+            <YAxis tick={AXIS_TICK} tickLine={false} axisLine={false} tickFormatter={formatValue} />
+            <Tooltip formatter={(value: unknown) => formatValue(value)} contentStyle={TOOLTIP_STYLE} />
             <Legend wrapperStyle={{ fontSize: 12, paddingTop: 4 }} />
             {activeSeries.map((s, i) => {
               const baseColor = s.color ?? (CHART_COLORS[i] ?? CHART_COLORS[0]);
@@ -142,10 +138,10 @@ export function MultiRunChart({
                         const numVal = typeof val === "number" ? val : 0;
                         const fill =
                           numVal > 0
-                            ? RELATIVE_POS_COLOR
+                            ? RELATIVE_COLORS.positive
                             : numVal < 0
-                              ? RELATIVE_NEG_COLOR
-                              : RELATIVE_ZERO_COLOR;
+                              ? RELATIVE_COLORS.negative
+                              : RELATIVE_COLORS.zero;
                         return <Cell key={rowIdx} fill={fill} />;
                       })
                     : null}

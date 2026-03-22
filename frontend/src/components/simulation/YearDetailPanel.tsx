@@ -26,7 +26,7 @@ import { X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import type { YearlyOutcome, DomainSummary } from "@/api/types";
-import { DECISION_COLORS } from "./TransitionChart";
+import { DECISION_COLORS, GRID_PROPS, AXIS_TICK, TOOLTIP_STYLE } from "./chart-theme";
 
 // ============================================================================
 // Types
@@ -97,10 +97,10 @@ export function YearDetailPanel({
                 layout="vertical"
                 margin={{ top: 0, right: 8, bottom: 0, left: 0 }}
               >
-                <CartesianGrid horizontal={false} strokeDasharray="2 2" stroke="#e2e8f0" />
+                <CartesianGrid horizontal={false} {...GRID_PROPS} />
                 <XAxis
                   type="number"
-                  tick={{ fontSize: 11, fill: "#64748b" }}
+                  tick={AXIS_TICK}
                   tickLine={false}
                   axisLine={false}
                 />
@@ -108,7 +108,7 @@ export function YearDetailPanel({
                   dataKey="name"
                   type="category"
                   width={80}
-                  tick={{ fontSize: 11, fill: "#64748b" }}
+                  tick={AXIS_TICK}
                   tickLine={false}
                   axisLine={false}
                 />
@@ -132,7 +132,7 @@ export function YearDetailPanel({
                       "Count",
                     ];
                   }}
-                  contentStyle={{ fontSize: 11, border: "1px solid #e2e8f0", borderRadius: 4 }}
+                  contentStyle={TOOLTIP_STYLE}
                 />
                 <Bar dataKey="count" radius={[0, 3, 3, 0]}>
                   {barData.map((entry, i) => (

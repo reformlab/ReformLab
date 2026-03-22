@@ -53,3 +53,11 @@
 | medium | Fallback behavior untested | AC-7 added fallback test requirement; Task 5.10 added; Test Pattern updated |
 | medium | Brittle line number anchors | Line numbers removed from AC-5, Tasks 4.2/4.3/4.4, Dev Notes App.tsx section, "What NOT to Change" section |
 | low | HELP_CONTENT as table + separate lists is redundant | Replaced table+lists dual format with single canonical TypeScript object in Dev Notes |
+
+## Story 18-8 (2026-03-22)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| medium | AC-1 scope ambiguity for `chart-theme.ts` hex values | AC-1 "no hardcoded hex" sentence now explicitly scopes to "the 5 chart component files listed above" and exempts `chart-theme.ts` infrastructure values for grid/axis/tooltip. The original "(series, decision, semantic)" parenthetical already scoped the *first* sentence correctly, but the second sentence was ambiguous. |
+| low | CHART_COLORS backward-compat re-export not enforced at AC level | Added explicit bullet to AC-5: "Existing imports of `CHART_COLORS` from `MultiRunChart` continue to resolve without changes (`comparison-helpers.ts`, `RunSelector.tsx`)." Task 4.1 already required the re-export, but elevating it to AC-level ensures it's a verifiable done criterion. |
+| low | `Cell` removal rationale missing from Task 6.2 | Task 6.2 updated with explanation: "no longer needed; dynamic per-bar coloring is replaced by a single `fill` attribute on `<Bar>`". |
