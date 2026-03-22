@@ -23,6 +23,26 @@ class PopulationData:
     tables: dict[str, pa.Table]
     metadata: dict[str, Any] = field(default_factory=dict)
 
+    @classmethod
+    def from_table(
+        cls, table: pa.Table, entity_type: str = "default"
+    ) -> PopulationData:
+        """Wrap a flat PyArrow table as a single-entity PopulationData.
+
+        Args:
+            table: The PyArrow table to wrap.
+            entity_type: Entity key for the table (default: ``"default"``).
+        """
+        return cls(tables={entity_type: table}, metadata={})
+
+    @property
+    def primary_table(self) -> pa.Table:
+        """Return the first (or only) entity table regardless of key name."""
+        if not self.tables:
+            msg = "PopulationData has no tables"
+            raise ValueError(msg)
+        return next(iter(self.tables.values()))
+
     @property
     def row_count(self) -> int:
         """Total rows across all entity tables."""

@@ -78,7 +78,7 @@ class TestMockAdapter:
         def my_compute(
             population: PopulationData, policy: PolicyConfig, period: int
         ) -> pa.Table:
-            table = population.tables["default"]
+            table = population.primary_table
             return pa.table(
                 {"doubled": pa.array([v * 2 for v in table.column("value").to_pylist()])}
             )

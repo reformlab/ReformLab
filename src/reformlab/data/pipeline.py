@@ -15,6 +15,7 @@ from reformlab.computation.ingestion import (
     IngestionFormat,
     ingest,
 )
+from reformlab.computation.types import PopulationData
 
 
 @dataclass(frozen=True)
@@ -186,6 +187,23 @@ def load_dataset(
     )
 
     return result.table, manifest
+
+
+def load_population(
+    path: str | Path,
+    schema: DataSchema,
+    source: DataSourceMetadata,
+    *,
+    allowed_roots: tuple[Path, ...] | None = None,
+) -> PopulationData:
+    """Load a dataset and wrap it as :class:`PopulationData`.
+
+    Convenience wrapper around :func:`load_dataset` +
+    :meth:`PopulationData.from_table`.
+    """
+    table, _manifest = load_dataset(path, schema, source, allowed_roots=allowed_roots)
+    entity_type = source.name if source.name and source.name.isidentifier() else "default"
+    return PopulationData.from_table(table, entity_type=entity_type)
 
 
 def _is_subpath(path: Path, root: Path) -> bool:

@@ -9,12 +9,12 @@
 fiscal_aggregates:
   # Aggregate carbon tax revenue at EUR 44/tCO2
   carbon_tax_revenue_44_euro:
-    value: 30_802_553.616367  # EUR/year for deterministic 100k benchmark fixture
+    value: 9_896_059_907.615585  # EUR/year for deterministic 100k benchmark fixture
     tolerance: 0.02  # ±2%
-    source: "Derived from deterministic benchmark fixture (seed=42) and EUR44/tCO2 tax rate"
+    source: "Derived from deterministic benchmark fixture (seed=42) and EUR44/tCO2 rate"
     notes: |
       Value computed from the exact fixture generation in tests/benchmarks/conftest.py
-      and tax formula carbon_tax = carbon_emissions * 44.
+      and simplified benchmark formula: tax = sum(energy columns) * 44.
       Tolerance accounts for minor floating-point variation across environments.
 
 distributional_shares:
@@ -23,62 +23,62 @@ distributional_shares:
   # and represent expected shares of total carbon tax burden.
 
   decile_1_share:
-    value: 0.0354962183
+    value: 0.0661221250
     tolerance: 0.05
     source: "Derived from deterministic benchmark fixture (seed=42)"
     notes: |
       Share of total carbon tax burden for decile 1 (lowest income).
 
   decile_2_share:
-    value: 0.0498050179
+    value: 0.0735002183
     tolerance: 0.05
     source: "Derived from deterministic benchmark fixture (seed=42)"
     notes: "Share of total carbon tax burden for decile 2."
 
   decile_3_share:
-    value: 0.0640757207
+    value: 0.0811498414
     tolerance: 0.05
     source: "Derived from deterministic benchmark fixture (seed=42)"
     notes: "Share of total carbon tax burden for decile 3."
 
   decile_4_share:
-    value: 0.0782549269
+    value: 0.0885314544
     tolerance: 0.05
     source: "Derived from deterministic benchmark fixture (seed=42)"
     notes: "Share of total carbon tax burden for decile 4."
 
   decile_5_share:
-    value: 0.0925401722
+    value: 0.0961913888
     tolerance: 0.05
     source: "Derived from deterministic benchmark fixture (seed=42)"
     notes: "Share of total carbon tax burden for decile 5."
 
   decile_6_share:
-    value: 0.1066561087
+    value: 0.1034420107
     tolerance: 0.05
     source: "Derived from deterministic benchmark fixture (seed=42)"
     notes: "Share of total carbon tax burden for decile 6."
 
   decile_7_share:
-    value: 0.1209697963
+    value: 0.1111383906
     tolerance: 0.05
     source: "Derived from deterministic benchmark fixture (seed=42)"
     notes: "Share of total carbon tax burden for decile 7."
 
   decile_8_share:
-    value: 0.1353628077
+    value: 0.1187041588
     tolerance: 0.05
     source: "Derived from deterministic benchmark fixture (seed=42)"
     notes: "Share of total carbon tax burden for decile 8."
 
   decile_9_share:
-    value: 0.1497225250
+    value: 0.1264595085
     tolerance: 0.05
     source: "Derived from deterministic benchmark fixture (seed=42)"
     notes: "Share of total carbon tax burden for decile 9."
 
   decile_10_share:
-    value: 0.1671167063
+    value: 0.1347609035
     tolerance: 0.05
     source: "Derived from deterministic benchmark fixture (seed=42)"
     notes: |

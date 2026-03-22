@@ -20,6 +20,17 @@ from reformlab.data.synthetic import (
 )
 
 
+EXPECTED_COLUMNS = [
+    "household_id",
+    "person_id",
+    "age",
+    "income",
+    "energy_transport_fuel",
+    "energy_heating_fuel",
+    "energy_natural_gas",
+]
+
+
 class TestGenerateSyntheticPopulation:
     """AC-1: Deterministic synthetic population generation."""
 
@@ -27,14 +38,18 @@ class TestGenerateSyntheticPopulation:
         """Default invocation produces 100k-row table with expected columns."""
         table = generate_synthetic_population()
         assert table.num_rows == DEFAULT_SIZE
-        assert table.schema.names == ["household_id", "income", "carbon_emissions"]
+        assert table.schema.names == EXPECTED_COLUMNS
 
     def test_column_types(self) -> None:
         """Columns have correct Arrow types."""
         table = generate_synthetic_population(size=10, seed=0)
         assert table.schema.field("household_id").type == pa.int64()
+        assert table.schema.field("person_id").type == pa.int64()
+        assert table.schema.field("age").type == pa.int64()
         assert table.schema.field("income").type == pa.float64()
-        assert table.schema.field("carbon_emissions").type == pa.float64()
+        assert table.schema.field("energy_transport_fuel").type == pa.float64()
+        assert table.schema.field("energy_heating_fuel").type == pa.float64()
+        assert table.schema.field("energy_natural_gas").type == pa.float64()
 
     def test_deterministic_same_seed(self) -> None:
         """Same (size, seed) produces identical output."""
@@ -54,6 +69,17 @@ class TestGenerateSyntheticPopulation:
         ids = table.column("household_id").to_pylist()
         assert ids == list(range(100))
 
+    def test_person_id_equals_household_id(self) -> None:
+        """Single-person simplification: person_id == household_id."""
+        table = generate_synthetic_population(size=100, seed=42)
+        assert table.column("person_id").to_pylist() == table.column("household_id").to_pylist()
+
+    def test_age_range(self) -> None:
+        """Ages are between 20 and 80."""
+        table = generate_synthetic_population(size=1000, seed=42)
+        ages = table.column("age").to_pylist()
+        assert all(20 <= a <= 80 for a in ages)
+
     def test_income_range(self) -> None:
         """Incomes are positive and in a reasonable range."""
         table = generate_synthetic_population(size=1000, seed=42)
@@ -62,68 +88,47 @@ class TestGenerateSyntheticPopulation:
         assert min(incomes) > 10_000
         assert max(incomes) < 120_000
 
-    def test_emissions_non_negative(self) -> None:
-        """Carbon emissions are non-negative."""
+    def test_energy_columns_non_negative(self) -> None:
+        """All energy consumption values are non-negative."""
         table = generate_synthetic_population(size=1000, seed=42)
-        emissions = table.column("carbon_emissions").to_pylist()
-        assert all(e >= 0 for e in emissions)
+        for col in ("energy_transport_fuel", "energy_heating_fuel", "energy_natural_gas"):
+            values = table.column(col).to_pylist()
+            assert all(v >= 0 for v in values), f"{col} has negative values"
+
+    def test_energy_columns_non_zero(self) -> None:
+        """Energy columns produce non-zero values for non-empty populations."""
+        table = generate_synthetic_population(size=1000, seed=42)
+        for col in ("energy_transport_fuel", "energy_heating_fuel", "energy_natural_gas"):
+            values = table.column(col).to_pylist()
+            assert sum(values) > 0, f"{col} is all zeros"
+
+    def test_transport_fuel_income_correlated(self) -> None:
+        """Higher income households tend to have higher transport fuel consumption."""
+        table = generate_synthetic_population(size=1000, seed=42)
+        incomes = table.column("income").to_pylist()
+        fuel = table.column("energy_transport_fuel").to_pylist()
+        # Compare mean of bottom and top quartile
+        n = len(incomes)
+        pairs = sorted(zip(incomes, fuel))
+        bottom_mean = sum(f for _, f in pairs[: n // 4]) / (n // 4)
+        top_mean = sum(f for _, f in pairs[3 * n // 4 :]) / (n // 4)
+        assert top_mean > bottom_mean
 
     def test_empty_population(self) -> None:
         """size=0 produces empty table with correct schema."""
         table = generate_synthetic_population(size=0, seed=42)
         assert table.num_rows == 0
-        assert table.schema.names == ["household_id", "income", "carbon_emissions"]
+        assert table.schema.names == EXPECTED_COLUMNS
 
     def test_negative_size_raises(self) -> None:
         """Negative size raises ValueError."""
         with pytest.raises(ValueError, match="size must be >= 0"):
             generate_synthetic_population(size=-1)
 
-    def test_matches_conftest_fixture(self) -> None:
-        """Generator output must match the original conftest.py fixture exactly.
-
-        This is the critical compatibility test — any deviation breaks BKL-701
-        benchmark reference values.
-        """
-        import random
-
-        # Reproduce conftest.py logic inline
-        seed = 42
-        size = 1000  # Use smaller size for speed; algorithm is per-row deterministic
-
-        # --- conftest.py logic ---
-        household_ids = list(range(size))
-        incomes: list[float] = []
-        for i in range(size):
-            random.seed(seed + i)
-            base_income = 15_000.0
-            income_range = 80_000.0
-            income = base_income + (i / size) * income_range
-            variation = random.uniform(-0.1, 0.1)
-            income = income * (1 + variation)
-            incomes.append(income)
-
-        emissions: list[float] = []
-        for i, inc in enumerate(incomes):
-            random.seed(seed + size + i)
-            base_emissions = 2.0
-            emissions_range = 10.0
-            emissions_val = base_emissions + (inc - 15_000) / 80_000 * emissions_range
-            variation = random.uniform(-0.15, 0.15)
-            emissions_val = emissions_val * (1 + variation)
-            emissions.append(max(0.0, emissions_val))
-
-        expected = pa.table(
-            {
-                "household_id": pa.array(household_ids, type=pa.int64()),
-                "income": pa.array(incomes, type=pa.float64()),
-                "carbon_emissions": pa.array(emissions, type=pa.float64()),
-            }
-        )
-
-        # --- Generator output ---
-        actual = generate_synthetic_population(size=size, seed=seed)
-        assert actual.equals(expected), "Generator must match conftest.py algorithm exactly"
+    def test_no_carbon_emissions_column(self) -> None:
+        """The dead carbon_emissions column has been removed."""
+        table = generate_synthetic_population(size=10, seed=42)
+        assert "carbon_emissions" not in table.schema.names
 
 
 class TestSaveSyntheticPopulation:
@@ -140,7 +145,7 @@ class TestSaveSyntheticPopulation:
         assert manifest.format == "parquet"
         assert manifest.content_hash  # non-empty SHA-256
         assert len(manifest.content_hash) == 64  # SHA-256 hex digest
-        assert manifest.column_names == ("household_id", "income", "carbon_emissions")
+        assert manifest.column_names == tuple(EXPECTED_COLUMNS)
         assert manifest.source.name == "synthetic-population"
 
     def test_save_round_trip(self, tmp_path: Path) -> None:

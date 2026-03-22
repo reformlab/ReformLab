@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 import pyarrow as pa
 
 from reformlab.data.schemas import (
@@ -36,12 +38,12 @@ class TestSyntheticPopulationSchema:
         assert schema.field("energy_heating_fuel").type == pa.float64()
         assert schema.field("energy_natural_gas").type == pa.float64()
 
-    def test_energy_columns_are_optional(self) -> None:
-        """Verify energy columns are listed as optional."""
-        optional = SYNTHETIC_POPULATION_SCHEMA.optional_columns
-        assert "energy_transport_fuel" in optional
-        assert "energy_heating_fuel" in optional
-        assert "energy_natural_gas" in optional
+    def test_energy_columns_are_required(self) -> None:
+        """Verify energy columns are listed as required."""
+        required = SYNTHETIC_POPULATION_SCHEMA.required_columns
+        assert "energy_transport_fuel" in required
+        assert "energy_heating_fuel" in required
+        assert "energy_natural_gas" in required
 
 
 class TestFillMissingEnergyColumns:
@@ -97,3 +99,22 @@ class TestFillMissingEnergyColumns:
         assert result.column("income").equals(
             population_without_energy_table.column("income")
         )
+
+    def test_fill_logs_warning_when_columns_missing(
+        self, population_without_energy_table: pa.Table, caplog: logging.LogCaptureFixture
+    ) -> None:
+        """Filling missing energy columns emits a warning log."""
+        import pytest
+
+        with caplog.at_level(logging.WARNING, logger="reformlab.data.schemas"):
+            fill_missing_energy_columns(population_without_energy_table)
+        assert "filled with zeros" in caplog.text
+        assert "energy_transport_fuel" in caplog.text
+
+    def test_fill_no_warning_when_columns_present(
+        self, population_with_energy_table: pa.Table, caplog: logging.LogCaptureFixture
+    ) -> None:
+        """No warning when all energy columns already present."""
+        with caplog.at_level(logging.WARNING, logger="reformlab.data.schemas"):
+            fill_missing_energy_columns(population_with_energy_table)
+        assert "filled with zeros" not in caplog.text

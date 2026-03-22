@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import logging
+
 import pyarrow as pa
 
 from reformlab.computation.ingestion import DataSchema
+
+logger = logging.getLogger(__name__)
 
 # Energy columns used for carbon tax computation
 ENERGY_COLUMNS = (
@@ -27,10 +31,17 @@ def fill_missing_energy_columns(table: pa.Table) -> pa.Table:
     """
     result = table
     num_rows = table.num_rows
+    filled: list[str] = []
     for col_name in ENERGY_COLUMNS:
         if col_name not in table.column_names:
             zeros = pa.array([0.0] * num_rows, type=pa.float64())
             result = result.append_column(col_name, zeros)
+            filled.append(col_name)
+    if filled:
+        logger.warning(
+            "Energy columns filled with zeros (tax burden will be zero): %s",
+            ", ".join(filled),
+        )
     return result
 
 
@@ -50,14 +61,19 @@ SYNTHETIC_POPULATION_SCHEMA = DataSchema(
             pa.field("energy_natural_gas", pa.float64()),
         ]
     ),
-    required_columns=("household_id", "person_id", "age", "income"),
+    required_columns=(
+        "household_id",
+        "person_id",
+        "age",
+        "income",
+        "energy_transport_fuel",
+        "energy_heating_fuel",
+        "energy_natural_gas",
+    ),
     optional_columns=(
         "region_code",
         "housing_status",
         "household_size",
-        "energy_transport_fuel",
-        "energy_heating_fuel",
-        "energy_natural_gas",
     ),
 )
 

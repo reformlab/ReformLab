@@ -175,6 +175,39 @@ class TestPopulationData:
         assert pop.metadata == {}
 
 
+    def test_from_table_default_key(self) -> None:
+        table = pa.table({"x": pa.array([1, 2])})
+        pop = PopulationData.from_table(table)
+        assert "default" in pop.tables
+        assert pop.tables["default"].num_rows == 2
+        assert pop.metadata == {}
+
+    def test_from_table_custom_key(self) -> None:
+        table = pa.table({"x": pa.array([1])})
+        pop = PopulationData.from_table(table, entity_type="individu")
+        assert "individu" in pop.tables
+        assert pop.row_count == 1
+
+    def test_primary_table_single(self) -> None:
+        table = pa.table({"id": pa.array([1, 2, 3])})
+        pop = PopulationData(tables={"individu": table})
+        assert pop.primary_table.equals(table)
+
+    def test_primary_table_multiple(self) -> None:
+        t1 = pa.table({"id": pa.array([1, 2])})
+        t2 = pa.table({"id": pa.array([10])})
+        pop = PopulationData(tables={"individu": t1, "menage": t2})
+        # Returns first table (insertion order)
+        assert pop.primary_table.equals(t1)
+
+    def test_primary_table_empty_raises(self) -> None:
+        import pytest
+
+        pop = PopulationData(tables={})
+        with pytest.raises(ValueError, match="no tables"):
+            pop.primary_table
+
+
 class TestPolicyConfig:
     def test_policy_has_policy(self) -> None:
         pol = PolicyConfig(policy=PolicyParameters(rate_schedule={2025: 0.1}), name="test")

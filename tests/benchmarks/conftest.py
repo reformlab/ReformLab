@@ -17,15 +17,16 @@ def benchmark_population() -> pa.Table:
     """Generate deterministic 100k household population for benchmarks.
 
     This fixture creates a synthetic population table with:
-    - 100,000 households
+    - 100,000 households (one person per household)
     - Deterministic income distribution (15,000 to 95,000 EUR)
-    - Deterministic carbon emissions (2.0 to 12.0 tCO2/year)
+    - Energy consumption columns for carbon tax computation
     - Fixed seed for reproducibility
 
     The population is generated at test runtime to avoid committing large
     binary artifacts to the repository.
 
     Returns:
-        PyArrow Table with household_id, income, and carbon_emissions columns.
+        PyArrow Table with household_id, person_id, age, income, and
+        energy consumption columns.
     """
     return generate_synthetic_population(size=100_000, seed=42)
