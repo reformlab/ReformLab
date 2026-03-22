@@ -1,7 +1,7 @@
 
 # Story 18.4: Restructure Results View with Tabs and Hierarchy
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -14,6 +14,8 @@ so that I can quickly find key outcomes, explore detailed indicators, and access
 ## Acceptance Criteria
 
 1. **AC-1: Run metadata header** — Given the results view (`App.tsx` viewMode="results"), when displayed after a completed simulation run, then a header section shows: run ID (first 8 chars, monospace), policy label (template name or portfolio name), year range badge, and status badge. The header uses the same `policyLabel()` derivation pattern as `ResultDetailView.tsx:47-51` (portfolio_name > template_name > fallback). When `runResult` is null (legacy/mock mode), the header shows the selected scenario name with a "mock data" badge.
+   - **Year range badge**: derived from `runResult.years` array as `${years[0]}–${years[years.length - 1]}`; shows "—" when `runResult` is null or `years` is empty.
+   - **Status badge mapping**: `runResult.success === true` → `variant="success"` label "completed"; `runResult.success === false` → `variant="destructive"` label "failed"; `runResult === null` → `variant="default"` label "mock data".
 
 2. **AC-2: Tabbed results layout** — Given the results view, when displayed, then content is organized into shadcn `Tabs` with three tabs:
    - **Overview** (default): `DistributionalChart` + summary stat cards grid (3 columns on xl)
@@ -40,38 +42,41 @@ so that I can quickly find key outcomes, explore detailed indicators, and access
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create ResultsOverviewScreen component (AC: 1, 2, 3, 5)
-  - [ ] 1.1: Create `frontend/src/components/screens/ResultsOverviewScreen.tsx` with props interface matching what App.tsx currently passes to the inline results JSX
-  - [ ] 1.2: Implement run metadata header with run_id, policy label, year range badge, status badge, and right-aligned action buttons (Compare / Decisions / Run Again)
-  - [ ] 1.3: Implement tabbed layout with Overview / Data & Export / Detail tabs using shadcn Tabs
-  - [ ] 1.4: Overview tab: DistributionalChart + summary stats grid
-  - [ ] 1.5: Data & Export tab: CSV/Parquet export buttons with format descriptions, disabled state when no run data
-  - [ ] 1.6: Detail tab: embed ResultDetailView when detail available, placeholder otherwise
+- [x] Task 1: Create ResultsOverviewScreen component (AC: 1, 2, 3, 5)
+  - [x] 1.1: Create `frontend/src/components/screens/ResultsOverviewScreen.tsx` with props interface matching what App.tsx currently passes to the inline results JSX
+  - [x] 1.2: Implement run metadata header with run_id, policy label, year range badge, status badge, and right-aligned action buttons (Compare / Decisions / Run Again)
+  - [x] 1.3: Implement tabbed layout with Overview / Data & Export / Detail tabs using shadcn Tabs
+  - [x] 1.4: Overview tab: DistributionalChart + summary stats grid
+  - [x] 1.5: Data & Export tab: CSV/Parquet export buttons with format descriptions, disabled state when no run data
+  - [x] 1.6: Detail tab: embed ResultDetailView when detail available, placeholder otherwise
 
-- [ ] Task 2: Compute real summary statistics from decileData (AC: 4)
-  - [ ] 2.1: Create `computeSummaryStats(decileData: DecileData[]): SummaryStatistic[]` helper inside `ResultsOverviewScreen.tsx` — derives 3 stats: mean delta, max positive impact decile, max negative impact decile
-  - [ ] 2.2: Handle empty/zero data gracefully with placeholder cards
+- [x] Task 2: Compute real summary statistics from decileData (AC: 4)
+  - [x] 2.1: Create `computeSummaryStats(decileData: DecileData[]): SummaryStatistic[]` helper inside `ResultsOverviewScreen.tsx` — derives 3 stats: mean delta, max positive impact decile, max negative impact decile
+  - [x] 2.2: Handle empty/zero data gracefully with placeholder cards
 
-- [ ] Task 3: Wire into App.tsx (AC: 5)
-  - [ ] 3.1: Import `ResultsOverviewScreen` and replace the inline `viewMode === "results"` JSX block (lines 360-381) with `<ResultsOverviewScreen ... />`
-  - [ ] 3.2: Pass required props: `decileData`, `runResult`, scenario label, action callbacks
-  - [ ] 3.3: Remove the `mockSummaryStats` import from App.tsx only if no longer used in the file (the "run" view at lines 333-348 also uses `mockSummaryStats` — if still used there, keep the import)
+- [x] Task 3: Wire into App.tsx (AC: 5)
+  - [x] 3.1: Import `ResultsOverviewScreen` and replace the inline `viewMode === "results"` JSX block (lines 360-381) with `<ResultsOverviewScreen ... />`
+  - [x] 3.2: Pass required props: `decileData`, `runResult`, scenario label, action callbacks
+  - [x] 3.3: Remove the `mockSummaryStats` import from App.tsx only if no longer used in the file (the "run" view at lines 333-348 also uses `mockSummaryStats` — if still used there, keep the import)
 
-- [ ] Task 4: Fetch result detail for Detail tab (AC: 2)
-  - [ ] 4.1: In `ResultsOverviewScreen`, when `runResult?.run_id` is available and Detail tab is selected, call `getResult(runResult.run_id)` to load `ResultDetailResponse` (same pattern as `SimulationRunnerScreen.tsx:118-123`)
-  - [ ] 4.2: Cache the detail in local state to avoid re-fetching on tab switch
+- [x] Task 4: Fetch result detail for Detail tab (AC: 2)
+  - [x] 4.1: In `ResultsOverviewScreen`, when `runResult?.run_id` is available and Detail tab is selected, call `getResult(runResult.run_id)` to load `ResultDetailResponse` (same pattern as `SimulationRunnerScreen.tsx:118-123`)
+  - [x] 4.2: Cache the detail in local state to avoid re-fetching on tab switch; reset the cached detail (and any error state) when `runResult?.run_id` changes so stale data from a previous run is never shown
 
-- [ ] Task 5: Tests (AC: all)
-  - [ ] 5.1: Create `frontend/src/components/screens/__tests__/ResultsOverviewScreen.test.tsx`
-  - [ ] 5.2: Test: renders metadata header with run_id and policy label
-  - [ ] 5.3: Test: renders three tabs (Overview, Data & Export, Detail)
-  - [ ] 5.4: Test: Overview tab shows DistributionalChart and summary stat cards
-  - [ ] 5.5: Test: Data & Export tab shows export buttons, disabled when no run result
-  - [ ] 5.6: Test: action button hierarchy (Compare=default, Decisions=outline, Run Again=ghost)
-  - [ ] 5.7: Test: computed summary stats from decileData (mean delta, max impact)
-  - [ ] 5.8: Run `npm test` — all pre-existing tests pass; new tests pass
-  - [ ] 5.9: Run `npm run typecheck` — 0 errors
-  - [ ] 5.10: Run `npm run lint` — 0 errors (pre-existing fast-refresh warnings OK)
+- [x] Task 5: Tests (AC: all)
+  - [x] 5.1: Create `frontend/src/components/screens/__tests__/ResultsOverviewScreen.test.tsx`
+  - [x] 5.2: Test: renders metadata header with run_id and policy label
+  - [x] 5.3: Test: renders three tabs (Overview, Data & Export, Detail)
+  - [x] 5.4: Test: Overview tab shows DistributionalChart and summary stat cards
+  - [x] 5.5: Test: Data & Export tab shows export buttons, disabled when no run result
+  - [x] 5.6: Test: action button hierarchy (Compare=default, Decisions=outline, Run Again=ghost)
+  - [x] 5.7: Test: computed summary stats from decileData (mean delta, max impact)
+  - [x] 5.8: Test: Detail tab fetch is lazy (getResult is NOT called before Detail tab is selected)
+  - [x] 5.9: Test: Detail tab does not re-fetch on repeated tab switches (getResult called exactly once per run_id)
+  - [x] 5.10: Test: cached detail is cleared when runResult changes to a different run_id (stale data prevention)
+  - [x] 5.11: Run `npm test` — all pre-existing tests pass; new tests pass
+  - [x] 5.12: Run `npm run typecheck` — 0 errors
+  - [x] 5.13: Run `npm run lint` — 0 errors (pre-existing fast-refresh warnings OK)
 
 ## Dev Notes
 
@@ -174,20 +179,30 @@ Fetch `ResultDetailResponse` lazily when the Detail tab is first selected:
 ```tsx
 const [resultDetail, setResultDetail] = useState<ResultDetailResponse | null>(null);
 const [detailLoading, setDetailLoading] = useState(false);
+const [detailError, setDetailError] = useState(false);
+
+// Reset cached detail when the active run changes
+useEffect(() => {
+  setResultDetail(null);
+  setDetailError(false);
+}, [runResult?.run_id]);
 
 const loadDetail = useCallback(async () => {
-  if (!runResult?.run_id || resultDetail) return;
+  if (!runResult?.run_id || resultDetail || detailLoading) return;
   setDetailLoading(true);
+  setDetailError(false);
   try {
     const detail = await getResult(runResult.run_id);
     setResultDetail(detail);
   } catch {
-    // Non-fatal — tab shows "unavailable" state
+    setDetailError(true); // Detail tab shows "unavailable" message
   } finally {
     setDetailLoading(false);
   }
-}, [runResult, resultDetail]);
+}, [runResult, resultDetail, detailLoading]);
 ```
+
+When `detailError` is true, the Detail tab shows a "Detail unavailable" message instead of a blank state. The `detailLoading` guard prevents duplicate in-flight requests on rapid tab switches.
 
 Import `getResult` from `@/api/results`. This follows the same pattern as `SimulationRunnerScreen.tsx:118-123` (dynamic import not needed here since it's a direct screen dependency).
 
@@ -199,9 +214,16 @@ Import `getResult` from `@/api/results`. This follows the same pattern as `Simul
   <div className="flex items-center gap-3 min-w-0">
     {runResult ? (
       <>
-        <span className="text-xs text-slate-500 data-mono">{runResult.run_id.slice(0, 8)}</span>
+        <span className="font-mono text-xs text-slate-500">{runResult.run_id.slice(0, 8)}</span>
         <span className="text-sm font-semibold text-slate-900 truncate">{reformLabel}</span>
-        <Badge variant="success" className="text-xs">completed</Badge>
+        {runResult.years.length > 0 ? (
+          <Badge variant="secondary" className="text-xs">
+            {runResult.years[0]}–{runResult.years[runResult.years.length - 1]}
+          </Badge>
+        ) : null}
+        <Badge variant={runResult.success ? "success" : "destructive"} className="text-xs">
+          {runResult.success ? "completed" : "failed"}
+        </Badge>
       </>
     ) : (
       <>
@@ -232,7 +254,7 @@ Import `getResult` from `@/api/results`. This follows the same pattern as `Simul
           <p className="text-xs font-medium text-slate-700">CSV</p>
           <p className="text-xs text-slate-500">Tabular data for spreadsheets</p>
         </div>
-        <Button variant="outline" size="sm" onClick={onExportCsv} disabled={!runResult}>
+        <Button variant="outline" size="sm" onClick={onExportCsv} disabled={!runResult?.success}>
           <Download className="h-3.5 w-3.5 mr-1" /> Export CSV
         </Button>
       </div>
@@ -241,12 +263,12 @@ Import `getResult` from `@/api/results`. This follows the same pattern as `Simul
           <p className="text-xs font-medium text-slate-700">Parquet</p>
           <p className="text-xs text-slate-500">Columnar format for programmatic analysis</p>
         </div>
-        <Button variant="outline" size="sm" onClick={onExportParquet} disabled={!runResult}>
+        <Button variant="outline" size="sm" onClick={onExportParquet} disabled={!runResult?.success}>
           <Download className="h-3.5 w-3.5 mr-1" /> Export Parquet
         </Button>
       </div>
     </div>
-    {!runResult ? (
+    {!runResult?.success ? (
       <p className="mt-2 text-xs text-slate-400">Run a simulation first to enable exports.</p>
     ) : null}
   </div>
@@ -361,8 +383,27 @@ function mockRunResult(): RunResponse {
 
 ### Agent Model Used
 
+claude-sonnet-4-6
+
 ### Debug Log References
+
+None.
 
 ### Completion Notes
 
+- Created `ResultsOverviewScreen` component with metadata header (run_id, policy label, year range badge, status badge), tabbed layout (Overview/Data & Export/Detail), and proper action hierarchy
+- `computeSummaryStats()` derives 3 KPIs from `decileData`: mean delta, most-benefit decile, most-cost decile; falls back to placeholder "—" cards for empty/all-zero data
+- Detail tab lazily fetches `ResultDetailResponse` on first selection; caches in component state; resets when `runResult.run_id` changes to prevent stale data
+- Replaced inline results JSX in `App.tsx:360-381` with `<ResultsOverviewScreen>`; removed unused `DistributionalChart` import; kept `mockSummaryStats` import (still used in "run" view)
+- Updated `analyst-journey.test.tsx` to use new button label "Compare Runs" (was "Open Comparison")
+- 40 new tests added; all 311 tests pass (271 baseline + 40 new); typecheck 0 errors; lint 0 errors (pre-existing fast-refresh warnings only)
+
 ### File List
+
+**New files:**
+- `frontend/src/components/screens/ResultsOverviewScreen.tsx`
+- `frontend/src/components/screens/__tests__/ResultsOverviewScreen.test.tsx`
+
+**Modified files:**
+- `frontend/src/App.tsx` — replaced inline results JSX with `<ResultsOverviewScreen>`, removed unused `DistributionalChart` import
+- `frontend/src/__tests__/workflows/analyst-journey.test.tsx` — updated button label from "Open Comparison" to "Compare Runs"

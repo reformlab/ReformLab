@@ -276,11 +276,11 @@ describe("Analyst Journey — cross-screen navigation", () => {
 
       // After startRun() resolves, viewMode → "results" → "Open Comparison" button
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: /open comparison/i })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /compare runs/i })).toBeInTheDocument();
       });
 
       // Open Comparison → ComparisonDashboardScreen
-      await user.click(screen.getByRole("button", { name: /open comparison/i }));
+      await user.click(screen.getByRole("button", { name: /compare runs/i }));
       await waitFor(() => {
         // ComparisonDashboardScreen renders a RunSelector with this heading.
         // (ScenarioCard "Compare" buttons in the left panel share the name "Compare",
@@ -291,7 +291,7 @@ describe("Analyst Journey — cross-screen navigation", () => {
       // Header "Back to Results" button (shown in comparison viewMode)
       await user.click(screen.getByRole("button", { name: /back to results/i }));
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: /open comparison/i })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /compare runs/i })).toBeInTheDocument();
       });
     });
   });

@@ -23,3 +23,14 @@
 | critical | AC-5 / Task 4.2 dead-code deletion relies solely on grep, which misses barrel exports, dynamic imports, and test-only references | AC-5 now requires grep + typecheck passing post-deletion. Task 4.2 now explicitly requires running typecheck and tests immediately after deletion. |
 | medium | AC-4's hardcoded "259/259" test count is self-contradictory — this story adds 3 new test files, so the post-story count can't equal 259/259 | Task 5.4 now reads "0 failures; total count will exceed pre-story baseline due to new component tests"; AC-4 now reads "all pre-existing tests pass". |
 | medium | extractErrorDetail disposition is ambiguous ("Consider... or leave it... Check before deciding") — dev agent would branch | Dev Notes now decisively state "Leave it in BehavioralDecisionViewerScreen — it is the only consumer." |
+
+## Story 18-4 (2026-03-22)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | Year range badge has no data source | AC-1 expanded — `runResult.years[0]–years[years.length-1]`; fallback "—" when null/empty. Header snippet updated with year range badge. |
+| high | Detail cache not invalidated on run_id change | Task 4.2 updated; `Result Detail Loading Pattern` snippet now includes a `useEffect` keyed on `runResult?.run_id` that resets `resultDetail` and `detailError`; `detailLoading` guard added to prevent duplicate in-flight requests. |
+| high | Status badge only specifies "completed"; no mapping for other states | AC-1 expanded with explicit mapping (`success === true` → success/"completed"; `success === false` → destructive/"failed"; null → default/"mock data"). Header snippet updated to use `runResult.success`. |
+| high | Export buttons enabled on failed run** (`disabled={!runResult}` passes when `success === false`) | Export button `disabled` changed to `!runResult?.success` in Data & Export snippet. |
+| medium | Detail tab error/loading states unspecified | `Result Detail Loading Pattern` snippet now includes `detailError` state and sets it in the catch block; loading guard prevents duplicate requests. |
+| medium | Test plan missing async correctness cases | Tasks 5.8–5.10 added (lazy fetch trigger, single-fetch cache, run_id change reset); prior checks renumbered to 5.11–5.13. |

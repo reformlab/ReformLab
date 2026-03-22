@@ -19,8 +19,8 @@ import {
 } from "@/components/simulation/ModelConfigStepper";
 import { BehavioralDecisionViewerScreen } from "@/components/screens/BehavioralDecisionViewerScreen";
 import { ComparisonDashboardScreen } from "@/components/screens/ComparisonDashboardScreen";
+import { ResultsOverviewScreen } from "@/components/screens/ResultsOverviewScreen";
 // ComparisonView (Phase 1 mock-driven prototype) is kept but no longer imported in workspace
-import { DistributionalChart } from "@/components/simulation/DistributionalChart";
 import { RunProgressBar } from "@/components/simulation/RunProgressBar";
 import { ScenarioCard } from "@/components/simulation/ScenarioCard";
 import { SummaryStatCard } from "@/components/simulation/SummaryStatCard";
@@ -358,26 +358,16 @@ function Workspace() {
       ) : null}
 
       {viewMode === "results" ? (
-        <section className="space-y-3">
-          <DistributionalChart
-            data={decileData}
-            reformLabel={selectedScenario?.templateName ?? selectedScenario?.name ?? "Reform"}
-          />
-          <div className="grid gap-2 xl:grid-cols-3">
-            {mockSummaryStats.map((stat) => (
-              <SummaryStatCard key={stat.id} stat={stat} />
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <Button onClick={openComparison}>Open Comparison</Button>
-            {runResult?.run_id ? (
-              <Button variant="outline" onClick={openDecisions}>Behavioral Decisions</Button>
-            ) : null}
-            <Button variant="outline" onClick={handleStartRun}>Run Again</Button>
-            <Button variant="outline" onClick={handleExportCsv}>Export CSV</Button>
-            <Button variant="outline" onClick={handleExportParquet}>Export Parquet</Button>
-          </div>
-        </section>
+        <ResultsOverviewScreen
+          decileData={decileData}
+          runResult={runResult}
+          reformLabel={selectedScenario?.templateName ?? selectedScenario?.name ?? "Reform"}
+          onCompare={openComparison}
+          onViewDecisions={openDecisions}
+          onRunAgain={handleStartRun}
+          onExportCsv={handleExportCsv}
+          onExportParquet={handleExportParquet}
+        />
       ) : null}
 
       {viewMode === "comparison" ? (
