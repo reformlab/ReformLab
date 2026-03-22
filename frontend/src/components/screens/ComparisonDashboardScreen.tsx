@@ -170,7 +170,7 @@ function RunSelector({
           No completed runs available. Run simulations first.
         </p>
       ) : (
-        <ul className="divide-y divide-slate-100 border border-slate-200">
+        <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
           {completed.map((item) => {
             const isSelected = selectedIds.includes(item.run_id);
             const isEvicted = !item.data_available;

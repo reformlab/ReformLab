@@ -250,7 +250,7 @@ function Workspace() {
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-gradient-to-r from-white to-indigo-50 p-3 shadow-sm">
         <div>
           <h1 className="text-xl font-bold">ReformLab</h1>
-          <p className="text-sm text-indigo-600/70">
+          <p className="text-sm text-indigo-700">
             Environmental policy analysis workspace
           </p>
         </div>

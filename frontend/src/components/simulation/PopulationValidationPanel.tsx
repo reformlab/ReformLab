@@ -56,7 +56,7 @@ export function PopulationValidationPanel({ validation }: PopulationValidationPa
             {validation.marginal_results.map((m, i) => (
               <div
                 key={i}
-                className="flex items-start gap-2 border border-slate-200 p-2"
+                className="flex items-start gap-2 rounded-lg border border-slate-200 p-2"
               >
                 {m.passed ? (
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />

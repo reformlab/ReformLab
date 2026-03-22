@@ -199,9 +199,27 @@ PopulationSelectionScreen and TemplateSelectionScreen had no `border border-slat
 - `frontend/src/components/screens/AssumptionsReviewScreen.tsx` — summary div and table
 - `frontend/src/components/auth/PasswordPrompt.tsx` — login card, brand heading, layout
 - `frontend/src/components/layout/WorkspaceLayout.tsx` — workspace frame
-- `frontend/src/components/simulation/PopulationValidationPanel.tsx` — section + 3 stat cards
+- `frontend/src/components/simulation/PopulationValidationPanel.tsx` — section + 3 stat cards + per-marginal rows (synthesis fix)
 - `frontend/src/components/simulation/ResultDetailView.tsx` — 6 content containers
 - `frontend/src/components/simulation/ReviewStep.tsx` — 4 rounded containers normalized to rounded-lg
 - `frontend/src/components/simulation/MultiRunChart.tsx` — chart wrapper div
 - `frontend/src/components/simulation/RunProgressBar.tsx` — progress section
 - `frontend/src/components/simulation/DistributionalChart.tsx` — chart div
+
+### Synthesis Review Fixes (2026-03-22)
+
+Two missed containers and two low-severity style gaps corrected by code review synthesis:
+- `PopulationValidationPanel.tsx`: per-marginal result rows now have `rounded-lg` (were sharp; 1 row container missed)
+- `ComparisonDashboardScreen.tsx`: run-list `<ul>` now has `rounded-lg` (Task 2.3 incomplete)
+- `button.tsx`: added `rounded-md` to base class (story AC-1 stated this should already be present; it was missing)
+- `input.tsx`: added `rounded-md` to base class (same reason as above)
+- `App.tsx`: header subtitle changed from `text-indigo-600/70` to `text-indigo-700` (WCAG AA contrast fix — /70 yielded ~3.1:1, failing 4.5:1 minimum for small text)
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-22
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 3.0 (Reviewer A) / 7.8 (Reviewer B) → REJECT (Reviewer B)
+- **Issues Found:** 4 verified (2 medium, 2 low); 8 dismissed
+- **Issues Fixed:** 4
+- **Action Items Created:** 0
