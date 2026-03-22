@@ -92,10 +92,10 @@ const categories = [
   <div class="max-w-4xl mx-auto px-6 lg:px-8">
     <div class="reveal mb-16">
       <div class="flex items-center gap-3 mb-6">
-        <div class="h-px w-12 bg-amber"></div>
-        <span class="text-amber font-medium text-sm tracking-widest uppercase">FAQ</span>
+        <div class="h-px w-12 bg-cta"></div>
+        <span class="text-cta font-medium text-sm tracking-widest uppercase">FAQ</span>
       </div>
-      <h2 class="font-[family-name:var(--font-display)] text-4xl lg:text-5xl font-bold text-paper leading-tight">
+      <h2 class="font-sans text-4xl lg:text-5xl font-bold text-paper leading-tight">
         Questions
       </h2>
     </div>
@@ -103,7 +103,7 @@ const categories = [
     <div class="space-y-12">
       {categories.map((cat) => (
         <div class="reveal">
-          <h3 class="font-[family-name:var(--font-display)] text-xl font-semibold text-amber/80 mb-6">{cat.name}</h3>
+          <h3 class="font-sans text-xl font-semibold text-emerald-500/80 mb-6">{cat.name}</h3>
           <div class="space-y-3">
             {cat.questions.map((item) => (
               <details class="group rounded-lg border border-slate/20 overflow-hidden hover:border-slate/30 transition-colors duration-200">

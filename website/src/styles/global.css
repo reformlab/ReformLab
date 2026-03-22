@@ -1,36 +1,27 @@
+@import "@fontsource-variable/inter";
+@import "@fontsource/ibm-plex-mono";
+@import "@brand/theme.css";
 @import "tailwindcss";
-@import "@fontsource-variable/playfair-display";
-@import "@fontsource-variable/source-sans-3";
 
 @theme {
-  /* Ink & Paper palette — European institutional */
+  /* Website-specific surfaces (marketing warmth) */
+  --color-paper: #faf8f5;
+  --color-paper-warm: #f5f0ea;
+
+  /* Ink & slate palette — website-specific named tokens */
   --color-ink: #0c1222;
   --color-ink-light: #1e293b;
   --color-slate: #334155;
   --color-slate-mid: #64748b;
   --color-slate-light: #94a3b8;
   --color-rule: #cbd5e1;
-  --color-paper: #faf8f5;
-  --color-paper-warm: #f5f0ea;
-  --color-white: #ffffff;
 
-  /* Accent — warm amber-gold */
-  --color-amber: #d97706;
-  --color-amber-light: #f59e0b;
-  --color-amber-glow: #fbbf24;
-  --color-amber-soft: rgba(217, 119, 6, 0.12);
-
-  /* Teal accent — for secondary highlights */
-  --color-teal: #0d9488;
-  --color-teal-soft: rgba(13, 148, 136, 0.10);
-
-  /* Semantic */
-  --color-surface-dark: #0f172a;
-  --color-surface-darker: #020617;
-
-  /* Typography */
-  --font-display: "Playfair Display Variable", "Georgia", serif;
-  --font-body: "Source Sans 3 Variable", "Helvetica Neue", sans-serif;
+  /* Website accent: emerald leads for brand continuity */
+  --color-cta: var(--color-emerald-500);
+  --color-cta-hover: var(--color-emerald-400);
+  --color-cta-glow: rgba(16, 185, 129, 0.3);
+  --color-cta-dark: var(--color-emerald-400);
+  --color-secondary-accent: var(--color-blue-500);
 
   /* Spacing rhythm */
   --spacing-section: 8rem;
@@ -45,8 +36,8 @@ html {
 }
 
 body {
-  font-family: var(--font-body);
-  color: var(--color-slate);
+  font-family: var(--font-sans);
+  color: var(--color-slate-700);
   background: var(--color-paper);
   line-height: 1.7;
   font-size: 1.125rem;
@@ -54,7 +45,8 @@ body {
 
 /* Display headings */
 h1, h2, h3, h4 {
-  font-family: var(--font-display);
+  font-family: var(--font-sans);
+  font-weight: 700;
   color: var(--color-ink);
   line-height: 1.15;
   letter-spacing: -0.01em;
@@ -98,8 +90,8 @@ h1, h2, h3, h4 {
 /* Mesh gradient hero */
 .mesh-gradient {
   background:
-    radial-gradient(ellipse 80% 60% at 20% 30%, rgba(13, 148, 136, 0.25), transparent),
-    radial-gradient(ellipse 60% 80% at 80% 60%, rgba(217, 119, 6, 0.15), transparent),
+    radial-gradient(ellipse 80% 60% at 20% 30%, rgba(16, 185, 129, 0.25), transparent),
+    radial-gradient(ellipse 60% 80% at 80% 60%, rgba(59, 130, 246, 0.15), transparent),
     radial-gradient(ellipse 100% 100% at 50% 0%, rgba(30, 41, 59, 0.8), transparent),
     var(--color-surface-dark);
 }
@@ -110,9 +102,9 @@ h1, h2, h3, h4 {
   align-items: center;
   gap: 0.5rem;
   padding: 0.875rem 2rem;
-  background: var(--color-amber);
+  background: var(--color-cta);
   color: var(--color-white);
-  font-family: var(--font-body);
+  font-family: var(--font-sans);
   font-weight: 600;
   font-size: 1rem;
   letter-spacing: 0.02em;
@@ -132,13 +124,18 @@ h1, h2, h3, h4 {
 }
 
 .btn-primary:hover {
-  background: var(--color-amber-light);
+  background: var(--color-cta-hover);
   transform: translateY(-1px);
-  box-shadow: 0 8px 24px rgba(217, 119, 6, 0.3);
+  box-shadow: 0 8px 24px var(--color-cta-glow);
 }
 
 .btn-primary:hover::after {
   opacity: 1;
+}
+
+/* Dark section CTA variant */
+.mesh-gradient .btn-primary {
+  background: var(--color-cta-dark);
 }
 
 .btn-secondary {
@@ -148,7 +145,7 @@ h1, h2, h3, h4 {
   padding: 0.875rem 2rem;
   background: transparent;
   color: var(--color-paper);
-  font-family: var(--font-body);
+  font-family: var(--font-sans);
   font-weight: 600;
   font-size: 1rem;
   letter-spacing: 0.02em;
@@ -195,6 +192,6 @@ details summary::marker {
 
 /* Selection color */
 ::selection {
-  background: var(--color-amber-soft);
+  background: rgba(16, 185, 129, 0.12);
   color: var(--color-ink);
 }

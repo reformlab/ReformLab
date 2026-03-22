@@ -22,10 +22,10 @@ const descriptions = [
   <div class="max-w-7xl mx-auto px-6 lg:px-8">
     <div class="reveal mb-16">
       <div class="flex items-center gap-3 mb-6">
-        <div class="h-px w-12 bg-amber"></div>
-        <span class="text-amber font-medium text-sm tracking-widest uppercase">The landscape</span>
+        <div class="h-px w-12 bg-cta"></div>
+        <span class="text-cta font-medium text-sm tracking-widest uppercase">The landscape</span>
       </div>
-      <h2 class="font-[family-name:var(--font-display)] text-4xl lg:text-5xl font-bold text-ink leading-tight">
+      <h2 class="font-sans text-4xl lg:text-5xl font-bold text-ink leading-tight">
         Nothing like this exists<br/>in Europe
       </h2>
     </div>
@@ -36,7 +36,7 @@ const descriptions = [
         <thead>
           <tr class="border-b-2 border-ink/10">
             <th class="text-left py-4 pr-6 text-sm font-bold text-slate-mid uppercase tracking-wider w-[20%]"></th>
-            <th class="text-left py-4 pr-6 text-sm font-bold text-amber uppercase tracking-wider">ReformLab</th>
+            <th class="text-left py-4 pr-6 text-sm font-bold text-cta uppercase tracking-wider">ReformLab</th>
             <th class="text-left py-4 pr-6 text-sm font-bold text-slate-mid uppercase tracking-wider">PolicyEngine</th>
             <th class="text-left py-4 pr-6 text-sm font-bold text-slate-mid uppercase tracking-wider">EUROMOD</th>
             <th class="text-left py-4 text-sm font-bold text-slate-mid uppercase tracking-wider">Ad-hoc scripts</th>
@@ -44,7 +44,7 @@ const descriptions = [
         </thead>
         <tbody class="divide-y divide-rule/40">
           {rows.map((row) => (
-            <tr class="group hover:bg-amber-soft/30 transition-colors duration-200">
+            <tr class="group hover:bg-emerald-500/4 transition-colors duration-200">
               <td class="py-4 pr-6 text-sm font-semibold text-ink">{row.feature}</td>
               <td class="py-4 pr-6 text-sm text-ink font-medium">{row.reformlab}</td>
               <td class="py-4 pr-6 text-sm text-slate-mid">{row.policyengine}</td>
@@ -68,7 +68,7 @@ const descriptions = [
     <div class="reveal grid grid-cols-1 md:grid-cols-3 gap-8">
       {descriptions.map((d) => (
         <div class="border-t border-rule pt-6">
-          <h4 class="font-[family-name:var(--font-display)] text-lg font-semibold text-ink mb-2">{d.name}</h4>
+          <h4 class="font-sans text-lg font-semibold text-ink mb-2">{d.name}</h4>
           <p class="text-slate text-base leading-relaxed">{d.text}</p>
         </div>
       ))}

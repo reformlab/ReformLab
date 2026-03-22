@@ -46,10 +46,10 @@ const cases = [
     <!-- Section header -->
     <div class="reveal mb-16 lg:mb-20">
       <div class="flex items-center gap-3 mb-6">
-        <div class="h-px w-12 bg-amber"></div>
-        <span class="text-amber font-medium text-sm tracking-widest uppercase">Who it's for</span>
+        <div class="h-px w-12 bg-cta"></div>
+        <span class="text-cta font-medium text-sm tracking-widest uppercase">Who it's for</span>
       </div>
-      <h2 class="font-[family-name:var(--font-display)] text-4xl lg:text-5xl font-bold text-paper leading-tight">
+      <h2 class="font-sans text-4xl lg:text-5xl font-bold text-paper leading-tight">
         Built for the people<br/>closest to policy
       </h2>
     </div>
@@ -57,9 +57,9 @@ const cases = [
     <!-- Persona cards -->
     <div class="reveal-stagger grid grid-cols-1 md:grid-cols-3 gap-6 mb-20 lg:mb-24">
       {personas.map((persona) => (
-        <div class="reveal group rounded-xl border border-slate/20 bg-ink-light/50 p-8 hover:border-amber/30 transition-all duration-500">
-          <div class="w-11 h-11 rounded-lg bg-amber-soft text-amber flex items-center justify-center mb-5" set:html={persona.icon} />
-          <h3 class="font-[family-name:var(--font-display)] text-xl font-semibold text-paper mb-3">
+        <div class="reveal group rounded-xl border border-slate/20 bg-ink-light/50 p-8 hover:border-emerald-500/30 transition-all duration-500">
+          <div class="w-11 h-11 rounded-lg bg-emerald-500/12 text-cta flex items-center justify-center mb-5" set:html={persona.icon} />
+          <h3 class="font-sans text-xl font-semibold text-paper mb-3">
             {persona.role}
           </h3>
           <p class="text-slate-light leading-relaxed">
@@ -71,7 +71,7 @@ const cases = [
 
     <!-- Use case stories -->
     <div class="reveal">
-      <h3 class="font-[family-name:var(--font-display)] text-2xl font-semibold text-paper mb-10">
+      <h3 class="font-sans text-2xl font-semibold text-paper mb-10">
         In practice
       </h3>
 
@@ -79,7 +79,7 @@ const cases = [
         {cases.map((c) => (
           <details class="group rounded-xl border border-slate/20 bg-ink-light/30 overflow-hidden hover:border-slate/30 transition-colors duration-300">
             <summary class="flex items-center justify-between p-6 lg:p-8 cursor-pointer">
-              <span class="font-[family-name:var(--font-display)] text-lg lg:text-xl font-semibold text-paper pr-8">
+              <span class="font-sans text-lg lg:text-xl font-semibold text-paper pr-8">
                 {c.title}
               </span>
               <svg class="w-5 h-5 text-slate-mid flex-shrink-0 transition-transform duration-300 group-open:rotate-45" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
@@ -88,12 +88,12 @@ const cases = [
             </summary>
             <div class="px-6 lg:px-8 pb-8 -mt-2">
               <p class="text-slate-light leading-relaxed mb-4">{c.summary}</p>
-              <div class="flex items-start gap-3 bg-amber-soft/50 rounded-lg p-4">
-                <svg class="w-5 h-5 text-amber flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+              <div class="flex items-start gap-3 bg-emerald-500/6 rounded-lg p-4">
+                <svg class="w-5 h-5 text-cta flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
                   <path d="M 10 2 l 8 16 H 2 Z" fill="none" stroke="currentColor" stroke-width="1.5"/>
                   <path d="M 10 8 v 4 M 10 14 v 1"/>
                 </svg>
-                <p class="text-amber-glow text-sm font-medium">{c.result}</p>
+                <p class="text-emerald-400 text-sm font-medium">{c.result}</p>
               </div>
             </div>
           </details>
