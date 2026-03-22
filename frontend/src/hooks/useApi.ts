@@ -153,7 +153,7 @@ export function useTemplateDetails(templateId: string) {
 
 function mapTemplateParameters(detail: TemplateDetailResponse): Parameter[] {
   const params: Parameter[] = [];
-  const defaults = detail.default_parameters;
+  const defaults = detail.default_policy;
 
   for (const [key, value] of Object.entries(defaults)) {
     if (typeof value !== "number") continue;
