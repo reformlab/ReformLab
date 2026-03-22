@@ -7,13 +7,15 @@
  * PopulationDistributionChart, and YearDetailPanel.
  */
 
+import { brand } from "@/lib/brand-tokens";
+
 // ============================================================================
 // Color palettes (CSS custom properties — defined in index.css :root)
 // ============================================================================
 
 /** Series colors for comparison charts (max 5 scenarios). */
 export const CHART_COLORS = [
-  "var(--chart-baseline)", // index 0 — baseline (slate-500)
+  "var(--chart-baseline)", // index 0 — baseline (slate-400)
   "var(--chart-reform-a)", // index 1 (blue-500)
   "var(--chart-reform-b)", // index 2 (violet-500)
   "var(--chart-reform-c)", // index 3 (emerald-500)
@@ -44,18 +46,18 @@ export const RELATIVE_COLORS = {
 /** CartesianGrid props — spread into <CartesianGrid {...GRID_PROPS} />. */
 export const GRID_PROPS = {
   strokeDasharray: "2 2",
-  stroke: "#e2e8f0",
+  stroke: brand.slate200,
 } as const;
 
 /** Axis tick style — used as tick={AXIS_TICK} on XAxis and YAxis. */
 export const AXIS_TICK = {
   fontSize: 12,
-  fill: "#64748b",
+  fill: brand.slate500,
 } as const;
 
 /** Tooltip content style — used as contentStyle={TOOLTIP_STYLE}. */
 export const TOOLTIP_STYLE = {
   fontSize: 12,
-  border: "1px solid #e2e8f0",
+  border: `1px solid ${brand.slate200}`,
   borderRadius: 6,
 } as const;
