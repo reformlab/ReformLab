@@ -297,6 +297,44 @@ def get_policy_type(value: str) -> PolicyType | CustomPolicyType:
     raise TemplateError(msg)
 
 
+def unregister_policy_type(type_name: str) -> None:
+    """Unregister a custom policy type and its associated parameter class.
+
+    Args:
+        type_name: Policy type name to remove.
+
+    Raises:
+        TemplateError: If type_name is not a registered custom type.
+    """
+    if type_name not in _CUSTOM_POLICY_TYPES:
+        msg = f"Custom policy type {type_name!r} is not registered."
+        raise TemplateError(msg)
+
+    _CUSTOM_POLICY_TYPES.pop(type_name)
+
+    # Remove associated parameter class mapping
+    to_remove = [
+        cls
+        for cls, pt in _CUSTOM_PARAMETERS_TO_POLICY_TYPE.items()
+        if isinstance(pt, CustomPolicyType) and pt.value == type_name
+    ]
+    for cls in to_remove:
+        del _CUSTOM_PARAMETERS_TO_POLICY_TYPE[cls]
+
+
+def list_custom_registrations() -> dict[str, type[PolicyParameters]]:
+    """Return a mapping of custom type name → parameters class.
+
+    Returns:
+        Dict mapping each registered custom type name to its parameter class.
+    """
+    result: dict[str, type[PolicyParameters]] = {}
+    for cls, pt in _CUSTOM_PARAMETERS_TO_POLICY_TYPE.items():
+        if isinstance(pt, CustomPolicyType):
+            result[pt.value] = cls
+    return result
+
+
 def _reset_custom_registrations() -> None:
     """Reset all custom type registrations. For test teardown only."""
     _CUSTOM_POLICY_TYPES.clear()

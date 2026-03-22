@@ -71,6 +71,8 @@ class ResultMetadata:
     template_name: str | None = None  # scenario runs only
     policy_type: str | None = None  # scenario runs only
     portfolio_name: str | None = None  # portfolio runs only
+    portfolio_policy_count: int | None = None  # portfolio runs only
+    portfolio_resolution_strategy: str | None = None  # portfolio runs only
 
 
 # ---------------------------------------------------------------------------

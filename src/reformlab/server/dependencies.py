@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from reformlab.computation.adapter import ComputationAdapter
     from reformlab.interfaces.api import SimulationResult
     from reformlab.server.result_store import ResultStore
+    from reformlab.templates.registry import ScenarioRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +73,7 @@ class ResultCache:
 _result_cache = ResultCache(max_size=10)
 _adapter: ComputationAdapter | None = None
 _result_store: ResultStore | None = None
+_registry: ScenarioRegistry | None = None
 
 
 def get_result_cache() -> ResultCache:
@@ -87,6 +89,16 @@ def get_result_store() -> ResultStore:
 
         _result_store = ResultStore()
     return _result_store
+
+
+def get_registry() -> ScenarioRegistry:
+    """Return the global scenario registry (lazy-initialized)."""
+    global _registry  # noqa: PLW0603
+    if _registry is None:
+        from reformlab.templates.registry import ScenarioRegistry
+
+        _registry = ScenarioRegistry()
+    return _registry
 
 
 def get_adapter() -> ComputationAdapter:

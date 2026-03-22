@@ -15,6 +15,7 @@ export interface Template {
   parameterCount: number;
   description: string;
   parameterGroups: string[];
+  is_custom?: boolean;
 }
 
 export interface Parameter {
