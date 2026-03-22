@@ -185,7 +185,8 @@ export function ComparisonDashboardScreen({
 
       {/* Loading */}
       {loading ? (
-        <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-6">
+        <div aria-busy="true" role="status" className="space-y-3 rounded-lg border border-slate-200 bg-white p-6">
+          <span className="sr-only">Loading comparison data</span>
           <Skeleton className="h-4 w-3/4" />
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-4 w-1/2" />

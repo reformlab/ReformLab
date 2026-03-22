@@ -279,7 +279,8 @@ export function ResultsOverviewScreen({
             {/* Detail tab */}
             <TabsContent value="detail">
               {detailLoading ? (
-                <div className="space-y-2">
+                <div aria-busy="true" role="status" className="space-y-2">
+                  <span className="sr-only">Loading detail</span>
                   <Skeleton className="h-3 w-full" />
                   <Skeleton className="h-3 w-5/6" />
                   <Skeleton className="h-3 w-full" />

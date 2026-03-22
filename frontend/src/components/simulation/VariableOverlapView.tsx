@@ -88,7 +88,8 @@ export function VariableOverlapView({ sources, selectedSources }: VariableOverla
       <p className="text-sm font-semibold text-slate-900">Variable Overlap</p>
 
       {loading ? (
-        <div className="space-y-2">
+        <div aria-busy="true" role="status" className="space-y-2">
+          <span className="sr-only">Loading column details</span>
           <Skeleton className="h-3 w-full" />
           <Skeleton className="h-3 w-3/4" />
         </div>

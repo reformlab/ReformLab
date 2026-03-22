@@ -441,12 +441,21 @@ All 7 tasks completed:
 - `frontend/src/components/ui/__tests__/skeleton.test.tsx`
 - `frontend/src/components/ui/__tests__/checkbox.test.tsx`
 
-**Modified files (8):**
-- `frontend/src/components/ui/select.tsx`
-- `frontend/src/components/screens/SimulationRunnerScreen.tsx`
-- `frontend/src/components/screens/PortfolioDesignerScreen.tsx`
-- `frontend/src/components/screens/TemplateSelectionScreen.tsx`
-- `frontend/src/components/comparison/RunSelector.tsx`
-- `frontend/src/components/screens/ComparisonDashboardScreen.tsx`
-- `frontend/src/components/screens/ResultsOverviewScreen.tsx`
-- `frontend/src/components/simulation/VariableOverlapView.tsx`
+**Modified files (8 + 3 synthesis fixes):**
+- `frontend/src/components/ui/select.tsx` — add `rounded-md` + `focus-visible:ring` to base classes (synthesis fix)
+- `frontend/src/components/screens/SimulationRunnerScreen.tsx` — replace 3 raw `<input>` with `<Input>`
+- `frontend/src/components/screens/PortfolioDesignerScreen.tsx` — replace 1 raw `<select>` with `<Select>`
+- `frontend/src/components/screens/TemplateSelectionScreen.tsx` — replace 1 raw `<select>` with `<Select>`
+- `frontend/src/components/comparison/RunSelector.tsx` — replace 1 raw `<input type="checkbox">` with `<Checkbox>`
+- `frontend/src/components/screens/ComparisonDashboardScreen.tsx` — replace loading text with `<Skeleton>` bars + `aria-busy`/`role="status"` (synthesis fix)
+- `frontend/src/components/screens/ResultsOverviewScreen.tsx` — replace loading text with `<Skeleton>` rows + `aria-busy`/`role="status"` (synthesis fix)
+- `frontend/src/components/simulation/VariableOverlapView.tsx` — replace loading text with `<Skeleton>` rows + `aria-busy`/`role="status"` (synthesis fix)
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-22
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** A=5.0 / B=4.8 → REJECT (majority false positives; real issues fixed)
+- **Issues Found:** 2
+- **Issues Fixed:** 2
+- **Action Items Created:** 0

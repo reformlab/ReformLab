@@ -45,3 +45,10 @@
 | medium | `WorkflowNavRail` nav buttons missing `aria-pressed` (recurring antipattern from 18.1/18.3) | Added `aria-pressed={active}` |
 | low | `+0` displayed when non-zero deltas average to exactly zero (rounded) | Extract `roundedMean`, use `roundedMean === 0 ? "0" : ...` |
 | low | AC-4 requires "No indicator data" note for empty/all-zero `decileData`; note missing | Added `isPlaceholder` flag; conditionally render `<p>No indicator data available.</p>` |
+
+## Story 18-6 (2026-03-22)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| medium | `Select` component missing `focus-visible:ring` keyboard focus indicator — `outline-none` removes the browser default with only a subtle border-color change as replacement, which fails the keyboard accessibility standard documented as a recurring Epic 18 antipattern (first flagged in Story 18-1 for nav buttons, 18-2 for `button.tsx`/`input.tsx`) | Added `focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2` to base class string |
+| low | The 3 skeleton loading containers replaced visible "Loading…" text (which is readable by screen readers) with purely visual pulses, creating a semantic loading state regression for assistive technology | Added `aria-busy="true" role="status"` to each container with a `<span className="sr-only">Loading …</span>` inside |
