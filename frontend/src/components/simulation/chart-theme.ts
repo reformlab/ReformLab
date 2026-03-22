@@ -18,7 +18,7 @@ export const CHART_COLORS = [
   "var(--chart-reform-b)", // index 2 (violet-500)
   "var(--chart-reform-c)", // index 3 (emerald-500)
   "var(--chart-reform-d)", // index 4 (amber-500)
-];
+] as const;
 
 /** Extended palette for decision/transition charts (6 colors). */
 export const DECISION_COLORS = [
@@ -28,7 +28,7 @@ export const DECISION_COLORS = [
   "var(--chart-reform-c)",  // emerald-500
   "var(--chart-reform-d)",  // amber-500
   "var(--chart-negative)",  // red-500
-];
+] as const;
 
 /** Semantic colors for relative/delta mode bar fills. */
 export const RELATIVE_COLORS = {

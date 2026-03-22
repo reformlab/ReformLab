@@ -60,3 +60,10 @@
 | high | `conceptsOpen` state never resets when `viewMode`/`activeStep` changes — once "Key Concepts" is opened in one stage it remains expanded when the user navigates to another stage that also has concepts, violating AC-3 "collapsed by default" | Added `useEffect(() => { setConceptsOpen(false); }, [viewMode, activeStep])` and `useEffect` import. |
 | medium | No test for AC-3 default-collapsed state or expand-on-click behavior; tests only checked text presence of trigger | Added tests: "Key Concepts section is collapsed by default (AC-3)", "Key Concepts section expands when trigger is clicked (AC-3)", "resets Key Concepts to collapsed when navigating (AC-3)". |
 | medium | No rerender test for AC-1 "updates automatically when user navigates to a different stage" | Added test "updates content automatically when viewMode changes (AC-1)" using `rerender`. |
+
+## Story 18-8 (2026-03-22)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| medium | No tests for `PopulationDistributionChart` — AC-3 (`rounded-lg`) and AC-4 (single fill, no `Cell`) were unguarded | Created test file with 3 tests: title rendering, empty-data null return, AC-3 `rounded-lg` class assertion. |
+| low | `CHART_COLORS` and `DECISION_COLORS` exported as mutable `string[]`, allowing accidental runtime mutation | Added `as const` to both array literals; aligns with existing `RELATIVE_COLORS` which already used `as const`. |
