@@ -200,17 +200,14 @@ describe("Analyst Journey — cross-screen navigation", () => {
       });
     });
 
-    it("navigates to Configure Policy view", async () => {
+    it("shows Configure Policy stepper as the default view on load", async () => {
       const user = userEvent.setup();
       renderApp();
       await authenticate(user);
 
-      // Navigate away via left panel, then back via Configure Policy
-      await user.click(within(getLeftPanel()).getByRole("button", { name: /^simulation$/i }));
-      await user.click(within(getLeftPanel()).getByRole("button", { name: /^configure policy$/i }));
-
+      // Default viewMode is "configuration" — ModelConfigStepper renders immediately.
+      // Configure Policy is now folded into the Simulation stage (Story 18.1).
       await waitFor(() => {
-        // ModelConfigStepper renders Population step by default
         expect(screen.getByRole("button", { name: /next step/i })).toBeInTheDocument();
       });
     });

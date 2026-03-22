@@ -1,6 +1,6 @@
 # Story 18.1: Implement Workflow Navigation Rail
 
-Status: draft
+Status: done
 
 ## Story
 
@@ -24,26 +24,65 @@ so that I always know where I am in the process, what's completed, and what's ne
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create `WorkflowNavRail` component
-  - [ ] 1.1: Create `frontend/src/components/layout/WorkflowNavRail.tsx` — vertical stepper with stage indicators (number/check), labels, summary lines, and connecting lines
-  - [ ] 1.2: Define stage completion logic: Population = `selectedPopulationId || dataFusionResult` exists; Portfolio = `portfolios.length > 0`; Simulation = `results.length > 0`; Results = most recent run has result data
-  - [ ] 1.3: Implement collapsed variant showing only icons
-  - [ ] 1.4: Style with consistent design tokens: `border-l-2` connecting line, `h-8 w-8 rounded-full` step circles, emerald for completed, blue-500 for active, slate-300 for pending
+- [x] Task 1: Create `WorkflowNavRail` component
+  - [x] 1.1: Create `frontend/src/components/layout/WorkflowNavRail.tsx` — vertical stepper with stage indicators (number/check), labels, summary lines, and connecting lines
+  - [x] 1.2: Define stage completion logic: Population = `selectedPopulationId || dataFusionResult` exists; Portfolio = `portfolios.length > 0`; Simulation = `results.length > 0`; Results = most recent run has result data
+  - [x] 1.3: Implement collapsed variant showing only icons
+  - [x] 1.4: Style with consistent design tokens: `border-l-2` connecting line, `h-8 w-8 rounded-full` step circles, emerald for completed, blue-500 for active, slate-300 for pending
 
-- [ ] Task 2: Integrate into LeftPanel and App.tsx
-  - [ ] 2.1: Replace the 4 `<Button>` elements in `App.tsx:436-466` with `<WorkflowNavRail>` component
-  - [ ] 2.2: Pass `viewMode`, `setViewMode`, and completion state as props
-  - [ ] 2.3: Add `<Separator>` between nav rail and ScenarioCard list
-  - [ ] 2.4: Update LeftPanel collapsed view to render collapsed nav rail variant
+- [x] Task 2: Integrate into LeftPanel and App.tsx
+  - [x] 2.1: Replace the 4 `<Button>` elements in `App.tsx:436-466` with `<WorkflowNavRail>` component
+  - [x] 2.2: Pass `viewMode`, `setViewMode`, and completion state as props
+  - [x] 2.3: Add `<Separator>` between nav rail and ScenarioCard list
+  - [x] 2.4: Update LeftPanel collapsed view to render collapsed nav rail variant
 
-- [ ] Task 3: Tests
-  - [ ] 3.1: Unit test WorkflowNavRail renders all stages with correct completion states
-  - [ ] 3.2: Test click handlers trigger correct viewMode changes
-  - [ ] 3.3: Test collapsed state renders icon-only variant
-  - [ ] 3.4: Verify existing workflow tests still pass
+- [x] Task 3: Tests
+  - [x] 3.1: Unit test WorkflowNavRail renders all stages with correct completion states
+  - [x] 3.2: Test click handlers trigger correct viewMode changes
+  - [x] 3.3: Test collapsed state renders icon-only variant
+  - [x] 3.4: Verify existing workflow tests still pass
 
 ## Dev Notes
 
 - The `viewMode` type in App.tsx maps to stages: `data-fusion` → Population, `portfolio` → Portfolio, `runner` → Simulation, `results|comparison|decisions` → Results, `configuration` → Configure Policy (keep as sub-navigation within the Simulation stage or as a separate entry)
 - Consider whether "Configure Policy" (the 4-step config stepper) should be a separate nav rail stage or folded into the Simulation stage. Recommendation: fold it into Simulation as a sub-step, since it's preparation for running.
 - Connecting lines between steps: use absolute-positioned `border-l-2` divs or flex with gap
+
+## Dev Agent Record
+
+### Implementation Plan
+
+1. Created `WorkflowNavRail` component with 4 stages (Population/Portfolio/Simulation/Results), step indicators (number or check icon), connecting lines, summary lines, and collapsed variant.
+2. Integrated into App.tsx: replaced 4 flat navigation Buttons with `<WorkflowNavRail>`, added `<Separator>` before ScenarioCards (when present), passed collapsed state as prop so the rail renders icon-only when left panel is collapsed.
+3. Configure Policy folded into Simulation as recommended — clicking Simulation goes to `runner` viewMode.
+4. Updated `analyst-journey.test.tsx` to remove the now-removed "Configure Policy" left-panel button test; replaced with a test verifying the default `configuration` viewMode on load (still reachable via App init state).
+
+### Key Decisions
+
+- `summaryKey` field added to stage definition to decouple semantic test IDs (`summary-population`, `summary-simulation`) from viewMode keys (`data-fusion`, `runner`).
+- `data-testid="step-indicator-{stageKey}"` and `data-active` attributes enable targeted testing of indicator states.
+- Collapsed mode: labels and summaries hidden, step indicator buttons remain (clickable icon-only column).
+
+### Completion Notes
+
+- AC-1 ✅: Nav rail with numbered/check indicators and connecting lines replaces 4 flat buttons.
+- AC-2 ✅: Emerald checkmark for complete, blue for active, slate border for pending.
+- AC-3 ✅: Summary lines rendered below labels when relevant state exists.
+- AC-4 ✅: All stages always clickable; no locking.
+- AC-5 ✅: ScenarioCards still appear below nav rail with Separator.
+- AC-6 ✅: Collapsed state renders icon-only column.
+- 18 new unit tests; 259 total tests passing; 0 lint errors.
+
+## File List
+
+### New Files
+- `frontend/src/components/layout/WorkflowNavRail.tsx`
+- `frontend/src/components/layout/__tests__/WorkflowNavRail.test.tsx`
+
+### Modified Files
+- `frontend/src/App.tsx` — replaced 4 nav buttons with WorkflowNavRail; added Separator import
+- `frontend/src/__tests__/workflows/analyst-journey.test.tsx` — updated test that referenced removed "Configure Policy" left-panel button
+
+## Change Log
+
+- 2026-03-22: Story 18.1 implemented — WorkflowNavRail component created and integrated (18 tests, all ACs satisfied).

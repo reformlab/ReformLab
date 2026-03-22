@@ -24,9 +24,11 @@ import { DistributionalChart } from "@/components/simulation/DistributionalChart
 import { RunProgressBar } from "@/components/simulation/RunProgressBar";
 import { ScenarioCard } from "@/components/simulation/ScenarioCard";
 import { SummaryStatCard } from "@/components/simulation/SummaryStatCard";
+import { WorkflowNavRail } from "@/components/layout/WorkflowNavRail";
 import { Toaster } from "@/components/ui/sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { useAppState } from "@/contexts/AppContext";
 import { ApiError } from "@/api/client";
 import { exportCsv, exportParquet } from "@/api/exports";
@@ -433,37 +435,17 @@ function Workspace() {
         leftPanel={
           <LeftPanel collapsed={isNarrow ? true : leftCollapsed} onToggle={() => setLeftCollapsed((current) => !current)}>
             <div className="space-y-2">
-              <Button
-                variant={viewMode === "data-fusion" ? "default" : "outline"}
-                className="w-full"
-                onClick={() => setViewMode("data-fusion")}
-              >
-                Population
-              </Button>
+              <WorkflowNavRail
+                viewMode={viewMode}
+                setViewMode={setViewMode}
+                collapsed={isNarrow ? true : leftCollapsed}
+                selectedPopulationId={selectedPopulationId}
+                dataFusionResult={dataFusionResult}
+                portfolios={portfolios}
+                results={results}
+              />
 
-              <Button
-                variant={viewMode === "portfolio" ? "default" : "outline"}
-                className="w-full"
-                onClick={() => setViewMode("portfolio")}
-              >
-                Portfolio
-              </Button>
-
-              <Button
-                variant={viewMode === "runner" ? "default" : "outline"}
-                className="w-full"
-                onClick={() => setViewMode("runner")}
-              >
-                Simulation
-              </Button>
-
-              <Button
-                variant={viewMode === "configuration" ? "default" : "outline"}
-                className="w-full"
-                onClick={() => setViewMode("configuration")}
-              >
-                Configure Policy
-              </Button>
+              {scenarios.length > 0 && <Separator className="my-1" />}
 
               {scenarios.map((scenario) => (
                 <ScenarioCard
