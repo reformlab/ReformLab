@@ -1,0 +1,112 @@
+record_id: 0a4052a2-7dbf-4883-8d5f-aec3b32d5298
+created_at: '2026-03-22T11:36:55.872611+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 18
+  story_num: '3'
+  title: Story 18.3
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: gemini
+  model: gemini-2.5-flash
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-03-22T11:30:39.733374Z'
+  end_time: '2026-03-22T11:32:06.827374Z'
+  duration_ms: 87094
+  input_tokens: 0
+  output_tokens: 3580
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 14322
+  heading_count: 12
+  list_depth_max: 3
+  code_block_count: 3
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: 14.8'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes &amp; Readability
+  - ⚡ Performance &amp; Scalability
+  - 🐛 Correctness &amp; Safety
+  - 🔧 Maintainability Issues
+  - 🛠️ Suggested Fixes
+  - 1. Restore Accessibility for Focusable Elements
+  - 2. Restore Accessibility for Focusable Elements (WorkflowNavRail)
+  - 3. Implement Robust Numeric Input Validation in Custom Template Parameters
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.33
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 5ae97a0bd0d3
+findings:
+  total_count: 14
+  by_severity:
+    critical: 3
+    major: 5
+    minor: 6
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 4
+    completeness: 4
+    clarity: 6
+    testability: 0
+  has_fix_count: 3
+  has_location_count: 14
+  has_evidence_count: 9
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: false
+  uses_conditionals: true
+  uncertainty_phrases_count: 2
+  confidence_phrases_count: 14
+linguistic:
+  avg_sentence_length: 22.28395061728395
+  vocabulary_richness: 0.23545706371191136
+  flesch_reading_ease: -12.30519320632635
+  vague_terms_count: 1
+  formality_score: 0.58
+  sentiment: mixed
+quality:
+  actionable_ratio: 0.43
+  specificity_score: 0.75
+  evidence_quality: 0.6
+  follows_template: true
+  internal_consistency: 0.92
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 20
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

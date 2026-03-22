@@ -21,3 +21,14 @@
 | low | `button.tsx` base class missing `rounded-md` — AC-1 states "Buttons and inputs already use `rounded-md` from shadcn defaults"; the custom shadcn implementation omitted it | Added `rounded-md` to the `cva` base string |
 | low | `input.tsx` base class missing `rounded-md` — same as above | Added `rounded-md` to the base class string |
 | low | `App.tsx:253` header subtitle `text-indigo-600/70` yields ~3.1:1 contrast on white, failing WCAG AA (4.5:1 required for 14px text) | Changed to `text-indigo-700` which passes AA while maintaining brand color |
+
+## Story 18-3 (2026-03-22)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| high | `onTemplatesChanged` never wired in App.tsx — custom template creation silently succeeds but list doesn't refresh | Destructured `refetchTemplates` from `useAppState()` and passed as `onTemplatesChanged` to `TemplateSelectionScreen` |
+| high | `is_custom` field dropped in `mapTemplate()` — API-sourced templates never show the custom badge | Added `is_custom: item.is_custom` to mapped object |
+| medium | `WorkbenchStepper` buttons missing `aria-current="step"` — active step not semantically indicated to screen readers | Added `aria-current={isActive ? "step" : undefined}` |
+| medium | `SelectionGrid` buttons missing `aria-pressed` — selected state is visual-only, invisible to screen readers | Added `aria-pressed={selected}` |
+| medium | `Number(...) | Replaced with `Number.isFinite(Number(v)) ? Number(v) : 0` |
+| low | `WorkbenchStepper` buttons lack `focus-visible:ring` — missing consistent keyboard focus style (antipattern from Story 18.1) | Added `focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2` |

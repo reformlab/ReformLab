@@ -79,7 +79,12 @@ export function TemplateSelectionScreen({
           .map((p) => ({
             name: p.name.trim(),
             type: p.type,
-            default: p.type === "str" ? p.default_value : Number(p.default_value) || 0,
+            default:
+              p.type === "str"
+                ? p.default_value
+                : Number.isFinite(Number(p.default_value))
+                  ? Number(p.default_value)
+                  : 0,
             unit: p.unit,
           })),
       });

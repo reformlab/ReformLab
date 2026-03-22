@@ -114,6 +114,7 @@ function mapTemplate(item: TemplateListItem): Template {
     parameterCount: item.parameter_count,
     description: item.description,
     parameterGroups: item.parameter_groups,
+    is_custom: item.is_custom,
   };
 }
 

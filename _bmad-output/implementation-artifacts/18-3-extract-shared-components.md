@@ -25,6 +25,15 @@ so that visual consistency is enforced by code reuse rather than manual discipli
 
 ## Tasks / Subtasks
 
+#### Review Follow-ups (AI)
+- [x] [AI-Review] HIGH: Wire `onTemplatesChanged` callback — `refetchTemplates` not passed to `TemplateSelectionScreen`, new custom templates don't refresh the list (`frontend/src/App.tsx`) — **Fixed in synthesis**
+- [x] [AI-Review] HIGH: `is_custom` dropped in `mapTemplate()` — API templates don't show custom badge (`frontend/src/hooks/useApi.ts`) — **Fixed in synthesis**
+- [x] [AI-Review] MEDIUM: `WorkbenchStepper` missing `aria-current="step"` on active button (`frontend/src/components/simulation/WorkbenchStepper.tsx`) — **Fixed in synthesis**
+- [x] [AI-Review] MEDIUM: `SelectionGrid` buttons missing `aria-pressed` for selected state (`frontend/src/components/simulation/SelectionGrid.tsx`) — **Fixed in synthesis**
+- [x] [AI-Review] MEDIUM: Silent numeric coercion `Number(...) || 0` — maps invalid input to 0 without feedback (`frontend/src/components/screens/TemplateSelectionScreen.tsx`) — **Fixed in synthesis**
+- [x] [AI-Review] LOW: `WorkbenchStepper` buttons missing `focus-visible:ring` (antipattern from Story 18.1) — **Fixed in synthesis**
+- [ ] [AI-Review] MEDIUM: No tests for custom template creation modal in `TemplateSelectionScreen` (new async flow added in 18.3 scope creep, untested)
+
 - [x] Task 1: Extract WorkbenchStepper (AC: 1)
   - [x] 1.1: Create `frontend/src/components/simulation/WorkbenchStepper.tsx` with generic step interface (see Dev Notes for exact props and implementation)
   - [x] 1.2: Update `DataFusionWorkbench.tsx` — delete local `WorkbenchStepper` function (lines 48-80) and local `STEPS` type, import shared component, pass steps array and `ariaLabel="Workbench steps"`
@@ -413,3 +422,18 @@ None
 - `frontend/src/components/simulation/TemplateStep.tsx`
 - `frontend/src/components/simulation/ReviewStep.tsx`
 
+**Synthesis fixes (2026-03-22):**
+- `frontend/src/App.tsx` — destructure `refetchTemplates` and pass as `onTemplatesChanged` to TemplateSelectionScreen
+- `frontend/src/hooks/useApi.ts` — add `is_custom` to `mapTemplate()` return value
+- `frontend/src/components/simulation/WorkbenchStepper.tsx` — add `aria-current="step"` + `focus-visible:ring`
+- `frontend/src/components/simulation/SelectionGrid.tsx` — add `aria-pressed={selected}`
+- `frontend/src/components/screens/TemplateSelectionScreen.tsx` — replace `Number(...) || 0` with `Number.isFinite` guard
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-22
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** Reviewers A/B both REJECT, but after false-positive filtering: 7 real issues
+- **Issues Found:** 7 (2 HIGH, 4 MEDIUM, 1 LOW)
+- **Issues Fixed:** 6
+- **Action Items Created:** 1

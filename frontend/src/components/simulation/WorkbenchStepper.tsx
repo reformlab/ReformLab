@@ -29,9 +29,10 @@ export function WorkbenchStepper({
             <li key={step.key} className="shrink-0">
               <button
                 type="button"
+                aria-current={isActive ? "step" : undefined}
                 onClick={() => onStepSelect(step.key)}
                 className={cn(
-                  "border px-3 py-1.5 text-xs",
+                  "border px-3 py-1.5 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2",
                   isActive
                     ? "border-blue-500 bg-blue-50 text-blue-700 font-medium"
                     : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",

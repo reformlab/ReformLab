@@ -88,6 +88,7 @@ function Workspace() {
     setDataFusionResult,
     portfolios,
     refetchPortfolios,
+    refetchTemplates,
     selectedPortfolioName,
     results,
   } = useAppState();
@@ -300,6 +301,7 @@ function Workspace() {
               templates={templates}
               selectedTemplateId={selectedTemplateId}
               onSelectTemplate={selectTemplate}
+              onTemplatesChanged={refetchTemplates}
             />
           ) : null}
 

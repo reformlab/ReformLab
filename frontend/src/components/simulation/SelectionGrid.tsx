@@ -28,6 +28,7 @@ export function SelectionGrid<T>({
           <button
             type="button"
             key={id}
+            aria-pressed={selected}
             onClick={() => onSelect(id)}
             className="text-left"
           >
