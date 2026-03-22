@@ -20,8 +20,8 @@ import { ScenarioCard } from "@/components/simulation/ScenarioCard";
 import { SummaryStatCard } from "@/components/simulation/SummaryStatCard";
 import { WorkflowNavRail } from "@/components/layout/WorkflowNavRail";
 import { Toaster } from "@/components/ui/sonner";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ContextualHelpPanel } from "@/components/help/ContextualHelpPanel";
 import { Separator } from "@/components/ui/separator";
 import { useAppState } from "@/contexts/AppContext";
 import { ApiError } from "@/api/client";
@@ -78,10 +78,6 @@ function Workspace() {
   const [isNarrow, setIsNarrow] = useState(false);
   const [previousViewMode, setPreviousViewMode] = useState<ViewMode>("results");
 
-  const selectedPopulation = useMemo(
-    () => populations.find((p) => p.id === selectedPopulationId),
-    [populations, selectedPopulationId],
-  );
   const selectedTemplate = useMemo(
     () => templates.find((t) => t.id === selectedTemplateId),
     [templates, selectedTemplateId],
@@ -404,48 +400,7 @@ function Workspace() {
         mainPanel={<MainContent>{mainPanelContent}</MainContent>}
         rightPanel={
           <RightPanel collapsed={isNarrow ? true : rightCollapsed} onToggle={() => setRightCollapsed((current) => !current)}>
-            <div className="space-y-3">
-              {selectedScenario ? (
-                <section className="rounded-lg border border-slate-200 bg-white p-3">
-                  <p className="text-xs font-semibold uppercase text-slate-500">Selected Scenario</p>
-                  <p className="text-sm font-medium text-slate-800">{selectedScenario.name}</p>
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    <Badge variant={selectedScenario.status === "completed" ? "success" : "default"}>
-                      {selectedScenario.status}
-                    </Badge>
-                  </div>
-                  {selectedScenario.lastRun ? (
-                    <p className="mt-1 text-xs text-slate-500">Last run: {selectedScenario.lastRun}</p>
-                  ) : null}
-                  {selectedScenario.templateName ? (
-                    <p className="mt-1 text-xs text-slate-500">Policy: {selectedScenario.templateName}</p>
-                  ) : null}
-                  <p className="mt-1 text-xs text-slate-500">
-                    {selectedScenario.parameterChanges} parameter{selectedScenario.parameterChanges === 1 ? "" : "s"} changed
-                  </p>
-                </section>
-              ) : null}
-
-              <section className="rounded-lg border border-slate-200 bg-white p-3">
-                <p className="text-xs font-semibold uppercase text-slate-500">Population</p>
-                <p className="text-sm text-slate-800">{selectedPopulation?.name}</p>
-              </section>
-
-              <section className="rounded-lg border border-slate-200 bg-white p-3">
-                <p className="text-xs font-semibold uppercase text-slate-500">Template</p>
-                <p className="text-sm text-slate-800">{selectedTemplate?.name}</p>
-              </section>
-
-              <section className="rounded-lg border border-slate-200 bg-white p-3">
-                <p className="text-xs font-semibold uppercase text-slate-500">Workspace State</p>
-                <div className="mt-2 flex flex-wrap gap-1">
-                  <Badge variant="info">{viewMode}</Badge>
-                  {viewMode === "configuration" ? (
-                    <Badge variant="violet">{activeStep}</Badge>
-                  ) : null}
-                </div>
-              </section>
-            </div>
+            <ContextualHelpPanel viewMode={viewMode} activeStep={activeStep} />
           </RightPanel>
         }
       />

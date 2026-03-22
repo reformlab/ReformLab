@@ -43,3 +43,13 @@
 | medium | `320 tests` hardcoded count | AC-6 changed to "full test suite passes" with no hardcoded count. |
 | medium | AC-1 compact height ambiguity | AC-1 now explicitly states the original compact height must be preserved and names `h-auto py-0.5` as the fix (moved from "if needed" in Dev Notes to a clear AC requirement). |
 | medium | Checkbox has no unit tests | AC-7 expanded to cover both Skeleton and Checkbox tests; Task 6.2 added for `checkbox.test.tsx`. |
+
+## Story 18-7 (2026-03-22)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| high | Configuration sub-step test coverage gap | AC-7 expanded to require all 4 sub-step titles (population/template/parameters/assumptions); Tasks 5.7–5.9 added |
+| high | RightPanel regression tests absent | AC-7 added RightPanel.test.tsx requirement; Task 5.14 added; Project Structure notes updated |
+| medium | Fallback behavior untested | AC-7 added fallback test requirement; Task 5.10 added; Test Pattern updated |
+| medium | Brittle line number anchors | Line numbers removed from AC-5, Tasks 4.2/4.3/4.4, Dev Notes App.tsx section, "What NOT to Change" section |
+| low | HELP_CONTENT as table + separate lists is redundant | Replaced table+lists dual format with single canonical TypeScript object in Dev Notes |
