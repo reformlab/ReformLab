@@ -1,0 +1,71 @@
+/*
+ * ReformLab — Shared Visual Identity Theme
+ *
+ * Single source of truth for brand colors, fonts, and semantic tokens.
+ * Imported by: frontend/src/index.css, website/src/styles/global.css
+ * Reference:   _bmad-output/branding/visual-identity-guide.md
+ *
+ * Uses Tailwind v4 @theme so all values become utility classes automatically.
+ */
+
+/* ── Fonts ─────────────────────────────────────────────────────────── */
+
+@theme {
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", Consolas, Monaco, monospace;
+}
+
+/* ── Brand Mark (fixed, non-negotiable) ────────────────────────────── */
+/* Logo uses exactly: Slate 700 (#334155) + Emerald 500 (#10B981)      */
+
+/* ── Color Palette ─────────────────────────────────────────────────── */
+/* Tailwind v4 ships slate/blue/violet/emerald/amber/red as defaults.  */
+/* We only define semantic aliases and chart tokens here — the base     */
+/* palette comes from Tailwind itself.                                  */
+
+@theme {
+  /* Semantic UI tokens */
+  --color-validated: var(--color-emerald-500);
+  --color-warning: var(--color-amber-500);
+  --color-unreviewed: var(--color-stone-400);
+  --color-error: var(--color-red-500);
+  --color-selection: var(--color-blue-500);
+  --color-lineage: var(--color-violet-500);
+  --color-reform: var(--color-sky-500);
+
+  /* Primary accent (CTAs, focus, information) */
+  --color-accent: var(--color-blue-600);
+  --color-accent-light: var(--color-blue-500);
+  --color-accent-bg: var(--color-blue-50);
+
+  /* Brand accent (logo, success, validated) */
+  --color-brand: var(--color-emerald-500);
+
+  /* Surfaces */
+  --color-surface-primary: #ffffff;
+  --color-surface-chrome: var(--color-slate-50);
+  --color-surface-collapsed: var(--color-slate-100);
+  --color-surface-dark: #0f172a;
+  --color-surface-darker: #020617;
+}
+
+/* ── Chart Palette (application) ───────────────────────────────────── */
+
+:root {
+  --chart-baseline: var(--color-slate-400);
+  --chart-reform-a: var(--color-blue-500);
+  --chart-reform-b: var(--color-violet-500);
+  --chart-reform-c: var(--color-emerald-500);
+  --chart-reform-d: var(--color-amber-500);
+  --chart-positive: var(--color-emerald-500);
+  --chart-negative: var(--color-red-500);
+  --chart-neutral: var(--color-slate-400);
+}
+
+/* ── Chart Palette (presentations — emerald leads) ─────────────────── */
+/* Use these in slide decks / exported visuals:
+ *   --chart-pres-reform-a: var(--color-emerald-500);
+ *   --chart-pres-reform-b: var(--color-blue-500);
+ *   --chart-pres-reform-c: var(--color-violet-500);
+ *   --chart-pres-reform-d: var(--color-amber-500);
+ */
