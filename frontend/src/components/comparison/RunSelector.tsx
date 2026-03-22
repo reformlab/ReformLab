@@ -45,7 +45,7 @@ export function RunSelector({
           {completed.map((item) => {
             const isSelected = selectedIds.includes(item.run_id);
             const isEvicted = !item.data_available;
-            const isDisabled = isEvicted || (!isSelected && selectedIds.length >= MAX_RUNS);
+            const isDisabled = loading || isEvicted || (!isSelected && selectedIds.length >= MAX_RUNS);
             const isBaseline = isSelected && selectedIds[0] === item.run_id;
 
             return (

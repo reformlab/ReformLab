@@ -66,7 +66,7 @@ export function buildSeries(labels: string[]): SeriesSpec[] {
 export function escapeCsvField(val: unknown): string {
   let s = String(val ?? "");
   // Prefix formula-injection characters to prevent spreadsheet formula execution
-  if (s.length > 0 && "=+-@".includes(s[0])) {
+  if (s.length > 0 && "=+-@\t".includes(s[0])) {
     s = `'${s}`;
   }
   // Wrap in double-quotes if the value contains commas, quotes, or newlines

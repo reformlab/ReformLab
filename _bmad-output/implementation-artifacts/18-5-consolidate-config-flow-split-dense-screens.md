@@ -476,3 +476,22 @@ All 5 tasks completed. 320 tests pass (311 pre-existing + 9 new ConfigurationScr
 **Modified files (2):**
 - `frontend/src/App.tsx` — replace inline config JSX with `<ConfigurationScreen>`, remove moved code/imports
 - `frontend/src/components/screens/ComparisonDashboardScreen.tsx` — replace inline sub-components with imports from `@/components/comparison`
+
+**Post-review fixes (synthesis-18.5):**
+- `frontend/src/components/comparison/RunSelector.tsx` — disable checkboxes during loading (stale-comparison race fix)
+- `frontend/src/components/comparison/comparison-helpers.ts` — add `\t` to CSV formula-injection character set
+- `frontend/src/components/screens/__tests__/ConfigurationScreen.test.tsx` — negative callback assertions in tests 4.6 and 4.8
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-22
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** Reviewer A: 2.2 (PASS) / Reviewer B: 11.8 (REJECT, scope inflation from epic-wide diff)
+- **Adjusted Verdict:** Approved with Reservations (B's critical issues were false positives; real issues addressed)
+- **Issues Found:** 3 real (1 high, 2 low); 5 false positives dismissed
+- **Issues Fixed:** 3
+- **Action Items Created:** 0
+
+### Tasks / Subtasks — Review Follow-ups (AI)
+
+*(None — all verified issues were applied in synthesis.)*

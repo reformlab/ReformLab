@@ -104,13 +104,16 @@ describe("ConfigurationScreen", () => {
   // AC-5: Test 4.6 — "Next Step" button advances step via onStepSelect callback
   it("clicking Next Step advances to next step via onStepSelect", async () => {
     const onStepSelect = vi.fn();
-    render(<ConfigurationScreen {...makeDefaultProps({ activeStep: "population", onStepSelect })} />);
+    const onGoToSimulation = vi.fn();
+    render(<ConfigurationScreen {...makeDefaultProps({ activeStep: "population", onStepSelect, onGoToSimulation })} />);
 
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: "Next Step" }));
 
     expect(onStepSelect).toHaveBeenCalledWith("template");
     expect(onStepSelect).toHaveBeenCalledTimes(1);
+    // onGoToSimulation must NOT fire on intermediate steps
+    expect(onGoToSimulation).not.toHaveBeenCalled();
   });
 
   // AC-5: Test 4.7 — shows "Go to Simulation" on last step (assumptions)
@@ -123,12 +126,15 @@ describe("ConfigurationScreen", () => {
   // AC-5: Test 4.8 — clicking "Go to Simulation" calls onGoToSimulation
   it("clicking Go to Simulation calls onGoToSimulation", async () => {
     const onGoToSimulation = vi.fn();
-    render(<ConfigurationScreen {...makeDefaultProps({ activeStep: "assumptions", onGoToSimulation })} />);
+    const onStepSelect = vi.fn();
+    render(<ConfigurationScreen {...makeDefaultProps({ activeStep: "assumptions", onGoToSimulation, onStepSelect })} />);
 
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: "Go to Simulation" }));
 
     expect(onGoToSimulation).toHaveBeenCalledTimes(1);
+    // onStepSelect must NOT fire on the last step (no next step to advance to)
+    expect(onStepSelect).not.toHaveBeenCalled();
   });
 
   // AC-5: Test 4.9 — clicking stepper step calls onStepSelect (non-blocking navigation)
