@@ -192,7 +192,7 @@ export function WorkflowNavRail({
   return (
     <nav aria-label="Workflow navigation" className="flex flex-col gap-0">
       {STAGES.map((stage, index) => {
-        const active = (stage.activeFor as string[]).includes(viewMode);
+        const active = stage.activeFor.includes(viewMode);
         const complete = isComplete(stage.key, selectedPopulationId, dataFusionResult, portfolios, results);
         const summary = collapsed
           ? null
@@ -209,7 +209,7 @@ export function WorkflowNavRail({
                   type="button"
                   aria-label={stage.label}
                   onClick={() => setViewMode(stage.targetMode)}
-                  className="flex cursor-pointer items-center focus:outline-none"
+                  className="flex cursor-pointer items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                 >
                   <StepIndicator
                     stageKey={stage.key}

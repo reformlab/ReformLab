@@ -36,6 +36,9 @@ so that I always know where I am in the process, what's completed, and what's ne
   - [x] 2.3: Add `<Separator>` between nav rail and ScenarioCard list
   - [x] 2.4: Update LeftPanel collapsed view to render collapsed nav rail variant
 
+#### Review Follow-ups (AI)
+*(none — all verified issues were fixed inline)*
+
 - [x] Task 3: Tests
   - [x] 3.1: Unit test WorkflowNavRail renders all stages with correct completion states
   - [x] 3.2: Test click handlers trigger correct viewMode changes
@@ -86,3 +89,13 @@ so that I always know where I am in the process, what's completed, and what's ne
 ## Change Log
 
 - 2026-03-22: Story 18.1 implemented — WorkflowNavRail component created and integrated (18 tests, all ACs satisfied).
+- 2026-03-22: Code review synthesis — restored keyboard focus-visible ring on nav buttons; removed unnecessary `as string[]` type cast on `activeFor.includes()`.
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-22
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** A=3.3, B=10.3 → averaged 6.8 → REJECT (after filtering false positives: 2 real issues fixed, remainder dismissed)
+- **Issues Found:** 2 verified (1 medium, 1 low)
+- **Issues Fixed:** 2
+- **Action Items Created:** 0
