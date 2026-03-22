@@ -24,7 +24,7 @@ export function AssumptionsReviewScreen({
 }: AssumptionsReviewScreenProps) {
   return (
     <section className="space-y-3">
-      <div className="border border-slate-200 bg-white p-3">
+      <div className="rounded-lg border border-slate-200 bg-white p-3">
         <p className="text-sm font-semibold">Configuration Summary</p>
         <p className="mt-1 text-sm text-slate-700">Population: {population?.name ?? "Not selected"}</p>
         <p className="text-sm text-slate-700">Template: {template?.name ?? "Not selected"}</p>
@@ -33,7 +33,7 @@ export function AssumptionsReviewScreen({
         </div>
       </div>
 
-      <Table className="border border-slate-200 bg-white">
+      <Table className="rounded-lg border border-slate-200 bg-white">
         <TableHead>
           <TableRow>
             <TableHeaderCell>Parameter</TableHeaderCell>

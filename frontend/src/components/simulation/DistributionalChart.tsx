@@ -18,7 +18,7 @@ interface DistributionalChartProps {
 
 export function DistributionalChart({ data, reformLabel = "Reform" }: DistributionalChartProps) {
   return (
-    <div className="h-72 border border-slate-200 bg-white p-3">
+    <div className="h-72 rounded-lg border border-slate-200 bg-white p-3">
       <p className="mb-2 text-sm font-semibold">Income Decile Impact (EUR/year)</p>
       <ResponsiveContainer width="100%" height="85%">
         <BarChart data={data} margin={{ bottom: 5 }}>

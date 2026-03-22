@@ -155,7 +155,7 @@ function RunSelector({
   const completed = results.filter((r) => r.status === "completed");
 
   return (
-    <section className="border border-slate-200 bg-white p-3" aria-label="Run selector">
+    <section className="rounded-lg border border-slate-200 bg-white p-3" aria-label="Run selector">
       <div className="mb-2 flex items-center justify-between">
         <p className="text-xs font-semibold uppercase text-slate-500">
           Select Runs to Compare
@@ -406,7 +406,7 @@ function WelfareTab({
             <p className="text-xs text-red-600">Losers</p>
             <p className="text-lg font-semibold text-red-700 data-mono">{losers}</p>
           </div>
-          <div className="border border-slate-200 bg-white p-2">
+          <div className="rounded-lg border border-slate-200 bg-white p-2">
             <p className="text-xs text-slate-500">Net Change</p>
             <p className={`text-lg font-semibold data-mono ${netChange >= 0 ? "text-emerald-700" : "text-red-700"}`}>
               {netChange >= 0 ? "+" : ""}{netChange.toLocaleString()}
@@ -487,7 +487,7 @@ function DetailPanel({
   return (
     <aside
       ref={panelRef}
-      className="border border-slate-200 bg-slate-50 p-3"
+      className="rounded-lg border border-slate-200 bg-slate-50 p-3"
       aria-label="Indicator detail panel"
     >
       <div className="mb-2 flex items-center justify-between">
@@ -632,7 +632,7 @@ export function ComparisonDashboardScreen({
   return (
     <section className="space-y-3">
       {/* Header */}
-      <div className="flex items-center justify-between border border-slate-200 bg-white p-3">
+      <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-3">
         <div>
           <h2 className="text-base font-semibold text-slate-900">
             Comparison Dashboard
@@ -680,7 +680,7 @@ export function ComparisonDashboardScreen({
 
       {/* Loading */}
       {loading ? (
-        <div className="border border-slate-200 bg-white p-6 text-center">
+        <div className="rounded-lg border border-slate-200 bg-white p-6 text-center">
           <p className="text-sm text-slate-500">Loading comparison data…</p>
         </div>
       ) : null}
@@ -690,13 +690,13 @@ export function ComparisonDashboardScreen({
         <div className="space-y-3">
           {/* AC-5: Cross-metric summary */}
           {comparisonData.cross_metrics.length > 0 ? (
-            <div className="border border-slate-200 bg-white p-3">
+            <div className="rounded-lg border border-slate-200 bg-white p-3">
               <CrossMetricPanel metrics={comparisonData.cross_metrics} />
             </div>
           ) : null}
 
           {/* Toolbar: absolute/relative toggle */}
-          <div className="flex items-center justify-between border border-slate-200 bg-white px-3 py-2">
+          <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2">
             <p className="text-xs text-slate-500">
               Comparing {comparisonData.portfolio_labels.length} runs ·{" "}
               {comparisonData.warnings.length > 0
@@ -738,7 +738,7 @@ export function ComparisonDashboardScreen({
             value={activeTab}
             onValueChange={(v) => setActiveTab(v as ActiveTab)}
           >
-            <div className="border border-slate-200 bg-white">
+            <div className="rounded-lg border border-slate-200 bg-white">
               <TabsList className="w-full justify-start border-b border-slate-200 bg-white">
                 <TabsTrigger value="distributional">Distributional</TabsTrigger>
                 <TabsTrigger value="fiscal">Fiscal</TabsTrigger>
@@ -792,7 +792,7 @@ export function ComparisonDashboardScreen({
 
       {/* Idle state: no comparison run yet */}
       {!comparisonData && !loading && !error ? (
-        <div className="border border-slate-200 bg-white p-6 text-center">
+        <div className="rounded-lg border border-slate-200 bg-white p-6 text-center">
           <p className="text-sm text-slate-500">
             Select 2–5 completed runs above and click Compare to see
             side-by-side indicator analysis.

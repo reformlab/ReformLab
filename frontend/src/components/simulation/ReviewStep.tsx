@@ -61,7 +61,7 @@ export default function ReviewStep({
       </div>
 
       {/* Validation status */}
-      <div className="rounded border border-slate-200 bg-slate-50 p-3 space-y-2">
+      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
           Validation Status
         </h3>
@@ -85,7 +85,7 @@ export default function ReviewStep({
           <h3 className="text-sm font-medium text-slate-700 mb-2">
             Population Source
           </h3>
-          <div className="rounded border border-slate-200 bg-white p-3">
+          <div className="rounded-lg border border-slate-200 bg-white p-3">
             <p className="text-sm text-slate-800">{population.name}</p>
             <p className="text-xs text-slate-500 mt-0.5">
               {population.source} &middot; {population.year} &middot;{" "}
@@ -101,7 +101,7 @@ export default function ReviewStep({
           <h3 className="text-sm font-medium text-slate-700 mb-2">
             Policy Template
           </h3>
-          <div className="rounded border border-slate-200 bg-white p-3">
+          <div className="rounded-lg border border-slate-200 bg-white p-3">
             <div className="flex items-center gap-2">
               <p className="text-sm text-slate-800">{template.name}</p>
               <Badge variant="outline" className="text-xs">
@@ -120,7 +120,7 @@ export default function ReviewStep({
         <h3 className="text-sm font-medium text-slate-700 mb-2">
           Parameter Values
         </h3>
-        <div className="rounded border border-slate-200 overflow-hidden">
+        <div className="rounded-lg border border-slate-200 overflow-hidden">
           <Table>
             <TableHead>
               <TableRow className="bg-slate-50">

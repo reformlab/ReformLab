@@ -206,7 +206,7 @@ export function DataFusionWorkbench({
 
   return (
     <section aria-label="Data Fusion Workbench" className="space-y-3">
-      <div className="border border-slate-200 bg-white p-3">
+      <div className="rounded-lg border border-slate-200 bg-white p-3">
         <h2 className="text-sm font-semibold text-slate-900">Data Fusion Workbench</h2>
         <p className="text-xs text-slate-600">
           Browse institutional data sources, select datasets, choose a merge method, and generate
@@ -280,7 +280,7 @@ export function DataFusionWorkbench({
             {result.validation_result ? (
               <PopulationValidationPanel validation={result.validation_result} />
             ) : (
-              <div className="border border-slate-200 bg-white p-3">
+              <div className="rounded-lg border border-slate-200 bg-white p-3">
                 <p className="text-xs text-slate-500">
                   No marginal validation was performed. Catalog marginals will be applied
                   automatically when the pipeline has marginals configured.

@@ -63,7 +63,7 @@ function statusVariant(status: string): "success" | "destructive" | "warning" | 
 function IndicatorsTab({ detail }: { detail: ResultDetailResponse }) {
   if (!detail.data_available) {
     return (
-      <div className="border border-slate-200 bg-slate-50 p-4 text-center">
+      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-center">
         <RefreshCcw className="mx-auto mb-2 h-6 w-6 text-slate-400" />
         <p className="text-sm font-medium text-slate-700">Full data not available</p>
         <p className="text-xs text-slate-500 mt-1">
@@ -79,7 +79,7 @@ function IndicatorsTab({ detail }: { detail: ResultDetailResponse }) {
   return (
     <div className="space-y-2">
       {indicators ? (
-        <div className="border border-slate-200 bg-white p-3">
+        <div className="rounded-lg border border-slate-200 bg-white p-3">
           <p className="text-xs font-semibold uppercase text-slate-500 mb-2">Summary</p>
           <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
             {Object.entries(indicators).map(([key, val]) => (
@@ -114,7 +114,7 @@ function DataSummaryTab({
 }) {
   return (
     <div className="space-y-3">
-      <div className="border border-slate-200 bg-white p-3">
+      <div className="rounded-lg border border-slate-200 bg-white p-3">
         <p className="text-xs font-semibold uppercase text-slate-500 mb-2">Panel Data</p>
         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
           <span className="text-slate-500">Rows</span>
@@ -133,7 +133,7 @@ function DataSummaryTab({
       </div>
 
       {detail.columns && detail.columns.length > 0 ? (
-        <div className="border border-slate-200 bg-white p-3">
+        <div className="rounded-lg border border-slate-200 bg-white p-3">
           <p className="text-xs font-semibold uppercase text-slate-500 mb-2">Columns</p>
           <div className="flex flex-wrap gap-1">
             {detail.columns.map((col) => (
@@ -192,7 +192,7 @@ function ManifestTab({ detail }: { detail: ResultDetailResponse }) {
   ];
 
   return (
-    <div className="border border-slate-200 bg-white p-3">
+    <div className="rounded-lg border border-slate-200 bg-white p-3">
       <p className="text-xs font-semibold uppercase text-slate-500 mb-2">Run Manifest</p>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-xs">
         {rows.map(([label, value]) => (
@@ -219,7 +219,7 @@ export function ResultDetailView({
 
   return (
     <section
-      className="border border-slate-200 bg-white"
+      className="rounded-lg border border-slate-200 bg-white"
       aria-label={`Result detail for run ${detail.run_id.slice(0, 8)}`}
     >
       {/* Header */}

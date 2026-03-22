@@ -100,7 +100,7 @@ export function MultiRunChart({
         <p className="text-sm font-semibold text-slate-800">{title}</p>
       ) : null}
 
-      <div className="h-[280px] border border-slate-200 bg-white p-3">
+      <div className="h-[280px] rounded-lg border border-slate-200 bg-white p-3">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ bottom: 5 }}>
             <CartesianGrid strokeDasharray="2 2" />

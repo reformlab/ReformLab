@@ -16,7 +16,7 @@ export function RunProgressBar({
   onCancel,
 }: RunProgressBarProps) {
   return (
-    <section className="border border-slate-200 bg-white p-3" aria-label="Simulation progress">
+    <section className="rounded-lg border border-slate-200 bg-white p-3" aria-label="Simulation progress">
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="text-sm font-semibold text-slate-900">Running Simulation</p>
         <p className="data-mono text-sm text-slate-700">{progress}%</p>

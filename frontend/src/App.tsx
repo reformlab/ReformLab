@@ -247,10 +247,10 @@ function Workspace() {
 
   const mainPanelContent = (
     <>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border border-slate-200 bg-white p-3">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-gradient-to-r from-white to-indigo-50 p-3 shadow-sm">
         <div>
-          <h1 className="text-lg font-semibold">ReformLab</h1>
-          <p className="text-sm text-slate-600">
+          <h1 className="text-xl font-bold">ReformLab</h1>
+          <p className="text-sm text-indigo-600/70">
             Environmental policy analysis workspace
           </p>
         </div>
@@ -329,7 +329,7 @@ function Workspace() {
       ) : null}
 
       {viewMode === "run" ? (
-        <section className="space-y-3 border border-slate-200 bg-white p-3">
+        <section className="space-y-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
           <h2 className="text-lg font-semibold">Run Simulation</h2>
           <p className="text-sm text-slate-600">
             Ready to compute baseline and reform results for{" "}
@@ -484,7 +484,7 @@ function Workspace() {
           <RightPanel collapsed={isNarrow ? true : rightCollapsed} onToggle={() => setRightCollapsed((current) => !current)}>
             <div className="space-y-3">
               {selectedScenario ? (
-                <section className="border border-slate-200 bg-white p-3">
+                <section className="rounded-lg border border-slate-200 bg-white p-3">
                   <p className="text-xs font-semibold uppercase text-slate-500">Selected Scenario</p>
                   <p className="text-sm font-medium text-slate-800">{selectedScenario.name}</p>
                   <div className="mt-1 flex flex-wrap gap-1">
@@ -504,17 +504,17 @@ function Workspace() {
                 </section>
               ) : null}
 
-              <section className="border border-slate-200 bg-white p-3">
+              <section className="rounded-lg border border-slate-200 bg-white p-3">
                 <p className="text-xs font-semibold uppercase text-slate-500">Population</p>
                 <p className="text-sm text-slate-800">{selectedPopulation?.name}</p>
               </section>
 
-              <section className="border border-slate-200 bg-white p-3">
+              <section className="rounded-lg border border-slate-200 bg-white p-3">
                 <p className="text-xs font-semibold uppercase text-slate-500">Template</p>
                 <p className="text-sm text-slate-800">{selectedTemplate?.name}</p>
               </section>
 
-              <section className="border border-slate-200 bg-white p-3">
+              <section className="rounded-lg border border-slate-200 bg-white p-3">
                 <p className="text-xs font-semibold uppercase text-slate-500">Workspace State</p>
                 <div className="mt-2 flex flex-wrap gap-1">
                   <Badge variant="info">{viewMode}</Badge>

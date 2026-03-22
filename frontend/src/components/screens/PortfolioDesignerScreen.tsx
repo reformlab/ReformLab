@@ -407,7 +407,7 @@ export function PortfolioDesignerScreen({
   // ============================================================================
 
   return (
-    <div className="border border-slate-200 bg-white">
+    <div className="rounded-lg border border-slate-200 bg-white">
       <WorkbenchStepper activeStep={activeStep} onStepSelect={setActiveStep} />
 
       <div className="p-3">
@@ -467,7 +467,7 @@ export function PortfolioDesignerScreen({
             </div>
 
             {/* Resolution strategy */}
-            <div className="border border-slate-200 p-3">
+            <div className="rounded-lg border border-slate-200 p-3">
               <p className="text-xs font-semibold text-slate-700 mb-1.5">Conflict Resolution</p>
               <select
                 value={resolutionStrategy}
@@ -533,7 +533,7 @@ export function PortfolioDesignerScreen({
             </div>
 
             {/* Conflict validation */}
-            <div className="border border-slate-200 p-3 space-y-2">
+            <div className="rounded-lg border border-slate-200 p-3 space-y-2">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-slate-700">Conflict Check</p>
                 <Button
@@ -550,7 +550,7 @@ export function PortfolioDesignerScreen({
             </div>
 
             {/* Policy summary */}
-            <div className="border border-slate-200 p-3 space-y-1.5">
+            <div className="rounded-lg border border-slate-200 p-3 space-y-1.5">
               <p className="text-xs font-semibold text-slate-700">Policies ({composition.length})</p>
               {composition.map((entry, i) => {
                 const t = templates.find((tmpl) => tmpl.id === entry.templateId);
@@ -568,7 +568,7 @@ export function PortfolioDesignerScreen({
 
             {/* Saved portfolios */}
             {savedPortfolios.length > 0 ? (
-              <div className="border border-slate-200 p-3 space-y-1.5">
+              <div className="rounded-lg border border-slate-200 p-3 space-y-1.5">
                 <p className="text-xs font-semibold text-slate-700">
                   Saved Portfolios ({savedPortfolios.length})
                 </p>
@@ -625,7 +625,7 @@ export function PortfolioDesignerScreen({
             onClick={() => setSaveDialogOpen(false)}
             aria-hidden="true"
           />
-          <div className="relative z-10 w-full max-w-md border border-slate-200 bg-white p-6 shadow-lg">
+          <div className="relative z-10 w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-lg">
             <h3 className="text-sm font-semibold text-slate-900 mb-4">Save Portfolio</h3>
 
             <div className="space-y-3">
@@ -708,7 +708,7 @@ export function PortfolioDesignerScreen({
             onClick={() => setCloneDialogName(null)}
             aria-hidden="true"
           />
-          <div className="relative z-10 w-full max-w-sm border border-slate-200 bg-white p-6 shadow-lg">
+          <div className="relative z-10 w-full max-w-sm rounded-lg border border-slate-200 bg-white p-6 shadow-lg">
             <h3 className="text-sm font-semibold text-slate-900 mb-4">
               Clone &ldquo;{cloneDialogName}&rdquo;
             </h3>

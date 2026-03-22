@@ -1,0 +1,121 @@
+record_id: 6a7eabd9-ba0e-4f6d-8a0c-eb48006247ea
+created_at: '2026-03-22T10:52:52.748606+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 18
+  story_num: 2
+  title: Story 18.2
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: gemini
+  model: gemini-2.5-flash
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-03-22T10:48:58.496311Z'
+  end_time: '2026-03-22T10:49:48.714311Z'
+  duration_ms: 50218
+  input_tokens: 0
+  output_tokens: 2446
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 9784
+  heading_count: 25
+  list_depth_max: 3
+  code_block_count: 2
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 3'
+  - 🎯 Ruthless Story Validation 18.2
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 3 → MAJOR REWORK'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Inconsistent/Empty File List
+  - 2. Incomplete Visual Regression Testing Strategy
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Clarify Scope of AC-1 ("All containers" / "9 screens")
+  - 🤖 LLM Optimization Improvements
+  - 1. Condense "Visual Polish Strategy" Rationale
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.33
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 73a4981e8ecf
+findings:
+  total_count: 6
+  by_severity:
+    critical: 2
+    major: 2
+    minor: 1
+    nit: 1
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 0
+    completeness: 2
+    clarity: 3
+    testability: 1
+  has_fix_count: 4
+  has_location_count: 6
+  has_evidence_count: 5
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 4
+  confidence_phrases_count: 4
+linguistic:
+  avg_sentence_length: 22.810344827586206
+  vocabulary_richness: 0.3711262282690854
+  flesch_reading_ease: 21.88174248011086
+  vague_terms_count: 6
+  formality_score: 0.75
+  sentiment: mixed
+quality:
+  actionable_ratio: 0.67
+  specificity_score: 0.92
+  evidence_quality: 0.83
+  follows_template: true
+  internal_consistency: 0.97
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false

@@ -188,7 +188,7 @@ export function SimulationRunnerScreen({
   if (subView === "configure") {
     return (
       <section className="space-y-3" aria-label="Simulation runner configuration">
-        <div className="border border-slate-200 bg-white p-3">
+        <div className="rounded-lg border border-slate-200 bg-white p-3">
           <h2 className="text-base font-semibold text-slate-900">Run Simulation</h2>
           <p className="mt-1 text-xs text-slate-500">
             Configure and execute a full multi-year simulation run.
@@ -196,7 +196,7 @@ export function SimulationRunnerScreen({
         </div>
 
         {/* Configuration summary */}
-        <div className="border border-slate-200 bg-white p-3 space-y-2">
+        <div className="rounded-lg border border-slate-200 bg-white p-3 space-y-2">
           <p className="text-xs font-semibold uppercase text-slate-500 mb-2">Run Configuration</p>
 
           <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
