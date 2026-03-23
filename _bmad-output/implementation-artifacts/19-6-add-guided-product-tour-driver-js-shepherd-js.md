@@ -412,11 +412,25 @@ None.
 - `domain-model.mdx`: Added import and `<DomainModelTour client:load />` above diagram with blank line separators per MDX rules.
 - `npm run check` — 0 errors, 0 warnings. `npm run build` — complete, 7 pages built, zero errors.
 - Visual checks (tour sequence, light/dark mode colors, post-dismiss diagram interactivity) require manual browser verification via `npm run preview`.
+- **[Code Review Synthesis]** Applied 7 fixes: overlay theming for light/dark (CSS `!important` on SVG path), Previous/Next button visual differentiation, `:focus-visible` on tour button and popover nav buttons, focus return to trigger button via `onDestroyed` callback, safe double-destroy via ref nulling, explicit `allowClose: true`, and `side: 'left'` on Indicators step to prevent viewport clipping. `npm run check` 0 errors, `npm run build` 7 pages zero errors.
 
 ### File List
 
-- `docs/src/components/DomainModelTour.tsx` (created)
-- `docs/src/components/DomainModelTour.module.css` (created)
+- `docs/src/components/DomainModelTour.tsx` (created, modified by review synthesis)
+- `docs/src/components/DomainModelTour.module.css` (created, modified by review synthesis)
 - `docs/src/content/docs/domain-model.mdx` (modified)
 - `docs/package.json` (modified — driver.js dependency added)
 - `docs/package-lock.json` (modified — lockfile updated)
+
+#### Review Follow-ups (AI)
+- [ ] [AI-Review] LOW: Verify overlay theming visually — `!important` CSS override on driver.js inline SVG path styles needs browser confirmation in both light and dark mode (`docs/src/components/DomainModelTour.module.css`)
+- [ ] [AI-Review] LOW: Consider adding `data-tour-step` attributes to `DomainModelDiagram.tsx` as stable selectors — aria-label coupling is fragile across copy/localization changes (`docs/src/components/DomainModelTour.tsx`, `docs/src/components/DomainModelDiagram.tsx`)
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-23
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 3.8-5.8 (range across 2 reviewers) -> Approved with Reservations
+- **Issues Found:** 7
+- **Issues Fixed:** 7
+- **Action Items Created:** 2

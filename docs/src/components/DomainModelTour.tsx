@@ -52,12 +52,14 @@ const tourSteps: DriveStep[] = [
       title: 'Indicators',
       description:
         'Analytics computed from results — distributional, fiscal, geographic, and welfare metrics. The final output users interact with.',
+      side: 'left',
     },
   },
 ];
 
 export default function DomainModelTour() {
   const driverRef = useRef<ReturnType<typeof driver> | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     return () => {
@@ -72,15 +74,20 @@ export default function DomainModelTour() {
       progressText: 'Step {{current}} of {{total}}',
       showButtons: ['next', 'previous', 'close'],
       allowKeyboardControl: true,
+      allowClose: true,
       steps: tourSteps,
       popoverClass: 'reformlab-tour-popover',
+      onDestroyed: () => {
+        driverRef.current = null;
+        buttonRef.current?.focus();
+      },
     });
     driverRef.current = driverInstance;
     driverInstance.drive();
   }, []);
 
   return (
-    <button type="button" className={styles.tourButton} onClick={startTour}>
+    <button ref={buttonRef} type="button" className={styles.tourButton} onClick={startTour}>
       Take the tour
     </button>
   );
