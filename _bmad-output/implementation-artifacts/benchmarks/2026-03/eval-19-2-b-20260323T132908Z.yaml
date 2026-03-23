@@ -1,0 +1,113 @@
+record_id: dede5ec2-c821-4a4b-b3e6-cbd8a763393e
+created_at: '2026-03-23T13:29:08.953617+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 19
+  story_num: '2'
+  title: Story 19.2
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: true
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: sonnet
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-03-23T13:23:12.272846Z'
+  end_time: '2026-03-23T13:28:16.206846Z'
+  duration_ms: 303934
+  input_tokens: 0
+  output_tokens: 1939
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 7759
+  heading_count: 13
+  list_depth_max: 2
+  code_block_count: 5
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: **4.5**'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes & Readability
+  - ⚡ Performance & Scalability
+  - 🐛 Correctness & Safety
+  - 🔧 Maintainability Issues
+  - 🛠️ Suggested Fixes
+  - 1. Fix `actions/checkout@v6` → `v4`
+  - '2. Add `mermaid` as explicit dependency and add `contents: read` permission'
+  - 3. Add `engines` field to `package.json`
+  - 4. Mark the two visual-verification tasks as requiring manual sign-off before closing story
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.33
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 2db7820104f8
+findings:
+  total_count: 9
+  by_severity:
+    critical: 0
+    major: 4
+    minor: 5
+    nit: 0
+  by_category:
+    security: 1
+    performance: 0
+    correctness: 2
+    completeness: 3
+    clarity: 3
+    testability: 0
+  has_fix_count: 7
+  has_location_count: 9
+  has_evidence_count: 8
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: true
+  uses_conditionals: false
+  uncertainty_phrases_count: 1
+  confidence_phrases_count: 0
+linguistic:
+  avg_sentence_length: 33.11764705882353
+  vocabulary_richness: 0.369449378330373
+  flesch_reading_ease: 32.55241059522368
+  vague_terms_count: 0
+  formality_score: 0.68
+  sentiment: mixed
+quality:
+  actionable_ratio: 0.78
+  specificity_score: 0.95
+  evidence_quality: 0.85
+  follows_template: true
+  internal_consistency: 0.95
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: true
+    requires_migration: false
+  phase: code-review
+  file_count: 5
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

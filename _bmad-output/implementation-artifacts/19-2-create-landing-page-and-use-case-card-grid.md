@@ -321,3 +321,19 @@ No automated tests for static docs. Quality gates:
 ### Change Log
 
 - 2026-03-23: Story implemented — Mermaid integration, landing page diagram, use-case card grid (all ACs satisfied)
+- 2026-03-23: Code review synthesis — fixed `actions/checkout@v6` → `v4` and added `contents: read` permission in CI workflow
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-23
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 5.4 → Changes Requested
+- **Issues Found:** 6
+- **Issues Fixed:** 2
+- **Action Items Created:** 4
+
+#### Review Follow-ups (AI)
+- [ ] [AI-Review] HIGH: `mermaid` peer dependency is implicit — add `"mermaid": "11.13.0"` to `docs/package.json` dependencies and re-run `npm install` (`docs/package.json`)
+- [ ] [AI-Review] MEDIUM: AC 1 browser verification incomplete — run `npm run preview` and confirm Mermaid renders as SVG with JS enabled, then check off Task 4 subtasks (`docs/src/content/docs/index.mdx`)
+- [ ] [AI-Review] LOW: AC 4 "Try the Demo" CTA is inline text, not a visually distinct call-to-action — acceptable for v1 but consider a styled button/section in a follow-up (`docs/src/content/docs/index.mdx:42`)
+- [ ] [AI-Review] LOW: JSX `{/* TODO */}` comments are stripped from compiled HTML — future devs inspecting built site won't find them; consider adding a tracking issue for placeholder links (`docs/src/content/docs/use-cases.mdx`)
