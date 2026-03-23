@@ -1,0 +1,130 @@
+.diagram {
+  width: 100%;
+  overflow: visible;
+  margin-bottom: 1.5rem;
+}
+
+.domainNode {
+  cursor: pointer;
+}
+
+.domainNode rect {
+  fill: var(--sl-color-gray-6);
+  stroke: var(--sl-color-gray-4);
+  stroke-width: 1.5;
+  transition: fill 0.15s ease, stroke 0.15s ease;
+}
+
+.domainNode:hover rect,
+.domainNode:focus rect {
+  fill: var(--sl-color-gray-5);
+  stroke: var(--sl-color-accent);
+  stroke-width: 2;
+}
+
+.domainNode.selected rect {
+  fill: var(--sl-color-accent);
+  stroke: var(--sl-color-accent);
+  stroke-width: 2;
+}
+
+.domainNode text {
+  fill: var(--sl-color-text);
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: none;
+  user-select: none;
+}
+
+.domainNode.selected text {
+  fill: var(--sl-color-accent-high);
+}
+
+.domainEdge line {
+  stroke: var(--sl-color-gray-4);
+  stroke-width: 1.5;
+}
+
+.domainEdge marker path {
+  fill: var(--sl-color-gray-4);
+}
+
+.arrowMarker {
+  fill: var(--sl-color-gray-4);
+}
+
+.detailPanel {
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  background: var(--sl-color-bg-sidebar);
+  margin-top: 0.5rem;
+}
+
+.detailHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.detailTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--sl-color-text);
+  margin: 0;
+}
+
+.dismissButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--sl-color-gray-3);
+  font-size: 1.25rem;
+  line-height: 1;
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  transition: color 0.1s ease, background 0.1s ease;
+}
+
+.dismissButton:hover {
+  color: var(--sl-color-text);
+  background: var(--sl-color-gray-6);
+}
+
+.detailDescription {
+  color: var(--sl-color-text-accent);
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.detailProperties {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.detailProperties li {
+  background: var(--sl-color-gray-7, var(--sl-color-gray-6));
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 4px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.8rem;
+  color: var(--sl-color-text-accent);
+  font-family: var(--sl-font-mono, monospace);
+}
+
+.detailLink {
+  font-size: 0.875rem;
+  color: var(--sl-color-accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.detailLink:hover {
+  text-decoration: underline;
+}

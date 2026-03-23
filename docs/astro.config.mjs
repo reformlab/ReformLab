@@ -1,12 +1,14 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import mermaid from 'astro-mermaid';
+import react from '@astrojs/react';
 
 export default defineConfig({
   site: 'https://docs.reform-lab.eu',
   server: { port: 4322 },
   integrations: [
     mermaid(),
+    react(),
     starlight({
       title: 'ReformLab Docs',
       social: [

@@ -1,6 +1,6 @@
 # Story 19.5: Build Interactive Domain Model (React/MDX Component)
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -11,33 +11,34 @@ so that I can discover what each concept does by clicking on it rather than scro
 ## Acceptance Criteria
 
 1. **Interactive diagram replaces Mermaid:** Given the domain model page (`domain-model.mdx`), when visited, then the static Mermaid code block diagram is replaced by a clickable React component rendered inside MDX showing the 6 core objects (Population, Policy, Orchestrator, Engine, Results, Indicators) and their directed relationships.
-2. **Click reveals detail:** Given an object node in the interactive diagram, when clicked, then a detail panel or tooltip displays the object's plain-language description (the existing intro paragraph for that section) and its key properties (2-4 bullet points).
-3. **Light and dark mode:** Given the interactive component, when rendered in Starlight, then it works correctly in both light and dark modes using brand colors, with no flash of wrong theme on toggle.
+2. **Click reveals detail:** Given an object node in the interactive diagram, when clicked, then a detail panel displays the object's canonical description and key properties (from the Node Content Data table in Dev Notes); clicking the selected node again, or clicking anywhere outside the diagram area, dismisses the panel.
+3. **Light and dark mode:** Given the interactive component, when rendered in Starlight, then node fills, edge strokes, and panel backgrounds use `--sl-color-*` CSS custom properties; when Starlight's theme toggle is activated, the diagram updates without a page reload and no intermediate hard-coded palette is visible.
 4. **Existing content preserved:** Given the domain model page, when the interactive component is added, then all existing section content (headings, prose, `<details>` code blocks) remains intact below the diagram. The diagram is a navigation aid, not a replacement for page content.
 5. **Build succeeds:** Given all changes in this story, when `npm run build` is run in `docs/`, then it completes with zero errors.
 6. **TypeScript clean:** Given all changes, when `npm run check` is run in `docs/`, then it completes with zero errors.
+7. **Keyboard accessible:** Given the interactive diagram, when navigated with a keyboard, then each node is reachable via Tab, selectable via Enter or Space (showing the detail panel), and the Escape key dismisses the open panel. Each node element has `role="button"`, a visible focus outline, and an `aria-label` describing its name.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add React integration to docs site (AC: 5, 6)
-  - [ ] Install `@astrojs/react`, `react`, `react-dom`, `@types/react`, `@types/react-dom`
-  - [ ] Add `react()` integration to `astro.config.mjs` (after `mermaid()`, before `starlight()`)
-  - [ ] Update `tsconfig.json` with JSX compiler options
-  - [ ] Verify `npm run build` and `npm run check` still pass with zero errors
-- [ ] Task 2: Build DomainModelDiagram React component (AC: 1, 2, 3)
-  - [ ] Create `docs/src/components/DomainModelDiagram.tsx`
-  - [ ] Implement SVG-based node layout for 6 objects with directed edge arrows
-  - [ ] Implement click handler that highlights selected node and shows detail panel
-  - [ ] Implement detail panel with object description and key properties
-  - [ ] Style with CSS custom properties from Starlight (`--sl-color-*`) for light/dark mode
-  - [ ] Add `useStarlightTheme` hook (MutationObserver on `data-theme`) if any fill/stroke must be set programmatically
-- [ ] Task 3: Integrate component into domain-model.mdx (AC: 1, 4)
-  - [ ] Replace Mermaid code block with `<DomainModelDiagram client:load />` import
-  - [ ] Keep all existing section content (headings, prose, `<details>` blocks) below the diagram
-  - [ ] Add anchor-link behavior: clicking a node scrolls to its section on the page (optional enhancement)
-- [ ] Task 4: Verify build and visual quality (AC: 5, 6)
-  - [ ] Run `npm run build` in `docs/` — zero errors
-  - [ ] Run `npm run check` in `docs/` — zero errors
+- [x] Task 1: Add React integration to docs site (AC: 5, 6)
+  - [x] Install `@astrojs/react`, `react`, `react-dom`, `@types/react`, `@types/react-dom`
+  - [x] Add `react()` integration to `astro.config.mjs` (after `mermaid()`, before `starlight()`)
+  - [x] Update `tsconfig.json` with JSX compiler options
+  - [x] Verify `npm run build` and `npm run check` still pass with zero errors
+- [x] Task 2: Build DomainModelDiagram React component (AC: 1, 2, 3)
+  - [x] Create `docs/src/components/DomainModelDiagram.tsx`
+  - [x] Implement SVG-based node layout for 6 objects with directed edge arrows
+  - [x] Implement click handler that highlights selected node and shows detail panel
+  - [x] Implement detail panel with object description and key properties
+  - [x] Style with CSS custom properties from Starlight (`--sl-color-*`) for light/dark mode
+  - [x] Add `useStarlightTheme` hook (MutationObserver on `data-theme`) if any fill/stroke must be set programmatically
+- [x] Task 3: Integrate component into domain-model.mdx (AC: 1, 4)
+  - [x] Replace Mermaid code block with `<DomainModelDiagram client:load />` import
+  - [x] Keep all existing section content (headings, prose, `<details>` blocks) below the diagram
+  - [x] The detail panel "Learn more" link is a standard `href="#section-id"` hash link — no auto-scroll JS needed (anchor navigation is handled by the browser)
+- [x] Task 4: Verify build and visual quality (AC: 5, 6)
+  - [x] Run `npm run build` in `docs/` — zero errors
+  - [x] Run `npm run check` in `docs/` — zero errors
 
 ## Dev Notes
 
@@ -50,15 +51,17 @@ so that I can discover what each concept does by clicking on it rather than scro
 - Use `@astrojs/react` **^4.4** (not 5.x which requires Astro 6 + Node 22).
 - Use **React 19** (`react@^19.0.0`, `react-dom@^19.0.0`) — compatible with `@astrojs/react` 4.x.
 
-**Install command:**
+**Install command (version pins required — do NOT omit):**
 
 ```bash
 cd docs
-npm install @astrojs/react react react-dom
+npm install @astrojs/react@^4.4 react@^19.0.0 react-dom@^19.0.0
 npm install -D @types/react @types/react-dom
 ```
 
 **Do NOT use `npx astro add react`** — it may attempt to upgrade Astro. Install manually.
+
+**Post-install verification:** Run `npm ls @astrojs/react` — must show `4.x.x`. Run `npm ls astro` — must still show `5.7.10`. Run `npm ls zod` — must show only `3.25.76` (existing override).
 
 **`astro.config.mjs` update:**
 
@@ -97,13 +100,15 @@ Place `react()` after `mermaid()` and before `starlight()` in the integrations a
 }
 ```
 
+**Note:** `.astro/types.d.ts` is generated by `astro build` / `astro dev` / `astro sync`. In CI on a clean checkout, run `npm run build` before `npm run check` to ensure this file exists.
+
 ### Component Architecture
 
 **File:** `docs/src/components/DomainModelDiagram.tsx`
 
 **Design: Inline SVG with React state — no external library.**
 
-The diagram has only 6 nodes and 6 edges. This is too simple to warrant a library like React Flow, D3, or Recharts. Use an inline SVG with:
+The diagram has only 6 nodes and 5 edges. This is too simple to warrant a library like React Flow, D3, or Recharts. Use an inline SVG with:
 - Rectangles (rounded) for each domain object
 - Directed arrows (SVG `<line>` + `<marker>`) for relationships
 - React `useState` for selected node
@@ -130,7 +135,32 @@ Each node needs:
 - `label` — display name (e.g., `"Population"`)
 - `description` — 1-2 sentence summary (reuse from existing page prose)
 - `properties` — 2-4 key properties (bullet points)
-- `x`, `y` — SVG coordinates
+- `x`, `y` — SVG coordinates (top-left corner of the node rectangle)
+
+**Suggested SVG coordinate system:**
+
+```
+viewBox: "0 0 920 220"
+Node dimensions: width=130, height=44, rx=8 (rounded corners)
+
+Node positions (x, y = top-left corner):
+  population:   x=20,  y=30
+  policy:       x=20,  y=150
+  orchestrator: x=230, y=90
+  engine:       x=430, y=90
+  results:      x=600, y=90
+  indicators:   x=770, y=90
+
+Arrowhead marker: refX=10, refY=5, markerWidth=10, markerHeight=10
+  path d="M 0 0 L 10 5 L 0 10 z"
+
+Edge line endpoints (from right/left midpoints of node rects):
+  population → orchestrator:   from (150, 52)  to (230, 112)  [angled down-right]
+  policy → orchestrator:       from (150, 172) to (230, 112)  [angled up-right]
+  orchestrator → engine:       from (360, 112) to (430, 112)  [horizontal]
+  engine → results:            from (560, 112) to (600, 112)  [horizontal]
+  results → indicators:        from (730, 112) to (770, 112)  [horizontal]
+```
 
 **Detail panel:**
 - Appears below (or beside) the SVG when a node is clicked
@@ -153,26 +183,28 @@ Starlight sets `data-theme="light"` or `data-theme="dark"` on `<html>`. Style th
 | Accent/selected | `var(--sl-color-accent)` | brand accent | brand accent |
 | Edge/arrow | `var(--sl-color-gray-3)` | gray | gray |
 
-For SVG `fill` and `stroke` attributes (which cannot use CSS variables directly in all browsers), use CSS `fill: var(--sl-color-gray-6)` on SVG elements styled via CSS classes — SVG presentation attributes CAN be overridden by CSS.
+For SVG `fill` and `stroke` attributes (which cannot use CSS variables directly in all browsers), use CSS `fill: var(--sl-color-gray-6)` on SVG elements styled via CSS Module classes — SVG presentation attributes CAN be overridden by CSS.
 
-Example:
+Example (`DomainModelDiagram.module.css`):
 
 ```css
-.domain-node rect {
+.domainNode rect {
   fill: var(--sl-color-gray-6);
   stroke: var(--sl-color-gray-4);
 }
-.domain-node.selected rect {
+.domainNode.selected rect {
   fill: var(--sl-color-accent);
   stroke: var(--sl-color-accent);
 }
-.domain-node text {
+.domainNode text {
   fill: var(--sl-color-text);
 }
-.domain-edge line {
+.domainEdge line {
   stroke: var(--sl-color-gray-3);
 }
 ```
+
+In the TSX file: `import styles from './DomainModelDiagram.module.css';` then `<g className={styles.domainNode}>` on each node group.
 
 **If** CSS variables on SVG elements cause cross-browser issues, fall back to a `useStarlightTheme` hook using `MutationObserver` on the `data-theme` attribute:
 
@@ -180,13 +212,15 @@ Example:
 function useStarlightTheme() {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof document !== 'undefined') {
-      return (document.documentElement.dataset.theme as 'light' | 'dark') ?? 'dark';
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      return (document.documentElement.dataset.theme as 'light' | 'dark') ?? (prefersDark ? 'dark' : 'light');
     }
     return 'dark';
   });
   useEffect(() => {
     const observer = new MutationObserver(() => {
-      setTheme((document.documentElement.dataset.theme as 'light' | 'dark') ?? 'dark');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      setTheme((document.documentElement.dataset.theme as 'light' | 'dark') ?? (prefersDark ? 'dark' : 'light'));
     });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     return () => observer.disconnect();
@@ -237,6 +271,7 @@ The SVG should use `viewBox` with a fixed coordinate system and `width="100%"` t
 | File | Purpose |
 |------|---------|
 | `docs/src/components/DomainModelDiagram.tsx` | Interactive domain model React component |
+| `docs/src/components/DomainModelDiagram.module.css` | CSS Module styles with `--sl-color-*` custom property references for light/dark theming |
 
 ### Files to Modify
 
@@ -250,7 +285,7 @@ The SVG should use `viewBox` with a fixed coordinate system and `width="100%"` t
 
 ### Files NOT to Modify
 
-- `docs/src/styles/custom.css` — component styles should be co-located in the TSX file (CSS modules, inline styles, or a sibling CSS file) rather than polluting the global custom CSS. Exception: if Starlight CSS variable overrides are needed for the diagram, add them to `custom.css`.
+- `docs/src/styles/custom.css` — component styles should use a CSS Module file (`DomainModelDiagram.module.css`) co-located with the component, not the global stylesheet. CSS Modules support descendant selectors (`.domain-node rect { ... }`) and CSS custom property references (`var(--sl-color-*)`). Do NOT use inline styles for theme-responsive rules (inline styles cannot do descendant selectors or `:hover`/`:focus`). Exception: if Starlight CSS variable overrides are needed for the diagram globally, add them to `custom.css`.
 - Other MDX pages — out of scope
 - `docs/src/content.config.ts` — no changes needed
 
@@ -390,7 +425,7 @@ No automated tests for static docs. Quality gates:
 
 ### Agent Model Used
 
-{to be filled by dev agent}
+claude-sonnet-4-6
 
 ### Debug Log References
 
@@ -398,8 +433,25 @@ None.
 
 ### Completion Notes List
 
-{to be filled by dev agent}
+- Installed `@astrojs/react@4.4.2`, `react@^19.0.0`, `react-dom@^19.0.0`, `@types/react`, `@types/react-dom` — version pins held; `astro` stayed at `5.7.10`, `zod` at `3.25.76`
+- Added `react()` integration to `astro.config.mjs` between `mermaid()` and `starlight()`
+- Updated `tsconfig.json` with `jsx: "react-jsx"` and `jsxImportSource: "react"` compiler options
+- Created `DomainModelDiagram.tsx`: inline SVG with 6 nodes, 5 directed edges, `useState` for selection, `role="button"` + `tabIndex` + keyboard handlers (Enter/Space/Escape) satisfying AC 7
+- CSS Module (`DomainModelDiagram.module.css`) uses `--sl-color-*` variables exclusively — no hard-coded palette, light/dark toggle works without JS (AC 3)
+- `useStarlightTheme` hook NOT needed — CSS custom properties on SVG elements work correctly via CSS Modules
+- Replaced Mermaid block in `domain-model.mdx` with `import DomainModelDiagram` + `<DomainModelDiagram client:load />` — all existing sections preserved intact (AC 4)
+- `npm run build`: 0 errors, component bundles as `DomainModelDiagram.PONpCjxg.js` (4.98 kB gzipped 2.43 kB) + CSS module (AC 5)
+- `npm run check`: 0 errors, 0 warnings (AC 6)
 
 ### File List
 
-{to be filled by dev agent}
+**Created:**
+- `docs/src/components/DomainModelDiagram.tsx`
+- `docs/src/components/DomainModelDiagram.module.css`
+
+**Modified:**
+- `docs/astro.config.mjs` — added `react()` integration
+- `docs/tsconfig.json` — added JSX compiler options
+- `docs/package.json` — new dependencies added via `npm install`
+- `docs/package-lock.json` — updated by `npm install`
+- `docs/src/content/docs/domain-model.mdx` — replaced Mermaid block with React component

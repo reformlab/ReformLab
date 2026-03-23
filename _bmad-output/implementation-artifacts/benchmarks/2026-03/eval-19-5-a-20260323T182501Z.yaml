@@ -1,0 +1,124 @@
+record_id: 0f72b883-1035-4fbe-91f2-827648cdc302
+created_at: '2026-03-23T18:25:01.046609+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 19
+  story_num: 5
+  title: Story 19.5
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: sonnet
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-03-23T18:18:15.953984Z'
+  end_time: '2026-03-23T18:23:36.503984Z'
+  duration_ms: 320550
+  input_tokens: 0
+  output_tokens: 4906
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 19624
+  heading_count: 28
+  list_depth_max: 2
+  code_block_count: 11
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Evidence Score Summary
+  - 'Evidence Score: **4.4** → **MAJOR REWORK**'
+  - 🎯 Ruthless Story Validation 19.5
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Missing Version Pin in npm Install Command
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Accessibility Requirements Missing from ACs
+  - 2. SVG Layout Coordinates Not Provided
+  - 3. CSS Styling Approach Contradiction
+  - ✨ Optimizations (Nice to Have)
+  - '1. Fix Factual Error: Edge Count'
+  - 2. Fix `useStarlightTheme` Default Theme Value
+  - 🤖 LLM Optimization Improvements
+  - 1. Install Command Contradiction Creates Decision Fatigue
+  - 2. "CSS-first, then hook" Pattern Creates Ambiguous Implementation Path
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.33
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 3963a4d7987a
+findings:
+  total_count: 13
+  by_severity:
+    critical: 1
+    major: 6
+    minor: 5
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 3
+    completeness: 7
+    clarity: 3
+    testability: 1
+  has_fix_count: 13
+  has_location_count: 13
+  has_evidence_count: 13
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: false
+  uses_conditionals: true
+  uncertainty_phrases_count: 7
+  confidence_phrases_count: 6
+linguistic:
+  avg_sentence_length: 22.885245901639344
+  vocabulary_richness: 0.2836676217765043
+  flesch_reading_ease: 30.750202387130287
+  vague_terms_count: 0
+  formality_score: 0.8
+  sentiment: positive
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.95
+  evidence_quality: 0.98
+  follows_template: true
+  internal_consistency: 0.98
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false

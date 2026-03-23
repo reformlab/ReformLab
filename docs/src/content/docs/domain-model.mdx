@@ -3,23 +3,11 @@ title: Domain Model
 description: Core concepts and objects in the ReformLab domain model.
 ---
 
-ReformLab is built around six core objects that work together to produce distributional impact analysis. Each object has a clear role in the simulation pipeline.
+import DomainModelDiagram from '../../components/DomainModelDiagram';
 
-```mermaid
-flowchart LR
-    Pop["Population"]
-    Pol["Policy"]
-    Orch["Orchestrator"]
-    Eng["Engine"]
-    Res["Results"]
-    Ind["Indicators"]
+ReformLab is built around six core objects that work together to produce distributional impact analysis. Click any object to learn more.
 
-    Pop --> Orch
-    Pol --> Orch
-    Orch --> Eng
-    Eng --> Res
-    Res --> Ind
-```
+<DomainModelDiagram client:load />
 
 ---
 
