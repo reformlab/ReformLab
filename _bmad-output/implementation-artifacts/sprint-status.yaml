@@ -116,11 +116,11 @@ development_status:
   12-5-implement-multi-portfolio-comparison-and-notebook-demo: done
   epic-12-retrospective: done
   # Epic 13
-  epic-13: in-progress
+  epic-13: done
   13-1-define-custom-template-authoring-api-and-registration: done
   13-2-implement-vehicle-malus-template: done
   13-3-implement-energy-poverty-aid-template: done
-  13-4-validate-custom-templates-in-portfolios-and-build-notebook-demo: review
+  13-4-validate-custom-templates-in-portfolios-and-build-notebook-demo: done
   epic-13-retrospective: optional
   # Epic 14
   epic-14: done

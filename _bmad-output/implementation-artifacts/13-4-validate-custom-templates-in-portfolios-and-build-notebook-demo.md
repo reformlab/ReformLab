@@ -1,7 +1,7 @@
 
 # Story 13.4: Validate custom templates in portfolios and build notebook demo
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -331,3 +331,22 @@ Claude Opus 4.6
 - 2026-03-20: Added `uv run pytest --nbmake notebooks/guides/07_custom_templates.ipynb -v` to CI workflow
 - 2026-03-20: All verification passed: ruff clean, mypy clean, 3154 tests pass, nbmake passes
 - 2026-03-20: Story marked review — all tasks complete, all ACs satisfied
+- 2026-03-23: Code review (AI) — Evidence Score -0.8 → APPROVED. Fixed 3 issues: strengthened weak OR-assertion in notebook comparison test, removed F541 f-string without placeholder in notebook, removed redundant re-imports in round-trip tests. Story marked done.
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-23
+
+- **Reviewer:** AI Code Review Engine (Claude Opus 4.6)
+- **Evidence Score:** -0.8 → APPROVED
+- **Issues Found:** 5
+- **Issues Fixed:** 3
+- **Action Items Created:** 0
+
+#### Findings Summary
+
+- 1 IMPORTANT: Weak OR-assertion in `test_epic13_notebook_covers_portfolio_comparison` — strengthened to require all three assertions independently
+- 1 MINOR: F541 f-string without placeholder in notebook cell — fixed
+- 1 MINOR: Redundant re-imports with `# noqa: F811` in round-trip tests — replaced with comments
+- 1 MINOR: Notebook lint violations (E402, I001, E501) — pre-existing pattern across all guide notebooks, not addressed
+- 1 MINOR: Story AC4 text references wrong notebook path — cosmetic, not addressed (Dev Notes already documents adaptation)
