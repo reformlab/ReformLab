@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Standalone plot functions for ReformLab indicator and panel data.
 
 Provides plot_deciles(), plot_yearly(), and plot_comparison() for common

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Exception types for the public API layer.
 
 Provides user-friendly exception types with structured error information.

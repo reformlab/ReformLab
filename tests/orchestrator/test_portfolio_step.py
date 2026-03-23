@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Tests for PortfolioComputationStep - multi-policy portfolio execution.
 
 Story 12.3 / FR44: Extend orchestrator to execute policy portfolios.

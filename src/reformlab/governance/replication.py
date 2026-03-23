@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Replication package export, import, and reproduction for simulation runs.
 
 Implements Story 16.1 (FR54): self-contained replication package export with a

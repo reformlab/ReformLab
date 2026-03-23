@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Immutable run manifest schema for governance and reproducibility.
 
 Every simulation run produces an immutable manifest documenting all parameters,

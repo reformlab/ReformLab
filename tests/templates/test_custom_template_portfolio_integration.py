@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Portfolio integration tests for custom templates (vehicle malus, energy poverty aid).
 
 Story 13.4: Validate custom templates in portfolios and build notebook demo.
@@ -384,9 +386,7 @@ class TestPortfolioYamlRoundTripWithCustomTemplates:
         yaml_path = tmp_path / "portfolio.yaml"
         dump_portfolio(portfolio, yaml_path)
 
-        # Import modules before loading to ensure registration side effects
-        import reformlab.templates.vehicle_malus  # noqa: F811, F401
-
+        # Registration side effects already triggered by module-level imports (lines 18-19)
         reloaded = load_portfolio(yaml_path, validate=False)
         assert reloaded.policy_count == 2
         reloaded_malus = reloaded.policies[1].policy
@@ -423,8 +423,7 @@ class TestPortfolioYamlRoundTripWithCustomTemplates:
         yaml_path = tmp_path / "portfolio.yaml"
         dump_portfolio(portfolio, yaml_path)
 
-        import reformlab.templates.energy_poverty_aid  # noqa: F811, F401
-
+        # Registration side effects already triggered by module-level imports (lines 18-19)
         reloaded = load_portfolio(yaml_path, validate=False)
         assert reloaded.policy_count == 2
         reloaded_aid = reloaded.policies[1].policy
@@ -468,8 +467,7 @@ class TestPortfolioYamlRoundTripWithCustomTemplates:
         yaml_path = tmp_path / "portfolio.yaml"
         dump_portfolio(portfolio, yaml_path)
 
-        import reformlab.templates.energy_poverty_aid  # noqa: F811, F401
-        import reformlab.templates.vehicle_malus  # noqa: F811, F401
+        # Registration side effects already triggered by module-level imports (lines 18-19)
 
         reloaded = load_portfolio(yaml_path, validate=False)
         assert reloaded.policy_count == 3

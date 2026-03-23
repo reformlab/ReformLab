@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Results CRUD routes — Story 17.3, Story 17.7.
 
 Exposes saved simulation run metadata via REST endpoints. Full SimulationResult

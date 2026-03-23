@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """DecisionDomain protocol for discrete choice decision domains.
 
 Defines the contract for decision domains (vehicle, heating, etc.) that

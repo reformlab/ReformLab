@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Pydantic v2 request/response models for the ReformLab API.
 
 All HTTP serialization models live here. Domain layer uses frozen dataclasses;

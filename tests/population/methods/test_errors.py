@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Tests for merge method error hierarchy.
 
 Story 11.4 — AC #1: MergeError hierarchy follows the

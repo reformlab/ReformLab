@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Dependency injection for FastAPI route handlers.
 
 Provides global singletons for the result cache, result store, and computation adapter.

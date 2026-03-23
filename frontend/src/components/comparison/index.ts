@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2026 Lucas Vivier
 /** Barrel export for comparison sub-components — Story 18.5, AC-2. */
 
 export { RunSelector } from "./RunSelector";

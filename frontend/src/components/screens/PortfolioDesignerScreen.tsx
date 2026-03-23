@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2026 Lucas Vivier
 /**
  * Portfolio Designer Screen (Story 17.2, AC-1 through AC-6).
  *

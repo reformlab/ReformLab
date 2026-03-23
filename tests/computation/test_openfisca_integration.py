@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Integration tests for OpenFiscaApiAdapter against real OpenFisca-France.
 
 Story 8.1: End-to-End OpenFisca Integration Spike.

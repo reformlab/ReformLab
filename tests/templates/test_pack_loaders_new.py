@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Integration tests for subsidy, rebate, and feebate template pack loaders.
 
 These tests verify that shipped template packs load correctly and meet AC-1, AC-6.

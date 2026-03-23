@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Tests for portfolio YAML serialization and round-trip.
 
 Story 12.1: Define PolicyPortfolio dataclass and composition logic

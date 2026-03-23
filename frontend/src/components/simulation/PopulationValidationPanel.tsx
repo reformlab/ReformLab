@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2026 Lucas Vivier
 /** Population marginal validation panel (Story 17.1, AC-5). */
 
 import { CheckCircle2, XCircle } from "lucide-react";

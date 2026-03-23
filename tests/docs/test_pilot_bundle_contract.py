@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Static checks for pilot distribution contract artifacts.
 
 These checks cover Story 7-4 bundle completeness expectations without requiring

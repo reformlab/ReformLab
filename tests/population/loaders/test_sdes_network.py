@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Network integration tests for the SDES data source loader.
 
 These tests download real data from data.gouv.fr and validate

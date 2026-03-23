@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2026 Lucas Vivier
 /** Tests for ConfigurationScreen — Story 18.5, AC-5. */
 
 import { render, screen } from "@testing-library/react";

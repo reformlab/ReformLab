@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Portfolio computation step for executing multi-policy portfolios.
 
 This module provides:

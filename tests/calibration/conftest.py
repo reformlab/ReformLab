@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Shared fixtures for calibration subsystem tests — Story 15.1 / Story 15.2 / Story 15.3 / AC: all."""
 
 from __future__ import annotations

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Test fixtures for indicator tests.
 
 Story 4.1: Implement Distributional Indicators by Income Decile

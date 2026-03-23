@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2026 Lucas Vivier
 /** API client functions for the Data Fusion Workbench (Story 17.1). */
 
 import { apiFetch } from "@/api/client";

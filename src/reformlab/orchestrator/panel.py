@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Panel output generation from orchestrator results.
 
 Story 3-7: Produce Scenario-Year Panel Output

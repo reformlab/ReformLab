@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2026 Lucas Vivier
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SelectionGrid } from "@/components/simulation/SelectionGrid";
 import type { Population } from "@/data/mock-data";

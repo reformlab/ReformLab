@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Adapter that executes OpenFisca computations via the Python API.
 
 Unlike ``OpenFiscaAdapter`` (pre-computed file mode), this adapter

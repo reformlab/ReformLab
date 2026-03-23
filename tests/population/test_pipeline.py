@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Tests for population pipeline builder and execution.
 
 Implements Story 11.6, FR40, FR41.

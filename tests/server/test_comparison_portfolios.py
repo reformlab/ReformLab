@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Tests for POST /api/comparison/portfolios — Story 17.4, AC-1, AC-2, AC-5.
 
 Verifies:

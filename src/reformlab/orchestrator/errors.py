@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Error classes for the orchestrator module.
 
 Provides structured error types with context for debugging

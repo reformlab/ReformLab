@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Unit tests for memory estimation.
 
 Story 7.2: Warn Before Exceeding Memory Limits

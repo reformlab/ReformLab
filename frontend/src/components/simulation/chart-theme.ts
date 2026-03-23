@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2026 Lucas Vivier
 /** Shared chart color palette and styling constants.
  *
  * Story 18.8: Chart polish and color palette refinement.

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2026 Lucas Vivier
 import * as CollapsiblePrimitive from "@radix-ui/react-collapsible";
 import type { ComponentProps } from "react";
 

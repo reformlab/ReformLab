@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Scenario and portfolio registry with immutable versioning.
 
 This module provides a file-based registry that stores versioned scenario

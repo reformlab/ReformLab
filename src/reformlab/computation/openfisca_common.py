@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Shared OpenFisca version detection and validation utilities.
 
 Used by both ``OpenFiscaAdapter`` (pre-computed mode) and

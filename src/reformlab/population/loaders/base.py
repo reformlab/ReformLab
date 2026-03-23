@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """DataSourceLoader protocol, supporting types, and CachedLoader base class.
 
 Defines the structural protocol for institutional data source loaders,

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Welfare indicator computation for baseline vs reform scenario comparison.
 
 Story 4.3: Implement Welfare Indicators

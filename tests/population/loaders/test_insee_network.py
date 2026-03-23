@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Network integration tests for the INSEE data source loader.
 
 These tests hit real INSEE servers and are excluded from CI by default.

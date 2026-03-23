@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2026 Lucas Vivier
 /** Brand tokens — must match _bmad-output/branding/theme.css */
 export const brand = {
   slate200: "#e2e8f0",

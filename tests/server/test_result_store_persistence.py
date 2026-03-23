@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Unit tests for ResultStore panel and manifest persistence — Story 17.7.
 
 Covers:

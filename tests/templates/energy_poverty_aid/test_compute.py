@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Tests for energy poverty aid computation module.
 
 Story 13.3 — AC #1, #2, #3, #4.

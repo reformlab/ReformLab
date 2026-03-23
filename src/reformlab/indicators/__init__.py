@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Indicator computation module for ReformLab.
 
 Story 4.1: Implement Distributional Indicators by Income Decile

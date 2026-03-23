@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Guardrails for stale-cache fallback boundaries in concrete loaders."""
 
 from __future__ import annotations

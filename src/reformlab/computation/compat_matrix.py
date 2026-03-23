@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Compatibility matrix loader and query API for OpenFisca version support.
 
 Provides ``get_compatibility_info()`` to query structured compatibility

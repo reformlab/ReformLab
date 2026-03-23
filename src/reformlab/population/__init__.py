@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Realistic population generation library for ReformLab.
 
 Provides institutional data source loaders, statistical fusion methods,

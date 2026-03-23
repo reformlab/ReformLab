@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Tests for population validation against known marginals.
 
 Implements Story 11.7, FR42 — validate synthetic populations

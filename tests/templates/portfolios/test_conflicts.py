@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Tests for portfolio conflict detection and resolution.
 
 Story 12.2: Implement portfolio compatibility validation and conflict resolution

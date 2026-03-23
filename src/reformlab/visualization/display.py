@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Formatted text display for PyArrow tables.
 
 Provides a show() function for printing PyArrow tables with aligned columns

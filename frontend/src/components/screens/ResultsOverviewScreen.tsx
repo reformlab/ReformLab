@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2026 Lucas Vivier
 /** Results overview screen — Story 18.4, AC-1 through AC-5.
  *
  * Extracted from inline App.tsx results JSX (lines 360-381) into a dedicated

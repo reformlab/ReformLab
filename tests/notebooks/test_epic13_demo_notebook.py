@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Static checks for the Epic 13 custom templates notebook content.
 
 Story 13.4: Validate custom templates in portfolios and build notebook demo.
@@ -87,8 +89,9 @@ def test_epic13_notebook_covers_custom_template_lifecycle() -> None:
 def test_epic13_notebook_covers_portfolio_comparison() -> None:
     """Contains portfolio comparison code (AC6-e)."""
     source = _all_sources(_load_notebook())
-    assert "compare_vehicle_malus_decile_impacts" in source or "Compare Portfolios" in source
-    assert "run_vehicle_malus_batch" in source or "run_energy_poverty_aid_batch" in source
+    assert "Compare Portfolios" in source
+    assert "run_vehicle_malus_batch" in source
+    assert "compare_vehicle_malus_decile_impacts" in source
 
 
 def test_epic13_notebook_covers_yaml_round_trip() -> None:

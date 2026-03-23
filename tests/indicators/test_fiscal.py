@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Tests for fiscal indicator computation.
 
 Story 4.4: Implement Fiscal Indicators

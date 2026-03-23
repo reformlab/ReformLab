@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2026 Lucas Vivier
 /** Comparison Dashboard Screen — Story 17.4, AC-1 through AC-6.
  *
  * Multi-portfolio side-by-side comparison with:

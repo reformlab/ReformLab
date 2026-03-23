@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Tests for IPFMergeMethod.
 
 Story 11.5 — AC #1: IPF matches marginal constraints within tolerance.

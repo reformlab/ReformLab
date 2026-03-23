@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Tests for ConditionalSamplingMethod.
 
 Story 11.5 — AC #3: Conditional sampling matches within strata.

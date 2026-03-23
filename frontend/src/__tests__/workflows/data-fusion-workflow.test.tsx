@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2026 Lucas Vivier
 /**
  * Data Fusion Workbench — workflow integration tests (Story 17.8, AC-1, AC-3, AC-4).
  *

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Scenario comparison module for ReformLab.
 
 Story 4.5: Implement Scenario Comparison Tables

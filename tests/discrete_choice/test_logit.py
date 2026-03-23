@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Tests for conditional logit model and LogitChoiceStep.
 
 Story 14-2: Conditional logit with seed-controlled draws.

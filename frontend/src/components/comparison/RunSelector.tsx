@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2026 Lucas Vivier
 /** Run selector sub-component for ComparisonDashboardScreen.
  * Extracted from ComparisonDashboardScreen.tsx lines 135-239 — Story 18.5, AC-2.
  */

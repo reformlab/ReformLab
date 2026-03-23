@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Benchmark test suite for simulation output validation.
 
 Story 7.1: Verify Simulation Outputs Against Published Benchmarks

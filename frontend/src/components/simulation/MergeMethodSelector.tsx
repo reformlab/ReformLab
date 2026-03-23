@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2026 Lucas Vivier
 /** Merge method selector for the Data Fusion Workbench (Story 17.1, AC-3). */
 
 import { Shuffle, GitMerge, Layers } from "lucide-react";

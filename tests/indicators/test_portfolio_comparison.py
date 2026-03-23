@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Tests for multi-portfolio comparison.
 
 Story 12.5: Implement Multi-Portfolio Comparison and Notebook Demo

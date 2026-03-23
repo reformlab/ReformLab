@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+title: ReformLab
+message: "If you use this software, please cite it as below."
+type: software
+authors:
+  - given-names: Lucas
+    family-names: Vivier
+repository-code: https://github.com/reformlab/ReformLab
+license: AGPL-3.0-or-later
+keywords:
+  - microsimulation
+  - policy-analysis
+  - openfisca
+  - carbon-tax
+  - distributional-analysis

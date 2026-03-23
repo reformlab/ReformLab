@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2026 Lucas Vivier
 /** Generic single-select card grid (Story 18.3, AC-3). */
 
 import type { ReactNode } from "react";

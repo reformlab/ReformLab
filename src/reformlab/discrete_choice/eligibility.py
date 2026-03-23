@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Eligibility filtering for discrete choice performance optimization.
 
 Provides rule-based eligibility evaluation to restrict population expansion

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Regression tests for POST /api/runs — Story 17.3 + Integration hardening Story 1.
 
 Verifies that the metadata auto-save integration does not break the existing

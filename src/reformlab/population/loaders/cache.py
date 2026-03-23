@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Disk-based caching infrastructure for data source downloads.
 
 Implements a two-layer cache (Parquet data + JSON metadata) with

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Population pipeline builder and execution.
 
 Provides a composable builder for constructing populations from multiple

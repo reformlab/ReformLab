@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2026 Lucas Vivier
 /** Persistent results listing panel — Story 17.3, AC-3.
  *
  * Displays all past simulation runs in reverse chronological order.

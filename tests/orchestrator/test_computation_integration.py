@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Integration tests for ComputationStep within orchestrator pipeline.
 
 Story 3-5: Integrate ComputationAdapter calls into orchestrator yearly loop.

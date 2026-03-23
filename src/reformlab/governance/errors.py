@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Governance-layer errors for manifest integrity and validation.
 
 This module defines explicit error types for manifest operations:

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Tests for replication package export, import, and reproduction.
 
 Story 16.1 / FR54 — AC-1 through AC-5 (export):

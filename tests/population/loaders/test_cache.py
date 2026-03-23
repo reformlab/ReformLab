@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Tests for SourceCache disk-based caching infrastructure.
 
 Story 11.1 — AC #2 (cache storage), AC #3 (cache reuse), AC #5 (offline),

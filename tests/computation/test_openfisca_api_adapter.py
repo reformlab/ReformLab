@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Tests for OpenFiscaApiAdapter (Story 1.6: Direct OpenFisca API mode).
 
 All OpenFisca internals are mocked since openfisca-core is an optional

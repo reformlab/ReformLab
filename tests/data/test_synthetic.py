@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Tests for synthetic population generation.
 
 Story 8.2 — Task 1: Validates that the reusable synthetic population generator

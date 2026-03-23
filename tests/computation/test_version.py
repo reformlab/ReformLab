@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Test 5.2: OpenFiscaAdapter version check tests (supported + unsupported).
 
 Tests verify that runtime version checks are strict (only matrix-supported

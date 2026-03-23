@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Carbon tax batch execution and comparison utilities.
 
 This module provides functions to run multiple carbon tax scenarios in batch

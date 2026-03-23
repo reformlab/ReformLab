@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """DiscreteChoiceStep for population expansion and cost matrix computation.
 
 Implements the OrchestratorStep protocol to evaluate household alternatives

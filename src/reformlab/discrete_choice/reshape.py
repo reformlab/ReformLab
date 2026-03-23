@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Cost matrix reshape logic for discrete choice evaluation.
 
 Reshapes flat N×M computation results into an N-row × M-column cost

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Public interfaces for ReformLab.
 
 This module exports the stable Python API for running simulations

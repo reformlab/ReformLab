@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2026 Lucas Vivier
 /** Result detail view — Story 17.3, AC-4.
  *
  * Tabbed view with:

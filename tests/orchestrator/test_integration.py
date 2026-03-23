@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Integration tests for orchestrator with WorkflowConfig (AC-5)."""
 
 from __future__ import annotations

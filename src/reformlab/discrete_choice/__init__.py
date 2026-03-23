@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Discrete choice subsystem for household decision modeling.
 
 Implements population expansion, cost matrix computation, and

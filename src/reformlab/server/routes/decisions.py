@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Decision outcome summary routes for the Behavioral Decision Viewer.
 
 Story 17.5: Build Behavioral Decision Viewer

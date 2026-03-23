@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2026 Lucas Vivier
 /** Population generation progress, step log, and error display (Story 17.1, AC-4). */
 
 import { CheckCircle2, Loader2 } from "lucide-react";

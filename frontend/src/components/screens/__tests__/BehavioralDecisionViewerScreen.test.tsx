@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2026 Lucas Vivier
 /** Tests for BehavioralDecisionViewerScreen — Story 17.5, AC-1 through AC-4. */
 
 import { render, screen, waitFor } from "@testing-library/react";

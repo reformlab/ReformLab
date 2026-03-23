@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Iterative Proportional Fitting (IPF) merge method for dataset fusion.
 
 Implements a record-level IPF (raking) approach: adjusts per-row weights

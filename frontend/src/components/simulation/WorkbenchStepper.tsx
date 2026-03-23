@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2026 Lucas Vivier
 /** Shared step-navigation bar for workbench-style screens (Story 18.3, AC-1). */
 
 import { cn } from "@/lib/utils";

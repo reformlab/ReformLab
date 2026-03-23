@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2026 Lucas Vivier
 /** Configuration screen — Story 18.5, AC-1 and AC-3.
  *
  * Extracted from inline App.tsx configuration JSX (lines 281-335) into a

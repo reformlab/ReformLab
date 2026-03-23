@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Tests for DataSourceLoader protocol, SourceConfig, and CacheStatus.
 
 Story 11.1 — AC #1 (protocol), AC #2/#3 (SourceConfig), AC #6 (CacheStatus).

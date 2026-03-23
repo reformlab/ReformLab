@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2026 Lucas Vivier
 /** Population preview with tabbed summary view (Story 17.1, AC-5). */
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";

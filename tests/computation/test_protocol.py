@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Test 5.1: Protocol compliance tests (structural typing verification)."""
 
 from __future__ import annotations

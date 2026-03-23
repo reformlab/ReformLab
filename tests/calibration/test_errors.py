@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Tests for calibration error hierarchy — Story 15.1 / AC-4, Story 15.2."""
 
 from __future__ import annotations

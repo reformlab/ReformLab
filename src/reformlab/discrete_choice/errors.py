@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Error hierarchy for the discrete choice subsystem.
 
 Provides subsystem-specific exceptions for population expansion,

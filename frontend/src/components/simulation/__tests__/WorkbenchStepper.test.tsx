@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2026 Lucas Vivier
 import { fireEvent, render, screen } from "@testing-library/react";
 
 import { WorkbenchStepper, type StepDef } from "@/components/simulation/WorkbenchStepper";

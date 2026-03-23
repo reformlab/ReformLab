@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2026 Lucas Vivier
 /** Data source browser for the Data Fusion Workbench (Story 17.1, AC-1, AC-2). */
 
 import { useState } from "react";

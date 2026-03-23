@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Tests for MergeMethod protocol and supporting types.
 
 Story 11.4 — AC #1: MergeMethod protocol accepts two pa.Table inputs

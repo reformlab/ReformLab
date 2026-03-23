@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Fiscal indicator computation for single-scenario budgetary analysis.
 
 Story 4.4: Implement Fiscal Indicators

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Portfolio CRUD routes — Story 17.2.
 
 Endpoints wrap the Epic 12 portfolio composition library and the

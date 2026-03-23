@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Tests for CachedLoader lifecycle (cache hit, miss, offline, fallback).
 
 Story 11.1 — AC #2 (caching), AC #3 (cache reuse), AC #4 (stale fallback),

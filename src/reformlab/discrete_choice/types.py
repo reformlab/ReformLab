@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Frozen dataclasses for the discrete choice subsystem.
 
 Provides core value types for alternatives, choice sets, cost matrices,

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Integration tests for indicator and comparison endpoints — Story 17.6.
 
 Covers AC-1 (success + error paths), AC-2 (what/why/fix error format),

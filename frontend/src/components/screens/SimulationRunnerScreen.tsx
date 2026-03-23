@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2026 Lucas Vivier
 /** Simulation Runner Screen — Story 17.3, AC-1, AC-2, AC-3, AC-4.
  *
  * Three internal sub-views:

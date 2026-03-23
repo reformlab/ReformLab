@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2026 Lucas Vivier
 /** Population distribution bar chart using Recharts (Story 17.1, AC-5). */
 
 import {

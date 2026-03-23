@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Data fusion API routes for Story 17.1 — Data Fusion Workbench GUI.
 
 Provides endpoints for browsing available data sources, querying merge method

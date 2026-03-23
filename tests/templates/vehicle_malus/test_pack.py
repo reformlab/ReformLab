@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Tests for vehicle malus template pack loading and YAML round-trip.
 
 Story 13.2 — AC #6, #7.

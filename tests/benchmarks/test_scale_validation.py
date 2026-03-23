@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Scale validation tests for NFR1 and NFR3.
 
 Story 8.2: Generate 100k-Household Synthetic Population and Run BKL-701

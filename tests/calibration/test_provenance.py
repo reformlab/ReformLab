@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Tests for calibration provenance capture, reference, and extraction — Story 15.4 / FR52."""
 
 from __future__ import annotations

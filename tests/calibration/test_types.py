@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Tests for CalibrationTarget, CalibrationTargetSet, and Story 15.2/15.3 types — Story 15.1, 15.2, 15.3."""
 
 from __future__ import annotations

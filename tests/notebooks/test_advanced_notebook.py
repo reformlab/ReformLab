@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Static checks for the advanced Marimo notebook content.
 
 These checks validate that the advanced notebook covers the full policy

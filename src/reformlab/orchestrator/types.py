@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Core types for the yearly loop orchestrator.
 
 This module defines the data structures used by the orchestrator:

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Shared-password authentication middleware for MVP.
 
 Designed for 2-10 trusted colleagues. Sessions expire after 24 hours.

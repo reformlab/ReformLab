@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Mock computation adapter for testing and quickstart demos.
 
 Provides a configurable test double for the ``ComputationAdapter`` protocol,

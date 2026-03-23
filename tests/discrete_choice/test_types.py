@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Tests for discrete choice core types.
 
 Story 14-1, AC-2, AC-4: Frozen dataclass validation, CostMatrix construction,

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Subsystem-specific exceptions for data source loaders.
 
 All exceptions follow the ``[summary] - [reason] - [fix]`` message

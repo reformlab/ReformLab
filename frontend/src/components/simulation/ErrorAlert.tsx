@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2026 Lucas Vivier
 /** Shared structured error display for {what, why, fix} tuples (Story 18.3, AC-2). */
 
 import { AlertCircle } from "lucide-react";

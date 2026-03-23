@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Conditional sampling merge method for statistical dataset fusion.
 
 Implements stratum-based matching: groups both tables by shared

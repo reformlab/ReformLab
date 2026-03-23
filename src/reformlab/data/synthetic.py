@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Synthetic population generation for benchmarking and scale validation.
 
 Story 8.2: Generate 100k-Household Synthetic Population

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Conditional logit model with seed-controlled draws.
 
 Implements the conditional logit choice model as pure functions

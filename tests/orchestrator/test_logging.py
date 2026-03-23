@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Tests for structured logging and execution trace metadata (Story 3-6).
 
 This module tests:

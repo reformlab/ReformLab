@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Test 5.4: Parquet ingestion round-trip test with fixture data."""
 
 from __future__ import annotations

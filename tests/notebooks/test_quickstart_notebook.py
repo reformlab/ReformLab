@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Static checks for the quickstart notebook content.
 
 These checks enforce story 6-2 acceptance criteria that can be validated

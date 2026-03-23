@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Tests for geographic indicator computation.
 
 Story 4.2: Implement Geographic Aggregation Indicators

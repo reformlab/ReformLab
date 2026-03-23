@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2026 Lucas Vivier
 import { Clock3, Copy, Play, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";

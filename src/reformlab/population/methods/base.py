@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """MergeMethod protocol and supporting types for statistical dataset fusion.
 
 Defines the structural interface that all merge methods must satisfy,

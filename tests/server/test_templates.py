@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Tests for custom template CRUD endpoints — Story 4.
 
 Verifies POST /api/templates/custom and DELETE /api/templates/custom/{name}.

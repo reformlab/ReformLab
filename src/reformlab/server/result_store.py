@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Persistent result metadata storage for the ReformLab server.
 
 Stores run metadata, panel data (Parquet), and manifest (JSON) on the

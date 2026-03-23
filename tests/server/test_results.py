@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Tests for the results API routes — Story 17.3, AC-2, AC-3, AC-4.
 
 Verifies:

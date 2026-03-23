@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2026 Lucas Vivier
 /** Shared types, constants, and helpers for ComparisonDashboardScreen sub-components.
  * Extracted from ComparisonDashboardScreen.tsx — Story 18.5, AC-2.
  */

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Yearly loop orchestrator implementation.
 
 Executes a step pipeline for each year in a projection horizon,

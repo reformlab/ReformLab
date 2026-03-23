@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Tests for UniformMergeMethod.
 
 Story 11.4 — AC #2: Uniform random matching with replacement, deterministic.

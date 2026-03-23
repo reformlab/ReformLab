@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Tests for DiscreteChoiceStep class.
 
 Story 14-1, AC-1, AC-3, AC-5, AC-6, AC-7, AC-8, AC-9:

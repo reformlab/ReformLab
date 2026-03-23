@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Semantic integrity checks for French household example source fixtures."""
 
 from __future__ import annotations

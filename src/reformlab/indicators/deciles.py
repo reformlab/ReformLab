@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Lucas Vivier
 """Income decile assignment and aggregation functions.
 
 Story 4.1: Implement Distributional Indicators by Income Decile
