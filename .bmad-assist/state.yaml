@@ -1,6 +1,6 @@
 current_epic: 19
 current_story: '19.1'
-current_phase: done
+current_phase: create_story
 completed_stories:
 - '9.2'
 - '9.3'
