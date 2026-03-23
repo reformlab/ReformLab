@@ -63,3 +63,19 @@
 | low | `MemoryCheckResult.estimate` described as `int` in Python API section — actual type is `MemoryEstimate` | Corrected type |
 | dismissed | Story claims "35 endpoints across 10 routers" but docs show 11 groups | FALSE POSITIVE: This is in the story Dev Notes (not in the published docs page), and the discrepancy (10 vs 11) is because the story counts "Comparison" as part of "Indicators" router. Not a user-facing issue. |
 | dismissed | AC9 build fails due to Node v14 | FALSE POSITIVE: Correctly noted as not a story defect — `.nvmrc` pins Node 20, and build works with correct Node version. |
+
+## Story 19-5 (2026-03-23)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| high | `role="img"` on `<svg>` suppresses child `role="button"` semantics — screen readers treat entire SVG as atomic image, making interactive nodes invisible to AT | Removed `role="img"`, added `<title id="domain-diagram-title">` with `aria-labelledby` for accessible naming |
+| high | Click-outside-dismiss only handles SVG background clicks, not clicks on page content below the diagram — AC2 requires "clicking anywhere outside the diagram area" | Added `useEffect` with document-level `mousedown` listener that checks `containerRef.current.contains(e.target)`, properly cleaned up on unmount |
+| medium | Double focus indicator — browser default outline + custom rect stroke both visible on keyboard focus | Added `.domainNode:focus { outline: none; }` and `.domainNode:focus-visible rect` rule |
+| medium | No `aria-live` on detail panel — AT users can't discover panel content after keyboard activation | Added `aria-live="polite"` to detail panel div |
+| low | `tagName === 'svg'` is a fragile implicit browser contract | Replaced with `e.target === e.currentTarget` |
+| low | Close button missing `type="button"` — defensive against accidental form submission in future reuse | Added `type="button"` |
+| low | Hardcoded `13px` font-size on SVG node labels | Deferred — SVG viewBox scaling makes rem units complex; created follow-up action item |
+| dismissed | "CRITICAL: Task marked complete while AC2 is not implemented" | FALSE POSITIVE: This is a process/severity issue, not a separate code defect. The click-outside behavior gap IS real (fixed as HIGH), but labeling it CRITICAL because tasks are checked is inflated — the actual code defect is the missing outside-click handler, which is HIGH severity. |
+| dismissed | Canonical node content drift — Policy property text truncated from Dev Notes | FALSE POSITIVE: The Dev Notes Node Content Data provides suggested content. The component uses `'6 template types'` instead of `'6 template types (carbon tax, subsidy, rebate, feebate, malus, poverty aid)'`. This is a reasonable UX decision — the property badges use small monospace font, and the full string would overflow. The policy description paragraph already conveys the detail. AC2 says "key properties (from the Node Content Data table)" which is satisfied by the shorter form. |
+| dismissed | Non-unique SVG marker ID risks collisions | FALSE POSITIVE: The component is used exactly once on one page. `useId()` adds complexity for zero current benefit. If the component is reused in future, this can be addressed then. Not a bug today. |
+| dismissed | No automated regression coverage for interactive ACs | FALSE POSITIVE: Story testing strategy explicitly states "No automated tests for static docs." This has been consistently dismissed in Stories 19.2, 19.3, and 19.4 antipatterns tables. Adding component tests is over-engineering for a documentation site with 6 pages. |

@@ -15,9 +15,18 @@
   transition: fill 0.15s ease, stroke 0.15s ease;
 }
 
+.domainNode:focus {
+  outline: none;
+}
+
 .domainNode:hover rect,
 .domainNode:focus rect {
   fill: var(--sl-color-gray-5);
+  stroke: var(--sl-color-accent);
+  stroke-width: 2;
+}
+
+.domainNode:focus-visible rect {
   stroke: var(--sl-color-accent);
   stroke-width: 2;
 }

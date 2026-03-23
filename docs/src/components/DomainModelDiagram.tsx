@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import styles from './DomainModelDiagram.module.css';
 
 interface NodeData {
@@ -143,6 +143,7 @@ function computeEdgeLine(edge: EdgeData): EdgeLine {
 
 export default function DomainModelDiagram() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const handleNodeClick = useCallback(
     (id: string) => {
@@ -166,7 +167,7 @@ export default function DomainModelDiagram() {
 
   const handleSvgClick = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
     // Dismiss if clicking the SVG background (not a node)
-    if ((e.target as SVGElement).tagName === 'svg') {
+    if (e.target === e.currentTarget) {
       setSelectedId(null);
     }
   }, []);
@@ -177,17 +178,31 @@ export default function DomainModelDiagram() {
     }
   }, []);
 
+  // Dismiss panel when clicking outside the diagram component
+  useEffect(() => {
+    if (!selectedId) return;
+    const dismiss = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setSelectedId(null);
+      }
+    };
+    document.addEventListener('mousedown', dismiss);
+    return () => document.removeEventListener('mousedown', dismiss);
+  }, [selectedId]);
+
   const selectedNode = selectedId ? getNodeById(selectedId) : null;
 
   return (
-    <div onKeyDown={handleKeyDown}>
+    <div ref={containerRef} onKeyDown={handleKeyDown}>
       <svg
         className={styles.diagram}
         viewBox="0 0 920 220"
-        aria-label="Interactive domain model diagram — click a node to learn more"
-        role="img"
+        aria-labelledby="domain-diagram-title"
         onClick={handleSvgClick}
       >
+        <title id="domain-diagram-title">
+          Interactive domain model diagram — click a node to learn more
+        </title>
         <defs>
           <marker
             id="arrowhead"
@@ -260,10 +275,11 @@ export default function DomainModelDiagram() {
       </svg>
 
       {selectedNode && (
-        <div className={styles.detailPanel} role="region" aria-label={`Details for ${selectedNode.label}`}>
+        <div className={styles.detailPanel} role="region" aria-label={`Details for ${selectedNode.label}`} aria-live="polite">
           <div className={styles.detailHeader}>
             <h3 className={styles.detailTitle}>{selectedNode.label}</h3>
             <button
+              type="button"
               className={styles.dismissButton}
               onClick={() => setSelectedId(null)}
               aria-label="Close detail panel"

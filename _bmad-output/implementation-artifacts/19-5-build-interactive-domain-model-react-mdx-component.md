@@ -442,6 +442,14 @@ None.
 - Replaced Mermaid block in `domain-model.mdx` with `import DomainModelDiagram` + `<DomainModelDiagram client:load />` — all existing sections preserved intact (AC 4)
 - `npm run build`: 0 errors, component bundles as `DomainModelDiagram.PONpCjxg.js` (4.98 kB gzipped 2.43 kB) + CSS module (AC 5)
 - `npm run check`: 0 errors, 0 warnings (AC 6)
+- [Code Review Synthesis] Removed `role="img"` from SVG — ARIA anti-pattern that suppressed child `role="button"` semantics for AT (AC 7 fix)
+- [Code Review Synthesis] Added `<title id="domain-diagram-title">` + `aria-labelledby` for accessible SVG naming without `role="img"`
+- [Code Review Synthesis] Added document-level `mousedown` listener via `useEffect` + `useRef` for click-outside-dismiss (AC 2 fix)
+- [Code Review Synthesis] Replaced `tagName === 'svg'` with `e.target === e.currentTarget` for type-safe SVG background click detection
+- [Code Review Synthesis] Added `outline: none` on `.domainNode:focus` and `:focus-visible` rule to prevent double focus indicator
+- [Code Review Synthesis] Added `aria-live="polite"` to detail panel for AT announcement on keyboard activation
+- [Code Review Synthesis] Added `type="button"` to dismiss button for defensive form-context safety
+- [Code Review Synthesis] `npm run build`: 0 errors; `npm run check`: 0 errors, 0 warnings — all quality gates pass after fixes
 
 ### File List
 
@@ -455,3 +463,15 @@ None.
 - `docs/package.json` — new dependencies added via `npm install`
 - `docs/package-lock.json` — updated by `npm install`
 - `docs/src/content/docs/domain-model.mdx` — replaced Mermaid block with React component
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-23
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 3.5 → Changes Requested
+- **Issues Found:** 7
+- **Issues Fixed:** 6
+- **Action Items Created:** 1
+
+#### Review Follow-ups (AI)
+- [ ] [AI-Review] LOW: Hardcoded `13px` font-size on SVG node labels — consider `0.8rem` or Starlight design token for user font-scale accessibility (`docs/src/components/DomainModelDiagram.module.css`)
