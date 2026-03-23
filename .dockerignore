@@ -1,6 +1,10 @@
-# Frontend Docker build — only include frontend/ and _bmad-output/branding/
+# Docker build — allow frontend, branding, and backend source files
 *
 !frontend/
 frontend/node_modules
 frontend/dist
 !_bmad-output/branding/
+!src/
+!pyproject.toml
+!uv.lock
+!README.md

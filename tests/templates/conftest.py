@@ -8,6 +8,10 @@ from typing import Any
 
 import pytest
 
+# Ensure custom template types are registered before any template tests run.
+import reformlab.templates.energy_poverty_aid  # noqa: F401
+import reformlab.templates.vehicle_malus  # noqa: F401
+
 
 @pytest.fixture()
 def valid_carbon_tax_yaml(tmp_path: Path) -> Path:

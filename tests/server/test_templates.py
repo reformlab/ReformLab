@@ -7,22 +7,37 @@ Verifies POST /api/templates/custom and DELETE /api/templates/custom/{name}.
 
 from __future__ import annotations
 
+from typing import Any, Generator
+
 import pytest
 from fastapi.testclient import TestClient
 
 
 @pytest.fixture()
-def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
+def client(monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient, Any, None]:
     """TestClient with clean custom template registrations."""
-    # Reset custom registrations before each test
-    from reformlab.templates.schema import _reset_custom_registrations
+    from reformlab.templates.schema import (
+        _CUSTOM_PARAMETERS_TO_POLICY_TYPE,
+        _CUSTOM_POLICY_TYPES,
+        _reset_custom_registrations,
+    )
+
+    # Save existing registrations so we can restore after test
+    saved_types = dict(_CUSTOM_POLICY_TYPES)
+    saved_params = dict(_CUSTOM_PARAMETERS_TO_POLICY_TYPE)
 
     _reset_custom_registrations()
 
     from reformlab.server.app import create_app
 
     app = create_app()
-    return TestClient(app)
+    yield TestClient(app)
+
+    # Restore registrations
+    _CUSTOM_POLICY_TYPES.clear()
+    _CUSTOM_POLICY_TYPES.update(saved_types)
+    _CUSTOM_PARAMETERS_TO_POLICY_TYPE.clear()
+    _CUSTOM_PARAMETERS_TO_POLICY_TYPE.update(saved_params)
 
 
 @pytest.fixture()

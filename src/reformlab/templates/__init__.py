@@ -13,6 +13,8 @@ This module provides:
 - Workflow configuration schema and execution handoff
 """
 
+import reformlab.templates.energy_poverty_aid as _epa_reg  # noqa: F401  # register custom type
+import reformlab.templates.vehicle_malus as _vm_reg  # noqa: F401  # register custom type
 from reformlab.templates.exceptions import ScenarioError, TemplateError
 from reformlab.templates.loader import (
     SCHEMA_VERSION,
