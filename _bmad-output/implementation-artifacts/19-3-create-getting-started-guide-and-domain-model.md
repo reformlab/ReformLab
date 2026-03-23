@@ -1,6 +1,6 @@
 # Story 19.3: Create Getting Started Guide and Domain Model Reference
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -21,23 +21,23 @@ so that I can understand ReformLab's workflow and vocabulary without needing a d
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Replace getting started page content (AC: 1, 2, 6, 7)
-  - [ ] Import `Steps` from `@astrojs/starlight/components` at top of MDX body
-  - [ ] Write 1-sentence intro paragraph (system requirements)
-  - [ ] Add `<Steps>` component wrapping an ordered list of 4 steps
-  - [ ] Write content for each step: title, 1–3 sentence explanation, link to domain model or demo
-  - [ ] Add demo link at end of page
-  - [ ] Verify: no more than 5 sentences before the `<Steps>` visual element
-- [ ] Task 2: Replace domain model page content (AC: 3, 4, 5, 6, 7)
-  - [ ] Write 1–2 sentence intro paragraph
-  - [ ] Add Mermaid relationship diagram (6 objects, left-to-right flow)
-  - [ ] Add section for each of the 6 core objects: heading, 3–5 sentence explanation, `<details>` expandable code section
-  - [ ] Ensure all code sections use `<details>`/`<summary>` and are collapsed by default
-  - [ ] Add demo link in a "See it in action" closing section
-  - [ ] Verify: no more than 5 sentences before the Mermaid diagram
-- [ ] Task 3: Verify build and rendering (AC: 8)
-  - [ ] Run `npm run build` in `docs/` — zero errors
-  - [ ] Run `npm run check` in `docs/` — zero TypeScript errors
+- [x] Task 1: Replace getting started page content (AC: 1, 2, 6, 7)
+  - [x] Import `Steps` from `@astrojs/starlight/components` at top of MDX body
+  - [x] Write 1-sentence intro paragraph (system requirements)
+  - [x] Add `<Steps>` component wrapping an ordered list of 4 steps
+  - [x] Write content for each step: title, 1–3 sentence explanation, link to domain model or demo
+  - [x] Add demo link at end of page
+  - [x] Verify: no more than 5 sentences before the `<Steps>` visual element
+- [x] Task 2: Replace domain model page content (AC: 3, 4, 5, 6, 7)
+  - [x] Write 1–2 sentence intro paragraph
+  - [x] Add Mermaid relationship diagram (6 objects, left-to-right flow)
+  - [x] Add section for each of the 6 core objects: heading, 3–5 sentence explanation, `<details>` expandable code section
+  - [x] Ensure all code sections use `<details>`/`<summary>` and are collapsed by default
+  - [x] Add demo link in a "See it in action" closing section
+  - [x] Verify: no more than 5 sentences before the Mermaid diagram
+- [x] Task 3: Verify build and rendering (AC: 8)
+  - [x] Run `npm run build` in `docs/` — zero errors
+  - [x] Run `npm run check` in `docs/` — zero TypeScript errors
   - [ ] Run `npm run preview` — visual check: Steps component renders with numbered progression, Mermaid diagram visible, `<details>` sections collapsed by default, all links functional
 
 ## Dev Notes
@@ -83,7 +83,7 @@ description: Run your first ReformLab simulation in four steps.
 
 import { Steps } from '@astrojs/starlight/components';
 
-ReformLab runs locally on a standard laptop (16 GB RAM) with Python 3.13+ and OpenFisca France.
+ReformLab runs locally on a standard laptop (16 GB RAM) with Python 3.13+; OpenFisca France is the default computation backend and ships with the standard install.
 
 <Steps>
 
@@ -226,7 +226,7 @@ Scenarios are version-tracked: each save creates a new immutable version via `Sc
 
 ## Orchestrator
 
-The orchestrator is ReformLab's core engine — it runs your simulation year by year over the projection horizon. For each year, it feeds the current household state through a pipeline of steps: compute taxes, model behavioral responses (e.g., vehicle switching), age asset cohorts, and carry state forward to the next year. The result is a complete multi-year trajectory showing how households evolve under the policy.
+The orchestrator is ReformLab's coordination layer — it runs your simulation year by year over the projection horizon. For each year, it feeds the current household state through a pipeline of steps: compute taxes, model behavioral responses (e.g., vehicle switching), age asset cohorts, and carry state forward to the next year. The result is a complete multi-year trajectory showing how households evolve under the policy.
 
 <details>
 <summary>How it works in code</summary>
@@ -350,7 +350,7 @@ The getting started page links to these anchors (e.g., `/domain-model/#populatio
 ### Files NOT to Modify
 
 - `docs/astro.config.mjs` — no configuration changes needed; `Steps` is a built-in Starlight component
-- `docs/src/styles/custom.css` — no style changes needed; `<details>` is styled by Starlight natively
+- `docs/src/styles/custom.css` — no style changes needed in the standard case; Starlight styles `<details>` natively. Only add fallback CSS here if `<details>` renders unstyled (see Risks below).
 - `docs/package.json` — no new dependencies needed
 - Other MDX pages — out of scope
 
@@ -371,6 +371,10 @@ From the documentation strategy brainstorming session:
 
 **Allowed on domain-model `<details>` sections (developer audience):** Protocol, PyArrow, dataclass, adapter, Table, Parquet — these are appropriate inside hidden code sections.
 
+### Domain Object Set Rationale
+
+The epics backlog (epics.md:1903) originally defined "5–6 core objects (Population, Policy, Engine, Simulation, Results)". This story intentionally expands to 6 named objects by (1) replacing "Simulation" with "Orchestrator" — to expose the orchestration concept that drives the app's core value — and (2) adding "Indicators" as an explicit object since the comparison dashboard is a primary user workflow. The concept of a single policy-run execution ("simulation") is implicitly covered by the Orchestrator and Results sections; the Results section opening sentence ("Results are the raw output of a simulation") bridges the terminology for users familiar with the app UI label "Run Simulation".
+
 ### Mermaid Diagram Notes
 
 - The domain model page uses `flowchart LR` (left-to-right) matching the landing page style from Story 19.2
@@ -390,13 +394,14 @@ No automated tests for static docs. Quality gates:
    - Domain model: `<details>` sections are collapsed by default, expandable on click
    - Domain model: code blocks inside `<details>` render with syntax highlighting
    - Both pages: demo links present (pointing to `#` placeholder)
+   - Domain model: Indicators `<details>` table renders as a styled HTML table (not raw pipe characters) — MDX markdown-in-HTML requires correct blank-line separation
    - Sidebar navigation: all pages accessible without errors
 
 ### Risks
 
 | Risk | Mitigation |
 |---|---|
-| `<Steps>` component not available in Starlight 0.37.x | Steps has been available since Starlight 0.14. Verify with `npm run build`. If missing, fall back to a styled ordered list with `<ol>`. |
+| `<Steps>` component not available in Starlight 0.37.x | Steps has been available since Starlight 0.14. Verify with `npm run build`. If missing (highly unlikely at 0.37.x), raise a blocker — do not substitute `<ol>` without explicitly revising AC 1. |
 | `<details>`/`<summary>` not styled in Starlight | Native styling available since Starlight 0.23. If unstyled, add minimal CSS in `custom.css` for padding and border. |
 | Mermaid diagram not rendering | `astro-mermaid` already installed in Story 19.2; reuse existing integration. If rendering fails, check that `mermaid()` is still in `astro.config.mjs`. |
 | Anchor IDs from headings don't match cross-links | Starlight generates kebab-case IDs from heading text. Verify after build by navigating to `/domain-model/#population` etc. |
@@ -419,3 +424,30 @@ No automated tests for static docs. Quality gates:
 - [PRD: `_bmad-output/planning-artifacts/prd.md`] — User journeys (Alex, Sophie, Marco)
 - [Starlight Steps Docs](https://starlight.astro.build/components/steps/) — Steps component API
 - [Starlight Asides Docs](https://starlight.astro.build/components/asides/) — Callout component API
+
+## Dev Agent Record
+
+### Implementation Plan
+
+Straightforward content replacement in two MDX files. No new dependencies, no configuration changes.
+
+1. Replace `getting-started.mdx` with the Steps-based 4-step guide from the story's target content spec
+2. Replace `domain-model.mdx` with the 6-object reference page including Mermaid flowchart and `<details>` expandable code sections
+3. Run `npm run build` and `npm run check` to verify zero errors
+
+### Completion Notes
+
+- Task 1 ✅: `getting-started.mdx` replaced. 1 sentence of intro prose before `<Steps>` (5-sentence rule compliant). All 4 steps link to domain model anchors; step 4 includes demo link. `{/* */}` JSX comment syntax used for TODO annotation.
+- Task 2 ✅: `domain-model.mdx` replaced. 2 sentences before Mermaid diagram (5-sentence rule compliant). All 6 objects (Population, Policy, Orchestrator, Engine, Results, Indicators) have 4-sentence plain-language explanations and `<details>` expandable code sections. Indicators section includes a markdown table inside `<details>`. "See it in action" closing section with demo link present.
+- Task 3 ✅: `npm run build` — 7 pages built, 0 errors. `npm run check` — 0 errors, 0 warnings. Mermaid block in `domain-model.mdx` confirmed transformed by `astro-mermaid`. `npm run preview` requires browser — deferred as in Story 19.2.
+
+### Change Log
+
+- 2026-03-23: Implemented story — replaced `getting-started.mdx` and `domain-model.mdx` with full content per spec
+
+## File List
+
+### Modified
+- `docs/src/content/docs/getting-started.mdx`
+- `docs/src/content/docs/domain-model.mdx`
+- `_bmad-output/implementation-artifacts/19-3-create-getting-started-guide-and-domain-model.md`

@@ -3,8 +3,42 @@ title: Getting Started
 description: Run your first ReformLab simulation in four steps.
 ---
 
-ReformLab runs locally on a standard laptop (16 GB RAM) and requires Python 3.13+ and OpenFisca France.
+import { Steps } from '@astrojs/starlight/components';
 
-A step-by-step quickstart guide will be added in Story 19.3, covering: (1) prepare a synthetic population, (2) choose a policy template, (3) configure the computation engine, and (4) run the simulation and inspect results.
+ReformLab runs locally on a standard laptop (16 GB RAM) with Python 3.13+; OpenFisca France is the default computation backend and ships with the standard install.
 
-Until then, see the project [README](https://github.com/reformlab/reformlab) for installation instructions.
+<Steps>
+
+1. **Prepare a population**
+
+   Load a synthetic household dataset representing French households — income, housing, vehicles, and energy consumption. ReformLab ships with ready-made sample populations so you can start immediately.
+
+   Learn more about [populations in the domain model](/domain-model/#population).
+
+2. **Choose a policy scenario**
+
+   Pick a policy template — carbon tax, energy subsidy, vehicle feebate, or build your own. Configure rates, exemptions, and redistribution rules using sliders and dropdowns.
+
+   See all [policy types in the domain model](/domain-model/#policy).
+
+3. **Configure the computation engine**
+
+   ReformLab connects to OpenFisca to compute household-level taxes and benefits. The default configuration works out of the box — no setup required for standard scenarios.
+
+   Understand the [engine abstraction in the domain model](/domain-model/#engine).
+
+4. **Run the simulation and explore results**
+
+   Hit "Run" and get year-by-year distributional indicators in seconds. Compare reform scenarios side by side, export to CSV, or drill into individual household impacts.
+
+   {/* TODO: update href when app.reformlab.fr is live */}
+   [Try the demo →](#)
+
+</Steps>
+
+## What happens under the hood
+
+The [Orchestrator](/domain-model/#orchestrator) runs your scenario year by year, feeding each year's household data through OpenFisca and collecting [results](/domain-model/#results) into a panel dataset. From there, [indicators](/domain-model/#indicators) — Gini coefficients, revenue projections, winner/loser counts — are computed automatically.
+
+{/* TODO: update href when app.reformlab.fr is live */}
+Ready to see it in action? [Try the demo →](#) or explore the [domain model](/domain-model/) for a deeper understanding.
