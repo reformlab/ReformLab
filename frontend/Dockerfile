@@ -1,12 +1,13 @@
 FROM node:22-slim AS build
 WORKDIR /app
-COPY package.json package-lock.json ./
+COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci && \
     npm install --no-save \
       @rollup/rollup-linux-arm64-gnu@4.59.0 \
       lightningcss-linux-arm64-gnu@1.31.1 \
       @tailwindcss/oxide-linux-arm64-gnu@4.2.1
-COPY . .
+COPY frontend/ .
+COPY _bmad-output/branding/ /_bmad-output/branding/
 RUN npm run build
 
 FROM nginx:alpine

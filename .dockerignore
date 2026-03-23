@@ -1,0 +1,6 @@
+# Frontend Docker build — only include frontend/ and _bmad-output/branding/
+*
+!frontend/
+frontend/node_modules
+frontend/dist
+!_bmad-output/branding/

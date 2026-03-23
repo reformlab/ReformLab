@@ -22,6 +22,8 @@ from reformlab.server.dependencies import (
 )
 
 if TYPE_CHECKING:
+    from reformlab.computation.adapter import ComputationAdapter
+    from reformlab.interfaces.api import SimulationResult
     from reformlab.server.result_store import ResultStore
     from reformlab.templates.registry import ScenarioRegistry
 from reformlab.server.models import (
@@ -90,7 +92,7 @@ async def run_simulation(
 
     run_id = str(uuid.uuid4())
     started_at = datetime.now(timezone.utc).isoformat()
-    result = None
+    result: SimulationResult | None = None
     status = "failed"
     row_count = 0
     portfolio_policy_count: int | None = None
@@ -183,10 +185,10 @@ async def run_simulation(
 
 def _run_portfolio(
     body: RunRequest,
-    adapter: object,
+    adapter: ComputationAdapter,
     registry: ScenarioRegistry,
     population_path: Path | None,
-) -> tuple[object, int, str]:
+) -> tuple[SimulationResult, int, str]:
     """Load a portfolio from the registry and execute via PortfolioComputationStep.
 
     The portfolio step is appended after the default ComputationStep (which runs
@@ -242,7 +244,7 @@ def _run_portfolio(
     # step overwrites results with the full multi-policy merge.
     first_policy = entry.policies[0]
     pt = first_policy.policy_type
-    template_name = pt.value if hasattr(pt, "value") else str(pt or "portfolio")
+    template_name = pt.value if pt is not None else "portfolio"
 
     from reformlab.computation.types import serialize_policy
 

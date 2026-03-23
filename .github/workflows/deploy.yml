@@ -97,7 +97,8 @@ jobs:
             --platform linux/arm64 \
             -t ghcr.io/reformlab/reformlab-frontend:latest \
             --push \
-            frontend
+            -f frontend/Dockerfile \
+            .
 
       - name: Write Kamal secrets
         env:
