@@ -30,6 +30,8 @@ env/
 # === Node / Astro ===
 node_modules/
 website/.astro/
+docs/.astro/
+docs/dist/
 npm-debug.log*
 yarn-error.log*
 
