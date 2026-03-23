@@ -65,8 +65,8 @@ phase_models:
 
   # Validation: two independent reviewers run in parallel, then a synthesizer merges
   validate_story:
-    - provider: gemini
-      model: gemini-2.5-flash          # Fast, cheap first reviewer
+    - provider: claude-subprocess
+      model: sonnet          # Fast, cheap first reviewer
     - provider: codex
       model: gpt-5.3-codex             # Second reviewer with deep reasoning
       reasoning_effort: high
@@ -76,14 +76,14 @@ phase_models:
 
   # Code review: same two-reviewer pattern as validation
   code_review:
-    - provider: gemini
-      model: gemini-2.5-flash
+    - provider: claude-subprocess # gemini
+      model: sonnet # gemini-2.5-flash
     - provider: codex
       model: gpt-5.3-codex
       reasoning_effort: high
   code_review_synthesis:
     provider: claude-subprocess
-    model: sonnet
+    model: opus
 
   # Retrospective: runs after each epic completes
   retrospective:
