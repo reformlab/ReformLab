@@ -9,6 +9,12 @@ communication_language: English       # Language the agent uses to talk to you
 document_output_language: English      # Language used in generated artifacts (stories, reviews)
 user_skill_level: intermediate         # Adjusts explanation verbosity (beginner/intermediate/expert)
 
+# --- External paths ---
+# Point bmad-assist to planning-artifacts where epics.md lives,
+# instead of docs/ which is a stale copy.
+paths:
+  project_knowledge: _bmad-output/planning-artifacts
+
 # --- Tool guard ---
 # Safety limits to prevent runaway agent sessions from burning too many API calls.
 tool_guard:
