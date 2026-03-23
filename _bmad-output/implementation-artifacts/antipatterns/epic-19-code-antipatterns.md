@@ -22,3 +22,22 @@
 | dismissed | CI lacks AC-level regression checks (Mermaid render/card-link integrity) | FALSE POSITIVE: The story's Testing Strategy explicitly states "No automated tests for static docs." Adding content-level CI assertions (grep for mermaid blocks, card counts) is over-engineering for a documentation site. The build and typecheck provide sufficient CI coverage. |
 | dismissed | Dependency drift risk with `^1.3.1` range for `astro-mermaid` | FALSE POSITIVE: The lockfile pins the exact version. Using `^` ranges is standard npm practice; the lockfile ensures reproducibility. The existing `astro` dependency also uses a pinned version but `@astrojs/starlight` uses `^0.37`. This is consistent with the project's existing dependency strategy. Low risk. |
 | dismissed | No `engines` field in `package.json` | FALSE POSITIVE: The `.nvmrc` file already specifies the Node version. Adding an `engines` field is a nice-to-have but not a Story 19.2 requirement and adds no meaningful safety beyond what `.nvmrc` + CI's `node-version-file` already provide. |
+
+## Story 19-3 (2026-03-23)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| medium | PolicyParameters code snippet has all 4 field types wrong (`list` vs `tuple`, `str` vs `int` keys) | Updated to match actual source: `dict[int, float]`, `tuple[dict[str, Any], ...] = ()`, `tuple[str, ...] = ()` |
+| medium | IndicatorResult falsely described as "a PyArrow Table" — actual type is a structured dataclass | Changed to "a container holding a sequence of typed indicator objects, metadata, and warnings" |
+| medium | Engine public prose uses "abstraction" and "adapter interface" — dev-only terms per vocabulary rules | Replaced with "designed to work with other tax-benefit calculators without changing how you run scenarios" |
+| medium | Getting-started claims OpenFisca "ships with the standard install" — contradicts project-context.md where OpenFisca is optional | Changed to "Install the optional `[openfisca]` extra to use OpenFisca France" |
+| low | `PopulationData.metadata` shown as required field; actual has `field(default_factory=dict)` | Added `= field(default_factory=dict)` to match source |
+| low | `@runtime_checkable` missing from `OrchestratorStep` and `ComputationAdapter` protocol snippets | Added `@runtime_checkable` decorator to both |
+| low | Step 3 link text "engine abstraction" uses dev jargon | Changed to "computation engine in the domain model" |
+| low | Step 4 breaks linking pattern (steps 1-3 link to domain model, step 4 only has demo link) | Added domain model links for results and indicators |
+| dismissed | Demo links are `#` placeholders causing non-functional navigation | FALSE POSITIVE: Story spec explicitly uses `#` placeholders with TODO comments. This is by design, identical to Story 19.2 (dismissed in antipatterns table). The app isn't live yet. |
+| dismissed | No automated regression checks for docs ACs | FALSE POSITIVE: Story testing strategy explicitly states "No automated tests for static docs." Dismissed as over-engineering in Story 19.2 antipatterns: "Adding content-level CI assertions is over-engineering for a documentation site." |
+| dismissed | `sprint-status.yaml` shows `in-progress` | FALSE POSITIVE: Partially false — actual value is `review` (correct status during code review phase), not `in-progress` as claimed. Will be updated to `done` after visual verification. |
+| dismissed | "data fusion workbench" presented as available tool but not publicly shipped | FALSE POSITIVE: Epic 17 story 17-1 (`build-data-fusion-workbench-gui`) is marked done. The feature exists in the app. The docs describe what the app does, not what's publicly deployed. |
+| dismissed | Task 3 marked complete with `npm run preview` unchecked = CRITICAL task completion lie | FALSE POSITIVE: Not a source code issue. This is a recurring process pattern acknowledged since Story 19.2 (browser preview requires manual verification). The story correctly marks the subtask as `[ ]` unchecked. Downgraded to LOW action item. |
+| dismissed | Environment-driven URL needed for demo placeholders / build fail if empty | FALSE POSITIVE: Over-engineering. The app URL doesn't exist yet. A TODO comment is the appropriate mechanism. When the URL is available, a simple find-and-replace across docs pages is sufficient. |

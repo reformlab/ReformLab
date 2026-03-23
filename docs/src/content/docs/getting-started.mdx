@@ -5,7 +5,7 @@ description: Run your first ReformLab simulation in four steps.
 
 import { Steps } from '@astrojs/starlight/components';
 
-ReformLab runs locally on a standard laptop (16 GB RAM) with Python 3.13+; OpenFisca France is the default computation backend and ships with the standard install.
+ReformLab runs locally on a standard laptop (16 GB RAM) with Python 3.13+. Install the optional `[openfisca]` extra to use OpenFisca France as the default computation backend.
 
 <Steps>
 
@@ -25,11 +25,13 @@ ReformLab runs locally on a standard laptop (16 GB RAM) with Python 3.13+; OpenF
 
    ReformLab connects to OpenFisca to compute household-level taxes and benefits. The default configuration works out of the box — no setup required for standard scenarios.
 
-   Understand the [engine abstraction in the domain model](/domain-model/#engine).
+   Learn more about the [computation engine in the domain model](/domain-model/#engine).
 
 4. **Run the simulation and explore results**
 
    Hit "Run" and get year-by-year distributional indicators in seconds. Compare reform scenarios side by side, export to CSV, or drill into individual household impacts.
+
+   See how [results](/domain-model/#results) and [indicators](/domain-model/#indicators) work in the domain model.
 
    {/* TODO: update href when app.reformlab.fr is live */}
    [Try the demo →](#)

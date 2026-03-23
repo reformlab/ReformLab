@@ -35,8 +35,8 @@ Populations are stored as PyArrow Tables keyed by entity type (`individu`, `mena
 ```python
 @dataclass(frozen=True)
 class PopulationData:
-    tables: dict[str, pa.Table]  # entity_type -> households
-    metadata: dict[str, Any]
+    tables: dict[str, pa.Table]              # entity_type -> households
+    metadata: dict[str, Any] = field(default_factory=dict)
 ```
 
 Data sources implement the `DataSourceLoader` protocol; merge strategies implement `MergeMethod`. Four institutional loaders are available: `INSEELoader`, `EurostatLoader`, `ADEMELoader`, `SDESLoader`.
@@ -57,10 +57,10 @@ Policies are built from a `PolicyParameters` base with typed subclasses for each
 ```python
 @dataclass(frozen=True)
 class PolicyParameters:
-    rate_schedule: dict[str, float]
-    exemptions: list[str]
-    thresholds: dict[str, float]
-    covered_categories: list[str]
+    rate_schedule: dict[int, float]             # year → EUR/tonne
+    exemptions: tuple[dict[str, Any], ...] = ()
+    thresholds: tuple[dict[str, Any], ...] = ()
+    covered_categories: tuple[str, ...] = ()
 
 # Specializations:
 # CarbonTaxParameters, SubsidyParameters, RebateParameters,
@@ -86,6 +86,7 @@ The `Orchestrator` runs a pipeline of `OrchestratorStep` instances for each year
 # Simplified pipeline for one year:
 # state₀ → ComputationStep → DiscreteChoiceStep → VintageStep → CarryForward → state₁
 
+@runtime_checkable
 class OrchestratorStep(Protocol):
     @property
     def name(self) -> str: ...
@@ -100,7 +101,7 @@ Built-in steps: `ComputationStep`, `DiscreteChoiceStep`, `VintageTransitionStep`
 
 ## Engine
 
-The engine is the computation backend that calculates household-level taxes and benefits for a given policy and year. ReformLab uses OpenFisca France by default, but the engine is an abstraction — any tax-benefit calculator that implements the adapter interface can be plugged in. You do not interact with the engine directly; the orchestrator calls it automatically for each simulation year.
+The engine is the computation backend that calculates household-level taxes and benefits for a given policy and year. ReformLab uses OpenFisca France by default, but it is designed to work with other tax-benefit calculators without changing how you run scenarios. You do not interact with the engine directly; the orchestrator calls it automatically for each simulation year.
 
 <details>
 <summary>How it works in code</summary>
@@ -108,6 +109,7 @@ The engine is the computation backend that calculates household-level taxes and 
 The engine is accessed through the `ComputationAdapter` protocol — a two-method contract. The orchestrator only sees this protocol, never OpenFisca directly.
 
 ```python
+@runtime_checkable
 class ComputationAdapter(Protocol):
     def compute(
         self, population: PopulationData, policy: PolicyConfig, period: int
@@ -150,7 +152,7 @@ Indicators are the analytics computed from simulation results — they transform
 <details>
 <summary>How it works in code</summary>
 
-Indicators are computed from `PanelOutput` and return `IndicatorResult` (a PyArrow Table). Seven indicator types are available:
+Indicators are computed from `PanelOutput` and return `IndicatorResult` — a container holding a sequence of typed indicator objects, metadata, and warnings. Seven indicator types are available:
 
 | Type | What It Computes |
 |------|-----------------|
