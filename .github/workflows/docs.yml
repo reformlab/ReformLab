@@ -3,7 +3,9 @@ name: Docs
 on:
   push:
     branches: [master]
-    paths: ['docs/**']
+    paths: ['docs/**', '.github/workflows/docs.yml']
+  pull_request:
+    paths: ['docs/**', '.github/workflows/docs.yml']
   workflow_dispatch:
 
 permissions:
@@ -15,11 +17,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v6
 
@@ -31,15 +30,28 @@ jobs:
         run: npm ci
         working-directory: docs
 
+      - name: Type check
+        run: npm run check
+        working-directory: docs
+
       - name: Build docs
         run: npm run build
         working-directory: docs
 
-      - uses: actions/configure-pages@v4
-
       - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'pull_request'
         with:
           path: docs/dist/
+
+  deploy:
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v4
 
       - id: deploy
         uses: actions/deploy-pages@v4
