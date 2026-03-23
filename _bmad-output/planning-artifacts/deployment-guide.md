@@ -345,12 +345,12 @@ kamal accessory logs glances
 
 ### DNS setup for monitoring
 
-Add these A records pointing to `178.104.67.235`:
+Add these A records pointing to `<YOUR_SERVER_IP>`:
 
 | Type | Name | Value |
 | --- | --- | --- |
-| A | logs | 178.104.67.235 |
-| A | monitor | 178.104.67.235 |
+| A | logs | <YOUR_SERVER_IP> |
+| A | monitor | <YOUR_SERVER_IP> |
 
 Traefik will handle HTTPS certificates automatically once DNS propagates.
 
