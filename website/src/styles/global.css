@@ -43,11 +43,13 @@ body {
   font-size: 1.125rem;
 }
 
-/* Display headings */
+/* Display headings — base defaults.
+   Color is inherited from the parent section: light sections use text-ink,
+   dark sections use text-paper. Always set an explicit Tailwind color class
+   on headings to avoid falling back to body text color. */
 h1, h2, h3, h4 {
   font-family: var(--font-sans);
   font-weight: 700;
-  color: var(--color-ink);
   line-height: 1.15;
   letter-spacing: -0.01em;
 }
