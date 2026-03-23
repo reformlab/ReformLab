@@ -1842,7 +1842,7 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 - Starlight site builds and deploys to GitHub Pages on push to `master`.
 - Site is branded with ReformLab visual identity (Inter, IBM Plex Mono, Emerald/Slate palette).
 - 6 public pages exist: landing, use cases, getting started, domain model, contributing, API reference.
-- BMAD planning artifacts in `docs/` are excluded from the public site.
+- BMAD planning artifacts (in `_bmad-output/planning-artifacts/`) are not part of the docs site.
 - Every page links to the live demo where relevant.
 - 5-sentence rule: no page exceeds 5 sentences before a visual or interactive element.
 - Primary audience (administration/policy persona) can navigate without encountering developer jargon.
@@ -1861,14 +1861,14 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 #### Acceptance Criteria
 
-- Given a new `docs-site/` directory, when `npm run dev` is run, then Starlight serves locally on port 4322 with branded theme.
+- Given a new `docs/` directory, when `npm run dev` is run, then Starlight serves locally on port 4322 with branded theme.
 - Given the brand theme, when the site renders, then fonts (Inter, IBM Plex Mono) and dark/light modes match the existing brand identity. Accent colors configured via Starlight's config API in `astro.config.mjs`, NOT via CSS custom properties.
-- Given the `docs-site/` directory, when `npm run build` is run, then static output is generated with zero errors and `dist/CNAME` exists.
-- Given a push to `master` with changes in `docs-site/`, when the `docs.yml` GitHub Actions workflow runs, then the site is built and deployed to GitHub Pages.
+- Given the `docs/` directory, when `npm run build` is run, then static output is generated with zero errors and `dist/CNAME` exists.
+- Given a push to `master` with changes in `docs/`, when the `docs.yml` GitHub Actions workflow runs, then the site is built and deployed to GitHub Pages.
 - Given the 6 planned pages, when the site is scaffolded, then placeholder pages exist in the Starlight content structure with correct navigation order.
 - Given MkDocs configuration, when this story is complete, then `mkdocs.yml` is removed, `pyproject.toml` has no `docs` dependency group, and old `Docs:` tasks are removed from `.vscode/tasks.json`.
 - Given VSCode, when the user runs the "Docs: Dev Server (localhost:4322)" task, then the Starlight dev server starts and is accessible in the browser.
-- Given the `docs-site/` directory, when inspected, then `package-lock.json` exists and is committed (required for `npm ci` in CI).
+- Given the `docs/` directory, when inspected, then `package-lock.json` exists and is committed (required for `npm ci` in CI).
 
 ---
 
@@ -1960,5 +1960,5 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 - **Admin persona first** — primary audience is civil servants and policy advisors, not developers.
 - **Show, don't document** — the live demo is the primary front door; docs support it.
 - **5-sentence rule** — enforces brevity on every page; progressive disclosure for depth.
-- **Starlight in `docs-site/`** — separate from `website/` (Astro marketing site) and `docs/` (internal BMAD artifacts).
+- **Starlight in `docs/`** — separate from `website/` (Astro marketing site) and `docs/` (internal BMAD artifacts).
 - **Stories 19.5 and 19.6 are v2** — scaffold and content come first, interactivity follows.
