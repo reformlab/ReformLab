@@ -3,6 +3,65 @@ title: Contributing
 description: How to contribute to ReformLab.
 ---
 
-ReformLab welcomes contributions — from policy scenario templates to new computation adapters and documentation improvements.
+ReformLab welcomes contributions — from policy scenario templates to new computation adapters, indicators, and documentation improvements. Here is how the project is structured and how to get started.
 
-Contribution guidelines, development setup instructions, and the code of conduct will be added in Story 19.3. In the meantime, open an issue or pull request on [GitHub](https://github.com/reformlab/reformlab) and see the project README for the current development workflow.
+```mermaid
+flowchart LR
+    Found["Foundation\nData · Adapter · Governance"]
+    Dom["Domain\nTemplates · Indicators"]
+    Orch["Orchestration\nMulti-year Pipeline"]
+    API["API\nPython · REST"]
+    UI["Interfaces\nGUI · Notebooks"]
+
+    Found --> Dom --> Orch --> API --> UI
+```
+
+---
+
+## Dev Setup
+
+```bash
+git clone https://github.com/reformlab/ReformLab.git
+cd ReformLab
+uv sync --all-extras
+cd frontend && npm install
+```
+
+For full setup details and the code of conduct, see [CONTRIBUTING.md](https://github.com/reformlab/reformlab/blob/master/CONTRIBUTING.md).
+
+---
+
+## Quality Checks
+
+All checks must pass before submitting a pull request.
+
+```bash
+# Backend
+uv run ruff check src/ tests/
+uv run mypy src/
+uv run pytest
+
+# Frontend
+cd frontend
+npm run typecheck
+npm run lint
+npm test
+```
+
+---
+
+## What to Contribute
+
+| Area | Where to look |
+|------|--------------|
+| Policy templates | `src/reformlab/templates/packs/` — add a new YAML pack + `compute.py` |
+| Computation adapters | `src/reformlab/computation/` — implement the `ComputationAdapter` protocol |
+| Indicators | `src/reformlab/indicators/` — implement a new indicator type |
+| Data source loaders | `src/reformlab/data/` — implement `DataSourceLoader` |
+| REST API routes | `src/reformlab/server/routes/` — add a FastAPI router |
+| Frontend screens | `frontend/src/components/screens/` — add a React screen |
+| Documentation | `docs/src/content/docs/` — edit or add MDX pages |
+
+---
+
+For the full contribution workflow, review checklist, and branch naming conventions, see [CONTRIBUTING.md on GitHub](https://github.com/reformlab/reformlab/blob/master/CONTRIBUTING.md).

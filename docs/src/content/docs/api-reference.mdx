@@ -5,4 +5,446 @@ description: Python API and REST API reference for ReformLab.
 
 ReformLab exposes two interfaces: a **Python API** for programmatic use in notebooks and scripts, and a **REST API** (FastAPI) for integration with external tools and the no-code GUI.
 
-A condensed API reference covering both interfaces will be added in Story 19.4, generated from docstrings and OpenAPI schema. For the current OpenAPI spec, run the backend and visit `http://localhost:8000/docs`.
+---
+
+## Python API
+
+Import from the `reformlab` package top-level (`from reformlab import ...`).
+
+| Function | Description |
+|----------|-------------|
+| `run_scenario(config)` | Execute a complete multi-year simulation; returns `SimulationResult` |
+| `load_population(path)` | Load population data from CSV or Parquet; returns `PopulationData` |
+| `create_scenario(name, template, policy, ...)` | Create and optionally register a scenario; returns `ScenarioConfig` |
+| `clone_scenario(name, new_name)` | Clone an existing registered scenario; returns `ScenarioConfig` |
+| `list_scenarios()` | List all registered scenario names; returns `list[str]` |
+| `get_scenario(name)` | Get a scenario from the registry; returns `ScenarioConfig` |
+| `generate_population(sources, merge_method, ...)` | Generate synthetic population via data fusion; returns `PopulationData` |
+| `check_memory_requirements(config)` | Preflight memory-risk check; returns `MemoryCheckResult` |
+| `run_benchmarks()` | Run benchmark validation suite; returns benchmark report |
+
+<details>
+<summary>Key return types</summary>
+
+**`SimulationResult`** — immutable result container.
+
+| Attribute / Method | Type | Description |
+|--------------------|------|-------------|
+| `success` | `bool` | Whether the run completed without error |
+| `panel_output` | `pa.Table` | Household-by-year panel dataset |
+| `manifest` | `dict` | Full run manifest (seeds, hashes, assumptions) |
+| `.indicators()` | method | Compute indicators from panel output |
+| `.export_csv(path)` | method | Export panel to CSV |
+| `.export_parquet(path)` | method | Export panel to Parquet |
+| `.export_replication_package(path)` | method | Export full replication bundle |
+
+**`ScenarioConfig`** — scenario definition (template, policy, years, population, seed).
+
+**`MemoryCheckResult`** — memory pre-check (`should_warn: bool`, `estimate: int`, `message: str`).
+
+</details>
+
+---
+
+## REST API
+
+The backend runs on FastAPI. All endpoints are under `/api/`. Error responses use a consistent structure:
+
+```json
+{
+  "what": "user-facing error title",
+  "why": "root cause explanation",
+  "fix": "actionable guidance"
+}
+```
+
+### Runs — `/api/runs`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/runs/` | Execute a simulation run |
+| `POST` | `/api/runs/memory-check` | Preflight memory-risk check |
+
+<details>
+<summary>Request and response models</summary>
+
+**RunRequest**
+
+```python
+template_name: str | None
+policy: dict[str, Any]
+start_year: int = 2025
+end_year: int = 2030
+population_id: str | None
+seed: int | None
+baseline_id: str | None
+portfolio_name: str | None
+policy_type: str | None
+```
+
+**RunResponse**
+
+```python
+run_id: str
+success: bool
+scenario_id: str
+years: list[int]
+row_count: int
+manifest_id: str
+```
+
+**MemoryCheckRequest** — same shape as `RunRequest`.
+
+**MemoryCheckResponse**
+
+```python
+should_warn: bool
+estimate_mb: int
+message: str
+```
+
+</details>
+
+---
+
+### Scenarios — `/api/scenarios`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/scenarios/` | List all registered scenarios |
+| `GET` | `/api/scenarios/{name}` | Get scenario detail |
+| `POST` | `/api/scenarios/` | Create a new scenario |
+| `POST` | `/api/scenarios/{name}/clone` | Clone an existing scenario |
+
+<details>
+<summary>Request and response models</summary>
+
+**ScenarioCreateRequest**
+
+```python
+name: str
+template_name: str
+policy: dict[str, Any]
+start_year: int = 2025
+end_year: int = 2030
+population_id: str | None
+seed: int | None
+```
+
+**ScenarioResponse**
+
+```python
+name: str
+template_name: str
+policy: dict[str, Any]
+start_year: int
+end_year: int
+population_id: str | None
+seed: int | None
+version: int
+```
+
+**CloneRequest** — `new_name: str`
+
+</details>
+
+---
+
+### Templates — `/api/templates`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/templates/` | List all available templates |
+| `GET` | `/api/templates/{name}` | Get template detail and parameter schema |
+| `POST` | `/api/templates/custom` | Register a custom template |
+| `DELETE` | `/api/templates/custom/{name}` | Unregister a custom template |
+
+<details>
+<summary>Request and response models</summary>
+
+**TemplateResponse**
+
+```python
+name: str
+description: str
+policy_type: str
+parameter_schema: dict[str, Any]   # JSON Schema for policy parameters
+```
+
+**CustomTemplateRequest**
+
+```python
+name: str
+description: str
+policy_type: str
+parameter_schema: dict[str, Any]
+```
+
+</details>
+
+---
+
+### Portfolios — `/api/portfolios`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/portfolios/` | List all portfolios |
+| `GET` | `/api/portfolios/{name}` | Get portfolio detail |
+| `POST` | `/api/portfolios/` | Create a new portfolio |
+| `PUT` | `/api/portfolios/{name}` | Update an existing portfolio |
+| `DELETE` | `/api/portfolios/{name}` | Delete a portfolio |
+| `POST` | `/api/portfolios/validate` | Validate portfolio for conflicts |
+| `POST` | `/api/portfolios/{name}/clone` | Clone a portfolio |
+
+<details>
+<summary>Request and response models</summary>
+
+**PortfolioCreateRequest**
+
+```python
+name: str
+scenario_names: list[str]
+description: str | None
+```
+
+**PortfolioResponse**
+
+```python
+name: str
+scenario_names: list[str]
+description: str | None
+conflict_warnings: list[str]
+```
+
+**PortfolioValidateResponse**
+
+```python
+valid: bool
+conflicts: list[dict[str, Any]]
+warnings: list[str]
+```
+
+</details>
+
+---
+
+### Results — `/api/results`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/results/` | List all stored results |
+| `GET` | `/api/results/{run_id}` | Get result detail and status |
+| `DELETE` | `/api/results/{run_id}` | Delete a stored result |
+| `GET` | `/api/results/{run_id}/export/csv` | Download panel as CSV |
+| `GET` | `/api/results/{run_id}/export/parquet` | Download panel as Parquet |
+
+<details>
+<summary>Request and response models</summary>
+
+**ResultResponse**
+
+```python
+run_id: str
+success: bool
+row_count: int
+years: list[int]
+manifest_id: str
+has_panel: bool
+```
+
+**ResultListItem**
+
+```python
+run_id: str
+success: bool
+row_count: int
+has_panel: bool
+```
+
+</details>
+
+---
+
+### Indicators — `/api/indicators`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/indicators/distributional` | Compute per-decile distributional indicators |
+| `POST` | `/api/indicators/geographic` | Compute per-region geographic indicators |
+| `POST` | `/api/indicators/fiscal` | Compute fiscal indicators (revenue, cost, balance) |
+
+<details>
+<summary>Request and response models</summary>
+
+**IndicatorRequest** (common fields)
+
+```python
+run_id: str
+years: list[int] | None       # None = all years
+breakdown_column: str | None  # Column for grouping (distributional/geographic)
+```
+
+**IndicatorResponse**
+
+```python
+run_id: str
+indicator_type: str
+results: list[dict[str, Any]]   # Typed indicator rows
+warnings: list[str]
+metadata: dict[str, Any]
+```
+
+</details>
+
+---
+
+### Comparison — `/api/comparison`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/comparison/` | Compare a baseline run against a reform run |
+| `POST` | `/api/comparison/portfolios` | Compare multiple portfolios side by side |
+
+<details>
+<summary>Request and response models</summary>
+
+**ComparisonRequest**
+
+```python
+baseline_run_id: str
+reform_run_id: str
+indicator_types: list[str]   # e.g. ["distributional", "fiscal"]
+years: list[int] | None
+```
+
+**PortfolioComparisonRequest**
+
+```python
+run_ids: list[str]
+indicator_types: list[str]
+years: list[int] | None
+```
+
+**ComparisonResponse**
+
+```python
+baseline_run_id: str
+reform_run_id: str
+deltas: dict[str, Any]       # Indicator deltas by type
+summary: dict[str, Any]
+```
+
+</details>
+
+---
+
+### Data Fusion — `/api/data-fusion`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/data-fusion/sources` | List available data sources |
+| `GET` | `/api/data-fusion/sources/{provider}/{dataset_id}` | Get source detail and field schema |
+| `GET` | `/api/data-fusion/merge-methods` | List available merge strategies |
+| `POST` | `/api/data-fusion/generate` | Generate a synthetic population |
+
+<details>
+<summary>Request and response models</summary>
+
+**GeneratePopulationRequest**
+
+```python
+sources: list[dict[str, Any]]   # List of {provider, dataset_id, filters}
+merge_method: str               # e.g. "statistical_matching"
+seed: int | None
+target_size: int | None
+```
+
+**GeneratePopulationResponse**
+
+```python
+population_id: str
+row_count: int
+entity_types: list[str]
+source_hashes: dict[str, str]
+```
+
+</details>
+
+---
+
+### Populations — `/api/populations`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/populations/` | List available pre-built populations |
+
+<details>
+<summary>Response model</summary>
+
+**PopulationListItem**
+
+```python
+population_id: str
+description: str
+row_count: int
+entity_types: list[str]
+source: str   # e.g. "synthetic_insee_2023"
+```
+
+</details>
+
+---
+
+### Decisions — `/api/decisions`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/decisions/summary` | Generate behavioral decision summary for a run |
+
+<details>
+<summary>Request and response models</summary>
+
+**DecisionSummaryRequest**
+
+```python
+run_id: str
+years: list[int] | None
+```
+
+**DecisionSummaryResponse**
+
+```python
+run_id: str
+decisions: list[dict[str, Any]]   # Per-year behavioral shifts
+summary_stats: dict[str, Any]
+```
+
+</details>
+
+---
+
+### Exports — `/api/exports`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/exports/csv` | Export a result panel as CSV |
+| `POST` | `/api/exports/parquet` | Export a result panel as Parquet |
+
+<details>
+<summary>Request and response models</summary>
+
+**ExportRequest**
+
+```python
+run_id: str
+columns: list[str] | None   # None = all columns
+years: list[int] | None     # None = all years
+```
+
+Returns a file download response (`Content-Disposition: attachment`).
+
+</details>
+
+---
+
+For the full interactive API documentation with live request testing, run the backend locally and visit `http://localhost:8000/docs`.
