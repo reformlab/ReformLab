@@ -41,3 +41,25 @@
 | dismissed | "data fusion workbench" presented as available tool but not publicly shipped | FALSE POSITIVE: Epic 17 story 17-1 (`build-data-fusion-workbench-gui`) is marked done. The feature exists in the app. The docs describe what the app does, not what's publicly deployed. |
 | dismissed | Task 3 marked complete with `npm run preview` unchecked = CRITICAL task completion lie | FALSE POSITIVE: Not a source code issue. This is a recurring process pattern acknowledged since Story 19.2 (browser preview requires manual verification). The story correctly marks the subtask as `[ ]` unchecked. Downgraded to LOW action item. |
 | dismissed | Environment-driven URL needed for demo placeholders / build fail if empty | FALSE POSITIVE: Over-engineering. The app URL doesn't exist yet. A TODO comment is the appropriate mechanism. When the URL is available, a simple find-and-replace across docs pages is sufficient. |
+
+## Story 19-4 (2026-03-23)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| high | MemoryCheckResponse fields wrong (`estimate_mb: int` vs `estimated_gb: float`, missing `available_gb: float`) | Replaced with actual fields from `models.py:93-97` |
+| high | MemoryCheckRequest falsely described as "same shape as RunRequest" — actual has required `template_name: str`, no `seed`/`baseline_id`/`portfolio_name`/`policy_type` | Added full model definition |
+| high | ScenarioCreateRequest and ScenarioResponse completely wrong (wrong field names, types, missing fields) | Rewritten to match `models.py:61-115` |
+| high | Templates docs describe fictional `parameter_schema: dict` — actual uses `TemplateListItem` with `parameter_count`, `parameter_groups`, `is_custom` etc. | Replaced with all 4 actual models |
+| high | Portfolio docs entirely wrong (`scenario_names` vs `policies`, `valid` vs `is_compatible`, missing validate request) | Rewritten with actual 4 models |
+| high | Results docs misstate response shape (missing `timestamp`, `run_kind`, `data_available` vs `has_panel`, etc.) | Full rewrite with all fields from `models.py:402-444` |
+| high | IndicatorRequest has fictional fields (`years`, `breakdown_column`) — actual uses `income_field`, `by_year` | Corrected to match `models.py:44-48` |
+| high | ComparisonRequest has fictional fields (`indicator_types`, `years`) — actual uses `welfare_field`, `threshold` | All 3 comparison models corrected |
+| high | GeneratePopulationResponse entirely fabricated — docs show 4 simple fields, actual has `success`, `summary`, `step_log`, `assumption_chain`, `validation_result` | Both request and response rewritten |
+| high | PopulationListItem completely wrong field names (`population_id`/`description`/`row_count`/`entity_types` vs `id`/`name`/`households`/`year`) | Corrected to `PopulationItem` from `models.py:160-165` |
+| high | DecisionSummaryRequest missing 3 fields (`domain_name`, `group_by`, `group_value`); response completely wrong | Both models corrected |
+| high | ExportRequest shows fictional `columns`/`years` fields — actual only has `run_id` | Reduced to actual single field |
+| high | OpenAPI URL wrong (`/docs` → `/api/docs`) and missing dev-mode note | URL corrected, dev-mode instruction added |
+| medium | Contributing page points to wrong path for `DataSourceLoader` (`src/reformlab/data/` → `src/reformlab/population/loaders/`) | Path corrected |
+| low | `MemoryCheckResult.estimate` described as `int` in Python API section — actual type is `MemoryEstimate` | Corrected type |
+| dismissed | Story claims "35 endpoints across 10 routers" but docs show 11 groups | FALSE POSITIVE: This is in the story Dev Notes (not in the published docs page), and the discrepancy (10 vs 11) is because the story counts "Comparison" as part of "Indicators" router. Not a user-facing issue. |
+| dismissed | AC9 build fails due to Node v14 | FALSE POSITIVE: Correctly noted as not a story defect — `.nvmrc` pins Node 20, and build works with correct Node version. |

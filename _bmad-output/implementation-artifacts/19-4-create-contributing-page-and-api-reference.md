@@ -315,8 +315,24 @@ None.
 - Task 2: Replaced placeholder `api-reference.mdx` with full API reference. Python API table (9 functions + return types in `<details>`), REST API section with 11 route groups each having an endpoint table plus a `<details>` expandable for request/response models. Error response format noted. OpenAPI note at bottom. 5-sentence rule satisfied (single-sentence intro before first table).
 - Task 3: `npm run build` — 7 pages built, 0 errors. `npm run check` — 0 errors, 0 warnings.
 - Note: Mermaid node labels use `\n` (not `<br/>`) because astro-mermaid/remark processes the diagram before HTML rendering; both work but `\n` renders correctly in flowchart LR nodes.
+- Code Review Synthesis (2026-03-23): Fixed all 11 `<details>` REST model sections to match actual `models.py` Pydantic models. Fixed OpenAPI URL (`/docs` → `/api/docs`, dev-mode note). Fixed `MemoryCheckResult.estimate` type (`int` → `MemoryEstimate`). Fixed `DataSourceLoader` path in contributing.mdx (`data/` → `population/loaders/`). Build and check re-verified: 0 errors.
 
 ### File List
 
-- `docs/src/content/docs/contributing.mdx` — replaced placeholder with full contributing page
-- `docs/src/content/docs/api-reference.mdx` — replaced placeholder with full API reference page
+- `docs/src/content/docs/contributing.mdx` — replaced placeholder with full contributing page; fixed DataSourceLoader path
+- `docs/src/content/docs/api-reference.mdx` — replaced placeholder with full API reference page; fixed all model sections per code review
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-23
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 8.1 → REJECT (prior to fixes)
+- **Issues Found:** 14
+- **Issues Fixed:** 14
+- **Action Items Created:** 0
+
+## Tasks / Subtasks
+
+#### Review Follow-ups (AI)
+
+All issues resolved in synthesis pass. No remaining action items.

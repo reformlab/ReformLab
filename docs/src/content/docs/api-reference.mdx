@@ -40,7 +40,7 @@ Import from the `reformlab` package top-level (`from reformlab import ...`).
 
 **`ScenarioConfig`** — scenario definition (template, policy, years, population, seed).
 
-**`MemoryCheckResult`** — memory pre-check (`should_warn: bool`, `estimate: int`, `message: str`).
+**`MemoryCheckResult`** — memory pre-check (`should_warn: bool`, `estimate: MemoryEstimate`, `message: str`).
 
 </details>
 
@@ -93,13 +93,22 @@ row_count: int
 manifest_id: str
 ```
 
-**MemoryCheckRequest** — same shape as `RunRequest`.
+**MemoryCheckRequest**
+
+```python
+template_name: str              # required (not optional)
+policy: dict[str, Any] = {}
+start_year: int                 # required (no default)
+end_year: int                   # required (no default)
+population_id: str | None
+```
 
 **MemoryCheckResponse**
 
 ```python
 should_warn: bool
-estimate_mb: int
+estimated_gb: float
+available_gb: float
 message: str
 ```
 
@@ -119,29 +128,28 @@ message: str
 <details>
 <summary>Request and response models</summary>
 
-**ScenarioCreateRequest**
+**CreateScenarioRequest**
 
 ```python
 name: str
-template_name: str
+policy_type: str | None         # carbon_tax | subsidy | rebate | feebate
 policy: dict[str, Any]
-start_year: int = 2025
-end_year: int = 2030
-population_id: str | None
-seed: int | None
+start_year: int
+end_year: int
+description: str = ""
+baseline_ref: str | None
 ```
 
 **ScenarioResponse**
 
 ```python
 name: str
-template_name: str
+policy_type: str
+description: str
+version: str
 policy: dict[str, Any]
-start_year: int
-end_year: int
-population_id: str | None
-seed: int | None
-version: int
+year_schedule: dict[str, int]
+baseline_ref: str | None
 ```
 
 **CloneRequest** — `new_name: str`
@@ -162,22 +170,36 @@ version: int
 <details>
 <summary>Request and response models</summary>
 
-**TemplateResponse**
+**TemplateListItem**
 
 ```python
+id: str
 name: str
+type: str
+parameter_count: int
 description: str
-policy_type: str
-parameter_schema: dict[str, Any]   # JSON Schema for policy parameters
+parameter_groups: list[str]
+is_custom: bool = False
 ```
 
-**CustomTemplateRequest**
+**TemplateDetailResponse** — extends `TemplateListItem` with `default_policy: dict[str, Any]`.
+
+**CreateCustomTemplateRequest**
+
+```python
+name: str
+description: str = ""
+parameters: list[CustomTemplateParameterSpec]
+# CustomTemplateParameterSpec: {name, type, default, unit, min, max}
+```
+
+**CustomTemplateResponse**
 
 ```python
 name: str
 description: str
-policy_type: str
-parameter_schema: dict[str, Any]
+parameter_count: int
+is_custom: bool = True
 ```
 
 </details>
@@ -199,29 +221,39 @@ parameter_schema: dict[str, Any]
 <details>
 <summary>Request and response models</summary>
 
-**PortfolioCreateRequest**
+**CreatePortfolioRequest**
 
 ```python
 name: str
-scenario_names: list[str]
-description: str | None
+description: str = ""
+policies: list[PortfolioPolicyRequest]
+resolution_strategy: str = "error"
+# PortfolioPolicyRequest: {name, policy_type, rate_schedule, exemptions, thresholds, covered_categories, extra_params}
 ```
 
-**PortfolioResponse**
+**PortfolioDetailResponse**
 
 ```python
 name: str
-scenario_names: list[str]
-description: str | None
-conflict_warnings: list[str]
+description: str
+version_id: str
+policies: list[PortfolioPolicyItem]
+resolution_strategy: str
+policy_count: int
 ```
 
-**PortfolioValidateResponse**
+**ValidatePortfolioRequest**
 
 ```python
-valid: bool
-conflicts: list[dict[str, Any]]
-warnings: list[str]
+policies: list[PortfolioPolicyRequest]
+resolution_strategy: str = "error"
+```
+
+**ValidatePortfolioResponse**
+
+```python
+conflicts: list[PortfolioConflict]
+is_compatible: bool
 ```
 
 </details>
@@ -241,24 +273,43 @@ warnings: list[str]
 <details>
 <summary>Request and response models</summary>
 
-**ResultResponse**
+**ResultDetailResponse**
 
 ```python
 run_id: str
-success: bool
+timestamp: str
+run_kind: str                    # "scenario" | "portfolio"
+start_year: int
+end_year: int
+population_id: str | None
+seed: int | None
 row_count: int
-years: list[int]
 manifest_id: str
-has_panel: bool
+scenario_id: str
+status: str
+data_available: bool
+template_name: str | None
+policy_type: str | None
+portfolio_name: str | None
+indicators: dict[str, Any] | None   # only when data_available is True
+columns: list[str] | None
+column_count: int | None
 ```
 
 **ResultListItem**
 
 ```python
 run_id: str
-success: bool
+timestamp: str
+run_kind: str
+start_year: int
+end_year: int
 row_count: int
-has_panel: bool
+status: str
+data_available: bool
+template_name: str | None
+policy_type: str | None
+portfolio_name: str | None
 ```
 
 </details>
@@ -276,22 +327,22 @@ has_panel: bool
 <details>
 <summary>Request and response models</summary>
 
-**IndicatorRequest** (common fields)
+**IndicatorRequest**
 
 ```python
 run_id: str
-years: list[int] | None       # None = all years
-breakdown_column: str | None  # Column for grouping (distributional/geographic)
+income_field: str = "income"
+by_year: bool = False
 ```
 
 **IndicatorResponse**
 
 ```python
-run_id: str
 indicator_type: str
-results: list[dict[str, Any]]   # Typed indicator rows
-warnings: list[str]
+data: dict[str, list[Any]]       # Columnar data (PyArrow-style)
 metadata: dict[str, Any]
+warnings: list[str]
+excluded_count: int
 ```
 
 </details>
@@ -313,25 +364,29 @@ metadata: dict[str, Any]
 ```python
 baseline_run_id: str
 reform_run_id: str
-indicator_types: list[str]   # e.g. ["distributional", "fiscal"]
-years: list[int] | None
+welfare_field: str = "disposable_income"
+threshold: float = 0.0
 ```
 
 **PortfolioComparisonRequest**
 
 ```python
-run_ids: list[str]
-indicator_types: list[str]
-years: list[int] | None
+run_ids: list[str]                  # 2–5 run IDs
+baseline_run_id: str | None         # defaults to first run_id
+indicator_types: list[str] = ["distributional", "fiscal"]
+include_welfare: bool = True
+include_deltas: bool = True
+include_pct_deltas: bool = True
 ```
 
-**ComparisonResponse**
+**PortfolioComparisonResponse**
 
 ```python
-baseline_run_id: str
-reform_run_id: str
-deltas: dict[str, Any]       # Indicator deltas by type
-summary: dict[str, Any]
+comparisons: dict[str, ComparisonData]   # keyed by indicator type
+cross_metrics: list[CrossMetricItem]
+portfolio_labels: list[str]
+metadata: dict[str, Any]
+warnings: list[str]
 ```
 
 </details>
@@ -353,19 +408,21 @@ summary: dict[str, Any]
 **GeneratePopulationRequest**
 
 ```python
-sources: list[dict[str, Any]]   # List of {provider, dataset_id, filters}
-merge_method: str               # e.g. "statistical_matching"
-seed: int | None
-target_size: int | None
+sources: list[DataFusionSourceSelection]   # {provider, dataset_id}
+merge_method: str = "uniform"              # "uniform" | "ipf" | "conditional"
+seed: int = 42
+ipf_constraints: list[IPFConstraintRequest] = []
+strata_columns: list[str] = []
 ```
 
 **GeneratePopulationResponse**
 
 ```python
-population_id: str
-row_count: int
-entity_types: list[str]
-source_hashes: dict[str, str]
+success: bool
+summary: PopulationSummary          # {record_count, column_count, columns}
+step_log: list[StepLogItem]
+assumption_chain: list[AssumptionRecordItem]
+validation_result: ValidationResultResponse | None
 ```
 
 </details>
@@ -381,14 +438,14 @@ source_hashes: dict[str, str]
 <details>
 <summary>Response model</summary>
 
-**PopulationListItem**
+**PopulationItem**
 
 ```python
-population_id: str
-description: str
-row_count: int
-entity_types: list[str]
-source: str   # e.g. "synthetic_insee_2023"
+id: str
+name: str
+households: int
+source: str
+year: int
 ```
 
 </details>
@@ -408,15 +465,19 @@ source: str   # e.g. "synthetic_insee_2023"
 
 ```python
 run_id: str
-years: list[int] | None
+domain_name: str | None         # None = all domains
+group_by: str | None            # "decile" or None
+group_value: str | None         # e.g., "3" for D3; None = all
+year: int | None                # If set, include mean probabilities
 ```
 
 **DecisionSummaryResponse**
 
 ```python
 run_id: str
-decisions: list[dict[str, Any]]   # Per-year behavioral shifts
-summary_stats: dict[str, Any]
+domains: list[DomainSummary]    # Per-domain yearly outcomes
+metadata: dict[str, Any]
+warnings: list[str]
 ```
 
 </details>
@@ -437,8 +498,6 @@ summary_stats: dict[str, Any]
 
 ```python
 run_id: str
-columns: list[str] | None   # None = all columns
-years: list[int] | None     # None = all years
 ```
 
 Returns a file download response (`Content-Disposition: attachment`).
@@ -447,4 +506,4 @@ Returns a file download response (`Content-Disposition: attachment`).
 
 ---
 
-For the full interactive API documentation with live request testing, run the backend locally and visit `http://localhost:8000/docs`.
+For the full interactive API documentation with live request testing, run the backend in development mode (`REFORMLAB_ENV=dev`) and visit `http://localhost:8000/api/docs`.

@@ -1,0 +1,119 @@
+record_id: 0cc6f09b-58a0-4ff6-89b1-a81668776c78
+created_at: '2026-03-23T18:02:44.880913+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 19
+  story_num: '4'
+  title: Story 19.4
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: sonnet
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-03-23T17:56:09.139999Z'
+  end_time: '2026-03-23T18:02:00.411999Z'
+  duration_ms: 351272
+  input_tokens: 0
+  output_tokens: 2784
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 11139
+  heading_count: 19
+  list_depth_max: 2
+  code_block_count: 5
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: **8.1**'
+  - '🏛️ Root Cause: API Reference Written from Spec, Not Source'
+  - '🐛 Correctness Failures: Model-by-Model Breakdown'
+  - '`MemoryCheckResponse` — `api-reference.mdx:98–104`'
+  - '`IndicatorRequest` — `api-reference.mdx:279–285`'
+  - '`ComparisonRequest` — `api-reference.mdx:312–318`'
+  - '`ScenarioResponse` — `api-reference.mdx:134–145`'
+  - '`GeneratePopulationResponse` — `api-reference.mdx:363–369`'
+  - '`PortfolioCreateRequest` / `PortfolioResponse` — `api-reference.mdx:202–217`'
+  - '`PopulationListItem` — `api-reference.mdx:384–392`'
+  - ⚡ Critical URL Error
+  - 🔧 Suggested Fixes
+  - 1. Verify all model blocks against source before merging
+  - 2. Fix OpenAPI URL
+  - 3. Correct router count claim
+  - 4. GitHub repo casing
+  - ✅ What Works
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.33
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 69dbdb6025ac
+findings:
+  total_count: 17
+  by_severity:
+    critical: 0
+    major: 6
+    minor: 11
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 15
+    completeness: 0
+    clarity: 2
+    testability: 0
+  has_fix_count: 17
+  has_location_count: 17
+  has_evidence_count: 17
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 0
+  confidence_phrases_count: 0
+linguistic:
+  avg_sentence_length: 48.392857142857146
+  vocabulary_richness: 0.34981549815498153
+  flesch_reading_ease: 15.442833876839103
+  vague_terms_count: 0
+  formality_score: 0.65
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.95
+  evidence_quality: 0.95
+  follows_template: true
+  internal_consistency: 0.95
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 2
+  lines_of_code_reviewed: null
+  test_coverage_delta: null
