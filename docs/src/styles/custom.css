@@ -1,0 +1,5 @@
+/* Brand fonts — values from website/src/styles/brand-theme.css */
+:root {
+  --sl-font: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --sl-font-mono: 'IBM Plex Mono', Consolas, Monaco, monospace;
+}

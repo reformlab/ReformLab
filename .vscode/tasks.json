@@ -435,29 +435,9 @@
       }
     },
     {
-      "label": "Docs: Install Dependencies",
+      "label": "Docs: Dev Server (localhost:4322)",
       "type": "shell",
-      "command": "uv sync --group docs",
-      "options": {
-        "cwd": "${workspaceFolder}",
-        "shell": {
-          "executable": "/bin/zsh",
-          "args": [
-            "-lc"
-          ]
-        }
-      },
-      "problemMatcher": [],
-      "presentation": {
-        "reveal": "always",
-        "panel": "dedicated",
-        "clear": true
-      }
-    },
-    {
-      "label": "Docs: Serve (localhost:8100)",
-      "type": "shell",
-      "command": "uv run --group docs mkdocs serve --dev-addr 127.0.0.1:8100",
+      "command": "source ~/.nvm/nvm.sh && cd docs && nvm use && npm run dev",
       "options": {
         "cwd": "${workspaceFolder}",
         "shell": {
@@ -482,8 +462,8 @@
         },
         "background": {
           "activeOnStart": true,
-          "beginsPattern": "^INFO\\s+-\\s+Building documentation",
-          "endsPattern": "Serving on"
+          "beginsPattern": "^\\s*astro",
+          "endsPattern": "localhost"
         }
       },
       "presentation": {
@@ -493,26 +473,6 @@
       },
       "runOptions": {
         "reevaluateOnRerun": true
-      }
-    },
-    {
-      "label": "Docs: Build Static Site",
-      "type": "shell",
-      "command": "uv run --group docs mkdocs build",
-      "options": {
-        "cwd": "${workspaceFolder}",
-        "shell": {
-          "executable": "/bin/zsh",
-          "args": [
-            "-lc"
-          ]
-        }
-      },
-      "problemMatcher": [],
-      "presentation": {
-        "reveal": "always",
-        "panel": "dedicated",
-        "clear": true
       }
     }
   ],
