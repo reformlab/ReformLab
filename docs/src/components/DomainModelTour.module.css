@@ -1,0 +1,54 @@
+/* Override driver.js theming to use Starlight CSS custom properties */
+:global(.driver-popover.reformlab-tour-popover) {
+  background-color: var(--sl-color-bg);
+  color: var(--sl-color-text);
+}
+
+:global(.driver-popover.reformlab-tour-popover .driver-popover-title) {
+  color: var(--sl-color-text-accent);
+  font-family: var(--sl-font);
+}
+
+:global(.driver-popover.reformlab-tour-popover .driver-popover-description) {
+  color: var(--sl-color-text);
+  font-family: var(--sl-font);
+}
+
+:global(.driver-popover.reformlab-tour-popover .driver-popover-progress-text) {
+  color: var(--sl-color-gray-3);
+}
+
+:global(.driver-popover.reformlab-tour-popover .driver-popover-navigation-btns button) {
+  background-color: var(--sl-color-accent);
+  color: var(--sl-color-bg);
+  border: none;
+  border-radius: 4px;
+  padding: 0.375rem 0.75rem;
+  font-family: var(--sl-font);
+  cursor: pointer;
+}
+
+:global(.driver-popover.reformlab-tour-popover .driver-popover-close-btn) {
+  color: var(--sl-color-gray-3);
+}
+
+.tourButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--sl-color-accent);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--sl-color-accent);
+  font-family: var(--sl-font);
+  font-size: 0.875rem;
+  cursor: pointer;
+  margin-bottom: 1rem;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.tourButton:hover {
+  background-color: var(--sl-color-accent);
+  color: var(--sl-color-bg);
+}

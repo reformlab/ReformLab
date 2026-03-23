@@ -1,0 +1,132 @@
+record_id: 326296a1-0f81-4686-92f6-2cd77772b053
+created_at: '2026-03-23T18:56:55.390230+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 19
+  story_num: 6
+  title: Story 19.6
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: codex
+  model: gpt-5.3-codex
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-03-23T18:50:17.056418Z'
+  end_time: '2026-03-23T18:55:06.490418Z'
+  duration_ms: 289434
+  input_tokens: 0
+  output_tokens: 3481
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 13924
+  heading_count: 36
+  list_depth_max: 2
+  code_block_count: 6
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 12.3'
+  - 🎯 Ruthless Story Validation 19.6
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 12.3 → REJECT'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. AC2 Content Contract Conflict
+  - 2. Dismissal Behavior Not Guaranteed for Backdrop Click
+  - 3. No Required Guard for Missing Target Elements
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Replace `aria-label` Selectors with Stable Tour Attributes
+  - 2. Add Explicit Focus Management Requirement
+  - 3. Add Dependency Gate for Story 19.5
+  - 4. Make Theme Validation Objective
+  - 5. Define Tour Start Failure UX
+  - ✨ Optimizations (Nice to Have)
+  - 1. Single Source of Truth for Node Metadata
+  - 2. Add a Selector Smoke Check in Dev Notes
+  - 3. Explicit Version Pin Behavior Note
+  - 🤖 LLM Optimization Improvements
+  - 1. Consolidate Duplicated Build/Check Instructions
+  - 2. Convert Long Narrative Risks into Structured Decision Table
+  - 3. Separate “Mandatory” vs “Optional” Instructions Explicitly
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.33
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 01a2be506983
+findings:
+  total_count: 24
+  by_severity:
+    critical: 3
+    major: 9
+    minor: 12
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 4
+    completeness: 8
+    clarity: 5
+    testability: 2
+  has_fix_count: 21
+  has_location_count: 18
+  has_evidence_count: 19
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 4
+  confidence_phrases_count: 4
+linguistic:
+  avg_sentence_length: 13.237037037037037
+  vocabulary_richness: 0.37269166200335757
+  flesch_reading_ease: 15.059852024922122
+  vague_terms_count: 1
+  formality_score: 0.65
+  sentiment: mixed
+quality:
+  actionable_ratio: 0.85
+  specificity_score: 0.7
+  evidence_quality: 0.75
+  follows_template: true
+  internal_consistency: 0.82
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
