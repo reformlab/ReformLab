@@ -1,0 +1,127 @@
+record_id: 84eca711-da14-48fb-a700-264ea4828f62
+created_at: '2026-03-23T13:06:49.617664+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 19
+  story_num: 2
+  title: Story 19.2
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: sonnet
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-03-23T13:01:15.054122Z'
+  end_time: '2026-03-23T13:05:48.128122Z'
+  duration_ms: 273074
+  input_tokens: 0
+  output_tokens: 3808
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 15234
+  heading_count: 31
+  list_depth_max: 2
+  code_block_count: 2
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Evidence Score Summary
+  - 'Evidence Score: **5.9**'
+  - 🎯 Ruthless Story Validation 19.2
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 🚨 Critical Issues (Must Fix)
+  - 1. No version pin for `astro-mermaid`
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 2. AC 1 rewrite needed — client-side rendering ≠ "built output"
+  - 3. `npm run check` missing from quality gates
+  - 4. No peer-dependency conflict check after install
+  - 5. AC 7 / Dev Notes icon conflict — needs resolution
+  - 6. Integration ordering claim needs a source or test step
+  - ✨ Optimizations (Nice to Have)
+  - 7. "The AC says 'Mermaid v1'" — phrase doesn't appear in any AC
+  - 8. Task 4 says "all 6 sidebar pages" — should be 7
+  - '9. Alternative approach note: Astro 5.5+ `rehype-mermaid` with `excludeLangs`'
+  - 🤖 LLM Optimization Improvements
+  - 10. "Why not LinkCard" rationale is verbose
+  - 11. Fallback section placement disrupts flow
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.33
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: ee771d13c2e6
+findings:
+  total_count: 11
+  by_severity:
+    critical: 1
+    major: 5
+    minor: 3
+    nit: 2
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 2
+    completeness: 4
+    clarity: 5
+    testability: 0
+  has_fix_count: 11
+  has_location_count: 11
+  has_evidence_count: 8
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 6
+  confidence_phrases_count: 4
+linguistic:
+  avg_sentence_length: 25.0
+  vocabulary_richness: 0.2991111111111111
+  flesch_reading_ease: 42.85101947048895
+  vague_terms_count: 2
+  formality_score: 0.72
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.95
+  evidence_quality: 0.73
+  follows_template: true
+  internal_consistency: 0.95
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false

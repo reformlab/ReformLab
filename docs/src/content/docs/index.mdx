@@ -14,8 +14,29 @@ hero:
       variant: minimal
 ---
 
-## What is ReformLab?
+ReformLab connects population data to policy scenarios through OpenFisca, producing distributional impact indicators in minutes — not months.
 
-ReformLab is an OpenFisca-first platform for environmental policy analysis. It handles population preparation, scenario templates, multi-year orchestration, and result indicators — so you can focus on policy design, not plumbing.
+## How it works
 
-Detailed content for this page will be added in Story 19.2, including an interactive domain model diagram and a live demo call-to-action.
+```mermaid
+flowchart LR
+    Pop["Population\nData"]
+    Pol["Policy\nScenario"]
+    Orch["ReformLab\nOrchestrator"]
+    Engine["OpenFisca\nEngine"]
+    Res["Simulation\nResults"]
+    Ind["Impact\nIndicators"]
+
+    Pop --> Orch
+    Pol --> Orch
+    Orch --> Engine
+    Engine --> Res
+    Res --> Ind
+```
+
+Each box is a core concept you can explore in the [Domain Model](/domain-model/) reference.
+
+## Ready to explore?
+
+{/* TODO: update href when app.reformlab.fr is live */}
+See [real-world use cases](/use-cases/) or [try the demo](#).
