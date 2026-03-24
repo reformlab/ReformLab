@@ -22,6 +22,7 @@ import { ScenarioCard } from "@/components/simulation/ScenarioCard";
 import { SummaryStatCard } from "@/components/simulation/SummaryStatCard";
 import { WorkflowNavRail } from "@/components/layout/WorkflowNavRail";
 import { Toaster } from "@/components/ui/sonner";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ContextualHelpPanel } from "@/components/help/ContextualHelpPanel";
 import { Separator } from "@/components/ui/separator";
@@ -71,6 +72,7 @@ function Workspace() {
     refetchTemplates,
     selectedPortfolioName,
     results,
+    apiConnected,
   } = useAppState();
 
   const [activeStep, setActiveStep] = useState<ConfigStepKey>("population");
@@ -206,7 +208,12 @@ function Workspace() {
     <>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-gradient-to-r from-white to-indigo-50 p-3 shadow-sm">
         <div>
-          <h1 className="text-xl font-bold">ReformLab</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold">ReformLab</h1>
+            <Badge variant={apiConnected ? "success" : "warning"} className="rounded-full text-[10px] leading-none">
+              {apiConnected ? "API connected" : "Sample data"}
+            </Badge>
+          </div>
           <p className="text-sm text-indigo-700">
             Environmental policy analysis workspace
           </p>

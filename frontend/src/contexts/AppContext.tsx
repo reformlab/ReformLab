@@ -103,6 +103,9 @@ interface AppState {
   // Comparison (Story 17.4)
   selectedComparisonRunIds: string[];
   setSelectedComparisonRunIds: (ids: string[]) => void;
+
+  // API connection status
+  apiConnected: boolean;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -434,6 +437,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setSelectedPortfolioName,
       selectedComparisonRunIds,
       setSelectedComparisonRunIds,
+      apiConnected: !populationsMock && !templatesMock,
     }),
     [
       isAuthenticated, authLoading, authenticate, logout,
@@ -450,6 +454,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       results, resultsLoading, refetchResults,
       selectedPortfolioName, setSelectedPortfolioName,
       selectedComparisonRunIds, setSelectedComparisonRunIds,
+      populationsMock, templatesMock,
     ],
   );
 
