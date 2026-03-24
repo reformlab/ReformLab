@@ -45,8 +45,9 @@ jobs:
           HETZNER_IP: ${{ secrets.HETZNER_IP }}
         run: |
           mkdir -p .kamal
-          printf "KAMAL_REGISTRY_PASSWORD=%s\nREFORMLAB_PASSWORD=%s\nHETZNER_IP=%s\n" \
+          printf '#!/bin/sh\necho "KAMAL_REGISTRY_PASSWORD=%s"\necho "REFORMLAB_PASSWORD=%s"\necho "HETZNER_IP=%s"\n' \
             "$KAMAL_REGISTRY_PASSWORD" "$REFORMLAB_PASSWORD" "$HETZNER_IP" > .kamal/secrets
+          chmod +x .kamal/secrets
 
       - name: Generate Dozzle users file
         env:
@@ -108,8 +109,9 @@ jobs:
           HETZNER_IP: ${{ secrets.HETZNER_IP }}
         run: |
           mkdir -p .kamal
-          printf "KAMAL_REGISTRY_PASSWORD=%s\nREFORMLAB_PASSWORD=%s\nHETZNER_IP=%s\n" \
+          printf '#!/bin/sh\necho "KAMAL_REGISTRY_PASSWORD=%s"\necho "REFORMLAB_PASSWORD=%s"\necho "HETZNER_IP=%s"\n' \
             "$KAMAL_REGISTRY_PASSWORD" "$REFORMLAB_PASSWORD" "$HETZNER_IP" > .kamal/secrets
+          chmod +x .kamal/secrets
 
       - name: Reboot frontend accessory
         run: kamal accessory reboot frontend
@@ -164,8 +166,9 @@ jobs:
           HETZNER_IP: ${{ secrets.HETZNER_IP }}
         run: |
           mkdir -p .kamal
-          printf "KAMAL_REGISTRY_PASSWORD=%s\nREFORMLAB_PASSWORD=%s\nHETZNER_IP=%s\n" \
+          printf '#!/bin/sh\necho "KAMAL_REGISTRY_PASSWORD=%s"\necho "REFORMLAB_PASSWORD=%s"\necho "HETZNER_IP=%s"\n' \
             "$KAMAL_REGISTRY_PASSWORD" "$REFORMLAB_PASSWORD" "$HETZNER_IP" > .kamal/secrets
+          chmod +x .kamal/secrets
 
       - name: Reboot website accessory
         run: kamal accessory reboot website
@@ -203,8 +206,9 @@ jobs:
           HETZNER_IP: ${{ secrets.HETZNER_IP }}
         run: |
           mkdir -p .kamal
-          printf "KAMAL_REGISTRY_PASSWORD=%s\nREFORMLAB_PASSWORD=%s\nHETZNER_IP=%s\n" \
+          printf '#!/bin/sh\necho "KAMAL_REGISTRY_PASSWORD=%s"\necho "REFORMLAB_PASSWORD=%s"\necho "HETZNER_IP=%s"\n' \
             "$KAMAL_REGISTRY_PASSWORD" "$REFORMLAB_PASSWORD" "$HETZNER_IP" > .kamal/secrets
+          chmod +x .kamal/secrets
 
       - name: Generate Dozzle users file
         env:
