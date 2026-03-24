@@ -42,10 +42,11 @@ jobs:
         env:
           KAMAL_REGISTRY_PASSWORD: ${{ secrets.KAMAL_REGISTRY_PASSWORD }}
           REFORMLAB_PASSWORD: ${{ secrets.REFORMLAB_PASSWORD }}
+          SERVER_IP: ${{ secrets.HETZNER_IP }}
         run: |
           mkdir -p .kamal
-          printf "KAMAL_REGISTRY_PASSWORD=%s\nREFORMLAB_PASSWORD=%s\n" \
-            "$KAMAL_REGISTRY_PASSWORD" "$REFORMLAB_PASSWORD" > .kamal/secrets
+          printf "KAMAL_REGISTRY_PASSWORD=%s\nREFORMLAB_PASSWORD=%s\nSERVER_IP=%s\n" \
+            "$KAMAL_REGISTRY_PASSWORD" "$REFORMLAB_PASSWORD" "$SERVER_IP" > .kamal/secrets
 
       - name: Generate Dozzle users file
         env:
@@ -104,10 +105,11 @@ jobs:
         env:
           KAMAL_REGISTRY_PASSWORD: ${{ secrets.KAMAL_REGISTRY_PASSWORD }}
           REFORMLAB_PASSWORD: ${{ secrets.REFORMLAB_PASSWORD }}
+          SERVER_IP: ${{ secrets.HETZNER_IP }}
         run: |
           mkdir -p .kamal
-          printf "KAMAL_REGISTRY_PASSWORD=%s\nREFORMLAB_PASSWORD=%s\n" \
-            "$KAMAL_REGISTRY_PASSWORD" "$REFORMLAB_PASSWORD" > .kamal/secrets
+          printf "KAMAL_REGISTRY_PASSWORD=%s\nREFORMLAB_PASSWORD=%s\nSERVER_IP=%s\n" \
+            "$KAMAL_REGISTRY_PASSWORD" "$REFORMLAB_PASSWORD" "$SERVER_IP" > .kamal/secrets
 
       - name: Reboot frontend accessory
         run: kamal accessory reboot frontend
@@ -159,10 +161,11 @@ jobs:
         env:
           KAMAL_REGISTRY_PASSWORD: ${{ secrets.KAMAL_REGISTRY_PASSWORD }}
           REFORMLAB_PASSWORD: ${{ secrets.REFORMLAB_PASSWORD }}
+          SERVER_IP: ${{ secrets.HETZNER_IP }}
         run: |
           mkdir -p .kamal
-          printf "KAMAL_REGISTRY_PASSWORD=%s\nREFORMLAB_PASSWORD=%s\n" \
-            "$KAMAL_REGISTRY_PASSWORD" "$REFORMLAB_PASSWORD" > .kamal/secrets
+          printf "KAMAL_REGISTRY_PASSWORD=%s\nREFORMLAB_PASSWORD=%s\nSERVER_IP=%s\n" \
+            "$KAMAL_REGISTRY_PASSWORD" "$REFORMLAB_PASSWORD" "$SERVER_IP" > .kamal/secrets
 
       - name: Reboot website accessory
         run: kamal accessory reboot website
@@ -197,10 +200,11 @@ jobs:
         env:
           KAMAL_REGISTRY_PASSWORD: ${{ secrets.KAMAL_REGISTRY_PASSWORD }}
           REFORMLAB_PASSWORD: ${{ secrets.REFORMLAB_PASSWORD }}
+          SERVER_IP: ${{ secrets.HETZNER_IP }}
         run: |
           mkdir -p .kamal
-          printf "KAMAL_REGISTRY_PASSWORD=%s\nREFORMLAB_PASSWORD=%s\n" \
-            "$KAMAL_REGISTRY_PASSWORD" "$REFORMLAB_PASSWORD" > .kamal/secrets
+          printf "KAMAL_REGISTRY_PASSWORD=%s\nREFORMLAB_PASSWORD=%s\nSERVER_IP=%s\n" \
+            "$KAMAL_REGISTRY_PASSWORD" "$REFORMLAB_PASSWORD" "$SERVER_IP" > .kamal/secrets
 
       - name: Generate Dozzle users file
         env:
