@@ -13,6 +13,8 @@ export default defineConfig({
       title: 'ReformLab Docs',
       social: [
         { icon: 'github', href: 'https://github.com/reformlab/reformlab', label: 'GitHub' },
+        { icon: 'rocket', href: 'https://app.reform-lab.eu', label: 'Open App' },
+        { icon: 'external', href: 'https://reform-lab.eu', label: 'Website' },
       ],
       customCss: [
         '@fontsource-variable/inter/index.css',
