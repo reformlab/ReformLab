@@ -87,15 +87,45 @@ def _template_to_detail(name: str, template: Any) -> TemplateDetailResponse:
     )
 
 
+def _load_builtin_packs() -> list[TemplateListItem]:
+    """Discover and load all built-in template packs shipped with ReformLab."""
+    from reformlab.templates.loader import load_scenario_template
+    from reformlab.templates.packs import _PACKS_DIR
+
+    items: list[TemplateListItem] = []
+    if not _PACKS_DIR.exists():
+        return items
+
+    for pack_dir in sorted(_PACKS_DIR.iterdir()):
+        if not pack_dir.is_dir() or pack_dir.name.startswith("_"):
+            continue
+        for yaml_file in sorted(pack_dir.glob("*.yaml")):
+            try:
+                template = load_scenario_template(yaml_file)
+                items.append(_template_to_list_item(yaml_file.stem, template))
+            except Exception:
+                logger.warning("Failed to load pack template '%s', skipping", yaml_file)
+
+    return items
+
+
 @router.get("", response_model=dict[str, list[TemplateListItem]])
 async def list_templates() -> dict[str, list[TemplateListItem]]:
     """List available policy templates."""
-    registry = _get_registry()
-    names = registry.list_scenarios()
-
     items: list[TemplateListItem] = []
     seen_names: set[str] = set()
-    for name in names:
+
+    # 1. Built-in template packs (YAML files shipped with ReformLab)
+    for item in _load_builtin_packs():
+        if item.id not in seen_names:
+            items.append(item)
+            seen_names.add(item.id)
+
+    # 2. User-saved scenarios from the registry
+    registry = _get_registry()
+    for name in registry.list_scenarios():
+        if name in seen_names:
+            continue
         try:
             template = registry.get(name)
             items.append(_template_to_list_item(name, template))
@@ -103,7 +133,7 @@ async def list_templates() -> dict[str, list[TemplateListItem]]:
         except (KeyError, FileNotFoundError, ValueError, AttributeError, RegistryError):
             logger.warning("Failed to load template '%s', skipping", name)
 
-    # Include in-memory custom registrations not already in the registry
+    # 3. In-memory custom registrations not already listed
     from reformlab.templates.schema import list_custom_registrations
 
     for type_name, params_class in list_custom_registrations().items():

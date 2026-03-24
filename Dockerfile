@@ -14,8 +14,9 @@ RUN apt-get update && \
 COPY pyproject.toml uv.lock README.md ./
 RUN uv sync --frozen --no-dev --extra server --no-install-project
 
-# Copy application code
+# Copy application code and bundled data
 COPY src/ ./src/
+COPY data/ ./data/
 
 # Install the local package, then remove the build toolchain.
 RUN uv sync --frozen --no-dev --extra server && \
