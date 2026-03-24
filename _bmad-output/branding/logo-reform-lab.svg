@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 560" role="img" aria-labelledby="title desc">
+  <title id="title">Reform Lab logo</title>
+  <desc id="desc">A stacked Reform Lab logo with two overlapping pointed ovals and the wordmark underneath.</desc>
+  <defs>
+     <path
+      id="left-lens"
+      d="M 86 196
+         C 174 92 304 56 444 80
+         A 126 126 0 0 1 444 332
+         C 304 356 174 300 86 196 Z"
+    />
+    <path
+      id="right-lens"
+      d="M 674 196
+         C 586 92 456 56 326 80
+         A 126 126 0 0 0 326 332
+         C 456 356 586 300 674 196 Z"
+    />
+    <clipPath id="clip-right">
+      <use href="#right-lens" />
+    </clipPath>
+  </defs>
+
+  <use href="#left-lens" fill="#334155" />
+  <use href="#right-lens" fill="#10B981" />
+  <use href="#left-lens" clip-path="url(#clip-right)" fill="#217D6B" />
+
+  <text
+    x="380"
+    y="474"
+    text-anchor="middle"
+    font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+    font-size="92"
+    font-weight="600"
+    letter-spacing="-1.5"
+  >
+    <tspan fill="#334155">Reform </tspan>
+    <tspan fill="#10B981">Lab</tspan>
+  </text>
+</svg>
