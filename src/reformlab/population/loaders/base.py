@@ -79,6 +79,12 @@ class SourceConfig:
         # Deep-copy mutable container (frozen dataclass pattern)
         object.__setattr__(self, "params", dict(self.params))
 
+    def __repr__(self) -> str:
+        return (
+            f"SourceConfig(provider={self.provider!r}, "
+            f"dataset_id={self.dataset_id!r})"
+        )
+
 
 @dataclass(frozen=True)
 class CacheStatus:
@@ -105,6 +111,14 @@ class CacheStatus:
     downloaded_at: datetime | None
     hash: str | None
     stale: bool
+
+    def __repr__(self) -> str:
+        dl = self.downloaded_at.isoformat(timespec="seconds") if self.downloaded_at else None
+        return (
+            f"CacheStatus(cached={self.cached}, "
+            f"stale={self.stale}, "
+            f"downloaded_at={dl!r})"
+        )
 
 
 # ====================================================================
