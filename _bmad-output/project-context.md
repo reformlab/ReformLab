@@ -1,7 +1,7 @@
 ---
 project_name: 'ReformLab'
 user_name: 'Lucas'
-date: '2026-02-27'
+date: '2026-03-24'
 status: 'complete'
 sections_completed: ['technology_stack', 'language_rules', 'framework_rules', 'testing_rules', 'code_quality', 'workflow_rules', 'critical_rules']
 rule_count: 38
@@ -23,9 +23,10 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - **jsonschema >= 4.23.0** — JSON Schema validation for templates
 - **openfisca-core >= 44.0.0** — optional dependency (`[openfisca]` extra); never import outside adapter modules
 - **pytest >= 8.3.3, ruff >= 0.15.0, mypy >= 1.19.0** — dev tooling
-- **Planned frontend:** React 18+ / TypeScript / Vite / Shadcn/ui / Tailwind v4
-- **Planned backend API:** FastAPI + uvicorn
-- **Planned deployment:** Kamal 2 on Hetzner CX22
+- **Frontend:** React 19 / TypeScript / Vite 7 / Shadcn/ui / Tailwind v4 / Recharts
+- **Backend API:** FastAPI + uvicorn + Pydantic v2
+- **Deployment:** Kamal 2 on Hetzner CX22
+- **Documentation site:** Astro Starlight
 
 ### Version Constraints
 
@@ -113,4 +114,4 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - Review quarterly for outdated rules
 - Remove rules that become obvious over time
 
-Last Updated: 2026-02-27
+Last Updated: 2026-03-24
