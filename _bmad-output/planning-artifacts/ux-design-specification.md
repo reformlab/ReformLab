@@ -1,10 +1,14 @@
 ---
 stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 lastStep: 14
+revision: 2.0
+revisionDate: 2026-03-24
+revisionScope: "Information architecture restructuring, brand-aligned shell, population data explorer, engine stage"
 inputDocuments:
   - _bmad-output/planning-artifacts/product-brief-ReformLab-2026-02-23.md
   - _bmad-output/planning-artifacts/research/technical-entity-graph-data-modeling-and-vectorized-simulation-engines-research-2026-02-23.md
   - _bmad-output/planning-artifacts/research/domain-generic-microsimulation-frameworks-research-2026-02-23.md
+  - _bmad-output/branding/visual-identity-guide.md
 ---
 
 # UX Design Specification ReformLab
@@ -321,7 +325,7 @@ Key characteristics:
 src/
   components/
     ui/          # Shadcn/ui base components (Button, Dialog, Card, etc.)
-    simulation/  # Domain-specific components (ScenarioCard, RunComparison, etc.)
+    simulation/  # Domain-specific components (ParameterRow, RunQueuePanel, scenario/results views)
     lineage/     # DAG and lineage visualization components
     layout/      # Shell, navigation, workspace layout
   lib/
@@ -511,14 +515,14 @@ flowchart TD
 
 **Goal:** Alex (new user) produces a distributional chart in under 15 minutes with zero configuration.
 
-**Entry point:** First launch of the application. No login, no setup wizard.
+**Entry point:** First launch of the application. No login, no setup wizard. A pre-seeded demo scenario is loaded with valid defaults for Stages 1-3.
 
 ```mermaid
 flowchart TD
     A[First launch] --> B[Workspace opens]
-    B --> C[Pre-loaded carbon tax template]
-    C --> D[Model summary visible: population, policy, parameters]
-    D --> E[Run button prominent and enabled]
+    B --> C[Demo scenario loaded]
+    C --> D[Stages 1-3 prefilled: portfolio, population, engine]
+    D --> E[Stage 4 opens with Run enabled]
 
     E --> F{User clicks Run}
     F --> G[Progress indicator: computing...]
@@ -539,9 +543,10 @@ flowchart TD
 
 **Key UX decisions:**
 
-- **No empty state, ever.** The workspace opens with a fully configured model. The Run button works immediately.
-- **The template IS the tutorial.** By exploring the pre-loaded model, the analyst learns: what a synthetic population looks like, how parameters are structured, how results appear. No separate tutorial, no tooltip tour.
+- **No empty state, ever.** The workspace opens on a valid scenario, not an unconfigured shell. The Run button works immediately.
+- **The demo scenario IS the tutorial.** By exploring the pre-seeded scenario, the analyst learns what the portfolio, population, and engine stages contain without having to complete them first.
 - **First chart is the hook.** Everything before the first chart is automatic. Everything after is the analyst's curiosity driving exploration.
+- **The four-stage IA remains visible.** Even though the first launch opens on Stage 4, the analyst can move backward into Stages 1-3 to inspect or edit the scenario that produced the result.
 - **Gentle discovery:** The lineage drill-down and scenario comparison are discoverable (clickable chart elements, visible "Compare" action) but not pushed. The analyst finds them when they're ready.
 
 ### Journey 3: Scenario Workspace
@@ -735,7 +740,7 @@ These Shadcn/ui components cover standard UI needs with no customization beyond 
 | Dialog | Export confirmation, scenario naming, model validation summary |
 | Popover | Lineage Level 1 indicator summary (click-to-inspect) |
 | Tooltip | Parameter descriptions, icon labels, abbreviated values |
-| Card | Scenario cards, result summary cards, DAG node containers |
+| Card | Scenario summary cards, result summary cards, DAG node containers |
 | Table | Indicator tables, comparison tables, assumption grids |
 | Tabs | Comparison modes (side-by-side / overlay / delta), export format tabs |
 | Badge | Run status, validation status, reform-delta count |
@@ -772,13 +777,15 @@ Components not available in Shadcn/ui, designed specifically for ReformLab's dom
 
 **Interaction:** Click value to edit inline. For continuous parameters, a slider appears below on click. Enter or blur commits. Esc reverts.
 
-#### ScenarioCard
+#### ScenarioSummaryCard
 
-**Purpose:** Compact card in the left panel's scenario selector representing one scenario.
+**Purpose:** Compact card representing one saved scenario in a scenario registry, compare picker, or clone dialog.
 
 **Anatomy:**
 
-- Scenario name (editable on double-click)
+- Scenario name
+- Scenario type: baseline / reform
+- Linked portfolio and population summary
 - Status badge: draft / ready / running / completed / failed
 - Delta summary: "3 parameters changed" with expand-to-list
 - Last run timestamp
@@ -786,15 +793,15 @@ Components not available in Shadcn/ui, designed specifically for ReformLab's dom
 
 **States:**
 
-- Default: compact summary
+- Default: compact summary in list or modal picker
 - Selected: `bg-blue-50` highlight, border accent
 - Running: animated status badge, progress percentage
 - Failed: `red` border accent, error summary visible
 
 **Variants:**
 
-- Baseline card (protected, no delete action, no delta summary)
-- Reform card (full actions, delta summary visible)
+- Baseline scenario summary
+- Reform scenario summary
 
 #### RunProgressBar
 
@@ -895,9 +902,9 @@ Components not available in Shadcn/ui, designed specifically for ReformLab's dom
 - Content area adapting to selected mode
 - Parameter editing still active — tweaking a parameter in any scenario updates all views live
 
-#### ModelConfigStepper
+#### ModelConfigStepper (Retired after Revision 2.0)
 
-**Purpose:** Progress indicator for the four-step model configuration journey. Not a blocking wizard — all steps are always accessible.
+**Purpose:** Historical progress indicator for the original four-step model configuration journey. Retained here for reference only; the active shell now uses the four-stage nav rail defined in Revision 2.0.
 
 **Anatomy:**
 
@@ -929,15 +936,15 @@ Components not available in Shadcn/ui, designed specifically for ReformLab's dom
 
 **Build order aligned with journey priority:**
 
-**Phase 1 — Core Loop (Sprint 5, EPIC-6):**
+**Current baseline build order (post-Phase 1):**
 
-1. Three-column layout shell (ResizablePanel + custom collapse)
-2. ParameterRow — the core interaction component
-3. ScenarioCard — scenario management in left panel
-4. RunProgressBar — execution feedback
-5. Basic chart integration (Recharts bar chart for distributional results)
-6. ComparisonView (side-by-side mode first)
-7. ModelConfigStepper — model configuration navigation
+1. Stage-based shell (Sidebar + TopBar + main content)
+2. ParameterRow — shared parameter editing pattern for policy and engine settings
+3. RunProgressBar / RunQueuePanel — execution feedback
+4. Basic chart integration (Recharts bar chart for distributional results)
+5. ComparisonView (side-by-side mode first)
+6. ScenarioSummaryCard — scenario registry and compare picker
+7. Cross-stage validation summary before execution
 
 **Phase 1b — Lineage (Sprint 5-6):**
 
@@ -960,13 +967,13 @@ Components not available in Shadcn/ui, designed specifically for ReformLab's dom
 - All components use Tailwind classes only — no CSS modules
 - Storybook stories optional for Phase 2, not MVP
 
-### Implementation Roadmap
+### Implementation Roadmap Snapshot
 
 | Phase | Components | Dependency | Target |
 |-------|-----------|------------|--------|
-| Phase 1 | Layout shell, ParameterRow, ScenarioCard, RunProgressBar, basic charts, ComparisonView (side-by-side), ModelConfigStepper | Backend API endpoints for scenarios and runs | Sprint 5 |
-| Phase 1b | LineagePopover, LineageDAGView, WaterfallChart | Lineage data model from computation engine | Sprint 5-6 |
-| Phase 2 | ComparisonView (all modes), ExportPreview, Command palette, Lens overlays | Core loop stable | Sprint 6+ |
+| Current baseline | Stage shell, ParameterRow, RunProgressBar, RunQueuePanel, basic charts, ComparisonView (side-by-side), ScenarioSummaryCard | Scenario/run APIs and stage routing | Active baseline |
+| Near-term | LineagePopover, LineageDAGView, WaterfallChart | Lineage data model from computation engine | Active follow-on |
+| Later polish | ComparisonView (all modes), ExportPreview, Command palette, Lens overlays | Core loop stable | Next refinement pass |
 
 ## UX Consistency Patterns
 
@@ -1080,26 +1087,24 @@ Components not available in Shadcn/ui, designed specifically for ReformLab's dom
 
 ### Navigation & Panel Management
 
-**Three-column layout behavior:**
+**Current shell behavior:**
 
-- **Left panel (parameters/config):** Always shows current context. Content changes based on active mode (model config steps vs. scenario parameters).
-- **Main content (results/charts):** Shows the primary output. Adapts to current action (single scenario results, comparison view, lineage DAG).
-- **Right panel (context/metadata):** Shows supporting information for whatever is selected in main content. Auto-updates when selection changes.
+- **Sidebar:** Persistent nav rail for the four stages plus stage-completion summaries.
+- **Main content:** Shows the active stage screen or stage sub-view (results, comparison, lineage, data explorer).
+- **Right panel:** Optional contextual metadata/help surface that updates with current selection.
 
 **Panel collapse:**
 
-- Click panel header toggle or use keyboard shortcut (`Cmd+[` left, `Cmd+]` right)
-- Collapsed state: 48px icon rail showing section icons
-- Hover on collapsed rail: panel expands temporarily as overlay
-- Click on collapsed rail: panel expands permanently
-- Panel state persisted per session
+- Sidebar and contextual panels can collapse to preserve chart/data space.
+- Collapsed state uses icon rails or compact toggles consistent with the stage shell.
+- Panel state is persisted per session.
 
 **Navigation within panels:**
 
-- Scroll within panels independently (each panel has its own ScrollArea)
-- No page-level navigation changes — the workspace is always the same URL
-- Back/forward browser buttons have no effect (single-page workspace)
-- Cmd+K opens command palette for quick navigation: jump to any parameter, scenario, or view
+- Scroll regions remain independent where data density requires it.
+- Stage changes and major sub-views are route-addressable within the SPA.
+- Browser back/forward returns to the previous stage or sub-view.
+- Cmd+K opens command palette for quick navigation: jump to any stage, scenario, parameter, or view.
 
 **Breadcrumb pattern (for lineage drill-down only):**
 
@@ -1224,3 +1229,589 @@ This is the industry standard for professional web applications. It covers the a
 5. **Relative units everywhere.** `rem` for font sizes and spacing, `%` or `fr` for layout widths. Never `px` for text. `px` acceptable only for borders (1px) and very specific spacing (the 48px icon rail).
 
 6. **Test at zoom.** After implementing any layout, test at 200% browser zoom. If content clips or requires horizontal scroll, fix the layout.
+
+---
+
+## Revision 2.0 — Information Architecture Restructuring (2026-03-24)
+
+> **This revision supersedes:** the User Journey Flows section (Journey 1: Model Configuration flow and any Journey 2 interpretation that conflicts with stage-based onboarding), the original component sequencing tied to `ScenarioCard`, `ModelConfigStepper`, and the pre-revision shell layout, and the Navigation & Panel Management section. Where older sections use pre-revision terminology, the canonical object model below takes precedence.
+>
+> **Motivation:** The original information architecture mixed concerns within a single "Configuration" stage — population selection, policy template selection, parameter editing, and validation all lived together. User testing revealed this creates confusion: the link between Portfolio and Policy was unclear, Population appeared in two places (Data Fusion and Configuration), calibration was missing, and the Configuration screen felt like a grab-bag. This revision restructures the GUI into four stages aligned with the analyst's natural mental model.
+
+### Revision: Four-Stage Information Architecture
+
+The workspace now follows a four-stage linear workflow. Each stage represents one complete category of decision. Stages are navigable in any order (not a blocking wizard) but the natural flow is sequential.
+
+```
+Stage 1: POLICIES & PORTFOLIO
+  └─ "What policies am I testing?"
+
+Stage 2: POPULATION
+  └─ "Who does this affect?"
+
+Stage 3: ENGINE
+  └─ "How should the computation behave?"
+
+Stage 4: RUN / RESULTS / COMPARE
+  └─ "What happened?"
+```
+
+### Revision: Canonical Object Model
+
+The four-stage shell organizes one underlying analysis model. The canonical workflow artifacts are:
+
+| Artifact | Definition | Created/edited in | Notes |
+|---|---|---|---|
+| **Portfolio** | Reusable bundle of one or more policy templates plus their parameter schedules | Stage 1 | A single policy is a portfolio of one |
+| **Population** | Reusable dataset selected, generated, or uploaded for analysis | Stage 2 | Populations remain inspectable outside any one run |
+| **Scenario** | Versioned analysis definition combining a portfolio, selected population set, engine configuration, mappings, and metadata | Stages 1-3 | This is the primary save/clone/reform-as-delta object |
+| **Run** | Execution of one scenario version for one population or one row of a run matrix | Stage 4 | Runs produce manifests, results, lineage, and exports |
+| **Comparison** | View over two or more completed runs | Stage 4 | Comparisons are derived views, not first-class saved configs |
+
+**Authoritative relationships:**
+
+- A scenario references exactly one portfolio version and one or more population selections.
+- A scenario owns engine settings such as time horizon, calibration choices, and other execution controls.
+- A run is never edited directly. To change results, the user edits or clones the scenario and executes a new run.
+- Reform-as-delta applies at the scenario level: a reform scenario stores sparse overrides relative to a baseline scenario version.
+- Zero-configuration onboarding uses a pre-seeded demo scenario that already has valid Stage 1-3 selections.
+
+**Why four stages instead of the previous mixed model:**
+
+| Previous structure | Problem | New structure |
+|---|---|---|
+| Configuration → Population step | Population also in Data Fusion — duplicated | Stage 2: Population (single place) |
+| Configuration → Policy Template step | Disconnected from Portfolio | Stage 1: Policies & Portfolio (unified) |
+| Configuration → Parameters step | Mixed policy params with engine params | Stage 1 for policy params, Stage 3 for engine params |
+| Configuration → Validation step | Validated everything at once | Validation is per-stage (each stage validates its own completeness) |
+| Portfolio Designer (separate screen) | Users couldn't see policies inside portfolio | Stage 1 makes Portfolio = collection of policies, visible and editable inline |
+| No calibration anywhere | Calibration is critical for investment decision models | Stage 3: Engine → Investment Decisions accordion |
+
+### Revision: Application Shell & Navigation
+
+**The shell follows Pattern 2 (sidebar + slim top bar)**, aligned with the visual identity guide's "Dense Terminal with selective softening" direction.
+
+#### Shell Layout
+
+```
+┌──────────┬──────────────────────────────────────────────────┐
+│ bg-sl-50 │ bg-white                                  h-12  │
+│          │  Stage Name                    📄  🔗  ●  ⚙     │
+│  [logo]  │  border-b border-slate-200                      │
+│  ──────  ├──────────────────────────────────────────────────┤
+│ border-r │                                                  │
+│ sl-200   │  (main content area, bg-white)                  │
+│  [1] ●   │                                                  │
+│   │      │  Panel containers: border-slate-200              │
+│  [2] ○   │  Square corners (per brand guide)                │
+│   │      │  No shadows on static elements                   │
+│  [3] ○   │  No gradients anywhere                           │
+│   │      │                                                  │
+│  [4] ○   │  Data values: IBM Plex Mono, font-medium         │
+│          │  Labels: Inter, font-normal                      │
+│          │                                                  │
+└──────────┴──────────────────────────────────────────────────┘
+```
+
+#### Sidebar (Navigation Chrome)
+
+- **Background:** `bg-slate-50` (chrome surface per visual identity guide)
+- **Border:** `border-r border-slate-200`
+- **Collapsed state:** `bg-slate-100`, icon-only rail
+- **Top element:** Logo mark (bimodal dot histogram, Slate 700 + Emerald 500), max 24px height
+- **Below logo:** Wordmark "ReformLab" in Inter semibold, `text-slate-700` — visible when expanded, hidden when collapsed
+- **Stage indicators:** Four numbered circles with connecting lines (existing `WorkflowNavRail` pattern), updated labels:
+  1. Policies
+  2. Population
+  3. Engine
+  4. Results
+- **Stage indicator states:**
+  - Active: `bg-blue-500 text-white`
+  - Complete: `bg-emerald-500 text-white` with check icon
+  - Incomplete: `border-2 border-slate-300 bg-white text-slate-500`
+- **Summary lines** below each stage label (when expanded): e.g., "3 policies in portfolio", "45k records", "2025–2035"
+- **No scenario cards in sidebar** — scenarios are managed within their respective stages
+
+#### Top Bar
+
+- **Height:** 48px (`h-12`)
+- **Background:** `bg-white` (active content surface)
+- **Border:** `border-b border-slate-200`
+- **Position:** Inside the main content column, not spanning the sidebar
+- **Left side:** Current stage name in `text-lg font-semibold text-slate-900` (Inter). Dynamic — updates based on active nav rail selection.
+- **Right side:** Utility icon links in `text-slate-500`, Lucide line-style icons:
+  - Documentation link (BookOpen icon) — opens docs in new tab
+  - GitHub link (Github icon) — opens repository
+  - API status indicator — `w-2 h-2 rounded-full` dot: `bg-emerald-500` when connected, `bg-amber-500` when disconnected. Tooltip on hover: "API connected" / "Sample data — start backend for live data"
+  - Settings gear (Settings icon) — opens settings panel
+- **No logo, no subtitle, no gradient, no shadow, no contextual navigation buttons**
+
+#### Brand Compliance Checklist (Shell)
+
+Per `_bmad-output/branding/visual-identity-guide.md`:
+
+| Rule | Implementation |
+|---|---|
+| No gradients anywhere | Removed `bg-gradient-to-r from-white to-indigo-50` from header |
+| No shadows on static layout | No `shadow-sm` on panels or header |
+| No brand logo inside workspace content | Logo lives in sidebar (chrome), not in main content |
+| No decorative elements | Removed subtitle "Environmental policy analysis workspace" |
+| Panel containers: square corners | `rounded-none` on all panel containers (not `rounded-lg`) |
+| Interactive components: `rounded-md` | Buttons, inputs, cards retain `rounded-md` |
+| Numbers in IBM Plex Mono | All data values use `font-mono font-medium` |
+| Colors from palette only | Removed all `indigo-*` classes; using only slate/blue/emerald/amber/red/violet |
+
+### Revision: Stage 1 — Policies & Portfolio
+
+**Purpose:** Define what policies to test. A Portfolio is a named bundle of one or more policies. A single policy is a portfolio of one.
+
+#### Information Architecture
+
+```
+Stage 1: POLICIES & PORTFOLIO
+│
+├─ Policy Template Browser
+│   ├─ Available templates (carbon tax, subsidy, etc.)
+│   ├─ Search / filter by category
+│   ├─ Template card: name, description, parameter count, category badge
+│   └─ Click to add to current portfolio
+│
+├─ Portfolio Composition (inline, not a separate screen)
+│   ├─ List of policies in the portfolio
+│   ├─ Per-policy: expand to edit parameters (sliders, numeric inputs, toggles)
+│   ├─ Drag to reorder (execution priority)
+│   ├─ Conflict detection (inline amber warnings)
+│   └─ Year schedule per policy (start year, end year, phase-in)
+│
+├─ Portfolio Actions
+│   ├─ Save portfolio (name + description)
+│   ├─ Load saved portfolio
+│   ├─ Clone portfolio
+│   └─ Clear / start over
+│
+└─ Validation
+    ├─ Per-policy: required parameters filled, ranges valid
+    ├─ Cross-policy: conflict detection with resolution strategy selector
+    └─ Green checkmark when portfolio is valid and ready
+```
+
+#### Key Design Decisions
+
+- **Portfolio IS the policy step.** There is no separate "Portfolio Designer" screen. The user builds the portfolio inline as they add and configure policies.
+- **Policy parameters live with their policy.** Expanding a policy card reveals its parameter editors. No separate "Parameters" step.
+- **Template browser uses cards**, not a dropdown. Each card shows enough information to choose without clicking into it.
+- **Conflict detection is inline and non-blocking.** Amber warnings show which policies conflict on which parameters. The user can set a resolution strategy (sum, first wins, last wins, max) or fix manually.
+- **Single policy = portfolio of one.** The UI doesn't distinguish. If the user adds only one policy, it's still called a portfolio internally but the UI doesn't force naming.
+
+#### User Flow
+
+```mermaid
+flowchart TD
+    A[Stage 1: Policies & Portfolio] --> B[Browse policy templates]
+    B --> C[Add template to portfolio]
+    C --> D[Expand policy → edit parameters]
+    D --> E{More policies?}
+    E -->|Yes| B
+    E -->|No| F[Review portfolio composition]
+    F --> G{Conflicts?}
+    G -->|Yes| H[Set resolution strategy per conflict]
+    H --> F
+    G -->|No| I[Portfolio valid ✓ → proceed to Stage 2]
+```
+
+### Revision: Stage 2 — Population
+
+**Purpose:** Prepare the population data that policies will be applied to. This stage is a complete data workspace: select, build, upload, explore, and profile population datasets.
+
+#### Information Architecture
+
+```
+Stage 2: POPULATION
+│
+├─ Population Library
+│   ├─ List of available populations
+│   │   ├─ [Built-in] Pre-loaded synthetic populations (FR-2023-SILC, etc.)
+│   │   ├─ [Generated] Populations built via Data Fusion
+│   │   └─ [Uploaded] User-provided CSV/Parquet files
+│   ├─ Per-population metadata: name, source, row count, column count, created date
+│   └─ Per-population actions:
+│       ├─ 👁 Quick Preview (slide-over sheet)
+│       ├─ 📊 Full Data Explorer (full-screen)
+│       ├─ ✏️ Edit via Data Fusion
+│       ├─ 📤 Upload New
+│       └─ 🗑 Delete
+│
+├─ Data Fusion Workbench (existing, for building new populations)
+│   └─ Creates a new population in the library when complete
+│
+├─ Upload Flow
+│   ├─ Drop zone: drag CSV/Parquet or click to browse
+│   │   └─ Style: `border-2 border-dashed border-slate-300` idle,
+│   │     `border-blue-500 bg-blue-50` on drag-over
+│   ├─ Schema validation report:
+│   │   ├─ ✓ Row count, column count
+│   │   ├─ ✓ Matched columns (mapped to expected schema)
+│   │   ├─ ⚠ Unrecognized columns (ignored)
+│   │   └─ ✗ Missing required columns (blocks upload)
+│   └─ Confirm → population added to library
+│
+├─ Quick Preview (slide-over Sheet component)
+│   ├─ First 100 rows in a sortable table
+│   ├─ Column headers with sort arrows
+│   ├─ Per-column filter row
+│   ├─ Row count indicator
+│   └─ "Open full view" link → Full Data Explorer
+│
+└─ Full Data Explorer (replaces main content area)
+    ├─ [Tab 1: Table View]
+    │   ├─ Paginated data table (TanStack Table)
+    │   ├─ Server-side pagination: 50-100 rows per page
+    │   ├─ Sortable columns (click header)
+    │   ├─ Per-column filters (text/range)
+    │   ├─ Column resize
+    │   ├─ IBM Plex Mono for all data values
+    │   └─ Total rows / current view count
+    │
+    ├─ [Tab 2: Profile View]
+    │   ├─ Column list (left sidebar within the view)
+    │   │   └─ Click any column to profile it
+    │   ├─ Column profile panel (right)
+    │   │   ├─ For NUMERIC columns:
+    │   │   │   ├─ Histogram (20 bins, horizontal bars, Slate 400 fill)
+    │   │   │   ├─ Percentile bar (P10/P25/P50/P75/P90)
+    │   │   │   ├─ Stats card: min, max, mean, median, std, null count
+    │   │   │   └─ Cross-tab selector → pick second column for stacked/grouped bars
+    │   │   ├─ For CATEGORICAL columns:
+    │   │   │   ├─ Horizontal bar chart of value counts (top 20)
+    │   │   │   ├─ Cardinality badge ("10 unique values")
+    │   │   │   └─ Cross-tab selector → stacked bars with another categorical
+    │   │   └─ For BOOLEAN columns:
+    │   │       └─ True/False proportion bar with counts
+    │   └─ Chart colors: Slate 400 primary, Blue 500 secondary,
+    │     Violet 500 tertiary (from brand chart palette)
+    │
+    └─ [Tab 3: Summary View]
+        ├─ Dataset overview: row count, column count, memory size
+        ├─ Column type breakdown (N numeric, M categorical, K boolean)
+        ├─ Completeness heatmap (columns × null percentage)
+        └─ Top-level stats per column in a compact table
+```
+
+#### Backend Support
+
+```
+GET /api/populations/{id}/preview?offset=0&limit=100&sort_by=income&order=desc
+  → Paginated rows for Table View
+
+GET /api/populations/{id}/profile
+  → Per-column statistics computed via PyArrow:
+    - type, count, nulls, null_pct
+    - Numeric: min, max, mean, median, std, percentiles [10,25,50,75,90], histogram_buckets (20 bins)
+    - Categorical: value_counts (top 20), cardinality
+    - Boolean: true_count, false_count
+
+GET /api/populations/{id}/crosstab?col_a=region&col_b=tenure_type
+  → Cross-tabulation data for stacked bar charts
+
+POST /api/populations/upload
+  → Accepts multipart CSV or Parquet file
+  → Returns validation report: matched_columns, unrecognized_columns, missing_required, row_count
+  → On success: population added to library
+```
+
+#### Key Design Decisions
+
+- **Population Library is the entry point.** The user sees all available populations first, then chooses to explore, build, or upload.
+- **Quick Preview (slide-over) for spot-checks.** 10-second interaction: open, scan, close. Uses Shadcn Sheet component.
+- **Full Data Explorer for deep investigation.** Tab-based: Table, Profile, Summary. The Profile tab is the visual data exploration experience.
+- **Cross-tab charts are the key visual insight.** Stacked bars per attribute (e.g., region × tenure type) give the analyst a static picture of the population structure. This is what was missing.
+- **TanStack Table (headless) for the data table.** Maximum control over styling to maintain brand compliance. Server-side pagination to handle 500k rows.
+- **Recharts for all profiler charts.** Already in the project. Histogram via BarChart, value counts via horizontal BarChart, cross-tabs via stacked BarChart.
+- **Upload validates schema before accepting.** Required columns must be present. Unrecognized columns are kept but flagged. Missing required columns block the upload with a clear error.
+
+#### Visual Profiler Example
+
+For a categorical column `region` cross-tabbed with `tenure_type`:
+
+```
+  Île-de-France  ████████████░░░░░░░░   Owner 62% │ Renter 38%
+  Occitanie      ██████████████░░░░░░   Owner 71% │ Renter 29%
+  Bretagne       ████████████████░░░░   Owner 78% │ Renter 22%
+  PACA           ██████████████░░░░░░   Owner 69% │ Renter 31%
+```
+
+Colors: Slate 400 for first category, Blue 500 for second. Chart palette from the visual identity guide.
+
+### Revision: Stage 3 — Engine
+
+**Purpose:** Configure computation parameters — how the simulation engine behaves. This stage is the assembly point: it references the portfolio from Stage 1 and populations from Stage 2, and adds engine-specific configuration.
+
+#### Information Architecture
+
+```
+Stage 3: ENGINE
+│
+├─ Time Horizon
+│   ├─ Start year (numeric input, e.g., 2025)
+│   ├─ End year (numeric input, e.g., 2035)
+│   └─ Display: "11-year projection"
+│
+├─ Population Selection
+│   ├─ Primary population: dropdown from Stage 2 library
+│   ├─ [+ Add population for sensitivity] — secondary affordance (link, not button)
+│   │   └─ Adds a second dropdown for an additional population
+│   └─ Display: "Running against: FR-2023-SILC" or "Running against: 2 populations"
+│
+├─ Investment Decisions [toggle]
+│   └─ When enabled (accordion expands inline):
+│       ├─ Logit model selection (dropdown: multinomial logit, nested logit, mixed logit)
+│       ├─ Taste parameters (sliders with numeric inputs)
+│       │   └─ Per-parameter: label, slider, value, baseline reference
+│       └─ Calibration
+│           ├─ Calibration method (dropdown: maximum likelihood, simulated method of moments)
+│           ├─ Calibration targets (editable table: target name, observed value, weight)
+│           └─ Calibration status indicator (not calibrated / calibrating / calibrated ✓)
+│
+├─ Other Engine Parameters
+│   ├─ Discount rate (slider + numeric, default 3%)
+│   └─ Any additional engine-level parameters
+│
+├─ Run Summary
+│   ├─ Scenario: "{scenario_name}" (baseline or reform)
+│   ├─ Portfolio: "{portfolio_name}" (N policies)
+│   ├─ Population(s): list with row counts
+│   ├─ Time horizon: start–end (N years)
+│   ├─ Investment decisions: enabled/disabled
+│   ├─ Total runs: Scenario × Populations = N runs
+│   └─ Estimated computation time (if available)
+│
+└─ Validation
+    ├─ Portfolio must be valid (green check from Stage 1)
+    ├─ At least one population selected
+    ├─ Selected population schema satisfies the active portfolio/template requirements
+    ├─ Required OpenFisca/project field mappings resolve cleanly
+    ├─ Policy year schedules fit within the selected time horizon
+    ├─ Start year < end year
+    ├─ If investment decisions enabled: logit model selected, calibration complete
+    ├─ Memory/runtime preflight passes for the selected run matrix
+    └─ All checks pass → "Ready to Run" primary button enabled
+```
+
+#### Key Design Decisions
+
+- **Multi-population is a secondary affordance.** The default shows a single population dropdown. "+ Add population for sensitivity" is a text link, not a prominent button. This keeps the happy path clean.
+- **Investment decisions are an inline accordion.** Toggle on → the section expands in place revealing logit model, taste parameters, and calibration. No sub-screen, no navigation. The analyst sees everything in context.
+- **Calibration lives here, not in Stage 1.** Calibration configures the model engine, not the policies. This is a deliberate architectural decision: policies define what to simulate, the engine defines how.
+- **Run Summary is a pre-flight checklist.** Before pressing Run, the analyst sees a compact summary of everything that will be computed. This is the "confidence checkpoint" from the original spec, relocated to Stage 3.
+- **Scenario is assembled here as a first-class object.** Saving or cloning at this point creates a versioned scenario tying together the current portfolio, selected populations, and engine configuration.
+- **Cross-stage validation happens here.** Stage 3 is the integration gate where portfolio requirements, population schema, mappings, schedules, and runtime preflight are checked together before execution.
+- **Run matrix is computed automatically.** 1 scenario × N populations = N runs. The UI shows this clearly: "2 runs will be executed."
+
+#### User Flow
+
+```mermaid
+flowchart TD
+    A[Stage 3: Engine] --> B[Set time horizon]
+    B --> C[Select population]
+    C --> D{Add more populations?}
+    D -->|Yes| E[+ Add population]
+    E --> C
+    D -->|No| F{Investment decisions?}
+    F -->|Yes| G[Enable toggle → accordion expands]
+    G --> H[Select logit model]
+    H --> I[Set taste parameters]
+    I --> J[Configure calibration]
+    J --> K[Run calibration]
+    K --> L{Calibration converged?}
+    L -->|Yes| M[Review run summary]
+    L -->|No| N[Adjust targets / method → retry]
+    N --> K
+    F -->|No| M
+    M --> O{All checks pass?}
+    O -->|Yes| P[Run Simulation → Stage 4]
+    O -->|No| Q[Show failing checks with links to fix]
+    Q --> A
+```
+
+### Revision: Stage 4 — Run / Results / Compare
+
+**Purpose:** Execute simulations, view results, compare across runs.
+
+#### Information Architecture
+
+```
+Stage 4: RUN / RESULTS / COMPARE
+│
+├─ Run Queue
+│   ├─ List of queued runs (Scenario × Population matrix)
+│   ├─ Per-run: status (queued / running / completed / failed)
+│   ├─ Progress bar per running simulation (RunProgressBar component)
+│   └─ Cancel individual runs or cancel all
+│
+├─ Results View (when at least one run is completed)
+│   ├─ Run selector: dropdown or tabs for completed runs
+│   ├─ Distributional charts (income decile impact bars)
+│   ├─ Summary statistics cards (Gini, fiscal cost, affected %)
+│   ├─ Waterfall contribution chart
+│   ├─ Run manifest / lineage access
+│   └─ Export actions (CSV, Parquet)
+│
+├─ Comparison View
+│   ├─ Select 2-5 completed runs to compare
+│   ├─ [Tab: Side-by-side] — columns per run, indicator rows
+│   ├─ [Tab: Overlay] — all runs on same chart axes
+│   ├─ [Tab: Delta table] — difference from baseline per indicator
+│   ├─ Absolute / relative toggle
+│   └─ CSV export of comparison data
+│
+└─ Behavioral Decision Viewer (when investment decisions were enabled)
+    └─ Per-run drill-down into logit model outcomes
+```
+
+#### Key Design Decisions
+
+- **Run Queue handles the multi-population matrix.** If the user selected 2 populations in Stage 3, they see 2 runs queued. Each run is independently cancellable.
+- **Results and Comparison are sub-views within Stage 4**, not separate stages. The nav rail shows Stage 4 as active for all three.
+- **Scenario remains the durable analysis object.** Stage 4 executes scenario versions and compares their runs; it does not replace the scenario registry.
+- **The core loop lives here.** Quick parameter tweaks (adjusting a policy parameter, re-running) cycle between Stage 1 → Stage 4 fluidly. The workspace supports this without full page transitions.
+
+### Revision: Updated Component Strategy
+
+#### Components to Retire
+
+| Component | Reason |
+|---|---|
+| `ConfigurationScreen` | Replaced by Stage 1 (Policies) + Stage 3 (Engine). Its children are redistributed. |
+| `ModelConfigStepper` (4-step: Population/Policy/Parameters/Validation) | Replaced by 4-stage nav rail. Each stage has its own internal validation. |
+| `PopulationSelectionScreen` (inside Configuration) | Moved to Stage 2 Population Library. |
+| `TemplateSelectionScreen` (inside Configuration) | Absorbed into Stage 1 Policy Template Browser. |
+| `ParameterEditingScreen` (inside Configuration) | Policy parameters absorbed into Stage 1 (inline per-policy editing). Engine parameters in Stage 3. |
+| `AssumptionsReviewScreen` (inside Configuration) | Run Summary in Stage 3 serves this purpose. |
+| `ScenarioCard` (left-panel selector) | Replaced by stage-local scenario registry/compare pickers such as `ScenarioSummaryCard`. |
+| Gradient header box in `App.tsx` | Replaced by TopBar component. |
+
+#### New Components
+
+| Component | Location | Purpose |
+|---|---|---|
+| `TopBar` | `components/layout/TopBar.tsx` | 48px slim top bar: stage name + utility icons |
+| `PoliciesAndPortfolioScreen` | `components/screens/PoliciesAndPortfolioScreen.tsx` | Stage 1: template browser + inline portfolio composition |
+| `PopulationLibraryScreen` | `components/screens/PopulationLibraryScreen.tsx` | Stage 2: population list with preview/profile/upload actions |
+| `PopulationDataTable` | `components/population/PopulationDataTable.tsx` | TanStack Table for paginated, sortable, filterable population data |
+| `PopulationProfiler` | `components/population/PopulationProfiler.tsx` | Visual column profiler: histograms, value counts, cross-tabs, stats |
+| `PopulationSummary` | `components/population/PopulationSummary.tsx` | Dataset-level overview: row/column counts, type breakdown, completeness |
+| `PopulationUploadZone` | `components/population/PopulationUploadZone.tsx` | Drag-and-drop file upload with schema validation |
+| `EngineScreen` | `components/screens/EngineScreen.tsx` | Stage 3: time horizon, population selection, investment decisions, run summary |
+| `ScenarioSummaryCard` | `components/simulation/ScenarioSummaryCard.tsx` | Saved scenario list item for compare/clone/select flows |
+| `InvestmentDecisionsAccordion` | `components/simulation/InvestmentDecisionsAccordion.tsx` | Inline accordion: logit model, taste params, calibration |
+| `CalibrationPanel` | `components/simulation/CalibrationPanel.tsx` | Calibration method, targets table, status indicator |
+| `RunQueuePanel` | `components/simulation/RunQueuePanel.tsx` | Multi-run queue with per-run progress and cancel |
+
+#### Updated Component Tree
+
+```
+App
+├─ TopBar (stage name, utility icons)
+├─ WorkspaceLayout
+│   ├─ Sidebar (WorkflowNavRail — 4 stages + logo)
+│   ├─ MainContent
+│   │   ├─ PoliciesAndPortfolioScreen (Stage 1)
+│   │   │   ├─ PortfolioTemplateBrowser
+│   │   │   ├─ PortfolioCompositionPanel (inline)
+│   │   │   └─ Conflict validation
+│   │   ├─ PopulationLibraryScreen (Stage 2)
+│   │   │   ├─ Population list with action buttons
+│   │   │   ├─ DataFusionWorkbench (existing)
+│   │   │   ├─ PopulationUploadZone
+│   │   │   ├─ PopulationDataTable (TanStack Table, in Sheet or full-screen)
+│   │   │   ├─ PopulationProfiler (histograms, cross-tabs, stats)
+│   │   │   └─ PopulationSummary
+│   │   ├─ EngineScreen (Stage 3)
+│   │   │   ├─ Time horizon inputs
+│   │   │   ├─ Population selector (+ sensitivity add)
+│   │   │   ├─ ScenarioSummaryCard / save-clone controls
+│   │   │   ├─ InvestmentDecisionsAccordion
+│   │   │   │   ├─ Logit model selector
+│   │   │   │   ├─ Taste parameter editors
+│   │   │   │   └─ CalibrationPanel
+│   │   │   ├─ Other engine parameters
+│   │   │   └─ Run summary + "Run Simulation" button
+│   │   └─ Stage 4 (Run/Results/Compare)
+│   │       ├─ RunQueuePanel
+│   │       ├─ ResultsOverviewScreen (existing)
+│   │       ├─ ComparisonDashboardScreen (existing)
+│   │       └─ BehavioralDecisionViewerScreen (existing)
+│   └─ RightPanel (ContextualHelpPanel — existing)
+```
+
+### Revision: Updated Nav Rail Stages
+
+The `WorkflowNavRail` component is updated with new stage definitions:
+
+```typescript
+const STAGES = [
+  {
+    key: "policies",
+    label: "Policies",
+    targetMode: "policies",
+    activeFor: ["policies"],
+  },
+  {
+    key: "population",
+    label: "Population",
+    targetMode: "population",
+    activeFor: ["population", "data-fusion", "population-explorer"],
+  },
+  {
+    key: "engine",
+    label: "Engine",
+    targetMode: "engine",
+    activeFor: ["engine"],
+  },
+  {
+    key: "results",
+    label: "Results",
+    targetMode: "results",
+    activeFor: ["results", "comparison", "decisions", "runner"],
+  },
+];
+```
+
+### Revision: Updated User Journey — Model Configuration
+
+This replaces Journey 1 from the original spec.
+
+```mermaid
+flowchart TD
+    A[Workspace opens] --> B{First launch or returning?}
+    B -->|First launch| C[Pre-seeded demo scenario loads]
+    B -->|Returning| D[Open saved scenario]
+    C --> E[Stage 4 visible with Run enabled]
+    D --> F[Resume at last active stage]
+    E --> G{Needs edits?}
+    F --> G
+    G -->|Policies| H[Stage 1: edit portfolio]
+    G -->|Population| I[Stage 2: inspect/select population]
+    G -->|Engine| J[Stage 3: tune engine + validate]
+    G -->|No edits| K[Run scenario]
+    H --> J
+    I --> J
+    J --> L{All integration checks pass?}
+    L -->|Yes| K
+    L -->|No| M[Fix linked issues in relevant stage]
+    M --> H
+    K --> N[Stage 4: queue, results, compare]
+```
+
+### Revision: Implementation Priority
+
+**Epic: GUI Restructuring** — suggested story order:
+
+1. **Shell & TopBar** — Replace gradient header with slim top bar. Add logo mark to sidebar. Apply brand compliance fixes (remove gradients, shadows, indigo colors, add square corners to panels).
+2. **Nav Rail Update** — Update WorkflowNavRail to 4 new stages. Wire stage/sub-view routing.
+3. **Stage 1: Policies & Portfolio** — Unify TemplateSelectionScreen + ParameterEditingScreen + PortfolioDesignerScreen into one inline flow.
+4. **Stage 2: Population Library** — Population list with preview/edit/delete actions. Upload flow with schema validation.
+5. **Stage 2: Population Data Explorer** — TanStack Table for paginated data. Visual profiler with histograms, value counts, cross-tabs. Summary tab.
+6. **Stage 3: Engine** — Time horizon, population selection, scenario save/clone, integration validation, investment decisions accordion with calibration.
+7. **Stage 4: Run Queue** — Multi-run queue for scenario × population matrix.
+8. **Cleanup** — Retire ConfigurationScreen, ModelConfigStepper, old ScenarioCard sidebar usage, and unused screens. Remove dead code.

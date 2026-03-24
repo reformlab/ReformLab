@@ -451,7 +451,7 @@ Year 2026: state₁ → [ComputationStep] → [DiscreteChoiceStep] → [VintageS
 
 **Purpose:** HTTP facade over the Python API. Thin layer — no business logic in routes.
 
-**API surface (10 route modules, 20+ endpoints):**
+**API surface (11 route modules, 20+ endpoints):**
 
 | Route prefix | Key endpoints |
 | ------------ | ------------- |
@@ -461,10 +461,13 @@ Year 2026: state₁ → [ComputationStep] → [DiscreteChoiceStep] → [VintageS
 | `/api/scenarios` | `GET /`, `GET /{name}`, `POST /`, `POST /{name}/clone` |
 | `/api/templates` | `GET /`, `GET /{name}` |
 | `/api/portfolios` | `GET /`, `POST /`, `PUT /{name}`, `POST /validate` |
+| `/api/populations` | `GET /`, `GET /{id}/preview`, `GET /{id}/profile`, `GET /{id}/crosstab`, `POST /upload` |
 | `/api/data-fusion` | `GET /sources/{provider}`, `POST /generate` |
 | `/api/results` | `GET /` list saved results |
 | `/api/exports` | `POST /` CSV export |
 | `/api/decisions` | `GET /` decision audit trail |
+
+**Canonical analysis objects:** `Portfolio` stores reusable policy bundles. `Scenario` stores the versioned combination of portfolio, selected population(s), engine configuration, mappings, and metadata. `Run` executes one scenario version, potentially as a scenario-by-population matrix when multiple populations are selected.
 
 **Dependency injection:** Three global singletons — `ResultCache` (LRU), `ResultStore` (disk), `ComputationAdapter` (backend) — initialized lazily and overridable in tests.
 
@@ -474,21 +477,18 @@ Year 2026: state₁ → [ComputationStep] → [DiscreteChoiceStep] → [VintageS
 
 **Architecture:** React 19 SPA with centralized state (`AppContext`), typed API client, and Shadcn/Radix component library.
 
-**9 screen components (full-page views):**
+**Interaction model:** The GUI is a four-stage shell over the same scenario registry and run model exposed by the API:
 
-| Screen | Purpose |
-| ------ | ------- |
-| PopulationSelectionScreen | Pick or generate a population |
-| TemplateSelectionScreen | Choose a policy template |
-| ParameterEditingScreen | Tune policy parameters with sliders |
-| AssumptionsReviewScreen | Review all assumptions before running |
-| SimulationRunnerScreen | Execute batch simulations |
-| DataFusionWorkbench | 5-step population generation pipeline |
-| PortfolioDesignerScreen | Create and manage policy portfolios |
-| ComparisonDashboardScreen | Compare 2–5 runs with charts and CSV export |
-| BehavioralDecisionViewerScreen | Inspect discrete choice outcomes |
+| Stage | Purpose | Primary frontend surfaces |
+| ----- | ------- | ------------------------- |
+| Policies & Portfolio | Build or edit reusable policy bundles | `PoliciesAndPortfolioScreen`, template browser, inline portfolio composition |
+| Population | Select, generate, upload, and inspect populations | `PopulationLibraryScreen`, `DataFusionWorkbench`, population explorer/profiler |
+| Engine | Bind portfolio + population(s) into a scenario, configure execution, run integration validation | `EngineScreen`, investment decisions accordion, calibration panel |
+| Run / Results / Compare | Execute runs, inspect results, compare completed runs, export outputs | `RunQueuePanel`, results view, comparison dashboard, behavioral decision viewer |
 
-**State management:** Single `AppContext` (476 lines) manages auth, data fetching, selections, and run execution. Custom hooks in `useApi.ts` (437 lines) handle individual data domains with loading/error/mock-fallback patterns.
+**Scenario semantics in the GUI:** Users may enter through a pre-seeded demo scenario or an existing saved scenario. Stage 1-3 edit the scenario definition; Stage 4 executes and compares runs produced from that scenario. Browser routes map to stage/sub-view state rather than to the older sequence of full-screen setup pages.
+
+**State management:** Single `AppContext` manages data fetching, stage navigation, selected scenario, population/profile inspection state, and run execution. Typed hooks in `useApi.ts` handle individual data domains with loading/error/mock-fallback patterns.
 
 **Design system:** 18 Shadcn/Radix UI primitives styled with Tailwind v4. Chart colors defined as CSS custom properties (`--chart-baseline`, `--chart-reform-a` through `-d`).
 

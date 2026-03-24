@@ -153,7 +153,15 @@ Since ReformLab is an open-source project, "business" success means adoption, cr
 - Fully automated report authoring pipeline
 - Advanced policy-rule authoring beyond template-driven workflows
 
-### Post-MVP Features
+### Current Program State Update (2026-03-24)
+
+The project is now beyond the original Phase 1 MVP boundary used earlier in this PRD.
+
+- Population-generation workflows, portfolio composition, richer GUI flows, and behavioral-model scaffolding are now part of the active product baseline or current planning surface.
+- The phase tables below should be read as the original sequencing rationale, not as a statement that these capabilities are out of scope for the current product.
+- When this PRD conflicts with the current UX specification or architecture on post-Phase-1 scope, the newer product-state documents take precedence.
+
+### Originally Post-MVP Features (Historical Roadmap Context)
 
 **Phase 2 (Growth):**
 
@@ -497,6 +505,8 @@ ReformLab is a Python library distributed via PyPI (`pip install reformlab`) wit
 
 ### Scenario & Template Layer
 
+**Canonical workflow artifact model:** A **portfolio** is a reusable policy bundle. A **scenario** is the versioned combination of portfolio, selected population(s), engine configuration, mappings, and metadata. A **run** is the execution of a specific scenario version.
+
 - FR7: Analyst can load prebuilt environmental policy templates (carbon tax, subsidy, rebate, feebate).
 - FR8: Analyst can define reforms as parameter overrides to a baseline scenario.
 - FR9: System stores versioned scenario definitions in a scenario registry.
@@ -534,7 +544,7 @@ ReformLab is a Python library distributed via PyPI (`pip install reformlab`) wit
 
 - FR30: User can run full workflows from a Python API in notebooks.
 - FR31: User can configure workflows with YAML/JSON files for analyst-friendly version control.
-- FR32: User can use an early no-code GUI to create, clone, and run scenarios.
+- FR32: User can use a stage-based no-code GUI to create, inspect, clone, and run scenarios.
 - FR33: User can export tables and indicators in CSV/Parquet for downstream reporting.
 
 ### Documentation & Enablement
@@ -542,7 +552,7 @@ ReformLab is a Python library distributed via PyPI (`pip install reformlab`) wit
 - FR34: User can run an OpenFisca-plus-environment quickstart in under 30 minutes.
 - FR35: User can access template authoring and dynamic-run documentation with reproducible examples.
 
-### Phase 2: Realistic Population Generation (EPIC-11)
+### Growth Stream: Realistic Population Generation (originally Phase 2, EPIC-11)
 
 - FR36: Analyst can download and cache public datasets from institutional sources (INSEE, Eurostat, ADEME, SDES).
 - FR37: Analyst can browse available datasets and select which to include in a population.
@@ -552,14 +562,14 @@ ReformLab is a Python library distributed via PyPI (`pip install reformlab`) wit
 - FR41: Every merge, imputation, and extrapolation is recorded as an explicit assumption in the governance layer.
 - FR42: System validates generated populations against known marginal distributions from source data.
 
-### Phase 2: Policy Portfolios (EPIC-12, EPIC-13)
+### Growth Stream: Policy Portfolios (originally Phase 2, EPIC-12, EPIC-13)
 
 - FR43: Analyst can compose multiple individual policy templates into a named policy portfolio.
 - FR44: System executes a simulation with a policy portfolio, applying all bundled policies together.
 - FR45: Analyst can compare results across different policy portfolios side-by-side.
 - FR46: Analyst can define custom policy templates that participate in portfolios alongside built-in templates.
 
-### Phase 2: Discrete Choice and Behavioral Modeling (EPIC-14)
+### Growth Stream: Discrete Choice and Behavioral Modeling (originally Phase 2, EPIC-14)
 
 - FR47: System models household investment decisions (vehicle, heating, renovation) as discrete choice problems using logit functions.
 - FR48: System expands population by alternatives and evaluates each alternative through OpenFisca for household-specific cost calculations.
@@ -567,12 +577,12 @@ ReformLab is a Python library distributed via PyPI (`pip install reformlab`) wit
 - FR50: Panel output records which decision each household made in each domain for each year.
 - FR51: Taste parameters (β coefficients) are recorded in run manifests.
 
-### Phase 2: Calibration (EPIC-15)
+### Growth Stream: Calibration (originally Phase 2, EPIC-15)
 
 - FR52: Analyst can calibrate discrete choice taste parameters against observed transition rates.
 - FR53: System validates calibrated parameters against known marginal distributions.
 
-### Phase 2: Replication Package Export (EPIC-16)
+### Growth Stream: Replication Package Export (originally Phase 2, EPIC-16)
 
 - FR54: Analyst can export a self-contained replication package including data, configuration, manifests, and results.
 - FR55: Replication package is reproducible on a clean environment with only `pip install reformlab` and the package contents.
