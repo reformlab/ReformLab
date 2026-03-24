@@ -50,6 +50,15 @@ class PopulationData:
         """Total rows across all entity tables."""
         return sum(t.num_rows for t in self.tables.values())
 
+    def __repr__(self) -> str:
+        entities = list(self.tables.keys())
+        meta_keys = list(self.metadata.keys()) if self.metadata else []
+        return (
+            f"PopulationData(entities={entities}, "
+            f"rows={self.row_count}, "
+            f"metadata_keys={meta_keys})"
+        )
+
 
 @dataclass(frozen=True)
 class PolicyConfig:

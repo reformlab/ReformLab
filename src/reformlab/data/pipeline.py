@@ -48,6 +48,14 @@ class DatasetManifest:
         """Unique key: ``{source.name}@{source.version}:{content_hash[:12]}``."""
         return f"{self.source.name}@{self.source.version}:{self.content_hash[:12]}"
 
+    def __repr__(self) -> str:
+        return (
+            f"DatasetManifest(key={self.dataset_key!r}, "
+            f"format={self.format!r}, "
+            f"rows={self.row_count}, "
+            f"cols={len(self.column_names)})"
+        )
+
 
 class DatasetRegistry:
     """Mutable registry of loaded dataset manifests.
