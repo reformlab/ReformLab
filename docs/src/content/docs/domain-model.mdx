@@ -32,6 +32,31 @@ class PopulationData:
 
 Data sources implement the `DataSourceLoader` protocol; merge strategies implement `MergeMethod`. Four institutional loaders are available: `INSEELoader`, `EurostatLoader`, `ADEMELoader`, `SDESLoader`.
 
+**Loading data into `PopulationData`:**
+
+There are three ways to build a `PopulationData` object:
+
+| Method | Use case |
+|--------|----------|
+| `PopulationData.from_table(table)` | Wrap a raw PyArrow table directly |
+| `load_population(path, schema, source)` | Load a local CSV/Parquet file with schema validation and provenance tracking |
+| `PopulationPipeline` | Compose multiple institutional data sources with statistical merge methods |
+
+The simplest path is `load_population()`, which chains file ingestion (`DataSchema` validation) with `PopulationData.from_table()` and produces a `DatasetManifest` for governance.
+
+**Institutional data loaders:**
+
+Each loader downloads, caches, and schema-validates one institutional data source. All extend `CachedLoader` with offline-first semantics (cache at `~/.reformlab/cache/sources/`).
+
+| Provider | Loader | Datasets |
+|----------|--------|----------|
+| INSEE | `INSEELoader` | Filosofi 2021 commune + 2 IRIS-level income distributions |
+| Eurostat | `EurostatLoader` | EU-SILC income distribution, household energy consumption |
+| SDES | `SDESLoader` | Vehicle fleet composition by fuel type, age, region |
+| ADEME | `ADEMELoader` | Base Carbone emission factors |
+
+Usage: `get_*_loader(dataset_id, cache=cache)` → loader, `make_*_config(dataset_id)` → config, `loader.download(config)` → `pa.Table`.
+
 </details>
 
 ---
