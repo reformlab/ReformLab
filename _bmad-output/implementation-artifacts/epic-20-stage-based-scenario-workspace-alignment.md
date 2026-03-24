@@ -1,6 +1,6 @@
 # Epic 20: Stage-Based Scenario Workspace Alignment
 
-Status: planned
+Status: backlog
 
 ## Epic Summary
 
@@ -36,6 +36,7 @@ This epic makes those definitions real in the product.
 - Builds on portfolio semantics from EPIC-12.
 - Must remain compatible with discrete-choice and calibration work in EPIC-14 and EPIC-15.
 - Consolidates overlapping GUI restructuring work currently spread across EPIC-17 and EPIC-18.
+- EPIC-21 extends the workspace surfaces built here with evidence metadata, trust-status validation, and exogenous comparison dimensions. Stories 20.4, 20.5, 20.6, and 20.8 must design for extensibility so EPIC-21 can layer evidence governance without rework.
 - Uses the 2026-03-24 versions of:
   - `_bmad-output/planning-artifacts/ux-design-specification.md`
   - `_bmad-output/planning-artifacts/prd.md`
@@ -70,6 +71,8 @@ Implement the Stage 1 surface for browsing templates, composing portfolios inlin
 
 Implement the Stage 2 population workspace: library list, quick preview, full explorer, profile charts, upload flow, and handoff to Data Fusion. The stage must support both selection for execution and independent data inspection.
 
+**EPIC-21 coordination:** Population metadata display must use placeholder slots for evidence classification (`origin`, `access_mode`, `trust_status`) that EPIC-21 Story 21.2 will populate with canonical contracts. Do not invent ad-hoc label systems for data provenance — use the UX spec's `[Built-in]`/`[Generated]`/`[Uploaded]` tags only until EPIC-21 delivers the evidence asset descriptor.
+
 ### 20.5 Build Engine stage with scenario save/clone and cross-stage validation gate
 
 Stage 3 is where a scenario becomes executable. It owns time horizon, population selection, investment-decision settings, calibration controls, and the final preflight. Validation must include:
@@ -79,9 +82,13 @@ Stage 3 is where a scenario becomes executable. It owns time horizon, population
 - policy year schedules fit the time horizon
 - runtime/memory preflight passes
 
+**EPIC-21 coordination:** The validation/preflight contract must be designed as an extensible check registry so EPIC-21 Story 21.5 can add trust-status rules (e.g., blocking runs that use `validation-pending` synthetic data as `production-safe` evidence, or that conflate calibration inputs with validation benchmarks) without replacing the validation infrastructure.
+
 ### 20.6 Refactor Run / Results / Compare around scenario-by-population execution
 
 Stage 4 must reflect the durable scenario model. Queues, results, exports, and comparisons are derived from scenario executions. Comparisons operate on completed runs but still preserve the scenario context that produced them.
+
+**EPIC-21 coordination:** The comparison model must support pluggable comparison dimensions. This story defines comparison across portfolio and population differences. EPIC-21 Story 21.6 will add comparison across differing exogenous assumptions (`ExogenousContext`). Design the comparison infrastructure so new dimensions can be added without restructuring the comparison data model.
 
 ### 20.7 Extend backend APIs for population explorer and execution-contract validation
 
@@ -106,8 +113,11 @@ Add end-to-end tests for the critical flows:
 
 Update any remaining planning or product docs that still describe the older screen model.
 
+**EPIC-21 coordination:** EPIC-21 Story 21.8 will extend this regression suite with evidence-specific flows (synthetic ingestion, trust labels, calibration/validation separation). Structure test fixtures and assertions so 21.8 can add evidence scenarios without duplicating the workspace flow coverage built here.
+
 ## Risks
 
 - Scope overlap with existing EPIC-17 and EPIC-18 stories can create duplicate implementation unless sprint planning explicitly maps or retires old stories.
 - If scenario semantics are not normalized first, frontend work will drift back into treating results or portfolios as the primary object.
 - Population explorer performance and validation preflight can become bottlenecks on large datasets if they are bolted on late instead of designed into the stage model.
+- EPIC-21 will extend population metadata display, preflight validation, and scenario comparison built here. If these surfaces are not designed for extensibility (pluggable comparison dimensions, extensible check registry, metadata display slots), EPIC-21 integration will require rework.

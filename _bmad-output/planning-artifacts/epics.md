@@ -32,14 +32,14 @@ Single source of truth for all epics and stories across the project. For detaile
 | EPIC-10 | API Ergonomics and Developer Experience | 1 | done | 2 |
 | EPIC-11 | Realistic Population Generation Library | 2 | done | 8 |
 | EPIC-12 | Policy Portfolio Model | 2 | done | 5 |
-| EPIC-13 | Additional Policy Templates + Extensibility | 2 | backlog | 4 |
-| EPIC-14 | Discrete Choice Model for Household Decisions | 2 | backlog | 7 |
-| EPIC-15 | Calibration Engine | 2 | backlog | 5 |
-| EPIC-16 | Replication Package Export | 2 | backlog | 4 |
-| EPIC-17 | GUI Showcase Product | 2 | backlog | 8 |
-| EPIC-18 | UX Polish & Aesthetic Overhaul | 2 | backlog | 8 |
-| EPIC-19 | Public Documentation Site | 3 | backlog | 6 |
-| EPIC-20 | Stage-Based Scenario Workspace Alignment | 2 | backlog | 8 |
+| EPIC-13 | Additional Policy Templates + Extensibility | 2 | done | 4 |
+| EPIC-14 | Discrete Choice Model for Household Decisions | 2 | done | 7 |
+| EPIC-15 | Calibration Engine | 2 | done | 5 |
+| EPIC-16 | Replication Package Export | 2 | done | 4 |
+| EPIC-17 | GUI Showcase Product | 2 | done | 8 |
+| EPIC-18 | UX Polish & Aesthetic Overhaul | 2 | done | 8 |
+| EPIC-19 | Public Documentation Site | 3 | done | 6 |
+| EPIC-20 | Stage-Based Scenario Workspace Alignment | 3 | backlog | 8 |
 | EPIC-21 | Trust-Governed Open + Synthetic Evidence Foundation | 3 | backlog | 8 |
 
 ## Conventions
@@ -2011,3 +2011,55 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 - Portfolio, scenario, and run semantics must remain distinct: portfolios are reusable policy bundles, scenarios are versioned executable definitions, and runs are immutable executions.
 - Cross-stage validation is a first-class product feature, not just a backend implementation detail.
 - Demo onboarding is not a separate tutorial mode; it is a real pre-seeded scenario inside the same workspace users will use for real analysis.
+- **EPIC-21 coordination:** Stories 20.4, 20.5, 20.6, and 20.8 must design for extensibility — EPIC-21 will layer evidence metadata display, trust-status validation checks, exogenous comparison dimensions, and evidence-specific regression flows on top of the surfaces built here.
+
+---
+
+## Epic 21: Trust-Governed Open + Synthetic Evidence Foundation
+
+**User outcome:** Every dataset, output, and model parameter exposed by the platform carries explicit origin, access mode, and trust status metadata — enabling analysts to reason about evidence quality, distinguish synthetic from observed data, and maintain calibration/validation separation.
+
+**Status:** backlog
+
+**Builds on:** EPIC-2 (scenarios), EPIC-3 (orchestrator), EPIC-5 (governance), EPIC-11 (populations), EPIC-14 (discrete choice), EPIC-15 (calibration), EPIC-16 (replication), EPIC-20 (scenario workspace)
+
+**PRD Refs:** FR1, FR2, FR5-FR8, FR10-FR12, FR15-FR18, FR22-FR24
+
+**Primary source documents:**
+
+- `_bmad-output/planning-artifacts/synthetic-data-decision-document-2026-03-23.md`
+- `_bmad-output/planning-artifacts/prd.md` (Current Program State Update, dated 2026-03-24)
+- `_bmad-output/planning-artifacts/architecture.md` (frontend/API alignment update, dated 2026-03-24)
+- `_bmad-output/planning-artifacts/ux-design-specification.md` (Revision 2.0, dated 2026-03-24)
+- `_bmad-output/implementation-artifacts/epic-21-trust-governed-open-synthetic-evidence-foundation.md`
+
+| ID | Type | Pri | SP | Title | Status | PRD Refs |
+|------|------|-----|----|-------|--------|----------|
+| BKL-2101 | Story | P0 | 5 | Implement canonical evidence asset descriptor and current-phase source matrix | backlog | FR1, FR2, FR5 |
+| BKL-2102 | Story | P0 | 5 | Add origin/access mode/trust status contracts across backend APIs and frontend models | backlog | FR5, FR6, FR7 |
+| BKL-2103 | Story | P0 | 8 | Implement typed structural, exogenous, calibration, and validation asset schemas | backlog | FR8, FR10, FR11 |
+| BKL-2104 | Story | P0 | 8 | Add public synthetic asset ingestion and observed-versus-synthetic comparison flows | backlog | FR12, FR15, FR16 |
+| BKL-2105 | Story | P0 | 5 | Separate calibration targets from validation benchmarks and implement trust-status rules | backlog | FR17, FR18 |
+| BKL-2106 | Story | P0 | 5 | Implement ExogenousTimeSeries and ExogenousContext for scenario execution | backlog | FR22, FR23 |
+| BKL-2107 | Story | P0 | 8 | Refactor discrete-choice and calibration for generalized TasteParameters | backlog | FR24 |
+| BKL-2108 | Story | P1 | 5 | Wire the flagship scenario, docs, and regression coverage to the new evidence model | backlog | FR1, FR2, FR5 |
+
+### Epic-Level Acceptance Criteria
+
+- Current-phase evidence scope is enforced as `open official + synthetic`, with restricted connectors explicitly deferred.
+- Every dataset and derived output carries `origin`, `access_mode`, `trust_status`, provenance, and intended-use metadata.
+- Structural, exogenous, calibration, and validation assets are represented by separate typed contracts.
+- At least one public synthetic dataset can be ingested and compared against observed/open data in the flagship workflow.
+- Calibration targets and validation benchmarks are stored and executed as distinct concepts.
+- Scenario execution can consume scenario-specific exogenous inputs via `ExogenousContext`.
+- Discrete-choice calibration supports generalized `TasteParameters` with fixed/calibrated tracking and diagnostics.
+- Docs, APIs, tests, and the flagship scenario all describe the same current-phase evidence model.
+
+### Scope Notes
+
+- EPIC-20 can drift into frontend-only trust labels unless this epic defines the canonical backend contract first; coordinate sequencing accordingly.
+- Public synthetic ingestion must never blur the trust boundary — comparison views and APIs must always show provenance and trust status.
+- Calibration targets and validation benchmarks must be separated early to avoid encoding train/test leakage into the governance story.
+- The `TasteParameters` refactor touches calibration, provenance, demos, docs, and tests; it is not a local type change.
+- **EPIC-20 prerequisites:** Stories 21.2, 21.5, 21.6, and 21.8 extend specific EPIC-20 surfaces (Population Library 20.4, Engine validation 20.5, comparison model 20.6, regression suite 20.8). These must integrate with EPIC-20 contracts, not create parallel systems.
+- **UX spec gap:** The UX spec (Revision 2.0) defines no UI patterns for evidence classification badges, trust-status indicators, or synthetic-vs-observed visual distinction. Stories 21.2 and 21.4 require an addendum or embedded UX design sub-task.
