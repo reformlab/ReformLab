@@ -58,8 +58,8 @@ def test_ci_workflow_has_required_quality_gate_commands() -> None:
     assert "uv run ruff check src tests" in commands
     assert "uv run mypy src" in commands
     assert "uv run pytest --cov=src/reformlab --cov-report=term-missing tests/" in commands
-    assert "uv run pytest --nbmake notebooks/quickstart.ipynb -v" in commands
-    assert "uv run pytest --nbmake notebooks/advanced.ipynb -v" in commands
+    assert "uv run python demos/guides/01_data_foundation.py" in commands
+    assert "uv run python demos/guides/07_custom_templates.py" in commands
 
 
 def test_pyproject_coverage_threshold_is_configured() -> None:

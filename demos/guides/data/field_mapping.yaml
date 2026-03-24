@@ -1,0 +1,22 @@
+version: "1.0"
+mappings:
+  - openfisca_name: income_tax
+    project_name: impot_revenu
+    direction: output
+    type: float64
+    description: "Income tax (impôt sur le revenu)"
+  - openfisca_name: carbon_tax
+    project_name: taxe_carbone
+    direction: output
+    type: float64
+    description: "Carbon tax (taxe carbone)"
+  - openfisca_name: household_id
+    project_name: id_menage
+    direction: both
+    type: int64
+    description: "Household identifier"
+  - openfisca_name: person_id
+    project_name: id_personne
+    direction: both
+    type: int64
+    description: "Person identifier"

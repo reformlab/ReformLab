@@ -15,10 +15,14 @@ jobs:
       - run: uv run ruff check src tests
       - run: uv run mypy src
       - run: uv run pytest --cov=src/reformlab --cov-report=term-missing tests/
-      - run: uv run pytest --nbmake notebooks/quickstart.ipynb -v
-      - run: uv run pytest --nbmake notebooks/advanced.ipynb -v
-      - run: uv run pytest --nbmake notebooks/guides/09_population_generation.ipynb -v
-      - run: uv run pytest --nbmake notebooks/guides/08_discrete_choice_model.ipynb -v
-      - run: uv run pytest --nbmake notebooks/guides/10_calibration_workflow.ipynb -v
-      - run: uv run pytest --nbmake notebooks/guides/07_custom_templates.ipynb -v
-      - run: uv run pytest --nbmake notebooks/guides/11_replication_workflow.ipynb -v
+      - run: uv run python demos/guides/01_data_foundation.py
+      - run: uv run python demos/guides/02_scenario_templates.py
+      - run: uv run python demos/guides/03_multiyear_orchestration.py
+      - run: uv run python demos/guides/04_indicators_comparison.py
+      - run: uv run python demos/guides/05_governance_reproducibility.py
+      - run: uv run python demos/guides/06_portfolio_comparison.py
+      - run: uv run python demos/guides/07_custom_templates.py
+      - run: uv run python demos/guides/08_discrete_choice_model.py
+      - run: uv run python demos/guides/09_population_generation.py
+      - run: uv run python demos/guides/10_calibration_workflow.py
+      - run: uv run python demos/guides/11_replication_workflow.py

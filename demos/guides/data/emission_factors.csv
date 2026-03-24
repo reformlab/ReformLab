@@ -1,0 +1,10 @@
+category,factor_value,unit,year,subcategory,source,co2_equivalent
+transport,0.218,kgCO2/km,2024,car_petrol,ADEME,0.218
+transport,0.195,kgCO2/km,2024,car_diesel,ADEME,0.195
+transport,0.025,kgCO2/km,2024,train,ADEME,0.025
+housing,0.227,kgCO2/kWh,2024,natural_gas,ADEME,0.227
+housing,0.065,kgCO2/kWh,2024,electricity,ADEME,0.065
+housing,0.324,kgCO2/kWh,2024,heating_oil,ADEME,0.324
+food,5.13,kgCO2/kg,2024,beef,Agribalyse,5.13
+food,0.91,kgCO2/kg,2024,poultry,Agribalyse,0.91
+food,0.39,kgCO2/kg,2024,vegetables,Agribalyse,0.39

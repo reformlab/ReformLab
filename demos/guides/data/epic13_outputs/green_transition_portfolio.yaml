@@ -1,0 +1,28 @@
+$schema: /Users/lucas/Workspace/reformlab/src/reformlab/templates/schema/portfolio.schema.json
+description: ''
+name: green-transition
+policies:
+- name: carbon-tax
+  policy:
+    rate_schedule:
+      2026: 44.6
+      2027: 50.0
+  policy_type: carbon_tax
+- name: vehicle-malus
+  policy:
+    rate_schedule:
+      2026: 50.0
+      2027: 55.0
+    threshold_schedule: {}
+  policy_type: vehicle_malus
+- name: energy-aid
+  policy:
+    aid_schedule: {}
+    energy_share_schedule: {}
+    income_ceiling_schedule: {}
+    rate_schedule:
+      2026: 0.0
+      2027: 0.0
+  policy_type: energy_poverty_aid
+resolution_strategy: error
+version: '1.0'

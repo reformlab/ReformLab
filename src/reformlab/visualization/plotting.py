@@ -118,6 +118,62 @@ def show_figure(fig: Figure) -> None:
     plt.show()
 
 
+def plot_grouped_bars(
+    labels: list[str],
+    series: dict[str, list[float]],
+    *,
+    title: str = "",
+    xlabel: str = "",
+    ylabel: str = "",
+    colors: list[str] | None = None,
+    xtick_rotation: float = 0,
+    ylim: tuple[float, float] | None = None,
+    ax: Axes | None = None,
+) -> tuple[Figure, Axes]:
+    """Grouped bar chart with multiple named series sharing the same x-axis labels.
+
+    Args:
+        labels: Category labels for the x-axis.
+        series: Mapping of series name to values (each list same length as *labels*).
+        title: Chart title.
+        xlabel: X-axis label.
+        ylabel: Y-axis label.
+        colors: Optional list of colors, one per series. Uses matplotlib cycle if None.
+        xtick_rotation: Rotation angle for x-tick labels in degrees.
+        ylim: Optional (min, max) limits for the y-axis.
+        ax: Existing axes to plot on. Creates new figure if None.
+
+    Returns:
+        Tuple of (Figure, Axes).
+    """
+    import numpy as np
+
+    from reformlab.visualization.styling import create_figure, style_axes
+
+    if ax is None:
+        fig, ax = create_figure()
+    else:
+        fig = ax.get_figure()  # type: ignore[assignment]
+
+    n_series = len(series)
+    n_labels = len(labels)
+    x = np.arange(n_labels)
+    width = 0.8 / max(n_series, 1)
+
+    for i, (name, values) in enumerate(series.items()):
+        offset = (i - (n_series - 1) / 2) * width
+        bar_color = colors[i] if colors is not None and i < len(colors) else None
+        ax.bar(x + offset, values, width, label=name, alpha=0.8, color=bar_color)
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels, rotation=xtick_rotation)
+    if ylim is not None:
+        ax.set_ylim(*ylim)
+    ax.legend(fontsize=11)
+    style_axes(ax, title=title, xlabel=xlabel, ylabel=ylabel)
+    return fig, ax
+
+
 def plot_stacked_area(
     x: list[int] | list[float],
     series: dict[str, list[float]],

@@ -1,0 +1,42 @@
+{
+  "$schema": "./schema/workflow.schema.json",
+  "data_sources": {
+    "emission_factors": "default",
+    "population": "synthetic_french_2024"
+  },
+  "description": "Compare baseline carbon tax with progressive dividend redistribution",
+  "name": "carbon_tax_comparison",
+  "outputs": [
+    {
+      "by": [
+        "income_decile"
+      ],
+      "format": "csv",
+      "type": "distributional_indicators"
+    },
+    {
+      "format": "csv",
+      "path": "outputs/comparison.csv",
+      "type": "comparison_table"
+    },
+    {
+      "format": "yaml",
+      "path": "outputs/summary.yaml",
+      "type": "summary_report"
+    }
+  ],
+  "run_config": {
+    "output_format": "csv",
+    "projection_years": 10,
+    "start_year": 2026
+  },
+  "scenarios": [
+    {
+      "baseline": "french-carbon-tax-2026"
+    },
+    {
+      "reform": "progressive-dividend"
+    }
+  ],
+  "version": "1.0"
+}

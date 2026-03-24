@@ -1741,8 +1741,11 @@ def _execute_orchestration(
     # Reconstruct typed PolicyParameters from the dict-based ScenarioConfig.
     typed_policy = deserialize_policy(scenario.policy)
 
-    # Serialize for manifest/workflow boundaries (JSON-compatible dict)
-    normalized_params = serialize_policy(typed_policy)
+    # Serialize for manifest/workflow boundaries (JSON-compatible dict).
+    # Merge original scenario.policy keys so user-facing parameter names
+    # (e.g. "carbon_tax_rate") survive the round-trip through typed
+    # PolicyParameters, which only knows its own field names.
+    normalized_params = {**scenario.policy, **serialize_policy(typed_policy)}
 
     population = _load_population_data(scenario.population_path)
     policy = PolicyConfig(

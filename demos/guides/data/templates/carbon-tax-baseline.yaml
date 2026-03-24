@@ -1,0 +1,28 @@
+$schema: ./schema/scenario-template.schema.json
+version: '1.0'
+name: French Carbon Tax 2026
+description: Standard French carbon tax trajectory with agricultural exemption
+policy_type: carbon_tax
+year_schedule:
+  start_year: 2026
+  end_year: 2036
+policy:
+  rate_schedule:
+    2026: 44.6
+    2027: 50.0
+    2028: 55.0
+    2029: 60.0
+    2030: 65.0
+    2031: 70.0
+    2032: 75.0
+    2033: 80.0
+    2034: 85.0
+    2035: 90.0
+    2036: 100.0
+  exemptions:
+  - category: agricultural_fuel
+    rate_reduction: 1.0
+  covered_categories:
+  - transport_fuel
+  - heating_fuel
+  - natural_gas
