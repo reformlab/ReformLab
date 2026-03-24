@@ -52,6 +52,12 @@ class SourceCache:
     def __init__(self, cache_root: Path | None = None) -> None:
         self._cache_root = cache_root or _DEFAULT_CACHE_ROOT
 
+    def __repr__(self) -> str:
+        return (
+            f"SourceCache(root={self._cache_root}, "
+            f"offline={self.is_offline()})"
+        )
+
     @property
     def cache_root(self) -> Path:
         """Return the cache root directory path."""
