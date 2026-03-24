@@ -84,6 +84,9 @@ logs/
 !frontend/src/data/
 !frontend/src/data/*.ts
 
+# === Scratch / throwaway scripts ===
+scratch/
+
 # === Notebooks ===
 notebooks/data/
 notebooks/scratch/
