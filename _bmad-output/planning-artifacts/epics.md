@@ -2015,6 +2015,161 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 
 ---
 
+### Story 20.1: Implement canonical scenario model and stage-aware routing shell
+
+**Status:** backlog
+**Priority:** P0
+**Estimate:** 5
+
+**Dependencies:** None
+
+Deliver a single scenario-centered workspace shell. Replace the older sequence of full-screen setup views with route-addressable stage and sub-view navigation. Ensure the frontend state model distinguishes clearly between portfolio, scenario, and run.
+
+#### Acceptance Criteria
+
+- Given the application shell, when loaded, then a four-stage navigation is visible: Policies & Portfolio, Population, Engine, Run / Results / Compare.
+- Given a stage, when its route is visited, then the corresponding stage view renders without full-page reload.
+- Given the frontend state model, when inspected, then portfolio, scenario, and run are represented as distinct objects with clear ownership boundaries.
+
+---
+
+### Story 20.2: Add pre-seeded demo-scenario onboarding and scenario entry flows
+
+**Status:** backlog
+**Priority:** P0
+**Estimate:** 3
+
+**Dependencies:** Story 20.1
+
+First launch should open a real demo scenario, not a separate tutorial. Returning users should resume an existing saved scenario. Entry flows must support: create new from template, open saved scenario, clone scenario, and continue demo scenario.
+
+#### Acceptance Criteria
+
+- Given a first-time user, when the application loads, then a pre-seeded demo scenario opens with Stages 1-3 prefilled and Run enabled.
+- Given a returning user, when the application loads, then their most recent saved scenario is resumed.
+- Given the scenario entry UI, when accessed, then it supports: create new from template, open saved, clone, and continue demo.
+
+---
+
+### Story 20.3: Build Policies & Portfolio stage with inline composition
+
+**Status:** backlog
+**Priority:** P0
+**Estimate:** 5
+
+**Dependencies:** Story 20.1
+
+Implement the Stage 1 surface for browsing templates, composing portfolios inline, editing policy parameters in place, and handling portfolio conflicts without leaving the stage. Portfolio save/load/clone must not be conflated with scenario save/clone.
+
+#### Acceptance Criteria
+
+- Given Stage 1, when opened, then the user can browse available policy templates and compose a portfolio inline.
+- Given a portfolio, when policies conflict, then conflicts are surfaced and resolvable without leaving the stage.
+- Given portfolio operations, when save/load/clone are used, then they operate independently of scenario save/clone.
+
+---
+
+### Story 20.4: Build Population Library and Data Explorer stage
+
+**Status:** backlog
+**Priority:** P0
+**Estimate:** 8
+
+**Dependencies:** Story 20.1
+
+Implement the Stage 2 population workspace: library list, quick preview, full explorer, profile charts, upload flow, and handoff to Data Fusion. The stage must support both selection for execution and independent data inspection.
+
+**EPIC-21 coordination:** Population metadata display must use placeholder slots for evidence classification (`origin`, `access_mode`, `trust_status`) that EPIC-21 Story 21.2 will populate with canonical contracts.
+
+#### Acceptance Criteria
+
+- Given Stage 2, when opened, then a population library lists available datasets with quick preview.
+- Given a population, when selected, then full explorer with profile charts is available.
+- Given the upload flow, when a dataset is uploaded, then it is validated and added to the library.
+- Given population metadata display, when rendered, then placeholder slots exist for evidence classification fields.
+
+---
+
+### Story 20.5: Build Engine stage with scenario save/clone and cross-stage validation gate
+
+**Status:** backlog
+**Priority:** P0
+**Estimate:** 8
+
+**Dependencies:** Story 20.1, Story 20.3, Story 20.4
+
+Stage 3 is where a scenario becomes executable. It owns time horizon, population selection, investment-decision settings, calibration controls, and the final preflight.
+
+**EPIC-21 coordination:** The validation/preflight contract must be designed as an extensible check registry so EPIC-21 Story 21.5 can add trust-status rules without replacing the validation infrastructure.
+
+#### Acceptance Criteria
+
+- Given Stage 3, when opened, then time horizon, population selection, investment-decision settings, and calibration controls are configurable.
+- Given a scenario, when save or clone is invoked, then the scenario is persisted with all stage settings.
+- Given cross-stage validation, when Run is requested, then preflight checks verify: population schema compatibility, mapping completeness, year-schedule coverage, and runtime/memory limits.
+- Given a validation failure, when detected, then execution is blocked with actionable error messages.
+- Given the validation contract, when inspected, then it uses an extensible check registry pattern.
+
+---
+
+### Story 20.6: Refactor Run / Results / Compare around scenario-by-population execution
+
+**Status:** backlog
+**Priority:** P0
+**Estimate:** 5
+
+**Dependencies:** Story 20.5
+
+Stage 4 must reflect the durable scenario model. Queues, results, exports, and comparisons are derived from scenario executions. Comparisons operate on completed runs but still preserve the scenario context that produced them.
+
+**EPIC-21 coordination:** The comparison model must support pluggable comparison dimensions so EPIC-21 Story 21.6 can add exogenous assumption comparison without restructuring the data model.
+
+#### Acceptance Criteria
+
+- Given Stage 4, when a run completes, then results are presented as a scenario-by-population matrix.
+- Given completed runs, when compared, then scenario lineage is preserved through comparison and export views.
+- Given the comparison infrastructure, when inspected, then it supports pluggable comparison dimensions.
+
+---
+
+### Story 20.7: Extend backend APIs for population explorer and execution-contract validation
+
+**Status:** backlog
+**Priority:** P0
+**Estimate:** 5
+
+**Dependencies:** Story 20.1
+
+Expose the backend contracts needed by the new workspace: `/api/populations`, `/api/populations/{id}/preview`, `/api/populations/{id}/profile`, `/api/populations/{id}/crosstab`, `/api/populations/upload`, and a validation/preflight contract for the Engine stage.
+
+#### Acceptance Criteria
+
+- Given the API surface, when inspected, then population endpoints exist: list, preview, profile, crosstab, upload.
+- Given the validation/preflight endpoint, when called, then it returns pass/fail with check-level detail.
+- Given all new endpoints, when called, then they return typed responses matching frontend model contracts.
+
+---
+
+### Story 20.8: Add end-to-end regression coverage and sync product docs to the new IA
+
+**Status:** backlog
+**Priority:** P1
+**Estimate:** 3
+
+**Dependencies:** Story 20.5, Story 20.6
+
+Add end-to-end tests for the critical flows and update any remaining planning or product docs that still describe the older screen model.
+
+**EPIC-21 coordination:** Structure test fixtures and assertions so EPIC-21 Story 21.8 can add evidence scenarios without duplicating the workspace flow coverage built here.
+
+#### Acceptance Criteria
+
+- Given the test suite, when run, then end-to-end tests cover: first launch → demo scenario → run, edit portfolio → validate → run, select/upload population → inspect → run, compare runs with scenario lineage.
+- Given planning and product docs, when reviewed, then none describe the older screen-by-screen model.
+- Given test fixtures, when inspected, then they are structured for extension by EPIC-21 evidence flows.
+
+---
+
 ## Epic 21: Trust-Governed Open + Synthetic Evidence Foundation
 
 **User outcome:** Every dataset, output, and model parameter exposed by the platform carries explicit origin, access mode, and trust status metadata — enabling analysts to reason about evidence quality, distinguish synthetic from observed data, and maintain calibration/validation separation.
@@ -2063,3 +2218,156 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 - The `TasteParameters` refactor touches calibration, provenance, demos, docs, and tests; it is not a local type change.
 - **EPIC-20 prerequisites:** Stories 21.2, 21.5, 21.6, and 21.8 extend specific EPIC-20 surfaces (Population Library 20.4, Engine validation 20.5, comparison model 20.6, regression suite 20.8). These must integrate with EPIC-20 contracts, not create parallel systems.
 - **UX spec gap:** The UX spec (Revision 2.0) defines no UI patterns for evidence classification badges, trust-status indicators, or synthetic-vs-observed visual distinction. Stories 21.2 and 21.4 require an addendum or embedded UX design sub-task.
+
+---
+
+### Story 21.1: Implement canonical evidence asset descriptor and current-phase source matrix
+
+**Status:** backlog
+**Priority:** P0
+**Estimate:** 5
+
+**Dependencies:** None
+
+Create the shared asset descriptor used by ingestion, APIs, manifests, and UI surfaces. It must include source metadata plus `origin`, `access_mode`, `trust_status`, intended use, and redistribution notes. Produce a versioned source matrix for all current-phase datasets referenced by docs, demos, and the flagship workflow.
+
+#### Acceptance Criteria
+
+- Given the asset descriptor, when inspected, then it includes `origin`, `access_mode`, `trust_status`, intended use, provenance, and redistribution metadata.
+- Given the current-phase source matrix, when reviewed, then it covers all datasets referenced by docs, demos, and the flagship workflow.
+- Given the descriptor schema, when used by ingestion, APIs, and manifests, then it is the single shared contract — no parallel definitions.
+
+---
+
+### Story 21.2: Add origin/access mode/trust status contracts across backend APIs and frontend models
+
+**Status:** backlog
+**Priority:** P0
+**Estimate:** 5
+
+**Dependencies:** Story 21.1
+
+Extend API responses and frontend types so evidence metadata is not optional or ad hoc. Population selection, data explorer, engine validation, and results surfaces must all be able to display and preserve evidence classification without inventing their own label systems.
+
+**EPIC-20 prerequisite:** Requires the Population Library (20.4), Engine validation (20.5), and Results/Compare (20.6) surfaces to exist. Replaces EPIC-20's placeholder `[Built-in]`/`[Generated]`/`[Uploaded]` tags with canonical contracts.
+
+#### Acceptance Criteria
+
+- Given API responses for populations, runs, and results, when inspected, then they include `origin`, `access_mode`, and `trust_status` fields.
+- Given frontend models, when inspected, then evidence classification is typed and non-optional.
+- Given EPIC-20 placeholder tags, when this story is complete, then they are replaced by canonical evidence contracts.
+
+---
+
+### Story 21.3: Implement typed structural, exogenous, calibration, and validation asset schemas
+
+**Status:** backlog
+**Priority:** P0
+**Estimate:** 8
+
+**Dependencies:** Story 21.1
+
+Introduce a shared envelope plus typed payload contracts. `PopulationData` stays narrow; exogenous series, calibration targets, and validation benchmarks get their own types and validation rules. This story should prevent governance metadata from being mixed into domain payload objects.
+
+#### Acceptance Criteria
+
+- Given asset types, when inspected, then structural, exogenous, calibration, and validation assets each have distinct typed schemas.
+- Given `PopulationData`, when inspected, then it remains narrow and does not carry governance metadata.
+- Given the shared envelope, when used, then governance metadata is carried at the envelope level, not mixed into domain payloads.
+
+---
+
+### Story 21.4: Add public synthetic asset ingestion and observed-versus-synthetic comparison flows
+
+**Status:** backlog
+**Priority:** P0
+**Estimate:** 8
+
+**Dependencies:** Story 21.1, Story 21.2
+
+Support public synthetic datasets in the same ingestion framework as open official data, but never blur their trust boundary. The flagship scenario should be able to load at least one synthetic dataset variant and present an explicit observed-versus-synthetic comparison with visible trust labels.
+
+#### Acceptance Criteria
+
+- Given a public synthetic dataset, when ingested, then it is classified with correct `origin` and `trust_status` — never promoted to `production-safe` without validation.
+- Given the flagship scenario, when run with synthetic data, then an observed-versus-synthetic comparison is available with visible trust labels.
+- Given comparison views, when displaying synthetic data, then provenance and trust status are always visible.
+
+---
+
+### Story 21.5: Separate calibration targets from validation benchmarks and implement trust-status rules
+
+**Status:** backlog
+**Priority:** P0
+**Estimate:** 5
+
+**Dependencies:** Story 21.1, Story 21.3
+
+Define distinct storage, APIs, and execution paths for fitting versus certification. Synthetic outputs must not become `production-safe` without an explicit validation dossier, and in-sample calibration data must not silently double as validation evidence.
+
+**EPIC-20 prerequisite:** Extends the extensible validation/preflight check registry created by EPIC-20 Story 20.5.
+
+#### Acceptance Criteria
+
+- Given calibration targets and validation benchmarks, when stored, then they use distinct storage and API paths.
+- Given a synthetic output, when assessed, then it cannot reach `production-safe` trust status without a validation dossier.
+- Given calibration data, when used in a run, then it cannot silently serve as validation evidence.
+- Given trust-status rules, when registered, then they are additional checks in the EPIC-20 preflight registry.
+
+---
+
+### Story 21.6: Implement ExogenousTimeSeries and ExogenousContext for scenario execution
+
+**Status:** backlog
+**Priority:** P0
+**Estimate:** 5
+
+**Dependencies:** Story 21.3
+
+Add read-only scenario exogenous context with coverage validation, year-slice lookup, provenance metadata, and interpolation rules. At least one flagship domain must consume scenario-specific exogenous inputs, and scenario comparison must support differing exogenous assumptions.
+
+**EPIC-20 prerequisite:** Extends the comparison infrastructure built by EPIC-20 Story 20.6. Exogenous assumptions are a new pluggable comparison dimension.
+
+#### Acceptance Criteria
+
+- Given `ExogenousContext`, when attached to a scenario, then it provides read-only access with coverage validation and year-slice lookup.
+- Given exogenous inputs, when used in execution, then provenance metadata and interpolation rules are recorded.
+- Given scenario comparison, when two runs differ by exogenous assumptions, then the comparison surfaces the difference as a named dimension.
+
+---
+
+### Story 21.7: Refactor discrete-choice and calibration for generalized TasteParameters
+
+**Status:** backlog
+**Priority:** P0
+**Estimate:** 8
+
+**Dependencies:** Story 21.3, Story 21.5
+
+Refactor the current single-`beta_cost` model toward ASCs plus named coefficients with fixed/calibrated tracking, diagnostics, and migration compatibility. Preserve a compatibility path for the existing single-parameter workflow while moving the flagship domain onto the richer contract.
+
+#### Acceptance Criteria
+
+- Given `TasteParameters`, when inspected, then it supports ASCs plus named coefficients with fixed/calibrated tracking.
+- Given the existing single-`beta_cost` workflow, when run, then it continues to work via the compatibility path.
+- Given the flagship domain, when calibrated, then it uses the generalized `TasteParameters` contract with diagnostics.
+
+---
+
+### Story 21.8: Wire the flagship scenario, docs, and regression coverage to the new evidence model
+
+**Status:** backlog
+**Priority:** P1
+**Estimate:** 5
+
+**Dependencies:** Story 21.4, Story 21.5, Story 21.6, Story 21.7
+
+Close the loop with an end-to-end scenario that proves the new evidence contracts actually work together. Update demos, docs, manifests, and regression coverage so the current-phase story is coherent.
+
+**EPIC-20 prerequisite:** Extends the regression suite created by EPIC-20 Story 20.8. Adds evidence-specific test flows on top of existing workspace flow coverage.
+
+#### Acceptance Criteria
+
+- Given the flagship scenario, when executed end-to-end, then it demonstrates: open official data, public synthetic comparison, explicit trust labels, and separated calibration/validation.
+- Given docs and manifests, when reviewed, then they describe the current-phase evidence model consistently.
+- Given regression tests, when inspected, then evidence-specific flows extend (not duplicate) the EPIC-20 workspace coverage.

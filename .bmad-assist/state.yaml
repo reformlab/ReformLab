@@ -1,6 +1,6 @@
-current_epic: null
-current_story: null
-current_phase: null
+current_epic: 20
+current_story: '20.1'
+current_phase: 'create_story'
 completed_stories:
 - '9.2'
 - '9.3'
