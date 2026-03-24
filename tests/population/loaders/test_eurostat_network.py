@@ -29,7 +29,8 @@ class TestEurostatNetworkDownload:
         """Download ilc_di01 (income distribution, ~75 KB compressed)."""
         loader = get_eurostat_loader("ilc_di01", cache=source_cache)
         config = make_eurostat_config("ilc_di01")
-        table = loader.download(config)
+        pop, manifest = loader.download(config)
+        table = pop.primary_table
 
         assert isinstance(table, pa.Table)
         assert table.num_rows > 100
@@ -43,7 +44,8 @@ class TestEurostatNetworkDownload:
         """Download nrg_d_hhq (household energy consumption)."""
         loader = get_eurostat_loader("nrg_d_hhq", cache=source_cache)
         config = make_eurostat_config("nrg_d_hhq")
-        table = loader.download(config)
+        pop, manifest = loader.download(config)
+        table = pop.primary_table
 
         assert isinstance(table, pa.Table)
         assert table.num_rows > 100

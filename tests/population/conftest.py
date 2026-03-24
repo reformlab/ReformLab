@@ -2,9 +2,17 @@
 # Copyright 2026 Lucas Vivier
 from __future__ import annotations
 
+import hashlib
+from datetime import UTC, datetime
+from pathlib import Path
+
 import pyarrow as pa
 import pytest
 
+from reformlab.computation.ingestion import DataSchema
+from reformlab.computation.types import PopulationData
+from reformlab.data.descriptor import DatasetDescriptor
+from reformlab.data.pipeline import DatasetManifest, DataSourceMetadata
 from reformlab.population.loaders.base import (
     CacheStatus,
     DataSourceLoader,
@@ -216,8 +224,23 @@ class _MockLoader:
     def __init__(self, table: pa.Table) -> None:
         self._table = table
 
-    def download(self, config: SourceConfig) -> pa.Table:
-        return self._table
+    def download(self, config: SourceConfig) -> tuple[PopulationData, DatasetManifest]:
+        population = PopulationData.from_table(self._table, entity_type="default")
+        manifest = DatasetManifest(
+            source=DataSourceMetadata(
+                name=config.dataset_id,
+                version="mock",
+                url=config.url,
+                description=config.description,
+            ),
+            content_hash=hashlib.sha256(b"mock").hexdigest(),
+            file_path=Path("<mock>"),
+            format="parquet",
+            row_count=self._table.num_rows,
+            column_names=tuple(self._table.column_names),
+            loaded_at=datetime.now(UTC).isoformat(timespec="seconds"),
+        )
+        return population, manifest
 
     def status(self, config: SourceConfig) -> CacheStatus:
         return CacheStatus(
@@ -228,14 +251,23 @@ class _MockLoader:
             stale=False,
         )
 
-    def schema(self) -> pa.Schema:
-        return self._table.schema
+    def descriptor(self) -> DatasetDescriptor:
+        all_cols = tuple(self._table.schema.names)
+        return DatasetDescriptor(
+            dataset_id="mock",
+            provider="mock",
+            description="mock dataset",
+            schema=DataSchema(
+                schema=self._table.schema,
+                required_columns=all_cols,
+            ),
+        )
 
 
 class _FailingLoader:
     """Mock loader that always raises on download."""
 
-    def download(self, config: SourceConfig) -> pa.Table:
+    def download(self, config: SourceConfig) -> tuple[PopulationData, DatasetManifest]:
         from reformlab.population.loaders.errors import DataSourceDownloadError
 
         raise DataSourceDownloadError(
@@ -247,8 +279,16 @@ class _FailingLoader:
     def status(self, config: SourceConfig) -> CacheStatus:
         return CacheStatus(cached=False, path=None, downloaded_at=None, hash=None, stale=False)
 
-    def schema(self) -> pa.Schema:
-        return pa.schema([])
+    def descriptor(self) -> DatasetDescriptor:
+        return DatasetDescriptor(
+            dataset_id="failing",
+            provider="mock",
+            description="failing mock",
+            schema=DataSchema(
+                schema=pa.schema([]),
+                required_columns=(),
+            ),
+        )
 
 
 # ====================================================================

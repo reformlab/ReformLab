@@ -10,6 +10,7 @@ from reformlab.computation.ingestion import (
     DataSchema,
     IngestionFormat,
 )
+from reformlab.computation.types import PopulationData
 
 @dataclass(frozen=True)
 class DataSourceMetadata:
@@ -18,6 +19,10 @@ class DataSourceMetadata:
     url: str
     description: str
     license: str = ...
+
+    def to_json(self) -> dict[str, str]: ...
+    @classmethod
+    def from_json(cls, data: dict[str, Any]) -> DataSourceMetadata: ...
 
 @dataclass(frozen=True)
 class DatasetManifest:
@@ -52,3 +57,8 @@ def load_dataset(
     *,
     allowed_roots: tuple[Path, ...] | None = ...,
 ) -> tuple[pa.Table, DatasetManifest]: ...
+def load_population_folder(
+    path: str | Path,
+    *,
+    allowed_roots: tuple[Path, ...] | None = ...,
+) -> tuple[PopulationData, DatasetManifest]: ...

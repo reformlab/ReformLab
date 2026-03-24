@@ -30,6 +30,10 @@ from reformlab.population import (
     PopulationValidator,
     UniformMergeMethod,
 )
+from reformlab.computation.ingestion import DataSchema
+from reformlab.computation.types import PopulationData
+from reformlab.data.descriptor import DatasetDescriptor
+from reformlab.data.pipeline import DataSourceMetadata, DatasetManifest
 from reformlab.population.loaders.base import CacheStatus, DataSourceLoader, SourceConfig
 from reformlab.population.methods.base import IPFConstraint
 
@@ -56,20 +60,48 @@ logger = logging.getLogger("reformlab.examples.french_household")
 class _FixtureLoader:
     """Loader that reads a pre-built PyArrow table from a fixture."""
 
-    def __init__(self, table: pa.Table) -> None:
+    def __init__(self, table: pa.Table, *, dataset_id: str = "fixture") -> None:
         self._table = table
         self._schema = table.schema
+        self._dataset_id = dataset_id
 
-    def download(self, config: SourceConfig) -> pa.Table:
-        return self._table
+    def download(self, config: SourceConfig) -> tuple[PopulationData, DatasetManifest]:
+        import hashlib
+        from datetime import UTC, datetime
+
+        population = PopulationData.from_table(self._table, entity_type="default")
+        manifest = DatasetManifest(
+            source=DataSourceMetadata(
+                name=self._dataset_id,
+                version="fixture",
+                url="",
+                description="fixture data",
+            ),
+            content_hash=hashlib.sha256(b"fixture").hexdigest(),
+            file_path=Path("<fixture>"),
+            format="parquet",
+            row_count=self._table.num_rows,
+            column_names=tuple(self._table.column_names),
+            loaded_at=datetime.now(UTC).isoformat(timespec="seconds"),
+        )
+        return population, manifest
 
     def status(self, config: SourceConfig) -> CacheStatus:
         return CacheStatus(
             cached=True, path=None, downloaded_at=None, hash=None, stale=False,
         )
 
-    def schema(self) -> pa.Schema:
-        return self._schema
+    def descriptor(self) -> DatasetDescriptor:
+        all_cols = tuple(self._schema.names)
+        return DatasetDescriptor(
+            dataset_id=self._dataset_id,
+            provider="fixture",
+            description="fixture data",
+            schema=DataSchema(
+                schema=self._schema,
+                required_columns=all_cols,
+            ),
+        )
 
 
 # Verify structural compatibility

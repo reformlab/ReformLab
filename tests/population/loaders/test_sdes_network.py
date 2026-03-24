@@ -29,7 +29,8 @@ class TestSDESNetworkDownload:
         """Download vehicle fleet data (~10 MB)."""
         loader = get_sdes_loader("vehicle_fleet", cache=source_cache)
         config = make_sdes_config("vehicle_fleet")
-        table = loader.download(config)
+        pop, manifest = loader.download(config)
+        table = pop.primary_table
 
         assert isinstance(table, pa.Table)
         assert table.num_rows > 1000

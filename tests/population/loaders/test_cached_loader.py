@@ -61,9 +61,10 @@ class TestCachedLoaderCacheHit:
         source_cache.put(sample_source_config, mock_table)
 
         loader = MockCachedLoader(source_cache, mock_table, mock_schema)
-        result = loader.download(sample_source_config)
+        pop, manifest = loader.download(sample_source_config)
 
-        assert result.equals(mock_table)
+        assert pop.primary_table.equals(mock_table)
+        assert manifest.row_count == mock_table.num_rows
         assert loader.fetch_called is False
 
 
@@ -84,9 +85,9 @@ class TestCachedLoaderCacheMiss:
     ) -> None:
         """Given empty cache, download calls _fetch and caches result."""
         loader = MockCachedLoader(source_cache, mock_table, mock_schema)
-        result = loader.download(sample_source_config)
+        pop, manifest = loader.download(sample_source_config)
 
-        assert result.equals(mock_table)
+        assert pop.primary_table.equals(mock_table)
         assert loader.fetch_called is True
 
         # Verify it was cached
@@ -131,9 +132,9 @@ class TestCachedLoaderStaleFallback:
         )
 
         with caplog.at_level(logging.WARNING):
-            result = loader.download(sample_source_config)
+            pop, manifest = loader.download(sample_source_config)
 
-        assert result.equals(mock_table)
+        assert pop.primary_table.equals(mock_table)
         assert "stale_cache_used" in caplog.text
 
     def test_non_network_error_with_stale_cache_is_not_swallowed(
@@ -209,9 +210,9 @@ class TestCachedLoaderOfflineCacheHit:
         monkeypatch.setenv("REFORMLAB_OFFLINE", "1")
 
         loader = MockCachedLoader(source_cache, mock_table, mock_schema)
-        result = loader.download(sample_source_config)
+        pop, manifest = loader.download(sample_source_config)
 
-        assert result.equals(mock_table)
+        assert pop.primary_table.equals(mock_table)
         assert loader.fetch_called is False
 
 

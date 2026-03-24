@@ -163,17 +163,17 @@ class TestDataSourceLoaderProtocol:
     """DataSourceLoader is a runtime-checkable structural protocol."""
 
     def test_isinstance_check_with_conforming_class(self) -> None:
-        """Given a class with download/status/schema, isinstance returns True."""
+        """Given a class with download/status/descriptor, isinstance returns True."""
 
         class ConformingLoader:
-            def download(self, config: SourceConfig) -> pa.Table:
-                return pa.table({})
+            def download(self, config: SourceConfig) -> tuple:  # type: ignore[type-arg]
+                return ()
 
             def status(self, config: SourceConfig) -> CacheStatus:
                 return CacheStatus(cached=False, path=None, downloaded_at=None, hash=None, stale=False)
 
-            def schema(self) -> pa.Schema:
-                return pa.schema([])
+            def descriptor(self) -> object:
+                return None
 
         loader = ConformingLoader()
         assert isinstance(loader, DataSourceLoader)
@@ -182,8 +182,8 @@ class TestDataSourceLoaderProtocol:
         """Given a class missing methods, isinstance returns False."""
 
         class Incomplete:
-            def download(self, config: SourceConfig) -> pa.Table:
-                return pa.table({})
+            def download(self, config: SourceConfig) -> tuple:  # type: ignore[type-arg]
+                return ()
 
         obj = Incomplete()
         assert not isinstance(obj, DataSourceLoader)
@@ -220,3 +220,16 @@ class TestCachedLoaderConstruction:
 
         with pytest.raises(TypeError, match="must override _fetch"):
             MissingFetchLoader(cache=source_cache, logger=logging.getLogger("test"))
+
+    def test_missing_descriptor_override_rejected(self, source_cache: SourceCache) -> None:
+        """Given a subclass without descriptor(), constructor raises TypeError."""
+
+        class MissingDescriptorLoader(CachedLoader):
+            def schema(self) -> pa.Schema:
+                return pa.schema([])
+
+            def _fetch(self, config: SourceConfig) -> pa.Table:
+                return pa.table({})
+
+        with pytest.raises(TypeError, match="must override descriptor"):
+            MissingDescriptorLoader(cache=source_cache, logger=logging.getLogger("test"))

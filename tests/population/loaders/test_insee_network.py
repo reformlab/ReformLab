@@ -28,7 +28,8 @@ class TestINSEELoaderRealDownload:
         loader = get_insee_loader("filosofi_2021_commune", cache=cache)
         config = make_insee_config("filosofi_2021_commune")
 
-        table = loader.download(config)
+        pop, manifest = loader.download(config)
+        table = pop.primary_table
 
         # Filosofi commune-level should have thousands of communes
         assert table.num_rows > 30000

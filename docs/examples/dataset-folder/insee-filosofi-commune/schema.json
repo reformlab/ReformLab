@@ -1,0 +1,17 @@
+{
+  "columns": [
+    {"name": "commune_code", "type": "string", "required": true},
+    {"name": "commune_name", "type": "string", "required": true},
+    {"name": "nb_fiscal_households", "type": "double", "required": true},
+    {"name": "median_income", "type": "double", "required": true},
+    {"name": "decile_1", "type": "double", "required": true},
+    {"name": "decile_2", "type": "double", "required": true},
+    {"name": "decile_3", "type": "double", "required": true},
+    {"name": "decile_4", "type": "double", "required": true},
+    {"name": "decile_5", "type": "double", "required": true},
+    {"name": "decile_6", "type": "double", "required": true},
+    {"name": "decile_7", "type": "double", "required": true},
+    {"name": "decile_8", "type": "double", "required": true},
+    {"name": "decile_9", "type": "double", "required": true}
+  ]
+}

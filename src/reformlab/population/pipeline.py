@@ -423,8 +423,9 @@ class PopulationPipeline:
 
             try:
                 if isinstance(step, _LoadStepDef):
-                    # Execute load step
-                    table = step.loader.download(step.config)
+                    # Execute load step — download returns (PopulationData, DatasetManifest)
+                    pop_data, _manifest = step.loader.download(step.config)
+                    table = pop_data.primary_table
                     tables[step.label] = table
 
                     output_columns = tuple(table.column_names)

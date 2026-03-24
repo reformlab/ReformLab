@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -29,6 +30,33 @@ class DataSourceMetadata:
     url: str
     description: str
     license: str = ""
+
+    def to_json(self) -> dict[str, str]:
+        """Serialize to a JSON-compatible dict."""
+        result: dict[str, str] = {
+            "name": self.name,
+            "version": self.version,
+            "url": self.url,
+            "description": self.description,
+        }
+        if self.license:
+            result["license"] = self.license
+        return result
+
+    @classmethod
+    def from_json(cls, data: dict[str, Any]) -> DataSourceMetadata:
+        """Deserialize from a JSON-compatible dict."""
+        try:
+            return cls(
+                name=data["name"],
+                version=data["version"],
+                url=data["url"],
+                description=data["description"],
+                license=data.get("license", ""),
+            )
+        except KeyError as exc:
+            msg = f"DataSourceMetadata JSON missing required key: {exc}"
+            raise ValueError(msg) from exc
 
 
 @dataclass(frozen=True)
@@ -214,6 +242,136 @@ def load_population(
     table, _manifest = load_dataset(path, schema, source, allowed_roots=allowed_roots)
     entity_type = source.name if source.name and source.name.isidentifier() else "default"
     return PopulationData.from_table(table, entity_type=entity_type)
+
+
+def load_population_folder(
+    path: str | Path,
+    *,
+    allowed_roots: tuple[Path, ...] | None = None,
+) -> tuple[PopulationData, DatasetManifest]:
+    """Load a dataset from a folder containing data + JSON metadata.
+
+    Expects a folder layout::
+
+        my-dataset/
+        ├── data.csv          # or data.parquet
+        ├── schema.json       # DataSchema as JSON
+        └── source.json       # DataSourceMetadata as JSON
+
+    If ``schema.json`` or ``source.json`` is missing, raises ``IngestionError``.
+    If no data file is found, raises ``IngestionError``.
+
+    Returns ``(PopulationData, DatasetManifest)``.
+    """
+    folder = Path(path).expanduser().resolve()
+
+    if not folder.is_dir():
+        raise IngestionError(
+            file_path=folder,
+            summary="Folder load failed",
+            reason="path is not a directory",
+            fix="Provide a path to a folder containing data + schema.json + source.json",
+        )
+
+    # Validate folder against allowed_roots before reading any files
+    if allowed_roots is not None:
+        if not any(_is_subpath(folder, root.resolve()) for root in allowed_roots):
+            raise IngestionError(
+                file_path=folder,
+                summary="Folder load failed",
+                reason=f"folder {folder} is outside all allowed roots",
+                fix="Add the folder's parent directory to allowed_roots",
+            )
+
+    # Locate schema.json
+    schema_path = folder / "schema.json"
+    if not schema_path.is_file():
+        raise IngestionError(
+            file_path=folder,
+            summary="Folder load failed",
+            reason="schema.json not found in folder",
+            fix="Add a schema.json file describing the data columns",
+        )
+
+    # Locate source.json
+    source_path = folder / "source.json"
+    if not source_path.is_file():
+        raise IngestionError(
+            file_path=folder,
+            summary="Folder load failed",
+            reason="source.json not found in folder",
+            fix="Add a source.json file describing the data source metadata",
+        )
+
+    # Read and parse JSON metadata
+    try:
+        schema_data = json.loads(schema_path.read_text(encoding="utf-8"))
+        schema = DataSchema.from_json(schema_data)
+    except (json.JSONDecodeError, ValueError, KeyError) as exc:
+        raise IngestionError(
+            file_path=schema_path,
+            summary="Folder load failed",
+            reason=f"invalid schema.json: {exc}",
+            fix="Fix the schema.json file (expected format: "
+            '{"columns": [{"name": str, "type": str, "required": bool}]})',
+        ) from exc
+
+    try:
+        source_data = json.loads(source_path.read_text(encoding="utf-8"))
+        source = DataSourceMetadata.from_json(source_data)
+    except (json.JSONDecodeError, ValueError, KeyError) as exc:
+        raise IngestionError(
+            file_path=source_path,
+            summary="Folder load failed",
+            reason=f"invalid source.json: {exc}",
+            fix="Fix the source.json file (required keys: name, version, url, description)",
+        ) from exc
+
+    # Find data file: prefer data.csv / data.parquet, else single CSV/Parquet in folder
+    data_file = _find_data_file(folder)
+
+    # Delegate to load_dataset
+    table, manifest = load_dataset(
+        data_file, schema, source, allowed_roots=allowed_roots,
+    )
+
+    entity_type = source.name if source.name and source.name.isidentifier() else "default"
+    population = PopulationData.from_table(table, entity_type=entity_type)
+    return population, manifest
+
+
+def _find_data_file(folder: Path) -> Path:
+    """Find the data file in a dataset folder.
+
+    Prefers ``data.csv`` or ``data.parquet``, else the single CSV/Parquet
+    file in the folder.
+    """
+    for name in ("data.csv", "data.parquet"):
+        candidate = folder / name
+        if candidate.is_file():
+            return candidate
+
+    # Fallback: find the single CSV or Parquet file
+    data_files = [
+        f for f in folder.iterdir()
+        if f.is_file() and f.suffix.lower() in (".csv", ".parquet", ".pq")
+    ]
+    if len(data_files) == 1:
+        return data_files[0]
+    if len(data_files) == 0:
+        raise IngestionError(
+            file_path=folder,
+            summary="Folder load failed",
+            reason="no data file (CSV or Parquet) found in folder",
+            fix="Add a data.csv or data.parquet file to the folder",
+        )
+    names = ", ".join(f.name for f in sorted(data_files))
+    raise IngestionError(
+        file_path=folder,
+        summary="Folder load failed",
+        reason=f"multiple data files found: {names}",
+        fix="Rename the target file to data.csv or data.parquet",
+    )
 
 
 def _is_subpath(path: Path, root: Path) -> bool:

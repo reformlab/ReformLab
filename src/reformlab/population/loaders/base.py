@@ -18,9 +18,10 @@ References
 
 from __future__ import annotations
 
+import hashlib
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
@@ -33,6 +34,9 @@ from reformlab.population.loaders.errors import (
 if TYPE_CHECKING:
     import pyarrow as pa
 
+    from reformlab.computation.types import PopulationData
+    from reformlab.data.descriptor import DatasetDescriptor
+    from reformlab.data.pipeline import DatasetManifest
     from reformlab.population.loaders.cache import SourceCache
 
 
@@ -131,12 +135,13 @@ class DataSourceLoader(Protocol):
     """Interface for institutional data source loaders.
 
     Structural (duck-typed) protocol: any class that implements
-    ``download()``, ``status()``, and ``schema()`` with the correct
+    ``download()``, ``status()``, and ``descriptor()`` with the correct
     signatures satisfies the contract — no explicit inheritance required.
 
     Each loader handles one institutional data source (e.g. INSEE, Eurostat).
-    The loader downloads, schema-validates, caches, and returns ``pa.Table``
-    data. Offline-first semantics: cached data is preferred over network
+    The loader downloads, schema-validates, caches, and returns
+    ``(PopulationData, DatasetManifest)`` with full provenance tracking.
+    Offline-first semantics: cached data is preferred over network
     access, and stale cache is used as fallback on network failure.
 
     See Also
@@ -145,14 +150,15 @@ class DataSourceLoader(Protocol):
     ``CachedLoader`` : Convenience base class implementing cache logic.
     """
 
-    def download(self, config: SourceConfig) -> pa.Table:
+    def download(self, config: SourceConfig) -> tuple[PopulationData, DatasetManifest]:
         """Download (or retrieve from cache) a dataset.
 
         Args:
             config: Source configuration identifying the dataset.
 
         Returns:
-            A ``pa.Table`` containing the schema-validated dataset.
+            A ``(PopulationData, DatasetManifest)`` tuple with the
+            schema-validated dataset and full provenance metadata.
         """
         ...
 
@@ -167,8 +173,8 @@ class DataSourceLoader(Protocol):
         """
         ...
 
-    def schema(self) -> pa.Schema:
-        """Return the expected PyArrow schema for this loader's datasets."""
+    def descriptor(self) -> DatasetDescriptor:
+        """Return the ``DatasetDescriptor`` for this loader's dataset."""
         ...
 
 
@@ -181,13 +187,14 @@ class CachedLoader:
     """Base class wrapping ``DataSourceLoader`` protocol with cache logic.
 
     Concrete loaders (e.g. INSEELoader, EurostatLoader) subclass this
-    and override ``_fetch()`` and ``schema()``. The ``download()`` method
-    orchestrates: check cache -> if miss, check offline -> fetch ->
-    validate schema -> cache -> return.
+    and override ``_fetch()``, ``schema()``, and ``descriptor()``.
+    The ``download()`` method orchestrates: check cache -> if miss,
+    check offline -> fetch -> validate schema -> cache -> wrap as
+    ``(PopulationData, DatasetManifest)`` -> return.
 
     This is a concrete implementation convenience, not a protocol or ABC.
     Concrete loaders satisfy the ``DataSourceLoader`` protocol via duck
-    typing (they have ``download()``, ``status()``, ``schema()``).
+    typing (they have ``download()``, ``status()``, ``descriptor()``).
 
     Pattern: ``CachedLoader`` is to ``DataSourceLoader`` what
     ``OpenFiscaAdapter`` is to ``ComputationAdapter``.
@@ -198,10 +205,12 @@ class CachedLoader:
             raise TypeError(f"{self.__class__.__name__} must override schema()")
         if self.__class__._fetch is CachedLoader._fetch:
             raise TypeError(f"{self.__class__.__name__} must override _fetch()")
+        if self.__class__.descriptor is CachedLoader.descriptor:
+            raise TypeError(f"{self.__class__.__name__} must override descriptor()")
         self._cache = cache
         self._logger = logger
 
-    def download(self, config: SourceConfig) -> pa.Table:
+    def download(self, config: SourceConfig) -> tuple[PopulationData, DatasetManifest]:
         """Download a dataset with cache-first semantics.
 
         Lifecycle:
@@ -211,7 +220,8 @@ class CachedLoader:
         4. On network failure with stale cache, use stale cache + log warning.
         5. On network failure without cache, raise ``DataSourceDownloadError``.
         6. Validate fetched data against ``schema()``.
-        7. Store in cache and return.
+        7. Store in cache.
+        8. Build ``DatasetManifest``, wrap as ``PopulationData``, return.
         """
         # 1. Check cache status first to avoid loading stale tables eagerly
         cache_status = self._cache.status(config)
@@ -219,7 +229,7 @@ class CachedLoader:
             fresh_result = self._cache.get(config)
             if fresh_result is not None:
                 fresh_table, _ = fresh_result
-                return fresh_table
+                return self._wrap_result(fresh_table, config)
 
         # At this point: either no cache, or cache is stale
         stale_available = cache_status.cached and cache_status.stale
@@ -231,7 +241,7 @@ class CachedLoader:
                 if stale_result is not None:
                     stale_table, stale_status = stale_result
                     self._log_stale_warning(config, stale_status)
-                    return stale_table
+                    return self._wrap_result(stale_table, config)
             raise DataSourceOfflineError(
                 summary="Offline mode cache miss",
                 reason=f"no cached data for {config.provider}/{config.dataset_id} "
@@ -250,7 +260,7 @@ class CachedLoader:
                 if stale_result is not None:
                     stale_table, stale_status = stale_result
                     self._log_stale_warning(config, stale_status)
-                    return stale_table
+                    return self._wrap_result(stale_table, config)
             # 5. Network failure without cache
             raise DataSourceDownloadError(
                 summary="Download failed",
@@ -259,35 +269,93 @@ class CachedLoader:
                 "or populate the cache manually",
             ) from exc
 
-        # 6. Validate schema
-        expected_schema = self.schema()
+        # 6. Validate schema using DataSchema from descriptor
+        desc = self.descriptor()
+        data_schema = desc.schema
         actual_names = set(table.schema.names)
-        expected_names = set(expected_schema.names)
-        missing = expected_names - actual_names
-        if missing:
+
+        # Check required columns
+        missing_required = [
+            name for name in data_schema.required_columns
+            if name not in actual_names
+        ]
+        if missing_required:
             raise DataSourceValidationError(
                 summary="Schema validation failed",
                 reason=f"downloaded data for {config.provider}/{config.dataset_id} "
-                f"is missing columns: {', '.join(sorted(missing))}",
+                f"is missing required columns: {', '.join(sorted(missing_required))}",
                 fix="Check the data source URL and parameters, "
                 "or update the loader schema",
             )
 
-        for field_name in expected_schema.names:
-            if field_name in actual_names:
-                expected_type = expected_schema.field(field_name).type
-                actual_type = table.schema.field(field_name).type
+        # Check types for all included columns (required + available optional)
+        for col_name in data_schema.schema.names:
+            if col_name in actual_names:
+                expected_type = data_schema.schema.field(col_name).type
+                actual_type = table.schema.field(col_name).type
                 if not actual_type.equals(expected_type):
                     raise DataSourceValidationError(
                         summary="Schema validation failed",
-                        reason=f"column '{field_name}' has type {actual_type}, "
+                        reason=f"column '{col_name}' has type {actual_type}, "
                         f"expected {expected_type}",
                         fix="Check the data source format or update the loader schema",
                     )
 
-        # 7. Store in cache and return
+        # 7. Store in cache
         self._cache.put(config, table)
-        return table
+
+        # 8. Wrap and return
+        return self._wrap_result(table, config, desc=desc)
+
+    def _wrap_result(
+        self,
+        table: pa.Table,
+        config: SourceConfig,
+        *,
+        desc: DatasetDescriptor | None = None,
+    ) -> tuple[PopulationData, DatasetManifest]:
+        """Wrap a ``pa.Table`` as ``(PopulationData, DatasetManifest)``."""
+        import pyarrow as pa  # noqa: F811
+        import pyarrow.parquet as pq
+
+        from reformlab.computation.types import PopulationData as _PopulationData
+        from reformlab.data.pipeline import DatasetManifest as _DatasetManifest
+        from reformlab.data.pipeline import DataSourceMetadata as _DataSourceMetadata
+
+        if desc is None:
+            desc = self.descriptor()
+
+        # Build DataSourceMetadata from descriptor
+        source = _DataSourceMetadata(
+            name=desc.dataset_id,
+            version=desc.version,
+            url=desc.url,
+            description=desc.description,
+            license=desc.license,
+        )
+
+        # Compute content hash from table bytes (serialized as Parquet in-memory)
+        sink = pa.BufferOutputStream()
+        pq.write_table(table, sink)
+        content_hash = hashlib.sha256(sink.getvalue().to_pybytes()).hexdigest()
+
+        manifest = _DatasetManifest(
+            source=source,
+            content_hash=content_hash,
+            file_path=Path(f"<cache:{config.provider}/{config.dataset_id}>"),
+            format="parquet",
+            row_count=table.num_rows,
+            column_names=tuple(table.column_names),
+            loaded_at=datetime.now(UTC).isoformat(timespec="seconds"),
+        )
+
+        entity_type = (
+            desc.dataset_id
+            if desc.dataset_id and desc.dataset_id.isidentifier()
+            else "default"
+        )
+        population = _PopulationData.from_table(table, entity_type=entity_type)
+        return population, manifest
 
     def status(self, config: SourceConfig) -> CacheStatus:
         """Delegate to the underlying cache status check."""
@@ -295,6 +363,10 @@ class CachedLoader:
 
     def schema(self) -> pa.Schema:
         """Return the expected PyArrow schema. Subclasses must override."""
+        raise NotImplementedError
+
+    def descriptor(self) -> DatasetDescriptor:
+        """Return the ``DatasetDescriptor``. Subclasses must override."""
         raise NotImplementedError
 
     def _fetch(self, config: SourceConfig) -> pa.Table:

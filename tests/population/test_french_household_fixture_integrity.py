@@ -20,19 +20,23 @@ def test_fixture_loaders_expose_expected_dataset_identity() -> None:
 
     assert income_config.provider == "insee"
     assert income_config.dataset_id == "filosofi_2021_commune"
-    assert income_loader.download(income_config).num_rows > 0
+    pop_income, _ = income_loader.download(income_config)
+    assert pop_income.primary_table.num_rows > 0
 
     assert housing_config.provider == "eurostat"
     assert housing_config.dataset_id == "nrg_d_hhq"
-    assert "heating_type" in housing_loader.download(housing_config).column_names
+    pop_housing, _ = housing_loader.download(housing_config)
+    assert "heating_type" in pop_housing.primary_table.column_names
 
     assert vehicle_config.provider == "sdes"
     assert vehicle_config.dataset_id == "vehicle_fleet_2023"
-    assert "vehicle_type" in vehicle_loader.download(vehicle_config).column_names
+    pop_vehicle, _ = vehicle_loader.download(vehicle_config)
+    assert "vehicle_type" in pop_vehicle.primary_table.column_names
 
     assert energy_config.provider == "ademe"
     assert energy_config.dataset_id == "base_carbone_v23"
-    assert "carbon_emissions" in energy_loader.download(energy_config).column_names
+    pop_energy, _ = energy_loader.download(energy_config)
+    assert "carbon_emissions" in pop_energy.primary_table.column_names
 
 
 @pytest.mark.parametrize(

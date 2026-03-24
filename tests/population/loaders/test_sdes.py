@@ -279,18 +279,18 @@ class TestSDESLoaderDownloadIntegration:
         # First call: cache miss -> fetch
         mock_resp = _mock_urlopen(sdes_vehicle_fleet_csv_bytes)
         with patch("urllib.request.urlopen", return_value=mock_resp) as mock_url:
-            table1 = loader.download(config)
+            pop1, manifest1 = loader.download(config)
             assert mock_url.called
 
-        assert table1.num_rows == 5
+        assert pop1.primary_table.num_rows == 5
 
         # Second call: cache hit -> no network
         with patch("urllib.request.urlopen") as mock_url2:
-            table2 = loader.download(config)
+            pop2, manifest2 = loader.download(config)
             mock_url2.assert_not_called()
 
-        assert table2.num_rows == 5
-        assert table2.schema.equals(table1.schema)
+        assert pop2.primary_table.num_rows == 5
+        assert pop2.primary_table.schema.equals(pop1.primary_table.schema)
 
 
 # ====================================================================

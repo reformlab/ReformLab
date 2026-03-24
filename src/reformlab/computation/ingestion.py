@@ -55,6 +55,60 @@ class DataSchema:
     def field(self, name: str) -> pa.Field:
         return self.schema.field(name)
 
+    def to_json(self) -> dict[str, Any]:
+        """Serialize to a JSON-compatible dict.
+
+        Each column becomes ``{"name": str, "type": str, "required": bool}``.
+        """
+        required_set = set(self.required_columns)
+        columns: list[dict[str, Any]] = []
+        for name in self.schema.names:
+            columns.append({
+                "name": name,
+                "type": str(self.schema.field(name).type),
+                "required": name in required_set,
+            })
+        return {"columns": columns}
+
+    @classmethod
+    def from_json(cls, data: dict[str, Any]) -> DataSchema:
+        """Deserialize from a JSON-compatible dict.
+
+        Expects ``{"columns": [{"name": str, "type": str, "required": bool}, ...]}``.
+        Uses ``pa.type_for_alias()`` for type string resolution.
+        """
+        columns = data.get("columns")
+        if not isinstance(columns, list) or len(columns) == 0:
+            msg = "DataSchema JSON must have a non-empty 'columns' list"
+            raise ValueError(msg)
+
+        fields: list[pa.Field] = []
+        required: list[str] = []
+        optional: list[str] = []
+
+        for entry in columns:
+            name = entry["name"]
+            type_str = entry["type"]
+            is_required = entry.get("required", True)
+
+            try:
+                pa_type = pa.type_for_alias(type_str)
+            except (ValueError, KeyError) as exc:
+                msg = f"Unknown PyArrow type alias {type_str!r} for column {name!r}"
+                raise ValueError(msg) from exc
+
+            fields.append(pa.field(name, pa_type))
+            if is_required:
+                required.append(name)
+            else:
+                optional.append(name)
+
+        return cls(
+            schema=pa.schema(fields),
+            required_columns=tuple(required),
+            optional_columns=tuple(optional),
+        )
+
 
 @dataclass(frozen=True)
 class TypeMismatch:

@@ -1,3 +1,6 @@
+from reformlab.data.descriptor import (
+    DatasetDescriptor as DatasetDescriptor,
+)
 from reformlab.data.emission_factors import (
     EmissionFactorIndex as EmissionFactorIndex,
 )
@@ -18,6 +21,9 @@ from reformlab.data.pipeline import (
 )
 from reformlab.data.pipeline import (
     load_dataset as load_dataset,
+)
+from reformlab.data.pipeline import (
+    load_population_folder as load_population_folder,
 )
 from reformlab.data.schemas import (
     EMISSION_FACTOR_SCHEMA as EMISSION_FACTOR_SCHEMA,

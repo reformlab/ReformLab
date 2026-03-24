@@ -25,6 +25,8 @@ from typing import TYPE_CHECKING
 import pyarrow as pa
 import pyarrow.csv as pcsv
 
+from reformlab.computation.ingestion import DataSchema
+from reformlab.data.descriptor import DatasetDescriptor
 from reformlab.population.loaders.base import CachedLoader, SourceConfig
 from reformlab.population.loaders.errors import DataSourceValidationError
 
@@ -174,6 +176,27 @@ class EurostatLoader(CachedLoader):
     def schema(self) -> pa.Schema:
         """Return the expected PyArrow schema for this loader's dataset."""
         return _DATASET_SCHEMAS[self._dataset.dataset_id]
+
+    def descriptor(self) -> DatasetDescriptor:
+        """Return the ``DatasetDescriptor`` for this loader's Eurostat dataset."""
+        ds = self._dataset
+        pa_schema = self.schema()
+        all_cols = tuple(pa_schema.names)
+        return DatasetDescriptor(
+            dataset_id=ds.dataset_id,
+            provider="eurostat",
+            description=ds.description,
+            schema=DataSchema(
+                schema=pa_schema,
+                required_columns=all_cols,
+            ),
+            url=ds.url,
+            column_mapping=ds.columns,
+            encoding=ds.encoding,
+            separator=ds.separator,
+            null_markers=ds.null_markers,
+            file_format="csv.gz",
+        )
 
     def _fetch(self, config: SourceConfig) -> pa.Table:
         """Download and parse a Eurostat SDMX-CSV dataset.

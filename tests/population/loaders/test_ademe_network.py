@@ -29,7 +29,8 @@ class TestADEMENetworkDownload:
         """Download Base Carbone (~10 MB)."""
         loader = get_ademe_loader("base_carbone", cache=source_cache)
         config = make_ademe_config("base_carbone")
-        table = loader.download(config)
+        pop, manifest = loader.download(config)
+        table = pop.primary_table
 
         assert isinstance(table, pa.Table)
         assert table.num_rows > 1000
@@ -38,3 +39,7 @@ class TestADEMENetworkDownload:
         # Verify emission factor data exists
         names = table.column("name_fr").to_pylist()
         assert any("naturel" in str(n).lower() for n in names)
+
+        # Verify manifest provenance
+        assert manifest.row_count == table.num_rows
+        assert manifest.content_hash

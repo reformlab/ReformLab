@@ -1222,8 +1222,30 @@ class _MockLoader:
     def __init__(self, table: pa.Table) -> None:
         self._table = table
 
-    def download(self, config: SourceConfig) -> pa.Table:
-        return self._table
+    def download(self, config: SourceConfig) -> tuple:  # type: ignore[type-arg]
+        import hashlib
+        from datetime import UTC, datetime
+        from pathlib import Path
+
+        from reformlab.computation.types import PopulationData
+        from reformlab.data.pipeline import DatasetManifest, DataSourceMetadata
+
+        population = PopulationData.from_table(self._table, entity_type="default")
+        manifest = DatasetManifest(
+            source=DataSourceMetadata(
+                name=config.dataset_id,
+                version="mock",
+                url=config.url,
+                description="mock",
+            ),
+            content_hash=hashlib.sha256(b"mock").hexdigest(),
+            file_path=Path("<mock>"),
+            format="parquet",
+            row_count=self._table.num_rows,
+            column_names=tuple(self._table.column_names),
+            loaded_at=datetime.now(UTC).isoformat(timespec="seconds"),
+        )
+        return population, manifest
 
     def status(self, config: SourceConfig) -> CacheStatus:
         return CacheStatus(
@@ -1234,8 +1256,19 @@ class _MockLoader:
             stale=False,
         )
 
-    def schema(self) -> pa.Schema:
-        return self._table.schema
+    def descriptor(self) -> object:
+        from reformlab.computation.ingestion import DataSchema
+        from reformlab.data.descriptor import DatasetDescriptor
+
+        return DatasetDescriptor(
+            dataset_id="mock",
+            provider="mock",
+            description="mock",
+            schema=DataSchema(
+                schema=self._table.schema,
+                required_columns=tuple(self._table.schema.names),
+            ),
+        )
 
 
 class _FailingLoader:
@@ -1244,7 +1277,7 @@ class _FailingLoader:
     def __init__(self) -> None:
         pass
 
-    def download(self, config: SourceConfig) -> pa.Table:
+    def download(self, config: SourceConfig) -> tuple:  # type: ignore[type-arg]
         from reformlab.population.loaders.errors import DataSourceDownloadError
 
         raise DataSourceDownloadError(
@@ -1256,8 +1289,16 @@ class _FailingLoader:
     def status(self, config: SourceConfig) -> CacheStatus:
         return CacheStatus(cached=False, path=None, downloaded_at=None, hash=None, stale=False)
 
-    def schema(self) -> pa.Schema:
-        return pa.schema([])
+    def descriptor(self) -> object:
+        from reformlab.computation.ingestion import DataSchema
+        from reformlab.data.descriptor import DatasetDescriptor
+
+        return DatasetDescriptor(
+            dataset_id="failing",
+            provider="mock",
+            description="failing mock",
+            schema=DataSchema(schema=pa.schema([]), required_columns=()),
+        )
 
 
 class _MockMergeMethod:

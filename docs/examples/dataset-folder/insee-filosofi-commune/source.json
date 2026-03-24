@@ -1,0 +1,7 @@
+{
+  "name": "filosofi_2021_commune",
+  "version": "2021",
+  "url": "https://www.insee.fr/fr/statistiques/fichier/7758831/indic-struct-distrib-revenu-2021-COMMUNES.zip",
+  "description": "Filosofi 2021 commune-level income data (deciles D1-D9, median, poverty rate)",
+  "license": "Licence Ouverte / Open Licence v2.0"
+}

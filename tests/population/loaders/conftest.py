@@ -7,6 +7,8 @@ from pathlib import Path
 import pyarrow as pa
 import pytest
 
+from reformlab.computation.ingestion import DataSchema
+from reformlab.data.descriptor import DatasetDescriptor
 from reformlab.population.loaders.base import CachedLoader, SourceConfig
 from reformlab.population.loaders.cache import SourceCache
 
@@ -163,3 +165,15 @@ class MockCachedLoader(CachedLoader):
 
     def schema(self) -> pa.Schema:
         return self._mock_schema
+
+    def descriptor(self) -> DatasetDescriptor:
+        all_cols = tuple(self._mock_schema.names)
+        return DatasetDescriptor(
+            dataset_id="mock_dataset",
+            provider="mock",
+            description="mock dataset for tests",
+            schema=DataSchema(
+                schema=self._mock_schema,
+                required_columns=all_cols,
+            ),
+        )

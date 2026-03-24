@@ -2,6 +2,7 @@
 # Copyright 2026 Lucas Vivier
 from __future__ import annotations
 
+from reformlab.data.descriptor import DatasetDescriptor
 from reformlab.data.emission_factors import (
     EmissionFactorIndex,
     build_emission_factor_index,
@@ -12,12 +13,14 @@ from reformlab.data.pipeline import (
     DataSourceMetadata,
     hash_file,
     load_dataset,
+    load_population_folder,
 )
 from reformlab.data.schemas import EMISSION_FACTOR_SCHEMA, SYNTHETIC_POPULATION_SCHEMA
 from reformlab.data.synthetic import generate_synthetic_population, save_synthetic_population
 
 __all__ = [
     "EMISSION_FACTOR_SCHEMA",
+    "DatasetDescriptor",
     "DatasetManifest",
     "DatasetRegistry",
     "DataSourceMetadata",
@@ -27,5 +30,6 @@ __all__ = [
     "generate_synthetic_population",
     "hash_file",
     "load_dataset",
+    "load_population_folder",
     "save_synthetic_population",
 ]
