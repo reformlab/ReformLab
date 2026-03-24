@@ -2,6 +2,7 @@
 # Sprint Status File - ReformLab
 #
 generated: "2026-03-03T00:00:00"
+last_updated: "2026-03-24T00:00:00"
 project: ReformLab
 project_key: NOKEY
 tracking_system: file-system
@@ -178,3 +179,25 @@ development_status:
   19-5-build-interactive-domain-model-react-mdx-component: done
   19-6-add-guided-product-tour-driver-js-shepherd-js: done
   epic-19-retrospective: done
+  # Epic 20
+  epic-20: backlog
+  20-1-implement-canonical-scenario-model-and-stage-aware-routing-shell: backlog
+  20-2-add-pre-seeded-demo-scenario-onboarding-and-scenario-entry-flows: backlog
+  20-3-build-policies-and-portfolio-stage-with-inline-composition: backlog
+  20-4-build-population-library-and-data-explorer-stage: backlog
+  20-5-build-engine-stage-with-scenario-save-clone-and-cross-stage-validation-gate: backlog
+  20-6-refactor-run-results-compare-around-scenario-by-population-execution: backlog
+  20-7-extend-backend-apis-for-population-explorer-and-execution-contract-validation: backlog
+  20-8-add-end-to-end-regression-coverage-and-sync-product-docs-to-the-new-ia: backlog
+  epic-20-retrospective: optional
+  # Epic 21
+  epic-21: backlog
+  21-1-implement-canonical-evidence-asset-descriptor-and-current-phase-source-matrix: backlog
+  21-2-add-origin-access-mode-trust-status-contracts-across-backend-apis-and-frontend-models: backlog
+  21-3-implement-typed-structural-exogenous-calibration-and-validation-asset-schemas: backlog
+  21-4-add-public-synthetic-asset-ingestion-and-observed-versus-synthetic-comparison-flows: backlog
+  21-5-separate-calibration-targets-from-validation-benchmarks-and-implement-trust-status-rules: backlog
+  21-6-implement-exogenoustimeseries-and-exogenouscontext-for-scenario-execution: backlog
+  21-7-refactor-discrete-choice-and-calibration-for-generalized-tasteparameters: backlog
+  21-8-wire-the-flagship-scenario-docs-and-regression-coverage-to-the-new-evidence-model: backlog
+  epic-21-retrospective: optional

@@ -39,6 +39,8 @@ Single source of truth for all epics and stories across the project. For detaile
 | EPIC-17 | GUI Showcase Product | 2 | backlog | 8 |
 | EPIC-18 | UX Polish & Aesthetic Overhaul | 2 | backlog | 8 |
 | EPIC-19 | Public Documentation Site | 3 | backlog | 6 |
+| EPIC-20 | Stage-Based Scenario Workspace Alignment | 2 | backlog | 8 |
+| EPIC-21 | Trust-Governed Open + Synthetic Evidence Foundation | 3 | backlog | 8 |
 
 ## Conventions
 
@@ -1962,3 +1964,50 @@ Phase 2 builds on the complete Phase 1 foundation (10 epics, 57 stories, 1,537 t
 - **5-sentence rule** — enforces brevity on every page; progressive disclosure for depth.
 - **Starlight in `docs/`** — separate from `website/` (Astro marketing site) and `docs/` (internal BMAD artifacts).
 - **Stories 19.5 and 19.6 are v2** — scaffold and content come first, interactivity follows.
+
+---
+
+## Epic 20: Stage-Based Scenario Workspace Alignment
+
+**User outcome:** Analyst works inside one coherent four-stage workspace where portfolios, populations, scenarios, runs, and comparisons are clearly separated, first-run onboarding is instant, and execution is guarded by cross-stage validation.
+
+**Status:** backlog
+
+**Builds on:** EPIC-11 (populations), EPIC-12 (portfolios), EPIC-14 (behavioral decisions), EPIC-15 (calibration), EPIC-17 (GUI showcase), EPIC-18 (UX overhaul)
+
+**PRD Refs:** FR3, FR4, FR25-FR29, FR32, FR37-FR45, FR47-FR53
+
+**Primary source documents:**
+- `_bmad-output/planning-artifacts/ux-design-specification.md` (Revision 2.0, dated 2026-03-24)
+- `_bmad-output/planning-artifacts/prd.md` (Current Program State Update, dated 2026-03-24)
+- `_bmad-output/planning-artifacts/architecture.md` (frontend/API alignment update, dated 2026-03-24)
+- `_bmad-output/implementation-artifacts/epic-20-stage-based-scenario-workspace-alignment.md`
+
+| ID | Type | Pri | SP | Title | Status | PRD Refs |
+|------|------|-----|----|-------|--------|----------|
+| BKL-2001 | Story | P0 | 5 | Implement canonical scenario model and stage-aware routing shell | backlog | FR32, FR28, FR29 |
+| BKL-2002 | Story | P0 | 3 | Add pre-seeded demo-scenario onboarding and scenario entry flows | backlog | FR32, FR34 |
+| BKL-2003 | Story | P0 | 5 | Build Policies & Portfolio stage with inline composition | backlog | FR43, FR44 |
+| BKL-2004 | Story | P0 | 8 | Build Population Library and Data Explorer stage | backlog | FR37-FR42 |
+| BKL-2005 | Story | P0 | 8 | Build Engine stage with scenario save/clone and cross-stage validation gate | backlog | FR3, FR4, FR25-FR29, FR47-FR53 |
+| BKL-2006 | Story | P0 | 5 | Refactor Run / Results / Compare around scenario-by-population execution | backlog | FR32, FR45 |
+| BKL-2007 | Task | P0 | 5 | Extend backend APIs for population explorer and execution-contract validation | backlog | FR3, FR4, FR37-FR42 |
+| BKL-2008 | Story | P1 | 3 | Add end-to-end regression coverage and sync product docs to the new IA | backlog | FR32, FR34, FR35 |
+
+### Epic-Level Acceptance Criteria
+
+- The GUI uses a four-stage shell: Policies & Portfolio, Population, Engine, Run / Results / Compare.
+- `Scenario` is the durable analysis object that binds portfolio, population selection, engine settings, mappings, and metadata.
+- First launch opens a valid demo scenario with Run enabled while keeping Stages 1-3 inspectable and editable.
+- Stage 3 performs cross-stage validation before execution, including population schema compatibility, mapping completeness, year-schedule coverage, and runtime preflight.
+- Stage 4 executes a scenario-by-population run matrix and preserves scenario lineage through comparison, export, and manifest views.
+- Population exploration, preview, profiling, and upload are available through typed API contracts and corresponding GUI surfaces.
+- Browser routing, command palette navigation, and contextual help all reflect the stage-based workspace model.
+- PRD, architecture, UX spec, and implementation artifacts remain aligned after delivery.
+
+### Scope Notes
+
+- This epic consolidates and supersedes overlapping restructuring work previously spread across EPIC-17 and EPIC-18 where those epics assume the older screen-by-screen GUI model.
+- Portfolio, scenario, and run semantics must remain distinct: portfolios are reusable policy bundles, scenarios are versioned executable definitions, and runs are immutable executions.
+- Cross-stage validation is a first-class product feature, not just a backend implementation detail.
+- Demo onboarding is not a separate tutorial mode; it is a real pre-seeded scenario inside the same workspace users will use for real analysis.
