@@ -34,6 +34,14 @@ from reformlab.population.loaders.errors import (
     DataSourceOfflineError,
     DataSourceValidationError,
 )
+from reformlab.population.loaders.eu_silc import (
+    EU_SILC_AVAILABLE_DATASETS,
+    EU_SILC_CATALOG,
+    EuSilcDataset,
+    EuSilcLoader,
+    get_eu_silc_loader,
+    make_eu_silc_config,
+)
 from reformlab.population.loaders.eurostat import (
     EUROSTAT_AVAILABLE_DATASETS,
     EUROSTAT_CATALOG,
@@ -73,6 +81,10 @@ __all__ = [
     "DataSourceLoader",
     "DataSourceOfflineError",
     "DataSourceValidationError",
+    "EU_SILC_AVAILABLE_DATASETS",
+    "EU_SILC_CATALOG",
+    "EuSilcDataset",
+    "EuSilcLoader",
     "EUROSTAT_AVAILABLE_DATASETS",
     "EUROSTAT_CATALOG",
     "EurostatDataset",
@@ -87,10 +99,12 @@ __all__ = [
     "SDESLoader",
     "SourceCache",
     "SourceConfig",
+    "get_eu_silc_loader",
     "get_ademe_loader",
     "get_eurostat_loader",
     "get_insee_loader",
     "get_sdes_loader",
+    "make_eu_silc_config",
     "make_ademe_config",
     "make_eurostat_config",
     "make_insee_config",

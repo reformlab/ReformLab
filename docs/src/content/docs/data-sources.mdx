@@ -1,0 +1,187 @@
+---
+title: Data Sources
+description: Institutional open data sources available in ReformLab.
+---
+
+# Data Sources
+
+ReformLab ships with loaders for open institutional data sources covering income distribution, energy consumption, emission factors, vehicle fleets, and household microdata. All sources are freely downloadable without registration.
+
+## Summary
+
+| Provider | Dataset | Variables | Rows | Format | Trust |
+|---|---|---|---|---|---|
+| INSEE | Filosofi commune income | 13 | ~35,000 | ZIP/CSV | Official |
+| INSEE | Filosofi IRIS declared income | 14 | ~50,000 | ZIP/CSV | Official |
+| INSEE | Filosofi IRIS disposable income | 14 | ~50,000 | ZIP/CSV | Official |
+| Eurostat | Income distribution (ilc_di01) | 8 | ~136,000 | CSV.GZ | Official |
+| Eurostat | Household energy (nrg_d_hhq) | 8 | ~62,000 | CSV.GZ | Official |
+| ADEME | Base Carbone emission factors | 15 | ~18,600 | CSV | Official |
+| SDES | Vehicle fleet by commune | 8 | ~2,086,000 | CSV | Official |
+| EU-SILC | Household register (FR) | 5 | ~11,000/yr | ZIP/CSV | Synthetic |
+| EU-SILC | Household data (FR) | 14 | ~11,000/yr | ZIP/CSV | Synthetic |
+
+---
+
+## INSEE — Filosofi Income Distribution
+
+Source: [INSEE Filosofi](https://www.insee.fr/fr/statistiques/7758831)
+
+Official tax-income statistics for France at commune and IRIS level. Provides income distribution deciles, median income, and poverty rates.
+
+### filosofi_2021_commune
+
+Commune-level income distribution (2021 vintage). 13 variables, ~35,000 rows.
+
+| Variable | Description | Type |
+|---|---|---|
+| `commune_code` | INSEE commune code (COG) | string |
+| `commune_name` | Commune name | string |
+| `nb_fiscal_households` | Number of fiscal households | float |
+| `median_income` | Median standard of living (€/year) | float |
+| `decile_1` – `decile_9` | Income decile thresholds D1–D9 | float |
+
+### filosofi_2021_iris_declared
+
+IRIS-level declared income distribution (2021). 14 variables, ~50,000 rows.
+
+| Variable | Description | Type |
+|---|---|---|
+| `iris_code` | IRIS code | string |
+| `iris_name` | IRIS name | string |
+| `commune_code` | Parent commune code | string |
+| `commune_name` | Parent commune name | string |
+| `median_declared_income` | Median declared income (€/year) | float |
+| `decile_1` – `decile_9` | Declared income deciles D1–D9 | float |
+
+### filosofi_2021_iris_disposable
+
+IRIS-level disposable income distribution (2021). 14 variables, ~50,000 rows.
+
+Same structure as declared income, with `median_disposable_income` and disposable income deciles.
+
+---
+
+## Eurostat — EU Aggregated Indicators
+
+Source: [Eurostat SDMX-CSV API](https://ec.europa.eu/eurostat/databrowser/)
+
+Pan-European aggregated indicators from Eurostat's SDMX-CSV bulk download. Covers all EU/EFTA countries across multiple years.
+
+### ilc_di01 — Income Distribution by Quantile
+
+Income distribution by decile from EU-SILC. 8 variables, ~136,000 rows (all countries × years × quantiles).
+
+| Variable | Description | Type |
+|---|---|---|
+| `frequency` | Reporting frequency (A = annual) | string |
+| `quantile` | Income quantile (D1–D10) | string |
+| `indicator` | Indicator type (SHARE, etc.) | string |
+| `currency` | Currency unit (EUR, PPS, NAC) | string |
+| `country` | Country code (ISO 2-letter) | string |
+| `time_period` | Reference year | string |
+| `value` | Observed value | float |
+| `obs_flag` | Observation flag (b, c, etc.) | string |
+
+### nrg_d_hhq — Household Energy Consumption
+
+Disaggregated final energy consumption in households. 8 variables, ~62,000 rows.
+
+| Variable | Description | Type |
+|---|---|---|
+| `frequency` | Reporting frequency | string |
+| `energy_balance` | Energy balance indicator | string |
+| `energy_product` | Energy product code (G3000, etc.) | string |
+| `unit` | Measurement unit (TJ, GWH, etc.) | string |
+| `country` | Country code | string |
+| `time_period` | Reference year | string |
+| `value` | Observed value | float |
+| `obs_flag` | Observation flag | string |
+
+---
+
+## ADEME — Base Carbone Emission Factors
+
+Source: [data.gouv.fr](https://www.data.gouv.fr/fr/datasets/base-carbone-r/)
+
+Official French emission factor database (V23.6). Provides CO₂-equivalent factors for energy sources, transport, agriculture, industry. 15 variables, ~18,600 rows.
+
+| Variable | Description | Type |
+|---|---|---|
+| `element_id` | Unique emission factor identifier | int |
+| `name_fr` | Factor name (French) | string |
+| `attribute_name_fr` | Attribute detail (French) | string |
+| `line_type` | Category (Elément, Poste, etc.) | string |
+| `unit_fr` | Emission unit (kgCO₂e/kWh, etc.) | string |
+| `total_co2e` | Total CO₂-equivalent | float |
+| `co2_fossil` | Fossil CO₂ component | float |
+| `ch4_fossil` | Fossil CH₄ component | float |
+| `ch4_biogenic` | Biogenic CH₄ component | float |
+| `n2o` | N₂O component | float |
+| `co2_biogenic` | Biogenic CO₂ component | float |
+| `other_ghg` | Other greenhouse gases | float |
+| `geography` | Geographic scope | string |
+| `sub_geography` | Sub-geographic detail | string |
+| `contributor` | Data contributor | string |
+
+---
+
+## SDES — Vehicle Fleet
+
+Source: [data.gouv.fr](https://www.data.gouv.fr/fr/datasets/parc-automobile/)
+
+French vehicle fleet composition at communal level by fuel type, vehicle age, and Crit'Air sticker. Published by the statistical service of the Ministry of Ecological Transition. 8 variables, ~2,086,000 rows.
+
+| Variable | Description | Type |
+|---|---|---|
+| `region_code` | Region code | string |
+| `region_name` | Region name | string |
+| `vehicle_class` | Vehicle class (VP, VUL, PL, etc.) | string |
+| `vehicle_category` | Vehicle category | string |
+| `fuel_type` | Fuel type (Diesel, Essence, etc.) | string |
+| `vehicle_age` | Vehicle age bracket | string |
+| `critair_sticker` | Crit'Air emission sticker (1–5, E) | string |
+| `fleet_count_2022` | Number of vehicles (2022) | float |
+
+---
+
+## EU-SILC — Synthetic Household Microdata
+
+Source: [Eurostat Public Microdata](https://ec.europa.eu/eurostat/web/microdata/public-microdata/statistics-on-income-and-living-conditions)
+
+**⚠ Synthetic data** — These are fully synthetic Public Use Files generated by Eurostat. They reproduce statistical distributions from the original EU-SILC survey but do not represent real households. Eurostat states they must not be used for statistical inference or valid publication analysis. Trust label: `demo-only`.
+
+Available for France, years 2007–2013. Each year contains ~11,000 households.
+
+### silc_puf_d_fr — Household Register
+
+Household identification, region, and survey weight. 5 variables.
+
+| Variable | Description | Type |
+|---|---|---|
+| `survey_year` | Year of the survey | int |
+| `country` | Country code (FR) | string |
+| `household_id` | Household identifier | int |
+| `region` | NUTS region code | string |
+| `household_weight` | Cross-sectional weight | float |
+
+### silc_puf_h_fr — Household Data
+
+Household income, deprivation, and housing conditions. 14 variables.
+
+| Variable | Description | Type |
+|---|---|---|
+| `survey_year` | Year of the survey | int |
+| `country` | Country code (FR) | string |
+| `household_id` | Household identifier | int |
+| `total_gross_income` | Total household gross income (€) | float |
+| `total_disposable_income` | Total disposable household income (€) | float |
+| `disposable_income_before_social_transfers` | Disposable income before social transfers (excl. pensions) | float |
+| `disposable_income_before_social_transfers_except_pensions` | Disposable income before all social transfers | float |
+| `change_in_household_income` | Change in total household income | float |
+| `household_size` | Number of household members | int |
+| `equivalised_household_size` | OECD-modified equivalised household size | float |
+| `household_type` | Household type code | int |
+| `poverty_indicator` | At-risk-of-poverty flag (0/1) | int |
+| `equivalised_disposable_income` | Equivalised disposable income (€) | float |
+| `ability_keep_home_warm` | Ability to keep home adequately warm (1–3) | int |

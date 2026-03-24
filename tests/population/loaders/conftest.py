@@ -18,6 +18,7 @@ _FIXTURE_DIR = _FIXTURES_ROOT / "insee"
 _EUROSTAT_FIXTURE_DIR = _FIXTURES_ROOT / "eurostat"
 _ADEME_FIXTURE_DIR = _FIXTURES_ROOT / "ademe"
 _SDES_FIXTURE_DIR = _FIXTURES_ROOT / "sdes"
+_EU_SILC_FIXTURE_DIR = _FIXTURES_ROOT / "eu_silc"
 
 
 @pytest.fixture()
@@ -117,6 +118,18 @@ def ademe_base_carbone_csv_bytes(ademe_fixture_dir: Path) -> bytes:
 # ====================================================================
 # SDES fixtures
 # ====================================================================
+
+
+@pytest.fixture()
+def eu_silc_fixture_dir() -> Path:
+    """Path to the EU-SILC test fixture directory."""
+    return _EU_SILC_FIXTURE_DIR
+
+
+@pytest.fixture()
+def eu_silc_zip_bytes(eu_silc_fixture_dir: Path) -> bytes:
+    """Raw bytes of the EU-SILC fixture ZIP archive."""
+    return (eu_silc_fixture_dir / "FR_PUF_EUSILC.zip").read_bytes()
 
 
 @pytest.fixture()
