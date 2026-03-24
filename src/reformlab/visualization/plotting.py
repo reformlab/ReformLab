@@ -118,6 +118,60 @@ def show_figure(fig: Figure) -> None:
     plt.show()
 
 
+def plot_stacked_area(
+    x: list[int] | list[float],
+    series: dict[str, list[float]],
+    *,
+    title: str = "",
+    xlabel: str = "",
+    ylabel: str = "",
+    label_map: dict[str, str] | None = None,
+    color_map: dict[str, str] | None = None,
+    legend_loc: str = "best",
+    ax: Axes | None = None,
+) -> tuple[Figure, Axes]:
+    """Stacked area chart from a dict of named series.
+
+    Args:
+        x: Shared x-axis values (e.g. years).
+        series: Mapping of series key to y-values (same length as *x*).
+        title: Chart title.
+        xlabel: X-axis label.
+        ylabel: Y-axis label.
+        label_map: Optional mapping from series key to display label.
+        color_map: Optional mapping from series key to color.
+        legend_loc: Legend location string.
+        ax: Existing axes to plot on. Creates new figure if None.
+
+    Returns:
+        Tuple of (Figure, Axes).
+    """
+    from reformlab.visualization.styling import create_figure, style_axes
+
+    if ax is None:
+        fig, ax = create_figure()
+    else:
+        fig = ax.get_figure()  # type: ignore[assignment]
+
+    label_map = label_map or {}
+    color_map = color_map or {}
+
+    keys = list(series.keys())
+    labels = [label_map.get(k, k) for k in keys]
+    colors = [color_map.get(k, None) for k in keys]
+    y_data = [series[k] for k in keys]
+
+    # Filter out None colors so matplotlib uses its cycle
+    kwargs: dict[str, Any] = {}
+    if all(c is not None for c in colors):
+        kwargs["colors"] = colors
+
+    ax.stackplot(x, *y_data, labels=labels, alpha=0.8, **kwargs)
+    ax.legend(loc=legend_loc, fontsize=10)
+    style_axes(ax, title=title, xlabel=xlabel, ylabel=ylabel)
+    return fig, ax
+
+
 def plot_deciles(
     indicator_table: pa.Table,
     field: str,

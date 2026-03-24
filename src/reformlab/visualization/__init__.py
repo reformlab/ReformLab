@@ -24,6 +24,7 @@ from reformlab.visualization.plotting import (
     plot_comparison,
     plot_deciles,
     plot_histogram,
+    plot_stacked_area,
     plot_yearly,
     show_figure,
 )
@@ -38,6 +39,7 @@ __all__ = [
     "plot_comparison",
     "plot_deciles",
     "plot_histogram",
+    "plot_stacked_area",
     "plot_yearly",
     "show_figure",
 ]
