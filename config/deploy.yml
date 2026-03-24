@@ -1,3 +1,8 @@
+<%
+require "dotenv"
+Dotenv.load(".kamal/secrets", ".kamal/secrets-common")
+%>
+
 # Kamal 2 deployment configuration for ReformLab
 # Docs: https://kamal-deploy.org/docs/configuration/
 
@@ -9,7 +14,7 @@ image: reformlab/reformlab
 servers:
   web:
     hosts:
-      - "%{HETZNER_IP}"
+      - <%= ENV.fetch("HETZNER_IP") %>
 
 proxy:
   ssl: true
@@ -38,7 +43,7 @@ accessories:
   frontend:
     image: ghcr.io/reformlab/reformlab-frontend
     hosts:
-      - "%{HETZNER_IP}"
+      - <%= ENV.fetch("HETZNER_IP") %>
     port: 8080:8080
     proxy:
       ssl: true
@@ -47,7 +52,7 @@ accessories:
   website:
     image: ghcr.io/reformlab/reformlab-website
     hosts:
-      - "%{HETZNER_IP}"
+      - <%= ENV.fetch("HETZNER_IP") %>
     port: 8090:8090
     proxy:
       ssl: true
@@ -58,7 +63,7 @@ accessories:
   dozzle:
     image: amir20/dozzle:latest
     hosts:
-      - "%{HETZNER_IP}"
+      - <%= ENV.fetch("HETZNER_IP") %>
     port: 9080:8080
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -74,7 +79,7 @@ accessories:
   glances:
     image: nicolargo/glances:latest
     hosts:
-      - "%{HETZNER_IP}"
+      - <%= ENV.fetch("HETZNER_IP") %>
     port: 9081:61208
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro

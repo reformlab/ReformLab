@@ -48,6 +48,12 @@ jobs:
           printf 'KAMAL_REGISTRY_PASSWORD=%s\nREFORMLAB_PASSWORD=%s\nHETZNER_IP=%s\n' \
             "$KAMAL_REGISTRY_PASSWORD" "$REFORMLAB_PASSWORD" "$HETZNER_IP" > .kamal/secrets
 
+      - name: Validate deployment host secret
+        env:
+          HETZNER_IP: ${{ secrets.HETZNER_IP }}
+        run: |
+          test -n "$HETZNER_IP" || { echo "HETZNER_IP secret is empty or missing"; exit 1; }
+
       - name: Generate Dozzle users file
         env:
           REFORMLAB_PASSWORD: ${{ secrets.REFORMLAB_PASSWORD }}
@@ -111,6 +117,12 @@ jobs:
           printf 'KAMAL_REGISTRY_PASSWORD=%s\nREFORMLAB_PASSWORD=%s\nHETZNER_IP=%s\n' \
             "$KAMAL_REGISTRY_PASSWORD" "$REFORMLAB_PASSWORD" "$HETZNER_IP" > .kamal/secrets
 
+      - name: Validate deployment host secret
+        env:
+          HETZNER_IP: ${{ secrets.HETZNER_IP }}
+        run: |
+          test -n "$HETZNER_IP" || { echo "HETZNER_IP secret is empty or missing"; exit 1; }
+
       - name: Reboot frontend accessory
         run: kamal accessory reboot frontend
 
@@ -167,6 +179,12 @@ jobs:
           printf 'KAMAL_REGISTRY_PASSWORD=%s\nREFORMLAB_PASSWORD=%s\nHETZNER_IP=%s\n' \
             "$KAMAL_REGISTRY_PASSWORD" "$REFORMLAB_PASSWORD" "$HETZNER_IP" > .kamal/secrets
 
+      - name: Validate deployment host secret
+        env:
+          HETZNER_IP: ${{ secrets.HETZNER_IP }}
+        run: |
+          test -n "$HETZNER_IP" || { echo "HETZNER_IP secret is empty or missing"; exit 1; }
+
       - name: Reboot website accessory
         run: kamal accessory reboot website
 
@@ -205,6 +223,12 @@ jobs:
           mkdir -p .kamal
           printf 'KAMAL_REGISTRY_PASSWORD=%s\nREFORMLAB_PASSWORD=%s\nHETZNER_IP=%s\n' \
             "$KAMAL_REGISTRY_PASSWORD" "$REFORMLAB_PASSWORD" "$HETZNER_IP" > .kamal/secrets
+
+      - name: Validate deployment host secret
+        env:
+          HETZNER_IP: ${{ secrets.HETZNER_IP }}
+        run: |
+          test -n "$HETZNER_IP" || { echo "HETZNER_IP secret is empty or missing"; exit 1; }
 
       - name: Generate Dozzle users file
         env:
