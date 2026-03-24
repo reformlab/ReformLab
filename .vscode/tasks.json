@@ -474,6 +474,26 @@
       "runOptions": {
         "reevaluateOnRerun": true
       }
+    },
+    {
+      "label": "DockerInspection",
+      "type": "shell",
+      "command": "set -euo pipefail\nif ! command -v docker >/dev/null 2>&1; then\n  echo 'Docker CLI is not installed or not on PATH.'\n  exit 1\nfi\n\nprintf '\\n== Docker Version ==\\n'\ndocker version\n\nprintf '\\n== Docker Context ==\\n'\ndocker context ls\n\nprintf '\\n== Docker Disk Usage ==\\n'\ndocker system df -v || docker system df\n\nprintf '\\n== Running Containers ==\\n'\ndocker ps --format 'table {{.Names}}\\t{{.Image}}\\t{{.Status}}\\t{{.Ports}}'\n\nprintf '\\n== Exited Containers ==\\n'\ndocker ps -a --filter status=exited --format 'table {{.Names}}\\t{{.Image}}\\t{{.Status}}' || true\n\nprintf '\\n== Largest Images ==\\n'\ndocker image ls --format 'table {{.Repository}}:{{.Tag}}\\t{{.ID}}\\t{{.Size}}\\t{{.CreatedSince}}'\n\nprintf '\\n== Dangling Images ==\\n'\ndocker image ls --filter dangling=true --format 'table {{.Repository}}:{{.Tag}}\\t{{.ID}}\\t{{.Size}}' || true\n\nprintf '\\n== Volumes ==\\n'\ndocker volume ls\n\nprintf '\\n== Build Cache ==\\n'\ndocker buildx du || docker builder prune --help >/dev/null\n\nprintf '\\nInspection complete. If disk usage is high, consider: docker image prune, docker builder prune, or docker system prune -a\\n'",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "/bin/zsh",
+          "args": [
+            "-lc"
+          ]
+        }
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
     }
   ],
   "inputs": [
