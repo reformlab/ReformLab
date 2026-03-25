@@ -101,7 +101,7 @@ function Workspace() {
       await startRun();
       navigateTo("results");
     } catch (err) {
-      navigateTo("results", "runner");
+      // Already on results/runner — just show toast
       if (err instanceof ApiError) {
         toast.error(`${err.what} — ${err.why}`, { description: err.fix });
       } else if (err instanceof Error) {
@@ -171,7 +171,13 @@ function Workspace() {
       );
     }
     if (activeSubView === "decisions") {
-      if (!runResult?.run_id) return null;
+      if (!runResult?.run_id) {
+        return (
+          <div className="flex flex-col items-center justify-center gap-3 p-12 text-center">
+            <p className="text-sm text-slate-500">No simulation run available. Run a simulation first to view behavioral decisions.</p>
+          </div>
+        );
+      }
       return (
         <BehavioralDecisionViewerScreen
           runId={runResult.run_id}

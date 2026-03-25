@@ -56,7 +56,7 @@ export interface WorkspaceScenario {
 // ============================================================================
 
 // Import this in WorkflowNavRail, TopBar, and tests.
-export const STAGES: { key: StageKey; label: string; activeFor: string[] }[] = [
+export const STAGES: { key: StageKey; label: string; activeFor: (StageKey | SubView)[] }[] = [
   { key: "policies",   label: "Policies & Portfolio",    activeFor: ["policies"] },
   { key: "population", label: "Population",              activeFor: ["population", "data-fusion", "population-explorer"] },
   { key: "engine",     label: "Engine",                  activeFor: ["engine"] },

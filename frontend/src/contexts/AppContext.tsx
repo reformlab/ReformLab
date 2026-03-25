@@ -268,7 +268,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Fetch data on auth
   useEffect(() => {
     if (isAuthenticated) {
-      refetchResults().catch(() => {});
       refetchPopulations().catch((err) => {
         if (err instanceof AuthError) {
           setIsAuthenticated(false);

@@ -302,6 +302,11 @@ Claude Opus 4.6 (claude-opus-4-6)
 - `WorkspaceScenario` and `EngineConfig` added alongside (not replacing) legacy `Scenario` type — migration deferred to stories 20.3–20.6
 - ContextualHelpPanel and help-content updated to use `StageKey`/`SubView` props instead of legacy `viewMode`/`activeStep`
 - LeftPanel brand marks updated: collapsed "SCENARIOS" text → "RL"; expanded "Scenarios" → "ReformLab"
+- [Code Review Synthesis] Fixed duplicate `refetchResults()` call in auth effect (AppContext.tsx)
+- [Code Review Synthesis] Added empty-state for `#results/decisions` without prior run (App.tsx)
+- [Code Review Synthesis] Tightened `STAGES.activeFor` type from `string[]` to `(StageKey | SubView)[]` (workspace.ts)
+- [Code Review Synthesis] Removed no-op `navigateTo` in handleStartRun catch block (App.tsx)
+- [Code Review Synthesis] Added AC-5 test for `#results/decisions` empty-state (analyst-journey.test.tsx)
 
 ### File List
 
@@ -326,3 +331,17 @@ Claude Opus 4.6 (claude-opus-4-6)
 - `frontend/src/__tests__/workflows/analyst-journey.test.tsx`
 - `frontend/src/components/help/__tests__/ContextualHelpPanel.test.tsx`
 - `frontend/src/components/layout/__tests__/LeftPanel.test.tsx`
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-25
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 4.1 → Approved with Reservations
+- **Issues Found:** 7
+- **Issues Fixed:** 4
+- **Action Items Created:** 3
+
+#### Review Follow-ups (AI)
+- [ ] [AI-Review] LOW: TopBar icons (BookOpen, Github, Settings) are non-interactive — wrap in `<button>` or `<a>` with `aria-label` for accessibility (`frontend/src/components/layout/TopBar.tsx`)
+- [ ] [AI-Review] LOW: SubView validation is global, not stage-aware — `#engine/comparison` accepts `comparison` as subview; consider a stage→allowedSubViews map (`frontend/src/contexts/AppContext.tsx`)
+- [ ] [AI-Review] LOW: Task 9.5 test is a tautology — does not verify AC-3 interface distinctness at runtime; consider testing context shape or `getHelpEntry` directly (`frontend/src/__tests__/workflows/analyst-journey.test.tsx`)

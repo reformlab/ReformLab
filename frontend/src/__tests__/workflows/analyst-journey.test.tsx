@@ -302,4 +302,19 @@ describe("Analyst Journey — cross-screen navigation", () => {
       });
     });
   });
+
+  describe("Task 9.6 — AC-5: existing stage-4 screens preserved", () => {
+    it("renders empty-state for #results/decisions when no run result exists (AC-5)", async () => {
+      const user = userEvent.setup();
+      renderApp();
+      await authenticate(user);
+
+      window.location.hash = "#results/decisions";
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+
+      await waitFor(() => {
+        expect(screen.getByText(/no simulation run available/i)).toBeInTheDocument();
+      });
+    });
+  });
 });
