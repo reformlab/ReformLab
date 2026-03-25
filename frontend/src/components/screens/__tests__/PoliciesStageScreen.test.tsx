@@ -402,6 +402,30 @@ describe("PoliciesStageScreen — AC-4, AC-5: Portfolio-scenario integration", (
     expect(setSelectedPortfolioName).toHaveBeenCalledWith(null);
   });
 
+  it("portfolio load failure does NOT update portfolioName (state corruption guard)", async () => {
+    const updateScenarioField = vi.fn();
+    const setSelectedPortfolioName = vi.fn();
+    vi.mocked(getPortfolio).mockRejectedValue(new Error("Network error"));
+
+    renderScreen({
+      portfolios: [makePortfolio("missing-portfolio")],
+      updateScenarioField,
+      setSelectedPortfolioName,
+    });
+
+    fireEvent.click(screen.getByTitle("Load a saved portfolio"));
+    const loadDialog = screen.getByRole("dialog", { name: /load portfolio/i });
+    await act(async () => {
+      fireEvent.click(within(loadDialog).getByRole("button", { name: /missing-portfolio/i }));
+    });
+
+    await waitFor(() => expect(getPortfolio).toHaveBeenCalledWith("missing-portfolio"));
+
+    // State must NOT be updated when load fails
+    expect(updateScenarioField).not.toHaveBeenCalledWith("portfolioName", "missing-portfolio");
+    expect(setSelectedPortfolioName).not.toHaveBeenCalledWith("missing-portfolio");
+  });
+
   it("deleting active portfolio delinks it from scenario (AC-5)", async () => {
     const updateScenarioField = vi.fn();
     const setSelectedPortfolioName = vi.fn();

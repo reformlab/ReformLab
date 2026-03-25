@@ -149,12 +149,12 @@ export function PoliciesStageScreen() {
   }, []);
 
   const handleRemove = useCallback((index: number) => {
-    setComposition((prev) => {
-      const removed = prev[index]?.templateId;
-      setSelectedTemplateIds((ids) => (removed ? ids.filter((id) => id !== removed) : ids));
-      return prev.filter((_, i) => i !== index);
-    });
-  }, []);
+    const removedId = composition[index]?.templateId;
+    setComposition((prev) => prev.filter((_, i) => i !== index));
+    if (removedId) {
+      setSelectedTemplateIds((prev) => prev.filter((id) => id !== removedId));
+    }
+  }, [composition]);
 
   const handleParameterChange = useCallback(
     (index: number, paramId: string, value: number) => {
@@ -197,13 +197,14 @@ export function PoliciesStageScreen() {
             exemptions: [],
             thresholds: [],
             covered_categories: [],
-            extra_params: {},
+            extra_params: e.parameters as Record<string, unknown>,
           };
         }),
         resolution_strategy: resolutionStrategy,
       });
       setConflicts(result.conflicts);
     } catch {
+      toast.warning("Conflict check failed — conflicts may not be detected");
       setConflicts([]);
     } finally {
       setValidationLoading(false);
@@ -231,7 +232,7 @@ export function PoliciesStageScreen() {
   // When the screen mounts and activeScenario.portfolioName is set, load it.
   // ============================================================================
 
-  const loadPortfolioIntoComposition = useCallback(async (name: string) => {
+  const loadPortfolioIntoComposition = useCallback(async (name: string): Promise<boolean> => {
     try {
       const detail = await getPortfolio(name);
       const entries: CompositionEntry[] = detail.policies.map((p) => {
@@ -253,13 +254,14 @@ export function PoliciesStageScreen() {
           : "error",
       );
       setActivePortfolioName(name);
+      return true;
     } catch (err) {
       if (err instanceof ApiError) {
         toast.warning(`Could not load portfolio '${name}': ${err.why}`);
       } else {
         toast.warning(`Could not load portfolio '${name}'`);
       }
-      // Don't crash — leave composition empty
+      return false;
     }
   }, [templates]);
 
@@ -302,7 +304,7 @@ export function PoliciesStageScreen() {
             exemptions: [],
             thresholds: [],
             covered_categories: [],
-            extra_params: {},
+            extra_params: e.parameters as Record<string, unknown>,
           };
         }),
         resolution_strategy: resolutionStrategy,
@@ -345,7 +347,8 @@ export function PoliciesStageScreen() {
   // ============================================================================
 
   const handleLoad = useCallback(async (name: string) => {
-    await loadPortfolioIntoComposition(name);
+    const ok = await loadPortfolioIntoComposition(name);
+    if (!ok) return; // warning toast already shown
     loadedRef.current = name;
     updateScenarioField("portfolioName", name);
     setSelectedPortfolioName(name);

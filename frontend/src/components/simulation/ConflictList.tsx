@@ -28,7 +28,7 @@ export function ConflictList({ conflicts }: ConflictListProps) {
     <div className="space-y-1">
       {conflicts.map((c, i) => (
         <div
-          key={i}
+          key={`${c.parameter_name}-${c.conflict_type}-${i}`}
           className="border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800"
         >
           <div className="flex items-start gap-1.5">

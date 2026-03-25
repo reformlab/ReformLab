@@ -48,7 +48,7 @@ function isComplete(
     case "policies":
       // AC-5 (Story 20.3): completion requires an active portfolio linked to the scenario,
       // not just any portfolio existing in the library.
-      return activeScenario?.portfolioName !== null && activeScenario?.portfolioName !== undefined;
+      return typeof activeScenario?.portfolioName === "string" && activeScenario.portfolioName.length > 0;
     case "population":
       return !!selectedPopulationId || dataFusionResult !== null;
     case "engine":

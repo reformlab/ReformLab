@@ -85,6 +85,10 @@ so that I can rapidly build and iterate on reusable policy bundles without confu
   - [x] 9.4: `uv run ruff check src/ tests/` — 0 errors
   - [x] 9.5: `uv run mypy src/` — passes
 
+#### Review Follow-ups (AI)
+- [ ] [AI-Review] MEDIUM: Add integration test asserting nav rail completion checkmark after portfolio save (AC-5) (`frontend/src/__tests__/workflows/analyst-journey.test.tsx`)
+- [ ] [AI-Review] LOW: Guard auto-load against stale templates — if templates are empty at mount time, portfolio load maps with synthetic IDs and loadedRef blocks retry (`frontend/src/components/screens/PoliciesStageScreen.tsx`)
+
 ## Dev Notes
 
 ### Architecture Constraints
@@ -359,7 +363,7 @@ None — implementation proceeded without blocking issues.
 - `PortfolioCompositionPanel` extended with optional `minimumPolicies` prop (default=2, screen passes 1).
 - `WorkflowNavRail` policies completion changed from `portfolios.length > 0` → `activeScenario?.portfolioName != null`.
 - `PortfolioDesignerScreen` marked `@deprecated` but kept in codebase (tests pass).
-- 431/431 tests pass; 0 typecheck errors; 0 lint errors (2 pre-existing fast-refresh warnings).
+- 432/432 tests pass; 0 typecheck errors; 0 lint errors (2 pre-existing fast-refresh warnings).
 - Key debugging insight: `WorkflowNavRail` nav buttons use `aria-pressed={active}`, so `getAllByRole("button", { pressed: false })` in integration tests would pick up inactive nav rail buttons before template toggle buttons — fixed by scoping to `within(templateBrowser)`.
 
 ### File List
@@ -377,3 +381,12 @@ None — implementation proceeded without blocking issues.
 - `frontend/src/components/help/help-content.ts` — updated "policies" + "portfolio" entries
 - `frontend/src/components/layout/__tests__/WorkflowNavRail.test.tsx` — updated policies completion tests
 - `frontend/src/__tests__/workflows/analyst-journey.test.tsx` — added Story 20.3 section
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-25
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 6.1 → Changes Requested
+- **Issues Found:** 8
+- **Issues Fixed:** 6
+- **Action Items Created:** 2
