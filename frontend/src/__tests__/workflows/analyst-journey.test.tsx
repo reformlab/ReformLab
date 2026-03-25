@@ -70,6 +70,12 @@ import { listResults } from "@/api/results";
 import { getTemplate, listTemplates } from "@/api/templates";
 import App from "@/App";
 import { AppProvider } from "@/contexts/AppContext";
+import {
+  HAS_LAUNCHED_KEY,
+  SCENARIO_STORAGE_KEY,
+  STAGE_STORAGE_KEY,
+} from "@/hooks/useScenarioPersistence";
+import { createDemoScenario } from "@/data/demo-scenario";
 import { setupResizeObserver } from "./helpers";
 
 // ============================================================================
@@ -206,12 +212,17 @@ describe("Analyst Journey — cross-screen navigation", () => {
       });
     });
 
-    it("shows Policies & Portfolio as the default view on load (AC-4)", async () => {
+    it("returning user restores policies stage as the active view (Story 20.2 AC-2)", async () => {
+      // Pre-populate localStorage so this is a returning user with policies stage saved
+      localStorage.setItem(HAS_LAUNCHED_KEY, "true");
+      localStorage.setItem(STAGE_STORAGE_KEY, "policies");
+      localStorage.setItem(SCENARIO_STORAGE_KEY, JSON.stringify(createDemoScenario()));
+
       const user = userEvent.setup();
       renderApp();
       await authenticate(user);
 
-      // Default stage is "policies" — PortfolioDesignerScreen renders
+      // Returning user: restores saved stage "policies" — PortfolioDesignerScreen renders
       await waitFor(() => {
         expect(screen.getByText(/select policy templates/i)).toBeInTheDocument();
       });
@@ -288,17 +299,18 @@ describe("Analyst Journey — cross-screen navigation", () => {
     });
   });
 
-  describe("Task 9.5 — WorkspaceScenario type (AC-3)", () => {
-    it("activeScenario is null initially — distinct from portfolios and results", async () => {
+  describe("Task 9.5 — WorkspaceScenario type (AC-3, updated by Story 20.2)", () => {
+    it("first-launch loads demo scenario and opens runner — distinct from portfolios (Story 20.2 AC-1)", async () => {
+      // Empty localStorage = first launch
       const user = userEvent.setup();
       renderApp();
       await authenticate(user);
 
-      // AppContext initialises activeScenario as null.
-      // PortfolioDesignerScreen is shown (policies stage) — no crash proves
-      // WorkspaceScenario and PortfolioListItem are distinct object classes.
+      // First-launch navigates to results/runner with demo scenario loaded.
+      // SimulationRunnerScreen renders — no crash proves WorkspaceScenario and
+      // PortfolioListItem are distinct object classes (AC-3).
       await waitFor(() => {
-        expect(screen.getByText(/select policy templates/i)).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /run simulation/i })).toBeInTheDocument();
       });
     });
   });
@@ -314,6 +326,92 @@ describe("Analyst Journey — cross-screen navigation", () => {
 
       await waitFor(() => {
         expect(screen.getByText(/no simulation run available/i)).toBeInTheDocument();
+      });
+    });
+  });
+
+  // ===========================================================================
+  // Story 20.2 tests
+  // ===========================================================================
+
+  describe("Story 20.2 — first-launch and returning-user flows", () => {
+    it("first-launch loads demo scenario and opens runner (AC-1)", async () => {
+      // Empty localStorage = first launch (cleared in beforeEach)
+      const user = userEvent.setup();
+      renderApp();
+      await authenticate(user);
+
+      // Verify navigation to results/runner
+      await waitFor(() => {
+        expect(window.location.hash).toBe("#results/runner");
+      });
+
+      // Verify Run Simulation button is visible
+      expect(screen.getByRole("button", { name: /run simulation/i })).toBeInTheDocument();
+    });
+
+    it("returning user restores saved scenario and stage (AC-2)", async () => {
+      // Pre-set localStorage to simulate returning user with saved engine stage
+      const savedScenario = createDemoScenario();
+      localStorage.setItem(HAS_LAUNCHED_KEY, "true");
+      localStorage.setItem(SCENARIO_STORAGE_KEY, JSON.stringify(savedScenario));
+      localStorage.setItem(STAGE_STORAGE_KEY, "engine");
+
+      const user = userEvent.setup();
+      renderApp();
+      await authenticate(user);
+
+      // Returning user restores engine stage
+      await waitFor(() => {
+        expect(screen.getAllByText("Engine Configuration").length).toBeGreaterThanOrEqual(1);
+      });
+      expect(window.location.hash).toBe("#engine");
+    });
+
+    it("scenario entry dialog opens from TopBar and shows 4 options (AC-3)", async () => {
+      const user = userEvent.setup();
+      renderApp();
+      await authenticate(user);
+
+      // After first-launch, we are on results/runner — click the scenario name in TopBar
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: /run simulation/i })).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByRole("button", { name: /switch scenario/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText("New Scenario")).toBeInTheDocument();
+        expect(screen.getByText("Open Saved")).toBeInTheDocument();
+        expect(screen.getByText("Clone Current")).toBeInTheDocument();
+        expect(screen.getByText("Demo Scenario")).toBeInTheDocument();
+      });
+    });
+
+    it("reset to demo from entry dialog (AC-3)", async () => {
+      const user = userEvent.setup();
+      renderApp();
+      await authenticate(user);
+
+      // Wait for first-launch to complete
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: /run simulation/i })).toBeInTheDocument();
+      });
+
+      // Open entry dialog
+      await user.click(screen.getByRole("button", { name: /switch scenario/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText("Demo Scenario")).toBeInTheDocument();
+      });
+
+      // Click "Demo Scenario"
+      await user.click(screen.getByText("Demo Scenario"));
+
+      // Dialog closes and app navigates to results/runner
+      await waitFor(() => {
+        expect(screen.queryByText("Switch Scenario")).not.toBeInTheDocument();
+        expect(window.location.hash).toBe("#results/runner");
       });
     });
   });

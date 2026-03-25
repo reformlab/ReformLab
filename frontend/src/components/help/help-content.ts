@@ -189,9 +189,19 @@ export const HELP_CONTENT: Record<string, HelpEntry> = {
     title: "Simulation Runner",
     summary: "Configure and execute a full multi-year simulation run with explicit controls.",
     tips: [
+      "First launch? The demo scenario is pre-configured — click Run Simulation to see your first distributional chart.",
       "Set start and end years to define the simulation horizon",
       "An explicit seed ensures reproducible results — leave blank for random",
       "Past simulation results are listed below the configuration form",
+    ],
+  },
+  "onboarding": {
+    title: "Getting Started",
+    summary: "Welcome to ReformLab — your environmental policy analysis workspace.",
+    tips: [
+      "Click the scenario name in the top bar to switch scenarios, create new, or reset to the demo.",
+      "The demo scenario is pre-configured with the Carbon Tax + Dividend template — just click Run.",
+      "Use the nav rail on the left to move between Policies, Population, Engine, and Results stages.",
     ],
   },
   "results/comparison": {

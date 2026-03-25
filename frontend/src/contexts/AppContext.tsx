@@ -7,6 +7,8 @@
  *
  * Story 20.1: Adds hash-based stage routing (activeStage, activeSubView, navigateTo)
  * and canonical scenario state (activeScenario, setActiveScenario, updateScenarioField).
+ * Story 20.2: Adds first-launch demo scenario, returning-user restore, scenario
+ * persistence (localStorage), and scenario entry flow actions.
  */
 
 import {
@@ -15,6 +17,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -41,6 +44,8 @@ import { mockDecileData, mockParameters, mockScenarios } from "@/data/mock-data"
 import type { RunResponse, IndicatorResponse, GenerationResult, PortfolioListItem, ResultListItem } from "@/api/types";
 import type { StageKey, SubView, WorkspaceScenario } from "@/types/workspace";
 import { isValidStage, isValidSubView } from "@/types/workspace";
+import { useScenarioPersistence } from "@/hooks/useScenarioPersistence";
+import { createDemoScenario, DEMO_TEMPLATE_ID, DEMO_POPULATION_ID } from "@/data/demo-scenario";
 
 // ============================================================================
 // Context types
@@ -62,6 +67,14 @@ interface AppState {
   activeScenario: WorkspaceScenario | null;
   setActiveScenario: (scenario: WorkspaceScenario | null) => void;
   updateScenarioField: <K extends keyof WorkspaceScenario>(field: K, value: WorkspaceScenario[K]) => void;
+
+  // Scenario entry flow actions (Story 20.2 — AC-3, AC-5)
+  savedScenarios: WorkspaceScenario[];
+  saveCurrentScenario: () => void;
+  loadSavedScenario: (id: string) => void;
+  resetToDemo: () => void;
+  createNewScenario: (templateId?: string) => void;
+  cloneCurrentScenario: () => void;
 
   // Data
   populations: Population[];
@@ -203,6 +216,138 @@ export function AppProvider({ children }: { children: ReactNode }) {
   ) => {
     setActiveScenario((current) => current ? { ...current, [field]: value } : null);
   }, []);
+
+  // ============================================================================
+  // Scenario persistence — (Story 20.2, AC-2, AC-5)
+  // ============================================================================
+
+  const {
+    isFirstLaunch,
+    markLaunched,
+    saveScenario,
+    loadScenario,
+    saveStage,
+    loadStage,
+    getSavedScenarios,
+    saveScenarioToList,
+  } = useScenarioPersistence();
+
+  // Gate that ensures the initialization effect fires exactly once per auth session
+  // and prevents persistence effects from overwriting restored state before init completes.
+  const initializedRef = useRef(false);
+
+  // Saved scenarios React state (lazy-initialized from localStorage)
+  const [savedScenarios, setSavedScenarios] = useState<WorkspaceScenario[]>(() => getSavedScenarios());
+
+  const refreshSavedScenarios = useCallback(
+    () => setSavedScenarios(getSavedScenarios()),
+    [getSavedScenarios],
+  );
+
+  // Initialization effect — first-launch vs returning-user
+  // Runs after hash routing is set up (above) but before mock-data warning (below).
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
+    if (isFirstLaunch()) {
+      // First launch: load demo scenario
+      const demo = createDemoScenario();
+      setActiveScenario(demo);
+      setSelectedTemplateId(DEMO_TEMPLATE_ID);
+      setSelectedPopulationId(DEMO_POPULATION_ID);
+      markLaunched();
+      navigateTo("results", "runner");
+    } else {
+      // Returning user: restore saved scenario
+      const saved = loadScenario();
+      if (saved) {
+        setActiveScenario(saved);
+      } else {
+        // localStorage externally cleared — fall back to demo (do NOT call markLaunched)
+        const demo = createDemoScenario();
+        setActiveScenario(demo);
+        setSelectedTemplateId(DEMO_TEMPLATE_ID);
+        setSelectedPopulationId(DEMO_POPULATION_ID);
+      }
+      const savedStage = loadStage();
+      if (savedStage) navigateTo(savedStage);
+      else navigateTo("results", "runner");
+    }
+  }, [isAuthenticated, isFirstLaunch, markLaunched, loadScenario, loadStage, navigateTo]);
+
+  // Persist activeScenario to localStorage whenever it changes (after init)
+  useEffect(() => {
+    if (!isAuthenticated || !initializedRef.current) return;
+    saveScenario(activeScenario);
+  }, [activeScenario, isAuthenticated, saveScenario]);
+
+  // Persist activeStage to localStorage whenever it changes (after init)
+  useEffect(() => {
+    if (!isAuthenticated || !initializedRef.current) return;
+    saveStage(activeStage);
+  }, [activeStage, isAuthenticated, saveStage]);
+
+  // ============================================================================
+  // Scenario entry flow actions — (Story 20.2, AC-3)
+  // ============================================================================
+
+  const saveCurrentScenario = useCallback(() => {
+    if (!activeScenario) return;
+    saveScenarioToList(activeScenario);
+    refreshSavedScenarios();
+    toast.success("Scenario saved");
+  }, [activeScenario, saveScenarioToList, refreshSavedScenarios]);
+
+  const loadSavedScenario = useCallback((id: string) => {
+    const list = getSavedScenarios();
+    const found = list.find((s) => s.id === id);
+    if (found) {
+      setActiveScenario(found);
+      navigateTo("policies");
+    }
+  }, [getSavedScenarios, navigateTo]);
+
+  const resetToDemo = useCallback(() => {
+    setActiveScenario(createDemoScenario());
+    setSelectedTemplateId(DEMO_TEMPLATE_ID);
+    setSelectedPopulationId(DEMO_POPULATION_ID);
+    navigateTo("results", "runner");
+    toast.info("Demo scenario loaded");
+  }, [navigateTo]);
+
+  const createNewScenario = useCallback((templateId?: string) => {
+    const newScenario: WorkspaceScenario = {
+      id: crypto.randomUUID(),
+      name: "New Scenario",
+      version: "1.0",
+      status: "draft",
+      isBaseline: false,
+      baselineRef: null,
+      portfolioName: null,
+      populationIds: [],
+      engineConfig: { startYear: 2025, endYear: 2030, seed: null, investmentDecisionsEnabled: false },
+      policyType: templateId ?? null,
+      lastRunId: null,
+    };
+    setActiveScenario(newScenario);
+    if (templateId) {
+      setSelectedTemplateId(templateId);
+    }
+    navigateTo("policies");
+  }, [navigateTo]);
+
+  const cloneCurrentScenario = useCallback(() => {
+    if (!activeScenario) return;
+    const cloned: WorkspaceScenario = {
+      ...activeScenario,
+      id: crypto.randomUUID(),
+      name: `${activeScenario.name} (copy)`,
+    };
+    setActiveScenario(cloned);
+    toast.success("Scenario cloned");
+  }, [activeScenario]);
 
   // ============================================================================
   // Data hooks
@@ -466,6 +611,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       activeScenario,
       setActiveScenario,
       updateScenarioField,
+      savedScenarios,
+      saveCurrentScenario,
+      loadSavedScenario,
+      resetToDemo,
+      createNewScenario,
+      cloneCurrentScenario,
       populations,
       templates,
       parameters: templateParams,
@@ -510,6 +661,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isAuthenticated, authLoading, authenticate, logout,
       activeStage, activeSubView, navigateTo,
       activeScenario, setActiveScenario, updateScenarioField,
+      savedScenarios, saveCurrentScenario, loadSavedScenario, resetToDemo, createNewScenario, cloneCurrentScenario,
       populations, templates, templateParams, parameterValues, setParameterValue,
       scenarios, decileData,
       selectedPopulationId, selectedTemplateId, selectTemplate,

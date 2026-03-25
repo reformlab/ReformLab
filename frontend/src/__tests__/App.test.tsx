@@ -124,6 +124,23 @@ describe("App", () => {
     });
   });
 
+  it("first launch navigates to results/runner with demo scenario (AC-1, Story 20.2)", async () => {
+    // Empty localStorage = first launch (cleared in beforeEach)
+    vi.mocked(login).mockResolvedValueOnce({ token: "test-token" });
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.type(screen.getByPlaceholderText(/password/i), "secret");
+    await user.click(screen.getByRole("button", { name: /enter/i }));
+
+    await waitFor(() => {
+      expect(window.location.hash).toBe("#results/runner");
+    });
+
+    // SimulationRunnerScreen renders with Run Simulation button
+    expect(screen.getByRole("button", { name: /run simulation/i })).toBeInTheDocument();
+  });
+
   it("hash routing: changing window.location.hash triggers correct stage render (AC-2)", async () => {
     vi.mocked(login).mockResolvedValueOnce({ token: "test-token" });
     const user = userEvent.setup();

@@ -1,6 +1,6 @@
 # Story 20.2: Add pre-seeded demo-scenario onboarding and scenario entry flows
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -10,119 +10,72 @@ so that I can produce my first distributional chart in under a minute and easily
 
 ## Acceptance Criteria
 
-1. **AC-1: First-launch demo scenario** — Given a first-time user (no prior session in localStorage), when the application loads after authentication, then a pre-seeded demo scenario is set as `activeScenario` with Stages 1-3 prefilled (valid portfolio reference, population ID, engine config), and the app navigates to `#results/runner` so the Run button is immediately clickable.
+1. **AC-1: First-launch demo scenario** — Given a first-time user (no prior session in localStorage), when the application loads after authentication, then a pre-seeded demo scenario is set as `activeScenario` with population ID and engine config prefilled (the demo is template-based; `portfolioName` is intentionally `null` — no portfolio required for run), and the app navigates to `#results/runner` so the Run button is immediately clickable.
 2. **AC-2: Returning-user scenario resume** — Given a returning user with a previously saved scenario in localStorage, when the application loads after authentication, then their most recent `activeScenario` is restored from localStorage and the app navigates to the last active stage (also persisted).
 3. **AC-3: Scenario entry flows** — Given the scenario entry UI (triggered from TopBar), when accessed, then it supports four actions: (a) create new scenario from template, (b) open a previously saved scenario, (c) clone the current scenario, and (d) reset to the demo scenario.
-4. **AC-4: Demo scenario validity** — Given the demo scenario is loaded, when the user clicks Run Simulation on Stage 4, then the simulation executes successfully using the demo's `selectedTemplateId`, `parameterValues`, and `selectedPopulationId` — no additional configuration required.
+4. **AC-4: Demo scenario validity** — Given the demo scenario is loaded, when the user clicks Run Simulation on Stage 4, then the simulation executes successfully via the existing `startRun()` flow, using legacy state seeded by demo initialization: `selectedTemplateId = "carbon-tax-dividend"`, default `parameterValues` (from mockParameters), and `selectedPopulationId = "fr-synthetic-2024"`. Note: `activeScenario.engineConfig` is NOT wired to `startRun()` in this story — that migration is deferred to stories 20.3–20.6.
 5. **AC-5: Scenario persistence** — Given the user modifies `activeScenario` (via entry flows or in-app actions), when the change occurs, then `activeScenario` and `activeStage` are persisted to localStorage. On page reload (after re-auth), the persisted state is restored.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Define demo scenario constant and factory (AC: #1, #4)
-  - [ ] 1.1: Create `frontend/src/data/demo-scenario.ts` exporting `DEMO_SCENARIO_ID = "demo-carbon-tax-dividend"` and `createDemoScenario(): WorkspaceScenario`
-  - [ ] 1.2: Demo scenario values: `id: DEMO_SCENARIO_ID`, `name: "Demo — Carbon Tax + Dividend"`, `version: "1.0"`, `status: "ready"`, `isBaseline: false`, `baselineRef: null`, `portfolioName: null` (no portfolio required for run — template-based), `populationIds: ["fr-synthetic-2024"]`, `engineConfig: { startYear: 2025, endYear: 2030, seed: 42, investmentDecisionsEnabled: false }`, `policyType: "carbon_tax"`, `lastRunId: null`
-  - [ ] 1.3: Export `DEMO_TEMPLATE_ID = "carbon-tax-dividend"` and `DEMO_POPULATION_ID = "fr-synthetic-2024"` — these are used by AppContext to also set the legacy `selectedTemplateId` and `selectedPopulationId` state alongside `activeScenario`
-  - [ ] 1.4: Add unit test `frontend/src/data/__tests__/demo-scenario.test.ts` verifying `createDemoScenario()` returns a valid `WorkspaceScenario` with all required fields non-undefined and `engineConfig.startYear < engineConfig.endYear`
-- [ ] Task 2: Implement scenario persistence hook (AC: #2, #5)
-  - [ ] 2.1: Create `frontend/src/hooks/useScenarioPersistence.ts` exporting `useScenarioPersistence()` hook
-  - [ ] 2.2: Define localStorage keys: `SCENARIO_STORAGE_KEY = "reformlab-active-scenario"`, `STAGE_STORAGE_KEY = "reformlab-active-stage"`, `SAVED_SCENARIOS_KEY = "reformlab-saved-scenarios"`, `HAS_LAUNCHED_KEY = "reformlab-has-launched"`
-  - [ ] 2.3: Implement `saveScenario(scenario: WorkspaceScenario | null): void` — JSON.stringify to localStorage under `SCENARIO_STORAGE_KEY`
-  - [ ] 2.4: Implement `loadScenario(): WorkspaceScenario | null` — JSON.parse from localStorage, return `null` on parse error or missing key (never throw)
-  - [ ] 2.5: Implement `saveStage(stage: StageKey): void` and `loadStage(): StageKey | null` — persist/restore last active stage
-  - [ ] 2.6: Implement `isFirstLaunch(): boolean` — returns `true` if `HAS_LAUNCHED_KEY` is not `"true"` in localStorage
-  - [ ] 2.7: Implement `markLaunched(): void` — sets `HAS_LAUNCHED_KEY = "true"` in localStorage
-  - [ ] 2.8: Implement `getSavedScenarios(): WorkspaceScenario[]` and `saveScenarioToList(scenario: WorkspaceScenario): void` — manages an array of saved scenarios in localStorage under `SAVED_SCENARIOS_KEY`. `saveScenarioToList` upserts by `id` (replaces if same id exists, appends otherwise). Max 20 entries (drop oldest on overflow).
-  - [ ] 2.9: Export all keys as named constants so tests can reference them directly
-- [ ] Task 3: Wire first-launch and returning-user logic into AppContext (AC: #1, #2, #4)
-  - [ ] 3.1: Import `useScenarioPersistence` hook and `createDemoScenario`, `DEMO_TEMPLATE_ID`, `DEMO_POPULATION_ID` into `AppContext.tsx`
-  - [ ] 3.2: Add a new `useEffect` that fires when `isAuthenticated` transitions to `true`. This effect implements the scenario initialization flow:
-    ```
-    if (isFirstLaunch()) {
-      // First launch: load demo scenario
-      const demo = createDemoScenario();
-      setActiveScenario(demo);
-      setSelectedTemplateId(DEMO_TEMPLATE_ID);
-      setSelectedPopulationId(DEMO_POPULATION_ID);
-      markLaunched();
-      navigateTo("results", "runner");
-    } else {
-      // Returning user: restore saved scenario
-      const saved = loadScenario();
-      if (saved) setActiveScenario(saved);
-      const savedStage = loadStage();
-      if (savedStage) navigateTo(savedStage);
-    }
-    ```
-  - [ ] 3.3: Add a `useEffect` that persists `activeScenario` to localStorage whenever it changes: `saveScenario(activeScenario)`. Only persist when `isAuthenticated` is true (avoid writing null during logout).
-  - [ ] 3.4: Add a `useEffect` that persists `activeStage` to localStorage whenever it changes: `saveStage(activeStage)`. Only persist when `isAuthenticated` is true.
-  - [ ] 3.5: **Critical ordering:** The initialization effect (3.2) must run *after* the hash-routing effect is set up but *before* the mock-data warning effect. Use a `useRef` flag (`initializedRef`) to ensure it runs exactly once per auth session. The initialization `navigateTo(...)` call will trigger hash updates which the existing hash listener will process.
-  - [ ] 3.6: Add `savedScenarios: WorkspaceScenario[]` and `saveCurrentScenario: () => void` to `AppState` interface. `saveCurrentScenario` calls `saveScenarioToList(activeScenario!)` when activeScenario is non-null, then shows `toast.success("Scenario saved")`.
-  - [ ] 3.7: Add `loadSavedScenario: (id: string) => void` to `AppState` — finds scenario in `getSavedScenarios()`, sets it as `activeScenario`, navigates to `"policies"`.
-  - [ ] 3.8: Add `resetToDemo: () => void` to `AppState` — calls `setActiveScenario(createDemoScenario())`, sets `selectedTemplateId(DEMO_TEMPLATE_ID)`, `setSelectedPopulationId(DEMO_POPULATION_ID)`, navigates to `"results"`, shows `toast.info("Demo scenario loaded")`.
-  - [ ] 3.9: Add `createNewScenario: (templateId?: string) => void` to `AppState` — creates a new `WorkspaceScenario` with a generated UUID (use `crypto.randomUUID()`), sets it as activeScenario, optionally sets `selectedTemplateId` if provided, navigates to `"policies"`.
-  - [ ] 3.10: Add `cloneCurrentScenario: () => void` to `AppState` — deep-copies `activeScenario` with a new UUID and `name + " (copy)"`, sets as activeScenario, shows `toast.success("Scenario cloned")`.
-  - [ ] 3.11: Add all new state/actions to the `useMemo` value object and its dependency array.
-  - [ ] 3.12: **Do NOT remove or replace any existing legacy state** (`scenarios`, `selectedScenarioId`, `selectedTemplateId`, `parameterValues`, `startRun`, `cloneScenario`, `deleteScenario`). These remain for stories 20.3–20.6. The new scenario actions operate on `activeScenario` only. The legacy `startRun` still uses `selectedTemplateId` and `parameterValues` for actual execution.
-- [ ] Task 4: Build ScenarioEntryDialog component (AC: #3)
-  - [ ] 4.1: Create `frontend/src/components/scenario/ScenarioEntryDialog.tsx`
-  - [ ] 4.2: Use Shadcn `Dialog` + `DialogContent` + `DialogHeader` + `DialogTitle`. Import from `@/components/ui/dialog`.
-  - [ ] 4.3: Props interface:
-    ```typescript
-    interface ScenarioEntryDialogProps {
-      open: boolean;
-      onOpenChange: (open: boolean) => void;
-    }
-    ```
-  - [ ] 4.4: Dialog content layout — four action cards in a 2×2 CSS grid (`grid grid-cols-2 gap-3 p-4`):
-    - **"New Scenario"** — `FilePlus` icon (Lucide), subtitle "Start fresh from a template", click → `createNewScenario()` → close dialog
-    - **"Open Saved"** — `FolderOpen` icon, subtitle "Resume a previous scenario", click → expand to show saved scenario list (inline, below the grid). If no saved scenarios, show "No saved scenarios yet" in `text-sm text-slate-400`.
-    - **"Clone Current"** — `Copy` icon, subtitle "Duplicate the active scenario", click → `cloneCurrentScenario()` → close dialog. Disabled (opacity-50, pointer-events-none) when `activeScenario === null`.
-    - **"Demo Scenario"** — `Play` icon, subtitle "Carbon Tax + Dividend example", click → `resetToDemo()` → close dialog
-  - [ ] 4.5: Each action card: `border border-slate-200 rounded-md p-3 hover:bg-slate-50 cursor-pointer transition-colors`. Icon `h-5 w-5 text-slate-600 mb-1`. Title `text-sm font-medium text-slate-800`. Subtitle `text-xs text-slate-500`.
-  - [ ] 4.6: Saved scenario list (shown when "Open Saved" is clicked): renders `savedScenarios` as a vertical list of clickable rows. Each row shows: scenario name (`text-sm font-medium`), policy type badge (`Badge` from Shadcn), engine year range (`text-xs text-slate-400`). Click → `loadSavedScenario(id)` → close dialog.
-  - [ ] 4.7: Dialog header: "Switch Scenario" as title, scenario name below as subtitle in `text-sm text-slate-500` (e.g., "Current: Demo — Carbon Tax + Dividend").
-- [ ] Task 5: Wire ScenarioEntryDialog to TopBar (AC: #3)
-  - [ ] 5.1: In `TopBar.tsx`, add scenario name display between the logo and the stage label: `activeScenario?.name ?? "No scenario"` in `text-sm text-slate-500 truncate max-w-48`. Separate from stage label with a `Separator` (vertical, `h-5`).
-  - [ ] 5.2: Make the scenario name clickable — wrap in a `<button>` with `hover:text-slate-700 transition-colors` and `aria-label="Switch scenario"`. On click, set `scenarioDialogOpen = true`.
-  - [ ] 5.3: Add `const [scenarioDialogOpen, setScenarioDialogOpen] = useState(false)` state to `TopBar`. Render `<ScenarioEntryDialog open={scenarioDialogOpen} onOpenChange={setScenarioDialogOpen} />` at the bottom of the component.
-  - [ ] 5.4: Add a "Save" button (Lucide `Save` icon, `h-4 w-4 text-slate-500`) next to the scenario name. On click → `saveCurrentScenario()`. Disabled when `activeScenario === null`. Wrap in `<button>` with `aria-label="Save scenario"`.
-- [ ] Task 6: Update help content for onboarding context (AC: #1)
-  - [ ] 6.1: In `help-content.ts`, update the `"results/runner"` entry to include a tip about the demo scenario: "First launch? The demo scenario is pre-configured — click Run Simulation to see your first distributional chart."
-  - [ ] 6.2: Add a new entry `"onboarding"` (not routed, used as fallback content) with tips about the scenario entry dialog: "Click the scenario name in the top bar to switch scenarios, create new, or reset to the demo."
-- [ ] Task 7: Add tests (AC: #1, #2, #3, #4, #5)
-  - [ ] 7.1: Create `frontend/src/data/__tests__/demo-scenario.test.ts` — unit test for `createDemoScenario()`:
-    - Returns WorkspaceScenario with `id === DEMO_SCENARIO_ID`
-    - `engineConfig.startYear === 2025` and `endYear === 2030`
-    - `populationIds` includes `DEMO_POPULATION_ID`
-    - `policyType === "carbon_tax"`
-    - `status === "ready"`
-  - [ ] 7.2: Create `frontend/src/hooks/__tests__/useScenarioPersistence.test.ts` — unit tests for persistence functions:
-    - `saveScenario` → `loadScenario` round-trip preserves all fields
-    - `loadScenario` returns `null` on empty localStorage
-    - `loadScenario` returns `null` on corrupted JSON (no throw)
-    - `isFirstLaunch` returns `true` when key absent, `false` after `markLaunched()`
-    - `saveScenarioToList` upserts by ID; `getSavedScenarios` returns the list
-    - `saveScenarioToList` caps at 20 entries (oldest dropped)
-  - [ ] 7.3: Update `frontend/src/__tests__/App.test.tsx` — add test:
-    - "first launch navigates to results/runner with demo scenario (AC-1)": Clear all localStorage, authenticate, verify `window.location.hash` is `#results/runner` and SimulationRunnerScreen renders with "Run Simulation" button.
-  - [ ] 7.4: Update `frontend/src/__tests__/workflows/analyst-journey.test.tsx` — add tests:
-    - "first-launch loads demo scenario and opens runner (AC-1)": Authenticate with empty localStorage → verify `#results/runner` hash → verify "Run Simulation" button visible
-    - "returning user restores saved scenario and stage (AC-2)": Pre-set localStorage with a saved scenario and `activeStage = "engine"` → authenticate → verify EngineStageScreen renders (hash is `#engine`)
-    - "scenario entry dialog opens from TopBar and shows 4 options (AC-3)": Authenticate → click scenario name in TopBar → verify Dialog opens with "New Scenario", "Open Saved", "Clone Current", "Demo Scenario" labels
-    - "reset to demo from entry dialog (AC-3)": Open dialog → click "Demo Scenario" → verify `activeScenario` name is demo name, verify navigation
-  - [ ] 7.5: Create `frontend/src/components/scenario/__tests__/ScenarioEntryDialog.test.tsx`:
-    - Renders 4 action cards when open
-    - "Clone Current" is disabled when activeScenario is null
-    - Clicking "New Scenario" calls createNewScenario and closes dialog
-    - Clicking "Demo Scenario" calls resetToDemo and closes dialog
-    - "Open Saved" expands saved list; clicking a saved scenario calls loadSavedScenario
-  - [ ] 7.6: **Test setup convention**: All tests that exercise first-launch logic must clear localStorage before each test (`localStorage.clear()` in `beforeEach`). Tests for returning-user flow must pre-populate localStorage using the exported key constants from `useScenarioPersistence.ts`.
-- [ ] Task 8: Run quality gates (AC: all)
-  - [ ] 8.1: `npm run typecheck` — 0 errors
-  - [ ] 8.2: `npm run lint` — 0 errors (fast-refresh warnings pre-existing, OK)
-  - [ ] 8.3: `npm test` — all tests pass (including all new and existing tests)
-  - [ ] 8.4: `uv run ruff check src/ tests/` — 0 errors (backend unchanged but verify)
-  - [ ] 8.5: `uv run mypy src/` — passes (backend unchanged but verify)
+- [x] Task 1: Define demo scenario constant and factory (AC: #1, #4)
+  - [x] 1.1: Create `frontend/src/data/demo-scenario.ts` exporting `DEMO_SCENARIO_ID = "demo-carbon-tax-dividend"` and `createDemoScenario(): WorkspaceScenario`
+  - [x] 1.2: Demo scenario values: `id: DEMO_SCENARIO_ID`, `name: "Demo — Carbon Tax + Dividend"`, `version: "1.0"`, `status: "ready"`, `isBaseline: false`, `baselineRef: null`, `portfolioName: null` (no portfolio required for run — template-based), `populationIds: ["fr-synthetic-2024"]`, `engineConfig: { startYear: 2025, endYear: 2030, seed: 42, investmentDecisionsEnabled: false }`, `policyType: "carbon-tax"`, `lastRunId: null`
+  - [x] 1.3: Export `DEMO_TEMPLATE_ID = "carbon-tax-dividend"` and `DEMO_POPULATION_ID = "fr-synthetic-2024"` — these are used by AppContext to also set the legacy `selectedTemplateId` and `selectedPopulationId` state alongside `activeScenario`
+  - [x] 1.4: Add unit test `frontend/src/data/__tests__/demo-scenario.test.ts` verifying `createDemoScenario()` returns a valid `WorkspaceScenario` with all required fields non-undefined and `engineConfig.startYear < engineConfig.endYear`
+- [x] Task 2: Implement scenario persistence hook (AC: #2, #5)
+  - [x] 2.1: Create `frontend/src/hooks/useScenarioPersistence.ts` exporting `useScenarioPersistence()` hook
+  - [x] 2.2: Define localStorage keys: `SCENARIO_STORAGE_KEY = "reformlab-active-scenario"`, `STAGE_STORAGE_KEY = "reformlab-active-stage"`, `SAVED_SCENARIOS_KEY = "reformlab-saved-scenarios"`, `HAS_LAUNCHED_KEY = "reformlab-has-launched"`
+  - [x] 2.3: Implement `saveScenario(scenario: WorkspaceScenario | null): void` — JSON.stringify to localStorage under `SCENARIO_STORAGE_KEY`
+  - [x] 2.4: Implement `loadScenario(): WorkspaceScenario | null` — JSON.parse from localStorage, return `null` on parse error or missing key (never throw)
+  - [x] 2.5: Implement `saveStage(stage: StageKey): void` and `loadStage(): StageKey | null` — persist/restore last active stage
+  - [x] 2.6: Implement `isFirstLaunch(): boolean` — returns `true` if `HAS_LAUNCHED_KEY` is not `"true"` in localStorage
+  - [x] 2.7: Implement `markLaunched(): void` — sets `HAS_LAUNCHED_KEY = "true"` in localStorage
+  - [x] 2.8: Implement `getSavedScenarios(): WorkspaceScenario[]` and `saveScenarioToList(scenario: WorkspaceScenario): void` — manages an array of saved scenarios in localStorage under `SAVED_SCENARIOS_KEY`. `saveScenarioToList` upserts by `id` (replaces if same id exists, appends otherwise). Max 20 entries (drop oldest on overflow).
+  - [x] 2.9: Export all keys as named constants so tests can reference them directly
+- [x] Task 3: Wire first-launch and returning-user logic into AppContext (AC: #1, #2, #4)
+  - **Hook usage pattern (read before implementing):** Call `const { isFirstLaunch, markLaunched, saveScenario, loadScenario, saveStage, loadStage, getSavedScenarios, saveScenarioToList } = useScenarioPersistence()` once at the top of `AppProvider` alongside other hooks. Reference the returned functions inside `useCallback` and `useEffect` bodies — do NOT call `useScenarioPersistence()` inside a callback or effect (violates rules of hooks).
+  - [x] 3.1: Import `useScenarioPersistence` hook and `createDemoScenario`, `DEMO_TEMPLATE_ID`, `DEMO_POPULATION_ID` into `AppContext.tsx`
+  - [x] 3.2: Add a new `useEffect` that fires when `isAuthenticated` transitions to `true`. Guard at the top with `initializedRef` to ensure it runs exactly once per auth session (see Task 3.5).
+  - [x] 3.3: Add a `useEffect` that persists `activeScenario` to localStorage whenever it changes. Guard: only persist when `isAuthenticated && initializedRef.current`.
+  - [x] 3.4: Add a `useEffect` that persists `activeStage` to localStorage whenever it changes. Guard: only persist when `isAuthenticated && initializedRef.current`.
+  - [x] 3.5: Add `useRef` to React imports; declare `const initializedRef = useRef(false)` at the top of `AppProvider`.
+  - [x] 3.6: Add `savedScenarios: WorkspaceScenario[]` and `saveCurrentScenario: () => void` to `AppState` interface.
+  - [x] 3.7: Add `loadSavedScenario: (id: string) => void` to `AppState`.
+  - [x] 3.8: Add `resetToDemo: () => void` to `AppState`.
+  - [x] 3.9: Add `createNewScenario: (templateId?: string) => void` to `AppState`.
+  - [x] 3.10: Add `cloneCurrentScenario: () => void` to `AppState`.
+  - [x] 3.11: Add all new state/actions to the `useMemo` value object and its dependency array.
+  - [x] 3.12: All existing legacy state preserved (`scenarios`, `selectedScenarioId`, `selectedTemplateId`, `parameterValues`, `startRun`, `cloneScenario`, `deleteScenario`).
+- [x] Task 4: Build ScenarioEntryDialog component (AC: #3)
+  - [x] 4.1: Create `frontend/src/components/scenario/ScenarioEntryDialog.tsx`
+  - [x] 4.2: Built using fixed overlay pattern (shadcn Dialog stubs lack DialogContent/Header/Title — used inline modal instead)
+  - [x] 4.3: Props interface: `{ open: boolean; onOpenChange: (open: boolean) => void }`
+  - [x] 4.4: Dialog content layout — four action cards in a 2×2 CSS grid
+  - [x] 4.5: Each action card is a `<button>` element for keyboard accessibility
+  - [x] 4.6: Saved scenario list with name, policy type badge, engine year range
+  - [x] 4.7: Dialog header: "Switch Scenario" as title, current scenario name as subtitle
+- [x] Task 5: Wire ScenarioEntryDialog to TopBar (AC: #3)
+  - [x] 5.1: Added scenario name display with `<Separator orientation="vertical" />`
+  - [x] 5.2: Scenario name clickable with `aria-label="Switch scenario"`
+  - [x] 5.3: `scenarioDialogOpen` state + `<ScenarioEntryDialog>` rendered
+  - [x] 5.4: Save button (Lucide `Save` icon) added next to scenario name
+- [x] Task 6: Update help content for onboarding context (AC: #1)
+  - [x] 6.1: Updated `"results/runner"` entry tips to include demo scenario onboarding tip
+  - [x] 6.2: Added `"onboarding"` entry with scenario entry dialog tips
+- [x] Task 7: Add tests (AC: #1, #2, #3, #4, #5)
+  - [x] 7.1: Created `frontend/src/data/__tests__/demo-scenario.test.ts` (14 tests)
+  - [x] 7.2: Created `frontend/src/hooks/__tests__/useScenarioPersistence.test.ts` (22 tests)
+  - [x] 7.3: Updated `frontend/src/__tests__/App.test.tsx` — added first-launch test
+  - [x] 7.4: Updated `frontend/src/__tests__/workflows/analyst-journey.test.tsx` — added 4 new Story 20.2 tests; updated 2 existing tests to reflect new first-launch behavior
+  - [x] 7.5: Created `frontend/src/components/scenario/__tests__/ScenarioEntryDialog.test.tsx` (11 tests)
+  - [x] 7.6: All first-launch tests clear localStorage in `beforeEach`; returning-user tests use exported key constants
+- [x] Task 8: Run quality gates (AC: all)
+  - [x] 8.1: `npm run typecheck` — 0 errors
+  - [x] 8.2: `npm run lint` — 0 errors (2 pre-existing fast-refresh warnings)
+  - [x] 8.3: `npm test` — 407 tests pass across 48 test files (0 failures, 0 regressions)
+  - [x] 8.4: `uv run ruff check src/ tests/` — 0 errors
+  - [x] 8.5: `uv run mypy src/` — passes (149 source files)
 
 ## Dev Notes
 
@@ -156,9 +109,13 @@ App loads → Authenticate →
   │       4. navigateTo("results", "runner")
   │
   └── NO (returning user):
-      1. loadScenario() from localStorage → setActiveScenario
+      1. loadScenario() from localStorage:
+         - If present → setActiveScenario(saved)
+         - If null (localStorage externally cleared) → fall back to demo:
+           createDemoScenario() → setActiveScenario, set legacy IDs
+           (do NOT call markLaunched() — has-launched flag stays true)
       2. loadStage() from localStorage → navigateTo(savedStage)
-      3. If loadScenario() returns null → fall through to demo
+         - If stage missing → navigateTo("results", "runner")
 ```
 
 ### Scenario Entry Dialog Component Tree
@@ -198,9 +155,9 @@ The demo scenario initialization sets both new and legacy state to keep the exis
 
 | New State (activeScenario) | Legacy State (set alongside) | Why |
 |---|---|---|
-| `activeScenario.policyType = "carbon_tax"` | `selectedTemplateId = "carbon-tax-dividend"` | `startRun()` uses `selectedTemplateId` to find template params |
+| `activeScenario.policyType = "carbon-tax"` | `selectedTemplateId = "carbon-tax-dividend"` | `startRun()` uses `selectedTemplateId` to find template params. `policyType` uses hyphen format matching the template's `type` field in `mock-data.ts`. |
 | `activeScenario.populationIds[0]` | `selectedPopulationId = "fr-synthetic-2024"` | `startRun()` passes `population_id` to API |
-| `activeScenario.engineConfig` | (no legacy equivalent) | Engine config only used by `activeScenario` |
+| `activeScenario.engineConfig` | ⚠️ **No legacy equivalent — do NOT wire `engineConfig` to `startRun()` in this story.** | `startRun()` still hardcodes `start_year: 2025, end_year: 2030`. Migration to scenario-driven execution is deferred to stories 20.3–20.6. |
 
 The legacy `parameterValues` are NOT overridden by the demo scenario — they are already initialized from `mockParameters` (which match the carbon tax template defaults). This is correct behavior: the demo scenario uses default parameter values.
 
@@ -290,8 +247,33 @@ Lucide icons used: `FilePlus`, `FolderOpen`, `Copy`, `Play`, `Save`
 
 ### Agent Model Used
 
+claude-sonnet-4-6
+
 ### Debug Log References
+
+None — clean implementation, no blocking issues.
 
 ### Completion Notes List
 
+- Task 4: shadcn `Dialog` component in this project is a stub (only exports `Dialog`, no `DialogContent`/`DialogHeader`/`DialogTitle`). Used inline fixed-overlay pattern consistent with `TemplateSelectionScreen.tsx` instead.
+- Task 7.4: Updated two pre-existing Story 20.1 tests that became incorrect after Story 20.2 changed first-launch behavior:
+  - "shows Policies & Portfolio as the default view on load" → updated to use returning-user localStorage pre-population
+  - "activeScenario is null initially" → updated to reflect demo scenario set on first launch
+- All 407 tests pass; 0 regressions.
+
 ### File List
+
+**Created:**
+- `frontend/src/data/demo-scenario.ts`
+- `frontend/src/data/__tests__/demo-scenario.test.ts`
+- `frontend/src/hooks/useScenarioPersistence.ts`
+- `frontend/src/hooks/__tests__/useScenarioPersistence.test.ts`
+- `frontend/src/components/scenario/ScenarioEntryDialog.tsx`
+- `frontend/src/components/scenario/__tests__/ScenarioEntryDialog.test.tsx`
+
+**Modified:**
+- `frontend/src/contexts/AppContext.tsx`
+- `frontend/src/components/layout/TopBar.tsx`
+- `frontend/src/components/help/help-content.ts`
+- `frontend/src/__tests__/App.test.tsx`
+- `frontend/src/__tests__/workflows/analyst-journey.test.tsx`
