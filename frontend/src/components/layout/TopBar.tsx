@@ -21,8 +21,11 @@ export function TopBar() {
 
   return (
     <div className="flex h-12 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4">
-      {/* Stage label */}
-      <span className="text-lg font-semibold text-slate-900">{currentStageLabel}</span>
+      {/* Logo + Stage label */}
+      <div className="flex items-center gap-2.5">
+        <img src="/logo.svg" alt="ReformLab" className="h-6 w-auto" />
+        <span className="text-lg font-semibold text-slate-900">{currentStageLabel}</span>
+      </div>
 
       {/* Utility icons */}
       <div className="flex items-center gap-3">
