@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 Lucas Vivier
+import type { StageKey, SubView } from "@/types/workspace";
+
 export interface HelpEntry {
   title: string;
   summary: string;
@@ -141,12 +143,89 @@ export const HELP_CONTENT: Record<string, HelpEntry> = {
       { term: "Transition Probabilities", definition: "The likelihood that a household switches from one technology to another in a given year." },
     ],
   },
+
+  // Stage-level keys (Story 20.1)
+  "policies": {
+    title: "Policies & Portfolio",
+    summary: "Compose multiple policy templates into a single reform portfolio with conflict resolution and year schedules.",
+    tips: [
+      "Select two or more templates, then configure parameters and year schedules",
+      "Policy ordering determines application sequence — conflicts are resolved per the strategy you select",
+      "Save a portfolio to reference it from multiple scenarios",
+    ],
+    concepts: [
+      { term: "Policy Portfolio", definition: "A bundle of multiple policy templates combined into a single coherent reform package." },
+      { term: "Year Schedule", definition: "A per-year rate mapping that allows gradual phase-in of policy changes over time." },
+    ],
+  },
+  "population": {
+    title: "Population",
+    summary: "Select or build the household population dataset for your simulation.",
+    tips: [
+      "Pre-built populations (e.g., French synthetic 2024) are ready to use immediately",
+      "Use the Data Fusion Workbench to merge multiple statistical sources into a custom population",
+      "The population defines household composition, income distributions, and consumption patterns",
+    ],
+    concepts: [
+      { term: "Data Fusion", definition: "Combining records from multiple data sources into a unified population dataset using statistical matching." },
+    ],
+  },
+  "engine": {
+    title: "Engine Configuration",
+    summary: "Configure the simulation engine: time horizon, random seed, and investment decision modelling.",
+    tips: [
+      "Set start and end years to define the simulation horizon (2025–2050 is typical)",
+      "An explicit seed ensures reproducible results across runs — leave blank for random",
+      "Investment decision modelling enables behavioural responses to policy changes",
+    ],
+    concepts: [
+      { term: "Random Seed", definition: "A value that initialises the random number generator, ensuring reproducible stochastic results." },
+      { term: "Investment Decisions", definition: "Household decisions about capital goods (vehicles, heating systems) modelled as discrete choices under policy incentives." },
+    ],
+  },
+
+  // Stage 4 sub-view keys (Story 20.1)
+  "results/runner": {
+    title: "Simulation Runner",
+    summary: "Configure and execute a full multi-year simulation run with explicit controls.",
+    tips: [
+      "Set start and end years to define the simulation horizon",
+      "An explicit seed ensures reproducible results — leave blank for random",
+      "Past simulation results are listed below the configuration form",
+    ],
+  },
+  "results/comparison": {
+    title: "Comparison Dashboard",
+    summary: "Compare up to 5 simulation runs side-by-side with distributional and fiscal indicators.",
+    tips: [
+      "Select 2–5 completed runs from the list, then click Compare",
+      "The first selected run is treated as the baseline for relative comparisons",
+      "Toggle between absolute and relative views to see raw values or percentage changes",
+    ],
+    concepts: [
+      { term: "Baseline Run", definition: "The reference run against which all other selected runs are compared to compute deltas." },
+      { term: "Distributional Indicators", definition: "Metrics showing how reform impact varies across income deciles." },
+    ],
+  },
+  "results/decisions": {
+    title: "Behavioral Decisions",
+    summary: "Explore how households respond to policy changes through discrete choice modeling.",
+    tips: [
+      "The transition chart shows year-by-year changes in household vehicle fleet or heating systems",
+      "Filter by income decile to see how behavioral responses vary across the population",
+      "Click a year on the chart to see detailed transition probabilities for that period",
+    ],
+    concepts: [
+      { term: "Discrete Choice Model", definition: "A model of household decision-making that assigns probabilities to technology adoption choices based on costs and preferences." },
+      { term: "Transition Probabilities", definition: "The likelihood that a household switches from one technology to another in a given year." },
+    ],
+  },
 };
 
-export function getHelpEntry(viewMode: string, activeStep?: string): HelpEntry {
-  const key =
-    viewMode === "configuration" && activeStep
-      ? `configuration:${activeStep}`
-      : viewMode;
-  return HELP_CONTENT[key] ?? HELP_CONTENT["configuration:population"]!;
+export function getHelpEntry(activeStage: StageKey, activeSubView: SubView | null): HelpEntry {
+  if (activeSubView) {
+    const subKey = `${activeStage}/${activeSubView}`;
+    if (HELP_CONTENT[subKey]) return HELP_CONTENT[subKey]!;
+  }
+  return HELP_CONTENT[activeStage] ?? HELP_CONTENT["policies"]!;
 }

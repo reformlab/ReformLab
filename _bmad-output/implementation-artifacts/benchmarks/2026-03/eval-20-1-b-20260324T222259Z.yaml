@@ -1,0 +1,131 @@
+record_id: 7aee96cb-3a28-46e6-a74c-883c5ce10615
+created_at: '2026-03-24T22:22:59.661052+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 20
+  story_num: 1
+  title: Story 20.1
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true
+evaluator:
+  provider: claude-subprocess
+  model: sonnet
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-03-24T22:15:02.861919Z'
+  end_time: '2026-03-24T22:21:29.913919Z'
+  duration_ms: 387052
+  input_tokens: 0
+  output_tokens: 5903
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 23614
+  heading_count: 35
+  list_depth_max: 2
+  code_block_count: 5
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Evidence Score Summary
+  - 'Evidence Score: **9.0** → **REJECT**'
+  - 🎯 Ruthless Story Validation 20.1
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 🚨 Critical Issues (Must Fix)
+  - 1. `analyst-journey.test.tsx` test WILL fail after gradient header removal
+  - 2. `Scenario` interface migration is contradictory
+  - 3. `ScenarioCard` removal deletes unspecified UX flows
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. `ContextualHelpPanel` missing from Files to Modify
+  - 2. `WorkflowNavRail` prop interface change needs explicit spec
+  - 3. Specify `isValidStage()` guard and empty-hash default
+  - 4. `activeStep` / `ConfigStepKey` fate is unaddressed
+  - 5. TopBar API status should use existing `apiConnected`
+  - 6. `PopulationStageScreen` stub ambiguity — specify `DataFusionWorkbench`
+  - ✨ Optimizations (Nice to Have)
+  - 1. `WorkspaceLayout` height calculation needs updating
+  - 2. `previousViewMode` / `openComparison` / `backFromDecisions` cleanup
+  - 3. `WorkspaceScenario.status` — use `string` for EPIC-21 extensibility
+  - 🤖 LLM Optimization Improvements
+  - 1. Task 2.4 "update all setViewMode call sites" needs enumeration
+  - 2. Files to Modify table is missing 3 files
+  - 3. Hash routing `"run"/"progress"` → `"results"/"runner"` progress feedback gap
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.33
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: a5861289ae75
+findings:
+  total_count: 15
+  by_severity:
+    critical: 3
+    major: 9
+    minor: 3
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 5
+    completeness: 4
+    clarity: 6
+    testability: 1
+  has_fix_count: 15
+  has_location_count: 15
+  has_evidence_count: 14
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 2
+  confidence_phrases_count: 5
+linguistic:
+  avg_sentence_length: 27.336206896551722
+  vocabulary_richness: 0.2661620939766635
+  flesch_reading_ease: 25.641463700049457
+  vague_terms_count: 2
+  formality_score: 0.76
+  sentiment: mixed
+quality:
+  actionable_ratio: 0.97
+  specificity_score: 0.87
+  evidence_quality: 0.83
+  follows_template: true
+  internal_consistency: 0.86
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true

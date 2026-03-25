@@ -4,6 +4,9 @@
  *
  * Provides API data (populations, templates, scenarios) and auth state
  * to all components via React Context.
+ *
+ * Story 20.1: Adds hash-based stage routing (activeStage, activeSubView, navigateTo)
+ * and canonical scenario state (activeScenario, setActiveScenario, updateScenarioField).
  */
 
 import {
@@ -36,6 +39,8 @@ import {
 import type { DecileData, Parameter, Population, Scenario, Template, MockDataSource, MockMergeMethod } from "@/data/mock-data";
 import { mockDecileData, mockParameters, mockScenarios } from "@/data/mock-data";
 import type { RunResponse, IndicatorResponse, GenerationResult, PortfolioListItem, ResultListItem } from "@/api/types";
+import type { StageKey, SubView, WorkspaceScenario } from "@/types/workspace";
+import { isValidStage, isValidSubView } from "@/types/workspace";
 
 // ============================================================================
 // Context types
@@ -47,6 +52,16 @@ interface AppState {
   authLoading: boolean;
   authenticate: (password: string) => Promise<boolean>;
   logout: () => void;
+
+  // Stage routing (Story 20.1 — AC-2)
+  activeStage: StageKey;
+  activeSubView: SubView | null;
+  navigateTo: (stage: StageKey, subView?: SubView) => void;
+
+  // Canonical scenario state (Story 20.1 — AC-3)
+  activeScenario: WorkspaceScenario | null;
+  setActiveScenario: (scenario: WorkspaceScenario | null) => void;
+  updateScenarioField: <K extends keyof WorkspaceScenario>(field: K, value: WorkspaceScenario[K]) => void;
 
   // Data
   populations: Population[];
@@ -145,7 +160,54 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setIsAuthenticated(false);
   }, []);
 
+  // ============================================================================
+  // Stage routing — hash-based (Story 20.1, AC-2)
+  // ============================================================================
+
+  const [activeStage, setActiveStage] = useState<StageKey>("policies");
+  const [activeSubView, setActiveSubView] = useState<SubView | null>(null);
+
+  useEffect(() => {
+    function onHashChange() {
+      const hash = window.location.hash.slice(1); // remove leading #
+      const [stage, sub] = hash.split("/");
+      if (stage && isValidStage(stage)) {
+        setActiveStage(stage);
+        setActiveSubView(sub && isValidSubView(sub) ? sub : null);
+      } else {
+        // Empty hash or unknown stage → default to policies
+        setActiveStage("policies");
+        setActiveSubView(null);
+      }
+    }
+    window.addEventListener("hashchange", onHashChange);
+    onHashChange(); // read initial hash on mount
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
+
+  const navigateTo = useCallback((stage: StageKey, subView?: SubView) => {
+    const hash = subView ? `${stage}/${subView}` : stage;
+    window.location.hash = hash;
+    // hashchange event fires automatically, updating state via the listener above
+  }, []);
+
+  // ============================================================================
+  // Canonical scenario state — (Story 20.1, AC-3)
+  // ============================================================================
+
+  const [activeScenario, setActiveScenario] = useState<WorkspaceScenario | null>(null);
+
+  const updateScenarioField = useCallback(<K extends keyof WorkspaceScenario>(
+    field: K,
+    value: WorkspaceScenario[K],
+  ) => {
+    setActiveScenario((current) => current ? { ...current, [field]: value } : null);
+  }, []);
+
+  // ============================================================================
   // Data hooks
+  // ============================================================================
+
   const { populations, loading: populationsLoading, usingMockData: populationsMock, refetch: refetchPopulations } = usePopulations();
   const { templates, loading: templatesLoading, usingMockData: templatesMock, refetch: refetchTemplates } = useTemplates();
 
@@ -399,6 +461,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       authLoading,
       authenticate,
       logout,
+      activeStage,
+      activeSubView,
+      navigateTo,
+      activeScenario,
+      setActiveScenario,
+      updateScenarioField,
       populations,
       templates,
       parameters: templateParams,
@@ -441,6 +509,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }),
     [
       isAuthenticated, authLoading, authenticate, logout,
+      activeStage, activeSubView, navigateTo,
+      activeScenario, setActiveScenario, updateScenarioField,
       populations, templates, templateParams, parameterValues, setParameterValue,
       scenarios, decileData,
       selectedPopulationId, selectedTemplateId, selectTemplate,

@@ -10,19 +10,20 @@ import {
   CollapsibleContent,
 } from "@/components/ui/collapsible";
 import { getHelpEntry } from "@/components/help/help-content";
+import type { StageKey, SubView } from "@/types/workspace";
 
 interface ContextualHelpPanelProps {
-  viewMode: string;
-  activeStep?: string;
+  activeStage: StageKey;
+  activeSubView: SubView | null;
 }
 
-export function ContextualHelpPanel({ viewMode, activeStep }: ContextualHelpPanelProps) {
-  const help = getHelpEntry(viewMode, activeStep);
+export function ContextualHelpPanel({ activeStage, activeSubView }: ContextualHelpPanelProps) {
+  const help = getHelpEntry(activeStage, activeSubView);
   const [conceptsOpen, setConceptsOpen] = useState(false);
 
   useEffect(() => {
     setConceptsOpen(false);
-  }, [viewMode, activeStep]);
+  }, [activeStage, activeSubView]);
 
   return (
     <div className="space-y-3">

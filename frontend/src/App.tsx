@@ -7,36 +7,24 @@ import { LeftPanel } from "@/components/layout/LeftPanel";
 import { MainContent } from "@/components/layout/MainContent";
 import { RightPanel } from "@/components/layout/RightPanel";
 import { WorkspaceLayout } from "@/components/layout/WorkspaceLayout";
+import { TopBar } from "@/components/layout/TopBar";
 import { PasswordPrompt } from "@/components/auth/PasswordPrompt";
-import { ConfigurationScreen } from "@/components/screens/ConfigurationScreen";
-import { DataFusionWorkbench } from "@/components/screens/DataFusionWorkbench";
-import { PortfolioDesignerScreen } from "@/components/screens/PortfolioDesignerScreen";
 import { SimulationRunnerScreen } from "@/components/screens/SimulationRunnerScreen";
-import type { ConfigStepKey } from "@/components/simulation/ModelConfigStepper";
 import { BehavioralDecisionViewerScreen } from "@/components/screens/BehavioralDecisionViewerScreen";
 import { ComparisonDashboardScreen } from "@/components/screens/ComparisonDashboardScreen";
 import { ResultsOverviewScreen } from "@/components/screens/ResultsOverviewScreen";
-// ComparisonView (Phase 1 mock-driven prototype) is kept but no longer imported in workspace
-import { RunProgressBar } from "@/components/simulation/RunProgressBar";
-import { ScenarioCard } from "@/components/simulation/ScenarioCard";
-import { SummaryStatCard } from "@/components/simulation/SummaryStatCard";
+import { PoliciesStageScreen } from "@/components/screens/PoliciesStageScreen";
+import { PopulationStageScreen } from "@/components/screens/PopulationStageScreen";
+import { EngineStageScreen } from "@/components/screens/EngineStageScreen";
 import { WorkflowNavRail } from "@/components/layout/WorkflowNavRail";
 import { Toaster } from "@/components/ui/sonner";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { ContextualHelpPanel } from "@/components/help/ContextualHelpPanel";
-import { Separator } from "@/components/ui/separator";
 import { useAppState } from "@/contexts/AppContext";
 import { ApiError } from "@/api/client";
 import { exportCsv, exportParquet } from "@/api/exports";
-import {
-  mockSummaryStats,
-} from "@/data/mock-data";
 
 const LEFT_COLLAPSE_STORAGE_KEY = "reformlab-left-panel-collapsed";
 const RIGHT_COLLAPSE_STORAGE_KEY = "reformlab-right-panel-collapsed";
-
-type ViewMode = "configuration" | "run" | "progress" | "results" | "comparison" | "decisions" | "data-fusion" | "portfolio" | "runner";
 
 function readStoredBool(key: string): boolean {
   const value = window.localStorage.getItem(key);
@@ -45,47 +33,24 @@ function readStoredBool(key: string): boolean {
 
 function Workspace() {
   const {
-    populations,
-    templates,
-    parameters,
-    parameterValues,
-    setParameterValue,
-    scenarios,
-    decileData,
     selectedPopulationId,
-    setSelectedPopulationId,
-    selectedTemplateId,
-    selectTemplate,
-    selectedScenarioId,
-    setSelectedScenarioId,
+    decileData,
     startRun,
-    runLoading,
     runResult,
-    cloneScenario,
-    deleteScenario,
-    dataFusionSources,
-    dataFusionMethods,
     dataFusionResult,
-    setDataFusionResult,
     portfolios,
-    refetchPortfolios,
-    refetchTemplates,
-    selectedPortfolioName,
     results,
-    apiConnected,
+    activeStage,
+    activeSubView,
+    navigateTo,
+    activeScenario,
+    selectedPortfolioName,
+    selectedTemplateId,
   } = useAppState();
 
-  const [activeStep, setActiveStep] = useState<ConfigStepKey>("population");
-  const [viewMode, setViewMode] = useState<ViewMode>("configuration");
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const [isNarrow, setIsNarrow] = useState(false);
-  const [previousViewMode, setPreviousViewMode] = useState<ViewMode>("results");
-
-  const selectedTemplate = useMemo(
-    () => templates.find((t) => t.id === selectedTemplateId),
-    [templates, selectedTemplateId],
-  );
 
   // Layout effects
   useEffect(() => {
@@ -129,14 +94,14 @@ function Workspace() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  // Run simulation using real API
+  // Run simulation using real API — navigates to results/runner stage
   const handleStartRun = async () => {
-    setViewMode("progress");
+    navigateTo("results", "runner");
     try {
       await startRun();
-      setViewMode("results");
+      navigateTo("results");
     } catch (err) {
-      setViewMode("run");
+      navigateTo("results", "runner");
       if (err instanceof ApiError) {
         toast.error(`${err.what} — ${err.why}`, { description: err.fix });
       } else if (err instanceof Error) {
@@ -180,236 +145,95 @@ function Workspace() {
     }
   };
 
-  // Comparison
-  const openComparison = () => {
-    setPreviousViewMode(viewMode);
-    setViewMode("comparison");
-  };
-
-  const backFromComparison = () => {
-    setViewMode(previousViewMode === "comparison" ? "results" : previousViewMode);
-  };
-
-  const openDecisions = () => {
-    setPreviousViewMode(viewMode);
-    setViewMode("decisions");
-  };
-
-  const backFromDecisions = () => {
-    setViewMode(previousViewMode === "decisions" ? "results" : previousViewMode);
-  };
-
   const selectedScenario = useMemo(
-    () => scenarios.find((s) => s.id === selectedScenarioId),
-    [scenarios, selectedScenarioId],
+    () => results.find((r) => r.run_id === runResult?.run_id),
+    [results, runResult],
   );
 
-  const mainPanelContent = (
-    <>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-gradient-to-r from-white to-indigo-50 p-3 shadow-sm">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold">ReformLab</h1>
-            <Badge variant={apiConnected ? "success" : "warning"} className="rounded-full text-[10px] leading-none">
-              {apiConnected ? "API connected" : "Sample data"}
-            </Badge>
-          </div>
-          <p className="text-sm text-indigo-700">
-            Environmental policy analysis workspace
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {viewMode !== "configuration" && viewMode !== "comparison" && viewMode !== "decisions" && viewMode !== "data-fusion" && viewMode !== "portfolio" && viewMode !== "runner" ? (
-            <Button variant="outline" onClick={() => setViewMode("configuration")}>
-              Configuration
-            </Button>
-          ) : null}
-          {viewMode === "configuration" ? (
-            <Button onClick={() => setViewMode("run")}>
-              Simulation
-            </Button>
-          ) : null}
-          {viewMode === "comparison" ? (
-            <Button variant="outline" onClick={backFromComparison}>
-              Back to Results
-            </Button>
-          ) : null}
-          {viewMode === "data-fusion" ? (
-            <Button variant="outline" onClick={() => setViewMode("configuration")}>
-              Configure Policy
-            </Button>
-          ) : null}
-          {viewMode === "portfolio" ? (
-            <Button variant="outline" onClick={() => setViewMode("configuration")}>
-              Configure Policy
-            </Button>
-          ) : null}
-        </div>
-      </div>
-
-      {viewMode === "configuration" ? (
-        <ConfigurationScreen
-          activeStep={activeStep}
-          onStepSelect={setActiveStep}
-          populations={populations}
-          selectedPopulationId={selectedPopulationId}
-          onSelectPopulation={setSelectedPopulationId}
-          templates={templates}
-          selectedTemplateId={selectedTemplateId}
-          onSelectTemplate={selectTemplate}
-          onTemplatesChanged={refetchTemplates}
-          parameters={parameters}
-          parameterValues={parameterValues}
-          onParameterChange={setParameterValue}
-          onGoToSimulation={() => setViewMode("run")}
-        />
-      ) : null}
-
-      {viewMode === "run" ? (
-        <section className="space-y-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-          <h2 className="text-lg font-semibold">Run Simulation</h2>
-          <p className="text-sm text-slate-600">
-            Ready to compute baseline and reform results for{" "}
-            <span className="font-medium">{selectedTemplate?.name ?? "selected policy"}</span>.
-          </p>
-          <div className="grid gap-2 xl:grid-cols-3">
-            {mockSummaryStats.map((stat) => (
-              <SummaryStatCard key={stat.id} stat={stat} />
-            ))}
-          </div>
-          <Button onClick={handleStartRun} disabled={runLoading}>
-            {runLoading ? "Running..." : "Run Simulation"}
-          </Button>
-        </section>
-      ) : null}
-
-      {viewMode === "progress" ? (
-        <RunProgressBar
-          progress={runLoading ? 50 : 100}
-          currentStep={runLoading ? "Computing simulation..." : "Complete"}
-          eta={runLoading ? "estimating..." : "0s"}
-          onCancel={() => setViewMode("run")}
-        />
-      ) : null}
-
-      {viewMode === "results" ? (
-        <ResultsOverviewScreen
-          decileData={decileData}
-          runResult={runResult}
-          reformLabel={selectedScenario?.templateName ?? selectedScenario?.name ?? "Reform"}
-          onCompare={openComparison}
-          onViewDecisions={openDecisions}
-          onRunAgain={handleStartRun}
-          onExportCsv={handleExportCsv}
-          onExportParquet={handleExportParquet}
-        />
-      ) : null}
-
-      {viewMode === "comparison" ? (
-        <ComparisonDashboardScreen
-          results={results}
-          onBack={backFromComparison}
-        />
-      ) : null}
-
-      {viewMode === "decisions" && runResult?.run_id ? (
-        <BehavioralDecisionViewerScreen
-          runId={runResult.run_id}
-          onBack={backFromDecisions}
-        />
-      ) : null}
-
-      {viewMode === "data-fusion" ? (
-        <DataFusionWorkbench
-          sources={dataFusionSources}
-          methods={dataFusionMethods}
-          initialResult={dataFusionResult}
-          onPopulationGenerated={setDataFusionResult}
-        />
-      ) : null}
-
-      {viewMode === "portfolio" ? (
-        <PortfolioDesignerScreen
-          templates={templates}
-          savedPortfolios={portfolios}
-          onSaved={() => { void refetchPortfolios(); }}
-          onDeleted={() => { void refetchPortfolios(); }}
-        />
-      ) : null}
-
-      {viewMode === "runner" ? (
+  // Stage 4 sub-view content
+  const resultsContent = (() => {
+    if (activeSubView === "runner") {
+      return (
         <SimulationRunnerScreen
           selectedPopulationId={selectedPopulationId || null}
           selectedPortfolioName={selectedPortfolioName}
           selectedTemplateName={selectedTemplateId || null}
-          onCancel={() => setViewMode("configuration")}
+          onCancel={() => { navigateTo("engine"); }}
         />
-      ) : null}
+      );
+    }
+    if (activeSubView === "comparison") {
+      return (
+        <ComparisonDashboardScreen
+          results={results}
+          onBack={() => { navigateTo("results"); }}
+        />
+      );
+    }
+    if (activeSubView === "decisions") {
+      if (!runResult?.run_id) return null;
+      return (
+        <BehavioralDecisionViewerScreen
+          runId={runResult.run_id}
+          onBack={() => { navigateTo("results"); }}
+        />
+      );
+    }
+    // Default results overview (activeSubView === null)
+    return (
+      <ResultsOverviewScreen
+        decileData={decileData}
+        runResult={runResult}
+        reformLabel={selectedScenario?.template_name ?? "Reform"}
+        onCompare={() => { navigateTo("results", "comparison"); }}
+        onViewDecisions={() => { navigateTo("results", "decisions"); }}
+        onRunAgain={handleStartRun}
+        onExportCsv={handleExportCsv}
+        onExportParquet={handleExportParquet}
+      />
+    );
+  })();
+
+  // Stage-based main content
+  const mainPanelContent = (
+    <>
+      {activeStage === "policies" ? <PoliciesStageScreen /> : null}
+      {activeStage === "population" ? <PopulationStageScreen /> : null}
+      {activeStage === "engine" ? <EngineStageScreen /> : null}
+      {activeStage === "results" ? resultsContent : null}
     </>
   );
 
   return (
-    <div className="min-h-screen p-3">
+    <div className="flex h-screen flex-col">
       {window.innerWidth < 1280 ? (
-        <div className="border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+        <div className="shrink-0 border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
           ReformLab is designed for desktop use. Please use a laptop or desktop browser (&gt;= 1280px).
         </div>
       ) : null}
 
       <WorkspaceLayout
+        topBar={<TopBar />}
         leftCollapsed={leftCollapsed}
         rightCollapsed={rightCollapsed}
         leftPanel={
-          <LeftPanel collapsed={isNarrow ? true : leftCollapsed} onToggle={() => setLeftCollapsed((current) => !current)}>
-            <div className="space-y-2">
-              <WorkflowNavRail
-                viewMode={viewMode}
-                setViewMode={setViewMode}
-                collapsed={isNarrow ? true : leftCollapsed}
-                selectedPopulationId={selectedPopulationId}
-                dataFusionResult={dataFusionResult}
-                portfolios={portfolios}
-                results={results}
-              />
-
-              {scenarios.length > 0 && <Separator className="my-1" />}
-
-              {scenarios.map((scenario) => (
-                <ScenarioCard
-                  key={scenario.id}
-                  scenario={scenario}
-                  selected={scenario.id === selectedScenarioId}
-                  onSelect={(id) => {
-                    setSelectedScenarioId(id);
-                    const s = scenarios.find((sc) => sc.id === id);
-                    if (s?.status === "completed") {
-                      setViewMode("results");
-                    }
-                  }}
-                  onRun={(id) => {
-                    setSelectedScenarioId(id);
-                    const s = scenarios.find((sc) => sc.id === id);
-                    if (s?.templateId) {
-                      selectTemplate(s.templateId);
-                    }
-                    setViewMode("run");
-                  }}
-                  onCompare={(id) => {
-                    setSelectedScenarioId(id);
-                    setPreviousViewMode(viewMode);
-                    setViewMode("comparison");
-                  }}
-                  onClone={cloneScenario}
-                  onDelete={deleteScenario}
-                />
-              ))}
-            </div>
+          <LeftPanel collapsed={isNarrow ? true : leftCollapsed} onToggle={() => { setLeftCollapsed((current) => !current); }}>
+            <WorkflowNavRail
+              activeStage={activeStage}
+              navigateTo={navigateTo}
+              collapsed={isNarrow ? true : leftCollapsed}
+              selectedPopulationId={selectedPopulationId}
+              dataFusionResult={dataFusionResult}
+              portfolios={portfolios}
+              results={results}
+              activeScenario={activeScenario}
+            />
           </LeftPanel>
         }
         mainPanel={<MainContent>{mainPanelContent}</MainContent>}
         rightPanel={
-          <RightPanel collapsed={isNarrow ? true : rightCollapsed} onToggle={() => setRightCollapsed((current) => !current)}>
-            <ContextualHelpPanel viewMode={viewMode} activeStep={activeStep} />
+          <RightPanel collapsed={isNarrow ? true : rightCollapsed} onToggle={() => { setRightCollapsed((current) => !current); }}>
+            <ContextualHelpPanel activeStage={activeStage} activeSubView={activeSubView} />
           </RightPanel>
         }
       />
