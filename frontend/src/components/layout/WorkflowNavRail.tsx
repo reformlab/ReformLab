@@ -46,7 +46,9 @@ function isComplete(
 ): boolean {
   switch (key) {
     case "policies":
-      return portfolios.length > 0;
+      // AC-5 (Story 20.3): completion requires an active portfolio linked to the scenario,
+      // not just any portfolio existing in the library.
+      return activeScenario?.portfolioName !== null && activeScenario?.portfolioName !== undefined;
     case "population":
       return !!selectedPopulationId || dataFusionResult !== null;
     case "engine":
@@ -70,9 +72,8 @@ function getSummary(
 ): string | null {
   switch (key) {
     case "policies": {
-      if (portfolios.length === 0) return null;
-      const policyCount = portfolios.reduce((acc, p) => acc + p.policy_count, 0);
-      return `${policyCount} polic${policyCount !== 1 ? "ies" : "y"}`;
+      // AC-5 (Story 20.3): summary shows the active portfolio name, not aggregate policy count.
+      return activeScenario?.portfolioName ?? null;
     }
     case "population": {
       if (dataFusionResult) {

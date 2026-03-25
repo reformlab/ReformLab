@@ -27,3 +27,18 @@
 | dismissed | Backend quality gates (10.4–10.5) in a frontend-only story are "noisy blocking overhead" | FALSE POSITIVE: This is a project convention — all stories run full quality gates regardless of scope. Not a story defect. |
 | dismissed | INVEST violations N/E/S/T scores (negotiable, estimable, small, testable) | FALSE POSITIVE: INVEST scoring is useful for backlog refinement before story creation, not for post-hoc rejection of authored stories with defined deliverables. The actionable defects within these INVEST scores (missing ACs, ambiguous tasks) were extracted and addressed individually above. |
 | dismissed | `handleStartRun` async-progress flow is "ambiguous" for hash routing | FALSE POSITIVE: The ViewMode mapping table already shows `"run"/"progress"` → `"results"/"runner"`, and Task 2.4 now explicitly maps all three `handleStartRun` calls. The `SimulationRunnerScreen` using `runLoading` prop for internal progress state is an implementation detail not requiring story-level specification. |
+
+## Story 20-3 (2026-03-25)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | AC-6 validity contradiction with Task 5.3 | AC-6 rewritten with concrete boolean rule (`composition.length >= 1 && (no conflicts OR strategy !== "error")`). Task 5.3 indicator condition fixed (was `&& conflicts.length === 0 &&` which produced false-amber for zero-conflict portfolios with "error" strategy). |
+| critical | WorkflowNavRail.test.tsx regression | Task 8.3 updated to include `portfolio-workflow.test.tsx`; Task 8.4 added with explicit test update instructions — replace `portfolios` prop assertion with `activeScenario.portfolioName` assertion in completion and summary tests. |
+| high | PortfolioCompositionPanel "reused as-is" contradicts Task 2.2 | Component Reuse table row changed to `⚠️ Requires small prop addition`; Task 2.2 updated to reference the `minimumPolicies={1}` prop; `PortfolioCompositionPanel.tsx` added to Files to Modify; removed from Files NOT Modified. |
+| high | Task 4.1 self-contradiction | Removed the ambiguous `\|\| composition.length > 0` clause. Task now states the single clear decision: `activeScenario?.portfolioName !== null` with rationale. |
+| high | Delete action in wireframe but absent from Tasks | Task 6.5 added covering `Trash2` button, `deletePortfolio()` call, `refetchPortfolios()`, and delink-from-scenario logic when deleting the active portfolio. |
+| high | loadedRef ordering risk in save handler | Task 3.2 expanded to explicitly require `loadedRef.current = portfolioName` BEFORE `updateScenarioField(...)`, with explanation of why ordering matters. |
+| high | AC-2 overstates execution support | "used for execution" removed from AC-2; parenthetical note added that portfolio execution is wired in Story 20.6. |
+| medium | `savedPortfolios` naming inconsistency | Task 6.2 updated to use `portfolios` (the actual AppContext field name). |
+| medium | `validatePortfolioName`/`NAME_RE` not shared | `portfolioValidation.ts` added to Files to Create; `PortfolioDesignerScreen` is the extraction source; both Save and Clone dialogs will import from the shared utility. |
+| medium | AC-4 independence test assertion too vague | Task 8.2 test bullet tightened to assert no `/api/scenarios` calls and no `saveCurrentScenario`/`cloneCurrentScenario` invocations. |

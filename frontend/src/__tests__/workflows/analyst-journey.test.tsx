@@ -14,7 +14,7 @@
  * Story 20.1 — AC-2, AC-4, AC-5.
  */
 
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor, within, fireEvent, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -42,7 +42,9 @@ vi.mock("@/api/results", () => ({
 vi.mock("@/api/portfolios", () => ({
   listPortfolios: vi.fn(),
   createPortfolio: vi.fn(),
+  getPortfolio: vi.fn(),
   deletePortfolio: vi.fn(),
+  clonePortfolio: vi.fn(),
   validatePortfolio: vi.fn(),
 }));
 vi.mock("@/api/data-fusion", () => ({
@@ -63,7 +65,7 @@ vi.mock("@/api/exports", () => ({ exportCsv: vi.fn(), exportParquet: vi.fn() }))
 // -----------------------------------------------------------------------
 
 import { login } from "@/api/auth";
-import { listPortfolios } from "@/api/portfolios";
+import { listPortfolios, createPortfolio, validatePortfolio } from "@/api/portfolios";
 import { listDataSources, listMergeMethods } from "@/api/data-fusion";
 import { listPopulations } from "@/api/populations";
 import { listResults } from "@/api/results";
@@ -183,7 +185,7 @@ describe("Analyst Journey — cross-screen navigation", () => {
       });
     });
 
-    it("navigates to Portfolio Designer via Policies & Portfolio button", async () => {
+    it("navigates to Policies & Portfolio stage via nav rail button", async () => {
       const user = userEvent.setup();
       renderApp();
       await authenticate(user);
@@ -192,8 +194,9 @@ describe("Analyst Journey — cross-screen navigation", () => {
       await user.click(within(getLeftPanel()).getByRole("button", { name: /policies.*portfolio/i }));
 
       await waitFor(() => {
-        // PoliciesStageScreen renders PortfolioDesignerScreen
-        expect(screen.getByText(/select policy templates/i)).toBeInTheDocument();
+        // PoliciesStageScreen renders inline composition layout (Story 20.3)
+        expect(screen.getByRole("heading", { name: /policy templates/i })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: /portfolio composition/i })).toBeInTheDocument();
       });
     });
 
@@ -222,9 +225,9 @@ describe("Analyst Journey — cross-screen navigation", () => {
       renderApp();
       await authenticate(user);
 
-      // Returning user: restores saved stage "policies" — PortfolioDesignerScreen renders
+      // Returning user: restores saved stage "policies" — PoliciesStageScreen (Story 20.3) renders
       await waitFor(() => {
-        expect(screen.getByText(/select policy templates/i)).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: /policy templates/i })).toBeInTheDocument();
       });
     });
 
@@ -278,8 +281,8 @@ describe("Analyst Journey — cross-screen navigation", () => {
       window.dispatchEvent(new HashChangeEvent("hashchange"));
 
       await waitFor(() => {
-        // Defaults to policies — PortfolioDesignerScreen
-        expect(screen.getByText(/select policy templates/i)).toBeInTheDocument();
+        // Defaults to policies — PoliciesStageScreen (Story 20.3) inline layout
+        expect(screen.getByRole("heading", { name: /policy templates/i })).toBeInTheDocument();
       });
     });
 
@@ -312,6 +315,85 @@ describe("Analyst Journey — cross-screen navigation", () => {
       await waitFor(() => {
         expect(screen.getByRole("button", { name: /run simulation/i })).toBeInTheDocument();
       });
+    });
+  });
+
+  // ===========================================================================
+  // Story 20.3 tests
+  // ===========================================================================
+
+  describe("Story 20.3 — inline composition and portfolio-scenario integration", () => {
+    beforeEach(() => {
+      vi.mocked(createPortfolio).mockResolvedValue("v-abc");
+      vi.mocked(validatePortfolio).mockResolvedValue({ conflicts: [], is_compatible: true });
+    });
+
+    it("navigates to #policies and shows inline composition layout (AC-1)", async () => {
+      const user = userEvent.setup();
+      renderApp();
+      await authenticate(user);
+
+      window.location.hash = "#policies";
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+
+      await waitFor(() => {
+        // PoliciesStageScreen shows both template browser and composition panel
+        expect(screen.getByRole("heading", { name: /policy templates/i })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: /portfolio composition/i })).toBeInTheDocument();
+      });
+    });
+
+    it("portfolio save/load/clone do not call saveCurrentScenario or cloneCurrentScenario (AC-4)", async () => {
+      const user = userEvent.setup();
+      renderApp();
+      await authenticate(user);
+
+      window.location.hash = "#policies";
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+
+      await waitFor(() => {
+        expect(screen.getByRole("heading", { name: /policy templates/i })).toBeInTheDocument();
+      });
+
+      // Scope to the template browser region to avoid picking up nav rail buttons (which also have aria-pressed)
+      const templateBrowser = await waitFor(() =>
+        screen.getByRole("region", { name: /policy template browser/i }),
+      );
+      const firstTemplateButton = await waitFor(() => {
+        const buttons = within(templateBrowser).getAllByRole("button", { pressed: false });
+        if (buttons.length === 0) throw new Error("No template buttons");
+        return buttons[0];
+      });
+      await user.click(firstTemplateButton);
+
+      // Wait for Save button to become enabled (composition has 1 entry)
+      await waitFor(() => {
+        expect(screen.getByTitle("Save portfolio")).not.toBeDisabled();
+      }, { timeout: 3000 });
+      await user.click(screen.getByTitle("Save portfolio"));
+
+      await waitFor(() => {
+        expect(screen.getByRole("dialog", { name: /save portfolio/i })).toBeInTheDocument();
+      });
+
+      const dialog = screen.getByRole("dialog", { name: /save portfolio/i });
+      fireEvent.change(within(dialog).getByLabelText(/portfolio name/i), {
+        target: { value: "my-portfolio" },
+      });
+
+      // Use fireEvent inside act (same pattern as unit tests) to click dialog Save
+      await act(async () => {
+        fireEvent.click(within(dialog).getByRole("button", { name: /^save$/i }));
+      });
+
+      await waitFor(() => {
+        expect(createPortfolio).toHaveBeenCalledTimes(1);
+      });
+
+      // Verify no scenario API calls were made (only portfolio endpoints)
+      const { createScenario, cloneScenario } = await import("@/api/scenarios");
+      expect(createScenario).not.toHaveBeenCalled();
+      expect(cloneScenario).not.toHaveBeenCalled();
     });
   });
 

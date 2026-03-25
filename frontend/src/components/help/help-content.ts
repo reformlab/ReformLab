@@ -26,17 +26,18 @@ export const HELP_CONTENT: Record<string, HelpEntry> = {
     ],
   },
   "portfolio": {
-    title: "Portfolio Designer",
-    summary: "Compose multiple policy templates into a single reform package with conflict resolution.",
+    title: "Portfolio Composition",
+    summary: "Compose policy templates into a single reform package with inline parameter editing and conflict resolution.",
     tips: [
-      "Select two or more templates in step 1, then configure their parameters in step 2",
-      "Policy ordering matters — policies are applied in the sequence shown",
+      "A portfolio of one policy is valid — single-policy portfolios are fully supported",
+      "Policy ordering matters — policies are applied in the sequence shown in the composition panel",
       "Use year schedules to phase in rate changes over the simulation horizon",
       "The conflict resolution strategy determines what happens when two policies modify the same parameter",
+      "Saved portfolios are independent of scenarios — saving a portfolio does not save the scenario",
     ],
     concepts: [
-      { term: "Policy Portfolio", definition: "A bundle of multiple policy templates combined into a single coherent reform package." },
-      { term: "Conflict Resolution", definition: "A strategy for handling cases where two policies set the same parameter (sum, first_wins, last_wins, max)." },
+      { term: "Policy Portfolio", definition: "A bundle of one or more policy templates combined into a coherent reform package." },
+      { term: "Conflict Resolution", definition: "A strategy for handling cases where two policies set the same parameter (sum, first_wins, last_wins, max, or error)." },
       { term: "Year Schedule", definition: "A per-year rate mapping that allows gradual phase-in of policy changes over time." },
     ],
   },
@@ -144,18 +145,22 @@ export const HELP_CONTENT: Record<string, HelpEntry> = {
     ],
   },
 
-  // Stage-level keys (Story 20.1)
+  // Stage-level keys (Story 20.1, updated Story 20.3)
   "policies": {
     title: "Policies & Portfolio",
-    summary: "Compose multiple policy templates into a single reform portfolio with conflict resolution and year schedules.",
+    summary: "Browse policy templates and compose a portfolio inline — no multi-step wizard. A single policy is a valid portfolio.",
     tips: [
-      "Select two or more templates, then configure parameters and year schedules",
-      "Policy ordering determines application sequence — conflicts are resolved per the strategy you select",
-      "Save a portfolio to reference it from multiple scenarios",
+      "The template browser (left) and composition panel (right) are visible simultaneously — no separate steps",
+      "Add a single policy template to create a portfolio of one; two or more policies unlock conflict detection",
+      "Conflicts are detected automatically and shown inline with a resolution strategy selector",
+      "Save, Load, Clone, and Clear operate on the portfolio only — scenario operations are separate",
+      "The nav rail shows a completion checkmark when a portfolio is saved and linked to this scenario",
     ],
     concepts: [
-      { term: "Policy Portfolio", definition: "A bundle of multiple policy templates combined into a single coherent reform package." },
+      { term: "Policy Portfolio", definition: "A bundle of one or more policy templates combined into a coherent reform package. Portfolios are saved independently of scenarios." },
+      { term: "Conflict Resolution", definition: "A strategy for handling cases where two policies set the same parameter: sum, first_wins, last_wins, max, or error (blocks save)." },
       { term: "Year Schedule", definition: "A per-year rate mapping that allows gradual phase-in of policy changes over time." },
+      { term: "Inline Composition", definition: "The template browser and composition panel are always visible side-by-side, eliminating the need for a step-by-step wizard flow." },
     ],
   },
   "population": {

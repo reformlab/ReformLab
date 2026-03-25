@@ -78,12 +78,24 @@ describe("WorkflowNavRail - completion state", () => {
     expect(screen.queryByText("2")).not.toBeInTheDocument();
   });
 
-  it("shows checkmark for Policies stage when portfolios exist", () => {
-    const portfolios = [{ name: "p1", description: "", version_id: "v1", policy_count: 2 }];
-    render(<WorkflowNavRail {...baseProps({ portfolios })} />);
+  it("shows checkmark for Policies stage when activeScenario.portfolioName is set (Story 20.3)", () => {
+    const activeScenario = {
+      id: "s1", name: "S", version: "1.0", status: "ready", isBaseline: false,
+      baselineRef: null, portfolioName: "p1", populationIds: [],
+      engineConfig: { startYear: 2025, endYear: 2030, seed: null, investmentDecisionsEnabled: false },
+      policyType: null, lastRunId: null,
+    };
+    render(<WorkflowNavRail {...baseProps({ activeScenario })} />);
     // Policies (stage 1) is complete → no "1" text
     expect(screen.queryByText("1")).not.toBeInTheDocument();
     expect(screen.getByText("2")).toBeInTheDocument(); // Population still pending
+  });
+
+  it("does NOT show checkmark for Policies stage when portfolios exist but portfolioName is null (Story 20.3)", () => {
+    const portfolios = [{ name: "p1", description: "", version_id: "v1", policy_count: 2 }];
+    render(<WorkflowNavRail {...baseProps({ portfolios })} />);
+    // portfolioName is null → policies stage still incomplete
+    expect(screen.getByText("1")).toBeInTheDocument();
   });
 
   it("shows checkmark for Results stage when results exist", () => {
@@ -110,13 +122,16 @@ describe("WorkflowNavRail - summary lines", () => {
     expect(screen.getByTestId("summary-population")).toBeInTheDocument();
   });
 
-  it("shows policy count summary when portfolios exist", () => {
-    const portfolios = [
-      { name: "carbon-transition", description: "", version_id: "v1", policy_count: 3 },
-    ];
-    render(<WorkflowNavRail {...baseProps({ portfolios })} />);
+  it("shows active portfolio name as summary when activeScenario.portfolioName is set (Story 20.3)", () => {
+    const activeScenario = {
+      id: "s1", name: "S", version: "1.0", status: "ready", isBaseline: false,
+      baselineRef: null, portfolioName: "carbon-transition", populationIds: [],
+      engineConfig: { startYear: 2025, endYear: 2030, seed: null, investmentDecisionsEnabled: false },
+      policyType: null, lastRunId: null,
+    };
+    render(<WorkflowNavRail {...baseProps({ activeScenario })} />);
     const summary = screen.getByTestId("summary-policies");
-    expect(summary).toHaveTextContent("3 policies");
+    expect(summary).toHaveTextContent("carbon-transition");
   });
 
   it("shows results count summary when results exist", () => {
