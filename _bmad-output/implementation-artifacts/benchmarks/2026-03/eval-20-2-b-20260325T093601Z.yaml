@@ -1,0 +1,120 @@
+record_id: a6f6eef8-bea2-4316-9a6e-730cfe17a039
+created_at: '2026-03-25T09:36:01.008171+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 20
+  story_num: '2'
+  title: Story 20.2
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: sonnet
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-03-25T09:25:52.444019Z'
+  end_time: '2026-03-25T09:29:45.266019Z'
+  duration_ms: 232822
+  input_tokens: 0
+  output_tokens: 2971
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 11886
+  heading_count: 20
+  list_depth_max: 1
+  code_block_count: 14
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: **3.2**'
+  - 🏛️ Architectural Sins
+  - ⚡ Performance & Scalability
+  - '`useScenarioPersistence` is not a React hook — creates 8 new function references on every render'
+  - 🐛 Correctness & Safety
+  - 'Bug 1: `initializedRef` never reset on logout — re-authentication within a session skips init entirely'
+  - 'Bug 2: `loadStage()` casts without validation — invalid stage key passes to `navigateTo`'
+  - ♿ Accessibility Violations
+  - 'Violation 1: `ScenarioEntryDialog` — no Escape key handler, no focus trap'
+  - 'Violation 2: `aria-label` on outer div instead of `aria-labelledby` referencing the heading'
+  - 🎭 Test Quality
+  - '`authenticate` helper asserts the wrong signal for first-launch paths'
+  - 'AC-4 test gap: no test verifies demo scenario flows into `startRun()`'
+  - 🛠️ Suggested Fixes
+  - 1. Fix `useScenarioPersistence` — use `useCallback` or convert to plain module utilities
+  - 2. Fix `initializedRef` reset on logout
+  - 3. Fix `loadStage()` validation
+  - 4. Fix `ScenarioEntryDialog` — Escape key + `aria-labelledby`
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 80ef7bdb3a43
+findings:
+  total_count: 7
+  by_severity:
+    critical: 0
+    major: 3
+    minor: 4
+    nit: 0
+  by_category:
+    security: 0
+    performance: 1
+    correctness: 4
+    completeness: 1
+    clarity: 0
+    testability: 1
+  has_fix_count: 7
+  has_location_count: 7
+  has_evidence_count: 5
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 1
+  confidence_phrases_count: 0
+linguistic:
+  avg_sentence_length: 29.46
+  vocabulary_richness: 0.37067209775967414
+  flesch_reading_ease: 2.6568687707641345
+  vague_terms_count: 2
+  formality_score: 0.8
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 1.0
+  evidence_quality: 0.85
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 11
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

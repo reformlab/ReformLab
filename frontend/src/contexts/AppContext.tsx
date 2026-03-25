@@ -44,7 +44,16 @@ import { mockDecileData, mockParameters, mockScenarios } from "@/data/mock-data"
 import type { RunResponse, IndicatorResponse, GenerationResult, PortfolioListItem, ResultListItem } from "@/api/types";
 import type { StageKey, SubView, WorkspaceScenario } from "@/types/workspace";
 import { isValidStage, isValidSubView } from "@/types/workspace";
-import { useScenarioPersistence } from "@/hooks/useScenarioPersistence";
+import {
+  isFirstLaunch,
+  markLaunched,
+  saveScenario as persistScenario,
+  loadScenario,
+  saveStage as persistStage,
+  loadStage,
+  getSavedScenarios,
+  saveScenarioToList,
+} from "@/hooks/useScenarioPersistence";
 import { createDemoScenario, DEMO_TEMPLATE_ID, DEMO_POPULATION_ID } from "@/data/demo-scenario";
 
 // ============================================================================
@@ -171,6 +180,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     apiLogout();  // revoke token server-side (best-effort)
     setAuthToken(null);
     setIsAuthenticated(false);
+    initializedRef.current = false;
   }, []);
 
   // ============================================================================
@@ -221,17 +231,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Scenario persistence — (Story 20.2, AC-2, AC-5)
   // ============================================================================
 
-  const {
-    isFirstLaunch,
-    markLaunched,
-    saveScenario,
-    loadScenario,
-    saveStage,
-    loadStage,
-    getSavedScenarios,
-    saveScenarioToList,
-  } = useScenarioPersistence();
-
   // Gate that ensures the initialization effect fires exactly once per auth session
   // and prevents persistence effects from overwriting restored state before init completes.
   const initializedRef = useRef(false);
@@ -241,7 +240,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const refreshSavedScenarios = useCallback(
     () => setSavedScenarios(getSavedScenarios()),
-    [getSavedScenarios],
+    [],
   );
 
   // Initialization effect — first-launch vs returning-user
@@ -264,6 +263,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const saved = loadScenario();
       if (saved) {
         setActiveScenario(saved);
+        // Sync legacy selectors so startRun() uses the restored scenario's values
+        if (saved.policyType) setSelectedTemplateId(saved.policyType);
+        if (saved.populationIds.length > 0) setSelectedPopulationId(saved.populationIds[0]);
       } else {
         // localStorage externally cleared — fall back to demo (do NOT call markLaunched)
         const demo = createDemoScenario();
@@ -275,19 +277,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (savedStage) navigateTo(savedStage);
       else navigateTo("results", "runner");
     }
-  }, [isAuthenticated, isFirstLaunch, markLaunched, loadScenario, loadStage, navigateTo]);
+  }, [isAuthenticated, navigateTo]);
 
   // Persist activeScenario to localStorage whenever it changes (after init)
   useEffect(() => {
     if (!isAuthenticated || !initializedRef.current) return;
-    saveScenario(activeScenario);
-  }, [activeScenario, isAuthenticated, saveScenario]);
+    persistScenario(activeScenario);
+  }, [activeScenario, isAuthenticated]);
 
   // Persist activeStage to localStorage whenever it changes (after init)
   useEffect(() => {
     if (!isAuthenticated || !initializedRef.current) return;
-    saveStage(activeStage);
-  }, [activeStage, isAuthenticated, saveStage]);
+    persistStage(activeStage);
+  }, [activeStage, isAuthenticated]);
 
   // ============================================================================
   // Scenario entry flow actions — (Story 20.2, AC-3)
@@ -298,16 +300,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     saveScenarioToList(activeScenario);
     refreshSavedScenarios();
     toast.success("Scenario saved");
-  }, [activeScenario, saveScenarioToList, refreshSavedScenarios]);
+  }, [activeScenario, refreshSavedScenarios]);
 
   const loadSavedScenario = useCallback((id: string) => {
     const list = getSavedScenarios();
     const found = list.find((s) => s.id === id);
     if (found) {
       setActiveScenario(found);
+      // Sync legacy selectors so startRun() uses the loaded scenario's values
+      if (found.policyType) setSelectedTemplateId(found.policyType);
+      if (found.populationIds.length > 0) setSelectedPopulationId(found.populationIds[0]);
       navigateTo("policies");
     }
-  }, [getSavedScenarios, navigateTo]);
+  }, [navigateTo]);
 
   const resetToDemo = useCallback(() => {
     setActiveScenario(createDemoScenario());

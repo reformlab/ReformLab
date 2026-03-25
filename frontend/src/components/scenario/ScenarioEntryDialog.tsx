@@ -85,13 +85,15 @@ export function ScenarioEntryDialog({ open, onOpenChange }: ScenarioEntryDialogP
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       role="dialog"
       aria-modal="true"
-      aria-label="Switch Scenario"
+      aria-labelledby="scenario-dialog-title"
+      onKeyDown={(e) => { if (e.key === "Escape") handleClose(); }}
+      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
     >
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
         {/* Header */}
         <div className="flex items-center justify-between px-4 pt-4 pb-2">
           <div>
-            <h2 className="text-base font-semibold text-slate-900">Switch Scenario</h2>
+            <h2 id="scenario-dialog-title" className="text-base font-semibold text-slate-900">Switch Scenario</h2>
             {activeScenario && (
               <p className="text-sm text-slate-500">Current: {activeScenario.name}</p>
             )}
@@ -178,9 +180,11 @@ export function ScenarioEntryDialog({ open, onOpenChange }: ScenarioEntryDialogP
                           {s.policyType}
                         </Badge>
                       )}
-                      <span className="text-xs text-slate-400 shrink-0">
-                        {s.engineConfig.startYear}–{s.engineConfig.endYear}
-                      </span>
+                      {s.engineConfig && (
+                        <span className="text-xs text-slate-400 shrink-0">
+                          {s.engineConfig.startYear}–{s.engineConfig.endYear}
+                        </span>
+                      )}
                     </button>
                   </li>
                 ))}

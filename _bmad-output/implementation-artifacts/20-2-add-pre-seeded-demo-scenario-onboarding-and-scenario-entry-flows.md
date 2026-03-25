@@ -260,6 +260,13 @@ None — clean implementation, no blocking issues.
   - "shows Policies & Portfolio as the default view on load" → updated to use returning-user localStorage pre-population
   - "activeScenario is null initially" → updated to reflect demo scenario set on first launch
 - All 407 tests pass; 0 regressions.
+- **[Code Review Synthesis]** Fixed 6 issues across 3 files:
+  - `initializedRef` reset on logout to allow re-initialization on re-login
+  - `useScenarioPersistence` converted from hook to module-level functions (stable refs)
+  - `loadStage()` now validates against `isValidStage()` instead of unsafe cast
+  - `loadSavedScenario` and returning-user restore now sync legacy selectors (`selectedTemplateId`, `selectedPopulationId`)
+  - `ScenarioEntryDialog`: added Escape key handler, backdrop click close, `aria-labelledby`
+  - `ScenarioEntryDialog`: added optional chaining guard for `engineConfig` in saved list
 
 ### File List
 
@@ -277,3 +284,21 @@ None — clean implementation, no blocking issues.
 - `frontend/src/components/help/help-content.ts`
 - `frontend/src/__tests__/App.test.tsx`
 - `frontend/src/__tests__/workflows/analyst-journey.test.tsx`
+
+**Modified (Code Review Synthesis):**
+- `frontend/src/hooks/useScenarioPersistence.ts` — converted to module-level functions; added `loadStage` validation
+- `frontend/src/contexts/AppContext.tsx` — reset `initializedRef` on logout; sync legacy selectors on scenario restore/load; use module-level persistence imports
+- `frontend/src/components/scenario/ScenarioEntryDialog.tsx` — ESC key, backdrop click, `aria-labelledby`, `engineConfig` guard
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-25
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 7.5 → MAJOR REWORK (Reviewer A: 11.8, Reviewer B: 3.2, synthesized: 7.5)
+- **Issues Found:** 8
+- **Issues Fixed:** 6
+- **Action Items Created:** 2
+
+#### Review Follow-ups (AI)
+- [ ] [AI-Review] LOW: Add integration test that clicks Run Simulation with demo scenario loaded and asserts `runScenario` was called with correct template/population params (AC-4 test gap)
+- [ ] [AI-Review] LOW: Add focus trap to ScenarioEntryDialog for full WCAG 2.1 SC 2.1.2 compliance (deferred — requires focus-trap library or manual Tab/Shift+Tab handler)
