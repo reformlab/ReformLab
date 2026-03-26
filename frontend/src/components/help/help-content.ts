@@ -164,15 +164,33 @@ export const HELP_CONTENT: Record<string, HelpEntry> = {
     ],
   },
   "population": {
-    title: "Population",
-    summary: "Select or build the household population dataset for your simulation.",
+    title: "Population Library",
+    summary: "Browse, preview, explore, and select household population datasets. Upload custom CSV/Parquet files or build a new fused population.",
     tips: [
-      "Pre-built populations (e.g., French synthetic 2024) are ready to use immediately",
-      "Use the Data Fusion Workbench to merge multiple statistical sources into a custom population",
-      "The population defines household composition, income distributions, and consumption patterns",
+      "Click Preview (eye icon) for a quick 100-row scan before committing — closes on Escape or backdrop click",
+      "Click Explore (chart icon) to open the Full Data Explorer with Table, Profile, and Summary tabs",
+      "Click Select to link a population to your active scenario — a checkmark appears on the card",
+      "Built-in populations cannot be deleted; only generated and uploaded ones can",
+      "Upload a CSV or Parquet file to add a custom population — schema is validated client-side before confirming",
+      "Click Build New to open the Data Fusion Workbench and merge multiple statistical sources",
     ],
     concepts: [
       { term: "Data Fusion", definition: "Combining records from multiple data sources into a unified population dataset using statistical matching." },
+      { term: "Origin Tag", definition: "[Built-in] for pre-loaded datasets, [Generated] for Data Fusion outputs, [Uploaded] for user-provided files." },
+    ],
+  },
+  "population/population-explorer": {
+    title: "Full Data Explorer",
+    summary: "Investigate a population dataset with three views: paginated Table, column Profile with histograms, and dataset Summary.",
+    tips: [
+      "Table tab: click column headers to sort, type in filter boxes to narrow rows, use Prev/Next for pagination",
+      "Profile tab: select any column from the list on the left — numeric columns show histograms and percentile bars",
+      "Profile tab: use the Cross-tabulate selector to overlay a second categorical column as a stacked bar chart",
+      "Summary tab: the completeness table highlights columns with >10% nulls in amber and >50% nulls in red",
+    ],
+    concepts: [
+      { term: "Column Profile", definition: "Statistical summary of a single column: distribution histogram, percentiles, min/max/mean for numerics; value counts for categoricals." },
+      { term: "Cross-tabulation", definition: "A stacked bar chart showing how values of one column distribute across the categories of another." },
     ],
   },
   "engine": {

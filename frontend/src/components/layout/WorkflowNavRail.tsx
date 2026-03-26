@@ -13,7 +13,7 @@
 
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { GenerationResult, PortfolioListItem, ResultListItem } from "@/api/types";
+import type { GenerationResult, PortfolioListItem, ResultListItem, PopulationItem } from "@/api/types";
 import type { StageKey, WorkspaceScenario } from "@/types/workspace";
 import { STAGES } from "@/types/workspace";
 
@@ -30,6 +30,7 @@ export interface WorkflowNavRailProps {
   portfolios: PortfolioListItem[];
   results: ResultListItem[];
   activeScenario: WorkspaceScenario | null;
+  populations: PopulationItem[];
 }
 
 // ============================================================================
@@ -50,7 +51,12 @@ function isComplete(
       // not just any portfolio existing in the library.
       return typeof activeScenario?.portfolioName === "string" && activeScenario.portfolioName.length > 0;
     case "population":
-      return !!selectedPopulationId || dataFusionResult !== null;
+      // AC-5 (Story 20.4): primary signal is activeScenario.populationIds; legacy fallback.
+      return (
+        (activeScenario?.populationIds?.length ?? 0) > 0 ||
+        !!selectedPopulationId ||
+        dataFusionResult !== null
+      );
     case "engine":
       return activeScenario !== null;
     case "results":
@@ -69,6 +75,7 @@ function getSummary(
   portfolios: PortfolioListItem[],
   results: ResultListItem[],
   activeScenario: WorkspaceScenario | null,
+  populations: PopulationItem[],
 ): string | null {
   switch (key) {
     case "policies": {
@@ -80,8 +87,11 @@ function getSummary(
         const count = dataFusionResult.summary.record_count.toLocaleString();
         return `${count} records`;
       }
-      if (selectedPopulationId) {
-        return selectedPopulationId;
+      // Prefer activeScenario.populationIds[0], fall back to legacy selectedPopulationId
+      const popId = activeScenario?.populationIds?.[0] ?? selectedPopulationId;
+      if (popId) {
+        // Look up display name from populations list
+        return populations.find((p) => p.id === popId)?.name ?? popId;
       }
       return null;
     }
@@ -139,6 +149,7 @@ export function WorkflowNavRail({
   portfolios,
   results,
   activeScenario,
+  populations,
 }: WorkflowNavRailProps) {
   return (
     <nav aria-label="Workflow navigation" className="flex flex-col gap-0">
@@ -147,7 +158,7 @@ export function WorkflowNavRail({
         const complete = isComplete(stage.key, selectedPopulationId, dataFusionResult, portfolios, results, activeScenario);
         const summary = collapsed
           ? null
-          : getSummary(stage.key, selectedPopulationId, dataFusionResult, portfolios, results, activeScenario);
+          : getSummary(stage.key, selectedPopulationId, dataFusionResult, portfolios, results, activeScenario, populations);
         const isLast = index === STAGES.length - 1;
 
         return (

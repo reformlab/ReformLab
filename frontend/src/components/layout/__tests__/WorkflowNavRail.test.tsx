@@ -32,6 +32,7 @@ function baseProps(overrides: Partial<WorkflowNavRailProps> = {}): WorkflowNavRa
     portfolios: [],
     results: [],
     activeScenario: null,
+    populations: [],
     ...overrides,
   };
 }

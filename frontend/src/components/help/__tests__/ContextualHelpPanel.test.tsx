@@ -16,9 +16,9 @@ describe("ContextualHelpPanel", () => {
     expect(screen.getByText("Policies & Portfolio")).toBeInTheDocument();
   });
 
-  it("renders Population title for population stage", () => {
+  it("renders Population Library title for population stage (Story 20.4)", () => {
     render(<ContextualHelpPanel activeStage="population" activeSubView={null} />);
-    expect(screen.getByText("Population")).toBeInTheDocument();
+    expect(screen.getByText("Population Library")).toBeInTheDocument();
   });
 
   it("renders Engine Configuration title for engine stage", () => {

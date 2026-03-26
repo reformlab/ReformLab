@@ -16,7 +16,14 @@ import App from "@/App";
 import { AppProvider } from "@/contexts/AppContext";
 
 vi.mock("@/api/auth", () => ({ login: vi.fn() }));
-vi.mock("@/api/populations", () => ({ listPopulations: vi.fn() }));
+vi.mock("@/api/populations", () => ({
+  listPopulations: vi.fn(),
+  getPopulationPreview: vi.fn(),
+  getPopulationProfile: vi.fn(),
+  getPopulationCrosstab: vi.fn(),
+  uploadPopulation: vi.fn(),
+  deletePopulation: vi.fn().mockResolvedValue(undefined),
+}));
 vi.mock("@/api/templates", () => ({ listTemplates: vi.fn(), getTemplate: vi.fn() }));
 vi.mock("@/api/scenarios", () => ({ listScenarios: vi.fn(), getScenario: vi.fn(), createScenario: vi.fn(), cloneScenario: vi.fn(), deleteScenario: vi.fn() }));
 vi.mock("@/api/results", () => ({ listResults: vi.fn(), getResult: vi.fn(), deleteResult: vi.fn(), exportResultCsv: vi.fn(), exportResultParquet: vi.fn() }));
@@ -153,12 +160,12 @@ describe("App", () => {
       expect(screen.getAllByText("Policies & Portfolio").length).toBeGreaterThanOrEqual(1);
     });
 
-    // Navigate to population stage via hash
+    // Navigate to population stage via hash — Story 20.4: library is default entry point
     window.location.hash = "#population";
     window.dispatchEvent(new HashChangeEvent("hashchange"));
 
     await waitFor(() => {
-      expect(screen.getByText("Data Fusion Workbench")).toBeInTheDocument();
+      expect(screen.getAllByText("Population Library").length).toBeGreaterThanOrEqual(1);
     });
   });
 });

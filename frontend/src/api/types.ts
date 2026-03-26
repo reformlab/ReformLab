@@ -401,6 +401,80 @@ export interface PortfolioComparisonResponse {
 
 
 // ============================================================================
+// Population explorer types — Story 20.4
+// ============================================================================
+
+export interface PopulationPreviewResponse {
+  id: string;
+  name: string;
+  rows: Record<string, unknown>[];
+  columns: ColumnInfo[];
+  total_rows: number;
+}
+
+export interface ColumnProfileNumeric {
+  type: "numeric";
+  count: number;
+  nulls: number;
+  null_pct: number;
+  min: number;
+  max: number;
+  mean: number;
+  median: number;
+  std: number;
+  percentiles: Record<string, number>;
+  histogram_buckets: Array<{ bin_start: number; bin_end: number; count: number }>;
+}
+
+export interface ColumnProfileCategorical {
+  type: "categorical";
+  count: number;
+  nulls: number;
+  null_pct: number;
+  cardinality: number;
+  value_counts: Array<{ value: string; count: number }>;
+}
+
+export interface ColumnProfileBoolean {
+  type: "boolean";
+  count: number;
+  nulls: number;
+  null_pct: number;
+  true_count: number;
+  false_count: number;
+}
+
+export type ColumnProfile = ColumnProfileNumeric | ColumnProfileCategorical | ColumnProfileBoolean;
+
+export interface PopulationProfileResponse {
+  id: string;
+  columns: Array<{ name: string; profile: ColumnProfile }>;
+}
+
+export interface PopulationCrosstabResponse {
+  col_a: string;
+  col_b: string;
+  data: Array<Record<string, unknown>>;
+}
+
+export interface PopulationUploadResponse {
+  id: string;
+  name: string;
+  row_count: number;
+  column_count: number;
+  matched_columns: string[];
+  unrecognized_columns: string[];
+  missing_required: string[];
+  valid: boolean;
+}
+
+export interface PopulationLibraryItem extends PopulationItem {
+  origin: "built-in" | "generated" | "uploaded";
+  column_count: number;
+  created_date: string | null;
+}
+
+// ============================================================================
 // Decision viewer types — Story 17.5
 // ============================================================================
 

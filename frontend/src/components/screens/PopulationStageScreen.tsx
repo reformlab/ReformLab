@@ -1,24 +1,245 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 Lucas Vivier
 /**
- * PopulationStageScreen — Stage 2 wrapper (Story 20.1, AC-2).
+ * PopulationStageScreen — stateful coordinator for Stage 2 (Population).
  *
- * Thin wrapper that renders DataFusionWorkbench with props from AppContext.
- * Stage 2 (Population) is fully functional in this story.
+ * Reads activeSubView from AppContext and renders:
+ *   - null/undefined: PopulationLibraryScreen (default)
+ *   - "data-fusion":  DataFusionWorkbench (existing)
+ *   - "population-explorer": PopulationExplorer (new)
+ *
+ * Also manages local state: Quick Preview overlay, explorer population, uploaded populations.
+ *
+ * Story 20.4 — AC-1 through AC-6.
  */
+
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { useAppState } from "@/contexts/AppContext";
 import { DataFusionWorkbench } from "@/components/screens/DataFusionWorkbench";
+import { PopulationLibraryScreen } from "@/components/screens/PopulationLibraryScreen";
+import { PopulationQuickPreview } from "@/components/population/PopulationQuickPreview";
+import { PopulationExplorer } from "@/components/population/PopulationExplorer";
+import { PopulationUploadZone } from "@/components/population/PopulationUploadZone";
+import type { PopulationLibraryItem } from "@/api/types";
+import { deletePopulation } from "@/api/populations";
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+/** Map API populations to PopulationLibraryItem (built-in). */
+function toLibraryItem(p: {
+  id: string;
+  name: string;
+  households: number;
+  source: string;
+  year: number;
+}): PopulationLibraryItem {
+  return {
+    ...p,
+    origin: "built-in",
+    column_count: 14, // Placeholder — Story 20.7 returns real column_count
+    created_date: null,
+  };
+}
+
+// ============================================================================
+// Main component
+// ============================================================================
 
 export function PopulationStageScreen() {
-  const { dataFusionSources, dataFusionMethods, dataFusionResult, setDataFusionResult } = useAppState();
+  const {
+    populations,
+    populationsLoading,
+    dataFusionSources,
+    dataFusionMethods,
+    dataFusionResult,
+    setDataFusionResult,
+    activeSubView,
+    navigateTo,
+    activeScenario,
+    updateScenarioField,
+    selectedPopulationId,
+    setSelectedPopulationId,
+  } = useAppState();
+
+  // Local state
+  const [previewPopulationId, setPreviewPopulationId] = useState<string | null>(null);
+  const [explorerPopulationId, setExplorerPopulationId] = useState<string | null>(null);
+  const [uploadedPopulations, setUploadedPopulations] = useState<PopulationLibraryItem[]>([]);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+
+  // Merge all population sources
+  const mergedPopulations = useMemo((): PopulationLibraryItem[] => {
+    const builtIn: PopulationLibraryItem[] = populations.map(toLibraryItem);
+
+    const generated: PopulationLibraryItem[] = dataFusionResult
+      ? [
+          {
+            id: "data-fusion-result",
+            name: "Fused Population",
+            households: dataFusionResult.summary.record_count,
+            source: "Data Fusion",
+            year: new Date().getFullYear(),
+            origin: "generated",
+            column_count: dataFusionResult.summary.column_count,
+            created_date: new Date().toISOString(),
+          },
+        ]
+      : [];
+
+    return [...builtIn, ...generated, ...uploadedPopulations];
+  }, [populations, dataFusionResult, uploadedPopulations]);
+
+  // Resolve the preview population name
+  const previewPopulationName = useMemo(() => {
+    if (!previewPopulationId) return "";
+    return mergedPopulations.find((p) => p.id === previewPopulationId)?.name ?? previewPopulationId;
+  }, [previewPopulationId, mergedPopulations]);
+
+  // ============================================================================
+  // Callbacks
+  // ============================================================================
+
+  function handlePreview(id: string) {
+    setPreviewPopulationId(id);
+  }
+
+  function handleExplore(id: string) {
+    setExplorerPopulationId(id);
+    navigateTo("population", "population-explorer");
+  }
+
+  function handleSelect(id: string) {
+    const isDeselecting = activeScenario?.populationIds.includes(id) ?? false;
+    if (isDeselecting) {
+      updateScenarioField("populationIds", []);
+      setSelectedPopulationId("");
+    } else {
+      updateScenarioField("populationIds", [id]);
+      setSelectedPopulationId(id);
+    }
+  }
+
+  function handleDelete(id: string) {
+    // If the deleted population is the selected one, clear selection
+    if (
+      (activeScenario?.populationIds.includes(id) ?? false) ||
+      selectedPopulationId === id
+    ) {
+      updateScenarioField("populationIds", []);
+      setSelectedPopulationId("");
+    }
+
+    if (id === "data-fusion-result") {
+      setDataFusionResult(null);
+      return;
+    }
+
+    // For uploaded populations: optimistic delete (no revert on failure per story spec)
+    setUploadedPopulations((prev) => prev.filter((p) => p.id !== id));
+
+    // Fire API call (Story 20.7 endpoint) and warn on failure
+    void deletePopulation(id).catch(() => {
+      toast.warning("Population deleted locally", {
+        description: "Backend sync failed — the population will reappear on next reload.",
+      });
+    });
+  }
+
+  function handleUploadConfirm(population: PopulationLibraryItem) {
+    setUploadedPopulations((prev) => [population, ...prev]);
+    setUploadDialogOpen(false);
+    toast.success(`"${population.name}" added to library`);
+  }
+
+  function handleOpenFullView(id: string) {
+    setPreviewPopulationId(null);
+    setExplorerPopulationId(id);
+    navigateTo("population", "population-explorer");
+  }
+
+  function handleBackToLibrary() {
+    navigateTo("population");
+  }
+
+  function handleDataFusionGenerated(result: Parameters<typeof setDataFusionResult>[0]) {
+    setDataFusionResult(result);
+    // Navigate back to library to show the new generated population
+    navigateTo("population");
+  }
+
+  // ============================================================================
+  // Compute selected ID (canonical first, then legacy fallback)
+  // ============================================================================
+
+  const effectiveSelectedId =
+    (activeScenario?.populationIds?.[0] ?? "") || selectedPopulationId;
+
+  // ============================================================================
+  // Sub-view routing
+  // ============================================================================
+
+  const content = (() => {
+    if (activeSubView === "data-fusion") {
+      return (
+        <DataFusionWorkbench
+          sources={dataFusionSources}
+          methods={dataFusionMethods}
+          initialResult={dataFusionResult}
+          onPopulationGenerated={handleDataFusionGenerated}
+        />
+      );
+    }
+
+    if (activeSubView === "population-explorer") {
+      return (
+        <PopulationExplorer
+          populationId={explorerPopulationId}
+          onBack={handleBackToLibrary}
+        />
+      );
+    }
+
+    // Default: Population Library
+    return (
+      <PopulationLibraryScreen
+        populations={mergedPopulations}
+        selectedPopulationId={effectiveSelectedId}
+        loading={populationsLoading}
+        onPreview={handlePreview}
+        onExplore={handleExplore}
+        onSelect={handleSelect}
+        onDelete={handleDelete}
+        onUpload={() => { setUploadDialogOpen(true); }}
+        onBuildNew={() => { navigateTo("population", "data-fusion"); }}
+      />
+    );
+  })();
 
   return (
-    <DataFusionWorkbench
-      sources={dataFusionSources}
-      methods={dataFusionMethods}
-      initialResult={dataFusionResult}
-      onPopulationGenerated={setDataFusionResult}
-    />
+    <div className="flex h-full flex-col">
+      {content}
+
+      {/* Quick Preview slide-over (above library content) */}
+      {previewPopulationId && (
+        <PopulationQuickPreview
+          populationId={previewPopulationId}
+          populationName={previewPopulationName}
+          onClose={() => { setPreviewPopulationId(null); }}
+          onOpenFullView={handleOpenFullView}
+        />
+      )}
+
+      {/* Upload overlay */}
+      {uploadDialogOpen && (
+        <PopulationUploadZone
+          onClose={() => { setUploadDialogOpen(false); }}
+          onConfirm={handleUploadConfirm}
+        />
+      )}
+    </div>
   );
 }

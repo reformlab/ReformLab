@@ -23,7 +23,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // -----------------------------------------------------------------------
 
 vi.mock("@/api/auth", () => ({ login: vi.fn() }));
-vi.mock("@/api/populations", () => ({ listPopulations: vi.fn() }));
+vi.mock("@/api/populations", () => ({
+  listPopulations: vi.fn(),
+  getPopulationPreview: vi.fn(),
+  getPopulationProfile: vi.fn(),
+  getPopulationCrosstab: vi.fn(),
+  uploadPopulation: vi.fn(),
+  deletePopulation: vi.fn().mockResolvedValue(undefined),
+}));
 vi.mock("@/api/templates", () => ({ listTemplates: vi.fn(), getTemplate: vi.fn() }));
 vi.mock("@/api/scenarios", () => ({
   listScenarios: vi.fn(),
@@ -172,7 +179,7 @@ describe("Analyst Journey — cross-screen navigation", () => {
       expect(screen.getAllByText("Policies & Portfolio")[0]).toBeInTheDocument();
     });
 
-    it("navigates to Data Fusion Workbench via Population button", async () => {
+    it("navigates to Population Library via Population button (Story 20.4)", async () => {
       const user = userEvent.setup();
       renderApp();
       await authenticate(user);
@@ -181,7 +188,9 @@ describe("Analyst Journey — cross-screen navigation", () => {
       await user.click(within(getLeftPanel()).getByRole("button", { name: /^population$/i }));
 
       await waitFor(() => {
-        expect(screen.getByText("Data Fusion Workbench")).toBeInTheDocument();
+        // Story 20.4: Population Library is now the default entry point (not DataFusionWorkbench)
+        // Use getAllByText because both the h1 and the help panel title show this text
+        expect(screen.getAllByText("Population Library").length).toBeGreaterThanOrEqual(1);
       });
     });
 
@@ -494,6 +503,81 @@ describe("Analyst Journey — cross-screen navigation", () => {
       await waitFor(() => {
         expect(screen.queryByText("Switch Scenario")).not.toBeInTheDocument();
         expect(window.location.hash).toBe("#results/runner");
+      });
+    });
+  });
+
+  // ===========================================================================
+  // Story 20.4 tests
+  // ===========================================================================
+
+  describe("Story 20.4 — Population Library and Data Explorer", () => {
+    it("navigates to #population and shows Population Library with cards (AC-1)", async () => {
+      const user = userEvent.setup();
+      renderApp();
+      await authenticate(user);
+
+      window.location.hash = "#population";
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+
+      await waitFor(() => {
+        // getAllByText since the help panel also shows "Population Library"
+        expect(screen.getAllByText("Population Library").length).toBeGreaterThanOrEqual(1);
+      });
+      // Mock populations appear as cards (from mockPopulations fallback)
+      expect(screen.getAllByText("[Built-in]").length).toBeGreaterThan(0);
+    });
+
+    it("clicking Build New Population opens Data Fusion Workbench sub-view (AC-1)", async () => {
+      const user = userEvent.setup();
+      renderApp();
+      await authenticate(user);
+
+      window.location.hash = "#population";
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+
+      await waitFor(() => {
+        expect(screen.getAllByText("Population Library").length).toBeGreaterThanOrEqual(1);
+      });
+
+      await user.click(screen.getByRole("button", { name: /build new/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText("Data Fusion Workbench")).toBeInTheDocument();
+      });
+    });
+
+    it("navigates to #population/population-explorer and shows empty explorer state (AC-3)", async () => {
+      const user = userEvent.setup();
+      renderApp();
+      await authenticate(user);
+
+      window.location.hash = "#population/population-explorer";
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+
+      await waitFor(() => {
+        expect(screen.getByText(/select a population from the library/i)).toBeInTheDocument();
+      });
+    });
+
+    it("selecting a population shows completion indicator in nav rail (AC-5)", async () => {
+      const user = userEvent.setup();
+      // Pre-configure with a returning user who has a population selected
+      const savedScenario = createDemoScenario();
+      localStorage.setItem(HAS_LAUNCHED_KEY, "true");
+      localStorage.setItem(SCENARIO_STORAGE_KEY, JSON.stringify({
+        ...savedScenario,
+        populationIds: ["fr-synthetic-2024"],
+      }));
+      localStorage.setItem(STAGE_STORAGE_KEY, "population");
+
+      renderApp();
+      await authenticate(user);
+
+      await waitFor(() => {
+        // Population stage should be complete (nav rail checkmark on step-indicator)
+        const populationIndicator = screen.getByTestId("step-indicator-population");
+        expect(populationIndicator.getAttribute("data-active")).toBeDefined();
       });
     });
   });

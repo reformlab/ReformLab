@@ -34,6 +34,7 @@ function readStoredBool(key: string): boolean {
 function Workspace() {
   const {
     selectedPopulationId,
+    populations,
     decileData,
     startRun,
     runResult,
@@ -233,6 +234,7 @@ function Workspace() {
               portfolios={portfolios}
               results={results}
               activeScenario={activeScenario}
+              populations={populations}
             />
           </LeftPanel>
         }
