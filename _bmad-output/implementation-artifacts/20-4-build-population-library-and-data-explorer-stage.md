@@ -13,11 +13,11 @@ so that I can understand and choose the right population data for my policy anal
 
 ## Acceptance Criteria
 
-1. **AC-1: Population Library as Stage 2 entry point** — Given Stage 2 (Population) is open, when the user views the screen, then a Population Library lists all available datasets (built-in, generated, uploaded) with per-population metadata (name, source tag, row count, column count, created date) and action buttons (Preview, Explore, Select, Delete). The library is the default view when no sub-view is active.
-2. **AC-2: Quick Preview slide-over** — Given a population in the library, when the user clicks Preview, then a right-side slide-over panel opens showing the first 100 rows in a sortable table with column headers, a row count indicator, and an "Open full view" link that navigates to the Full Data Explorer. The slide-over closes on backdrop click or Escape.
+1. **AC-1: Population Library as Stage 2 entry point** — Given Stage 2 (Population) is open, when the user views the screen, then a Population Library lists all available datasets (built-in, generated, uploaded) with per-population metadata (name, source tag, row count, column count, created date) and action buttons (Preview, Explore, Select, and Delete for non-built-in populations). The library is the default view when no sub-view is active.
+2. **AC-2: Quick Preview slide-over** — Given a population in the library, when the user clicks Preview, then a right-side slide-over panel opens showing the first 100 rows in a sortable table with column headers, per-column filter inputs, a row count indicator, and an "Open full view" link that navigates to the Full Data Explorer. The slide-over closes on backdrop click or Escape.
 3. **AC-3: Full Data Explorer with three tabs** — Given the user opens the Full Data Explorer (via "Explore" button or "Open full view" link), then the main content area shows a tab-based explorer with: (a) **Table View** — paginated data table with sortable columns, per-column filters, and row count; (b) **Profile View** — column list (left) with column profiler (right) showing histograms for numeric columns, value counts for categorical, and cross-tab selector; (c) **Summary View** — dataset overview with row/column counts, column type breakdown, and completeness table.
-4. **AC-4: Upload flow with schema validation** — Given the Upload action, when the user drops or selects a CSV/Parquet file, then the system shows a schema validation report (row count, matched columns, unrecognized columns, missing required columns). Missing required columns block the upload. On confirm, the population is added to the library.
-5. **AC-5: Scenario integration** — Given the user clicks Select on a population, when the selection completes, then `activeScenario.populationIds` is updated with the selected population's ID, `selectedPopulationId` (legacy) is synced, and the nav rail Population stage shows a completion checkmark. Clearing the selection nulls both fields.
+4. **AC-4: Upload flow with schema validation** — Given the Upload action, when the user drops or selects a CSV/Parquet file, then the system shows a schema validation report (row count, matched columns, unrecognized columns, missing required columns). Missing required columns block the upload. **Story 20.4 acceptance mode:** because the Story 20.7 upload endpoint is not yet available, the validation report is simulated from the file's client-side schema, and on confirm the population is added to the local library as an uploaded entry with a generated ID. The real upload path (POST `/api/populations/upload`) is implemented in Story 20.7.
+5. **AC-5: Scenario integration** — Given the user clicks Select on a population, when the selection completes, then `activeScenario.populationIds` is updated with the selected population's ID, `selectedPopulationId` (legacy) is synced, and the nav rail Population stage shows a completion checkmark. Clearing the selection sets `populationIds` to `[]` and `selectedPopulationId` to `""`.
 6. **AC-6: Evidence placeholder tags** — Given a population in the library list, when its metadata is displayed, then it shows a source classification tag: `[Built-in]` for pre-loaded datasets, `[Generated]` for Data Fusion outputs, `[Uploaded]` for user-provided files. These are placeholder display tags — canonical evidence contracts come in EPIC-21 Story 21.2.
 
 ## Tasks / Subtasks
@@ -25,7 +25,8 @@ so that I can understand and choose the right population data for my policy anal
 - [ ] Task 1: Add TanStack Table dependency and create population API types + client stubs (AC: all)
   - [ ] 1.1: Install `@tanstack/react-table` via `npm install @tanstack/react-table` in `frontend/`. This is the headless table library required by the UX spec for paginated, sortable, filterable data tables.
   - [ ] 1.2: Add new types to `frontend/src/api/types.ts` for population explorer responses:
-    - `PopulationPreviewResponse`: `{ id: string; name: string; rows: Record<string, unknown>[]; columns: ColumnInfo[]; total_rows: number; }`
+    - ⚠️ **`ColumnInfo` already exists** at `api/types.ts:172` as `{ name: string; type: string; description: string }`. Do NOT re-declare it — reuse the existing type. The `description` field may be left as `""` in mock data where not applicable.
+    - `PopulationPreviewResponse`: `{ id: string; name: string; rows: Record<string, unknown>[]; columns: ColumnInfo[]; total_rows: number; }` (uses existing `ColumnInfo`)
     - `ColumnProfileNumeric`: `{ type: "numeric"; count: number; nulls: number; null_pct: number; min: number; max: number; mean: number; median: number; std: number; percentiles: Record<string, number>; histogram_buckets: Array<{ bin_start: number; bin_end: number; count: number }>; }`
     - `ColumnProfileCategorical`: `{ type: "categorical"; count: number; nulls: number; null_pct: number; cardinality: number; value_counts: Array<{ value: string; count: number }>; }`
     - `ColumnProfileBoolean`: `{ type: "boolean"; count: number; nulls: number; null_pct: number; true_count: number; false_count: number; }`
@@ -41,6 +42,7 @@ so that I can understand and choose the right population data for my policy anal
     - `uploadPopulation(file: File): Promise<PopulationUploadResponse>`
     - `deletePopulation(id: string): Promise<void>`
     - These call the endpoints defined in Story 20.7 (`/api/populations/{id}/preview`, `/api/populations/{id}/profile`, `/api/populations/{id}/crosstab`, `/api/populations/upload`). Until Story 20.7 lands, the hooks will fall back to mock data.
+    - `deletePopulation(id)` endpoint is also in Story 20.7. Until then: use **optimistic deletion** — remove from local state first, fire the API call, and on failure show a toast warning but do NOT revert local state. Built-in populations have no Delete button (see Task 3.2).
 - [ ] Task 2: Create population mock/fixture data for explorer (AC: #2, #3, #4)
   - [ ] 2.1: Create `frontend/src/data/mock-population-explorer.ts` with:
     - `mockPopulationPreview`: 100 rows of realistic French household data (household_id, income, region, housing_type, heating_type, vehicle_type, vehicle_age, energy_consumption, carbon_emissions, household_size) with proper column metadata.
@@ -50,7 +52,12 @@ so that I can understand and choose the right population data for my policy anal
   - [ ] 2.2: Add `usePopulationPreview(id)`, `usePopulationProfile(id)`, `usePopulationCrosstab(id, colA, colB)` hooks to `frontend/src/hooks/useApi.ts` following the existing pattern (try API, fall back to mock).
 - [ ] Task 3: Build PopulationLibraryScreen (AC: #1, #5, #6)
   - [ ] 3.1: Create `frontend/src/components/screens/PopulationLibraryScreen.tsx` as the main Stage 2 default view. Layout: top toolbar row (title "Population Library", Upload button, selected population indicator) + population card grid below.
-  - [ ] 3.2: Each population card shows: name, source tag (`[Built-in]`/`[Generated]`/`[Uploaded]` via Badge component, AC-6), row count, column count, year. Action buttons: Preview (Eye icon), Explore (BarChart3 icon), Select (CheckCircle2 icon, highlighted when selected), Delete (Trash2 icon, only for uploaded/generated).
+  - [ ] 3.2: Each population card shows: name, source tag (`[Built-in]`/`[Generated]`/`[Uploaded]` via Badge component, AC-6), row count, column count, year. Action buttons:
+    - Preview (Eye icon) — all populations
+    - Explore (BarChart3 icon) — all populations
+    - Select (CheckCircle2 icon, highlighted when selected) — all populations
+    - Edit (Pencil icon, generated only) — calls `navigateTo("population", "data-fusion")` to return to DataFusionWorkbench. Navigation shortcut only; pre-population of the workbench with saved parameters is deferred to a future story.
+    - Delete (Trash2 icon, uploaded/generated only) — not shown for built-in populations.
   - [ ] 3.3: The library merges three sources into one list:
     - Built-in: `populations` from AppContext (mock or API), tagged `origin: "built-in"`
     - Generated: if `dataFusionResult` exists in AppContext, synthesize a `PopulationLibraryItem` from it, tagged `origin: "generated"`
@@ -60,27 +67,28 @@ so that I can understand and choose the right population data for my policy anal
   - [ ] 3.6: Delete for generated populations clears `dataFusionResult` (via `setDataFusionResult(null)`). Delete for uploaded populations removes from local state. If the deleted population is the selected one, clear selection (set `populationIds` to `[]`, `selectedPopulationId` to `""`).
 - [ ] Task 4: Build Quick Preview slide-over (AC: #2)
   - [ ] 4.1: Create `frontend/src/components/population/PopulationQuickPreview.tsx`. This is a right-side slide-over overlay (same fixed-position pattern as `ScenarioEntryDialog.tsx`): backdrop (bg-black/30) + panel (right-aligned, max-w-xl, full height, overflow-y-auto).
-  - [ ] 4.2: Content: header with population name + close button (X), row count badge, then a table of first 100 rows. Use a basic `<table>` with sticky header row, monospace data cells (`font-mono text-xs`), sortable column headers (click to toggle asc/desc via local state).
+  - [ ] 4.2: Content: header with population name + close button (X), row count badge, then a table of first 100 rows. Use a basic `<table>` with sticky header row, monospace data cells (`font-mono text-xs`), sortable column headers (click to toggle asc/desc via local state), and a per-column filter row (one `<Input>` per column in a `<tr>` immediately below the header row). Client-side text filtering against the 100 preview rows; clearing a filter input restores all visible rows.
   - [ ] 4.3: "Open full view" link at the bottom → calls `navigateTo("population", "population-explorer")` and passes the population ID via a local state or URL parameter approach. The simplest approach: PopulationStageScreen tracks `explorerPopulationId` in local state and passes it down.
   - [ ] 4.4: Close on backdrop click, Escape key, or X button.
   - [ ] 4.5: Data source: call `usePopulationPreview(id)` hook. Shows loading spinner while fetching. Falls back to mock data if API unavailable.
 - [ ] Task 5: Build Full Data Explorer components (AC: #3)
-  - [ ] 5.1: Create `frontend/src/components/population/PopulationExplorer.tsx` as the full-screen explorer shell. Uses the existing `Tabs` component (Radix UI) with three tabs: "Table", "Profile", "Summary". Header shows population name, "Back to library" button (navigates to `population` stage without sub-view).
+  - [ ] 5.1: Create `frontend/src/components/population/PopulationExplorer.tsx` as the full-screen explorer shell. Uses the existing `Tabs` component (Radix UI) with three tabs: "Table", "Profile", "Summary". Header shows population name, "Back to library" button (calls `navigateTo("population")` — not `navigateTo("population", undefined)` or direct state mutation). **Empty state:** if `populationId` prop is `null` or `undefined` (e.g., direct hash navigation to `#population/population-explorer` without selecting a population first), render a centered message: "Select a population from the library to explore" with a "Back to Library" button calling `navigateTo("population")`.
   - [ ] 5.2: Create `frontend/src/components/population/PopulationDataTable.tsx` — Table View tab. Uses TanStack Table (`@tanstack/react-table`) for:
     - Column definitions auto-generated from data columns
-    - Client-side sorting (click column header toggles asc/desc/none)
-    - Client-side filtering (text input per column header)
-    - Pagination (50 rows per page, prev/next buttons, page indicator)
+    - Client-side sorting (click column header toggles asc/desc/none) — use `getSortedRowModel()`
+    - Client-side filtering (text input per column header) — use `getFilteredRowModel()`
+    - Pagination (50 rows per page, prev/next buttons, page indicator) — use `getPaginationRowModel()`
     - Monospace data values (`font-mono text-xs`)
     - Total row count display ("Showing 1–50 of 100,000")
     - Column types rendered as Badge in header (numeric/categorical/boolean)
+    - **Pagination strategy for Story 20.4:** all row models are client-side because the explorer data is at most 100 rows from the preview endpoint mock. The UX spec notes "server-side pagination for 500K rows" — this migration happens in Story 20.7 by switching to TanStack Table `manualPagination` mode and wiring `offset`/`limit` params to `getPopulationPreview`. Do not attempt server-side pagination in this story.
   - [ ] 5.3: Create `frontend/src/components/population/PopulationProfiler.tsx` — Profile View tab. Two-column layout: column list sidebar (left, scrollable) + profile panel (right).
     - Column list: clickable items showing column name + type badge. First column selected by default.
     - Profile panel content varies by type:
       - **Numeric**: Histogram (Recharts BarChart, 20 bins, Slate 400 fill), percentile bar (P10/P25/P50/P75/P90 as a horizontal stacked bar), stats card (min, max, mean, median, std, null count), cross-tab selector dropdown.
       - **Categorical**: Horizontal bar chart of value counts (top 20, Recharts BarChart layout="vertical"), cardinality badge, cross-tab selector.
       - **Boolean**: True/False proportion bar with counts.
-    - Cross-tab: when a second column is selected, show stacked bar chart (Recharts StackedBarChart) with the primary column as X-axis and the second column as stack segments.
+    - Cross-tab: when a second column is selected, show a stacked bar chart using `<BarChart>` with `<Bar stackId="cross-tab">` for each category of the second column (Recharts has no `StackedBarChart` export — stacking is done via the `stackId` prop on regular `<Bar>` elements). See `TransitionChart.tsx:121-125` for the established pattern.
   - [ ] 5.4: Create `frontend/src/components/population/PopulationSummaryView.tsx` — Summary View tab.
     - Dataset overview: row count, column count, estimated memory size
     - Column type breakdown: "N numeric, M categorical, K boolean" as Badge pills
@@ -95,7 +103,7 @@ so that I can understand and choose the right population data for my policy anal
     - ⚠ Unrecognized columns (amber list items, with note "will be kept but not used")
     - ✗ Missing required columns (red list items, blocks confirmation)
   - [ ] 6.3: Confirm button (disabled if `missing_required.length > 0`). On confirm: add population to local `uploadedPopulations` state in PopulationStageScreen, close the upload overlay, show success toast.
-  - [ ] 6.4: Until Story 20.7 implements the upload endpoint, the upload call will fail. Show a graceful fallback: "Upload endpoint not yet available — use Data Fusion to generate populations." This is temporary and will be removed in 20.7.
+  - [ ] 6.4: **Story 20.4 upload mode (no backend):** do not call `uploadPopulation(file)` API in this story. Instead, simulate the schema validation client-side by reading the file header (first line of CSV, or Parquet schema if parseable). Build the `PopulationUploadResponse`-shaped object with `matched_columns` (columns whose names appear in the known schema) and `unrecognized_columns`. Required columns to validate against: `["household_id", "income", "region", "household_size"]` (minimum required schema for ReformLab scenarios). Show the validation report UI as specified in Task 6.2. On confirm, generate a local ID (`"uploaded-${Date.now()}"`) and add to `uploadedPopulations` state. Story 20.7 replaces this with the real `POST /api/populations/upload` endpoint.
   - [ ] 6.5: The upload flow opens as a fixed-position overlay (same pattern as save/load dialogs in PoliciesStageScreen).
 - [ ] Task 7: Rewrite PopulationStageScreen with sub-view routing (AC: #1, #2, #3)
   - [ ] 7.1: Replace the thin wrapper in `PopulationStageScreen.tsx` with a stateful coordinator that reads `activeSubView` from AppContext and renders the appropriate sub-view:
@@ -105,9 +113,9 @@ so that I can understand and choose the right population data for my policy anal
   - [ ] 7.2: Track local state for: `previewPopulationId` (which population's Quick Preview is open), `explorerPopulationId` (which population the explorer is showing), `uploadedPopulations` (populations added via upload).
   - [ ] 7.3: Pass callbacks down to PopulationLibraryScreen: `onPreview(id)`, `onExplore(id)`, `onSelect(id)`, `onDelete(id)`, `onUpload()`, `onBuildNew()` (navigates to data-fusion sub-view).
   - [ ] 7.4: The Quick Preview slide-over renders at the PopulationStageScreen level (above the library content), controlled by `previewPopulationId`.
-  - [ ] 7.5: When Data Fusion completes (onPopulationGenerated fires), auto-navigate back to the library (set `activeSubView` to null) and show the newly generated population with `origin: "generated"`.
+  - [ ] 7.5: When Data Fusion completes (onPopulationGenerated fires), auto-navigate back to the library by calling `navigateTo("population")` (not by directly mutating state) and show the newly generated population with `origin: "generated"`.
 - [ ] Task 8: Update nav rail completion, help content, and routing (AC: #5, #6)
-  - [ ] 8.1: In `WorkflowNavRail.tsx`, the Population completion check already works via `selectedPopulationId || dataFusionResult !== null`. Update it to also check `activeScenario?.populationIds?.length > 0` as the primary signal (with fallback to legacy). Update the summary line to show the selected population name (look up from populations list).
+  - [ ] 8.1: In `WorkflowNavRail.tsx`, the Population completion check already works via `selectedPopulationId || dataFusionResult !== null`. Update it to also check `activeScenario?.populationIds?.length > 0` as the primary signal (with fallback to legacy). To show the selected population **name** (instead of raw ID) in the summary line: add `populations: PopulationItem[]` to `WorkflowNavRailProps` and update `getSummary` for `"population"` to: `populations.find(p => p.id === selectedPopulationId)?.name ?? selectedPopulationId ?? null`. Update the `WorkflowNavRail` call site in `LeftPanel.tsx` (or wherever it is rendered) to pass `populations={populations}` from `useAppState()`.
   - [ ] 8.2: In `help-content.ts`, update the `"population"` entry to describe the new Population Library, Quick Preview, Data Explorer, and Upload flows. Add a `"population-explorer"` entry for the Full Data Explorer help.
   - [ ] 8.3: In `App.tsx`, no changes needed — `PopulationStageScreen` handles sub-view routing internally (reads `activeSubView` from `useAppState()`). The existing `{activeStage === "population" ? <PopulationStageScreen /> : null}` line continues to work.
 - [ ] Task 9: Add tests (AC: all)
@@ -272,7 +280,7 @@ PopulationStageScreen (stateful coordinator)
 │   ├─ PopulationProfiler (Profile tab — column profiler with charts)
 │   │   ├─ Histogram (Recharts BarChart, numeric columns)
 │   │   ├─ ValueCountsChart (Recharts BarChart layout="vertical", categorical)
-│   │   ├─ CrosstabChart (Recharts StackedBarChart)
+│   │   ├─ CrosstabChart (Recharts BarChart + Bar with stackId, see TransitionChart.tsx)
 │   │   └─ PercentileBar (custom component)
 │   └─ PopulationSummaryView (Summary tab)
 ├─ PopulationUploadZone (overlay, triggered from toolbar)
@@ -339,11 +347,15 @@ const mergedPopulations = useMemo((): PopulationLibraryItem[] => {
   const builtIn: PopulationLibraryItem[] = populations.map((p) => ({
     ...p,
     origin: "built-in" as const,
-    column_count: 14, // Default for known populations
+    column_count: 14, // Placeholder: Story 20.7 returns real column_count from API
     created_date: null,
   }));
 
   // 2. Generated population from Data Fusion (if any)
+  // Known limitation: "data-fusion-result" is an in-memory ID that does not survive
+  // page reload. If activeScenario.populationIds contains "data-fusion-result" after
+  // a reload (restored from localStorage) but dataFusionResult is null, treat it as
+  // an empty selection — do not crash or show a missing population.
   const generated: PopulationLibraryItem[] = dataFusionResult
     ? [{
         id: "data-fusion-result",
@@ -460,7 +472,8 @@ These match the existing `chart-theme.ts` CSS variables.
 | `frontend/src/api/populations.ts` | Add `getPopulationPreview`, `getPopulationProfile`, `getPopulationCrosstab`, `uploadPopulation`, `deletePopulation` functions |
 | `frontend/src/hooks/useApi.ts` | Add `usePopulationPreview(id)`, `usePopulationProfile(id)`, `usePopulationCrosstab(id, colA, colB)` hooks with mock data fallback |
 | `frontend/src/components/screens/PopulationStageScreen.tsx` | Replace thin wrapper with stateful coordinator: sub-view routing, library + explorer + upload + data fusion switching, Quick Preview overlay, scenario integration |
-| `frontend/src/components/layout/WorkflowNavRail.tsx` | Extend Population completion check to use `activeScenario?.populationIds?.length > 0` as primary signal. Update summary line to show selected population name. |
+| `frontend/src/components/layout/WorkflowNavRail.tsx` | Extend Population completion check to use `activeScenario?.populationIds?.length > 0` as primary signal. Add `populations: PopulationItem[]` to `WorkflowNavRailProps`. Update `getSummary` for `"population"` to look up name from populations list. |
+| `frontend/src/App.tsx` | Pass `populations={populations}` from `useAppState()` to `<WorkflowNavRail>` call site (needed for population name display in nav rail). |
 | `frontend/src/components/help/help-content.ts` | Update `"population"` entry, add `"population-explorer"` entry for Full Data Explorer help |
 | `frontend/src/__tests__/workflows/analyst-journey.test.tsx` | Add Story 20.4 section: navigate to population, verify library, verify explorer tabs, verify selection updates nav rail |
 
@@ -469,7 +482,6 @@ These match the existing `chart-theme.ts` CSS variables.
 | File | Why |
 |---|---|
 | `frontend/src/contexts/AppContext.tsx` | All needed actions exist: `updateScenarioField`, `setSelectedPopulationId`, `setDataFusionResult`, `navigateTo`. No new state or actions required. |
-| `frontend/src/App.tsx` | PopulationStageScreen handles sub-view routing internally. The `{activeStage === "population" ? <PopulationStageScreen /> : null}` line continues to work. |
 | `frontend/src/types/workspace.ts` | SubView already includes `"data-fusion"` and `"population-explorer"`. STAGES already maps population to both sub-views. |
 | `frontend/src/components/screens/DataFusionWorkbench.tsx` | Reused as-is — same props interface, rendered when sub-view is "data-fusion". |
 | `frontend/src/components/simulation/PopulationPreview.tsx` | Different purpose (Data Fusion result summary). Not modified. |
@@ -487,7 +499,7 @@ From the available component library:
 - `Tooltip` — column header tooltips in data table
 - `ScrollArea` — scrollable column list in profiler
 
-Lucide icons used: `Eye`, `BarChart3`, `CheckCircle2`, `Trash2`, `Upload`, `Plus`, `X`, `ArrowUp`, `ArrowDown`, `ArrowUpDown`, `ChevronLeft`, `ChevronRight`, `FileSpreadsheet`, `AlertTriangle`, `Search`
+Lucide icons used: `Eye`, `BarChart3`, `CheckCircle2`, `Trash2`, `Pencil`, `Upload`, `Plus`, `X`, `ArrowUp`, `ArrowDown`, `ArrowUpDown`, `ChevronLeft`, `ChevronRight`, `FileSpreadsheet`, `AlertTriangle`, `Search`
 
 ### Project Structure Notes
 
