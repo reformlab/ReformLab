@@ -62,9 +62,20 @@ async function simulateSchemaValidation(file: File): Promise<PopulationUploadRes
     } catch {
       columns = [];
     }
+  } else if (file.name.endsWith(".parquet")) {
+    // Client-side Parquet schema parsing is not supported in Story 20.4 mode.
+    // Assume the file is valid; Story 20.7 performs real schema validation via the API.
+    return {
+      id: `uploaded-${Date.now()}`,
+      name: file.name.replace(/\.(csv|parquet)$/i, ""),
+      row_count: Math.floor(file.size / 150),
+      column_count: 0,
+      matched_columns: [],
+      unrecognized_columns: [],
+      missing_required: [],
+      valid: true,
+    };
   }
-  // For Parquet files we cannot parse client-side — treat as unknown schema
-  // and just check name
 
   const matched = REQUIRED_COLUMNS.filter((rc) => columns.includes(rc));
   const missing = REQUIRED_COLUMNS.filter((rc) => !columns.includes(rc));

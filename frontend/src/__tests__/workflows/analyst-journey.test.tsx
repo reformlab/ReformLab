@@ -575,9 +575,9 @@ describe("Analyst Journey — cross-screen navigation", () => {
       await authenticate(user);
 
       await waitFor(() => {
-        // Population stage should be complete (nav rail checkmark on step-indicator)
+        // Population stage should be complete — step-indicator gets bg-emerald-500 when done
         const populationIndicator = screen.getByTestId("step-indicator-population");
-        expect(populationIndicator.getAttribute("data-active")).toBeDefined();
+        expect(populationIndicator).toHaveClass("bg-emerald-500");
       });
     });
   });

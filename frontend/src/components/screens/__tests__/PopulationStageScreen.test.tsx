@@ -51,6 +51,7 @@ vi.mock("sonner", () => ({
 
 import { useAppState } from "@/contexts/AppContext";
 import { PopulationStageScreen } from "@/components/screens/PopulationStageScreen";
+import { PopulationExplorer } from "@/components/population/PopulationExplorer";
 import { mockPopulations } from "@/data/mock-data";
 import type { WorkspaceScenario } from "@/types/workspace";
 import type { GenerationResult } from "@/api/types";
@@ -270,12 +271,20 @@ describe("PopulationStageScreen — Story 20.4", () => {
       expect(navigateTo).toHaveBeenCalledWith("population", "population-explorer");
     });
 
-    it("PopulationExplorer shows three tabs when a population id is set", () => {
+    it("PopulationExplorer shows empty state when no population id is set (integration)", () => {
+      // With no explorerPopulationId in local state, the explorer shows the empty state message.
+      // The three-tabs contract is verified by the standalone PopulationExplorer test below.
       renderScreen({ activeSubView: "population-explorer" });
-      // With no explorerPopulationId, shows empty state — trigger it via explore button would set it
-      // Instead render with a known id by testing the explorer component standalone
-      // This integration test verifies the empty state renders
       expect(screen.getByText(/select a population from the library/i)).toBeInTheDocument();
+    });
+  });
+
+  describe("AC-3: PopulationExplorer standalone — three tabs (AC-3)", () => {
+    it("renders Table, Profile, and Summary tabs when a populationId is provided", () => {
+      render(<PopulationExplorer populationId="fr-synthetic-2024" onBack={vi.fn()} />);
+      expect(screen.getByRole("tab", { name: /table/i })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: /profile/i })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: /summary/i })).toBeInTheDocument();
     });
   });
 

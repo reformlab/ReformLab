@@ -17,8 +17,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { PopulationDataTable } from "./PopulationDataTable";
 import { PopulationProfiler } from "./PopulationProfiler";
 import { PopulationSummaryView } from "./PopulationSummaryView";
-import { mockPopulationPreview, mockPopulationProfile, mockPopulationSummary, mockCrosstabData } from "@/data/mock-population-explorer";
-import type { PopulationProfileResponse, PopulationCrosstabResponse } from "@/api/types";
+import { usePopulationPreview, usePopulationProfile } from "@/hooks/useApi";
+import { mockPopulationSummary, mockCrosstabData } from "@/data/mock-population-explorer";
+import type { PopulationCrosstabResponse } from "@/api/types";
 
 // ============================================================================
 // Types
@@ -31,19 +32,6 @@ export interface PopulationExplorerProps {
 }
 
 // ============================================================================
-// Helpers
-// ============================================================================
-
-function getPreviewForId(id: string) {
-  if (id === mockPopulationPreview.id) return mockPopulationPreview;
-  return { ...mockPopulationPreview, id, name: id };
-}
-
-function getProfileForId(): PopulationProfileResponse {
-  return mockPopulationProfile;
-}
-
-// ============================================================================
 // Main component
 // ============================================================================
 
@@ -53,6 +41,8 @@ export function PopulationExplorer({
   onCrosstabRequest,
 }: PopulationExplorerProps) {
   const [crosstabData, setCrosstabData] = useState<PopulationCrosstabResponse | null>(null);
+  const { data: preview } = usePopulationPreview(populationId);
+  const { data: profile } = usePopulationProfile(populationId);
 
   // Reset crosstab when population changes
   useEffect(() => {
@@ -72,9 +62,6 @@ export function PopulationExplorer({
       </div>
     );
   }
-
-  const preview = getPreviewForId(populationId);
-  const profile = getProfileForId();
 
   function handleCrosstabRequest(colA: string, colB: string) {
     // Use mock data for Story 20.4; Story 20.7 wires real API

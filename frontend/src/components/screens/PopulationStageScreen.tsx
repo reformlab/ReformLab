@@ -46,6 +46,15 @@ function toLibraryItem(p: {
 }
 
 // ============================================================================
+// Module-level cache for uploaded populations
+// ============================================================================
+
+// Uploaded populations are cached at module level so they survive stage switches
+// (PopulationStageScreen unmounts when the user navigates to another stage).
+// The cache is cleared when the page reloads, matching the "session only" contract.
+let _uploadedPopulationsCache: PopulationLibraryItem[] = [];
+
+// ============================================================================
 // Main component
 // ============================================================================
 
@@ -68,7 +77,7 @@ export function PopulationStageScreen() {
   // Local state
   const [previewPopulationId, setPreviewPopulationId] = useState<string | null>(null);
   const [explorerPopulationId, setExplorerPopulationId] = useState<string | null>(null);
-  const [uploadedPopulations, setUploadedPopulations] = useState<PopulationLibraryItem[]>([]);
+  const [uploadedPopulations, setUploadedPopulations] = useState<PopulationLibraryItem[]>(() => _uploadedPopulationsCache);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
 
   // Merge all population sources
@@ -139,7 +148,11 @@ export function PopulationStageScreen() {
     }
 
     // For uploaded populations: optimistic delete (no revert on failure per story spec)
-    setUploadedPopulations((prev) => prev.filter((p) => p.id !== id));
+    setUploadedPopulations((prev) => {
+      const next = prev.filter((p) => p.id !== id);
+      _uploadedPopulationsCache = next;
+      return next;
+    });
 
     // Fire API call (Story 20.7 endpoint) and warn on failure
     void deletePopulation(id).catch(() => {
@@ -150,7 +163,11 @@ export function PopulationStageScreen() {
   }
 
   function handleUploadConfirm(population: PopulationLibraryItem) {
-    setUploadedPopulations((prev) => [population, ...prev]);
+    setUploadedPopulations((prev) => {
+      const next = [population, ...prev];
+      _uploadedPopulationsCache = next;
+      return next;
+    });
     setUploadDialogOpen(false);
     toast.success(`"${population.name}" added to library`);
   }

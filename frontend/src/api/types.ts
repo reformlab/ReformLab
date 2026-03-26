@@ -474,6 +474,18 @@ export interface PopulationLibraryItem extends PopulationItem {
   created_date: string | null;
 }
 
+export interface PopulationSummaryData {
+  record_count: number;
+  column_count: number;
+  estimated_memory_mb: number;
+  columns: Array<{
+    name: string;
+    type: "numeric" | "categorical" | "boolean" | "string";
+    null_pct: number;
+    cardinality: number | null;
+  }>;
+}
+
 // ============================================================================
 // Decision viewer types — Story 17.5
 // ============================================================================

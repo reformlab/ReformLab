@@ -11,6 +11,7 @@ import type {
   PopulationPreviewResponse,
   PopulationProfileResponse,
   PopulationCrosstabResponse,
+  PopulationSummaryData,
   ColumnInfo,
 } from "@/api/types";
 
@@ -300,18 +301,6 @@ export const mockPopulationProfile: PopulationProfileResponse = {
 // ============================================================================
 // Mock summary — dataset-level overview
 // ============================================================================
-
-export interface PopulationSummaryData {
-  record_count: number;
-  column_count: number;
-  estimated_memory_mb: number;
-  columns: Array<{
-    name: string;
-    type: "numeric" | "categorical" | "boolean" | "string";
-    null_pct: number;
-    cardinality: number | null;
-  }>;
-}
 
 export const mockPopulationSummary: PopulationSummaryData = {
   record_count: 100000,

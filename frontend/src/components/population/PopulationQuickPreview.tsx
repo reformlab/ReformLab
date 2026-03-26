@@ -14,8 +14,8 @@ import { X, ArrowUp, ArrowDown, ArrowUpDown, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { mockPopulationPreview } from "@/data/mock-population-explorer";
-import type { ColumnInfo, PopulationPreviewResponse } from "@/api/types";
+import { usePopulationPreview } from "@/hooks/useApi";
+import type { ColumnInfo } from "@/api/types";
 
 // ============================================================================
 // Types
@@ -33,13 +33,6 @@ type SortDirection = "asc" | "desc" | null;
 // ============================================================================
 // Helpers
 // ============================================================================
-
-function buildPreviewData(id: string): PopulationPreviewResponse {
-  // In Story 20.4 we use mock data; Story 20.7 replaces with real API call.
-  if (id === mockPopulationPreview.id) return mockPopulationPreview;
-  // Generic fallback: return mock with adapted id/name
-  return { ...mockPopulationPreview, id, name: id };
-}
 
 function sortRows(
   rows: Record<string, unknown>[],
@@ -115,7 +108,7 @@ export function PopulationQuickPreview({
   onClose,
   onOpenFullView,
 }: PopulationQuickPreviewProps) {
-  const [preview] = useState<PopulationPreviewResponse>(() => buildPreviewData(populationId));
+  const { data: preview, loading } = usePopulationPreview(populationId);
   const [sortCol, setSortCol] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<SortDirection>(null);
   const [filters, setFilters] = useState<Record<string, string>>({});
@@ -185,6 +178,13 @@ export function PopulationQuickPreview({
           </button>
         </div>
 
+        {/* Loading indicator */}
+        {loading && (
+          <div className="shrink-0 border-b border-slate-100 bg-slate-50 px-4 py-1.5 text-xs text-slate-400">
+            Loading data…
+          </div>
+        )}
+
         {/* Table */}
         <div className="flex-1 overflow-auto">
           <table className="w-full border-collapse text-xs">
@@ -215,7 +215,7 @@ export function PopulationQuickPreview({
             </thead>
             <tbody>
               {visibleRows.map((row, i) => (
-                <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
+                <tr key={String(row["household_id"] ?? i)} className="border-b border-slate-100 hover:bg-slate-50">
                   {preview.columns.map((col) => (
                     <td
                       key={col.name}

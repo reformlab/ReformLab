@@ -111,7 +111,7 @@ export function PopulationDataTable({ rows, columns, totalRows }: PopulationData
             label={col.name}
             colType={col.type}
             isSorted={column.getIsSorted()}
-            onSort={() => { column.toggleSorting(column.getIsSorted() === "asc"); }}
+            onSort={() => { column.toggleSorting(); }}
           />
         ),
         cell: (info) => {

@@ -83,15 +83,14 @@ function getSummary(
       return activeScenario?.portfolioName ?? null;
     }
     case "population": {
+      // Prefer the explicitly selected population (canonical + legacy) over data fusion result
+      const popId = activeScenario?.populationIds?.[0] ?? selectedPopulationId;
+      if (popId) {
+        return populations.find((p) => p.id === popId)?.name ?? popId;
+      }
       if (dataFusionResult) {
         const count = dataFusionResult.summary.record_count.toLocaleString();
         return `${count} records`;
-      }
-      // Prefer activeScenario.populationIds[0], fall back to legacy selectedPopulationId
-      const popId = activeScenario?.populationIds?.[0] ?? selectedPopulationId;
-      if (popId) {
-        // Look up display name from populations list
-        return populations.find((p) => p.id === popId)?.name ?? popId;
       }
       return null;
     }

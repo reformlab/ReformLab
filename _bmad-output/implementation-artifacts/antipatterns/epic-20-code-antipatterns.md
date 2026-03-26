@@ -52,3 +52,23 @@
 | dismissed | Template loading race in `loadPortfolioIntoComposition` — `loadedRef` blocks correct retry when templates are empty at mount | FALSE POSITIVE: Narrow race window. Templates are fetched in AppContext on auth (before any navigation occurs). The race requires templates API to be slower than navigation + render, which doesn't happen in practice. Created a follow-up action item rather than fixing now. |
 | dismissed | `ConflictList` empty-state "No conflicts" branch is dead code | FALSE POSITIVE: The component is shared — `PortfolioDesignerScreen` (deprecated but still in codebase with passing tests) may call it with empty array. Removing the branch would break the component's contract. Not worth changing. |
 | dismissed | Unreachable code paths in `PortfolioCompositionPanel` when `minimumPolicies={1}` | FALSE POSITIVE: The component serves two callers with different `minimumPolicies` values. The code paths are reachable when `minimumPolicies=2` (default). Dead code only from PoliciesStageScreen's perspective, not from the component's perspective. |
+
+## Story 20-4 (2026-03-26)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | Hooks `usePopulationPreview`/`usePopulationProfile` had no mock fallback and were never called by components — Task 4.5 ("call hook, show loading spinner") was not implemented | Added `useEffect` auto-fetch with mock-data initialization; wired both components to the hooks; added loading indicator to QuickPreview. |
+| high | Tautological test — `getAttribute("data-active").toBeDefined()` is always truthy regardless of completion state | Changed to `expect(populationIndicator).toHaveClass("bg-emerald-500")`. |
+| high | "Three tabs" test only checks empty state, never verifies actual tabs | Renamed existing test to accurately describe it; added new `PopulationExplorer` standalone test that asserts all three `role="tab"` elements. |
+| high | `uploadedPopulations` local state destroyed on stage switch (component unmounts) | Added module-level `_uploadedPopulationsCache` that persists for the browser session. |
+| high | Sorting cycle in `PopulationDataTable` never reaches "unsorted" — `toggleSorting(bool)` with explicit `true/false` skips the "none" state | Changed to `column.toggleSorting()` (no args) so TanStack's 3-state cycle works correctly. |
+| medium | Nav rail summary shows `dataFusionResult` record count even when a population is explicitly selected | Moved selected-population lookup before `dataFusionResult` fallback. |
+| medium | `.parquet` uploads silently show all required columns as missing (schema unreadable client-side) → confirm button always disabled | Parquet files return a valid mock response with `missing_required: []`, allowing confirmation. |
+| medium | Array index `key={i}` on sortable/filterable table rows causes stale DOM after reorder | Changed to `key={String(row["household_id"] ?? i)}`. |
+| low | `PopulationSummaryData` type defined in mock file (`mock-population-explorer.ts`) — component coupled to mock layer | Moved type to `api/types.ts`; mock file imports it from there. |
+| low | `getProfileForId()` name misleading — took no argument despite "ForId" suffix | Function removed entirely; `usePopulationProfile` hook used instead. |
+| dismissed | Population stage completion can be marked without explicit selection (`dataFusionResult !== null`) | FALSE POSITIVE: Explicitly by design. Story Dev Notes "Nav Rail Completion After Population Selection" section states: `activeScenario?.populationIds?.length > 0 \|\| selectedPopulationId \|\| dataFusionResult` as the completion formula. |
+| dismissed | CRLF parsing fails for Windows CSV files (`\r` not stripped) | FALSE POSITIVE: Reviewer B self-retracted — `String.prototype.trim()` removes `\r` in all ECMAScript environments. |
+| dismissed | URL-encoding missing in `populations.ts` path segments | FALSE POSITIVE: All population IDs in 20.4 are machine-generated with only safe characters. The story specifies IDs as `"fr-synthetic-2024"`, `"data-fusion-result"`, `"uploaded-${timestamp}"`. Story 20.7 (backend endpoints) is the right place to validate ID format. |
+| dismissed | Sorting test doesn't verify row order changes | FALSE POSITIVE: Addressed by fixing the actual sorting bug (toggling without args). The existing test verifies the column header interaction works without crashing; a comprehensive row-order integration test would require 3+ distinct row values and is deferred. |
+| dismissed | `uploadedPopulations` described as "session only" contradicts the bug | FALSE POSITIVE: This was confirmed as a real bug and fixed with the module-level cache. |
