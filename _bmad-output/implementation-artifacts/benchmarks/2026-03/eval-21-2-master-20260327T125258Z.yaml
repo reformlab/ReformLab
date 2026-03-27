@@ -1,0 +1,51 @@
+record_id: 5e52ae48-1f96-4258-b836-85a60731207d
+created_at: '2026-03-27T12:52:58.500012+00:00'
+workflow:
+  id: create-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 21
+  story_num: 2
+  title: Story 21.2
+  complexity_flags: {}
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: master
+  role_id: null
+  session_id: 0a8b526c-07d7-47a7-99a3-2239d031058d
+execution:
+  start_time: '2026-03-27T12:51:17.291314Z'
+  end_time: '2026-03-27T12:52:58.325571Z'
+  duration_ms: 101034
+  input_tokens: 0
+  output_tokens: 0
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 3430
+  heading_count: 2
+  list_depth_max: 1
+  code_block_count: 0
+  sections_detected:
+  - Story 21.2 Summary
+  - Story 21.2 Summary
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 4886f69ee64c
+findings: null
+reasoning: null
+linguistic: null
+quality: null
+consensus: null
+ground_truth: null
+custom: null
