@@ -10,35 +10,35 @@ This matrix documents all datasets referenced by docs, demos, and the flagship w
 
 ### Structural Data
 
-| asset_id | name | provider | description | origin | access_mode | default_trust_status | license | redistribution_allowed | years | direct_usability | known_limitations |
-|----------|------|----------|-------------|--------|-------------|---------------------|---------|----------------------|-------|-----------------|-------------------|
-| fr-synthetic-2024 | French Synthetic Population 2024 | ReformLab | 100k synthetic households for France (demo/exploratory) | synthetic-public | bundled | exploratory | CC-BY-4.0 | true | 2024 | true | Not calibrated against official marginals |
-| insee-fideli-2021 | Fidéli (Données de cadrage) | INSEE | French demographic data sources (administrative files) | open-official | fetched | production-safe | Open License | true | 2021 | true | Access requires registration on INSEE website |
-| eurostat-silc-2022 | EU-SILC Survey Data | Eurostat | European Union Statistics on Income and Living Conditions | open-official | fetched | production-safe | CC-BY-4.0 | true | 2022 | false | Microdata access requires application |
+| asset_id | name | provider | description | data_class | origin | access_mode | default_trust_status | license | redistribution_allowed | years | direct_usability | known_limitations |
+|----------|------|----------|-------------|------------|--------|-------------|---------------------|---------|----------------------|-------|-----------------|-------------------|
+| fr-synthetic-2024 | French Synthetic Population 2024 | ReformLab | 100k synthetic households for France (demo/exploratory) | structural | synthetic-public | bundled | exploratory | CC-BY-4.0 | true | 2024 | true | Not calibrated against official marginals |
+| insee-fideli-2021 | Fidéli (Données de cadrage) | INSEE | French demographic data sources (administrative files) | structural | open-official | fetched | production-safe | Open License | true | 2021 | true | Access requires registration on INSEE website |
+| eurostat-silc-2022 | EU-SILC Survey Data | Eurostat | European Union Statistics on Income and Living Conditions | structural | open-official | fetched | production-safe | CC-BY-4.0 | true | 2022 | false | Microdata access requires application |
 
 ### Exogenous Data
 
-| asset_id | name | provider | description | origin | access_mode | default_trust_status | license | redistribution_allowed | years | direct_usability | known_limitations |
-|----------|------|----------|-------------|--------|-------------|---------------------|---------|----------------------|-------|-----------------|-------------------|
-| energy-price-elec-fr | Electricity Prices France | Eurostat | Monthly electricity prices by consumer category (NACE) | open-official | fetched | production-safe | CC-BY-4.0 | true | 2020-2024 | true | Monthly aggregation required for annual models |
-| energy-price-gas-fr | Natural Gas Prices France | Eurostat | Monthly natural gas prices by consumer category | open-official | fetched | production-safe | CC-BY-4.0 | true | 2020-2024 | true | Price volatility high; quarterly averaging recommended |
-| ademe-carbon-factors-2024 | Base Carbone® ADEME | ADEME | Emission factors for carbon footprint assessment | open-official | fetched | production-safe | Open License | true | 2024 | true | Factors updated annually; version tracking required |
-| carbon-tax-rate-fr | Carbon Tax Rates France | Government | Official carbon tax rates by fuel type and year | open-official | bundled | production-safe | CC-BY-4.0 | true | 2020-2030 | true | Future years projected; subject to policy change |
+| asset_id | name | provider | description | data_class | origin | access_mode | default_trust_status | license | redistribution_allowed | years | direct_usability | known_limitations |
+|----------|------|----------|-------------|------------|--------|-------------|---------------------|---------|----------------------|-------|-----------------|-------------------|
+| energy-price-elec-fr | Electricity Prices France | Eurostat | Monthly electricity prices by consumer category (NACE) | exogenous | open-official | fetched | production-safe | CC-BY-4.0 | true | 2020-2024 | true | Monthly aggregation required for annual models |
+| energy-price-gas-fr | Natural Gas Prices France | Eurostat | Monthly natural gas prices by consumer category | exogenous | open-official | fetched | production-safe | CC-BY-4.0 | true | 2020-2024 | true | Price volatility high; quarterly averaging recommended |
+| ademe-carbon-factors-2024 | Base Carbone® ADEME | ADEME | Emission factors for carbon footprint assessment | exogenous | open-official | fetched | production-safe | Open License | true | 2024 | true | Factors updated annually; version tracking required |
+| carbon-tax-rate-fr | Carbon Tax Rates France | Government | Official carbon tax rates by fuel type and year | exogenous | open-official | bundled | production-safe | CC-BY-4.0 | true | 2020-2030 | true | Future years projected; subject to policy change |
 
 ### Calibration Data
 
-| asset_id | name | provider | description | origin | access_mode | default_trust_status | license | redistribution_allowed | years | direct_usability | known_limitations |
-|----------|------|----------|-------------|--------|-------------|---------------------|---------|----------------------|-------|-----------------|-------------------|
-| ev-adoption-fr | EV Adoption Rates France | ADEME | Historical electric vehicle market share by year | open-official | fetched | production-safe | Open License | true | 2010-2023 | true | Regional coverage varies; national aggregates only |
-| household-energy-consumption | Household Energy Consumption | INSEE | Average household energy consumption by decile | open-official | fetched | production-safe | Open License | true | 2019-2022 | true | Heating degree day normalization required |
-| income-distribution-fr | Income Distribution France | INSEE | Disposable income distribution by decile | open-official | fetched | production-safe | Open License | true | 2021 | true | Pre-tax/post-tax distinction requires careful handling |
+| asset_id | name | provider | description | data_class | origin | access_mode | default_trust_status | license | redistribution_allowed | years | direct_usability | known_limitations |
+|----------|------|----------|-------------|------------|--------|-------------|---------------------|---------|----------------------|-------|-----------------|-------------------|
+| ev-adoption-fr | EV Adoption Rates France | ADEME | Historical electric vehicle market share by year | calibration | open-official | fetched | production-safe | Open License | true | 2010-2023 | true | Regional coverage varies; national aggregates only |
+| household-energy-consumption | Household Energy Consumption | INSEE | Average household energy consumption by decile | calibration | open-official | fetched | production-safe | Open License | true | 2019-2022 | true | Heating degree day normalization required |
+| income-distribution-fr | Income Distribution France | INSEE | Disposable income distribution by decile | calibration | open-official | fetched | production-safe | Open License | true | 2021 | true | Pre-tax/post-tax distinction requires careful handling |
 
 ### Validation Data
 
-| asset_id | name | provider | description | origin | access_mode | default_trust_status | license | redistribution_allowed | years | direct_usability | known_limitations |
-|----------|------|----------|-------------|--------|-------------|---------------------|---------|----------------------|-------|-----------------|-------------------|
-| household-survey-fr | French Household Survey | INSEE | Observed household consumption for validation | open-official | fetched | production-safe | Open License | true | 2021 | true | Access requires registration; sample size limited |
-| transport-mode-shares | Transport Mode Shares | Ministry of Transport | Modal split statistics for passenger transport | open-official | fetched | production-safe | Open License | true | 2019-2023 | true | Urban/rural aggregation differs from NUTS |
+| asset_id | name | provider | description | data_class | origin | access_mode | default_trust_status | license | redistribution_allowed | years | direct_usability | known_limitations |
+|----------|------|----------|-------------|------------|--------|-------------|---------------------|---------|----------------------|-------|-----------------|-------------------|
+| household-survey-fr | French Household Survey | INSEE | Observed household consumption for validation | validation | open-official | fetched | production-safe | Open License | true | 2021 | true | Access requires registration; sample size limited |
+| transport-mode-shares | Transport Mode Shares | Ministry of Transport | Modal split statistics for passenger transport | validation | open-official | fetched | production-safe | Open License | true | 2019-2023 | true | Urban/rural aggregation differs from NUTS |
 
 ## Future-Phase Reserved Data Sources
 

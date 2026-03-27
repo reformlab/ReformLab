@@ -19,7 +19,7 @@ Story 21.1 - implement-canonical-evidence-asset-descriptor-and-current-phase-sou
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Literal, get_args
 
 from reformlab.computation.ingestion import DataSchema
 from reformlab.data.errors import EvidenceAssetError
@@ -32,6 +32,9 @@ from reformlab.data.errors import EvidenceAssetError
 # These literal types define the evidence taxonomy from the synthetic data
 # decision document (Section 3.2). They classify data assets by origin,
 # access mode, trust status, and data class.
+#
+# Runtime validation constants (_VALID_*) are derived from the Literal types
+# using get_args() to ensure single source of truth and eliminate duplication.
 
 DataAssetOrigin = Literal[
     "open-official",
@@ -100,6 +103,13 @@ Values:
 
 Story 21.1 / AC5.
 """
+
+# Runtime validation constants (single source of truth from Literal types)
+# Using get_args() ensures these stay in sync with Literal definitions
+_VALID_ORIGINS = get_args(DataAssetOrigin)
+_VALID_ACCESS_MODES = get_args(DataAssetAccessMode)
+_VALID_TRUST_STATUSES = get_args(DataAssetTrustStatus)
+_VALID_DATA_CLASSES = get_args(DataAssetClass)
 
 # Current-phase supported combinations (Story 21.1 / AC14)
 #
@@ -344,53 +354,29 @@ class DataAssetDescriptor:
                     f"non-empty string - provide a valid {field_name} value"
                 )
 
-        # Validate literal values
-        valid_origins: tuple[DataAssetOrigin, ...] = (
-            "open-official",
-            "synthetic-public",
-            "synthetic-internal",
-            "restricted",
-        )
-        if self.origin not in valid_origins:
+        # Validate literal values using runtime constants (single source of truth)
+        if self.origin not in _VALID_ORIGINS:
             raise EvidenceAssetError(
                 f"DataAssetDescriptor validation failed: origin {self.origin!r} is not "
-                f"a valid DataAssetOrigin - use one of {valid_origins}"
+                f"a valid DataAssetOrigin - use one of {_VALID_ORIGINS}"
             )
 
-        valid_access_modes: tuple[DataAssetAccessMode, ...] = (
-            "bundled",
-            "fetched",
-            "deferred-user-connector",
-        )
-        if self.access_mode not in valid_access_modes:
+        if self.access_mode not in _VALID_ACCESS_MODES:
             raise EvidenceAssetError(
                 f"DataAssetDescriptor validation failed: access_mode {self.access_mode!r} "
-                f"is not a valid DataAssetAccessMode - use one of {valid_access_modes}"
+                f"is not a valid DataAssetAccessMode - use one of {_VALID_ACCESS_MODES}"
             )
 
-        valid_trust_statuses: tuple[DataAssetTrustStatus, ...] = (
-            "production-safe",
-            "exploratory",
-            "demo-only",
-            "validation-pending",
-            "not-for-public-inference",
-        )
-        if self.trust_status not in valid_trust_statuses:
+        if self.trust_status not in _VALID_TRUST_STATUSES:
             raise EvidenceAssetError(
                 f"DataAssetDescriptor validation failed: trust_status {self.trust_status!r} "
-                f"is not a valid DataAssetTrustStatus - use one of {valid_trust_statuses}"
+                f"is not a valid DataAssetTrustStatus - use one of {_VALID_TRUST_STATUSES}"
             )
 
-        valid_data_classes: tuple[DataAssetClass, ...] = (
-            "structural",
-            "exogenous",
-            "calibration",
-            "validation",
-        )
-        if self.data_class not in valid_data_classes:
+        if self.data_class not in _VALID_DATA_CLASSES:
             raise EvidenceAssetError(
                 f"DataAssetDescriptor validation failed: data_class {self.data_class!r} "
-                f"is not a valid DataAssetClass - use one of {valid_data_classes}"
+                f"is not a valid DataAssetClass - use one of {_VALID_DATA_CLASSES}"
             )
 
         # Validate current-phase supported combinations (AC14)
@@ -410,10 +396,19 @@ class DataAssetDescriptor:
             )
 
         # Validate origin/access_mode/trust_status combination
+        # Use None as sentinel for unsupported origin/access_mode pairs (not empty tuple)
+        # This prevents validation bypass when new literals are added without updating support matrix
         allowed_statuses = _CURRENT_PHASE_SUPPORTED.get(self.origin, {}).get(
-            self.access_mode, ()
+            self.access_mode, None
         )
-        if allowed_statuses and self.trust_status not in allowed_statuses:
+        if allowed_statuses is None:
+            raise EvidenceAssetError(
+                f"DataAssetDescriptor validation failed: origin={self.origin!r}, "
+                f"access_mode={self.access_mode!r} is not a supported combination - "
+                f"this origin/access_mode pair is not defined in the current-phase "
+                f"support matrix"
+            )
+        if self.trust_status not in allowed_statuses:
             raise EvidenceAssetError(
                 f"DataAssetDescriptor validation failed: origin={self.origin!r}, "
                 f"access_mode={self.access_mode!r}, trust_status={self.trust_status!r} "
@@ -495,6 +490,13 @@ class DataAssetDescriptor:
             If validation fails (missing fields, invalid types, invalid values,
             or unsupported combinations).
         """
+        # Validate input type
+        if not isinstance(data, dict):
+            raise EvidenceAssetError(
+                "DataAssetDescriptor validation failed: data must be an object - "
+                "provide a JSON object"
+            )
+
         # Check for required fields
         required_fields = (
             "asset_id",
@@ -512,15 +514,27 @@ class DataAssetDescriptor:
                 f"{', '.join(missing_fields)} - provide all required fields"
             )
 
-        # Validate field types
+        # Validate field types for required fields
         for field_name in required_fields:
-            if field_name in data and not isinstance(data[field_name], str):
+            if not isinstance(data[field_name], str):
                 raise EvidenceAssetError(
                     f"DataAssetDescriptor JSON field '{field_name}' has invalid type "
                     f"{type(data[field_name]).__name__} - expected str"
                 )
 
-        # Extract and validate tuple/list fields
+        # Validate optional string field types (strict, no coercion)
+        for field_name in (
+            "source_url", "license", "version", "intended_use",
+            "redistribution_notes", "update_cadence", "quality_notes"
+        ):
+            value = data.get(field_name, "")
+            if value != "" and not isinstance(value, str):
+                raise EvidenceAssetError(
+                    f"DataAssetDescriptor JSON field '{field_name}' has invalid type "
+                    f"{type(value).__name__} - expected str"
+                )
+
+        # Extract and validate tuple/list fields with strict type checking
         geographic_coverage_raw = data.get("geographic_coverage", [])
         if not isinstance(geographic_coverage_raw, (list, tuple)):
             raise EvidenceAssetError(
@@ -533,15 +547,18 @@ class DataAssetDescriptor:
         if not isinstance(years_raw, (list, tuple)):
             raise EvidenceAssetError(
                 f"DataAssetDescriptor JSON field 'years' has invalid type "
-                f"{type(years_raw).__name__} - expected list or tuple of int"
+                f"{type(years_raw).__name__} - expected list or tuple"
             )
-        try:
-            years = tuple(int(v) for v in years_raw)
-        except (ValueError, TypeError) as exc:
-            raise EvidenceAssetError(
-                f"DataAssetDescriptor JSON field 'years' contains non-integer values "
-                f"- {exc}"
-            ) from exc
+        # Strict type validation: reject non-integer values (bool is subclass of int in Python)
+        years_list: list[int] = []
+        for v in years_raw:
+            if not isinstance(v, int) or isinstance(v, bool):
+                raise EvidenceAssetError(
+                    f"DataAssetDescriptor JSON field 'years' contains non-integer value "
+                    f"{v!r} of type {type(v).__name__} - expected int"
+                )
+            years_list.append(v)
+        years = tuple(years_list)
 
         references_raw = data.get("references", [])
         if not isinstance(references_raw, (list, tuple)):
@@ -551,7 +568,7 @@ class DataAssetDescriptor:
             )
         references = tuple(str(v) for v in references_raw)
 
-        # Validate bool field
+        # Validate bool field (strict, no coercion)
         redistribution_allowed = data.get("redistribution_allowed", False)
         if not isinstance(redistribution_allowed, bool):
             raise EvidenceAssetError(

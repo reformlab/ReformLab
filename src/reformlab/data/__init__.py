@@ -14,6 +14,7 @@ from reformlab.data.emission_factors import (
     EmissionFactorIndex,
     build_emission_factor_index,
 )
+from reformlab.data.errors import EvidenceAssetError
 from reformlab.data.pipeline import (
     DatasetManifest,
     DatasetRegistry,
@@ -37,6 +38,7 @@ __all__ = [
     "DatasetRegistry",
     "DataSourceMetadata",
     "EmissionFactorIndex",
+    "EvidenceAssetError",
     "SYNTHETIC_POPULATION_SCHEMA",
     "build_emission_factor_index",
     "generate_synthetic_population",
