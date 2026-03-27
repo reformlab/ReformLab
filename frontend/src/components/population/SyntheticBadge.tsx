@@ -8,18 +8,17 @@
  */
 
 import { Badge } from "@/components/ui/badge";
-import type { PopulationLibraryItem } from "@/api/types";
 
 export interface SyntheticBadgeProps {
-  /** The population origin to classify */
-  origin: PopulationLibraryItem["origin"];
-  /** Whether the population is synthetic (computed from is_synthetic field) */
+  /** Whether the population is synthetic (computed from is_synthetic field or canonical_origin) */
   isSynthetic?: boolean;
+  /** The canonical origin for classification (optional, for explicit classification) */
+  canonicalOrigin?: "open-official" | "synthetic-public" | "open-registered";
 }
 
-export function SyntheticBadge({ origin, isSynthetic }: SyntheticBadgeProps) {
-  // Determine if synthetic based on origin or explicit flag
-  const synthetic = isSynthetic ?? origin === "synthetic-public";
+export function SyntheticBadge({ isSynthetic, canonicalOrigin }: SyntheticBadgeProps) {
+  // Determine if synthetic based on explicit flag first, then canonical origin
+  const synthetic = isSynthetic ?? canonicalOrigin === "synthetic-public";
 
   if (synthetic) {
     return (
@@ -29,8 +28,8 @@ export function SyntheticBadge({ origin, isSynthetic }: SyntheticBadgeProps) {
     );
   }
 
-  // Observed data (open-official, open-registered, etc.)
-  if (origin === "open-official" || origin === "open-registered") {
+  // Observed data (open-official, open-registered)
+  if (canonicalOrigin === "open-official" || canonicalOrigin === "open-registered") {
     return (
       <Badge className="bg-blue-100 text-blue-800 text-xs" title="Real-world observed data">
         Observed
@@ -38,6 +37,6 @@ export function SyntheticBadge({ origin, isSynthetic }: SyntheticBadgeProps) {
     );
   }
 
-  // Built-in or uploaded data - no badge (ambiguous)
+  // Unknown origin - no badge
   return null;
 }

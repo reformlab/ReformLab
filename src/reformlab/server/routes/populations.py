@@ -544,6 +544,232 @@ async def list_populations() -> dict[str, list[PopulationLibraryItem]]:
 
 
 # =============================================================================
+# Comparison endpoint — Story 21.4 (MUST be before /{population_id} routes)
+# =============================================================================
+
+
+@router.get("/compare", response_model=PopulationComparisonResponse)
+async def compare_populations_endpoint(
+    observed_id: str,
+    synthetic_id: str,
+) -> PopulationComparisonResponse:
+    """Compare observed and synthetic populations — Story 21.4 / AC4, AC8.
+
+    Validates:
+    - Both populations exist (404 if not found)
+    - One is observed (open-official) and one is synthetic (synthetic-public) (422 if invalid pairing)
+    - Schemas have at least one common numeric column (400 if no overlap)
+
+    Returns comparison metrics with trust labels for both assets.
+    """
+    data_dir = _get_data_dir()
+    uploaded_dir = _get_uploaded_dir()
+
+    # Helper function to get population file path
+    def _get_pop_path(pop_id: str) -> Path | None:
+        # Check folder-based populations (with descriptor.json)
+        pop_folder = data_dir / pop_id
+        if pop_folder.is_dir():
+            # Check for data.csv or data.parquet
+            for ext in ("data.parquet", "data.csv"):
+                candidate = pop_folder / ext
+                if candidate.exists():
+                    return candidate
+            # Check for any CSV or Parquet file
+            for ext in (".parquet", ".csv"):
+                candidates = list(pop_folder.glob(f"*{ext}"))
+                if len(candidates) == 1:
+                    return candidates[0]
+        # Check file-based populations
+        for ext in (".parquet", ".csv"):
+            candidate = data_dir / f"{pop_id}{ext}"
+            if candidate.exists():
+                return candidate
+        # Check uploaded populations
+        for ext in (".parquet", ".csv"):
+            candidate = uploaded_dir / f"{pop_id}{ext}"
+            if candidate.exists():
+                return candidate
+        return None
+
+    # Helper function to get descriptor from metadata
+    def _get_descriptor(pop_id: str, data_file: Path) -> DataAssetDescriptor:
+        """Get DataAssetDescriptor from descriptor.json or create default.
+
+        Raises HTTPException 422 if descriptor.json exists but is malformed.
+        """
+        # Check for folder-based descriptor.json
+        if data_file.parent.is_dir():
+            descriptor_path = data_file.parent / "descriptor.json"
+            if descriptor_path.exists():
+                try:
+                    desc_data = json.loads(descriptor_path.read_text())
+                    return DataAssetDescriptor.from_json(desc_data)
+                except json.JSONDecodeError as e:
+                    raise HTTPException(
+                        status_code=422,
+                        detail={
+                            "what": f"Malformed descriptor.json for population '{pop_id}'",
+                            "why": f"Invalid JSON: {e}",
+                            "fix": "Fix the JSON syntax in descriptor.json",
+                        },
+                    )
+                except Exception as e:
+                    raise HTTPException(
+                        status_code=422,
+                        detail={
+                            "what": f"Invalid descriptor.json for population '{pop_id}'",
+                            "why": f"Validation error: {e}",
+                            "fix": "Ensure descriptor.json conforms to DataAssetDescriptor schema",
+                        },
+                    )
+
+        # No descriptor.json file - create descriptor based on scan metadata
+        items = _scan_populations_with_origin()
+        for item in items:
+            if item.id == pop_id:
+                return DataAssetDescriptor(
+                    asset_id=pop_id,
+                    name=item.name,
+                    description=item.name,
+                    data_class="structural",
+                    origin=item.canonical_origin,
+                    access_mode=item.access_mode,
+                    trust_status=item.trust_status,
+                )
+
+        # Fallback to default (should not happen for known populations)
+        return DataAssetDescriptor(
+            asset_id=pop_id,
+            name=pop_id,
+            description=f"Population {pop_id}",
+            data_class="structural",
+            origin="synthetic-public",
+            access_mode="bundled",
+            trust_status="exploratory",
+        )
+
+    # Validate both populations exist
+    observed_file = _get_pop_path(observed_id)
+    synthetic_file = _get_pop_path(synthetic_id)
+
+    if observed_file is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "what": f"Observed population '{observed_id}' not found",
+                "why": "No population file exists for this ID",
+                "fix": "Check available populations via GET /api/populations",
+            },
+        )
+
+    if synthetic_file is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "what": f"Synthetic population '{synthetic_id}' not found",
+                "why": "No population file exists for this ID",
+                "fix": "Check available populations via GET /api/populations",
+            },
+        )
+
+    # Get descriptors
+    observed_descriptor = _get_descriptor(observed_id, observed_file)
+    synthetic_descriptor = _get_descriptor(synthetic_id, synthetic_file)
+
+    # Validate one is observed and one is synthetic (strict parameter semantics)
+    if observed_descriptor.origin != "open-official":
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "what": "Invalid observed population origin",
+                "why": (
+                    f"The observed_id parameter must refer to an open-official population, "
+                    f"got origin '{observed_descriptor.origin}'"
+                ),
+                "fix": "Use an observed (open-official) population for observed_id parameter",
+            },
+        )
+
+    if synthetic_descriptor.origin != "synthetic-public":
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "what": "Invalid synthetic population origin",
+                "why": (
+                    f"The synthetic_id parameter must refer to a synthetic-public population, "
+                    f"got origin '{synthetic_descriptor.origin}'"
+                ),
+                "fix": "Use a synthetic (synthetic-public) population for synthetic_id parameter",
+            },
+        )
+
+    # Load tables
+    try:
+        observed_table = _load_population_table(observed_file)
+        synthetic_table = _load_population_table(synthetic_file)
+    except Exception as e:
+        logger.exception("Failed to load population tables for comparison")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "what": "Failed to load population data",
+                "why": str(e),
+                "fix": "Ensure population files are valid CSV or Parquet files",
+            },
+        )
+
+    # Perform comparison
+    try:
+        comparison = compare_populations(
+            observed_table,
+            synthetic_table,
+            observed_descriptor,
+            synthetic_descriptor,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "what": "Cannot compare populations",
+                "why": str(e),
+                "fix": "Ensure both populations have at least one common numeric column",
+            },
+        )
+
+    # Convert domain models to API response
+    numeric_comparison_response = {
+        col_name: NumericColumnComparison(
+            column_name=comp.column_name,
+            observed_mean=comp.observed_mean,
+            synthetic_mean=comp.synthetic_mean,
+            relative_diff_pct=comp.relative_diff_pct,
+            observed_median=comp.observed_median,
+            synthetic_median=comp.synthetic_median,
+            observed_std=comp.observed_std,
+            synthetic_std=comp.synthetic_std,
+            observed_p10=comp.observed_p10,
+            synthetic_p10=comp.synthetic_p10,
+            observed_p50=comp.observed_p50,
+            synthetic_p50=comp.synthetic_p50,
+            observed_p90=comp.observed_p90,
+            synthetic_p90=comp.synthetic_p90,
+        )
+        for col_name, comp in comparison.numeric_comparison.items()
+    }
+
+    return PopulationComparisonResponse(
+        observed_asset_id=comparison.observed_asset_id,
+        synthetic_asset_id=comparison.synthetic_asset_id,
+        row_counts=comparison.row_counts,
+        column_counts=comparison.column_counts,
+        common_numeric_columns=comparison.common_numeric_columns,
+        numeric_comparison=numeric_comparison_response,
+        trust_labels=comparison.trust_labels,
+    )
+
+
+# =============================================================================
 # Preview endpoint — Task 20.7.2
 # =============================================================================
 
@@ -1147,205 +1373,3 @@ async def delete_population(
             pass
 
     return None
-
-
-# =============================================================================
-# Comparison endpoint — Story 21.4
-# =============================================================================
-
-
-@router.get("/compare", response_model=PopulationComparisonResponse)
-async def compare_populations_endpoint(
-    observed_id: str,
-    synthetic_id: str,
-) -> PopulationComparisonResponse:
-    """Compare observed and synthetic populations — Story 21.4 / AC4, AC8.
-
-    Validates:
-    - Both populations exist (404 if not found)
-    - One is observed (open-official) and one is synthetic (synthetic-public) (422 if invalid pairing)
-    - Schemas have at least one common numeric column (400 if no overlap)
-
-    Returns comparison metrics with trust labels for both assets.
-    """
-    data_dir = _get_data_dir()
-    uploaded_dir = _get_uploaded_dir()
-
-    # Helper function to get population file path
-    def _get_pop_path(pop_id: str) -> Path | None:
-        # Check folder-based populations (with descriptor.json)
-        pop_folder = data_dir / pop_id
-        if pop_folder.is_dir():
-            # Check for data.csv or data.parquet
-            for ext in ("data.parquet", "data.csv"):
-                candidate = pop_folder / ext
-                if candidate.exists():
-                    return candidate
-            # Check for any CSV or Parquet file
-            for ext in (".parquet", ".csv"):
-                candidates = list(pop_folder.glob(f"*{ext}"))
-                if len(candidates) == 1:
-                    return candidates[0]
-        # Check file-based populations
-        for ext in (".parquet", ".csv"):
-            candidate = data_dir / f"{pop_id}{ext}"
-            if candidate.exists():
-                return candidate
-        # Check uploaded populations
-        for ext in (".parquet", ".csv"):
-            candidate = uploaded_dir / f"{pop_id}{ext}"
-            if candidate.exists():
-                return candidate
-        return None
-
-    # Helper function to get descriptor from metadata
-    def _get_descriptor(pop_id: str, data_file: Path) -> DataAssetDescriptor:
-        """Get DataAssetDescriptor from descriptor.json or create default."""
-        # Check for folder-based descriptor.json
-        if data_file.parent.is_dir():
-            descriptor_path = data_file.parent / "descriptor.json"
-            if descriptor_path.exists():
-                try:
-                    desc_data = json.loads(descriptor_path.read_text())
-                    return DataAssetDescriptor.from_json(desc_data)
-                except Exception:
-                    pass
-
-        # Create default descriptor based on population_id origin
-        # For this implementation, we'll use the canonical_origin from the scan
-        items = _scan_populations_with_origin()
-        for item in items:
-            if item.id == pop_id:
-                return DataAssetDescriptor(
-                    asset_id=pop_id,
-                    name=item.name,
-                    description=item.name,
-                    data_class="structural",
-                    origin=item.canonical_origin,
-                    access_mode=item.access_mode,
-                    trust_status=item.trust_status,
-                )
-
-        # Fallback to default
-        return DataAssetDescriptor(
-            asset_id=pop_id,
-            name=pop_id,
-            description=f"Population {pop_id}",
-            data_class="structural",
-            origin="synthetic-public",
-            access_mode="bundled",
-            trust_status="exploratory",
-        )
-
-    # Validate both populations exist
-    observed_file = _get_pop_path(observed_id)
-    synthetic_file = _get_pop_path(synthetic_id)
-
-    if observed_file is None:
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "what": f"Observed population '{observed_id}' not found",
-                "why": "No population file exists for this ID",
-                "fix": "Check available populations via GET /api/populations",
-            },
-        )
-
-    if synthetic_file is None:
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "what": f"Synthetic population '{synthetic_id}' not found",
-                "why": "No population file exists for this ID",
-                "fix": "Check available populations via GET /api/populations",
-            },
-        )
-
-    # Get descriptors
-    observed_descriptor = _get_descriptor(observed_id, observed_file)
-    synthetic_descriptor = _get_descriptor(synthetic_id, synthetic_file)
-
-    # Validate one is observed and one is synthetic
-    if (observed_descriptor.origin, synthetic_descriptor.origin) not in (
-        ("open-official", "synthetic-public"),
-        ("synthetic-public", "open-official"),
-    ):
-        raise HTTPException(
-            status_code=422,
-            detail={
-                "what": "Invalid observed/synthetic pairing",
-                "why": (
-                    f"One population must be observed (open-official) and one must be "
-                    f"synthetic (synthetic-public), got {observed_descriptor.origin} "
-                    f"and {synthetic_descriptor.origin}"
-                ),
-                "fix": (
-                    "Select one observed (open-official) and one synthetic "
-                    "(synthetic-public) population for comparison"
-                ),
-            },
-        )
-
-    # Load tables
-    try:
-        observed_table = _load_population_table(observed_file)
-        synthetic_table = _load_population_table(synthetic_file)
-    except Exception as e:
-        logger.exception("Failed to load population tables for comparison")
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "what": "Failed to load population data",
-                "why": str(e),
-                "fix": "Ensure population files are valid CSV or Parquet files",
-            },
-        )
-
-    # Perform comparison
-    try:
-        comparison = compare_populations(
-            observed_table,
-            synthetic_table,
-            observed_descriptor,
-            synthetic_descriptor,
-        )
-    except ValueError as e:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "what": "Cannot compare populations",
-                "why": str(e),
-                "fix": "Ensure both populations have at least one common numeric column",
-            },
-        )
-
-    # Convert domain models to API response
-    numeric_comparison_response = {
-        col_name: NumericColumnComparison(
-            column_name=comp.column_name,
-            observed_mean=comp.observed_mean,
-            synthetic_mean=comp.synthetic_mean,
-            relative_diff_pct=comp.relative_diff_pct,
-            observed_median=comp.observed_median,
-            synthetic_median=comp.synthetic_median,
-            observed_std=comp.observed_std,
-            synthetic_std=comp.synthetic_std,
-            observed_p10=comp.observed_p10,
-            synthetic_p10=comp.synthetic_p10,
-            observed_p50=comp.observed_p50,
-            synthetic_p50=comp.synthetic_p50,
-            observed_p90=comp.observed_p90,
-            synthetic_p90=comp.synthetic_p90,
-        )
-        for col_name, comp in comparison.numeric_comparison.items()
-    }
-
-    return PopulationComparisonResponse(
-        observed_asset_id=comparison.observed_asset_id,
-        synthetic_asset_id=comparison.synthetic_asset_id,
-        row_counts=comparison.row_counts,
-        column_counts=comparison.column_counts,
-        common_numeric_columns=comparison.common_numeric_columns,
-        numeric_comparison=numeric_comparison_response,
-        trust_labels=comparison.trust_labels,
-    )

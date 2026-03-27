@@ -135,10 +135,10 @@ export function PopulationComparisonView({
               Observed: {comparison.observed_asset_id}
             </span>
             <TrustStatusBadge
-              trustStatus={comparison.trust_labels.observed.trust_status as any}
+              trustStatus={comparison.trust_labels.observed.trust_status as "production-safe" | "exploratory" | "demo-only" | "validation-pending" | "not-for-public-inference"}
             />
             <SyntheticBadge
-              origin={comparison.trust_labels.observed.origin as any}
+              canonicalOrigin={comparison.trust_labels.observed.origin as "open-official" | "synthetic-public" | "open-registered"}
               isSynthetic={false}
             />
           </div>
@@ -148,10 +148,10 @@ export function PopulationComparisonView({
               Synthetic: {comparison.synthetic_asset_id}
             </span>
             <TrustStatusBadge
-              trustStatus={comparison.trust_labels.synthetic.trust_status as any}
+              trustStatus={comparison.trust_labels.synthetic.trust_status as "production-safe" | "exploratory" | "demo-only" | "validation-pending" | "not-for-public-inference"}
             />
             <SyntheticBadge
-              origin={comparison.trust_labels.synthetic.origin as any}
+              canonicalOrigin={comparison.trust_labels.synthetic.origin as "open-official" | "synthetic-public" | "open-registered"}
               isSynthetic={true}
             />
           </div>

@@ -180,6 +180,7 @@ def compare_populations(
         syn_mean = float(pc.mean(synthetic_valid).as_py())
         relative_diff_pct = ((syn_mean - obs_mean) / obs_mean * 100) if obs_mean != 0 else 0.0
 
+        # Median (p50) - computed once
         obs_median = float(pc.quantile(observed_valid, q=0.5)[0].as_py())
         syn_median = float(pc.quantile(synthetic_valid, q=0.5)[0].as_py())
 
@@ -190,10 +191,9 @@ def compare_populations(
         if synthetic_valid.length > 1:
             syn_std = float(pc.stddev(synthetic_valid).as_py())
 
+        # Other quantiles
         obs_p10 = float(pc.quantile(observed_valid, q=0.1)[0].as_py())
         syn_p10 = float(pc.quantile(synthetic_valid, q=0.1)[0].as_py())
-        obs_p50 = float(pc.quantile(observed_valid, q=0.5)[0].as_py())
-        syn_p50 = float(pc.quantile(synthetic_valid, q=0.5)[0].as_py())
         obs_p90 = float(pc.quantile(observed_valid, q=0.9)[0].as_py())
         syn_p90 = float(pc.quantile(synthetic_valid, q=0.9)[0].as_py())
 
@@ -208,14 +208,14 @@ def compare_populations(
             synthetic_std=syn_std,
             observed_p10=obs_p10,
             synthetic_p10=syn_p10,
-            observed_p50=obs_p50,
-            synthetic_p50=syn_p50,
+            observed_p50=obs_median,  # p50 is median
+            synthetic_p50=syn_median,  # p50 is median
             observed_p90=obs_p90,
             synthetic_p90=syn_p90,
         )
 
-    # Build trust labels
-    trust_labels = {
+    # Build trust labels (explicit type for mypy compatibility)
+    trust_labels: dict[str, dict[str, str]] = {
         "observed": {
             "origin": observed_descriptor.origin,
             "access_mode": observed_descriptor.access_mode,
