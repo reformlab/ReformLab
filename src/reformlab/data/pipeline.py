@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from tempfile import gettempdir
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 
@@ -19,6 +19,12 @@ from reformlab.computation.ingestion import (
     ingest,
 )
 from reformlab.computation.types import PopulationData
+from reformlab.data.errors import EvidenceAssetError
+
+if TYPE_CHECKING:
+    from reformlab.data.descriptor import DataAssetDescriptor
+else:
+    from reformlab.data.descriptor import DataAssetDescriptor
 
 
 @dataclass(frozen=True)
@@ -256,9 +262,13 @@ def load_population_folder(
         my-dataset/
         ├── data.csv          # or data.parquet
         ├── schema.json       # DataSchema as JSON
-        └── source.json       # DataSourceMetadata as JSON
+        └── descriptor.json   # DataAssetDescriptor as JSON (preferred)
+        # OR legacy:
+        └── source.json       # DataSourceMetadata as JSON (fallback)
 
-    If ``schema.json`` or ``source.json`` is missing, raises ``IngestionError``.
+    Story 21.4 / AC2: If ``descriptor.json`` exists, it is used for
+    governance metadata. Otherwise, falls back to legacy ``source.json``.
+    If ``schema.json`` is missing, raises ``IngestionError``.
     If no data file is found, raises ``IngestionError``.
 
     Returns ``(PopulationData, DatasetManifest)``.
@@ -270,7 +280,7 @@ def load_population_folder(
             file_path=folder,
             summary="Folder load failed",
             reason="path is not a directory",
-            fix="Provide a path to a folder containing data + schema.json + source.json",
+            fix="Provide a path to a folder containing data + schema.json + descriptor.json (or source.json)",
         )
 
     # Validate folder against allowed_roots before reading any files
@@ -293,17 +303,56 @@ def load_population_folder(
             fix="Add a schema.json file describing the data columns",
         )
 
-    # Locate source.json
+    # Story 21.4 / AC2: Check for descriptor.json first, fallback to source.json
+    descriptor_path = folder / "descriptor.json"
     source_path = folder / "source.json"
-    if not source_path.is_file():
+
+    # Try descriptor.json first (new format)
+    if descriptor_path.is_file():
+        # Read and validate descriptor.json
+        try:
+            descriptor_data = json.loads(descriptor_path.read_text(encoding="utf-8"))
+            _descriptor = DataAssetDescriptor.from_json(descriptor_data)
+        except (json.JSONDecodeError, ValueError, KeyError, EvidenceAssetError) as exc:
+            raise IngestionError(
+                file_path=descriptor_path,
+                summary="Folder load failed",
+                reason=f"invalid descriptor.json: {exc}",
+                fix="Fix the descriptor.json file (must be valid DataAssetDescriptor JSON)",
+            ) from exc
+
+        # Build DataSourceMetadata from descriptor for backward compatibility
+        source = DataSourceMetadata(
+            name=_descriptor.asset_id,
+            version=_descriptor.version,
+            url=_descriptor.source_url,
+            description=_descriptor.description,
+            license=_descriptor.license,
+        )
+    # Fallback to source.json (legacy format)
+    elif source_path.is_file():
+        try:
+            source_data = json.loads(source_path.read_text(encoding="utf-8"))
+            source = DataSourceMetadata.from_json(source_data)
+        except (json.JSONDecodeError, ValueError, KeyError) as exc:
+            raise IngestionError(
+                file_path=source_path,
+                summary="Folder load failed",
+                reason=f"invalid source.json: {exc}",
+                fix="Fix the source.json file (required keys: name, version, url, description)",
+            ) from exc
+    else:
         raise IngestionError(
             file_path=folder,
             summary="Folder load failed",
-            reason="source.json not found in folder",
-            fix="Add a source.json file describing the data source metadata",
+            reason="neither descriptor.json nor source.json found in folder",
+            fix=(
+                "Add a descriptor.json (preferred) or source.json (legacy) "
+                "file describing the data source metadata"
+            ),
         )
 
-    # Read and parse JSON metadata
+    # Read and parse schema.json
     try:
         schema_data = json.loads(schema_path.read_text(encoding="utf-8"))
         schema = DataSchema.from_json(schema_data)
@@ -314,17 +363,6 @@ def load_population_folder(
             reason=f"invalid schema.json: {exc}",
             fix="Fix the schema.json file (expected format: "
             '{"columns": [{"name": str, "type": str, "required": bool}]})',
-        ) from exc
-
-    try:
-        source_data = json.loads(source_path.read_text(encoding="utf-8"))
-        source = DataSourceMetadata.from_json(source_data)
-    except (json.JSONDecodeError, ValueError, KeyError) as exc:
-        raise IngestionError(
-            file_path=source_path,
-            summary="Folder load failed",
-            reason=f"invalid source.json: {exc}",
-            fix="Fix the source.json file (required keys: name, version, url, description)",
         ) from exc
 
     # Find data file: prefer data.csv / data.parquet, else single CSV/Parquet in folder

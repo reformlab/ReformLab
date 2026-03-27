@@ -495,6 +495,8 @@ export interface PopulationLibraryItem extends PopulationItem {
     | "not-for-public-inference";
   column_count: number;
   created_date: string | null;
+  // Story 21.4 / AC5: Computed field for easier UI filtering
+  is_synthetic: boolean;
 }
 
 export interface PopulationSummaryData {
@@ -586,4 +588,52 @@ export interface DimensionFilter {
   dimensionId: string;
   operator: "equals" | "contains" | "in";
   values: unknown[];
+}
+
+// ============================================================================
+// Population comparison types — Story 21.4
+// ============================================================================
+
+export interface NumericColumnComparison {
+  column_name: string;
+  observed_mean: number;
+  synthetic_mean: number;
+  relative_diff_pct: number;
+  observed_median: number;
+  synthetic_median: number;
+  observed_std: number;
+  synthetic_std: number;
+  observed_p10: number;
+  synthetic_p10: number;
+  observed_p50: number;
+  synthetic_p50: number;
+  observed_p90: number;
+  synthetic_p90: number;
+}
+
+export interface PopulationComparisonResponse {
+  observed_asset_id: string;
+  synthetic_asset_id: string;
+  row_counts: {
+    observed: number;
+    synthetic: number;
+  };
+  column_counts: {
+    observed: number;
+    synthetic: number;
+  };
+  common_numeric_columns: string[];
+  numeric_comparison: Record<string, NumericColumnComparison>;
+  trust_labels: {
+    observed: {
+      origin: string;
+      access_mode: string;
+      trust_status: string;
+    };
+    synthetic: {
+      origin: string;
+      access_mode: string;
+      trust_status: string;
+    };
+  };
 }

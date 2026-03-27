@@ -135,13 +135,17 @@ class TestLoadPopulationFolderErrors:
     def test_missing_source_json(
         self, tmp_path: Path, sample_table: pa.Table, sample_schema: dict,
     ) -> None:
-        """Missing source.json raises IngestionError."""
+        """Missing source.json (and descriptor.json) raises IngestionError.
+
+        Story 21.4 / AC2: Updated to expect new error message that mentions
+        both descriptor.json and source.json as valid options.
+        """
         folder = tmp_path / "dataset"
         folder.mkdir()
         _write_csv(folder / "data.csv", sample_table)
         _write_schema_json(folder, sample_schema)
 
-        with pytest.raises(IngestionError, match="source.json not found"):
+        with pytest.raises(IngestionError, match="neither descriptor.json nor source.json"):
             load_population_folder(folder, allowed_roots=(tmp_path,))
 
     def test_no_data_file(

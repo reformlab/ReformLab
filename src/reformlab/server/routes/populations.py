@@ -21,7 +21,9 @@ from reformlab.data import (  # type: ignore[attr-defined]
     DataAssetAccessMode,
     DataAssetOrigin,
     DataAssetTrustStatus,
+    compare_populations,
 )
+from reformlab.data.descriptor import DataAssetDescriptor
 from reformlab.server.dependencies import get_result_store
 from reformlab.server.models import (
     ColumnProfile,
@@ -29,6 +31,8 @@ from reformlab.server.models import (
     ColumnProfileCategorical,
     ColumnProfileEntry,
     ColumnProfileNumeric,
+    NumericColumnComparison,
+    PopulationComparisonResponse,
     PopulationCrosstabResponse,
     PopulationLibraryItem,
     PopulationPreviewColumnInfo,
@@ -260,6 +264,34 @@ def _get_canonical_evidence_from_metadata(
     return _map_to_canonical_evidence(legacy_origin)
 
 
+def _read_descriptor_from_folder(population_id: str, data_dir: Path) -> dict[str, Any] | None:
+    """Read descriptor.json from a population folder.
+
+    Story 21.4 / Task 2.6: Check for descriptor.json in population folders
+    to determine canonical evidence classification.
+
+    Args:
+        population_id: Population ID (folder name)
+        data_dir: Data populations directory
+
+    Returns:
+        Descriptor dict if found, None otherwise
+    """
+    # Check if population exists as a folder with descriptor.json
+    pop_folder = data_dir / population_id
+    if not pop_folder.is_dir():
+        return None
+
+    descriptor_path = pop_folder / "descriptor.json"
+    if not descriptor_path.exists():
+        return None
+
+    try:
+        return json.loads(descriptor_path.read_text())  # type: ignore[no-any-return]
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
 # =============================================================================
 # Extended list endpoint with origin detection — Task 20.7.1
 # =============================================================================
@@ -277,6 +309,93 @@ def _scan_populations_with_origin() -> list[PopulationLibraryItem]:
 
     # Scan built-in and generated populations
     if data_dir.exists():
+        # Story 21.4 / Task 2.6: First scan folder-based populations (with descriptor.json)
+        for pop_folder in sorted(data_dir.iterdir()):
+            if not pop_folder.is_dir():
+                continue
+
+            # Check if this folder contains a data file
+            data_file = None
+            for ext in _DATA_EXTENSIONS:
+                candidate = pop_folder / f"data.{ext.lstrip('.')}"
+                if candidate.exists():
+                    data_file = candidate
+                    break
+
+            # If no data.csv/data.parquet, check for any CSV/Parquet file
+            if data_file is None:
+                for ext in (".csv", ".parquet"):
+                    candidates = list(pop_folder.glob(f"*{ext}"))
+                    if len(candidates) == 1:
+                        data_file = candidates[0]
+                        break
+
+            if data_file is None:
+                continue
+
+            pop_id = pop_folder.name
+            if pop_id in seen_ids:
+                continue
+            seen_ids.add(pop_id)
+
+            # Check for descriptor.json in folder
+            descriptor = _read_descriptor_from_folder(pop_id, data_dir)
+
+            # Load column count from data file
+            column_count = 0
+            try:
+                table = _load_population_table(data_file)
+                column_count = table.num_columns
+            except Exception:
+                column_count = 0
+
+            # Derive display name and metadata
+            name = pop_id.replace("-", " ").title()
+
+            parts = pop_id.split("-")
+            source = parts[0] if parts else "unknown"
+            year = 2025
+            households = 0
+
+            for part in parts:
+                if len(part) == 4 and part.isdigit():
+                    year = int(part)
+                elif part.endswith("k") and part[:-1].isdigit():
+                    households = int(part[:-1]) * 1000
+                elif part.isdigit() and len(part) >= 3:
+                    households = int(part)
+
+            # Determine canonical evidence from descriptor or use defaults
+            if descriptor and all(k in descriptor for k in ("origin", "access_mode", "trust_status")):
+                canonical_origin = descriptor["origin"]
+                access_mode = descriptor["access_mode"]
+                trust_status = descriptor["trust_status"]
+                # Use descriptor name if available
+                if descriptor.get("name"):
+                    name = descriptor["name"]
+            else:
+                canonical_origin, access_mode, trust_status = _map_to_canonical_evidence("built-in")
+
+            # Folder-based populations are treated as "built-in" origin
+            origin = "built-in"
+
+            items.append(
+                PopulationLibraryItem(
+                    id=pop_id,
+                    name=name,
+                    households=households,
+                    source=source,
+                    year=year,
+                    origin=origin,
+                    canonical_origin=canonical_origin,
+                    access_mode=access_mode,
+                    trust_status=trust_status,
+                    column_count=column_count,
+                    created_date=None,
+                )
+            )
+
+        # Then scan file-based populations (existing behavior for backward compatibility)
         for path in sorted(data_dir.iterdir()):
             if path.suffix.lower() not in _DATA_EXTENSIONS:
                 continue
@@ -327,8 +446,16 @@ def _scan_populations_with_origin() -> list[PopulationLibraryItem]:
                 elif part.isdigit() and len(part) >= 3:
                     households = int(part)
 
-            # Story 21.2 / AC3, AC4: Map legacy origin to canonical evidence fields
-            canonical_origin, access_mode, trust_status = _map_to_canonical_evidence(origin)
+            # Story 21.4 / Task 2.6: Check for descriptor.json in population folder first
+            descriptor = _read_descriptor_from_folder(pop_id, data_dir)
+            if descriptor and all(k in descriptor for k in ("origin", "access_mode", "trust_status")):
+                # Use canonical evidence from descriptor.json
+                canonical_origin = descriptor["origin"]
+                access_mode = descriptor["access_mode"]
+                trust_status = descriptor["trust_status"]
+            else:
+                # Story 21.2 / AC3, AC4: Map legacy origin to canonical evidence fields
+                canonical_origin, access_mode, trust_status = _map_to_canonical_evidence(origin)
 
             items.append(
                 PopulationLibraryItem(
@@ -1020,3 +1147,205 @@ async def delete_population(
             pass
 
     return None
+
+
+# =============================================================================
+# Comparison endpoint — Story 21.4
+# =============================================================================
+
+
+@router.get("/compare", response_model=PopulationComparisonResponse)
+async def compare_populations_endpoint(
+    observed_id: str,
+    synthetic_id: str,
+) -> PopulationComparisonResponse:
+    """Compare observed and synthetic populations — Story 21.4 / AC4, AC8.
+
+    Validates:
+    - Both populations exist (404 if not found)
+    - One is observed (open-official) and one is synthetic (synthetic-public) (422 if invalid pairing)
+    - Schemas have at least one common numeric column (400 if no overlap)
+
+    Returns comparison metrics with trust labels for both assets.
+    """
+    data_dir = _get_data_dir()
+    uploaded_dir = _get_uploaded_dir()
+
+    # Helper function to get population file path
+    def _get_pop_path(pop_id: str) -> Path | None:
+        # Check folder-based populations (with descriptor.json)
+        pop_folder = data_dir / pop_id
+        if pop_folder.is_dir():
+            # Check for data.csv or data.parquet
+            for ext in ("data.parquet", "data.csv"):
+                candidate = pop_folder / ext
+                if candidate.exists():
+                    return candidate
+            # Check for any CSV or Parquet file
+            for ext in (".parquet", ".csv"):
+                candidates = list(pop_folder.glob(f"*{ext}"))
+                if len(candidates) == 1:
+                    return candidates[0]
+        # Check file-based populations
+        for ext in (".parquet", ".csv"):
+            candidate = data_dir / f"{pop_id}{ext}"
+            if candidate.exists():
+                return candidate
+        # Check uploaded populations
+        for ext in (".parquet", ".csv"):
+            candidate = uploaded_dir / f"{pop_id}{ext}"
+            if candidate.exists():
+                return candidate
+        return None
+
+    # Helper function to get descriptor from metadata
+    def _get_descriptor(pop_id: str, data_file: Path) -> DataAssetDescriptor:
+        """Get DataAssetDescriptor from descriptor.json or create default."""
+        # Check for folder-based descriptor.json
+        if data_file.parent.is_dir():
+            descriptor_path = data_file.parent / "descriptor.json"
+            if descriptor_path.exists():
+                try:
+                    desc_data = json.loads(descriptor_path.read_text())
+                    return DataAssetDescriptor.from_json(desc_data)
+                except Exception:
+                    pass
+
+        # Create default descriptor based on population_id origin
+        # For this implementation, we'll use the canonical_origin from the scan
+        items = _scan_populations_with_origin()
+        for item in items:
+            if item.id == pop_id:
+                return DataAssetDescriptor(
+                    asset_id=pop_id,
+                    name=item.name,
+                    description=item.name,
+                    data_class="structural",
+                    origin=item.canonical_origin,
+                    access_mode=item.access_mode,
+                    trust_status=item.trust_status,
+                )
+
+        # Fallback to default
+        return DataAssetDescriptor(
+            asset_id=pop_id,
+            name=pop_id,
+            description=f"Population {pop_id}",
+            data_class="structural",
+            origin="synthetic-public",
+            access_mode="bundled",
+            trust_status="exploratory",
+        )
+
+    # Validate both populations exist
+    observed_file = _get_pop_path(observed_id)
+    synthetic_file = _get_pop_path(synthetic_id)
+
+    if observed_file is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "what": f"Observed population '{observed_id}' not found",
+                "why": "No population file exists for this ID",
+                "fix": "Check available populations via GET /api/populations",
+            },
+        )
+
+    if synthetic_file is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "what": f"Synthetic population '{synthetic_id}' not found",
+                "why": "No population file exists for this ID",
+                "fix": "Check available populations via GET /api/populations",
+            },
+        )
+
+    # Get descriptors
+    observed_descriptor = _get_descriptor(observed_id, observed_file)
+    synthetic_descriptor = _get_descriptor(synthetic_id, synthetic_file)
+
+    # Validate one is observed and one is synthetic
+    if (observed_descriptor.origin, synthetic_descriptor.origin) not in (
+        ("open-official", "synthetic-public"),
+        ("synthetic-public", "open-official"),
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "what": "Invalid observed/synthetic pairing",
+                "why": (
+                    f"One population must be observed (open-official) and one must be "
+                    f"synthetic (synthetic-public), got {observed_descriptor.origin} "
+                    f"and {synthetic_descriptor.origin}"
+                ),
+                "fix": (
+                    "Select one observed (open-official) and one synthetic "
+                    "(synthetic-public) population for comparison"
+                ),
+            },
+        )
+
+    # Load tables
+    try:
+        observed_table = _load_population_table(observed_file)
+        synthetic_table = _load_population_table(synthetic_file)
+    except Exception as e:
+        logger.exception("Failed to load population tables for comparison")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "what": "Failed to load population data",
+                "why": str(e),
+                "fix": "Ensure population files are valid CSV or Parquet files",
+            },
+        )
+
+    # Perform comparison
+    try:
+        comparison = compare_populations(
+            observed_table,
+            synthetic_table,
+            observed_descriptor,
+            synthetic_descriptor,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "what": "Cannot compare populations",
+                "why": str(e),
+                "fix": "Ensure both populations have at least one common numeric column",
+            },
+        )
+
+    # Convert domain models to API response
+    numeric_comparison_response = {
+        col_name: NumericColumnComparison(
+            column_name=comp.column_name,
+            observed_mean=comp.observed_mean,
+            synthetic_mean=comp.synthetic_mean,
+            relative_diff_pct=comp.relative_diff_pct,
+            observed_median=comp.observed_median,
+            synthetic_median=comp.synthetic_median,
+            observed_std=comp.observed_std,
+            synthetic_std=comp.synthetic_std,
+            observed_p10=comp.observed_p10,
+            synthetic_p10=comp.synthetic_p10,
+            observed_p50=comp.observed_p50,
+            synthetic_p50=comp.synthetic_p50,
+            observed_p90=comp.observed_p90,
+            synthetic_p90=comp.synthetic_p90,
+        )
+        for col_name, comp in comparison.numeric_comparison.items()
+    }
+
+    return PopulationComparisonResponse(
+        observed_asset_id=comparison.observed_asset_id,
+        synthetic_asset_id=comparison.synthetic_asset_id,
+        row_counts=comparison.row_counts,
+        column_counts=comparison.column_counts,
+        common_numeric_columns=comparison.common_numeric_columns,
+        numeric_comparison=numeric_comparison_response,
+        trust_labels=comparison.trust_labels,
+    )

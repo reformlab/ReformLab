@@ -9,6 +9,7 @@ import type {
   PopulationProfileResponse,
   PopulationCrosstabResponse,
   PopulationUploadResponse,
+  PopulationComparisonResponse,
 } from "./types";
 
 /** List available population datasets.
@@ -64,4 +65,22 @@ export async function uploadPopulation(file: File): Promise<PopulationUploadResp
 /** Delete a population dataset by ID. */
 export async function deletePopulation(id: string): Promise<void> {
   await apiFetch<void>(`/api/populations/${id}`, { method: "DELETE" });
+}
+
+/** Compare observed and synthetic populations.
+
+Story 21.4 / AC4: Computes distributional statistics comparing observed
+and synthetic populations with trust labels for both.
+
+@throws {Error} With detail.what/why/fix structure for validation errors.
+*/
+export async function comparePopulations(
+  observedId: string,
+  syntheticId: string,
+): Promise<PopulationComparisonResponse> {
+  const query = new URLSearchParams({
+    observed_id: observedId,
+    synthetic_id: syntheticId,
+  });
+  return apiFetch<PopulationComparisonResponse>(`/api/populations/compare?${query.toString()}`);
 }

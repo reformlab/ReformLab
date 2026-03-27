@@ -40,6 +40,8 @@ build-backend = "hatchling.build"
 packages = ["src/reformlab"]
 include = [
     "reformlab/calibration/schema/*.json",
+    "reformlab/data/populations/**/*.json",
+    "reformlab/data/populations/**/*.parquet",
 ]
 
 [tool.pytest.ini_options]
