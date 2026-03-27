@@ -86,7 +86,16 @@ def _build_source_item(provider: str, dataset_id: str, dataset: Any) -> DataSour
     Story 21.2 / AC6: Populates evidence metadata from provider catalog.
     """
     col_count = len(dataset.columns) if hasattr(dataset, "columns") else 0
-    evidence = _PROVIDER_EVIDENCE.get(provider, _PROVIDER_EVIDENCE["insee"])
+
+    # Story 21.2 code review fix: Fail-fast for unknown providers instead of silent INSEE fallback
+    if provider not in _PROVIDER_EVIDENCE:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unknown provider evidence mapping: {provider!r}. "
+                    f"Valid providers: {sorted(_VALID_PROVIDERS)}",
+        )
+
+    evidence = _PROVIDER_EVIDENCE[provider]
     return DataSourceItem(
         id=dataset_id,
         provider=provider,

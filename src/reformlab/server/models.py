@@ -231,9 +231,10 @@ class DataSourceItem(BaseModel):
     record_count: int | None = None
     source_url: str
     # Story 21.2 / AC5, AC7: Evidence classification fields using canonical Literal types
-    origin: DataAssetOrigin = "open-official"  # All current providers are open-official
-    access_mode: DataAssetAccessMode = "fetched"  # All current providers are fetched
-    trust_status: DataAssetTrustStatus = "production-safe"  # Official sources are production-safe
+    # Story 21.2 code review fix: Removed defaults for Literal types - must be explicit
+    origin: DataAssetOrigin  # All current providers are open-official
+    access_mode: DataAssetAccessMode  # All current providers are fetched
+    trust_status: DataAssetTrustStatus  # Official sources are production-safe
     data_class: Literal["structural"] = "structural"  # All fusion sources are structural in current phase
 
 

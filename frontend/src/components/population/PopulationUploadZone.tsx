@@ -226,6 +226,10 @@ export function PopulationUploadZone({ onClose, onConfirm }: PopulationUploadZon
       source: "upload",
       year: new Date().getFullYear(),
       origin: "uploaded",
+      // Story 21.2 / AC3: Canonical evidence fields for uploaded populations
+      canonical_origin: "synthetic-public",
+      access_mode: "bundled",
+      trust_status: "exploratory",
       column_count: report.column_count,
       created_date: new Date().toISOString(),
     };

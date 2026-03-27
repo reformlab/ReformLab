@@ -48,6 +48,8 @@ PREVIEW_MAX_LIMIT = 100
 CROSSTAB_MAX_COMBINATIONS = 1000
 HISTOGRAM_BINS = 20
 CATEGORICAL_TOP_VALUES = 50
+# Story 21.2 code review fix: Maximum upload size to prevent memory exhaustion (100 MB)
+MAX_UPLOAD_SIZE = 100 * 1024 * 1024
 
 router = APIRouter()
 
@@ -222,13 +224,38 @@ def _get_canonical_evidence_from_metadata(
     Returns:
         (canonical_origin, access_mode, trust_status) tuple
     """
+    # Story 21.2 code review fix: Validate metadata canonical fields against Literal types
     if metadata and all(k in metadata for k in ("canonical_origin", "access_mode", "trust_status")):
-        # New metadata with canonical fields - use them directly
-        return (
-            metadata["canonical_origin"],
-            metadata["access_mode"],
-            metadata["trust_status"],
-        )
+        canonical_origin = metadata["canonical_origin"]
+        access_mode = metadata["access_mode"]
+        trust_status = metadata["trust_status"]
+
+        # Validate against canonical Literal types to prevent malformed metadata from causing 500 errors
+        valid_origins = DataAssetOrigin.__args__
+        valid_modes = DataAssetAccessMode.__args__
+        valid_statuses = DataAssetTrustStatus.__args__
+
+        if canonical_origin not in valid_origins:
+            logger.warning(
+                "event=invalid_metadata field=canonical_origin value=%s using_fallback=true",
+                canonical_origin,
+            )
+            return _map_to_canonical_evidence(legacy_origin)
+        if access_mode not in valid_modes:
+            logger.warning(
+                "event=invalid_metadata field=access_mode value=%s using_fallback=true",
+                access_mode,
+            )
+            return _map_to_canonical_evidence(legacy_origin)
+        if trust_status not in valid_statuses:
+            logger.warning(
+                "event=invalid_metadata field=trust_status value=%s using_fallback=true",
+                trust_status,
+            )
+            return _map_to_canonical_evidence(legacy_origin)
+
+        return (canonical_origin, access_mode, trust_status)
+
     # Legacy metadata or missing fields - use mapping function
     return _map_to_canonical_evidence(legacy_origin)
 
@@ -842,11 +869,27 @@ async def upload_population(
     population_id = f"uploaded-{uuid.uuid4()}"
     uploaded_dir = _get_uploaded_dir()
 
-    # Save file
+    # Save file with size limit to prevent memory exhaustion
     data_file = uploaded_dir / f"{population_id}{ext}"
     try:
-        contents = file.file.read()
-        data_file.write_bytes(contents)
+        # Story 21.2 code review fix: Stream file to disk with size limit
+        chunk_size = 64 * 1024  # 64 KB chunks
+        total_size = 0
+        with data_file.open("wb") as f:
+            while chunk := file.file.read(chunk_size):
+                total_size += len(chunk)
+                if total_size > MAX_UPLOAD_SIZE:
+                    raise HTTPException(
+                        status_code=413,
+                        detail={
+                            "what": "File too large",
+                            "why": f"Maximum upload size is {MAX_UPLOAD_SIZE // (1024 * 1024)} MB",
+                            "fix": "Upload a smaller file or split into multiple files",
+                        },
+                    )
+                f.write(chunk)
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception("Failed to save uploaded file")
         raise HTTPException(
