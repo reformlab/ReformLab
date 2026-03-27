@@ -5,7 +5,6 @@ revision: 2.0
 revisionDate: 2026-03-24
 revisionScope: "Information architecture restructuring, brand-aligned shell, population data explorer, engine stage"
 inputDocuments:
-  - _bmad-output/planning-artifacts/product-brief-ReformLab-2026-02-23.md
   - _bmad-output/planning-artifacts/research/technical-entity-graph-data-modeling-and-vectorized-simulation-engines-research-2026-02-23.md
   - _bmad-output/planning-artifacts/research/domain-generic-microsimulation-frameworks-research-2026-02-23.md
   - _bmad-output/branding/visual-identity-guide.md
@@ -82,16 +81,17 @@ Once the model is configured, running simulations is a single action. The analys
 
 - **GUI-first design:** The GUI is the primary interface for both model configuration and simulation execution. An analyst can complete the full workflow — from synthetic population selection through policy configuration to scenario comparison — without writing code.
 - **Code-alongside (MVP scope):** The GUI operates through the same Python API objects used in notebooks. Users can export their current configuration and workflow as a notebook at any point. A live side-by-side code panel is a Phase 2 GUI expansion.
-- **Desktop web application:** Browser-based (localhost or hosted), mouse/keyboard primary.
-- **Fully offline:** No network calls required for core workflows (NFR13). All data and computation are local.
+- **Local-first desktop web application:** Browser-based with a bundled local service layer. The default deployment is localhost on one machine; hosted deployment is optional later, but the core UX cannot depend on internet connectivity.
+- **Offline-capable core workflows:** Simulation, inspection, comparison, lineage, and export work without external network calls. Links to documentation/repository are optional conveniences, not product dependencies.
 - **Single-machine target:** 16GB laptop for MVP populations (up to 500k households).
+- **Mode strategy:** The MVP covers the advanced analyst workspace. The broader "simple mode" from the brand strategy is treated as a downstream reporting/presentation surface, not a second authoring workflow in this spec revision.
 
 ### Effortless Interactions
 
 - **Simulation execution:** Configured model → run → visual results in one click.
 - **Scenario comparison:** Select two or more completed runs → side-by-side indicator tables and charts appear automatically.
 - **Parameter sweeps:** Select a parameter, define a range, launch sensitivity analysis — results stream in as they complete.
-- **Export:** Any table or chart → CSV/Parquet with one action from the GUI or API.
+- **Export:** Any table or chart → CSV/Parquet/Notebook with one action from the GUI or API.
 
 ### Critical Success Moments
 
@@ -383,11 +383,11 @@ ReformLab preserves the familiar mental model while removing the friction. The p
 
 | Criterion | Target |
 |-----------|--------|
-| Parameter change to chart update | < 2 seconds for cached populations, < 10 seconds for full recomputation |
+| Parameter change to chart update | < 2 seconds for cached or preview computations; otherwise queued recomputation with visible progress and preserved context |
 | Analyst understands what changed | Waterfall chart highlights the parameter's contribution to the distributional shift |
 | Surprising result is investigable | One click from any chart value to its lineage chain |
-| Comparison is immediate | Adjusting a parameter in a reform scenario auto-updates the baseline vs. reform comparison view |
-| Loop is repeatable without friction | No "save and re-run" step — the loop is continuous: tweak → see → tweak → see |
+| Comparison is immediate | Adjusting a parameter in an editable scenario immediately marks dependent runs stale and refreshes comparison as soon as reruns complete |
+| Loop is repeatable without friction | No manual save step is required between tweaks; edits are preserved and reruns are explicit when computation cost requires them |
 
 ### Novel vs. Established Patterns
 
@@ -413,14 +413,14 @@ ReformLab preserves the familiar mental model while removing the friction. The p
 
 **2. Interaction:**
 
-- **Slider drag** for continuous parameters (tax rate: 0-100%) — chart updates live during drag
-- **Numeric input** for precise values — chart updates on Enter or blur
-- **Toggle switch** for binary provisions (enabled/disabled) — chart updates instantly
+- **Slider drag** for continuous parameters (tax rate: 0-100%) — lightweight preview values update live; expensive recomputation triggers on release after debounce
+- **Numeric input** for precise values — local validation is immediate; recomputation triggers on Enter or blur
+- **Toggle switch** for binary provisions (enabled/disabled) — cached comparisons refresh instantly; uncached runs queue automatically with progress
 - **The reform-as-delta indicator** shows which parameters differ from baseline, always visible
 
 **3. Feedback:**
 
-- **Distributional bar chart** redraws within 2 seconds, highlighting the changed deciles with animation
+- **Distributional bar chart** redraws within 2 seconds when cached/previewable; otherwise the view keeps prior results visible, marks them stale, and shows queued recomputation progress
 - **Waterfall contribution panel** shows how much of the distributional shift is attributable to the parameter just changed vs. other reform parameters
 - **Delta indicators** on key summary statistics (Gini coefficient, fiscal cost, affected population %) update alongside the chart
 - **Confidence signal**: if the result is deterministic (same inputs as a previous run), a subtle "verified" indicator appears
@@ -789,7 +789,7 @@ Components not available in Shadcn/ui, designed specifically for ReformLab's dom
 - Status badge: draft / ready / running / completed / failed
 - Delta summary: "3 parameters changed" with expand-to-list
 - Last run timestamp
-- Actions: Run, Clone, Compare, Delete
+- Actions: Open, Clone, View latest results, Delete
 
 **States:**
 
@@ -900,7 +900,7 @@ Components not available in Shadcn/ui, designed specifically for ReformLab's dom
 - Scenario selector (which scenarios to compare, max 5)
 - Mode tabs (side-by-side / overlay / delta)
 - Content area adapting to selected mode
-- Parameter editing still active — tweaking a parameter in any scenario updates all views live
+- Parameter editing launches from the owning scenario context; comparison views reflect stale/refreshing state until dependent reruns complete
 
 #### ModelConfigStepper (Retired after Revision 2.0)
 
@@ -1130,7 +1130,7 @@ Components not available in Shadcn/ui, designed specifically for ReformLab's dom
 
 ### Responsive Strategy
 
-**Desktop-only for MVP.** ReformLab is an analytical workstation used on laptops and desktop monitors. There is no mobile or tablet use case for policy microsimulation analysis.
+**Desktop-first for MVP.** ReformLab is an analytical workstation used primarily on laptops and desktop monitors. Phone authoring is not a target use case, but zoomed and narrow desktop windows must remain operable for accessibility.
 
 **Target viewports:**
 
@@ -1138,31 +1138,33 @@ Components not available in Shadcn/ui, designed specifically for ReformLab's dom
 |----------|-------|----------------|
 | Large desktop | 1920px+ | All three columns open, generous main content area |
 | Standard desktop | 1440-1919px | All three columns open, comfortable density |
-| Laptop | 1366-1439px | Side panels auto-collapse to 48px icon rails |
-| Small laptop | 1280-1365px | Side panels collapsed by default, main content fills width |
-| Minimum supported | 1280px | Below this, the workspace is not optimized (warning shown) |
+| Laptop | 1280-1439px | Sidebar collapses to rail; contextual panel optional |
+| Narrow / zoomed desktop | 1024-1279px | One side panel at a time; secondary surfaces open as Sheet/drawer overlays |
+| Minimum operable width | 768-1023px | Single main column with drawers for navigation/context; data-heavy views may switch to table-first mode |
 
-**No mobile or tablet layouts.** If accessed on a device < 1280px, a message displays: "ReformLab is designed for desktop use. Please use a laptop or desktop browser for the best experience."
+**Phones are discouraged, not hard-blocked.** Below 768px, the app may present a compact read-only warning state, but core navigation and exported outputs remain reachable. This keeps zoomed desktop use compatible with accessibility expectations.
 
 ### Breakpoint Strategy
 
 **Tailwind breakpoint mapping:**
 
 ```css
-sm: not used (mobile)
-md: not used (tablet)
-lg: 1280px — minimum supported, panels collapsed
-xl: 1440px — full three-column layout
-2xl: 1920px — generous spacing, large charts
+sm: 640px — compact/read-only warning and drawer behavior
+md: 768px — minimum operable single-column workspace
+lg: 1024px — narrow desktop / zoomed desktop layout
+xl: 1280px — standard desktop with collapsed auxiliary panels
+2xl: 1440px+ — full three-column layout
 ```
 
 **Breakpoint behavior:**
 
-- `xl` and above: three columns open by default, standard component spacing
-- `lg` to `xl`: side panels auto-collapse to icon rails, main content fills available space
-- Below `lg`: unsupported viewport warning
+- `2xl` and above: three columns open by default, standard component spacing
+- `xl` to `2xl`: sidebar open or rail, contextual panel optional
+- `lg` to `xl`: one auxiliary panel visible at a time; drawers/Sheets for secondary surfaces
+- `md` to `lg`: single main column with drawers for navigation, context, and inspectors
+- Below `md`: compact warning state; no promise of comfortable authoring
 
-**No mobile-first approach.** The CSS is written desktop-first since the product has no mobile use case. Tailwind's responsive prefixes are used only for the laptop collapse behavior (`xl:` for full layout, `lg:` for collapsed layout).
+**Still desktop-first.** The CSS is authored from the desktop layout down, but narrower breakpoints exist so browser zoom, split-screen, and accessibility use remain functional.
 
 ### Accessibility Strategy
 
@@ -1285,7 +1287,7 @@ The four-stage shell organizes one underlying analysis model. The canonical work
 | Configuration → Parameters step | Mixed policy params with engine params | Stage 1 for policy params, Stage 3 for engine params |
 | Configuration → Validation step | Validated everything at once | Validation is per-stage (each stage validates its own completeness) |
 | Portfolio Designer (separate screen) | Users couldn't see policies inside portfolio | Stage 1 makes Portfolio = collection of policies, visible and editable inline |
-| No calibration anywhere | Calibration is critical for investment decision models | Stage 3: Engine → Investment Decisions accordion |
+| No projection-controls home | Vintage handling, uprating, and execution settings had no clear home | Stage 3: Engine → Projection Assumptions + execution controls |
 
 ### Revision: Application Shell & Navigation
 
@@ -1342,7 +1344,7 @@ The four-stage shell organizes one underlying analysis model. The canonical work
 - **Right side:** Utility icon links in `text-slate-500`, Lucide line-style icons:
   - Documentation link (BookOpen icon) — opens docs in new tab
   - GitHub link (Github icon) — opens repository
-  - API status indicator — `w-2 h-2 rounded-full` dot: `bg-emerald-500` when connected, `bg-amber-500` when disconnected. Tooltip on hover: "API connected" / "Sample data — start backend for live data"
+  - Local service status indicator — `w-2 h-2 rounded-full` dot: `bg-emerald-500` when the bundled backend is ready, `bg-amber-500` when running in sample-data mode. Tooltip on hover: "Local engine ready" / "Sample data — start local backend for live data"
   - Settings gear (Settings icon) — opens settings panel
 - **No logo, no subtitle, no gradient, no shadow, no contextual navigation buttons**
 
@@ -1421,7 +1423,7 @@ flowchart TD
 
 ### Revision: Stage 2 — Population
 
-**Purpose:** Prepare the population data that policies will be applied to. This stage is a complete data workspace: select, build, upload, explore, and profile population datasets.
+**Purpose:** Prepare the population data that policies will be applied to. This stage is a complete data workspace: select, build, upload, explore, and profile population datasets. Population artifacts are versioned and immutable once referenced by a saved scenario or completed run.
 
 #### Information Architecture
 
@@ -1437,7 +1439,7 @@ Stage 2: POPULATION
 │   └─ Per-population actions:
 │       ├─ 👁 Quick Preview (slide-over sheet)
 │       ├─ 📊 Full Data Explorer (full-screen)
-│       ├─ ✏️ Edit via Data Fusion
+│       ├─ ✏️ Edit as New Version via Data Fusion
 │       ├─ 📤 Upload New
 │       └─ 🗑 Delete
 │
@@ -1448,12 +1450,13 @@ Stage 2: POPULATION
 │   ├─ Drop zone: drag CSV/Parquet or click to browse
 │   │   └─ Style: `border-2 border-dashed border-slate-300` idle,
 │   │     `border-blue-500 bg-blue-50` on drag-over
-│   ├─ Schema validation report:
+│   ├─ Import report:
 │   │   ├─ ✓ Row count, column count
 │   │   ├─ ✓ Matched columns (mapped to expected schema)
-│   │   ├─ ⚠ Unrecognized columns (ignored)
-│   │   └─ ✗ Missing required columns (blocks upload)
-│   └─ Confirm → population added to library
+│   │   ├─ ⚠ Unrecognized columns (retained, not ignored)
+│   │   ├─ ⚠ Missing required columns (import allowed as draft)
+│   │   └─ Next step link → "Open mapping and remediation"
+│   └─ Confirm → draft population version added to library
 │
 ├─ Quick Preview (slide-over Sheet component)
 │   ├─ First 100 rows in a sortable table
@@ -1515,19 +1518,20 @@ GET /api/populations/{id}/crosstab?col_a=region&col_b=tenure_type
 
 POST /api/populations/upload
   → Accepts multipart CSV or Parquet file
-  → Returns validation report: matched_columns, unrecognized_columns, missing_required, row_count
-  → On success: population added to library
+  → Returns import report: matched_columns, unrecognized_columns, missing_required, row_count, status
+  → On success: draft population version added to library
 ```
 
 #### Key Design Decisions
 
 - **Population Library is the entry point.** The user sees all available populations first, then chooses to explore, build, or upload.
+- **Population edits are copy-on-write.** "Edit" always creates a new derived version; saved scenarios and completed runs continue pointing at the older immutable version.
 - **Quick Preview (slide-over) for spot-checks.** 10-second interaction: open, scan, close. Uses Shadcn Sheet component.
 - **Full Data Explorer for deep investigation.** Tab-based: Table, Profile, Summary. The Profile tab is the visual data exploration experience.
 - **Cross-tab charts are the key visual insight.** Stacked bars per attribute (e.g., region × tenure type) give the analyst a static picture of the population structure. This is what was missing.
 - **TanStack Table (headless) for the data table.** Maximum control over styling to maintain brand compliance. Server-side pagination to handle 500k rows.
 - **Recharts for all profiler charts.** Already in the project. Histogram via BarChart, value counts via horizontal BarChart, cross-tabs via stacked BarChart.
-- **Upload validates schema before accepting.** Required columns must be present. Unrecognized columns are kept but flagged. Missing required columns block the upload with a clear error.
+- **Upload is permissive, execution is strict.** Import accepts imperfect files as drafts, then guides the analyst through mapping/remediation. Stage 3 remains the hard gate before execution.
 
 #### Visual Profiler Example
 
@@ -1544,7 +1548,7 @@ Colors: Slate 400 for first category, Blue 500 for second. Chart palette from th
 
 ### Revision: Stage 3 — Engine
 
-**Purpose:** Configure computation parameters — how the simulation engine behaves. This stage is the assembly point: it references the portfolio from Stage 1 and populations from Stage 2, and adds engine-specific configuration.
+**Purpose:** Configure computation parameters — how the simulation engine behaves. This stage is the assembly point: it references the portfolio from Stage 1 and populations from Stage 2, and adds projection, mapping, and execution controls aligned with the OpenFisca-first MVP.
 
 #### Information Architecture
 
@@ -1562,26 +1566,25 @@ Stage 3: ENGINE
 │   │   └─ Adds a second dropdown for an additional population
 │   └─ Display: "Running against: FR-2023-SILC" or "Running against: 2 populations"
 │
-├─ Investment Decisions [toggle]
-│   └─ When enabled (accordion expands inline):
-│       ├─ Logit model selection (dropdown: multinomial logit, nested logit, mixed logit)
-│       ├─ Taste parameters (sliders with numeric inputs)
-│       │   └─ Per-parameter: label, slider, value, baseline reference
-│       └─ Calibration
-│           ├─ Calibration method (dropdown: maximum likelihood, simulated method of moments)
-│           ├─ Calibration targets (editable table: target name, observed value, weight)
-│           └─ Calibration status indicator (not calibrated / calibrating / calibrated ✓)
+├─ Projection Assumptions [advanced accordion]
+│   └─ When expanded:
+│       ├─ Uprating/indexation source (dropdown: template default, CPI series, custom series)
+│       ├─ Vintage handling (dropdown: carry-forward, scheduled rebase, custom rule)
+│       ├─ Optional behavioral response profile (dropdown: none, template default, custom elasticity pack)
+│       └─ Assumption status indicator (using defaults / customized)
 │
 ├─ Other Engine Parameters
-│   ├─ Discount rate (slider + numeric, default 3%)
-│   └─ Any additional engine-level parameters
+│   ├─ Discount rate (slider + numeric, default 3% where relevant)
+│   ├─ Execution mode (segmented control: Fast preview / Full run)
+│   └─ Cache policy / reuse prior baseline results
 │
 ├─ Run Summary
 │   ├─ Scenario: "{scenario_name}" (baseline or reform)
 │   ├─ Portfolio: "{portfolio_name}" (N policies)
 │   ├─ Population(s): list with row counts
 │   ├─ Time horizon: start–end (N years)
-│   ├─ Investment decisions: enabled/disabled
+│   ├─ Projection assumptions: defaults/customized
+│   ├─ Execution mode: preview/full
 │   ├─ Total runs: Scenario × Populations = N runs
 │   └─ Estimated computation time (if available)
 │
@@ -1592,7 +1595,8 @@ Stage 3: ENGINE
     ├─ Required OpenFisca/project field mappings resolve cleanly
     ├─ Policy year schedules fit within the selected time horizon
     ├─ Start year < end year
-    ├─ If investment decisions enabled: logit model selected, calibration complete
+    ├─ Draft population imports must be fully mapped before execution
+    ├─ If advanced assumptions are customized: required series/rules resolve cleanly
     ├─ Memory/runtime preflight passes for the selected run matrix
     └─ All checks pass → "Ready to Run" primary button enabled
 ```
@@ -1600,8 +1604,8 @@ Stage 3: ENGINE
 #### Key Design Decisions
 
 - **Multi-population is a secondary affordance.** The default shows a single population dropdown. "+ Add population for sensitivity" is a text link, not a prominent button. This keeps the happy path clean.
-- **Investment decisions are an inline accordion.** Toggle on → the section expands in place revealing logit model, taste parameters, and calibration. No sub-screen, no navigation. The analyst sees everything in context.
-- **Calibration lives here, not in Stage 1.** Calibration configures the model engine, not the policies. This is a deliberate architectural decision: policies define what to simulate, the engine defines how.
+- **Projection assumptions are advanced, not mandatory.** The default path uses template defaults. Analysts only open this section when they need to inspect or override uprating, vintage, or behavioral response assumptions.
+- **Engine scope stays aligned with the MVP.** This stage handles projection and execution controls for OpenFisca-based policy runs; full structural choice-model calibration is out of scope for this revision.
 - **Run Summary is a pre-flight checklist.** Before pressing Run, the analyst sees a compact summary of everything that will be computed. This is the "confidence checkpoint" from the original spec, relocated to Stage 3.
 - **Scenario is assembled here as a first-class object.** Saving or cloning at this point creates a versioned scenario tying together the current portfolio, selected populations, and engine configuration.
 - **Cross-stage validation happens here.** Stage 3 is the integration gate where portfolio requirements, population schema, mappings, schedules, and runtime preflight are checked together before execution.
@@ -1616,21 +1620,15 @@ flowchart TD
     C --> D{Add more populations?}
     D -->|Yes| E[+ Add population]
     E --> C
-    D -->|No| F{Investment decisions?}
-    F -->|Yes| G[Enable toggle → accordion expands]
-    G --> H[Select logit model]
-    H --> I[Set taste parameters]
-    I --> J[Configure calibration]
-    J --> K[Run calibration]
-    K --> L{Calibration converged?}
-    L -->|Yes| M[Review run summary]
-    L -->|No| N[Adjust targets / method → retry]
-    N --> K
-    F -->|No| M
-    M --> O{All checks pass?}
-    O -->|Yes| P[Run Simulation → Stage 4]
-    O -->|No| Q[Show failing checks with links to fix]
-    Q --> A
+    D -->|No| F{Override advanced assumptions?}
+    F -->|Yes| G[Expand advanced assumptions]
+    G --> H[Adjust uprating / vintage / optional behavioral profile]
+    H --> I[Review run summary]
+    F -->|No| I
+    I --> J{All checks pass?}
+    J -->|Yes| K[Run Simulation → Stage 4]
+    J -->|No| L[Show failing checks with links to fix]
+    L --> A
 ```
 
 ### Revision: Stage 4 — Run / Results / Compare
@@ -1654,7 +1652,7 @@ Stage 4: RUN / RESULTS / COMPARE
 │   ├─ Summary statistics cards (Gini, fiscal cost, affected %)
 │   ├─ Waterfall contribution chart
 │   ├─ Run manifest / lineage access
-│   └─ Export actions (CSV, Parquet)
+│   └─ Export actions (CSV, Parquet, Notebook)
 │
 ├─ Comparison View
 │   ├─ Select 2-5 completed runs to compare
@@ -1662,10 +1660,10 @@ Stage 4: RUN / RESULTS / COMPARE
 │   ├─ [Tab: Overlay] — all runs on same chart axes
 │   ├─ [Tab: Delta table] — difference from baseline per indicator
 │   ├─ Absolute / relative toggle
-│   └─ CSV export of comparison data
+│   └─ Export comparison data (CSV, Notebook manifest)
 │
-└─ Behavioral Decision Viewer (when investment decisions were enabled)
-    └─ Per-run drill-down into logit model outcomes
+└─ Run Manifest Viewer
+    └─ Per-run drill-down into assumptions, mappings, lineage, and reproducibility metadata
 ```
 
 #### Key Design Decisions
@@ -1673,7 +1671,7 @@ Stage 4: RUN / RESULTS / COMPARE
 - **Run Queue handles the multi-population matrix.** If the user selected 2 populations in Stage 3, they see 2 runs queued. Each run is independently cancellable.
 - **Results and Comparison are sub-views within Stage 4**, not separate stages. The nav rail shows Stage 4 as active for all three.
 - **Scenario remains the durable analysis object.** Stage 4 executes scenario versions and compares their runs; it does not replace the scenario registry.
-- **The core loop lives here.** Quick parameter tweaks (adjusting a policy parameter, re-running) cycle between Stage 1 → Stage 4 fluidly. The workspace supports this without full page transitions.
+- **The core loop lives here.** Quick parameter tweaks cycle between the owning scenario context and Stage 4; stale results stay visible until reruns complete, so the analyst never loses orientation.
 
 ### Revision: Updated Component Strategy
 
@@ -1700,11 +1698,10 @@ Stage 4: RUN / RESULTS / COMPARE
 | `PopulationDataTable` | `components/population/PopulationDataTable.tsx` | TanStack Table for paginated, sortable, filterable population data |
 | `PopulationProfiler` | `components/population/PopulationProfiler.tsx` | Visual column profiler: histograms, value counts, cross-tabs, stats |
 | `PopulationSummary` | `components/population/PopulationSummary.tsx` | Dataset-level overview: row/column counts, type breakdown, completeness |
-| `PopulationUploadZone` | `components/population/PopulationUploadZone.tsx` | Drag-and-drop file upload with schema validation |
-| `EngineScreen` | `components/screens/EngineScreen.tsx` | Stage 3: time horizon, population selection, investment decisions, run summary |
-| `ScenarioSummaryCard` | `components/simulation/ScenarioSummaryCard.tsx` | Saved scenario list item for compare/clone/select flows |
-| `InvestmentDecisionsAccordion` | `components/simulation/InvestmentDecisionsAccordion.tsx` | Inline accordion: logit model, taste params, calibration |
-| `CalibrationPanel` | `components/simulation/CalibrationPanel.tsx` | Calibration method, targets table, status indicator |
+| `PopulationUploadZone` | `components/population/PopulationUploadZone.tsx` | Drag-and-drop file upload with import report and mapping triage |
+| `EngineScreen` | `components/screens/EngineScreen.tsx` | Stage 3: time horizon, population selection, projection assumptions, run summary |
+| `ScenarioSummaryCard` | `components/simulation/ScenarioSummaryCard.tsx` | Saved scenario list item for open/clone/result access flows |
+| `ProjectionAssumptionsAccordion` | `components/simulation/ProjectionAssumptionsAccordion.tsx` | Inline accordion: uprating, vintage handling, optional behavioral-response profile |
 | `RunQueuePanel` | `components/simulation/RunQueuePanel.tsx` | Multi-run queue with per-run progress and cancel |
 
 #### Updated Component Tree
@@ -1730,17 +1727,17 @@ App
 │   │   │   ├─ Time horizon inputs
 │   │   │   ├─ Population selector (+ sensitivity add)
 │   │   │   ├─ ScenarioSummaryCard / save-clone controls
-│   │   │   ├─ InvestmentDecisionsAccordion
-│   │   │   │   ├─ Logit model selector
-│   │   │   │   ├─ Taste parameter editors
-│   │   │   │   └─ CalibrationPanel
+│   │   │   ├─ ProjectionAssumptionsAccordion
+│   │   │   │   ├─ Uprating selector
+│   │   │   │   ├─ Vintage handling selector
+│   │   │   │   └─ Optional behavioral-response selector
 │   │   │   ├─ Other engine parameters
 │   │   │   └─ Run summary + "Run Simulation" button
 │   │   └─ Stage 4 (Run/Results/Compare)
 │   │       ├─ RunQueuePanel
 │   │       ├─ ResultsOverviewScreen (existing)
 │   │       ├─ ComparisonDashboardScreen (existing)
-│   │       └─ BehavioralDecisionViewerScreen (existing)
+│   │       └─ RunManifestViewerScreen
 │   └─ RightPanel (ContextualHelpPanel — existing)
 ```
 
@@ -1810,8 +1807,8 @@ flowchart TD
 1. **Shell & TopBar** — Replace gradient header with slim top bar. Add logo mark to sidebar. Apply brand compliance fixes (remove gradients, shadows, indigo colors, add square corners to panels).
 2. **Nav Rail Update** — Update WorkflowNavRail to 4 new stages. Wire stage/sub-view routing.
 3. **Stage 1: Policies & Portfolio** — Unify TemplateSelectionScreen + ParameterEditingScreen + PortfolioDesignerScreen into one inline flow.
-4. **Stage 2: Population Library** — Population list with preview/edit/delete actions. Upload flow with schema validation.
+4. **Stage 2: Population Library** — Population list with preview/edit/delete actions. Upload flow with import report and mapping triage.
 5. **Stage 2: Population Data Explorer** — TanStack Table for paginated data. Visual profiler with histograms, value counts, cross-tabs. Summary tab.
-6. **Stage 3: Engine** — Time horizon, population selection, scenario save/clone, integration validation, investment decisions accordion with calibration.
+6. **Stage 3: Engine** — Time horizon, population selection, scenario save/clone, integration validation, projection assumptions, and execution controls.
 7. **Stage 4: Run Queue** — Multi-run queue for scenario × population matrix.
 8. **Cleanup** — Retire ConfigurationScreen, ModelConfigStepper, old ScenarioCard sidebar usage, and unused screens. Remove dead code.

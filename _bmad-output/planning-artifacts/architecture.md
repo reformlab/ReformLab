@@ -483,8 +483,8 @@ Year 2026: state₁ → [ComputationStep] → [DiscreteChoiceStep] → [VintageS
 | ----- | ------- | ------------------------- |
 | Policies & Portfolio | Build or edit reusable policy bundles | `PoliciesAndPortfolioScreen`, template browser, inline portfolio composition |
 | Population | Select, generate, upload, and inspect populations | `PopulationLibraryScreen`, `DataFusionWorkbench`, population explorer/profiler |
-| Engine | Bind portfolio + population(s) into a scenario, configure execution, run integration validation | `EngineScreen`, investment decisions accordion, calibration panel |
-| Run / Results / Compare | Execute runs, inspect results, compare completed runs, export outputs | `RunQueuePanel`, results view, comparison dashboard, behavioral decision viewer |
+| Engine | Bind portfolio + population(s) into a scenario, configure projection/execution settings, run integration validation | `EngineScreen`, projection assumptions accordion, run summary, validation gate |
+| Run / Results / Compare | Execute runs, inspect results, compare completed runs, export outputs | `RunQueuePanel`, results view, comparison dashboard, run manifest viewer |
 
 **Scenario semantics in the GUI:** Users may enter through a pre-seeded demo scenario or an existing saved scenario. Stage 1-3 edit the scenario definition; Stage 4 executes and compares runs produced from that scenario. Browser routes map to stage/sub-view state rather than to the older sequence of full-screen setup pages.
 
