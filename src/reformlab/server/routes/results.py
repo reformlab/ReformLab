@@ -100,6 +100,9 @@ def _metadata_to_detail(
         indicators=indicators,
         columns=columns,
         column_count=column_count,
+        # Story 21.6 / AC6: Exogenous series fields for comparison dimension
+        exogenous_series_hash=meta.exogenous_series_hash,
+        exogenous_series_names=meta.exogenous_series_names,
     )
 
 

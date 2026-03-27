@@ -57,6 +57,8 @@ class ScenarioConfig:
         end_year: Last year of the projection.
         seed: Optional random seed for reproducibility.
         baseline_id: Optional baseline scenario ID for reform scenarios.
+        exogenous_series: Optional list of exogenous series names for scenario.
+            Story 21.6 / AC2.
     """
 
     template_name: str
@@ -66,6 +68,7 @@ class ScenarioConfig:
     population_path: Path | None = None
     seed: int | None = None
     baseline_id: str | None = None
+    exogenous_series: list[str] | None = None  # Story 21.6 / AC2
 
 
 @dataclass(frozen=True)

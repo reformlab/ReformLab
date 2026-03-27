@@ -54,6 +54,14 @@
       },
       "additionalProperties": false
     },
+    "exogenous_series": {
+      "type": "array",
+      "description": "Optional list of exogenous time series names for scenario-specific external assumptions. Story 21.6 / AC4.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
     "policy": {
       "type": "object",
       "description": "Policy-specific parameters that vary by policy_type",

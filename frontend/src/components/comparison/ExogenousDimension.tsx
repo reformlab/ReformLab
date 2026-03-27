@@ -5,16 +5,17 @@
  *
  * Extends Story 20.6 pluggable dimension infrastructure.
  * Allows filtering/grouping runs by exogenous time series assumptions.
+ *
+ * Note: The ComparisonDimension interface only passes the hash value to render(),
+ * not the full runResult. Displaying series names would require a broader interface
+ * change (e.g., render(value: T, runResult: ResultDetailResponse)).
+ * For now, the dimension shows a truncated hash for identification.
  */
 
 import type { ReactNode } from "react";
 import type { ComparisonDimension, ResultDetailResponse } from "@/api/types";
 
 // Story 21.6 / AC6: Exogenous comparison dimension
-// Note: The actual hash is computed on the server side and returned via
-// exogenous_series_hash field. The hash function below is for reference only.
-// function hashExogenousContext(...) { ... }
-
 const exogenousDimension: ComparisonDimension<string> = {
   id: "exogenous",
   label: "Exogenous Series",
@@ -26,8 +27,12 @@ const exogenousDimension: ComparisonDimension<string> = {
   },
 
   render(value: string): ReactNode {
-    // We can't access series_names from just the hash, so display generic message
-    // In a full implementation, the API would return both hash and names
+    // Display truncated hash for identification
+    // Note: series names are available in ResultDetailResponse.exogenous_series_names
+    // but the ComparisonDimension interface doesn't pass runResult to render()
+    if (!value) {
+      return null;
+    }
     return (
       <div className="text-xs">
         <div className="font-medium text-slate-900">Exogenous</div>

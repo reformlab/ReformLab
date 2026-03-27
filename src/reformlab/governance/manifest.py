@@ -530,6 +530,7 @@ class RunManifest:
             step_pipeline=self.step_pipeline,
             parent_manifest_id=self.parent_manifest_id,
             child_manifests=self.child_manifests,
+            exogenous_series=self.exogenous_series,  # Story 21.6 / AC4
             integrity_hash=computed_hash,
         )
 

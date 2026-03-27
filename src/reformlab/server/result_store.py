@@ -75,6 +75,9 @@ class ResultMetadata:
     portfolio_name: str | None = None  # portfolio runs only
     portfolio_policy_count: int | None = None  # portfolio runs only
     portfolio_resolution_strategy: str | None = None  # portfolio runs only
+    # Story 21.6 / AC6: Exogenous series fields for comparison dimension
+    exogenous_series_hash: str | None = None  # SHA-256 hash of exogenous series
+    exogenous_series_names: list[str] | None = None  # Series names for display
 
 
 # ---------------------------------------------------------------------------

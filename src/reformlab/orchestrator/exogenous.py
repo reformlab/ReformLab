@@ -257,10 +257,6 @@ class ExogenousContext:
         Loads each asset via ``load_exogenous_asset()`` using series
         names and builds context via ``from_assets()``.
 
-        Note: ``load_exogenous_asset()`` is implemented in Task 7.
-        For now, this method raises ``NotImplementedError`` with a
-        clear message.
-
         Story 21.6 / AC4.
 
         Parameters
@@ -275,11 +271,25 @@ class ExogenousContext:
 
         Raises
         ------
-        NotImplementedError
-            Until ``load_exogenous_asset()`` is implemented (Task 7).
+        ValueError
+            If series_names is not a list or asset loading fails.
+        EvidenceAssetError
+            If any asset fails to load from disk.
         """
-        raise NotImplementedError(
-            "ExogenousContext.from_json() requires load_exogenous_asset() "
-            "which will be implemented in Task 7. "
-            "For now, use ExogenousContext.from_assets() directly."
-        )
+        from reformlab.data.exogenous_loader import load_exogenous_asset
+
+        series_names = data.get("series_names", [])
+        if not isinstance(series_names, list):
+            raise ValueError(
+                f"series_names must be a list, got {type(series_names).__name__}"
+            )
+
+        assets = []
+        for name in series_names:
+            if not isinstance(name, str):
+                raise ValueError(
+                    f"series_names must contain only strings, got {type(name).__name__}"
+                )
+            assets.append(load_exogenous_asset(name))
+
+        return cls.from_assets(tuple(assets))

@@ -360,10 +360,10 @@ def _check_exogenous_coverage(request: PreflightRequest) -> ValidationCheckResul
     This check only executes if exogenous series are specified in the
     scenario configuration. Scenarios without exogenous inputs pass
     automatically (backward compatibility).
-
-    Full validation coverage check requires asset loader (Task 7).
-    For now, this check validates basic configuration structure.
     """
+    from reformlab.data.exogenous_loader import load_exogenous_asset
+    from reformlab.orchestrator.exogenous import ExogenousContext
+
     engine_config = request.scenario.get("engineConfig", {})
 
     if not isinstance(engine_config, dict):
@@ -409,24 +409,43 @@ def _check_exogenous_coverage(request: PreflightRequest) -> ValidationCheckResul
             message="Cannot validate exogenous coverage: startYear and endYear required",
         )
 
-    # Basic structural validation passed
-    # Full coverage validation requires asset loader (Task 7)
-    series_count = len(exogenous_series)
-    series_list = ", ".join(exogenous_series[:3])  # Show first 3
-    if series_count > 3:
-        series_list += f", ... ({series_count} total)"
+    # Load assets and validate actual coverage
+    try:
+        assets = []
+        for series_name in exogenous_series:
+            if not isinstance(series_name, str):
+                return ValidationCheckResult(
+                    id="exogenous-coverage",
+                    label="Exogenous series coverage",
+                    passed=False,
+                    severity="error",
+                    message=f"Invalid series name: {series_name!r} (must be string)",
+                )
+            assets.append(load_exogenous_asset(series_name))
 
-    year_range = f"{start_year}-{end_year}"
-    return ValidationCheckResult(
-        id="exogenous-coverage",
-        label="Exogenous series coverage",
-        passed=True,
-        severity="warning",
-        message=(
-            f"{series_count} exogenous series configured "
-            f"({series_list}) for years {year_range}"
-        ),
-    )
+        context = ExogenousContext.from_assets(tuple(assets))
+        context.validate_coverage(start_year, end_year)
+
+        series_count = len(exogenous_series)
+        series_list = ", ".join(exogenous_series[:3])  # Show first 3
+        if series_count > 3:
+            series_list += f", ... ({series_count} total)"
+
+        return ValidationCheckResult(
+            id="exogenous-coverage",
+            label="Exogenous series coverage",
+            passed=True,
+            severity="warning",
+            message=f"All {series_count} series have coverage {start_year}-{end_year} ({series_list})",
+        )
+    except Exception as exc:
+        return ValidationCheckResult(
+            id="exogenous-coverage",
+            label="Exogenous series coverage",
+            passed=False,
+            severity="error",
+            message=f"Coverage validation failed: {exc}",
+        )
 
 
 # =============================================================================
@@ -470,7 +489,7 @@ def _register_builtin_checks() -> None:
         ValidationCheck(
             check_id="exogenous-coverage",
             label="Exogenous series coverage",
-            severity="warning",
+            severity="error",  # Changed to error since we now do actual validation
             check_fn=_check_exogenous_coverage,
         ),
     ]
