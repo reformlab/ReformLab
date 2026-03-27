@@ -71,8 +71,8 @@ export function RunSummaryPanel({ scenario, populations, portfolios, dataFusionR
     ? `Enabled (${logitModel?.replace(/_/g, " ") ?? "logit model"})`
     : "Disabled";
 
-  // Total runs
-  const totalRuns = Math.max(populationIds.length, 1);
+  // Total runs — 0 when no population selected (not "1 run")
+  const totalRuns = populationIds.filter((id) => id.trim().length > 0).length;
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm space-y-3">
@@ -153,7 +153,9 @@ export function RunSummaryPanel({ scenario, populations, portfolios, dataFusionR
       {/* Estimated runs */}
       <div className="flex justify-between font-medium">
         <span className="text-slate-600">Estimated runs</span>
-        <span className="text-slate-900">{totalRuns} {totalRuns === 1 ? "run" : "runs"}</span>
+        <span className={totalRuns === 0 ? "text-red-500" : "text-slate-900"}>
+          {totalRuns === 0 ? "— no population" : `${totalRuns} ${totalRuns === 1 ? "run" : "runs"}`}
+        </span>
       </div>
     </div>
   );

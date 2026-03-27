@@ -72,3 +72,16 @@
 | dismissed | URL-encoding missing in `populations.ts` path segments | FALSE POSITIVE: All population IDs in 20.4 are machine-generated with only safe characters. The story specifies IDs as `"fr-synthetic-2024"`, `"data-fusion-result"`, `"uploaded-${timestamp}"`. Story 20.7 (backend endpoints) is the right place to validate ID format. |
 | dismissed | Sorting test doesn't verify row order changes | FALSE POSITIVE: Addressed by fixing the actual sorting bug (toggling without args). The existing test verifies the column header interaction works without crashing; a comprehensive row-order integration test would require 3+ distinct row values and is deferred. |
 | dismissed | `uploadedPopulations` described as "session only" contradicts the bug | FALSE POSITIVE: This was confirmed as a real bug and fixed with the module-level cache. |
+
+## Story 20-5 (2026-03-27)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | Task 7.4 positive-path test missing (task marked done but test absent) | Added `"Run button is enabled when scenario has portfolio and population (AC-4 positive path)"` test using returning-user localStorage pattern. |
+| high | AC-4 broken — `isDisabled` in `ValidationGate` ignored a failed `memoryCheckResult`; after memory check failed the button became re-enabled | Added `memoryFailed` derived boolean; `isDisabled = syncHasErrors \|\| runLoading \|\| memoryLoading \|\| memoryFailed`. |
+| high | Empty population id `""` passed `populationSelectedCheck` because `[""].length > 0` | Handler maps `""` to `[]`; check uses `.some(id => id.trim().length > 0)`. |
+| medium | `hasSecondary` initialized `false` even when scenario already has 2 populations — changing primary would silently drop secondary | Lazy `useState` initializer derives from `populationIds.length`; `useEffect` syncs on `activeScenario?.id` change. |
+| medium | Scenario name `<Input>` used `defaultValue` (uncontrolled) — displayed stale name after clone | Added `key={activeScenario.id}` to force remount on scenario identity change. |
+| low | Duplicate "Scenario cloned" toast — `AppContext.cloneCurrentScenario` already emits it, `EngineStageScreen` emitted a second one | Changed `onClick` to `cloneCurrentScenario` directly; removed redundant toast call and unused `sonner` import. |
+| low | `RunSummaryPanel` showed "1 run" when no population selected (`Math.max(populationIds.length, 1)`) | `totalRuns = populationIds.filter(id => id.trim().length > 0).length`; shows "— no population" in red when 0. |
+| dismissed | `syncChecks useMemo` with `[]` dep is fragile for EPIC-21 lazy imports | FALSE POSITIVE: The story explicitly documents the EPIC-21 extension pattern as *import-time* array mutation — not lazy/dynamic imports. Module-level `VALIDATION_CHECKS.push(...)` executes before any component mount, making the `[]` dep correct and intentional. No lazy loading is used or planned. |

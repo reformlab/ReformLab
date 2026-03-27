@@ -61,7 +61,7 @@ const populationSelectedCheck: ValidationCheck = {
   label: "Population selected",
   severity: "error",
   fn: (ctx) => {
-    const passed = (ctx.scenario?.populationIds.length ?? 0) > 0;
+    const passed = (ctx.scenario?.populationIds ?? []).some((id) => id.trim().length > 0);
     return {
       passed,
       message: passed ? "" : "No population selected. Go to Stage 2 to select a population.",

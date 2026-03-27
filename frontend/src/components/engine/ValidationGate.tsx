@@ -84,7 +84,8 @@ export function ValidationGate({ context, onRun, runLoading }: ValidationGatePro
     onRun();
   };
 
-  const isDisabled = syncHasErrors || runLoading || memoryLoading;
+  const memoryFailed = memoryCheckResult !== null && !memoryCheckResult.passed && memoryCheckResult.severity === "error";
+  const isDisabled = syncHasErrors || runLoading || memoryLoading || memoryFailed;
 
   const failingCheckLabels = [
     ...syncChecks

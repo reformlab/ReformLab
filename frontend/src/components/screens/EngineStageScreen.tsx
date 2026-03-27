@@ -9,9 +9,8 @@
  * Story 20.5 — AC-1, AC-2, AC-3, AC-4.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Save, Copy } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
@@ -40,8 +39,15 @@ export function EngineStageScreen() {
     setSelectedPopulationId,
   } = useAppState();
 
-  // Local state
-  const [hasSecondary, setHasSecondary] = useState(false);
+  // Local state — initialize from scenario (handles reload when scenario already has 2 populations)
+  const [hasSecondary, setHasSecondary] = useState(() => (activeScenario?.populationIds?.length ?? 0) > 1);
+
+  // Sync hasSecondary when the active scenario changes (e.g. after clone or load).
+  // Depends only on scenario identity — not on populationIds.length — to avoid
+  // resetting state while the user is interacting with the secondary dropdown.
+  useEffect(() => {
+    setHasSecondary((activeScenario?.populationIds?.length ?? 0) > 1); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeScenario?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ============================================================================
   // Population list — hook must be before early return
@@ -95,7 +101,8 @@ export function EngineStageScreen() {
   const secondaryId = activeScenario.populationIds[1] ?? "";
 
   const handlePrimaryPopChange = (id: string) => {
-    updateScenarioField("populationIds", hasSecondary && secondaryId ? [id, secondaryId] : [id]);
+    const ids = id ? (hasSecondary && secondaryId ? [id, secondaryId] : [id]) : [];
+    updateScenarioField("populationIds", ids);
     setSelectedPopulationId(id);
   };
 
@@ -141,6 +148,7 @@ export function EngineStageScreen() {
       {/* ─── Toolbar ─────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3 px-6 py-3 border-b border-slate-200 bg-white">
         <Input
+          key={activeScenario.id}
           className="max-w-xs font-medium"
           defaultValue={activeScenario.name}
           maxLength={80}
@@ -170,10 +178,7 @@ export function EngineStageScreen() {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => {
-            cloneCurrentScenario();
-            toast.success("Scenario cloned");
-          }}
+          onClick={cloneCurrentScenario}
         >
           <Copy className="h-4 w-4 mr-1" />
           Clone Scenario

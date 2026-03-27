@@ -643,5 +643,29 @@ describe("Analyst Journey — cross-screen navigation", () => {
         expect(screen.getByRole("button", { name: /save scenario/i })).toBeInTheDocument();
       });
     });
+
+    it("Run button is enabled when scenario has portfolio and population (AC-4 positive path)", async () => {
+      // Returning user with a fully-specified scenario (portfolioName + populationIds set)
+      const readyScenario = {
+        ...createDemoScenario(),
+        portfolioName: "Carbon Tax",
+        populationIds: ["fr-synthetic-2024"],
+      };
+      localStorage.setItem(HAS_LAUNCHED_KEY, "true");
+      localStorage.setItem(SCENARIO_STORAGE_KEY, JSON.stringify(readyScenario));
+      localStorage.setItem(STAGE_STORAGE_KEY, "engine");
+
+      const user = userEvent.setup();
+      renderApp();
+      await authenticate(user);
+
+      await waitFor(() => {
+        expect(screen.getAllByText("Engine Configuration").length).toBeGreaterThanOrEqual(1);
+      });
+
+      // Run Simulation button should be enabled (all sync error checks pass)
+      const runBtn = screen.getByRole("button", { name: /run simulation/i });
+      expect(runBtn).not.toBeDisabled();
+    });
   });
 });
