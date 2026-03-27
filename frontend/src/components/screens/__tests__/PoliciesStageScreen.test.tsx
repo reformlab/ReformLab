@@ -72,7 +72,7 @@ function makeScenario(overrides: Partial<WorkspaceScenario> = {}): WorkspaceScen
     baselineRef: null,
     portfolioName: null,
     populationIds: [],
-    engineConfig: { startYear: 2025, endYear: 2030, seed: null, investmentDecisionsEnabled: false },
+    engineConfig: { startYear: 2025, endYear: 2030, seed: null, investmentDecisionsEnabled: false, logitModel: null, discountRate: 0.03 },
     policyType: null,
     lastRunId: null,
     ...overrides,

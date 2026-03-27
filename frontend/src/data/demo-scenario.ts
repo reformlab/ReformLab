@@ -43,6 +43,8 @@ export function createDemoScenario(): WorkspaceScenario {
       endYear: 2030,
       seed: 42,
       investmentDecisionsEnabled: false,
+      logitModel: null,
+      discountRate: 0.03,
     },
     policyType: "carbon-tax",
     lastRunId: null,

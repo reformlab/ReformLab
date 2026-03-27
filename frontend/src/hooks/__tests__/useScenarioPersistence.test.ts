@@ -31,7 +31,7 @@ function makeScenario(overrides: Partial<WorkspaceScenario> = {}): WorkspaceScen
     baselineRef: null,
     portfolioName: null,
     populationIds: ["fr-synthetic-2024"],
-    engineConfig: { startYear: 2025, endYear: 2030, seed: 42, investmentDecisionsEnabled: false },
+    engineConfig: { startYear: 2025, endYear: 2030, seed: 42, investmentDecisionsEnabled: false, logitModel: null, discountRate: 0.03 },
     policyType: "carbon-tax",
     lastRunId: null,
     ...overrides,
@@ -84,7 +84,7 @@ describe("saveScenario / loadScenario", () => {
 
   it("preserves engineConfig fields in round-trip", () => {
     const { saveScenario, loadScenario } = getHook();
-    const scenario = makeScenario({ engineConfig: { startYear: 2026, endYear: 2035, seed: 99, investmentDecisionsEnabled: true } });
+    const scenario = makeScenario({ engineConfig: { startYear: 2026, endYear: 2035, seed: 99, investmentDecisionsEnabled: true, logitModel: "multinomial_logit", discountRate: 0.05 } });
     saveScenario(scenario);
     const loaded = loadScenario();
     expect(loaded?.engineConfig.seed).toBe(99);

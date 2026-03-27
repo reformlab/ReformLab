@@ -35,6 +35,8 @@ export interface EngineConfig {
   endYear: number;
   seed: number | null;
   investmentDecisionsEnabled: boolean;
+  logitModel: "multinomial_logit" | "nested_logit" | "mixed_logit" | null;
+  discountRate: number;  // fractional: 0.03 = 3%
 }
 
 export interface WorkspaceScenario {

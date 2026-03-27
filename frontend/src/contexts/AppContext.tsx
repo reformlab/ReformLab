@@ -332,7 +332,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       baselineRef: null,
       portfolioName: null,
       populationIds: [],
-      engineConfig: { startYear: 2025, endYear: 2030, seed: null, investmentDecisionsEnabled: false },
+      engineConfig: { startYear: 2025, endYear: 2030, seed: null, investmentDecisionsEnabled: false, logitModel: null, discountRate: 0.03 },
       policyType: templateId ?? null,
       lastRunId: null,
     };

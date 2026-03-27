@@ -83,7 +83,7 @@ describe("WorkflowNavRail - completion state", () => {
     const activeScenario = {
       id: "s1", name: "S", version: "1.0", status: "ready", isBaseline: false,
       baselineRef: null, portfolioName: "p1", populationIds: [],
-      engineConfig: { startYear: 2025, endYear: 2030, seed: null, investmentDecisionsEnabled: false },
+      engineConfig: { startYear: 2025, endYear: 2030, seed: null, investmentDecisionsEnabled: false, logitModel: null as null, discountRate: 0.03 },
       policyType: null, lastRunId: null,
     };
     render(<WorkflowNavRail {...baseProps({ activeScenario })} />);
@@ -127,7 +127,7 @@ describe("WorkflowNavRail - summary lines", () => {
     const activeScenario = {
       id: "s1", name: "S", version: "1.0", status: "ready", isBaseline: false,
       baselineRef: null, portfolioName: "carbon-transition", populationIds: [],
-      engineConfig: { startYear: 2025, endYear: 2030, seed: null, investmentDecisionsEnabled: false },
+      engineConfig: { startYear: 2025, endYear: 2030, seed: null, investmentDecisionsEnabled: false, logitModel: null as null, discountRate: 0.03 },
       policyType: null, lastRunId: null,
     };
     render(<WorkflowNavRail {...baseProps({ activeScenario })} />);

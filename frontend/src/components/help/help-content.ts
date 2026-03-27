@@ -195,15 +195,19 @@ export const HELP_CONTENT: Record<string, HelpEntry> = {
   },
   "engine": {
     title: "Engine Configuration",
-    summary: "Configure the simulation engine: time horizon, random seed, and investment decision modelling.",
+    summary: "Assemble your scenario: bind portfolio and population, configure time horizon, seed, and investment-decision model. Cross-stage validation must pass before running.",
     tips: [
-      "Set start and end years to define the simulation horizon (2025–2050 is typical)",
-      "An explicit seed ensures reproducible results across runs — leave blank for random",
-      "Investment decision modelling enables behavioural responses to policy changes",
+      "Set Start and End year — the 'N-year projection' label updates automatically. Max 50 years.",
+      "Investment decisions expand inline when enabled — logit model and taste parameters appear without leaving the stage.",
+      "The right panel shows a live validation checklist — all red checks must be resolved before Run is enabled.",
+      "Save Scenario persists the full configuration (portfolio + population + engine settings) to your saved list.",
+      "Clone Scenario creates a copy with '(copy)' appended — useful for sensitivity analysis variants.",
+      "The memory preflight check runs when you click Run — it estimates if your population fits in RAM.",
     ],
     concepts: [
       { term: "Random Seed", definition: "A value that initialises the random number generator, ensuring reproducible stochastic results." },
-      { term: "Investment Decisions", definition: "Household decisions about capital goods (vehicles, heating systems) modelled as discrete choices under policy incentives." },
+      { term: "Logit Model", definition: "A discrete choice model (multinomial, nested, or mixed logit) governing how households respond to policy-driven cost changes." },
+      { term: "Cross-stage validation", definition: "A checklist that verifies portfolio, population, time horizon, and memory constraints are all satisfied before the simulation can run." },
     ],
   },
 

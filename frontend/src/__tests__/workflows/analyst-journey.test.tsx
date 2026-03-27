@@ -581,4 +581,67 @@ describe("Analyst Journey — cross-screen navigation", () => {
       });
     });
   });
+
+  // ===========================================================================
+  // Story 20.5 tests
+  // ===========================================================================
+
+  describe("Story 20.5 — Engine Configuration Stage", () => {
+    it("navigates to #engine and shows Engine Configuration heading (AC-1)", async () => {
+      const user = userEvent.setup();
+      renderApp();
+      await authenticate(user);
+
+      window.location.hash = "#engine";
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+
+      await waitFor(() => {
+        expect(screen.getAllByText("Engine Configuration").length).toBeGreaterThanOrEqual(1);
+      });
+    });
+
+    it("validation checklist is visible in Engine stage (AC-3)", async () => {
+      const user = userEvent.setup();
+      renderApp();
+      await authenticate(user);
+
+      window.location.hash = "#engine";
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+
+      await waitFor(() => {
+        expect(screen.getByText("Validation")).toBeInTheDocument();
+      });
+    });
+
+    it("Run button is disabled for a fresh scenario with no portfolio or population (AC-4)", async () => {
+      const user = userEvent.setup();
+      // First launch → demo scenario has no portfolio
+      renderApp();
+      await authenticate(user);
+
+      window.location.hash = "#engine";
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+
+      await waitFor(() => {
+        expect(screen.getAllByText("Engine Configuration").length).toBeGreaterThanOrEqual(1);
+      });
+
+      // Run Simulation button should be disabled (no portfolio on demo scenario)
+      const runBtn = screen.getByRole("button", { name: /run simulation/i });
+      expect(runBtn).toBeDisabled();
+    });
+
+    it("Save Scenario button is visible in Engine stage toolbar (AC-2)", async () => {
+      const user = userEvent.setup();
+      renderApp();
+      await authenticate(user);
+
+      window.location.hash = "#engine";
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: /save scenario/i })).toBeInTheDocument();
+      });
+    });
+  });
 });

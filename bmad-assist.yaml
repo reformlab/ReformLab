@@ -69,6 +69,8 @@ phase_models:
   validate_story:
     - provider: claude-subprocess
       model: sonnet          # Fast, cheap first reviewer
+      model_name: glm-4.7
+      settings: ~/.claude/glm.json
     - provider: codex
       model: gpt-5.3-codex             # Second reviewer with deep reasoning
       reasoning_effort: high
@@ -82,6 +84,8 @@ phase_models:
   code_review:
     - provider: claude-subprocess
       model: sonnet
+      model_name: glm-4.7
+      settings: ~/.claude/glm.json
     - provider: codex
       model: gpt-5.3-codex
       reasoning_effort: high
@@ -95,6 +99,8 @@ phase_models:
   retrospective:
     provider: claude-subprocess
     model: sonnet
+    model_name: glm-4.7
+    settings: ~/.claude/glm.json
 
 # --- Compiler configuration ---
 # The compiler assembles the final prompt sent to the agent by packing in source
