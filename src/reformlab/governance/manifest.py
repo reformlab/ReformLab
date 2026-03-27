@@ -58,6 +58,11 @@ REQUIRED_JSON_FIELDS = (
     "integrity_hash",
 )
 
+# Optional JSON fields that can be missing (have defaults in dataclass)
+OPTIONAL_JSON_FIELDS = (
+    "exogenous_series",  # Story 21.6 / AC4
+)
+
 
 class AssumptionEntry(TypedDict):
     """Structured assumption entry for manifest capture.
@@ -117,7 +122,10 @@ class RunManifest:
         step_pipeline: Ordered step names executed.
         parent_manifest_id: Parent manifest UUID for lineage (empty string for root).
         child_manifests: Mapping of year to child manifest UUID for lineage.
+        exogenous_series: Optional tuple of exogenous series names used (empty tuple if none).
         integrity_hash: SHA-256 hash of entire manifest content (excluding this field).
+
+    Story 21.6 / AC4: Added exogenous_series field for manifest recording.
     """
 
     manifest_id: str
@@ -136,6 +144,7 @@ class RunManifest:
     step_pipeline: list[str] = field(default_factory=list)
     parent_manifest_id: str = ""
     child_manifests: dict[int, str] = field(default_factory=dict)
+    exogenous_series: tuple[str, ...] = ()  # Story 21.6 / AC4
     integrity_hash: str = ""
 
     def __post_init__(self) -> None:
@@ -402,7 +411,9 @@ class RunManifest:
                 "Missing required manifest fields: " + ", ".join(sorted(missing_fields))
             )
 
-        unknown_fields = sorted(set(data) - set(REQUIRED_JSON_FIELDS))
+        # Allow optional fields in JSON
+        allowed_fields = set(REQUIRED_JSON_FIELDS) | set(OPTIONAL_JSON_FIELDS)
+        unknown_fields = sorted(set(data) - allowed_fields)
         if unknown_fields:
             raise ManifestValidationError(
                 "Unknown manifest fields: " + ", ".join(unknown_fields)
@@ -442,6 +453,7 @@ class RunManifest:
                 step_pipeline=data["step_pipeline"],
                 parent_manifest_id=data["parent_manifest_id"],
                 child_manifests=child_manifests,
+                exogenous_series=tuple(data.get("exogenous_series", [])),  # Story 21.6 / AC4
                 integrity_hash=data["integrity_hash"],
             )
         except (TypeError, KeyError) as e:

@@ -54,6 +54,7 @@ from reformlab.orchestrator.computation_step import (
     ComputationStepError,
 )
 from reformlab.orchestrator.errors import OrchestratorError
+from reformlab.orchestrator.exogenous import ExogenousContext
 from reformlab.orchestrator.panel import PANEL_VERSION, PanelOutput, compare_panels
 from reformlab.orchestrator.portfolio_step import (
     PORTFOLIO_METADATA_KEY,
@@ -88,6 +89,7 @@ from reformlab.orchestrator.types import (
 
 __all__ = [
     # Core orchestrator
+    "ExogenousContext",
     "Orchestrator",
     "OrchestratorConfig",
     "OrchestratorError",

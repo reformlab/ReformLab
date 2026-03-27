@@ -351,6 +351,84 @@ def _check_memory_preflight(request: PreflightRequest) -> ValidationCheckResult:
         )
 
 
+def _check_exogenous_coverage(request: PreflightRequest) -> ValidationCheckResult:
+    """Preflight check for exogenous time series coverage.
+
+    Story 21.6 / AC3: Validates that exogenous series (if specified) have
+    coverage for the scenario's year range.
+
+    This check only executes if exogenous series are specified in the
+    scenario configuration. Scenarios without exogenous inputs pass
+    automatically (backward compatibility).
+
+    Full validation coverage check requires asset loader (Task 7).
+    For now, this check validates basic configuration structure.
+    """
+    engine_config = request.scenario.get("engineConfig", {})
+
+    if not isinstance(engine_config, dict):
+        return ValidationCheckResult(
+            id="exogenous-coverage",
+            label="Exogenous series coverage",
+            passed=True,
+            severity="warning",
+            message="Engine configuration missing - cannot validate exogenous coverage",
+        )
+
+    # Check if exogenous series are specified
+    exogenous_series = engine_config.get("exogenousSeries")
+    if not exogenous_series:
+        # No exogenous series configured - check passes
+        return ValidationCheckResult(
+            id="exogenous-coverage",
+            label="Exogenous series coverage",
+            passed=True,
+            severity="warning",
+            message="No exogenous series configured",
+        )
+
+    if not isinstance(exogenous_series, list):
+        return ValidationCheckResult(
+            id="exogenous-coverage",
+            label="Exogenous series coverage",
+            passed=False,
+            severity="error",
+            message="exogenousSeries must be a list of series names",
+        )
+
+    # Get year range
+    start_year = engine_config.get("startYear")
+    end_year = engine_config.get("endYear")
+
+    if not isinstance(start_year, int) or not isinstance(end_year, int):
+        return ValidationCheckResult(
+            id="exogenous-coverage",
+            label="Exogenous series coverage",
+            passed=False,
+            severity="error",
+            message="Cannot validate exogenous coverage: startYear and endYear required",
+        )
+
+    # Basic structural validation passed
+    # Full coverage validation requires asset loader (Task 7)
+    series_count = len(exogenous_series)
+    series_list = ", ".join(exogenous_series[:3])  # Show first 3
+    if series_count > 3:
+        series_list += f", ... ({series_count} total)"
+
+    year_range = f"{start_year}-{end_year}"
+    return ValidationCheckResult(
+        id="exogenous-coverage",
+        label="Exogenous series coverage",
+        passed=True,
+        severity="warning",
+        message=(
+            f"{series_count} exogenous series configured "
+            f"({series_list}) for years {year_range}"
+        ),
+    )
+
+
 # =============================================================================
 # Register built-in checks at import time
 # =============================================================================
@@ -388,6 +466,12 @@ def _register_builtin_checks() -> None:
             label="Memory requirements",
             severity="error",
             check_fn=_check_memory_preflight,
+        ),
+        ValidationCheck(
+            check_id="exogenous-coverage",
+            label="Exogenous series coverage",
+            severity="warning",
+            check_fn=_check_exogenous_coverage,
         ),
     ]
 

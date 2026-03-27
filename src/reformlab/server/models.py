@@ -38,6 +38,7 @@ class RunRequest(BaseModel):
     baseline_id: str | None = None
     portfolio_name: str | None = None  # set for portfolio runs
     policy_type: str | None = None  # for metadata recording
+    exogenous_series: list[str] | None = None  # Story 21.6 / AC2: exogenous series names for scenario
 
 
 class MemoryCheckRequest(BaseModel):
@@ -454,6 +455,9 @@ class ResultDetailResponse(BaseModel):
     template_name: str | None = None
     policy_type: str | None = None
     portfolio_name: str | None = None
+    # Story 21.6 / AC6: Exogenous series fields for comparison dimension
+    exogenous_series_hash: str | None = None
+    exogenous_series_names: list[str] | None = None
     # Populated only when data_available is True:
     indicators: dict[str, Any] | None = None
     columns: list[str] | None = None
@@ -752,3 +756,78 @@ class PreflightResponse(BaseModel):
     passed: bool
     checks: list[ValidationCheckResult]
     warnings: list[str]
+
+
+# ---------------------------------------------------------------------------
+# Exogenous asset models — Story 21.6
+# ---------------------------------------------------------------------------
+
+
+class ExogenousAssetRequest(BaseModel):
+    """Request body for creating an exogenous time series asset.
+
+    Story 21.6 / AC8.
+    """
+
+    name: str
+    description: str
+    origin: Literal["open-official", "open-third-party", "proprietary"]
+    access_mode: Literal["bundled", "fetched", "uploaded"]
+    trust_status: Literal["production-safe", "exploratory", "deprecated"]
+    source_url: str = ""
+    license: str = ""
+    version: str = ""
+    geographic_coverage: list[str] = []
+    years: list[int] = []
+    intended_use: str = ""
+    redistribution_allowed: bool = True
+    redistribution_notes: str = ""
+    update_cadence: str = ""
+    quality_notes: str = ""
+    references: list[str] = []
+    # Exogenous-specific fields
+    unit: str
+    values: dict[str, float]  # Year (string key) → value mapping
+    frequency: str = "annual"
+    source: str = ""
+    vintage: str = ""
+    interpolation_method: Literal["linear", "step", "none"] = "linear"
+    aggregation_method: str = "mean"
+    revision_policy: str = ""
+
+
+class ExogenousAssetResponse(BaseModel):
+    """Response for exogenous asset listing and retrieval.
+
+    Story 21.6 / AC8.
+    """
+
+    # Descriptor fields
+    asset_id: str
+    name: str
+    description: str
+    data_class: Literal["exogenous"]
+    origin: Literal["open-official", "open-third-party", "proprietary"]
+    access_mode: Literal["bundled", "fetched", "uploaded"]
+    trust_status: Literal["production-safe", "exploratory", "deprecated"]
+    source_url: str
+    license: str
+    version: str
+    geographic_coverage: list[str]
+    years: list[int]
+    intended_use: str
+    redistribution_allowed: bool
+    redistribution_notes: str
+    update_cadence: str
+    quality_notes: str
+    references: list[str]
+    # Exogenous-specific fields
+    unit: str
+    values: dict[int, float]  # Year → value mapping
+    frequency: str
+    source: str
+    vintage: str
+    interpolation_method: str
+    aggregation_method: str
+    revision_policy: str
+

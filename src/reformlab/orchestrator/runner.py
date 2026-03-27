@@ -96,9 +96,14 @@ class Orchestrator:
         step_execution_log: list[StepExecutionRecord] = []
 
         # Initialize state for year before start
+        # Story 21.6 / AC2: Populate exogenous context if provided
+        initial_data = dict(self.config.initial_state)
+        if self.config.exogenous is not None:
+            initial_data["exogenous_context"] = self.config.exogenous
+
         current_state = YearState(
             year=self.config.start_year - 1,
-            data=dict(self.config.initial_state),
+            data=initial_data,
             seed=self._derive_year_seed(self.config.start_year - 1),
             metadata={},
         )

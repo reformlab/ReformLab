@@ -56,12 +56,19 @@ class VehicleDomainConfig:
         cost_column: Column name for cost metric in computation results.
         entity_key: Entity key in PopulationData.tables (default: "menage").
         non_purchase_ids: Alternative IDs that do not create vintage entries.
+        fuel_price_series: Series name for exogenous fuel prices (Story 21.6 / AC5).
+        fuel_price_default: Default fuel price when no exogenous series (EUR/litre).
+
+    Story 14-3: Implement Vehicle Investment Decision Domain (FR47/FR50).
+    Story 21.6 / AC5: Added exogenous fuel price support.
     """
 
     alternatives: tuple[Alternative, ...]
     cost_column: str = "total_vehicle_cost"
     entity_key: str = "menage"
     non_purchase_ids: frozenset[str] = frozenset({"keep_current", "buy_no_vehicle"})
+    fuel_price_series: str | None = None  # Story 21.6 / AC5
+    fuel_price_default: float = 1.55  # EUR/litre, Story 21.6 / AC5
 
 
 def default_vehicle_domain_config() -> VehicleDomainConfig:

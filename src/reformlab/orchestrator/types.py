@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Callable, TypeAlias
 
 if TYPE_CHECKING:
+    from reformlab.orchestrator.exogenous import ExogenousContext
     from reformlab.orchestrator.step import OrchestratorStep
 
 
@@ -50,7 +51,8 @@ class OrchestratorConfig:
     """Configuration for the yearly loop orchestrator.
 
     Defines the projection bounds, initial state, random seed for
-    determinism, and the ordered step pipeline to execute per year.
+    determinism, the ordered step pipeline to execute per year, and
+    optional exogenous time series context.
 
     Attributes:
         start_year: First year of projection (inclusive).
@@ -59,6 +61,12 @@ class OrchestratorConfig:
         seed: Master random seed for determinism. If provided, year-level
             seeds are derived from this.
         step_pipeline: Ordered list of step callables executed per year.
+        exogenous: Optional exogenous time series context for scenario
+            execution. If provided, flows through YearState.data under
+            the "exogenous_context" key.
+
+    Story 21.6 / AC2: Added exogenous field for scenario-specific
+    time series inputs.
     """
 
     start_year: int
@@ -66,6 +74,7 @@ class OrchestratorConfig:
     initial_state: dict[str, Any] = field(default_factory=dict)
     seed: int | None = None
     step_pipeline: tuple[PipelineStep, ...] = ()
+    exogenous: ExogenousContext | None = None  # Story 21.6 / AC2
 
     def __post_init__(self) -> None:
         """Validate projection bounds and normalize step pipeline."""

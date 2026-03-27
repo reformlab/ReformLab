@@ -23,6 +23,7 @@ Status: ready-for-dev
 2. **AC2:** `OrchestratorConfig` extended with optional `exogenous: ExogenousContext | None` field (default None for backward compatibility)
    - ExogenousContext flows through YearState.data using key `"exogenous_context"`
    - All steps can access exogenous values via `state.data["exogenous_context"].get_value(series_name, year)`
+   - `RunRequest` in `src/reformlab/server/models.py` extended with optional `exogenous_series: list[str] | None` field for run API
 
 3. **AC3:** Preflight validation check `exogenous-coverage` registered in `src/reformlab/server/routes/validation.py` (extends Story 20.7 infrastructure)
    - Runs `ExogenousContext.validate_coverage(start_year, end_year)` during scenario preflight
@@ -30,21 +31,25 @@ Status: ready-for-dev
    - Only executes if `exogenous` is provided in OrchestratorConfig (no check for scenarios without exogenous inputs)
 
 4. **AC4:** `ExogenousContext` serialized to/from JSON for scenario persistence and manifest recording:
-   - `to_json() -> dict[str, Any]` - serializes to list of series names (assets stored separately by asset_id reference)
-   - `from_json(data: dict[str, Any], asset_store: AssetStore) -> ExogenousContext` - deserializes using asset_id lookup
-   - `RunManifest` extended with `exogenous_series: list[str]` field recording series names used
-   - Scenario YAML extended with optional `exogenous_series: list[str]` field referencing assets by ID
+   - `to_json() -> dict[str, Any]` - serializes to `{"series_names": list[str]}` format (assets stored separately by series name)
+   - `from_json(data: dict[str, Any]) -> ExogenousContext` - classmethod loads assets via `load_exogenous_asset()` using series names
+   - `RunManifest` extended with `exogenous_series: tuple[str, ...]` optional field recording series names used (empty tuple if none)
+   - Scenario YAML extended with optional `exogenous_series: list[str]` field referencing assets by series name
 
 5. **AC5:** Vehicle investment domain updated to consume exogenous fuel cost data:
-   - `VehicleDomainConfig` extended with optional `fuel_price_series: str | None` field (default None)
-   - `VehicleInvestmentDomain.compute_costs()` method uses `exogenous_context.get_value(fuel_price_series, year)` when series is configured
-   - Falls back to legacy hardcoded fuel costs when `fuel_price_series` is None (backward compatibility)
-   - Costs recorded in YearState.metadata include exogenous source tracking: `{"fuel_price_source": "exogenous:energy_price_petrol", "fuel_price_value": 1.75, "fuel_price_unit": "EUR/litre"}`
+   - `VehicleDomainConfig` extended with optional `fuel_price_series: str | None` field (default None for backward compatibility)
+   - New `VehicleDomainConfig.fuel_price_default: float` field for legacy hardcoded cost (used when `fuel_price_series` is None)
+   - Exogenous fuel price injection happens via `DiscreteChoiceStep` before adapter computation:
+     - If `exogenous_context` and `domain.config.fuel_price_series` provided, inject fuel price into population as exogenous variable
+     - Adapter (OpenFisca) reads injected variable to compute `total_vehicle_cost` per alternative
+   - Fuel price injection recorded in YearState.metadata: `{"vehicle_fuel_cost": {"source": "exogenous:energy_price_petrol", "value": 1.75, "unit": "EUR/litre"}}`
 
-6. **AC6:** Comparison dimension `exogenous` registered in frontend `src/reformlab/components/comparison/DimensionRegistry.ts`:
+6. **AC6:** Comparison dimension `exogenous` registered in frontend `frontend/src/components/comparison/DimensionRegistry.tsx`:
    - Extends Story 20.6 pluggable dimension infrastructure
-   - `getValue()` returns deterministic hash of all exogenous series names+values for the run
-   - `render()` displays series count and sample series names (e.g., "3 series: energy_price_electricity, carbon_tax_rate, ev_purchase_cost")
+   - `ResultDetailResponse` extended with `exogenous_series_hash: str | null` field for hash extraction
+   - `ResultDetailResponse` extended with `exogenous_series_names: list[str] | null` field for display
+   - `getValue()` returns `exogenous_series_hash` (SHA-256 hash of series names and values)
+   - `render()` displays series count and sample series names from `exogenous_series_names`
    - Dimension allows filtering/grouping runs by exogenous assumptions
 
 7. **AC7:** At least one prebuilt exogenous time series asset created for flagship scenario:
@@ -69,10 +74,10 @@ Status: ready-for-dev
     - Coverage validation failures for missing years
     - Preflight check integration with pass/fail scenarios
     - OrchestratorConfig exogenous field propagation through YearState
-    - Vehicle domain exogenous cost computation
+    - Vehicle domain exogenous fuel price injection and metadata recording
     - Comparison dimension hash determinism
-    - API endpoint CRUD operations
-    - JSON serialization/deserialization with asset store lookup
+    - API endpoint list/get/create operations
+    - JSON serialization/deserialization with load_exogenous_asset() integration
     - Manifest exogenous_series field recording
 
 ## Tasks / Subtasks
@@ -96,7 +101,8 @@ Status: ready-for-dev
 
 - [ ] **Task 2: Extend OrchestratorConfig and YearState flow** (AC: 2)
   - [ ] Add optional `exogenous: ExogenousContext | None` field to `OrchestratorConfig` in `src/reformlab/orchestrator/types.py`
-  - [ ] Update `OrchestratorRunner.execute()` to initialize YearState with exogenous context:
+  - [ ] Add `exogenous_series: list[str] | None` field to `RunRequest` in `src/reformlab/server/models.py`
+  - [ ] Update orchestrator initialization to populate YearState.data with exogenous context:
     - If `config.exogenous` is provided, store in `initial_data["exogenous_context"]`
   - [ ] Update `src/reformlab/orchestrator/__init__.py` to export `ExogenousContext`
   - [ ] Add backward compatibility: scenarios without exogenous field continue to work (None default)
@@ -113,11 +119,11 @@ Status: ready-for-dev
 
 - [ ] **Task 4: Implement JSON serialization for scenarios** (AC: 4)
   - [ ] Add `to_json() -> dict[str, Any]` method to `ExogenousContext`:
-    - Returns `{"series_names": list[str], "asset_ids": dict[str, str]}` (name → asset_id mapping)
-  - [ ] Add `from_json(data: dict[str, Any], asset_store: AssetStore) -> ExogenousContext` classmethod:
-    - Looks up assets by asset_id from provided AssetStore
-    - Reconstructs context with same series name → asset mapping
-  - [ ] Extend `RunManifest` in `src/reformlab/governance/manifest.py` with `exogenous_series: tuple[str, ...]` field
+    - Returns `{"series_names": list[str]}` format
+  - [ ] Add `from_json(data: dict[str, Any]) -> ExogenousContext` classmethod:
+    - Extracts series_names from JSON
+    - Loads each asset via `load_exogenous_asset(series_name)` and builds context via `from_assets()`
+  - [ ] Extend `RunManifest` in `src/reformlab/governance/manifest.py` with optional `exogenous_series: tuple[str, ...]` field (default empty tuple)
   - [ ] Update manifest recording in orchestrator to capture series names when exogenous is used
   - [ ] Extend scenario YAML schema in `src/reformlab/templates/schema.py`:
     - Add optional `exogenous_series: list[str]` field to baseline/reform scenarios
@@ -126,29 +132,28 @@ Status: ready-for-dev
 
 - [ ] **Task 5: Update vehicle domain for exogenous fuel costs** (AC: 5)
   - [ ] Extend `VehicleDomainConfig` in `src/reformlab/discrete_choice/vehicle.py`:
-    - Add `fuel_price_series: str | None = None` field
-  - [ ] Update `default_vehicle_domain_config()` to include `fuel_price_series="energy_price_petrol"`
-  - [ ] Create `VehicleInvestmentDomain.compute_costs()` method:
-    - Signature: `compute_costs(population: PopulationData, year: int, exogenous: ExogenousContext | None) -> CostMatrix`
-    - If `exogenous` and `config.fuel_price_series` provided: look up fuel price via `exogenous.get_value()`
-    - Otherwise: use legacy hardcoded fuel cost (backward compatibility)
-  - [ ] Update cost computation metadata recording:
-    - Add fuel price source, value, unit to `YearState.metadata` under `"vehicle_fuel_cost"` key
+    - Add `fuel_price_series: str | None = None` field (series name for exogenous lookup)
+    - Add `fuel_price_default: float = 1.55` field (EUR/litre, used when no exogenous series configured)
+  - [ ] Keep `default_vehicle_domain_config()` with `fuel_price_series=None` for backward compatibility
+  - [ ] Update `DiscreteChoiceStep` in `src/reformlab/discrete_choice/step.py` to inject exogenous fuel prices:
+    - Before adapter computation, check if domain has `fuel_price_series` configured
+    - If exogenous context available and series configured, inject fuel price into population tables
+    - Record metadata: `{"vehicle_fuel_cost": {"source": "exogenous:{series_name}", "value": float, "unit": "EUR/litre"}}`
+    - If no exogenous, record metadata using default value
   - [ ] Update `VehicleInvestmentDomain` tests in `tests/discrete_choice/test_vehicle.py`:
-    - Add test case for exogenous fuel price lookup
-    - Verify backward compatibility (no exogenous = legacy costs)
-    - Verify metadata recording
+    - Add test case for exogenous fuel price injection via DiscreteChoiceStep
+    - Verify backward compatibility (no exogenous = default costs)
+    - Verify metadata recording in YearState
 
 - [ ] **Task 6: Register exogenous comparison dimension** (AC: 6)
-  - [ ] Create `src/reformlab/components/comparison/ExogenousDimension.ts` (or add to `DimensionRegistry.ts`)
-  - [ ] Implement `ComparisonDimension<dict>` with:
-    - `id: "exogenous"`
-    - `label: "Exogenous Series"`
-    - `description: "Deterministic hash of exogenous time series assumptions"`
-    - `getValue(runResult: ResultDetailResponse): string` - returns SHA-256 hash of sorted series names
-  - [ ] Implement custom `render(value: string): ReactNode`:
-    - Parse hash to show series count and sample names
-    - Format: "3 series: energy_price_electricity, energy_price_petrol, ev_purchase_cost"
+  - [ ] Extend `ResultDetailResponse` in `src/reformlab/server/models.py`:
+    - Add `exogenous_series_hash: str | None = None` field (SHA-256 hash)
+    - Add `exogenous_series_names: list[str] | None = None` field (for display)
+  - [ ] Extend `ResultDetailResponse` TypeScript interface in `frontend/src/api/types.ts`
+  - [ ] Create `frontend/src/components/comparison/ExogenousDimension.tsx`:
+    - Implement `ComparisonDimension<string>` with id="exogenous", label="Exogenous Series"
+    - `getValue(runResult: ResultDetailResponse): string | null` returns `runResult.exogenous_series_hash`
+    - `render(value: string): ReactNode` displays series count and names from `exogenous_series_names`
   - [ ] Register dimension in `DimensionRegistry` on module initialization
   - [ ] Add tests for hash determinism (same series → same hash, different series → different hash)
   - [ ] Update comparison UI to display exogenous dimension when available
@@ -176,7 +181,7 @@ Status: ready-for-dev
     - Validates using `ExogenousAsset` constructor (raises on validation failure)
     - Creates asset folder in `data/exogenous/{series_name}/`
     - Returns created asset with generated asset_id
-  - [ ] Register router in `src/reformlab/server/main.py` (or `routes/__init__.py`)
+  - [ ] Register router in `src/reformlab/server/app.py` with prefix `/api/exogenous`
   - [ ] Add Pydantic models to `src/reformlab/server/models.py`:
     - `ExogenousAssetRequest` - request fields matching `ExogenousAsset` structure
     - `ExogenousAssetResponse` - response with all asset fields including descriptor
@@ -279,6 +284,7 @@ Status: ready-for-dev
 - `src/reformlab/data/exogenous_loader.py` — asset loader for exogenous series
 - `src/reformlab/server/routes/exogenous.py` — API endpoints
 - `frontend/src/api/exogenous.ts` — frontend API client
+- `frontend/src/components/comparison/ExogenousDimension.tsx` — comparison dimension
 - `tests/orchestrator/test_exogenous.py` — core context tests
 - `tests/server/test_routes_exogenous.py` — API endpoint tests
 - `data/exogenous/{series_name}/` — prebuilt asset folders
@@ -286,13 +292,15 @@ Status: ready-for-dev
 **Files to modify:**
 - `src/reformlab/orchestrator/types.py` — add exogenous field to OrchestratorConfig
 - `src/reformlab/orchestrator/runner.py` — propagate exogenous through YearState
+- `src/reformlab/server/models.py` — add Pydantic request/response models, extend RunRequest and ResultDetailResponse
+- `src/reformlab/server/app.py` — register exogenous router
 - `src/reformlab/server/routes/validation.py` — add exogenous coverage check
-- `src/reformlab/server/models.py` — add Pydantic request/response models
 - `src/reformlab/governance/manifest.py` — add exogenous_series field
 - `src/reformlab/templates/schema.py` — extend scenario YAML schema
-- `src/reformlab/discrete_choice/vehicle.py` — consume exogenous fuel prices
+- `src/reformlab/discrete_choice/step.py` — inject exogenous fuel prices before adapter computation
+- `src/reformlab/discrete_choice/vehicle.py` — add fuel_price_series and fuel_price_default fields
 - `frontend/src/api/types.ts` — add TypeScript types
-- `frontend/src/components/comparison/DimensionRegistry.ts` — register exogenous dimension
+- `frontend/src/components/comparison/DimensionRegistry.tsx` — register exogenous dimension
 
 ### Type System Constraints
 
@@ -372,6 +380,7 @@ class VehicleDomainConfig:
     """Configuration for the vehicle investment decision domain."""
     # ... existing fields ...
     fuel_price_series: str | None = None  # Series name for exogenous fuel prices
+    fuel_price_default: float = 1.55  # EUR/litre, used when no exogenous series
 ```
 
 ### Storage Format Specification
@@ -431,12 +440,13 @@ registerDimension<string>({
     label: "Exogenous Series",
     description: "Deterministic hash of exogenous time series assumptions",
     getValue: (runResult) => {
-        // Extract from runResult.metadata.exogenous_series_hash
-        return runResult.metadata.exogenous_series_hash || null;
+        // Extract from runResult.exogenous_series_hash
+        return runResult.exogenous_series_hash || null;
     },
-    render: (hash) => {
-        // Parse to show series count and sample names
-        return <ExogenousBadge hash={hash} />;
+    render: (hash, runResult) => {
+        // Display series count and sample names from runResult.exogenous_series_names
+        const names = runResult.exogenous_series_names || [];
+        return <ExogenousBadge hash={hash} seriesNames={names} />;
     },
 });
 ```
@@ -496,10 +506,10 @@ register_check(ValidationCheck(
 
 **Backend tests:**
 - `tests/orchestrator/test_exogenous.py` — context creation, lookups, coverage validation
-- `tests/server/test_routes_exogenous.py` — API CRUD operations
+- `tests/server/test_routes_exogenous.py` — API list/get/create operations
 - `tests/server/test_routes_validation.py` — preflight integration
 - `tests/orchestrator/test_runner.py` — orchestrator integration
-- `tests/discrete_choice/test_vehicle.py` — vehicle domain exogenous consumption
+- `tests/discrete_choice/test_vehicle.py` — vehicle domain exogenous fuel price injection
 - `tests/governance/test_manifest.py` — manifest field recording
 
 **Frontend tests:**
@@ -583,7 +593,7 @@ def load_exogenous_asset(series_name: str) -> ExogenousAsset:
 - [src/reformlab/data/assets.py](/Users/lucas/Workspace/reformlab/src/reformlab/data/assets.py) — ExogenousAsset with get_value(), validate_coverage()
 - [src/reformlab/server/routes/validation.py](/Users/lucas/Workspace/reformlab/src/reformlab/server/routes/validation.py) — ValidationCheck protocol
 - [src/reformlab/discrete_choice/vehicle.py](/Users/lucas/Workspace/reformlab/src/reformlab/discrete_choice/vehicle.py) — Vehicle domain cost computation
-- [frontend/src/components/comparison/DimensionRegistry.ts](/Users/lucas/Workspace/reformlab/frontend/src/components/comparison/) — Comparison dimension pattern
+- [frontend/src/components/comparison/DimensionRegistry.tsx](/Users/lucas/Workspace/reformlab/frontend/src/components/comparison/) — Comparison dimension pattern
 
 **Project context:**
 - [_bmad-output/project-context.md](/Users/lucas/Workspace/reformlab/_bmad-output/project-context.md) — Critical rules for language rules, framework rules, testing rules
@@ -628,6 +638,7 @@ ULTIMATE CONTEXT ENGINE ANALYSIS COMPLETED - Comprehensive developer guide creat
 - `src/reformlab/data/exogenous_loader.py` — Asset loader with security hardening
 - `src/reformlab/server/routes/exogenous.py` — API endpoints
 - `frontend/src/api/exogenous.ts` — Frontend API client
+- `frontend/src/components/comparison/ExogenousDimension.tsx` — Comparison dimension
 - `tests/orchestrator/test_exogenous.py` — Core context tests
 - `tests/server/test_routes_exogenous.py` — API endpoint tests
 - `data/exogenous/energy_price_electricity/` — Prebuilt asset folders
@@ -637,19 +648,21 @@ ULTIMATE CONTEXT ENGINE ANALYSIS COMPLETED - Comprehensive developer guide creat
 **Files to modify:**
 - `src/reformlab/orchestrator/types.py` — Add exogenous field to OrchestratorConfig
 - `src/reformlab/orchestrator/runner.py` — Propagate exogenous through YearState
+- `src/reformlab/server/models.py` — Add ExogenousAssetRequest/Response, extend RunRequest and ResultDetailResponse
+- `src/reformlab/server/app.py` — Register exogenous router
 - `src/reformlab/server/routes/validation.py` — Add exogenous coverage preflight check
-- `src/reformlab/server/models.py` — Add ExogenousAssetRequest/Response Pydantic models
 - `src/reformlab/governance/manifest.py` — Add exogenous_series field
 - `src/reformlab/templates/schema.py` — Extend scenario YAML schema
-- `src/reformlab/discrete_choice/vehicle.py` — Consume exogenous fuel prices
+- `src/reformlab/discrete_choice/step.py` — Inject exogenous fuel prices before adapter computation
+- `src/reformlab/discrete_choice/vehicle.py` — Add fuel_price_series and fuel_price_default fields
 - `frontend/src/api/types.ts` — Add TypeScript types
-- `frontend/src/components/comparison/DimensionRegistry.ts` — Register exogenous dimension
+- `frontend/src/components/comparison/DimensionRegistry.tsx` — Register exogenous dimension
 
 **Tests to create/modify:**
 - `tests/orchestrator/test_exogenous.py` — New
 - `tests/server/test_routes_exogenous.py` — New
 - `tests/server/test_routes_validation.py` — Add preflight integration tests
 - `tests/orchestrator/test_runner.py` — Add orchestrator integration tests
-- `tests/discrete_choice/test_vehicle.py` — Add exogenous consumption tests
+- `tests/discrete_choice/test_vehicle.py` — Add exogenous fuel price injection tests
 - `tests/governance/test_manifest.py` — Add manifest field recording tests
 - Frontend tests for comparison dimension hash determinism

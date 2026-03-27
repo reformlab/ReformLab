@@ -1,0 +1,135 @@
+record_id: b844c1b8-710a-46a0-a210-17defaf61be9
+created_at: '2026-03-27T19:13:59.268826+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 21
+  story_num: 6
+  title: Story 21.6
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-03-27T19:05:01.104275Z'
+  end_time: '2026-03-27T19:06:09.695275Z'
+  duration_ms: 68591
+  input_tokens: 0
+  output_tokens: 4413
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 17654
+  heading_count: 39
+  list_depth_max: 2
+  code_block_count: 9
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 9.6'
+  - 🎯 Ruthless Story Validation 21.6
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 9.6 → REJECT'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. AssetStore Type Not Defined
+  - 2. VehicleInvestmentDomain.compute_costs() Method Doesn't Exist
+  - 3. Missing ResultDetailResponse Metadata Field for Exogenous Hash
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Preflight Check Extraction Pattern
+  - 2. OrchestratorConfig Backward Compatibility Pattern
+  - 3. Test File Organization
+  - 4. CostMatrix Type Clarification
+  - 5. Frontend Dimension Complete Example
+  - ✨ Optimizations (Nice to Have)
+  - 1. ExogenousAsset Caching for Performance
+  - 2. Immutable _series Field Clarification
+  - 🤖 LLM Optimization Improvements
+  - 1. Type System Constraints Section
+  - Type System Constraints
+  - Type System
+  - 2. Redundant Existing Code Pattern Descriptions
+  - Existing Code Patterns to Reference
+  - Dependencies
+  - 3. Storage Format Redundancy
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 337f4b1443c3
+findings:
+  total_count: 14
+  by_severity:
+    critical: 3
+    major: 5
+    minor: 2
+    nit: 3
+  by_category:
+    security: 0
+    performance: 1
+    correctness: 2
+    completeness: 6
+    clarity: 5
+    testability: 0
+  has_fix_count: 14
+  has_location_count: 14
+  has_evidence_count: 14
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 7
+  confidence_phrases_count: 2
+linguistic:
+  avg_sentence_length: 22.4468085106383
+  vocabulary_richness: 0.3132701421800948
+  flesch_reading_ease: 8.195046941247739
+  vague_terms_count: 2
+  formality_score: 0.75
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.92
+  evidence_quality: 0.95
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true
