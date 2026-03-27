@@ -1,0 +1,773 @@
+# Story 21.7: Refactor Discrete Choice and Calibration for Generalized TasteParameters
+
+Status: ready-for-dev
+
+<!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
+
+## Story
+
+**As a** policy analyst and platform developer,
+**I want** discrete choice taste parameters to support Alternative-Specific Constants (ASCs) plus named beta coefficients with fixed/calibrated tracking and diagnostics,
+**so that** the flagship vehicle domain can model richer household preferences (inertia, brand loyalty, attribute sensitivities) while maintaining backward compatibility with the existing single-parameter workflow.
+
+## Acceptance Criteria
+
+1. **AC1:** `TasteParameters` refactored to generalized frozen dataclass at `src/reformlab/discrete_choice/types.py` with:
+   - `asc: dict[str, float]` — per-alternative constants (one normalized to zero as reference)
+   - `betas: dict[str, float]` — named taste coefficients (e.g., `"cost"`, `"time"`, `"comfort"`)
+   - `calibrate: frozenset[str]` — parameter names to optimize (subset of asc keys + beta names)
+   - `fixed: frozenset[str]` — parameter names held constant (literature values, not optimized)
+   - `reference_alternative: str | None` — alternative whose ASC is normalized to zero (None for legacy single-parameter mode)
+   - `literature_sources: dict[str, str]` — citation/reference for each fixed parameter
+   - Factory classmethod `from_beta_cost(beta_cost: float) -> TasteParameters` — creates generalized instance from legacy single parameter
+   - Property `is_legacy_mode: bool` — True if created via `from_beta_cost()`, False otherwise
+   - `__post_init__` validates: calibrate and fixed are disjoint subsets of available parameter names; reference_alternative exists in asc keys if provided
+
+2. **AC2:** `compute_utilities()` in `src/reformlab/discrete_choice/logit.py` refactored for generalized utility:
+   - Legacy mode (`is_legacy_mode=True`): `V_ij = beta_cost × cost_ij` (unchanged behavior)
+   - Generalized mode: `V_ij = ASC_j + Σ_k(β_k × attribute_kij)` where sum is over all betas
+   - Accepts `utility_attributes: dict[str, pa.Table] | None` parameter — mapping from beta name to N×M attribute table
+   - If `utility_attributes` is None or empty, uses `cost_matrix.table` as the single attribute for all betas
+   - Validates: for each beta in `taste_parameters.betas`, a corresponding column or table exists in utility_attributes
+   - Returns N×M PyArrow Table of utility values with same column names as cost_matrix
+
+3. **AC3:** `LogitChoiceStep` extended to support generalized taste parameters:
+   - Constructor accepts optional `utility_attributes_key: str | None = None` parameter
+   - If `utility_attributes_key` provided, reads utility attributes from `YearState.data[utility_attributes_key]`
+   - Passes utility attributes to `compute_utilities()` call
+   - Metadata recording includes: parameter count (ASCs + betas), calibrated parameter names, fixed parameter names, reference alternative
+   - Backward compatibility: if `utility_attributes_key` is None, uses legacy single-attribute mode
+
+4. **AC4:** `CalibrationConfig` extended at `src/reformlab/calibration/types.py`:
+   - Add `initial_values: dict[str, float]` field — initial value for each parameter in calibrate set
+   - Add `bounds: dict[str, tuple[float, float]]` field — (lower, upper) bounds for each parameter in calibrate set
+   - Deprecate but retain `initial_beta: float` and `beta_bounds: tuple[float, float]` fields for legacy mode
+   - Add `target_parameters: TasteParameters` field — full taste parameters instance (not just beta_cost)
+   - `__post_init__` validates: initial_values keys are subset of target_parameters.calibrate; bounds keys are subset of target_parameters.calibrate; if legacy mode (initial_beta provided), initial_values and bounds must be empty
+   - Add `is_legacy_mode: bool` property — True if using deprecated scalar fields
+
+5. **AC5:** `CalibrationEngine` refactored for vector optimization:
+   - `_validate_inputs()` validates that all parameters in `config.target_parameters.calibrate` exist in `config.initial_values` and `config.bounds`
+   - `build_objective()` creates parameter vector from `config.target_parameters` using initial values
+   - Objective function computes utilities via generalized `compute_utilities()` with all ASCs and betas
+   - Fixed parameters (in `target_parameters.fixed`) are used in utility computation but frozen during optimization
+   - Optimizes over vector of calibrated parameters using scipy.optimize.minimize with vectorized bounds
+   - `CalibrationResult` extended with `optimized_parameters: TasteParameters` (full instance with all calibrated values updated, fixed values unchanged)
+
+6. **AC6:** `CalibrationResult` extended with diagnostics:
+   - `parameter_diagnostics: dict[str, ParameterDiagnostics]` field — per-parameter convergence info
+   - `ParameterDiagnostics` frozen dataclass with: `optimized_value: float`, `initial_value: float`, `absolute_change: float`, `relative_change_pct: float`, `at_lower_bound: bool`, `at_upper_bound: bool`, `gradient_component: float | None`
+   - `convergence_warnings: list[str]` field — messages for parameters hitting bounds, failed convergence, or near-zero gradients
+   - `identifiability_flags: dict[str, str]` field — warnings for parameters with low sensitivity or high correlation
+
+7. **AC7:** Vehicle domain updated to use generalized taste parameters:
+   - `VehicleDomainConfig` extended with `taste_parameters: TasteParameters | None = None` field
+   - If `taste_parameters` is None, use legacy `TasteParameters.from_beta_cost(-0.01)` for backward compatibility
+   - If `taste_parameters` provided, it must have ASCs for all vehicle alternatives and at least one beta (cost or other attributes)
+   - `VehicleInvestmentDomain` exposes `taste_parameters` via `config.taste_parameters` property
+   - DiscreteChoiceStep passes vehicle domain's taste parameters to LogitChoiceStep
+   - Vehicle state update metadata records which taste parameters were used
+
+8. **AC8:** Governance manifest integration for taste parameter provenance:
+   - `TasteParameters.to_governance_entry()` method returns AssumptionEntry-compatible dict with:
+     - `asc_names`, `beta_names`, `calibrated_names`, `fixed_names`
+     - `reference_alternative`
+     - `literature_sources` for fixed parameters
+     - `is_legacy_mode` flag
+   - `CalibrationResult.to_governance_entry()` extended with:
+     - `parameter_diagnostics` summary (optimized values, changes, bound flags)
+     - `convergence_warnings` list
+     - `identifiability_flags` dict
+   - `RunManifest` extended with `taste_parameters: dict[str, Any]` field populated from taste parameters governance entry
+
+9. **AC9:** Backward compatibility for existing single-parameter workflow:
+   - `TasteParameters.from_beta_cost(-0.01)` creates instance with `asc={}`, `betas={"cost": -0.01}`, `calibrate=frozenset(["cost"])`, `fixed=frozenset()`, `is_legacy_mode=True`
+   - LogitChoiceStep detects legacy mode and uses legacy `compute_utilities()` path
+   - CalibrationConfig with `initial_beta=-0.01` and `beta_bounds=(-1.0, 0.0)` works without specifying `initial_values` or `bounds`
+   - All existing tests (logit, calibration, discrete_choice, vehicle) continue to pass without modification
+   - Documentation and demos updated to show both legacy and generalized patterns
+
+10. **AC10:** Tests cover:
+    - TasteParameters construction in both legacy and generalized modes
+    - `from_beta_cost()` factory creates correct generalized structure
+    - `is_legacy_mode` property detection
+    - Validation errors for overlapping calibrate/fixed sets
+    - Validation errors for missing initial_values or bounds
+    - `compute_utilities()` with ASCs only (all betas fixed)
+    - `compute_utilities()` with betas only (all ASCs fixed)
+    - `compute_utilities()` with ASCs + multiple betas
+    - `compute_utilities()` legacy mode produces identical results to current implementation
+    - LogitChoiceStep with utility_attributes_key parameter
+    - CalibrationEngine vector optimization with 2+ parameters
+    - CalibrationEngine with fixed parameters frozen
+    - CalibrationResult parameter_diagnostics accuracy
+    - CalibrationResult convergence warnings for bound-hitting
+    - Vehicle domain with generalized taste parameters
+    - Backward compatibility: all existing discrete_choice and calibration tests pass
+    - Governance manifest entry structure
+
+## Tasks / Subtasks
+
+- [ ] **Task 1: Refactor TasteParameters to generalized structure** (AC: 1)
+  - [ ] Create new fields in `TasteParameters` at `src/reformlab/discrete_choice/types.py`:
+    - [ ] `asc: dict[str, float] = field(default_factory=dict)` — per-alternative constants
+    - [ ] `betas: dict[str, float] = field(default_factory=dict)` — named taste coefficients
+    - [ ] `calibrate: frozenset[str] = frozenset()` — parameter names to optimize
+    - [ ] `fixed: frozenset[str] = frozenset()` — parameter names held constant
+    - [ ] `reference_alternative: str | None = None` — alternative with ASC=0
+    - [ ] `literature_sources: dict[str, str] = field(default_factory=dict)` — citations for fixed parameters
+  - [ ] Keep existing `beta_cost: float` field for backward compatibility (deprecated in docstring)
+  - [ ] Add `is_legacy_mode: bool` property — returns True if `asc` is empty and `betas` has only "cost" key
+  - [ ] Add factory classmethod `from_beta_cost(beta_cost: float) -> TasteParameters`:
+    - [ ] Creates instance with `asc={}`, `betas={"cost": beta_cost}`, `calibrate=frozenset(["cost"])`
+    - [ ] Sets `is_legacy_mode=True` detection condition
+  - [ ] Add `__post_init__` validation:
+    - [ ] `calibrate` and `fixed` must be disjoint (raise `DiscreteChoiceError` if overlap)
+    - [ ] `calibrate ∪ fixed` must be subset of `set(asc.keys()) | set(betas.keys())`
+    - [ ] If `reference_alternative` provided, must exist in `asc` keys
+    - [ ] If `is_legacy_mode=True`, `asc` must be empty and `betas` must have exactly one "cost" key
+  - [ ] Update module docstring to reference Story 21.7 and synthetic-data-decision-document Section 2.3b
+
+- [ ] **Task 2: Refactor compute_utilities() for generalized utility function** (AC: 2)
+  - [ ] Add `utility_attributes: dict[str, pa.Table] | None = None` parameter to `compute_utilities()`
+  - [ ] Add legacy mode detection: if `taste_parameters.is_legacy_mode` and `utility_attributes is None`, use current implementation
+  - [ ] Implement generalized utility computation:
+    - [ ] Initialize utility columns as zero arrays: `utils = {aid: pa.zeros(n, type=pa.float64()) for aid in alternative_ids}`
+    - [ ] Add ASCs: for each alternative, add its constant to all households in that alternative's column
+    - [ ] Add beta-weighted attributes: for each beta name, multiply corresponding attribute table by beta value and add to utilities
+    - [ ] If `utility_attributes` is None or empty, use `cost_matrix.table` as single attribute for all betas (legacy-compatible)
+    - [ ] Validate: each beta name in `taste_parameters.betas` has corresponding entry in `utility_attributes` or cost_matrix
+  - [ ] Add structured logging for generalized mode: log ASC values, beta values, attribute names used
+  - [ ] Update function docstring to explain both legacy and generalized modes
+
+- [ ] **Task 3: Extend LogitChoiceStep for generalized taste parameters** (AC: 3)
+  - [ ] Add `utility_attributes_key: str | None = None` parameter to `LogitChoiceStep.__init__()`
+  - [ ] Store as private field `self._utility_attributes_key`
+  - [ ] In `execute()` method, if `utility_attributes_key` is not None:
+    - [ ] Read utility attributes from `state.data.get(self._utility_attributes_key)`
+    - [ ] Validate utility attributes is dict[str, pa.Table] (raise `DiscreteChoiceError` if wrong type)
+    - [ ] Pass to `compute_utilities()` call
+  - [ ] Extend metadata recording:
+    - [ ] Add `taste_parameters_asc_count: int`, `taste_parameters_beta_count: int`
+    - [ ] Add `taste_parameters_calibrated: list[str]`, `taste_parameters_fixed: list[str]`
+    - [ ] Add `taste_parameters_reference_alternative: str | None`
+    - [ ] Add `taste_parameters_is_legacy_mode: bool`
+  - [ ] Update logging to include parameter counts and mode in step_start event
+
+- [ ] **Task 4: Extend CalibrationConfig for vector optimization** (AC: 4)
+  - [ ] Add `target_parameters: TasteParameters` field to `CalibrationConfig` (replace implicit beta_cost)
+  - [ ] Add `initial_values: dict[str, float] = field(default_factory=dict)` field
+  - [ ] Add `bounds: dict[str, tuple[float, float]] = field(default_factory=dict)` field
+  - [ ] Deprecate but retain `initial_beta: float = -0.01` field (docstring: "Deprecated: Use initial_values with target_parameters")
+  - [ ] Deprecate but retain `beta_bounds: tuple[float, float] = (-1.0, 0.0)` field (docstring: "Deprecated: Use bounds with target_parameters")
+  - [ ] Add `is_legacy_mode: bool` property — returns True if `initial_values` and `bounds` are empty
+  - [ ] Add `__post_init__` validation:
+    - [ ] If `is_legacy_mode=True`, `target_parameters.is_legacy_mode` must be True
+    - [ ] `initial_values` keys must be subset of `target_parameters.calibrate`
+    - [ ] `bounds` keys must be subset of `target_parameters.calibrate`
+    - [ ] All `initial_values` keys must have corresponding entry in `bounds`
+  - [ ] Update `to_governance_entry()` to include taste parameter info (see Task 8)
+
+- [ ] **Task 5: Refactor CalibrationEngine for vector optimization** (AC: 5)
+  - [ ] Add `ParameterDiagnostics` frozen dataclass to `src/reformlab/calibration/types.py`:
+    - [ ] `optimized_value: float`, `initial_value: float`, `absolute_change: float`
+    - [ ] `relative_change_pct: float`, `at_lower_bound: bool`, `at_upper_bound: bool`
+    - [ ] `gradient_component: float | None`
+  - [ ] Update `CalibrationEngine._validate_inputs()`:
+    - [ ] Validate all `config.target_parameters.calibrate` names exist in `config.initial_values`
+    - [ ] Validate all `config.target_parameters.calibrate` names exist in `config.bounds`
+    - [ ] Raise `CalibrationOptimizationError` with clear messages for missing values or bounds
+  - [ ] Refactor `build_mse_objective()` and `build_log_likelihood_objective()`:
+    - [ ] Build parameter vector `x` from `config.target_parameters` using `initial_values` for calibrated parameters
+    - [ ] Create temporary `TasteParameters` with parameter vector values for utility computation
+    - [ ] Fixed parameters use values from `config.target_parameters.fixed` set
+    - [ ] Call generalized `compute_utilities()` with ASCs and betas
+    - [ ] Compute simulated rates and objective value as before
+  - [ ] Update `CalibrationEngine.calibrate()`:
+    - [ ] Pass vectorized bounds to `scipy.optimize.minimize` (list of tuples for each calibrated parameter)
+    - [ ] Extract optimized vector from `result.x` and map back to parameter names
+    - [ ] Create new `TasteParameters` with optimized calibrated values and original fixed values
+    - [ ] Build `ParameterDiagnostics` for each calibrated parameter:
+      - [ ] `optimized_value` from result, `initial_value` from config
+      - [ ] `at_lower_bound` / `at_upper_bound` from bounds comparison
+      - [ ] `gradient_component` from `result.jac` if available
+    - [ ] Return `CalibrationResult` with `optimized_parameters` as full `TasteParameters` instance
+
+- [ ] **Task 6: Add diagnostics to CalibrationResult** (AC: 6)
+  - [ ] Add `parameter_diagnostics: dict[str, ParameterDiagnostics]` field to `CalibrationResult`
+  - [ ] Add `convergence_warnings: list[str]` field to `CalibrationResult`
+  - [ ] Add `identifiability_flags: dict[str, str]` field to `CalibrationResult`
+  - [ ] Update `CalibrationEngine.calibrate()` to populate these fields:
+    - [ ] Generate warnings for parameters at bounds (e.g., "beta_cost hit upper bound 0.0")
+    - [ ] Generate warnings if `convergence_flag=False`
+    - [ ] Flag parameters with low sensitivity (gradient near zero but not at bound) in `identifiability_flags`
+  - [ ] Update `to_governance_entry()` to include diagnostics summary
+
+- [ ] **Task 7: Update vehicle domain for generalized taste parameters** (AC: 7)
+  - [ ] Add `taste_parameters: TasteParameters | None = None` field to `VehicleDomainConfig`
+  - [ ] Update `default_vehicle_domain_config()` to return config with `taste_parameters=None` (uses legacy mode)
+  - [ ] Add factory `create_vehicle_config_with_taste_parameters(asc: dict[str, float], betas: dict[str, float], calibrate: set[str], fixed: set[str]) -> VehicleDomainConfig`:
+    - [ ] Creates `TasteParameters` with provided ASCs, betas, calibrate, fixed sets
+    - [ ] Validates ASC keys match vehicle alternative IDs
+    - [ ] Sets `reference_alternative` to "keep_current" (or provided value)
+    - [ ] Returns `VehicleDomainConfig` with generalized taste parameters
+  - [ ] Update `VehicleInvestmentDomain` to expose `taste_parameters` via config property
+  - [ ] Update DiscreteChoiceStep integration to pass taste parameters to LogitChoiceStep
+  - [ ] Add example showing ASCs for vehicle alternatives (e.g., negative ASC for "buy_ev" capturing inertia)
+
+- [ ] **Task 8: Governance manifest integration** (AC: 8)
+  - [ ] Add `to_governance_entry()` method to `TasteParameters`:
+    - [ ] Returns dict with `key="taste_parameters"`, `value` containing all metadata
+    - [ ] Includes `asc_names`, `beta_names`, `calibrated_names`, `fixed_names`
+    - [ ] Includes `reference_alternative`, `literature_sources`, `is_legacy_mode`
+  - [ ] Extend `CalibrationResult.to_governance_entry()`:
+    - [ ] Add `parameter_diagnostics` summary (optimized values, changes, bound flags)
+    - [ ] Add `convergence_warnings` list
+    - [ ] Add `identifiability_flags` dict
+  - [ ] Extend `RunManifest` at `src/reformlab/governance/manifest.py`:
+    - [ ] Add `taste_parameters: dict[str, Any] | None = None` field
+    - [ ] Add to `to_json()` and `from_json()` methods
+  - [ ] Update manifest capture in orchestrator runner to include taste parameters
+
+- [ ] **Task 9: Ensure backward compatibility** (AC: 9)
+  - [ ] Verify `TasteParameters.from_beta_cost(-0.01)` creates correct generalized structure
+  - [ ] Verify legacy mode detection in `is_legacy_mode` property
+  - [ ] Verify `compute_utilities()` legacy path produces identical results:
+    - [ ] Add test comparing legacy vs generalized with single beta
+    - [ ] Use `pytest.approx()` for float comparison
+  - [ ] Verify `CalibrationConfig` with scalar fields works without dict fields
+  - [ ] Run all existing tests:
+    - [ ] `tests/discrete_choice/test_logit.py` — all existing tests pass
+    - [ ] `tests/discrete_choice/test_*.py` — all existing tests pass
+    - [ ] `tests/calibration/test_engine.py` — all existing tests pass
+    - [ ] `tests/calibration/test_*.py` — all existing tests pass
+  - [ ] Update demos to show both legacy and generalized patterns
+
+- [ ] **Task 10: Create comprehensive test suite** (AC: 10)
+  - [ ] `tests/discrete_choice/test_types.py` — add `TestTasteParametersGeneralized`:
+    - [ ] Test construction with ASCs only
+    - [ ] Test construction with betas only
+    - [ ] Test construction with ASCs + betas
+    - [ ] Test `from_beta_cost()` factory
+    - [ ] Test `is_legacy_mode` property
+    - [ ] Test validation errors (overlapping calibrate/fixed, missing initial_values, invalid reference_alternative)
+  - [ ] `tests/discrete_choice/test_logit.py` — add `TestComputeUtilitiesGeneralized`:
+    - [ ] Test ASCs only utilities (V_ij = ASC_j)
+    - [ ] Test betas only utilities (V_ij = Σ(β_k × attribute_kij))
+    - [ ] Test ASCs + betas utilities (full generalized)
+    - [ ] Test legacy mode produces same results as current implementation
+    - [ ] Test utility_attributes validation
+  - [ ] `tests/discrete_choice/test_step.py` — add `TestLogitChoiceStepGeneralized`:
+    - [ ] Test step with utility_attributes_key parameter
+    - [ ] Test metadata recording includes taste parameter info
+    - [ ] Test backward compatibility (utility_attributes_key=None uses legacy)
+  - [ ] `tests/calibration/test_engine.py` — add `TestCalibrationEngineGeneralized`:
+    - [ ] Test vector optimization with 2+ parameters
+    - [ ] Test fixed parameters remain unchanged in result
+    - [ ] Test `ParameterDiagnostics` accuracy
+    - [ ] Test convergence warnings for bound-hitting parameters
+    - [ ] Test `identifiability_flags` for low-sensitivity parameters
+    - [ ] Test legacy mode (single beta) still works
+  - [ ] `tests/calibration/test_types.py` — add tests for `ParameterDiagnostics`, extended `CalibrationConfig`, extended `CalibrationResult`
+  - [ ] `tests/discrete_choice/test_vehicle.py` — add vehicle domain tests:
+    - [ ] Test vehicle domain with generalized taste parameters
+    - [ ] Test `create_vehicle_config_with_taste_parameters()` factory
+    - [ ] Test backward compatibility (taste_parameters=None uses legacy)
+  - [ ] `tests/governance/test_manifest.py` — add governance entry tests:
+    - [ ] Test `TasteParameters.to_governance_entry()` structure
+    - [ ] Test `CalibrationResult.to_governance_entry()` includes diagnostics
+    - [ ] Test `RunManifest` serialization with taste_parameters field
+
+## Dev Notes
+
+### Architecture Context
+
+**From synthetic-data-decision-document Section 2.3b:**
+> Taste parameters consist of two sub-categories:
+> - **Alternative-Specific Constants (ASCs):** One constant per alternative (one normalized to zero as reference). Capture all systematic unobserved preference for an alternative net of observed attributes. Inertia, habit, brand loyalty, social norms, information asymmetry.
+> - **Named beta coefficients:** `beta_cost`, `beta_time`, `beta_comfort`, `beta_range`, etc. Weight how observed attributes translate into utility. The user declares which betas their model includes based on domain knowledge. Each beta can be **fixed** (from literature) or **calibrated** (estimated against observed transition rates).
+
+**From synthetic-data-decision-document Section 2.7c:**
+> The refactored `TasteParameters` requires a corresponding refactor of the calibration engine:
+> - The optimizer works over a **parameter vector** containing all parameters in the `calibrate` set
+> - Parameters in the `fixed` set are used in utility computation but frozen during optimization
+> - `CalibrationConfig` accepts `initial_values: dict[str, float]` and `bounds: dict[str, tuple[float, float]]` instead of scalar `initial_beta` and `beta_bounds`
+> - `CalibrationResult` reports optimized values for all calibrated parameters
+> - Governance manifests record which parameters were calibrated vs fixed, and the literature source for each fixed value
+
+### Existing Code Patterns to Reference
+
+**Story 14.2 (completed) - Logit Model:**
+- `compute_utilities(cost_matrix, taste_parameters)` in `src/reformlab/discrete_choice/logit.py` — currently implements `V_ij = beta_cost × cost_ij`
+- `compute_probabilities(utilities)` — applies softmax, unchanged by this story
+- `draw_choices(probabilities, utilities, alternative_ids, seed)` — unchanged by this story
+- `LogitChoiceStep` — orchestrates utilities → probabilities → draws pipeline
+
+**Story 15.2 (completed) - Calibration Engine:**
+- `CalibrationEngine.calibrate()` in `src/reformlab/calibration/engine.py` — currently optimizes single beta_cost
+- `build_mse_objective()` / `build_log_likelihood_objective()` — closures for scipy
+- `scipy.optimize.minimize()` — vectorized optimization can be extended to multi-dimensional parameter space
+
+**Story 21.6 (completed) - ExogenousContext:**
+- Pattern for read-only context with lookup and validation — similar to TasteParameters being fixed for a run
+- Factory classmethod pattern (`from_assets()`) — similar to `from_beta_cost()` factory
+
+### Relationship to Previous Stories
+
+**Epic 14 Stories 14.1-14.5** (completed):
+- Discrete choice infrastructure exists in `src/reformlab/discrete_choice/`
+- Vehicle domain (`vehicle.py`) and heating domain (`heating.py`) implement DecisionDomain protocol
+- This story extends the taste parameter model used by all domains
+
+**Epic 15 Stories 15.1-15.5** (completed):
+- Calibration infrastructure exists in `src/reformlab/calibration/`
+- CalibrationEngine optimizes against CalibrationTargetSet
+- This story extends calibration to support vector optimization over multiple parameters
+
+**Story 21.6** (completed):
+- ExogenousContext pattern for scenario-specific read-only data
+- TasteParameters are similar (fixed for run, but model specification rather than data)
+- Integration pattern via YearState.data keys
+
+### Project Structure Notes
+
+**Files to modify:**
+- `src/reformlab/discrete_choice/types.py` — extend TasteParameters
+- `src/reformlab/discrete_choice/logit.py` — refactor compute_utilities()
+- `src/reformlab/discrete_choice/step.py` — extend LogitChoiceStep
+- `src/reformlab/discrete_choice/vehicle.py` — add taste_parameters field
+- `src/reformlab/calibration/types.py` — extend CalibrationConfig, CalibrationResult; add ParameterDiagnostics
+- `src/reformlab/calibration/engine.py` — refactor for vector optimization
+- `src/reformlab/governance/manifest.py` — add taste_parameters field
+
+**New test coverage needed:**
+- `tests/discrete_choice/test_types.py` — TasteParameters generalized tests
+- `tests/discrete_choice/test_logit.py` — compute_utilities() generalized tests
+- `tests/discrete_choice/test_step.py` — LogitChoiceStep extended tests
+- `tests/calibration/test_types.py` — ParameterDiagnostics, extended config/result tests
+- `tests/calibration/test_engine.py` — vector optimization tests
+- `tests/discrete_choice/test_vehicle.py` — vehicle domain taste parameter tests
+- `tests/governance/test_manifest.py` — governance entry tests
+
+### Type System Constraints
+
+**TasteParameters Refactor:**
+```python
+@dataclass(frozen=True)
+class TasteParameters:
+    """Generalized taste parameters for the conditional logit model.
+
+    Supports Alternative-Specific Constants (ASCs) and named beta
+    coefficients. Each parameter can be marked as calibrated (optimized
+    by CalibrationEngine) or fixed (from literature).
+
+    The utility function is:
+        V_ij = ASC_j + Σ_k(β_k × attribute_kij)
+
+    Where j indexes alternatives and k indexes beta coefficients.
+
+    Attributes:
+        beta_cost: DEPRECATED — Legacy single cost coefficient.
+            Use betas["cost"] instead.
+        asc: Per-alternative constants (ASC_j). One alternative's
+            ASC is normalized to zero (reference_alternative).
+        betas: Named taste coefficients (e.g., "cost", "time", "comfort").
+        calibrate: Parameter names to optimize during calibration.
+        fixed: Parameter names held constant (literature values).
+        reference_alternative: Alternative whose ASC is normalized to zero.
+        literature_sources: Citation/reference for each fixed parameter.
+
+    Story 21.7 / AC1.
+    """
+    # Legacy field (deprecated but retained for backward compatibility)
+    beta_cost: float
+
+    # Generalized fields
+    asc: dict[str, float] = field(default_factory=dict)
+    betas: dict[str, float] = field(default_factory=dict)
+    calibrate: frozenset[str] = frozenset()
+    fixed: frozenset[str] = frozenset()
+    reference_alternative: str | None = None
+    literature_sources: dict[str, str] = field(default_factory=dict)
+
+    @property
+    def is_legacy_mode(self) -> bool:
+        """True if created via from_beta_cost() factory (single beta_cost)."""
+        return len(self.asc) == 0 and list(self.betas.keys()) == ["cost"]
+
+    @classmethod
+    def from_beta_cost(cls, beta_cost: float) -> TasteParameters:
+        """Create generalized TasteParameters from legacy single beta_cost.
+
+        Returns instance with asc={}, betas={"cost": beta_cost},
+        calibrate=frozenset(["cost"]), fixed=frozenset().
+        """
+        return cls(
+            beta_cost=beta_cost,
+            asc={},
+            betas={"cost": beta_cost},
+            calibrate=frozenset(["cost"]),
+            fixed=frozenset(),
+        )
+```
+
+**ParameterDiagnostics:**
+```python
+@dataclass(frozen=True)
+class ParameterDiagnostics:
+    """Diagnostics for a single calibrated parameter.
+
+    Story 21.7 / AC6.
+    """
+    optimized_value: float
+    initial_value: float
+    absolute_change: float
+    relative_change_pct: float
+    at_lower_bound: bool
+    at_upper_bound: bool
+    gradient_component: float | None
+```
+
+### Calibration Vector Optimization Algorithm
+
+```
+Given:
+  - target_parameters: TasteParameters with asc, betas, calibrate, fixed sets
+  - initial_values: dict[str, float] — initial value for each parameter in calibrate
+  - bounds: dict[str, tuple[float, float]] — (lower, upper) for each parameter in calibrate
+
+Algorithm:
+1. Build parameter vector x0:
+   - Order parameters in sorted(calibrate) for deterministic ordering
+   - x0[i] = initial_values[param_name] for param_name in sorted(calibrate)
+
+2. Build bounds list for scipy:
+   - scipy_bounds = [(lower, upper) for param_name in sorted(calibrate)]
+
+3. Define objective function (closure):
+   def objective(x: NDArray) -> float:
+       # Create temporary TasteParameters with current parameter values
+       current_asc = dict(target_parameters.asc)
+       current_betas = dict(target_parameters.betas)
+       for i, param_name in enumerate(sorted(calibrate)):
+           if param_name in current_asc:
+               current_asc[param_name] = x[i]
+           elif param_name in current_betas:
+               current_betas[param_name] = x[i]
+
+       # Fixed parameters use values from target_parameters
+       # (no need to copy, they're already in target_parameters.fixed)
+
+       temp_params = TasteParameters(
+           beta_cost=0.0,  # unused in generalized mode
+           asc=current_asc,
+           betas=current_betas,
+           calibrate=target_parameters.calibrate,
+           fixed=target_parameters.fixed,
+       )
+
+       # Compute utilities with ASCs + betas
+       utilities = compute_utilities(cost_matrix, temp_params, utility_attributes)
+       probabilities = compute_probabilities(utilities)
+       simulated_rates = compute_simulated_rates(cost_matrix, temp_params, from_states, ...)
+
+       # Compute objective (MSE or log-likelihood)
+       return objective_value
+
+4. Run scipy.optimize.minimize(objective, x0, bounds=scipy_bounds, ...)
+
+5. Extract optimized vector:
+   optimized_asc = dict(target_parameters.asc)
+   optimized_betas = dict(target_parameters.betas)
+   for i, param_name in enumerate(sorted(calibrate)):
+       if param_name in optimized_asc:
+           optimized_asc[param_name] = result.x[i]
+       elif param_name in optimized_betas:
+           optimized_betas[param_name] = result.x[i]
+
+6. Build ParameterDiagnostics for each calibrated parameter:
+   for i, param_name in enumerate(sorted(calibrate)):
+       initial = initial_values[param_name]
+       optimized = result.x[i]
+       lower, upper = bounds[param_name]
+       diagnostics[param_name] = ParameterDiagnostics(
+           optimized_value=optimized,
+           initial_value=initial,
+           absolute_change=optimized - initial,
+           relative_change_pct=abs(optimized - initial) / abs(initial) * 100 if initial != 0 else 0.0,
+           at_lower_bound=abs(optimized - lower) < 1e-10,
+           at_upper_bound=abs(upper - optimized) < 1e-10,
+           gradient_component=result.jac[i] if result.jac is not None else None,
+       )
+
+7. Create optimized TasteParameters with all values (calibrated + fixed):
+   optimized_params = TasteParameters(
+       beta_cost=0.0,  # unused
+       asc=optimized_asc,
+       betas=optimized_betas,
+       calibrate=target_parameters.calibrate,
+       fixed=target_parameters.fixed,
+       reference_alternative=target_parameters.reference_alternative,
+   )
+```
+
+### Vehicle Domain Example
+
+**Vehicle ASCs (capturing inertia/preferences):**
+```python
+vehicle_asc = {
+    "keep_current": 0.0,      # reference (normalized to zero)
+    "buy_petrol": -0.5,       # negative = less preferred than keeping current
+    "buy_diesel": -0.6,
+    "buy_hybrid": -0.3,
+    "buy_ev": -1.2,           # strong negative = high inertia/barrier to EV adoption
+    "buy_no_vehicle": -2.0,
+}
+```
+
+**Vehicle Betas (attribute sensitivities):**
+```python
+vehicle_betas = {
+    "cost": -0.01,    # negative: higher cost reduces utility
+    "emissions": -0.05,  # negative: households prefer lower emissions
+}
+
+# Calibration set (which parameters to optimize):
+calibrate = {"asc_buy_ev", "asc_buy_hybrid", "beta_cost"}
+
+# Fixed set (from literature):
+fixed = {"beta_emissions"}  # fixed to literature value
+
+# Literature sources:
+literature_sources = {
+    "beta_emissions": "Dargay & Gately 1999, 'Income's effect on car vehicle ownership'",
+}
+```
+
+**Creating vehicle domain config:**
+```python
+from reformlab.discrete_choice.vehicle import VehicleInvestmentDomain, VehicleDomainConfig
+from reformlab.discrete_choice.types import TasteParameters
+
+# Generalized taste parameters
+taste_params = TasteParameters(
+    beta_cost=-0.01,  # legacy field (ignored in generalized mode)
+    asc=vehicle_asc,
+    betas=vehicle_betas,
+    calibrate=frozenset(calibrate),
+    fixed=frozenset(fixed),
+    reference_alternative="keep_current",
+    literature_sources=literature_sources,
+)
+
+domain_config = VehicleDomainConfig(
+    alternatives=default_vehicle_domain_config().alternatives,
+    taste_parameters=taste_params,  # use generalized
+)
+
+# Or use legacy mode (backward compatible)
+domain_config_legacy = VehicleDomainConfig(
+    alternatives=default_vehicle_domain_config().alternatives,
+    taste_parameters=None,  # uses TasteParameters.from_beta_cost(-0.01)
+)
+```
+
+### Utility Attributes Structure
+
+**For vehicle domain with cost + emissions:**
+```python
+# In DiscreteChoiceStep, before calling compute_utilities():
+utility_attributes = {
+    "cost": cost_matrix.table,  # N×M table of total_vehicle_cost
+    "emissions": emissions_table,  # N×M table of vehicle_emissions_gkm
+}
+
+# LogitChoiceStep passes to compute_utilities():
+utilities = compute_utilities(
+    cost_matrix,
+    taste_parameters,
+    utility_attributes,  # dict mapping beta names to attribute tables
+)
+```
+
+**Utility computation (V_ij = ASC_j + Σ(β_k × attribute_kij)):**
+```python
+# For household i, alternative j:
+V_ij = ASC_j
+     + beta_cost × cost[i, j]
+     + beta_emissions × emissions[i, j]
+     + ... (other betas)
+```
+
+### Backward Compatibility Strategy
+
+**Migration path for existing code:**
+1. All existing code uses `TasteParameters(beta_cost=-0.01)` — this continues to work
+2. `is_legacy_mode=True` detection triggers legacy code paths
+3. `compute_utilities()` uses old implementation when `is_legacy_mode=True` and `utility_attributes=None`
+4. `CalibrationConfig` with scalar fields works when `is_legacy_mode=True`
+5. Tests pass without modification — legacy behavior preserved
+
+**New code uses generalized pattern:**
+```python
+# Old way (still works):
+params = TasteParameters(beta_cost=-0.01)
+
+# New way (generalized):
+params = TasteParameters(
+    beta_cost=0.0,  # unused
+    asc={"ev": 0.0, "petrol": -0.5, "diesel": -0.6, ...},
+    betas={"cost": -0.01, "emissions": -0.05},
+    calibrate=frozenset(["asc_ev", "beta_cost"]),
+    fixed=frozenset(["beta_emissions"]),
+    reference_alternative="ev",
+)
+```
+
+### Testing Standards
+
+**Backend tests:**
+- `tests/discrete_choice/test_types.py` — TasteParameters construction, factory, validation
+- `tests/discrete_choice/test_logit.py` — compute_utilities() generalized modes
+- `tests/discrete_choice/test_step.py` — LogitChoiceStep extended functionality
+- `tests/calibration/test_types.py` — ParameterDiagnostics, extended types
+- `tests/calibration/test_engine.py` — vector optimization, diagnostics
+- `tests/discrete_choice/test_vehicle.py` — vehicle domain integration
+- `tests/governance/test_manifest.py` — governance entry structure
+
+**Test patterns:**
+- Class-based test grouping: `TestTasteParametersGeneralized`, `TestComputeUtilitiesGeneralized`, `TestCalibrationEngineGeneralized`
+- Hand-computed examples for utility calculations
+- `pytest.approx()` for float comparisons
+- Legacy mode tests comparing old vs new implementation
+
+### Governance Manifest Structure
+
+**TasteParameters.to_governance_entry():**
+```python
+def to_governance_entry(self, *, source_label: str = "taste_parameters") -> dict[str, Any]:
+    return {
+        "key": "taste_parameters",
+        "value": {
+            "asc_names": sorted(self.asc.keys()),
+            "beta_names": sorted(self.betas.keys()),
+            "calibrated_names": sorted(self.calibrate),
+            "fixed_names": sorted(self.fixed),
+            "reference_alternative": self.reference_alternative,
+            "literature_sources": self.literature_sources,
+            "is_legacy_mode": self.is_legacy_mode,
+        },
+        "source": source_label,
+        "is_default": False,
+    }
+```
+
+**CalibrationResult.to_governance_entry() extended:**
+```python
+def to_governance_entry(self, *, source_label: str = "calibration_engine") -> dict[str, Any]:
+    return {
+        "key": "calibration_result",
+        "value": {
+            # ... existing fields ...
+            "parameter_diagnostics": {
+                name: {
+                    "optimized_value": d.optimized_value,
+                    "initial_value": d.initial_value,
+                    "absolute_change": d.absolute_change,
+                    "relative_change_pct": d.relative_change_pct,
+                    "at_lower_bound": d.at_lower_bound,
+                    "at_upper_bound": d.at_upper_bound,
+                }
+                for name, d in self.parameter_diagnostics.items()
+            },
+            "convergence_warnings": self.convergence_warnings,
+            "identifiability_flags": self.identifiability_flags,
+        },
+        "source": source_label,
+        "is_default": False,
+    }
+```
+
+### Integration with Existing Patterns
+
+**Use existing frozen dataclass pattern:**
+- `TasteParameters` is already frozen — new fields maintain immutability
+- `dataclasses.replace()` for updates during calibration
+
+**Use existing error hierarchy:**
+- `DiscreteChoiceError` for taste parameter validation errors
+- `CalibrationOptimizationError` for calibration engine errors
+
+**Use existing governance pattern:**
+- `to_governance_entry()` method returns AssumptionEntry-compatible dict
+- Pattern from `CalibrationTargetSet.to_governance_entry()` (Story 15.1)
+
+### References
+
+**Primary source documents:**
+- [synthetic-data-decision-document-2026-03-23.md](/Users/lucas/Workspace/reformlab/_bmad-output/planning-artifacts/synthetic-data-decision-document-2026-03-23.md) — Section 2.3b: Taste Parameters, Section 2.7c: Calibration Engine Implications, Workstream 7 Story A
+- [epic-21-trust-governed-open-synthetic-evidence-foundation.md](/Users/lucas/Workspace/reformlab/_bmad-output/implementation-artifacts/epic-21-trust-governed-open-synthetic-evidence-foundation.md) — Story 21.7 notes
+- [Story 14.2](/Users/lucas/Workspace/reformlab/_bmad-output/implementation-artifacts/14-2-conditional-logit-model-with-seed-controlled-draws.md) — Logit model implementation
+- [Story 15.2](/Users/lucas/Workspace/reformlab/_bmad-output/implementation-artifacts/15-2-implement-calibrationengine-with-objective-function-optimization.md) — Calibration engine pattern
+
+**Code patterns to follow:**
+- [src/reformlab/discrete_choice/types.py](/Users/lucas/Workspace/reformlab/src/reformlab/discrete_choice/types.py) — Current TasteParameters
+- [src/reformlab/discrete_choice/logit.py](/Users/lucas/Workspace/reformlab/src/reformlab/discrete_choice/logit.py) — Current compute_utilities()
+- [src/reformlab/calibration/engine.py](/Users/lucas/Workspace/reformlab/src/reformlab/calibration/engine.py) — Current CalibrationEngine
+- [src/reformlab/discrete_choice/vehicle.py](/Users/lucas/Workspace/reformlab/src/reformlab/discrete_choice/vehicle.py) — Vehicle domain
+
+**Project context:**
+- [_bmad-output/project-context.md](/Users/lucas/Workspace/reformlab/_bmad-output/project-context.md) — Critical rules for language rules, framework rules, testing rules
+
+## Dev Agent Record
+
+### Agent Model Used
+
+claude-opus-4-6
+
+### Debug Log References
+
+None (story creation)
+
+### Completion Notes List
+
+ULTIMATE CONTEXT ENGINE ANALYSIS COMPLETED - Comprehensive developer guide created
+
+**Context extraction completed from:**
+- Epic 21 story definition and notes
+- Synthetic data decision document (Section 2.3b: Taste Parameters, Section 2.7c: Calibration Engine Implications, Workstream 7 Story A)
+- Existing discrete choice implementation (logit.py, types.py, vehicle.py, step.py)
+- Existing calibration implementation (engine.py, types.py)
+- Story 14.2 and 15.2 patterns for logit model and calibration engine
+- Story 21.6 ExogenousContext pattern for factory classmethod inspiration
+
+**Key developer guardrails provided:**
+- Complete type specifications for refactored TasteParameters with ASCs and betas
+- Utility function formula: V_ij = ASC_j + Σ_k(β_k × attribute_kij)
+- Calibration vector optimization algorithm with detailed steps
+- ParameterDiagnostics structure for convergence analysis
+- Vehicle domain example with realistic ASC values (EV inertia)
+- Utility attributes structure for multi-attribute utility computation
+- Backward compatibility strategy (is_legacy_mode detection, factory method)
+- Governance manifest entry structures
+- Comprehensive test coverage requirements
+
+### File List
+
+**Files to modify:**
+- `src/reformlab/discrete_choice/types.py` — Extend TasteParameters with ASCs, betas, calibrate, fixed, reference_alternative, literature_sources; add from_beta_cost() factory, is_legacy_mode property
+- `src/reformlab/discrete_choice/logit.py` — Refactor compute_utilities() for generalized utility V_ij = ASC_j + Σ(β_k × attribute_kij)
+- `src/reformlab/discrete_choice/step.py` — Extend LogitChoiceStep with utility_attributes_key parameter
+- `src/reformlab/discrete_choice/vehicle.py` — Add taste_parameters field to VehicleDomainConfig
+- `src/reformlab/calibration/types.py` — Extend CalibrationConfig with target_parameters, initial_values, bounds; add ParameterDiagnostics; extend CalibrationResult with diagnostics fields
+- `src/reformlab/calibration/engine.py` — Refactor CalibrationEngine for vector optimization over calibrate parameter set
+- `src/reformlab/governance/manifest.py` — Add taste_parameters field to RunManifest
+
+**Tests to create/modify:**
+- `tests/discrete_choice/test_types.py` — Add TestTasteParametersGeneralized
+- `tests/discrete_choice/test_logit.py` — Add TestComputeUtilitiesGeneralized
+- `tests/discrete_choice/test_step.py` — Add TestLogitChoiceStepGeneralized
+- `tests/calibration/test_types.py` — Add ParameterDiagnostics tests, extended config/result tests
+- `tests/calibration/test_engine.py` — Add TestCalibrationEngineGeneralized
+- `tests/discrete_choice/test_vehicle.py` — Add vehicle domain taste parameter tests
+- `tests/governance/test_manifest.py` — Add governance entry tests for taste parameters
