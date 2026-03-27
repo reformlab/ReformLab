@@ -107,7 +107,9 @@ def _find_population_file(population_id: str) -> Path | None:
     return None
 
 
-def _get_population_origin(population_id: str, file_path: Path | None) -> Literal["built-in", "generated", "uploaded"]:
+def _get_population_origin(
+    population_id: str, file_path: Path | None,
+) -> Literal["built-in", "generated", "uploaded"]:
     """Determine the origin of a population."""
     if file_path is None:
         return "built-in"
@@ -149,7 +151,8 @@ def _read_generated_metadata(population_id: str) -> dict[str, Any] | None:
         return None
 
     try:
-        return json.loads(manifest_path.read_text())
+        result: dict[str, Any] = json.loads(manifest_path.read_text())
+        return result
     except (json.JSONDecodeError, OSError):
         return None
 
@@ -163,7 +166,8 @@ def _read_uploaded_metadata(population_id: str) -> dict[str, Any] | None:
         return None
 
     try:
-        return json.loads(meta_path.read_text())
+        result: dict[str, Any] = json.loads(meta_path.read_text())
+        return result
     except (json.JSONDecodeError, OSError):
         return None
 
@@ -265,7 +269,10 @@ def _scan_populations_with_origin() -> list[PopulationLibraryItem]:
                 meta = None
 
             if not meta:
-                logger.warning("Failed to read metadata for uploaded population '%s' from '%s'", pop_id, meta_path)
+                logger.warning(
+                    "Failed to read metadata for uploaded population '%s' from '%s'",
+                    pop_id, meta_path,
+                )
                 continue
 
             # Load column count from data file

@@ -109,6 +109,26 @@ def _load_builtin_packs() -> list[TemplateListItem]:
     return items
 
 
+def _load_builtin_template(name: str) -> Any | None:
+    """Load a single built-in template by name (YAML stem), or return None."""
+    from reformlab.templates.loader import load_scenario_template
+    from reformlab.templates.packs import _PACKS_DIR
+
+    if not _PACKS_DIR.exists():
+        return None
+
+    for pack_dir in sorted(_PACKS_DIR.iterdir()):
+        if not pack_dir.is_dir() or pack_dir.name.startswith("_"):
+            continue
+        yaml_file = pack_dir / f"{name}.yaml"
+        if yaml_file.exists():
+            try:
+                return load_scenario_template(yaml_file)
+            except Exception:
+                return None
+    return None
+
+
 @router.get("", response_model=dict[str, list[TemplateListItem]])
 async def list_templates() -> dict[str, list[TemplateListItem]]:
     """List available policy templates."""
@@ -162,20 +182,50 @@ async def list_templates() -> dict[str, list[TemplateListItem]]:
 @router.get("/{name}", response_model=TemplateDetailResponse)
 async def get_template(name: str) -> TemplateDetailResponse:
     """Get a template with full parameter details."""
+    # 1. Try the scenario registry (user-saved scenarios)
     registry = _get_registry()
     try:
         template = registry.get(name)
-    except (KeyError, FileNotFoundError, ValueError, RegistryError) as exc:
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "what": f"Template '{name}' not found",
-                "why": str(exc),
-                "fix": "Check the template name",
-            },
-        ) from exc
+        return _template_to_detail(name, template)
+    except (KeyError, FileNotFoundError, ValueError, RegistryError):
+        pass
 
-    return _template_to_detail(name, template)
+    # 2. Try built-in template packs (YAML files)
+    template = _load_builtin_template(name)
+    if template is not None:
+        return _template_to_detail(name, template)
+
+    # 3. Try in-memory custom registrations
+    from reformlab.templates.schema import list_custom_registrations
+
+    custom = list_custom_registrations()
+    if name in custom:
+        params_class = custom[name]
+        param_count = 0
+        param_groups: list[str] = []
+        default_policy: dict[str, Any] = {}
+        if hasattr(params_class, "__dataclass_fields__"):
+            param_count = len(params_class.__dataclass_fields__)
+            param_groups = list(params_class.__dataclass_fields__.keys())
+        return TemplateDetailResponse(
+            id=name,
+            name=name,
+            type=name,
+            parameter_count=param_count,
+            description="",
+            parameter_groups=param_groups,
+            is_custom=True,
+            default_policy=default_policy,
+        )
+
+    raise HTTPException(
+        status_code=404,
+        detail={
+            "what": f"Template '{name}' not found",
+            "why": f"No built-in, saved, or custom template named '{name}'",
+            "fix": "Check the template name",
+        },
+    )
 
 
 _SNAKE_CASE_RE = re.compile(r"^[a-z][a-z0-9]*(_[a-z0-9]+)*$")
