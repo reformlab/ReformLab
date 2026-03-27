@@ -53,6 +53,11 @@ interface PortfolioCompositionPanelProps {
   onRateScheduleChange: (index: number, schedule: Record<string, number>) => void;
   /** Optional parameter schemas per template — used for inline editing */
   parameterSchemas?: Record<string, Parameter[]>;
+  /**
+   * Minimum number of policies required before showing the "add more" warning.
+   * Defaults to 2 (original behaviour). PoliciesStageScreen passes 1.
+   */
+  minimumPolicies?: number;
 }
 
 export function PortfolioCompositionPanel({
@@ -63,6 +68,7 @@ export function PortfolioCompositionPanel({
   onParameterChange,
   onRateScheduleChange,
   parameterSchemas = {},
+  minimumPolicies = 2,
 }: PortfolioCompositionPanelProps) {
   const [expandedIndices, setExpandedIndices] = useState<Set<number>>(new Set());
 
@@ -84,9 +90,9 @@ export function PortfolioCompositionPanel({
         <p className="text-sm text-slate-500">
           Select templates from the browser to add them here.
         </p>
-        {composition.length < 2 ? (
+        {composition.length < minimumPolicies ? (
           <p className="mt-1 text-xs text-amber-600">
-            Add at least 2 policies to save a portfolio.
+            Add at least {minimumPolicies} {minimumPolicies === 1 ? "policy" : "policies"} to save a portfolio.
           </p>
         ) : null}
       </div>
@@ -95,9 +101,9 @@ export function PortfolioCompositionPanel({
 
   return (
     <section aria-label="Portfolio composition" className="space-y-2">
-      {composition.length < 2 ? (
+      {composition.length < minimumPolicies ? (
         <p className="text-xs text-amber-600 border border-amber-200 bg-amber-50 p-2">
-          Add at least 2 policies to save a portfolio.
+          Add at least {minimumPolicies} {minimumPolicies === 1 ? "policy" : "policies"} to save a portfolio.
         </p>
       ) : null}
 

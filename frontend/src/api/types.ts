@@ -2,6 +2,8 @@
 // Copyright 2026 Lucas Vivier
 /** TypeScript interfaces matching the backend Pydantic response models. */
 
+import type { ReactNode } from "react";
+
 // ============================================================================
 // Request types
 // ============================================================================
@@ -401,6 +403,93 @@ export interface PortfolioComparisonResponse {
 
 
 // ============================================================================
+// Population explorer types — Story 20.4
+// ============================================================================
+
+export interface PopulationPreviewResponse {
+  id: string;
+  name: string;
+  rows: Record<string, unknown>[];
+  columns: ColumnInfo[];
+  total_rows: number;
+}
+
+export interface ColumnProfileNumeric {
+  type: "numeric";
+  count: number;
+  nulls: number;
+  null_pct: number;
+  min: number;
+  max: number;
+  mean: number;
+  median: number;
+  std: number;
+  percentiles: Record<string, number>;
+  histogram_buckets: Array<{ bin_start: number; bin_end: number; count: number }>;
+}
+
+export interface ColumnProfileCategorical {
+  type: "categorical";
+  count: number;
+  nulls: number;
+  null_pct: number;
+  cardinality: number;
+  value_counts: Array<{ value: string; count: number }>;
+}
+
+export interface ColumnProfileBoolean {
+  type: "boolean";
+  count: number;
+  nulls: number;
+  null_pct: number;
+  true_count: number;
+  false_count: number;
+}
+
+export type ColumnProfile = ColumnProfileNumeric | ColumnProfileCategorical | ColumnProfileBoolean;
+
+export interface PopulationProfileResponse {
+  id: string;
+  columns: Array<{ name: string; profile: ColumnProfile }>;
+}
+
+export interface PopulationCrosstabResponse {
+  col_a: string;
+  col_b: string;
+  data: Array<Record<string, unknown>>;
+  truncated: boolean;
+}
+
+export interface PopulationUploadResponse {
+  id: string;
+  name: string;
+  row_count: number;
+  column_count: number;
+  matched_columns: string[];
+  unrecognized_columns: string[];
+  missing_required: string[];
+  valid: boolean;
+}
+
+export interface PopulationLibraryItem extends PopulationItem {
+  origin: "built-in" | "generated" | "uploaded";
+  column_count: number;
+  created_date: string | null;
+}
+
+export interface PopulationSummaryData {
+  record_count: number;
+  column_count: number;
+  estimated_memory_mb: number;
+  columns: Array<{
+    name: string;
+    type: "numeric" | "categorical" | "boolean" | "string";
+    null_pct: number;
+    cardinality: number | null;
+  }>;
+}
+
+// ============================================================================
 // Decision viewer types — Story 17.5
 // ============================================================================
 
@@ -434,4 +523,47 @@ export interface DecisionSummaryResponse {
   domains: DomainSummary[];
   metadata: Record<string, unknown>;
   warnings: string[];
+}
+
+// ============================================================================
+// Execution matrix types — Story 20.6
+// ============================================================================
+
+export type ExecutionStatus = "NOT_EXECUTED" | "QUEUED" | "RUNNING" | "COMPLETED" | "FAILED";
+
+export interface ExecutionMatrixCell {
+  scenarioId: string;
+  populationId: string;
+  status: ExecutionStatus;
+  runId?: string;
+  error?: string;
+  startedAt?: string;
+  finishedAt?: string;
+}
+
+export interface ScenarioSummary {
+  id: string;
+  name: string;
+  portfolioName: string | null;
+  populationIds: string[];
+  status: string;
+  lastRunId: string | null;
+}
+
+// ============================================================================
+// Comparison dimension types — Story 20.6
+// ============================================================================
+
+export interface ComparisonDimension<T = unknown> {
+  id: string;
+  label: string;
+  description: string;
+  getValue(runResult: ResultDetailResponse): T | null;
+  render?(value: T): ReactNode;
+}
+
+export interface DimensionFilter {
+  dimensionId: string;
+  operator: "equals" | "contains" | "in";
+  values: unknown[];
 }

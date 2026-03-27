@@ -13,7 +13,7 @@ describe("LeftPanel", () => {
       </LeftPanel>,
     );
 
-    expect(screen.getByText("Scenarios")).toBeInTheDocument();
+    expect(screen.getByText("ReformLab")).toBeInTheDocument();
     expect(screen.getByText("Scenario list")).toBeInTheDocument();
   });
 
@@ -25,7 +25,7 @@ describe("LeftPanel", () => {
     );
 
     expect(screen.getByRole("button", { name: /Expand left panel/i })).toBeInTheDocument();
-    expect(screen.getByText("Scenarios")).toBeInTheDocument();
+    expect(screen.getByText("RL")).toBeInTheDocument();
     expect(screen.queryByText("Hidden content")).not.toBeInTheDocument();
   });
 

@@ -1,0 +1,112 @@
+record_id: 0e572ba5-cb20-472a-8847-cfeb4f761182
+created_at: '2026-03-27T12:13:30.697391+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 20
+  story_num: '8'
+  title: Story 20.8
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: true
+    requires_migration: false
+evaluator:
+  provider: codex
+  model: gpt-5.3-codex
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-03-27T12:07:54.980014Z'
+  end_time: '2026-03-27T12:12:15.660014Z'
+  duration_ms: 260680
+  input_tokens: 0
+  output_tokens: 2703
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 10813
+  heading_count: 12
+  list_depth_max: 2
+  code_block_count: 0
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: 14.3'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes & Readability
+  - ⚡ Performance & Scalability
+  - 🐛 Correctness & Safety
+  - 🔧 Maintainability Issues
+  - 🛠️ Suggested Fixes
+  - 1. Correct quality gate truthfulness (mandatory)
+  - 2. Make E2E tests non-tautological
+  - 3. Align AC-3 helper contract with implementation
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: a5255de0054a
+findings:
+  total_count: 11
+  by_severity:
+    critical: 3
+    major: 7
+    minor: 1
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 5
+    completeness: 6
+    clarity: 2
+    testability: 6
+  has_fix_count: 11
+  has_location_count: 11
+  has_evidence_count: 11
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 0
+  confidence_phrases_count: 0
+linguistic:
+  avg_sentence_length: 46.93939393939394
+  vocabulary_richness: 0.2575855390574564
+  flesch_reading_ease: -82.69401530301712
+  vague_terms_count: 0
+  formality_score: 0.6
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.95
+  evidence_quality: 0.85
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: true
+    requires_migration: false
+  phase: code-review
+  file_count: 9
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

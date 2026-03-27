@@ -24,6 +24,18 @@ def client() -> TestClient:
 
 
 @pytest.fixture()
+def client_with_dirs(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> TestClient:
+    """Create a FastAPI test client with custom data directories."""
+    from reformlab.server.app import create_app
+
+    monkeypatch.setenv("REFORMLAB_DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.setenv("REFORMLAB_UPLOADED_POPULATIONS_DIR", str(tmp_path / ".reformlab" / "uploaded-populations"))
+
+    app = create_app()
+    return TestClient(app)
+
+
+@pytest.fixture()
 def auth_token(client: TestClient) -> str:
     """Authenticate and return a valid session token."""
     response = client.post(
@@ -38,3 +50,7 @@ def auth_token(client: TestClient) -> str:
 def auth_headers(auth_token: str) -> dict[str, str]:
     """Return headers with a valid auth token."""
     return {"Authorization": f"Bearer {auth_token}"}
+
+
+# Import Path for type hints
+from pathlib import Path  # noqa: E402

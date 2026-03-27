@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 Lucas Vivier
-/** Tests for SimulationRunnerScreen — Story 17.3, AC-1. */
+/** Tests for SimulationRunnerScreen — Story 20.6, AC-2. */
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 // Mock the API modules so no real HTTP calls are made
 vi.mock("@/api/runs", () => ({
@@ -26,12 +26,12 @@ vi.mock("@/api/results", () => ({
     run_kind: "scenario",
     start_year: 2025,
     end_year: 2025,
-    population_id: null,
-    seed: null,
+    population_id: "fr-synthetic-2024",
+    seed: 42,
     row_count: 1000,
     status: "completed",
     data_available: true,
-    template_name: "Carbon Tax",
+    template_name: "carbon_tax",
     policy_type: "carbon_tax",
     portfolio_name: null,
     manifest_id: "manifest-001",
@@ -46,66 +46,64 @@ vi.mock("@/api/results", () => ({
   deleteResult: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { SimulationRunnerScreen } from "@/components/screens/SimulationRunnerScreen";
-
-const defaultProps = {
-  selectedPopulationId: "fr-synthetic-2024",
-  selectedPortfolioName: null,
-  selectedTemplateName: "carbon-tax-flat",
-  onCancel: vi.fn(),
+// Recharts ResizeObserver polyfill
+globalThis.ResizeObserver ??= class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
 };
+
+// Mock AppContext
+vi.mock("@/contexts/AppContext", () => ({
+  useAppState: () => ({
+    activeScenario: {
+      id: "scenario-001",
+      name: "Carbon Tax 50€/t",
+      version: "1.0",
+      status: "ready",
+      isBaseline: false,
+      baselineRef: null,
+      portfolioName: "carbon-50",
+      populationIds: ["fr-synthetic-2024"],
+      engineConfig: {
+        startYear: 2025,
+        endYear: 2030,
+        seed: 42,
+        investmentDecisionsEnabled: false,
+        logitModel: "multinomial_logit",
+        discountRate: 0.03,
+      },
+      policyType: "carbon_tax",
+      lastRunId: null,
+    },
+    updateExecutionCell: vi.fn(),
+    updateScenarioField: vi.fn(),
+  }),
+  AppProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
+import { SimulationRunnerScreen } from "@/components/screens/SimulationRunnerScreen";
 
 describe("SimulationRunnerScreen", () => {
   describe("pre-run configure view", () => {
+    const onCancel = vi.fn();
+
     it("renders the configure sub-view by default", () => {
-      render(<SimulationRunnerScreen {...defaultProps} />);
-      expect(screen.getByRole("button", { name: /Run Simulation/i })).toBeInTheDocument();
-    });
-
-    it("shows selected population ID", () => {
-      render(<SimulationRunnerScreen {...defaultProps} />);
-      expect(screen.getByText("fr-synthetic-2024")).toBeInTheDocument();
-    });
-
-    it("shows policy label when template is selected", () => {
-      render(<SimulationRunnerScreen {...defaultProps} />);
-      expect(screen.getByText("carbon-tax-flat")).toBeInTheDocument();
-    });
-
-    it("shows warning when population not selected", () => {
-      render(<SimulationRunnerScreen {...defaultProps} selectedPopulationId={null} />);
-      expect(screen.getByText("not selected")).toBeInTheDocument();
+      const { container } = render(<SimulationRunnerScreen onCancel={onCancel} />);
+      // Should show run configuration heading
+      expect(container.textContent).toContain("Run Simulation");
+      // Should show scenario summary
+      expect(container.textContent).toContain("Scenario");
     });
 
     it("calls onCancel when cancel button clicked", async () => {
-      const onCancel = vi.fn();
-      render(<SimulationRunnerScreen {...defaultProps} onCancel={onCancel} />);
-      await userEvent.click(screen.getByRole("button", { name: /Cancel/i }));
-      expect(onCancel).toHaveBeenCalledOnce();
-    });
-
-    it("renders year range inputs", () => {
-      render(<SimulationRunnerScreen {...defaultProps} />);
-      expect(screen.getByLabelText("Start year")).toBeInTheDocument();
-      expect(screen.getByLabelText("End year")).toBeInTheDocument();
-    });
-
-    it("renders seed input", () => {
-      render(<SimulationRunnerScreen {...defaultProps} />);
-      expect(screen.getByLabelText("Random seed")).toBeInTheDocument();
-    });
-  });
-
-  describe("portfolio runs", () => {
-    it("shows portfolio name when portfolioName is set", () => {
-      render(
-        <SimulationRunnerScreen
-          {...defaultProps}
-          selectedTemplateName={null}
-          selectedPortfolioName="green-transition-2030"
-        />,
-      );
-      expect(screen.getByText("green-transition-2030")).toBeInTheDocument();
+      const user = userEvent.setup();
+      render(<SimulationRunnerScreen onCancel={onCancel} />);
+      // Find cancel button by text content
+      const cancelButton = screen.getByRole("button", { name: /cancel/i });
+      expect(cancelButton).toBeInTheDocument();
+      await user.click(cancelButton);
+      expect(onCancel).toHaveBeenCalledTimes(1);
     });
   });
 });

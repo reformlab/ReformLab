@@ -2,9 +2,9 @@
 // Copyright 2026 Lucas Vivier
 /** Data fetching hooks for the ReformLab API. */
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-import { listPopulations } from "@/api/populations";
+import { listPopulations, getPopulationPreview, getPopulationProfile, getPopulationCrosstab } from "@/api/populations";
 import { listTemplates, getTemplate } from "@/api/templates";
 import { listScenarios as apiListScenarios } from "@/api/scenarios";
 import { runScenario as apiRunScenario } from "@/api/runs";
@@ -24,6 +24,9 @@ import type {
   ValidatePortfolioRequest,
   ValidatePortfolioResponse,
   ResultListItem,
+  PopulationPreviewResponse,
+  PopulationProfileResponse,
+  PopulationCrosstabResponse,
 } from "@/api/types";
 import type { Population, Template, Parameter, MockDataSource, MockMergeMethod, MockPortfolio } from "@/data/mock-data";
 import {
@@ -34,6 +37,7 @@ import {
   mockMergeMethods,
   mockPortfolios,
 } from "@/data/mock-data";
+import { mockPopulationPreview, mockPopulationProfile } from "@/data/mock-population-explorer";
 
 // ============================================================================
 // Populations
@@ -411,6 +415,84 @@ export function useResults() {
   }, []);
 
   return { results, loading, error, refetch: fetch, remove };
+}
+
+// ============================================================================
+// Population explorer hooks — Story 20.4
+// ============================================================================
+
+export function usePopulationPreview(id: string | null) {
+  // Initialize with mock data so components always have data to render.
+  // Auto-fetches from API on mount/id change; keeps mock data on API failure.
+  const [data, setData] = useState<PopulationPreviewResponse>(() =>
+    id ? { ...mockPopulationPreview, id, name: id } : mockPopulationPreview
+  );
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!id) return;
+    setLoading(true);
+    (async () => {
+      try {
+        const result = await getPopulationPreview(id);
+        if (result) setData(result);
+      } catch (err) {
+        if (err instanceof AuthError) throw err;
+        // Keep mock data on API failure — Story 20.7 wires the real endpoint
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [id]);
+
+  return { data, loading };
+}
+
+export function usePopulationProfile(id: string | null) {
+  // Initialize with mock data; auto-fetches on id change; keeps mock on failure.
+  const [data, setData] = useState<PopulationProfileResponse>(mockPopulationProfile);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!id) return;
+    setLoading(true);
+    (async () => {
+      try {
+        const result = await getPopulationProfile(id);
+        if (result) setData(result);
+      } catch (err) {
+        if (err instanceof AuthError) throw err;
+        // Keep mock data on API failure — Story 20.7 wires the real endpoint
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [id]);
+
+  return { data, loading };
+}
+
+export function usePopulationCrosstab(id: string | null, colA: string | null, colB: string | null) {
+  const [data, setData] = useState<PopulationCrosstabResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetch = useCallback(async () => {
+    if (!id || !colA || !colB) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await getPopulationCrosstab(id, colA, colB);
+      setData(result);
+    } catch (err) {
+      if (err instanceof AuthError) throw err;
+      setError(err instanceof Error ? err : new Error(String(err)));
+    } finally {
+      setLoading(false);
+    }
+  }, [id, colA, colB]);
+
+  return { data, loading, error, refetch: fetch };
 }
 
 export function useValidatePortfolio() {

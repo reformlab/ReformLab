@@ -11,6 +11,11 @@ export default defineConfig({
     react(),
     starlight({
       title: 'ReformLab Docs',
+      favicon: '/favicon.svg',
+      logo: {
+        src: './src/assets/logo.svg',
+        alt: 'ReformLab',
+      },
       social: [
         { icon: 'github', href: 'https://github.com/reformlab/reformlab', label: 'GitHub' },
         { icon: 'rocket', href: 'https://app.reform-lab.eu', label: 'Open App' },

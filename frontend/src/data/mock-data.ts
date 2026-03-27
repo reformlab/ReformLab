@@ -39,6 +39,7 @@ export interface DecileData {
   delta: number;
 }
 
+// @deprecated — use WorkspaceScenario (pending 20.3–20.6)
 export interface Scenario {
   id: string;
   name: string;

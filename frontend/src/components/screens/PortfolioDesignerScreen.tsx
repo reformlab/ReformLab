@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 Lucas Vivier
 /**
+ * @deprecated Use PoliciesStageScreen instead (Story 20.3).
+ * PoliciesStageScreen is the new canonical Stage 1 inline composition screen.
+ * PortfolioDesignerScreen is kept for reference but is no longer used in routing.
+ *
  * Portfolio Designer Screen (Story 17.2, AC-1 through AC-6).
  *
  * Step flow: Template Selection → Portfolio Composition → Review & Save.

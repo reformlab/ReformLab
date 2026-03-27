@@ -4,6 +4,11 @@
  *
  * Provides API data (populations, templates, scenarios) and auth state
  * to all components via React Context.
+ *
+ * Story 20.1: Adds hash-based stage routing (activeStage, activeSubView, navigateTo)
+ * and canonical scenario state (activeScenario, setActiveScenario, updateScenarioField).
+ * Story 20.2: Adds first-launch demo scenario, returning-user restore, scenario
+ * persistence (localStorage), and scenario entry flow actions.
  */
 
 import {
@@ -12,6 +17,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -36,6 +42,19 @@ import {
 import type { DecileData, Parameter, Population, Scenario, Template, MockDataSource, MockMergeMethod } from "@/data/mock-data";
 import { mockDecileData, mockParameters, mockScenarios } from "@/data/mock-data";
 import type { RunResponse, IndicatorResponse, GenerationResult, PortfolioListItem, ResultListItem } from "@/api/types";
+import type { StageKey, SubView, WorkspaceScenario } from "@/types/workspace";
+import { isValidStage, isValidSubView } from "@/types/workspace";
+import {
+  isFirstLaunch,
+  markLaunched,
+  saveScenario as persistScenario,
+  loadScenario,
+  saveStage as persistStage,
+  loadStage,
+  getSavedScenarios,
+  saveScenarioToList,
+} from "@/hooks/useScenarioPersistence";
+import { createDemoScenario, DEMO_TEMPLATE_ID, DEMO_POPULATION_ID } from "@/data/demo-scenario";
 
 // ============================================================================
 // Context types
@@ -47,6 +66,24 @@ interface AppState {
   authLoading: boolean;
   authenticate: (password: string) => Promise<boolean>;
   logout: () => void;
+
+  // Stage routing (Story 20.1 — AC-2)
+  activeStage: StageKey;
+  activeSubView: SubView | null;
+  navigateTo: (stage: StageKey, subView?: SubView) => void;
+
+  // Canonical scenario state (Story 20.1 — AC-3)
+  activeScenario: WorkspaceScenario | null;
+  setActiveScenario: (scenario: WorkspaceScenario | null) => void;
+  updateScenarioField: <K extends keyof WorkspaceScenario>(field: K, value: WorkspaceScenario[K]) => void;
+
+  // Scenario entry flow actions (Story 20.2 — AC-3, AC-5)
+  savedScenarios: WorkspaceScenario[];
+  saveCurrentScenario: () => void;
+  loadSavedScenario: (id: string) => void;
+  resetToDemo: () => void;
+  createNewScenario: (templateId?: string) => void;
+  cloneCurrentScenario: () => void;
 
   // Data
   populations: Population[];
@@ -104,6 +141,14 @@ interface AppState {
   selectedComparisonRunIds: string[];
   setSelectedComparisonRunIds: (ids: string[]) => void;
 
+  // Execution matrix (Story 20.6, AC-1, AC-3)
+  executionMatrix: Record<string, Record<string, import("@/api/types").ExecutionMatrixCell>>;
+  updateExecutionCell: (
+    scenarioId: string,
+    populationId: string,
+    update: Partial<import("@/api/types").ExecutionMatrixCell>,
+  ) => void;
+
   // API connection status
   apiConnected: boolean;
 }
@@ -143,9 +188,184 @@ export function AppProvider({ children }: { children: ReactNode }) {
     apiLogout();  // revoke token server-side (best-effort)
     setAuthToken(null);
     setIsAuthenticated(false);
+    initializedRef.current = false;
   }, []);
 
+  // ============================================================================
+  // Stage routing — hash-based (Story 20.1, AC-2)
+  // ============================================================================
+
+  const [activeStage, setActiveStage] = useState<StageKey>("policies");
+  const [activeSubView, setActiveSubView] = useState<SubView | null>(null);
+
+  useEffect(() => {
+    function onHashChange() {
+      const hash = window.location.hash.slice(1); // remove leading #
+      const [stage, sub] = hash.split("/");
+      if (stage && isValidStage(stage)) {
+        setActiveStage(stage);
+        setActiveSubView(sub && isValidSubView(sub) ? sub : null);
+      } else {
+        // Empty hash or unknown stage → default to policies
+        setActiveStage("policies");
+        setActiveSubView(null);
+      }
+    }
+    window.addEventListener("hashchange", onHashChange);
+    onHashChange(); // read initial hash on mount
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
+
+  const navigateTo = useCallback((stage: StageKey, subView?: SubView) => {
+    const hash = subView ? `${stage}/${subView}` : stage;
+    window.location.hash = hash;
+    // hashchange event fires automatically, updating state via the listener above
+  }, []);
+
+  // ============================================================================
+  // Canonical scenario state — (Story 20.1, AC-3)
+  // ============================================================================
+
+  const [activeScenario, setActiveScenario] = useState<WorkspaceScenario | null>(null);
+
+  const updateScenarioField = useCallback(<K extends keyof WorkspaceScenario>(
+    field: K,
+    value: WorkspaceScenario[K],
+  ) => {
+    setActiveScenario((current) => current ? { ...current, [field]: value } : null);
+  }, []);
+
+  // ============================================================================
+  // Scenario persistence — (Story 20.2, AC-2, AC-5)
+  // ============================================================================
+
+  // Gate that ensures the initialization effect fires exactly once per auth session
+  // and prevents persistence effects from overwriting restored state before init completes.
+  const initializedRef = useRef(false);
+
+  // Saved scenarios React state (lazy-initialized from localStorage)
+  const [savedScenarios, setSavedScenarios] = useState<WorkspaceScenario[]>(() => getSavedScenarios());
+
+  const refreshSavedScenarios = useCallback(
+    () => setSavedScenarios(getSavedScenarios()),
+    [],
+  );
+
+  // Initialization effect — first-launch vs returning-user
+  // Runs after hash routing is set up (above) but before mock-data warning (below).
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
+    if (isFirstLaunch()) {
+      // First launch: load demo scenario
+      const demo = createDemoScenario();
+      setActiveScenario(demo);
+      setSelectedTemplateId(DEMO_TEMPLATE_ID);
+      setSelectedPopulationId(DEMO_POPULATION_ID);
+      markLaunched();
+      navigateTo("results", "runner");
+    } else {
+      // Returning user: restore saved scenario
+      const saved = loadScenario();
+      if (saved) {
+        setActiveScenario(saved);
+        // Sync legacy selectors so startRun() uses the restored scenario's values
+        if (saved.policyType) setSelectedTemplateId(saved.policyType);
+        if (saved.populationIds.length > 0) setSelectedPopulationId(saved.populationIds[0]);
+      } else {
+        // localStorage externally cleared — fall back to demo (do NOT call markLaunched)
+        const demo = createDemoScenario();
+        setActiveScenario(demo);
+        setSelectedTemplateId(DEMO_TEMPLATE_ID);
+        setSelectedPopulationId(DEMO_POPULATION_ID);
+      }
+      const savedStage = loadStage();
+      if (savedStage) navigateTo(savedStage);
+      else navigateTo("results", "runner");
+    }
+  }, [isAuthenticated, navigateTo]);
+
+  // Persist activeScenario to localStorage whenever it changes (after init)
+  useEffect(() => {
+    if (!isAuthenticated || !initializedRef.current) return;
+    persistScenario(activeScenario);
+  }, [activeScenario, isAuthenticated]);
+
+  // Persist activeStage to localStorage whenever it changes (after init)
+  useEffect(() => {
+    if (!isAuthenticated || !initializedRef.current) return;
+    persistStage(activeStage);
+  }, [activeStage, isAuthenticated]);
+
+  // ============================================================================
+  // Scenario entry flow actions — (Story 20.2, AC-3)
+  // ============================================================================
+
+  const saveCurrentScenario = useCallback(() => {
+    if (!activeScenario) return;
+    saveScenarioToList(activeScenario);
+    refreshSavedScenarios();
+    toast.success("Scenario saved");
+  }, [activeScenario, refreshSavedScenarios]);
+
+  const loadSavedScenario = useCallback((id: string) => {
+    const list = getSavedScenarios();
+    const found = list.find((s) => s.id === id);
+    if (found) {
+      setActiveScenario(found);
+      // Sync legacy selectors so startRun() uses the loaded scenario's values
+      if (found.policyType) setSelectedTemplateId(found.policyType);
+      if (found.populationIds.length > 0) setSelectedPopulationId(found.populationIds[0]);
+      navigateTo("policies");
+    }
+  }, [navigateTo]);
+
+  const resetToDemo = useCallback(() => {
+    setActiveScenario(createDemoScenario());
+    setSelectedTemplateId(DEMO_TEMPLATE_ID);
+    setSelectedPopulationId(DEMO_POPULATION_ID);
+    navigateTo("results", "runner");
+    toast.info("Demo scenario loaded");
+  }, [navigateTo]);
+
+  const createNewScenario = useCallback((templateId?: string) => {
+    const newScenario: WorkspaceScenario = {
+      id: crypto.randomUUID(),
+      name: "New Scenario",
+      version: "1.0",
+      status: "draft",
+      isBaseline: false,
+      baselineRef: null,
+      portfolioName: null,
+      populationIds: [],
+      engineConfig: { startYear: 2025, endYear: 2030, seed: null, investmentDecisionsEnabled: false, logitModel: null, discountRate: 0.03 },
+      policyType: templateId ?? null,
+      lastRunId: null,
+    };
+    setActiveScenario(newScenario);
+    if (templateId) {
+      setSelectedTemplateId(templateId);
+    }
+    navigateTo("policies");
+  }, [navigateTo]);
+
+  const cloneCurrentScenario = useCallback(() => {
+    if (!activeScenario) return;
+    const cloned: WorkspaceScenario = {
+      ...activeScenario,
+      id: crypto.randomUUID(),
+      name: `${activeScenario.name} (copy)`,
+    };
+    setActiveScenario(cloned);
+    toast.success("Scenario cloned");
+  }, [activeScenario]);
+
+  // ============================================================================
   // Data hooks
+  // ============================================================================
+
   const { populations, loading: populationsLoading, usingMockData: populationsMock, refetch: refetchPopulations } = usePopulations();
   const { templates, loading: templatesLoading, usingMockData: templatesMock, refetch: refetchTemplates } = useTemplates();
 
@@ -163,6 +383,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Comparison state (Story 17.4)
   const [selectedComparisonRunIds, setSelectedComparisonRunIds] = useState<string[]>([]);
+
+  // Execution matrix state (Story 20.6, AC-1, AC-3)
+  const [executionMatrix, setExecutionMatrix] = useState<
+    Record<string, Record<string, import("@/api/types").ExecutionMatrixCell>>
+  >({});
+
+  const updateExecutionCell = useCallback((
+    scenarioId: string,
+    populationId: string,
+    update: Partial<import("@/api/types").ExecutionMatrixCell>,
+  ) => {
+    setExecutionMatrix((prev) => ({
+      ...prev,
+      [scenarioId]: {
+        ...(prev[scenarioId] || {}),
+        [populationId]: {
+          ...(prev[scenarioId]?.[populationId] || {
+            scenarioId,
+            populationId,
+            status: "NOT_EXECUTED" as const,
+          }),
+          ...update,
+        },
+      },
+    }));
+  }, []);
 
   // Selections
   const [selectedPopulationId, setSelectedPopulationId] = useState("");
@@ -206,7 +452,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Fetch data on auth
   useEffect(() => {
     if (isAuthenticated) {
-      refetchResults().catch(() => {});
       refetchPopulations().catch((err) => {
         if (err instanceof AuthError) {
           setIsAuthenticated(false);
@@ -399,6 +644,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       authLoading,
       authenticate,
       logout,
+      activeStage,
+      activeSubView,
+      navigateTo,
+      activeScenario,
+      setActiveScenario,
+      updateScenarioField,
+      savedScenarios,
+      saveCurrentScenario,
+      loadSavedScenario,
+      resetToDemo,
+      createNewScenario,
+      cloneCurrentScenario,
       populations,
       templates,
       parameters: templateParams,
@@ -437,10 +694,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setSelectedPortfolioName,
       selectedComparisonRunIds,
       setSelectedComparisonRunIds,
+      executionMatrix,
+      updateExecutionCell,
       apiConnected: !populationsMock && !templatesMock,
     }),
     [
       isAuthenticated, authLoading, authenticate, logout,
+      activeStage, activeSubView, navigateTo,
+      activeScenario, setActiveScenario, updateScenarioField,
+      savedScenarios, saveCurrentScenario, loadSavedScenario, resetToDemo, createNewScenario, cloneCurrentScenario,
       populations, templates, templateParams, parameterValues, setParameterValue,
       scenarios, decileData,
       selectedPopulationId, selectedTemplateId, selectTemplate,
@@ -454,6 +716,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       results, resultsLoading, refetchResults,
       selectedPortfolioName, setSelectedPortfolioName,
       selectedComparisonRunIds, setSelectedComparisonRunIds,
+      executionMatrix, updateExecutionCell,
       populationsMock, templatesMock,
     ],
   );

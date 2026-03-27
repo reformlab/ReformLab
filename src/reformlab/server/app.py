@@ -32,6 +32,7 @@ from reformlab.server.routes.results import router as results_router
 from reformlab.server.routes.runs import router as runs_router
 from reformlab.server.routes.scenarios import router as scenarios_router
 from reformlab.server.routes.templates import router as templates_router
+from reformlab.server.routes.validation import router as validation_router
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +97,7 @@ def create_app() -> FastAPI:
     app.include_router(portfolios_router, prefix="/api/portfolios", tags=["portfolios"])
     app.include_router(results_router, prefix="/api/results", tags=["results"])
     app.include_router(decisions_router, prefix="/api/decisions", tags=["decisions"])
+    app.include_router(validation_router, prefix="/api/validation", tags=["validation"])
 
     # Register exception handlers
     _register_exception_handlers(app)

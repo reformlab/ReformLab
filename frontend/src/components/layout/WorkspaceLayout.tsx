@@ -12,6 +12,7 @@ interface WorkspaceLayoutProps {
   leftPanel: ReactNode;
   mainPanel: ReactNode;
   rightPanel: ReactNode;
+  topBar?: ReactNode;
   leftCollapsed: boolean;
   rightCollapsed: boolean;
 }
@@ -20,32 +21,36 @@ export function WorkspaceLayout({
   leftPanel,
   mainPanel,
   rightPanel,
+  topBar,
   leftCollapsed,
   rightCollapsed,
 }: WorkspaceLayoutProps) {
   return (
-    <div className="h-[calc(100vh-5.5rem)] rounded-lg border border-slate-200 bg-white overflow-hidden">
-      <ResizablePanelGroup direction="horizontal">
-        <ResizablePanel
-          defaultSize={22}
-          minSize={leftCollapsed ? 3 : 18}
-          maxSize={leftCollapsed ? 3 : 30}
-        >
-          {leftPanel}
-        </ResizablePanel>
-        <ResizableHandle />
-        <ResizablePanel defaultSize={56} minSize={40}>
-          {mainPanel}
-        </ResizablePanel>
-        <ResizableHandle />
-        <ResizablePanel
-          defaultSize={22}
-          minSize={rightCollapsed ? 3 : 18}
-          maxSize={rightCollapsed ? 3 : 35}
-        >
-          {rightPanel}
-        </ResizablePanel>
-      </ResizablePanelGroup>
+    <div className="flex flex-1 flex-col overflow-hidden rounded-none border border-slate-200 bg-white">
+      {topBar ? <div className="shrink-0">{topBar}</div> : null}
+      <div className="min-h-0 flex-1">
+        <ResizablePanelGroup direction="horizontal" className="h-full">
+          <ResizablePanel
+            defaultSize={22}
+            minSize={leftCollapsed ? 3 : 18}
+            maxSize={leftCollapsed ? 3 : 30}
+          >
+            {leftPanel}
+          </ResizablePanel>
+          <ResizableHandle />
+          <ResizablePanel defaultSize={56} minSize={40}>
+            {mainPanel}
+          </ResizablePanel>
+          <ResizableHandle />
+          <ResizablePanel
+            defaultSize={22}
+            minSize={rightCollapsed ? 3 : 18}
+            maxSize={rightCollapsed ? 3 : 35}
+          >
+            {rightPanel}
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      </div>
     </div>
   );
 }

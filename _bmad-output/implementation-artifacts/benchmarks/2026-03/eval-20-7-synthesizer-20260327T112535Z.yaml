@@ -1,0 +1,56 @@
+record_id: d6026aab-e6fb-4fa2-a5fb-13d80c57613b
+created_at: '2026-03-27T11:25:35.473418+00:00'
+workflow:
+  id: validate-story-synthesis
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: true
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 20
+  story_num: 7
+  title: '20.7'
+  complexity_flags: {}
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: synthesizer
+  role_id: null
+  session_id: 5a173ef3-eade-4a2e-bb58-dbc8e60239ec
+execution:
+  start_time: '2026-03-27T11:22:22.411928Z'
+  end_time: '2026-03-27T11:25:35.111726Z'
+  duration_ms: 192699
+  input_tokens: 0
+  output_tokens: 97
+  retries: 0
+  sequence_position: 2
+output:
+  char_count: 388
+  heading_count: 0
+  list_depth_max: 0
+  code_block_count: 0
+  sections_detected: []
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: de4785be71f1
+findings: null
+reasoning: null
+linguistic: null
+quality: null
+consensus: null
+ground_truth: null
+custom:
+  phase: validate-story-synthesis
+  validator_count: 2
+  compression_steps_applied: []
+  original_token_estimate: 25287
+  compressed_token_estimate: 25287
+  extraction_llm_calls: 0
+  extraction_duration_ms: 1

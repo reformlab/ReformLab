@@ -3,133 +3,39 @@
 /**
  * WorkflowNavRail — vertical stepper navigation for the left panel.
  *
- * Displays the four workflow stages (Population → Portfolio → Simulation → Results)
- * with completion indicators, summary lines, and connecting lines between steps.
+ * Displays the four canonical workflow stages (Policies & Portfolio → Population →
+ * Engine → Run / Results / Compare) with completion indicators, summary lines,
+ * and connecting lines between steps.
  * Supports a collapsed variant that shows only step indicator icons.
  *
- * Story 18.1 — AC-1 through AC-6.
+ * Story 20.1 — AC-1, refactored from Story 18.1.
  */
 
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { GenerationResult, PortfolioListItem, ResultListItem } from "@/api/types";
+import type { GenerationResult, PortfolioListItem, ResultListItem, PopulationItem } from "@/api/types";
+import type { StageKey, WorkspaceScenario } from "@/types/workspace";
+import { STAGES } from "@/types/workspace";
 
 // ============================================================================
 // Types
 // ============================================================================
 
-type WorkflowViewMode =
-  | "configuration"
-  | "run"
-  | "progress"
-  | "results"
-  | "comparison"
-  | "decisions"
-  | "data-fusion"
-  | "portfolio"
-  | "runner";
-
 export interface WorkflowNavRailProps {
-  viewMode: WorkflowViewMode;
-  setViewMode: (mode: WorkflowViewMode) => void;
+  activeStage: StageKey;
+  navigateTo: (stage: StageKey) => void;
   collapsed: boolean;
   selectedPopulationId: string;
   dataFusionResult: GenerationResult | null;
   portfolios: PortfolioListItem[];
   results: ResultListItem[];
+  activeScenario: WorkspaceScenario | null;
+  populations: PopulationItem[];
 }
 
 // ============================================================================
-// Stage definitions
+// Completion logic
 // ============================================================================
-
-type StageKey = "data-fusion" | "portfolio" | "runner" | "results";
-
-interface Stage {
-  key: StageKey;
-  summaryKey: string;
-  label: string;
-  targetMode: WorkflowViewMode;
-  activeFor: WorkflowViewMode[];
-}
-
-const STAGES: Stage[] = [
-  {
-    key: "data-fusion",
-    summaryKey: "population",
-    label: "Population",
-    targetMode: "data-fusion",
-    activeFor: ["data-fusion"],
-  },
-  {
-    key: "portfolio",
-    summaryKey: "portfolio",
-    label: "Portfolio",
-    targetMode: "portfolio",
-    activeFor: ["portfolio"],
-  },
-  {
-    key: "runner",
-    summaryKey: "simulation",
-    label: "Simulation",
-    targetMode: "runner",
-    activeFor: ["runner", "configuration", "run", "progress"],
-  },
-  {
-    key: "results",
-    summaryKey: "results",
-    label: "Results",
-    targetMode: "results",
-    activeFor: ["results", "comparison", "decisions"],
-  },
-];
-
-// ============================================================================
-// Helpers
-// ============================================================================
-
-function isPopulationComplete(
-  selectedPopulationId: string,
-  dataFusionResult: GenerationResult | null,
-): boolean {
-  return !!selectedPopulationId || dataFusionResult !== null;
-}
-
-function getSummary(
-  key: StageKey,
-  selectedPopulationId: string,
-  dataFusionResult: GenerationResult | null,
-  portfolios: PortfolioListItem[],
-  results: ResultListItem[],
-): string | null {
-  switch (key) {
-    case "data-fusion": {
-      if (dataFusionResult) {
-        const count = dataFusionResult.summary.record_count.toLocaleString();
-        return `${count} records`;
-      }
-      if (selectedPopulationId) {
-        return selectedPopulationId;
-      }
-      return null;
-    }
-    case "portfolio": {
-      if (portfolios.length === 0) return null;
-      const n = portfolios.length;
-      return `${n} portfolio${n !== 1 ? "s" : ""}`;
-    }
-    case "runner": {
-      if (results.length === 0) return null;
-      const n = results.length;
-      return `${n} run${n !== 1 ? "s" : ""}`;
-    }
-    case "results": {
-      const completed = results.filter((r) => r.data_available);
-      if (completed.length === 0) return null;
-      return `${completed.length} completed`;
-    }
-  }
-}
 
 function isComplete(
   key: StageKey,
@@ -137,16 +43,67 @@ function isComplete(
   dataFusionResult: GenerationResult | null,
   portfolios: PortfolioListItem[],
   results: ResultListItem[],
+  activeScenario: WorkspaceScenario | null,
 ): boolean {
   switch (key) {
-    case "data-fusion":
-      return isPopulationComplete(selectedPopulationId, dataFusionResult);
-    case "portfolio":
-      return portfolios.length > 0;
-    case "runner":
-      return results.length > 0;
+    case "policies":
+      // AC-5 (Story 20.3): completion requires an active portfolio linked to the scenario,
+      // not just any portfolio existing in the library.
+      return typeof activeScenario?.portfolioName === "string" && activeScenario.portfolioName.length > 0;
+    case "population":
+      // AC-5 (Story 20.4): primary signal is activeScenario.populationIds; legacy fallback.
+      return (
+        (activeScenario?.populationIds?.length ?? 0) > 0 ||
+        !!selectedPopulationId ||
+        dataFusionResult !== null
+      );
+    case "engine":
+      return activeScenario !== null;
     case "results":
-      return results.some((r) => r.data_available);
+      return results.length > 0;
+  }
+}
+
+// ============================================================================
+// Summary lines
+// ============================================================================
+
+function getSummary(
+  key: StageKey,
+  selectedPopulationId: string,
+  dataFusionResult: GenerationResult | null,
+  portfolios: PortfolioListItem[],
+  results: ResultListItem[],
+  activeScenario: WorkspaceScenario | null,
+  populations: PopulationItem[],
+): string | null {
+  switch (key) {
+    case "policies": {
+      // AC-5 (Story 20.3): summary shows the active portfolio name, not aggregate policy count.
+      return activeScenario?.portfolioName ?? null;
+    }
+    case "population": {
+      // Prefer the explicitly selected population (canonical + legacy) over data fusion result
+      const popId = activeScenario?.populationIds?.[0] ?? selectedPopulationId;
+      if (popId) {
+        return populations.find((p) => p.id === popId)?.name ?? popId;
+      }
+      if (dataFusionResult) {
+        const count = dataFusionResult.summary.record_count.toLocaleString();
+        return `${count} records`;
+      }
+      return null;
+    }
+    case "engine": {
+      if (!activeScenario) return null;
+      const { startYear, endYear } = activeScenario.engineConfig;
+      return `${startYear}–${endYear}`;
+    }
+    case "results": {
+      if (results.length === 0) return null;
+      const n = results.length;
+      return `${n} run${n !== 1 ? "s" : ""}`;
+    }
   }
 }
 
@@ -183,23 +140,24 @@ function StepIndicator({ stageKey, index, active, complete }: StepIndicatorProps
 // ============================================================================
 
 export function WorkflowNavRail({
-  viewMode,
-  setViewMode,
+  activeStage,
+  navigateTo,
   collapsed,
   selectedPopulationId,
   dataFusionResult,
   portfolios,
   results,
+  activeScenario,
+  populations,
 }: WorkflowNavRailProps) {
   return (
     <nav aria-label="Workflow navigation" className="flex flex-col gap-0">
       {STAGES.map((stage, index) => {
-        const active = stage.activeFor.includes(viewMode);
-        const complete = isComplete(stage.key, selectedPopulationId, dataFusionResult, portfolios, results);
+        const active = stage.activeFor.includes(activeStage);
+        const complete = isComplete(stage.key, selectedPopulationId, dataFusionResult, portfolios, results, activeScenario);
         const summary = collapsed
           ? null
-          : getSummary(stage.key, selectedPopulationId, dataFusionResult, portfolios, results);
-        const summaryTestId = `summary-${stage.summaryKey}`;
+          : getSummary(stage.key, selectedPopulationId, dataFusionResult, portfolios, results, activeScenario, populations);
         const isLast = index === STAGES.length - 1;
 
         return (
@@ -211,7 +169,7 @@ export function WorkflowNavRail({
                   type="button"
                   aria-label={stage.label}
                   aria-pressed={active}
-                  onClick={() => setViewMode(stage.targetMode)}
+                  onClick={() => { navigateTo(stage.key); }}
                   className="flex cursor-pointer items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                 >
                   <StepIndicator
@@ -239,7 +197,7 @@ export function WorkflowNavRail({
                   </span>
                   {summary !== null && (
                     <span
-                      data-testid={summaryTestId}
+                      data-testid={`summary-${stage.key}`}
                       className="mt-0.5 text-xs text-slate-400"
                     >
                       {summary}
