@@ -1,0 +1,105 @@
+# Code Review Benchmark for Story 21.5 (Reviewer A)
+# Generated: 2026-03-27T19:57:51Z
+
+story_id: "21-5"
+story_title: "separate-calibration-targets-from-validation-benchmarks-and-implement-trust-status-rules"
+reviewer: "A"
+timestamp: "2026-03-27T19:57:51Z"
+
+evidence_score: 27.0
+verdict: "REJECT"
+
+issues_total: 14
+issues_by_severity:
+  critical: 10
+  important: 3
+  minor: 1
+
+findings:
+  - category: "AC Implementation Gaps"
+    severity: "critical"
+    description: "AC3: TrustStatusRule protocol not implemented - missing src/reformlab/governance/trust_rules.py"
+    source: "Story 21.5 file claims 'Create src/reformlab/governance/trust_rules.py'"
+
+  - category: "AC Implementation Gaps"
+    severity: "critical"
+    description: "AC3: TrustStatusRuleResult frozen dataclass not implemented"
+    source: "Story 21.5 / AC3"
+
+  - category: "AC Implementation Gaps"
+    severity: "critical"
+    description: "AC4: Built-in trust-status rules not implemented (3 rules claimed)"
+    source: "Story 21.5 / AC4"
+
+  - category: "AC Implementation Gaps"
+    severity: "critical"
+    description: "AC4: TrustRuleRegistry not implemented - missing src/reformlab/governance/registry.py"
+    source: "Story 21.5 / Task 3"
+
+  - category: "AC Implementation Gaps"
+    severity: "critical"
+    description: "AC5: Preflight check integration not implemented"
+    source: "Story 21.5 / AC5"
+
+  - category: "AC Implementation Gaps"
+    severity: "critical"
+    description: "AC6: All API endpoints missing - no /api/calibration/targets or /api/validation/benchmarks"
+    source: "Story 21.5 / AC6"
+
+  - category: "AC Implementation Gaps"
+    severity: "critical"
+    description: "AC6: Certification endpoint not implemented"
+    source: "Story 21.5 / Task 8"
+
+  - category: "AC Implementation Gaps"
+    severity: "critical"
+    description: "AC8: Calibration engine not updated to use CalibrationAsset"
+    source: "src/reformlab/calibration/engine.py:198-322"
+
+  - category: "AC Implementation Gaps"
+    severity: "critical"
+    description: "AC9: Frontend UI components not implemented"
+    source: "No frontend/src/api/calibration.ts or validation.ts"
+
+  - category: "AC Implementation Gaps"
+    severity: "critical"
+    description: "AC10: Governance tests not implemented"
+    source: "No tests/governance/test_trust_rules.py"
+
+  - category: "Correctness & Safety"
+    severity: "important"
+    description: "Task 13: Example assets not created"
+    source: "No data/calibration/targets/ or data/validation/benchmarks/ directories"
+
+  - category: "Correctness & Safety"
+    severity: "important"
+    description: "CalibrationAssetResponse/ValidationAssetResponse Pydantic models not in server/models.py"
+    source: "src/reformlab/server/models.py:1-757"
+
+  - category: "Correctness & Safety"
+    severity: "important"
+    description: "TypeScript types for calibration/validation assets not added"
+    source: "frontend/src/api/types.ts:1-640"
+
+  - category: "Maintainability"
+    severity: "minor"
+    description: "Inconsistent naming convention in path constants"
+    source: "src/reformlab/data/assets.py:1788-1803"
+
+positive_findings:
+  - category: "Code Quality"
+    description: "Existing assets.py code is well-written"
+    score: -4.5
+
+  - category: "Type Safety"
+    description: "Literal types properly defined"
+    score: -0.5
+
+  - category: "Test Quality"
+    description: "Tests for new fields are good"
+    score: -0.5
+
+recommendations:
+  - "Split remaining work into multiple smaller stories"
+  - "Mark story as 'in-progress' with clear blocking issues"
+  - "Accept as partial implementation with Story 21.5a (data types) and 21.5b (governance rules)"

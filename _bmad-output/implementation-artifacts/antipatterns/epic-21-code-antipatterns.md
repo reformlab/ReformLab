@@ -23,3 +23,21 @@
 | dismissed | Frontend/backend type contracts diverge | FALSE POSITIVE: TypeScript interface correctly narrows Literal types to values actually used by current providers (`open-official`, `synthetic-public`); this maintains type safety and prevents invalid values |
 | dismissed | File extension validation spoofable | FALSE POSITIVE: Extension validation is appropriate for current threat model; file content validation would be a separate enhancement |
 | dismissed | Redundant mapping function | FALSE POSITIVE: Mapping function documents the intentional design choice that all current populations map to the same evidence classification (`synthetic-public`/`bundled`/`exploratory`) |
+
+## Story 21-5 (2026-03-27)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | Path Traversal Vulnerability**: Asset loaders use unsanitized `asset_id` in path operations, allowing `../` to escape data roots | Add path validation to prevent directory traversal |
+| critical | Missing Governance Infrastructure**: `TrustStatusRule` protocol, `TrustRuleRegistry`, and 3 built-in rules not implemented | Cannot fix - entire subsystem missing, requires story split/rework |
+| critical | Missing API Endpoints**: All 5 endpoints (POST/GET calibration targets, POST/GET validation benchmarks, POST certification) not implemented | Cannot fix - requires significant implementation |
+| critical | Calibration Engine Not Updated**: Still uses `CalibrationTargetSet` instead of `CalibrationAsset`, no `calibration_asset_id` in manifests | Cannot fix - requires engine refactoring |
+| high | Loader Contract Bug**: `data.parquet` file is never validated/loaded despite storage contract requiring it | Add validation that `data.parquet` exists when loading assets |
+| high | Missing Pydantic Response Models**: `CalibrationAssetResponse` and `ValidationAssetResponse` not added to `models.py` | Cannot fix - endpoints don't exist to use these models |
+| high | metadata.json Structure Not Validated**: Load functions assume metadata is dict but don't validate type | Add type validation before using metadata |
+| medium | Storage Directories Don't Exist**: `data/calibration/targets/` and `data/validation/benchmarks/` not created | Cannot fix - requires creating example assets (Task 13) |
+| medium | Missing TypeScript Types**: Frontend types for calibration/validation assets not added | Cannot fix - frontend implementation missing |
+| medium | Missing Frontend Components**: No calibration/validation UI, API clients | Cannot fix - requires significant frontend work |
+| medium | Missing Tests**: No governance, API, certification, or preflight tests | Cannot fix - code to test doesn't exist |
+| low | Inconsistent Naming**: `_CALIBRATION_ASSETS_BASE_PATH` vs shorter naming pattern elsewhere | Defer - naming is clear enough, not a functional issue |
+| low | SRP Breach in assets.py**: 1900+ line module with multiple responsibilities | Defer - broader refactoring out of scope for this story |

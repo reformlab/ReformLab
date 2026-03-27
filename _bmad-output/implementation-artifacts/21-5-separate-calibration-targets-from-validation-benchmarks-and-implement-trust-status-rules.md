@@ -1,6 +1,6 @@
 # Story 21.5: Separate calibration targets from validation benchmarks and implement trust-status rules
 
-Status: ready-for-dev
+Status: in-progress (code review: Changes Requested)
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -33,12 +33,13 @@ Status: ready-for-dev
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Extend existing calibration and validation asset types** (AC: 1, 2)
-  - [ ] `CalibrationAsset` and `ValidationAsset` already exist in `src/reformlab/data/assets.py` from Story 21.3
-  - [ ] Add `is_in_sample: bool`, `holdout_group: str | None`, `calibration_method: str`, `target_years: tuple[int, ...]` to EXISTING `CalibrationAsset`
-  - [ ] Add `certified_at: str | None`, `certified_by: str | None`, `validation_method: str`, `holdout_years: tuple[int, ...]` to EXISTING `ValidationAsset`
-  - [ ] Keep envelope pattern: assets compose `DataAssetDescriptor`, do NOT inherit from `StructuralAsset`
-  - [ ] Add Literal type constraints: `HoldoutGroup = Literal["train", "validation", "test"]`, `CalibrationMethod = Literal["maximum_likelihood", "method_of_moments", "bayesian"]`, `ValidationMethod = Literal["holdout", "cross_validation", "external", "bootstrap"]`
+- [x] **Task 1: Extend existing calibration and validation asset types** (AC: 1, 2)
+  - [x] `CalibrationAsset` and `ValidationAsset` already exist in `src/reformlab/data/assets.py` from Story 21.3
+  - [x] Add `is_in_sample: bool`, `holdout_group: str | None`, `calibration_method: str`, `target_years: tuple[int, ...]` to EXISTING `CalibrationAsset`
+  - [x] Add `certified_at: str | None`, `certified_by: str | None`, `validation_method: str`, `holdout_years: tuple[int, ...]` to EXISTING `ValidationAsset`
+  - [x] Keep envelope pattern: assets compose `DataAssetDescriptor`, do NOT inherit from `StructuralAsset`
+  - [x] Add Literal type constraints: `HoldoutGroup = Literal["train", "validation", "test"]`, `CalibrationMethod = Literal["maximum_likelihood", "method_of_moments", "bayesian"]`, `ValidationMethod = Literal["holdout", "cross_validation", "external", "bootstrap"]`
+  - [x] Implement `load_calibration_asset()` and `load_validation_asset()` functions with security hardening (path traversal protection, metadata validation)
 
 - [ ] **Task 2: Create trust-status rule protocol** (AC: 3, 4)
   - [ ] Create `src/reformlab/governance/trust_rules.py`
@@ -66,7 +67,6 @@ Status: ready-for-dev
   - [ ] Create `data/validation/benchmarks/` directory for validation benchmark assets
   - [ ] Each asset stored as folder with `data.parquet`, `descriptor.json`, `metadata.json`
   - [ ] `metadata.json` schema: `{"is_in_sample": bool, "holdout_group": str, "calibration_method": str, "target_years": [int], ...}`
-  - [ ] Implement `load_calibration_asset(asset_id)` and `load_validation_asset(asset_id)` functions in `src/reformlab/data/assets.py`
 
 - [ ] **Task 6: Add API endpoints for calibration targets** (AC: 6)
   - [ ] Add `POST /api/calibration/targets` to `src/reformlab/server/routes/calibration.py`
@@ -124,6 +124,18 @@ Status: ready-for-dev
   - [ ] Create at least one example calibration target (e.g., French vehicle adoption rates 2015-2020, `is_in_sample=True`, `holdout_group="train"`)
   - [ ] Create at least one example validation benchmark (e.g., French vehicle adoption rates 2021-2022 holdout, `validation_method="holdout"`)
   - [ ] Store in `data/calibration/targets/` and `data/validation/benchmarks/` with proper metadata.json following schema
+
+#### Review Follow-ups (AI)
+- [ ] [AI-Review] CRITICAL: Implement `TrustStatusRule` protocol and built-in rules in `src/reformlab/governance/trust_rules.py` (AC3, AC4)
+- [ ] [AI-Review] CRITICAL: Implement `TrustRuleRegistry` in `src/reformlab/governance/registry.py` (AC4)
+- [ ] [AI-Review] CRITICAL: Create calibration target API endpoints in `src/reformlab/server/routes/calibration.py` (AC6)
+- [ ] [AI-Review] CRITICAL: Create validation benchmark and certification API endpoints (AC6)
+- [ ] [AI-Review] CRITICAL: Extend preflight check system with trust-status rules via ValidationCheck adapter (AC5, AC7)
+- [ ] [AI-Review] CRITICAL: Update calibration engine to use CalibrationAsset and record manifest.calibration.asset_id (AC8)
+- [ ] [AI-Review] HIGH: Add `CalibrationAssetResponse` and `ValidationAssetResponse` Pydantic models to `src/reformlab/server/models.py` (AC6, Task 11)
+- [ ] [AI-Review] HIGH: Add TypeScript types for calibration/validation assets to `frontend/src/api/types.ts` (AC9, Task 11)
+- [ ] [AI-Review] HIGH: Create storage directories `data/calibration/targets/` and `data/validation/benchmarks/` with example assets (Task 13)
+- [ ] [AI-Review] MEDIUM: Add governance tests (trust rules, registry, preflight integration) in `tests/governance/` (AC10)
 
 ## Dev Notes
 
@@ -402,49 +414,187 @@ None (story creation)
 
 ### Completion Notes List
 
-- Story 21.5 implements separation of calibration targets from validation benchmarks
-- Uses envelope pattern from Story 21.3 (composes DataAssetDescriptor, NOT inheritance from StructuralAsset)
-- Extends existing CalibrationAsset with train/test separation fields: `is_in_sample`, `holdout_group`, `calibration_method`, `target_years`
-- Extends existing ValidationAsset with certification fields: `certified_at`, `certified_by`, `validation_method`, `holdout_years`
-- Creates `TrustStatusRule` protocol for governance rules with `check(descriptor, metadata)` signature
-- Implements three built-in rules aligned with actual asset model
-- Extends validation/preflight check system from Story 20.7 with trust-status rules via ValidationCheck adapter
-- Separate API endpoints: `/api/calibration/targets` and `/api/validation/benchmarks`
-- Certification endpoint upgrades trust status when dossier requirements are satisfied
-- Calibration engine updated to use CalibrationAsset, record manifest.calibration.asset_id, with backward compatibility
-- Frontend displays calibration/validation distinction with trust badges
-- Storage separation: `data/calibration/targets/` and `data/validation/benchmarks/`
-- Prevents train/test leakage via semantic separation, `data_class` validation, and governance rules
+**PARTIAL IMPLEMENTATION - Security fixes applied during code review synthesis:**
+
+- Task 1 (AC1, AC2): Completed - Extended `CalibrationAsset` and `ValidationAsset` with new fields for train/test separation and certification
+- Task 1 (partial): Implemented `load_calibration_asset()` and `load_validation_asset()` functions with security hardening:
+  - Path traversal protection: validates `asset_id` doesn't contain `..` or path separators
+  - Symlink attack protection: resolves paths and verifies containment within base directories
+  - Metadata structure validation: ensures `metadata.json` is a dict before use
+
+**REMAINING WORK - Story is fundamentally incomplete (~15% implemented):**
+
+- Task 2-4: Governance subsystem not implemented (trust-status rules, registry, preflight integration)
+- Task 6-8: API endpoints not implemented (calibration targets, validation benchmarks, certification)
+- Task 9: Calibration engine not updated (still uses `CalibrationTargetSet`, no `calibration_asset_id` in manifests)
+- Task 10-11: Frontend implementation not implemented (UI, TypeScript types, API clients)
+- Task 12-13: Tests and example assets not implemented
+
+**Recommendation:** Split this story into smaller stories or return to development with clear blocking issues.
 
 ### File List
 
-**Files to create:**
+**Files modified (security fixes):**
+- `src/reformlab/data/assets.py` — Added path traversal protection, symlink attack protection, and metadata validation to `load_calibration_asset()` and `load_validation_asset()` functions
+
+**Files to create (not yet implemented):**
 - `src/reformlab/governance/__init__.py` — Governance subsystem package
 - `src/reformlab/governance/trust_rules.py` — TrustStatusRule protocol and implementations
 - `src/reformlab/governance/registry.py` — TrustRuleRegistry class
 - `src/reformlab/server/routes/calibration.py` — Calibration target API endpoints
 - `frontend/src/api/calibration.ts` — Calibration API client
 - `frontend/src/api/validation.ts` — Validation API client
-- `data/calibration/targets/{asset-id}/data.parquet` — Example calibration targets
-- `data/calibration/targets/{asset-id}/descriptor.json`
-- `data/calibration/targets/{asset-id}/metadata.json`
-- `data/validation/benchmarks/{asset-id}/data.parquet` — Example validation benchmarks
-- `data/validation/benchmarks/{asset-id}/descriptor.json`
-- `data/validation/benchmarks/{asset-id}/metadata.json`
+- `data/calibration/targets/{asset-id}/` — Example calibration targets
+- `data/validation/benchmarks/{asset-id}/` — Example validation benchmarks
 
-**Files to modify:**
-- `src/reformlab/data/assets.py` — Extend existing CalibrationAsset, ValidationAsset with new fields; add load functions
-- `src/reformlab/server/routes/validation.py` — Extend preflight system with trust-status rules (NOT server/validation.py)
+**Files to modify (not yet implemented):**
+- `src/reformlab/server/routes/validation.py` — Extend preflight system with trust-status rules
 - `src/reformlab/server/models.py` — Add API response models
 - `src/reformlab/server/routes/__init__.py` — Include calibration router
-- `src/reformlab/calibration/engine.py` — Use CalibrationAsset for target loading, record manifest.calibration.asset_id
+- `src/reformlab/calibration/engine.py` — Use CalibrationAsset for target loading
 - `frontend/src/api/types.ts` — Add TypeScript types
 
-**Tests to create:**
-- `tests/governance/test_trust_rules.py` — Rule execution tests
-- `tests/governance/test_registry.py` — Registry tests
-- `tests/server/test_routes_calibration.py` — Calibration API tests
-- `tests/server/test_routes_validation.py` — Validation API tests
-- `tests/calibration/test_engine_integration.py` — Calibration engine integration tests
-- `frontend/src/api/__tests__/calibration.test.ts` — Calibration API client tests
-- `frontend/src/api/__tests__/validation.test.ts` — Validation API client tests
+**Tests to create (not yet implemented):**
+- `tests/governance/test_trust_rules.py`
+- `tests/governance/test_registry.py`
+- `tests/server/test_routes_calibration.py`
+- `tests/server/test_routes_validation.py`
+- `tests/calibration/test_engine_integration.py`
+
+## Senior Developer Review (AI)
+
+### Review: 2026-03-27
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 27.0 (Reviewer A) + 10.8 (Reviewer B) → **REJECT**
+- **Issues Found:** 15 verified issues (9 critical, 5 high, 1 medium)
+- **Issues Fixed:** 2 (path traversal vulnerability, metadata validation in asset loaders)
+- **Action Items Created:** 10
+
+<!-- CODE_REVIEW_SYNTHESIS_START -->
+## Synthesis Summary
+
+Story 21.5 is fundamentally incomplete. Both reviewers identified that only **Task 1** (extending `CalibrationAsset` and `ValidationAsset` with new fields) was implemented. The core governance infrastructure - trust-status rules, registry, API endpoints, calibration engine integration, frontend, and tests - is entirely missing. Additionally, the asset loader functions had security and robustness issues.
+
+**Evidence Score: 27.0 (Reviewer A) + 10.8 (Reviewer B) → REJECT**
+
+## Validations Quality
+
+| Reviewer | Score | Assessment |
+|----------|-------|------------|
+| A | 27.0 | Thorough, correctly identified missing implementation, provided code samples for fixes |
+| B | 10.8 | Focused on security and contract violations, identified path traversal vulnerability |
+
+Both reviewers accurately identified that the story claims completion but only ~15% of requirements are implemented.
+
+## Issues Verified (by severity)
+
+### Critical
+
+- **Missing Governance Infrastructure**: `TrustStatusRule` protocol, `TrustRuleRegistry`, and 3 built-in rules not implemented | **Source**: Both reviewers | **File**: `src/reformlab/governance/trust_rules.py`, `registry.py` (missing) | **Fix**: Cannot fix - entire subsystem missing, requires story split/rework
+
+- **Missing API Endpoints**: All 5 endpoints (POST/GET calibration targets, POST/GET validation benchmarks, POST certification) not implemented | **Source**: Both reviewers | **File**: `src/reformlab/server/routes/calibration.py` (missing) | **Fix**: Cannot fix - requires significant implementation
+
+- **Calibration Engine Not Updated**: Still uses `CalibrationTargetSet` instead of `CalibrationAsset`, no `calibration_asset_id` in manifests | **Source**: Reviewer A | **File**: `src/reformlab/calibration/engine.py` | **Fix**: Cannot fix - requires engine refactoring
+
+- **Path Traversal Vulnerability** (FIXED): Asset loaders use unsanitized `asset_id` in path operations, allowing `../` to escape data roots | **Source**: Reviewer B | **File**: `src/reformlab/data/assets.py:1788-1944` | **Fix**: Applied path validation and resolution checks to both loader functions
+
+### High
+
+- **Missing Pydantic Response Models**: `CalibrationAssetResponse` and `ValidationAssetResponse` not added to `models.py` | **Source**: Both reviewers | **File**: `src/reformlab/server/models.py` | **Fix**: Cannot fix - endpoints don't exist to use these models
+
+- **metadata.json Structure Not Validated** (FIXED): Load functions assume metadata is dict but don't validate type | **Source**: Reviewer A | **File**: `src/reformlab/data/assets.py:1827-1837, 1917-1926` | **Fix**: Added type validation before using metadata in both loader functions
+
+### Medium
+
+- **Storage Directories Don't Exist**: `data/calibration/targets/` and `data/validation/benchmarks/` not created | **Source**: Reviewer A | **File**: N/A | **Fix**: Cannot fix - requires creating example assets (Task 13)
+
+- **Missing TypeScript Types**: Frontend types for calibration/validation assets not added | **Source**: Both reviewers | **File**: `frontend/src/api/types.ts` | **Fix**: Cannot fix - frontend implementation missing
+
+- **Missing Frontend Components**: No calibration/validation UI, API clients | **Source**: Reviewer A | **File**: `frontend/src/api/calibration.ts`, `validation.ts` (missing) | **Fix**: Cannot fix - requires significant frontend work
+
+- **Missing Tests**: No governance, API, certification, or preflight tests | **Source**: Both reviewers | **File**: `tests/governance/test_trust_rules.py` (missing) | **Fix**: Cannot fix - code to test doesn't exist
+
+### Low
+
+- **SRP Breach in assets.py**: 1900+ line module with multiple responsibilities | **Source**: Reviewer B | **File**: `src/reformlab/data/assets.py` | **Fix**: Defer - broader refactoring out of scope for this story
+
+## Issues Dismissed
+
+None - all issues raised by reviewers are valid. The story is genuinely incomplete.
+
+## Changes Applied
+
+**File**: `src/reformlab/data/assets.py`
+**Change**: Added security hardening to `load_calibration_asset()` function
+
+**Before**:
+```python
+def load_calibration_asset(asset_id: str) -> CalibrationAsset:
+    """Load a calibration asset from disk by asset_id."""
+    asset_path = _CALIBRATION_ASSETS_BASE_PATH / asset_id
+
+    # Check asset folder exists
+    if not asset_path.exists():
+        raise EvidenceAssetError(...)
+    ...
+    # Load metadata.json
+    metadata_path = asset_path / "metadata.json"
+    ...
+    try:
+        with metadata_path.open("r") as f:
+            metadata = json.load(f)
+    except (json.JSONDecodeError, OSError) as exc:
+        raise EvidenceAssetError(...)
+```
+
+**After**:
+```python
+def load_calibration_asset(asset_id: str) -> CalibrationAsset:
+    """Load a calibration asset from disk by asset_id."""
+    # Security: Validate asset_id to prevent path traversal attacks
+    if "/" in asset_id or "\\" in asset_id or ".." in asset_id:
+        raise EvidenceAssetError(
+            f"Calibration asset_id contains invalid path characters: {asset_id!r}"
+        )
+
+    asset_path = _CALIBRATION_ASSETS_BASE_PATH / asset_id
+
+    # Security: Resolve path and verify it's within base path
+    try:
+        resolved_path = asset_path.resolve()
+        base_resolved = _CALIBRATION_ASSETS_BASE_PATH.resolve()
+        if not str(resolved_path).startswith(str(base_resolved)):
+            raise EvidenceAssetError(
+                f"Calibration asset path is outside base directory: {asset_path}"
+            )
+    except OSError as exc:
+        raise EvidenceAssetError(...) from exc
+    ...
+    # Validate metadata.json structure
+    if not isinstance(metadata, dict):
+        raise EvidenceAssetError(
+            f"Calibration asset metadata.json must be an object, got {type(metadata).__name__}"
+        )
+```
+
+**File**: `src/reformlab/data/assets.py`
+**Change**: Added identical security hardening to `load_validation_asset()` function (same pattern as above)
+
+## Deep Verify Integration
+
+Deep Verify did not produce findings for this story.
+
+## Files Modified
+
+- `src/reformlab/data/assets.py` — Added path traversal protection, symlink attack protection, and metadata validation to both asset loader functions
+
+## Suggested Future Improvements
+
+- **Scope**: Split Story 21.5 into multiple smaller stories | **Rationale**: Current story has 10 ACs and 13 tasks, too large for single implementation | **Effort**: High
+- **Scope**: Refactor `assets.py` into separate modules (`asset_types.py`, `asset_serialization.py`, `asset_storage.py`, `asset_factories.py`) | **Rationale**: Current 1900+ line file violates SRP, increases change risk | **Effort**: Medium
+
+## Test Results
+
+- Tests passed: 71
+- Tests failed: 0
+<!-- CODE_REVIEW_SYNTHESIS_END -->
