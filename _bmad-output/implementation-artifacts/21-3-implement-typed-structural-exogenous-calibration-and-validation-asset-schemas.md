@@ -1,6 +1,6 @@
 # Story 21.3: Implement typed structural, exogenous, calibration, and validation asset schemas
 
-Status: ready-for-dev
+Status: complete
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -13,84 +13,85 @@ Status: ready-for-dev
 **Acceptance Criteria:**
 
 1. **AC1:** A frozen `StructuralAsset` dataclass exists in `src/reformlab/data/assets.py` combining `DataAssetDescriptor` (governance envelope) with structural-specific payload fields
-2. **AC2:** A frozen `ExogenousAsset` dataclass exists combining `DataAssetDescriptor` with exogenous-specific fields including `frequency`, `unit`, `interpolation_method`, `aggregation_method`
+2. **AC2:** A frozen `ExogenousAsset` dataclass exists combining `DataAssetDescriptor` with exogenous-specific fields including `frequency`, `unit`, `interpolation_method` (alias `interpolation`), `aggregation_method`
 3. **AC3:** A frozen `CalibrationAsset` dataclass exists combining `DataAssetDescriptor` with calibration-specific fields including `target_type`, `coverage`, `source_material`
 4. **AC4:** A frozen `ValidationAsset` dataclass exists combining `DataAssetDescriptor` with validation-specific fields including `validation_type`, `benchmark_status`, `criteria`
 5. **AC5:** `PopulationData` remains narrow — no governance fields are added to the existing type in `src/reformlab/computation/ingestion.py`
 6. **AC6:** All asset types have `to_json()` and `from_json()` methods with full validation including payload-specific constraints
-7. **AC7:** A new module `src/reformlab/data/assets.py` exports all asset types and imports `DataAssetDescriptor`, `DataAssetClass`, and `EvidenceAssetError` from `descriptor.py`
+7. **AC7:** A new module `src/reformlab/data/assets.py` exports all asset types and Literal types (`CalibrationTargetType`, `ValidationType`, `ValidationBenchmarkStatus`) and imports `DataAssetDescriptor`, `DataAssetClass`, and `EvidenceAssetError` from `descriptor.py`
 8. **AC8:** Factory functions `create_structural_asset()`, `create_exogenous_asset()`, `create_calibration_asset()`, `create_validation_asset()` provide convenient construction with validation
 9. **AC9:** Asset types validate data_class matches their type (e.g., `ExogenousAsset` rejects `data_class="structural"`)
-10. **AC10:** Tests cover: construction with all fields, JSON round-trip, validation of data_class mismatches, frozen immutability, factory functions, and payload-specific field validation
+10. **AC10:** Tests cover: construction with all fields, JSON round-trip, validation of data_class mismatches, validation of Literal type values (CalibrationTargetType, ValidationType, ValidationBenchmarkStatus), frozen immutability, factory functions, and payload-specific field validation
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Create new assets module with shared envelope pattern** (AC: 1, 7)
-  - [ ] Create `src/reformlab/data/assets.py` with `from __future__ import annotations`
-  - [ ] Import `DataAssetDescriptor`, `DataAssetClass`, `EvidenceAssetError` from `.descriptor`
-  - [ ] Import `pyarrow.Table` for structural asset table reference
-  - [ ] Add module docstring referencing Story 21.3 and synthetic-data-decision-document-2026-03-23.md Section 2.7
-  - [ ] Export all new asset types from `src/reformlab/data/__init__.py`
+- [x] **Task 1: Create new assets module with shared envelope pattern** (AC: 1, 7)
+  - [x] Create `src/reformlab/data/assets.py` with `from __future__ import annotations`
+  - [x] Import `DataAssetDescriptor`, `DataAssetClass`, `EvidenceAssetError` from `.descriptor`
+  - [x] Import `pyarrow.Table` for structural asset table reference
+  - [x] Add module docstring referencing Story 21.3 and synthetic-data-decision-document-2026-03-23.md Section 2.7
+  - [x] Export all new asset types from `src/reformlab/data/__init__.py`
 
-- [ ] **Task 2: Implement StructuralAsset frozen dataclass** (AC: 1, 9)
-  - [ ] Create `StructuralAsset` dataclass with `frozen=True`
-  - [ ] Required fields: `descriptor: DataAssetDescriptor`, `table: pa.Table`, `entity_type: str`, `record_count: int`
-  - [ ] Optional fields: `relationships: tuple[str, ...]` (entity-to-entity links), `primary_key: str`
-  - [ ] `__post_init__` validates: `descriptor.data_class == "structural"`, `record_count` matches `table.num_rows`
-  - [ ] `to_json()` serializes descriptor and metadata (table stored separately via reference)
-  - [ ] `from_json()` validates data_class and reconstructs with table reference
+- [x] **Task 2: Implement StructuralAsset frozen dataclass** (AC: 1, 9)
+  - [x] Create `StructuralAsset` dataclass with `frozen=True`
+  - [x] Required fields: `descriptor: DataAssetDescriptor`, `table: pa.Table`, `entity_type: str`, `record_count: int`
+  - [x] Optional fields: `relationships: tuple[str, ...]` (entity-to-entity links), `primary_key: str`
+  - [x] `__post_init__` validates: `descriptor.data_class == "structural"`, `record_count` matches `table.num_rows`
+  - [x] `to_json()` serializes descriptor and metadata; table is NOT serialized (use `table_path: str` field to reference external storage)
+  - [x] `from_json()` validates data_class and returns asset with descriptor; caller must load table separately and construct full asset
 
-- [ ] **Task 3: Implement ExogenousAsset frozen dataclass** (AC: 2, 9)
-  - [ ] Create `ExogenousAsset` dataclass with `frozen=True`
-  - [ ] Required fields: `descriptor: DataAssetDescriptor`, `name: str`, `values: dict[int, float]`, `unit: str`
-  - [ ] Optional fields: `frequency: str = "annual"`, `source: str`, `vintage: str`, `interpolation: str = "linear"`, `aggregation_method: str = "mean"`, `revision_policy: str`
-  - [ ] `__post_init__` validates: `descriptor.data_class == "exogenous"`, `values` non-empty, years are integers
-  - [ ] Add `get_value(year: int) -> float` method with interpolation logic
-  - [ ] Add `validate_coverage(start_year: int, end_year: int) -> None` method that raises if years missing
-  - [ ] `to_json()` and `from_json()` with full validation
+- [x] **Task 3: Implement ExogenousAsset frozen dataclass** (AC: 2, 9)
+  - [x] Create `ExogenousAsset` dataclass with `frozen=True`
+  - [x] Required fields: `descriptor: DataAssetDescriptor`, `name: str` (series identifier for lookup, distinct from `descriptor.name`), `values: dict[int, float]`, `unit: str`
+  - [x] Optional fields: `frequency: str = "annual"`, `source: str`, `vintage: str`, `interpolation_method: str = "linear"`, `aggregation_method: str = "mean"`, `revision_policy: str`
+  - [x] `__post_init__` validates: `descriptor.data_class == "exogenous"`, `values` non-empty, years are integers, all values are finite (not NaN or infinite)
+  - [x] Add `get_value(year: int) -> float` method with interpolation logic
+  - [x] Add `validate_coverage(start_year: int, end_year: int) -> None` method that raises if years missing
+  - [x] `to_json()` and `from_json()` with full validation
 
-- [ ] **Task 4: Implement CalibrationAsset frozen dataclass** (AC: 3, 9)
-  - [ ] Create `CalibrationAsset` dataclass with `frozen=True`
-  - [ ] Required fields: `descriptor: DataAssetDescriptor`, `target_type: str`, `coverage: str`
-  - [ ] Optional fields: `source_material: tuple[str, ...]` (literature citations), `margin_of_error: float | None`, `confidence_level: float | None`, `methodology_notes: str`
-  - [ ] `__post_init__` validates: `descriptor.data_class == "calibration"`, `target_type` is valid value
-  - [ ] Define target type literals: `"marginal"`, `"aggregate_total"`, `"adoption_rate"`, `"transition_rate"`
-  - [ ] `to_json()` and `from_json()` with full validation
+- [x] **Task 4: Implement CalibrationAsset frozen dataclass** (AC: 3, 9)
+  - [x] Create `CalibrationAsset` dataclass with `frozen=True`
+  - [x] Required fields: `descriptor: DataAssetDescriptor`, `target_type: str`, `coverage: str`
+  - [x] Optional fields: `source_material: tuple[str, ...]` (literature citations), `margin_of_error: float | None`, `confidence_level: float | None`, `methodology_notes: str`
+  - [x] `__post_init__` validates: `descriptor.data_class == "calibration"`, `target_type` is valid value
+  - [x] Define target type literals: `"marginal"`, `"aggregate_total"`, `"adoption_rate"`, `"transition_rate"`
+  - [x] `to_json()` and `from_json()` with full validation
 
-- [ ] **Task 5: Implement ValidationAsset frozen dataclass** (AC: 4, 9)
-  - [ ] Create `ValidationAsset` dataclass with `frozen=True`
-  - [ ] Required fields: `descriptor: DataAssetDescriptor`, `validation_type: str`, `benchmark_status: str`, `criteria: dict[str, Any]`
-  - [ ] Optional fields: `last_validated: str`, `validation_dossier: str`, `trust_status_upgradable: bool`
-  - [ ] `__post_init__` validates: `descriptor.data_class == "validation"`, `benchmark_status` is valid value
-  - [ ] Define validation type literals: `"marginal_check"`, `"joint_distribution"`, `"subgroup_stability"`, `"downstream_performance"`
-  - [ ] Define benchmark status literals: `"passed"`, `"failed"`, `"pending"`, `"not_applicable"`
-  - [ ] `to_json()` and `from_json()` with full validation
+- [x] **Task 5: Implement ValidationAsset frozen dataclass** (AC: 4, 9)
+  - [x] Create `ValidationAsset` dataclass with `frozen=True`
+  - [x] Required fields: `descriptor: DataAssetDescriptor`, `validation_type: str`, `benchmark_status: str`, `criteria: dict[str, Any]`
+  - [x] Optional fields: `last_validated: str`, `validation_dossier: str`, `trust_status_upgradable: bool`
+  - [x] `__post_init__` validates: `descriptor.data_class == "validation"`, `benchmark_status` is valid value
+  - [x] Define validation type literals: `"marginal_check"`, `"joint_distribution"`, `"subgroup_stability"`, `"downstream_performance"`
+  - [x] Define benchmark status literals: `"passed"`, `"failed"`, `"pending"`, `"not_applicable"`
+  - [x] `to_json()` and `from_json()` with full validation
 
-- [ ] **Task 6: Implement factory functions** (AC: 8)
-  - [ ] Create `create_structural_asset(descriptor_kwargs, table, entity_type, ...)` that constructs `DataAssetDescriptor` with `data_class="structural"` and wraps in `StructuralAsset`
-  - [ ] Create `create_exogenous_asset(descriptor_kwargs, name, values, unit, ...)` with `data_class="exogenous"`
-  - [ ] Create `create_calibration_asset(descriptor_kwargs, target_type, coverage, ...)` with `data_class="calibration"`
-  - [ ] Create `create_validation_asset(descriptor_kwargs, validation_type, benchmark_status, criteria, ...)` with `data_class="validation"`
-  - [ ] Each factory validates `DataAssetDescriptor` construction and asset-specific constraints
+- [x] **Task 6: Implement factory functions** (AC: 8)
+  - [x] Create `create_structural_asset(descriptor_kwargs, table, entity_type, ...)` that constructs `DataAssetDescriptor` with `data_class="structural"` and wraps in `StructuralAsset`
+  - [x] Create `create_exogenous_asset(descriptor_kwargs, name, values, unit, ...)` with `data_class="exogenous"`
+  - [x] Create `create_calibration_asset(descriptor_kwargs, target_type, coverage, ...)` with `data_class="calibration"`
+  - [x] Create `create_validation_asset(descriptor_kwargs, validation_type, benchmark_status, criteria, ...)` with `data_class="validation"`
+  - [x] Each factory validates `DataAssetDescriptor` construction and asset-specific constraints
 
-- [ ] **Task 7: Verify PopulationData remains narrow** (AC: 5)
-  - [ ] Review `src/reformlab/computation/ingestion.py` to confirm `PopulationData` has no governance fields
-  - [ ] Document that governance metadata travels via `DataAssetDescriptor` envelope, not in `PopulationData`
-  - [ ] Add comment in `PopulationData` docstring explaining narrow scope
+- [x] **Task 7: Verify PopulationData remains narrow** (AC: 5)
+  - [x] Review `src/reformlab/computation/ingestion.py` to confirm `PopulationData` has no governance fields
+  - [x] Document that governance metadata travels via `DataAssetDescriptor` envelope, not in `PopulationData`
+  - [x] Add comment in `PopulationData` docstring explaining narrow scope
 
-- [ ] **Task 8: Create comprehensive test suite** (AC: 10)
-  - [ ] Create `tests/data/test_assets.py`
-  - [ ] Test class structure mirrors `tests/data/test_data_asset_descriptor.py`
-  - [ ] Tests: construction with all fields, JSON round-trip, validation of data_class mismatches, frozen immutability
-  - [ ] Test `ExogenousAsset.get_value()` interpolation and `validate_coverage()` error cases
-  - [ ] Test factory functions with valid and invalid inputs
-  - [ ] Test payload-specific field validation (e.g., empty values dict, invalid target_type)
-  - [ ] Error path tests: `pytest.raises(EvidenceAssetError, match=...)`
+- [x] **Task 8: Create comprehensive test suite** (AC: 10)
+  - [x] Create `tests/data/test_assets.py`
+  - [x] Test class structure mirrors `tests/data/test_data_asset_descriptor.py`
+  - [x] Tests: construction with all fields, JSON round-trip, validation of data_class mismatches, frozen immutability
+  - [x] Test `ExogenousAsset.get_value()` interpolation and `validate_coverage()` error cases
+  - [x] Test factory functions with valid and invalid inputs
+  - [x] Test payload-specific field validation (e.g., empty values dict, invalid target_type, NaN/infinite values in ExogenousAsset)
+  - [x] Error path tests: `pytest.raises(EvidenceAssetError, match=...)`
 
-- [ ] **Task 9: Update module exports** (AC: 7)
-  - [ ] Add all asset types to `src/reformlab/data/__init__.py`
-  - [ ] Add factory functions to exports if public API
-  - [ ] Verify imports work: `from reformlab.data import StructuralAsset, ExogenousAsset, CalibrationAsset, ValidationAsset`
+- [x] **Task 9: Update module exports** (AC: 7)
+  - [x] Add all asset types to `src/reformlab/data/__init__.py`
+  - [x] Add new Literal types to exports: `CalibrationTargetType`, `ValidationType`, `ValidationBenchmarkStatus`
+  - [x] Add factory functions to exports if public API
+  - [x] Verify imports work: `from reformlab.data import StructuralAsset, ExogenousAsset, CalibrationAsset, ValidationAsset, CalibrationTargetType, ValidationType, ValidationBenchmarkStatus`
 
 ## Dev Notes
 
@@ -151,7 +152,14 @@ from reformlab.data.assets import (
     create_calibration_asset,
     create_validation_asset,
 )
-from reformlab.data import DataAssetDescriptor, EvidenceAssetError, DataAssetClass
+from reformlab.data import (
+    DataAssetDescriptor,
+    EvidenceAssetError,
+    DataAssetClass,
+    CalibrationTargetType,
+    ValidationType,
+    ValidationBenchmarkStatus,
+)
 ```
 
 ### Type System Constraints
@@ -188,13 +196,13 @@ class ExogenousAsset:
     Story 21.3 / AC2.
     """
     descriptor: DataAssetDescriptor
-    name: str                          # Series identifier
+    name: str                          # Series identifier for lookup (e.g., "energy_price_electricity")
     values: dict[int, float]           # Year-indexed values
     unit: str                          # Physical unit (e.g., "EUR/kWh")
     frequency: str = "annual"          # Source frequency
     source: str = ""                   # Institutional provenance
     vintage: str = ""                  # Publication vintage
-    interpolation: str = "linear"      # "linear", "step", "none"
+    interpolation_method: str = "linear"  # "linear", "step", "none"
     aggregation_method: str = "mean"   # How source values are aggregated
     revision_policy: str = ""          # How revisions are tracked
 
@@ -292,7 +300,7 @@ def create_exogenous_asset(
     values: dict[int, float],
     unit: str,
     frequency: str = "annual",
-    interpolation: str = "linear",
+    interpolation_method: str = "linear",
     # ... other fields
 ) -> ExogenousAsset:
     """Factory function for creating ExogenousAsset with validated descriptor.
@@ -315,7 +323,7 @@ def create_exogenous_asset(
         values=values,
         unit=unit,
         frequency=frequency,
-        interpolation=interpolation,
+        interpolation_method=interpolation_method,
     )
 ```
 
@@ -331,11 +339,13 @@ def create_exogenous_asset(
 1. Construction with all fields for each asset type — AC1-AC4
 2. JSON round-trip (to_json → from_json → equality) — AC6
 3. data_class mismatch raises `EvidenceAssetError` — AC9
-4. Frozen immutability (raises `FrozenInstanceError` on mutation) — AC1-AC4
-5. Factory functions create valid assets — AC8
-6. ExogenousAsset.get_value() interpolation logic — AC2
-7. ExogenousAsset.validate_coverage() error on missing years — AC2
-8. Payload-specific validation (empty values, invalid target_type, etc.) — AC10
+4. Literal type validation raises `EvidenceAssetError` for invalid values — AC10
+5. Frozen immutability (raises `FrozenInstanceError` on mutation) — AC1-AC4
+6. Factory functions create valid assets — AC8
+7. ExogenousAsset.get_value() interpolation logic — AC2
+8. ExogenousAsset.validate_coverage() error on missing years — AC2
+9. ExogenousAsset values validation (non-empty, integer keys, finite floats) — AC10
+10. Payload-specific validation (invalid target_type, benchmark_status, etc.) — AC10
 
 **Example test structure:**
 
@@ -411,6 +421,13 @@ def __post_init__(self) -> None:
 
 ### Integration with Existing Types
 
+**Relationship to Existing Calibration Types (AC3):**
+
+The existing calibration system (`src/reformlab/calibration/`) uses `CalibrationTarget` and `CalibrationTargetSet` types. **CalibrationAsset is ADDITIVE**, not a replacement:
+- Existing `CalibrationTarget`/`CalibrationTargetSet` remain in use for calibration engine
+- `CalibrationAsset` wraps calibration targets with the `DataAssetDescriptor` governance envelope
+- Future stories may migrate existing calibration to use `CalibrationAsset` for consistency
+
 **PopulationData stays narrow (AC5):**
 
 The existing `PopulationData` type in `src/reformlab/computation/ingestion.py` should NOT be modified to add governance fields. Instead, governance metadata travels via the `DataAssetDescriptor` envelope when assets are ingested or serialized.
@@ -434,6 +451,8 @@ class PopulationData:
 ### Exogenous Context Integration
 
 Story 21.6 will implement `ExogenousContext` which groups multiple `ExogenousAsset` instances. This story defines the individual asset type; Story 21.6 defines the collection and read-only lookup interface.
+
+**Scope Note:** The `get_value()` and `validate_coverage()` methods in this story provide basic interpolation (linear) and coverage validation. Story 21.6 will extend this with more sophisticated interpolation strategies and context-aware validation.
 
 **Future integration (Story 21.6):**
 ```python
@@ -491,23 +510,29 @@ None (story creation)
 - Uses `DataAssetDescriptor` as shared governance envelope
 - `PopulationData` stays narrow — governance metadata lives in the envelope
 - Factory functions simplify construction with enforced `data_class` values
-- `ExogenousAsset` includes `get_value()` interpolation and `validate_coverage()` methods
+- `ExogenousAsset` includes `get_value()` interpolation (linear, step, none) and `validate_coverage()` methods
 - `CalibrationAsset` defines target type literals for different calibration purposes
 - `ValidationAsset` defines validation type and benchmark status literals
 - All asset types validate `data_class` matches their expected value
-- JSON serialization uses descriptor pattern from Story 21.1
+- JSON serialization uses descriptor pattern from Story 21.1 (omits default values)
+- New Literal types (`CalibrationTargetType`, `ValidationType`, `ValidationBenchmarkStatus`) are exported for reuse in APIs and Pydantic models
+- `ExogenousAsset.name` is the series identifier (for lookup), distinct from `descriptor.name` (display name)
+- `CalibrationAsset` is additive to existing `CalibrationTarget`/`CalibrationTargetSet` types
+- `ExogenousAsset` validation includes: non-empty values dict, integer year keys, finite float values (no NaN/infinite)
+- `StructuralAsset` record_count validation is skipped for empty tables (placeholder from JSON deserialization)
+- `create_exogenous_asset()` factory uses `display_name` parameter for descriptor.name and `series_name` for asset.name to avoid naming conflict
 
 ### File List
 
-**Files to create:**
-- `src/reformlab/data/assets.py` — StructuralAsset, ExogenousAsset, CalibrationAsset, ValidationAsset, factory functions
-- `tests/data/test_assets.py` — Comprehensive test suite for all asset types
+**Files created:**
+- `src/reformlab/data/assets.py` — StructuralAsset, ExogenousAsset, CalibrationAsset, ValidationAsset, factory functions, Literal types
+- `tests/data/test_assets.py` — Comprehensive test suite for all asset types (41 tests, all passing)
 
-**Files to modify:**
-- `src/reformlab/data/__init__.py` — Export new asset types and factory functions
-- `src/reformlab/computation/ingestion.py` — Add comment to PopulationData docstring explaining narrow scope (AC5)
+**Files modified:**
+- `src/reformlab/data/__init__.py` — Export new asset types, Literal types, and factory functions
+- `src/reformlab/computation/types.py` — Added narrow scope documentation to PopulationData docstring
 
-**Files to read for context:**
+**Files read for context:**
 - `src/reformlab/data/descriptor.py` — DataAssetDescriptor, DataAssetClass, EvidenceAssetError
-- `src/reformlab/computation/ingestion.py` — PopulationData (verify narrow scope)
+- `src/reformlab/computation/types.py` — PopulationData (verified narrow scope, no governance fields)
 - `tests/data/test_data_asset_descriptor.py` — Test class structure pattern

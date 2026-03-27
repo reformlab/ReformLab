@@ -1,0 +1,135 @@
+record_id: d70346ea-80d7-4112-9342-fdae19954b68
+created_at: '2026-03-27T13:42:50.745905+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 21
+  story_num: 3
+  title: Story 21.3
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: codex
+  model: gpt-5.3-codex
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-03-27T13:36:11.715130Z'
+  end_time: '2026-03-27T13:41:08.736130Z'
+  duration_ms: 297021
+  input_tokens: 0
+  output_tokens: 4640
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 18563
+  heading_count: 39
+  list_depth_max: 3
+  code_block_count: 8
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 13.8'
+  - 🎯 Ruthless Story Validation 21.3
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 13.8 → REJECT'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Wrong PopulationData File Target
+  - 2. StructuralAsset JSON Contract Is Undefined
+  - 3. Exogenous Scope Collides With Planned Story 21.6
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Normalize Exogenous Field Names
+  - 2. Add Literal/Range Constraints for Payload Fields
+  - 3. Define ValidationAsset Criteria Contract
+  - 4. Clarify Factory Function Signatures
+  - 5. Add Compatibility Note for Existing Calibration Types
+  - 6. Include Stub Export Synchronization
+  - ✨ Optimizations (Nice to Have)
+  - 1. Centralize Descriptor Construction in One Internal Helper
+  - 2. Reuse `DataAssetDescriptor.from_json` Consistently
+  - 3. Standardize Optional Field Omission Rules Across Asset `to_json`
+  - 4. Add AC-to-test Matrix in Story
+  - 🤖 LLM Optimization Improvements
+  - 1. Resolve Contradictory Exogenous Field Names
+  - 2. Replace Ambiguous `descriptor_kwargs` with Typed Signature
+  - 3. Collapse Repetitive Dev Notes into “Do/Don’t” Block
+  - 4. Correct and Pin File Targets Once
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 553d931df3f1
+findings:
+  total_count: 23
+  by_severity:
+    critical: 3
+    major: 11
+    minor: 5
+    nit: 4
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 4
+    completeness: 10
+    clarity: 6
+    testability: 3
+  has_fix_count: 21
+  has_location_count: 19
+  has_evidence_count: 18
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 3
+  confidence_phrases_count: 1
+linguistic:
+  avg_sentence_length: 16.93846153846154
+  vocabulary_richness: 0.3033605812897366
+  flesch_reading_ease: -35.81919038545209
+  vague_terms_count: 2
+  formality_score: 0.75
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.82
+  evidence_quality: 0.78
+  follows_template: true
+  internal_consistency: 0.92
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
