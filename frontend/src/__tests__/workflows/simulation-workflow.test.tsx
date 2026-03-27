@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 Lucas Vivier
 /**
- * Simulation Runner Screen — workflow integration tests (Story 17.8, AC-1, AC-4).
+ * Simulation Runner Screen — workflow integration tests (Story 20.6, AC-2).
  *
  * Tests:
  *   4.2 — configure view → click Run → progress view appears immediately, runScenario called
@@ -20,6 +20,13 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+// Recharts ResizeObserver polyfill
+globalThis.ResizeObserver ??= class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+
 vi.mock("@/api/runs", () => ({
   runScenario: vi.fn(),
 }));
@@ -32,6 +39,35 @@ vi.mock("@/api/results", () => ({
   exportResultParquet: vi.fn(),
 }));
 
+// Mock AppContext
+vi.mock("@/contexts/AppContext", () => ({
+  useAppState: () => ({
+    activeScenario: {
+      id: "scenario-001",
+      name: "Carbon Tax 50€/t",
+      version: "1.0",
+      status: "ready",
+      isBaseline: false,
+      baselineRef: null,
+      portfolioName: "carbon-tax-flat",
+      populationIds: ["fr-synthetic-2024"],
+      engineConfig: {
+        startYear: 2025,
+        endYear: 2030,
+        seed: null,
+        investmentDecisionsEnabled: false,
+        logitModel: "multinomial_logit",
+        discountRate: 0.03,
+      },
+      policyType: "carbon_tax",
+      lastRunId: null,
+    },
+    updateExecutionCell: vi.fn(),
+    updateScenarioField: vi.fn(),
+  }),
+  AppProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
 import { runScenario } from "@/api/runs";
 import { deleteResult, exportResultCsv, exportResultParquet, getResult, listResults } from "@/api/results";
 import { SimulationRunnerScreen } from "@/components/screens/SimulationRunnerScreen";
@@ -42,9 +78,6 @@ import { mockResultDetailResponse, mockResultListItem, mockRunResponse, setupExp
 // ============================================================================
 
 const DEFAULT_PROPS = {
-  selectedPopulationId: "fr-synthetic-2024",
-  selectedPortfolioName: null,
-  selectedTemplateName: "carbon-tax-flat",
   onCancel: vi.fn(),
 } as const;
 

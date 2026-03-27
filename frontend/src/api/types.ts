@@ -2,6 +2,8 @@
 // Copyright 2026 Lucas Vivier
 /** TypeScript interfaces matching the backend Pydantic response models. */
 
+import type { ReactNode } from "react";
+
 // ============================================================================
 // Request types
 // ============================================================================
@@ -520,4 +522,47 @@ export interface DecisionSummaryResponse {
   domains: DomainSummary[];
   metadata: Record<string, unknown>;
   warnings: string[];
+}
+
+// ============================================================================
+// Execution matrix types — Story 20.6
+// ============================================================================
+
+export type ExecutionStatus = "NOT_EXECUTED" | "QUEUED" | "RUNNING" | "COMPLETED" | "FAILED";
+
+export interface ExecutionMatrixCell {
+  scenarioId: string;
+  populationId: string;
+  status: ExecutionStatus;
+  runId?: string;
+  error?: string;
+  startedAt?: string;
+  finishedAt?: string;
+}
+
+export interface ScenarioSummary {
+  id: string;
+  name: string;
+  portfolioName: string | null;
+  populationIds: string[];
+  status: string;
+  lastRunId: string | null;
+}
+
+// ============================================================================
+// Comparison dimension types — Story 20.6
+// ============================================================================
+
+export interface ComparisonDimension<T = unknown> {
+  id: string;
+  label: string;
+  description: string;
+  getValue(runResult: ResultDetailResponse): T | null;
+  render?(value: T): ReactNode;
+}
+
+export interface DimensionFilter {
+  dimensionId: string;
+  operator: "equals" | "contains" | "in";
+  values: unknown[];
 }

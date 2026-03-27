@@ -42,3 +42,46 @@
 | medium | `savedPortfolios` naming inconsistency | Task 6.2 updated to use `portfolios` (the actual AppContext field name). |
 | medium | `validatePortfolioName`/`NAME_RE` not shared | `portfolioValidation.ts` added to Files to Create; `PortfolioDesignerScreen` is the extraction source; both Save and Clone dialogs will import from the shared utility. |
 | medium | AC-4 independence test assertion too vague | Task 8.2 test bullet tightened to assert no `/api/scenarios` calls and no `saveCurrentScenario`/`cloneCurrentScenario` invocations. |
+
+## Story 20-6 (2026-03-27)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | Cell state enum not defined (not executed, running, completed, failed referenced but no TypeScript enum) | Added `ExecutionStatus` enum definition with 5 states in types section and updated task 20.6.1 |
+| critical | ComparisonDimension getValue() return type undefined - type safety violation | Added complete TypeScript interface with generic type parameter and optional render method |
+| critical | WebSocket vs polling not specified - leaves critical infrastructure decision unresolved | Specified polling as default approach (2s interval, 10min timeout) with WebSocket deferred to future story |
+| critical | ResultStore path incorrect - story points to `core/result_store.py` but actual is `server/result_store.py` | Corrected all ResultStore path references to `src/reformlab/server/result_store.py` |
+| critical | RunMetadata type incorrect - story references `RunMetadata` in models.py but actual persistent type is `ResultMetadata` in result_store.py | Updated all references from `RunMetadata` to `ResultMetadata` |
+| critical | AC-2 lineage contract incomplete - portfolio composition, population version, full engine config not defined in persistence schema | Extended AC-2 with explicit field specifications and added task to extend ResultMetadata with portfolio_snapshot |
+| critical | Story scope too large for 8 SP - involves 3 screen refactors, 4 new components, backend changes, migration | Updated story points to 13 and added note in Dev Agent Record about scope assessment |
+| critical | Matrix state synchronization mechanism undefined - "publish matrix cell updates via AppContext" with no specification | Added explicit AppContext extension specification with ExecutionMatrixState interface |
+| critical | No async execution contract - story expects running/cancel states but backend run endpoint is synchronous | Reduced scope to post-run matrix only for this story, deferred async execution infrastructure |
+| critical | Test path references non-existent directory | Changed from `tests/integration/frontend/` to `frontend/src/**/__tests__/` to match repo conventions |
+| critical | Backend API contract not specified - unclear if scenario_id is required, how to handle legacy requests | Added explicit API contract specification in task 20.6.6 with transitional validation |
+| critical | ResultStore migration strategy not specified | Added detailed migration specification with one-time migration script approach and rollback strategy |
+| high | Dimension-based filtering UI not defined | Added DimensionFilter interface and filter bar component specification |
+| high | Portfolio composition hash algorithm undefined | Added explicit hash algorithm using SHA-256 with sorted policies for order-independence |
+| high | Cell context menu implementation not specified | Added CellContextMenuAction interface with action definitions (view, clone, delete, export, retry) |
+| high | Export lineage embedding format not specified for CSV/Parquet | Added explicit format specifications for CSV (lineage columns), Parquet (metadata), and replication package (scenario.yaml) |
+| high | Matrix refresh trigger events undefined | Added explicit refresh triggers: on mount, after runs, on window focus, periodic 30s for multi-user scenarios |
+| high | Legacy run display format not specified | Added explicit UI specification for legacy runs with "Unknown Scenario (Legacy)" badge and behavior rules |
+| high | Empty state designs not specified | Added three empty state specifications (no scenarios, no populations, no executions) with actions |
+| high | Dimension registry contract lacks conflict rules, lifecycle | Added complete registry API specification with register, unregister, duplicate-id behavior |
+| high | Multiple runs per scenario-population pair not handled | Added deterministic rule: "latest completed run" with optional run history drawer |
+| medium | Scenario context error handling pattern undefined | Added ScenarioContextError interface with recoverable flag and snapshot for retry |
+| medium | Matrix responsive behavior not specified | Added breakpoint specification (< 1200px horizontal scroll, >= 1200px sticky first column) |
+| medium | Comparison scenario card design not specified | Added ScenarioCard component specification with compact/full variants |
+| medium | "Different Populations" warning behavior undefined | Added validation warning specification with allowProceed flag |
+| medium | Naming inconsistency (comparisonDimension vs ComparisonDimension) | Normalized to `ComparisonDimension` throughout story |
+| medium | Scenario-by-population matrix layout contradicts UX spec | Aligned matrix specification with UX Stage 4 model from ux-design-specification.md |
+| low | Export filename convention not specified | Added getExportFilename specification with pattern for each export type |
+| low | Cell tooltip content not defined | Added CellTooltip specification with status-based content |
+| low | Matrix filter persistence not specified | Added localStorage persistence specification with clear/reset behavior |
+| low | Typo in test example ("perserves") | Corrected to "preserves" |
+| dismissed | Backend API contract - RunRequest.scenario_id already exists in backend (no change needed) | FALSE POSITIVE: Valid concern - scenario_id exists but is optional; added specification for making it required with transitional validation |
+| dismissed | WorkspaceScenario reference wrong location | FALSE POSITIVE: Partially valid - WorkspaceScenario is indeed defined in workspace.ts but also exported via types.ts for API consumers; kept types.ts reference for API layer consistency |
+| dismissed | Matrix data-source instruction incorrectly suggests frontend can use ResultStore.list_results() directly | FALSE POSITIVE: Valid concern - clarified that matrix should populate via API endpoint (/api/results), not direct backend access |
+| dismissed | Verbose "Architecture Constraints" repetition | FALSE POSITIVE: Content is concise and necessary; cross-reference with project context is appropriate for standalone story files |
+| dismissed | INVEST criteria failures | FALSE POSITIVE: Story complexity is inherent to cross-cutting refactor; points adjusted to 13 SP which is more realistic |
+| dismissed | Dependency risk - Story 20.5 has open AI-review follow-ups | FALSE POSITIVE: Valid risk but not a story defect; added dependency note to Dev Agent Record |
+| dismissed | Backward compatibility break risk from strict validation | FALSE POSITIVE: Addressed by adding transitional validation with infer-from-legacy fallback instead of strict rejection |

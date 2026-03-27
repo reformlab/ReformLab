@@ -141,6 +141,14 @@ interface AppState {
   selectedComparisonRunIds: string[];
   setSelectedComparisonRunIds: (ids: string[]) => void;
 
+  // Execution matrix (Story 20.6, AC-1, AC-3)
+  executionMatrix: Record<string, Record<string, import("@/api/types").ExecutionMatrixCell>>;
+  updateExecutionCell: (
+    scenarioId: string,
+    populationId: string,
+    update: Partial<import("@/api/types").ExecutionMatrixCell>,
+  ) => void;
+
   // API connection status
   apiConnected: boolean;
 }
@@ -375,6 +383,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Comparison state (Story 17.4)
   const [selectedComparisonRunIds, setSelectedComparisonRunIds] = useState<string[]>([]);
+
+  // Execution matrix state (Story 20.6, AC-1, AC-3)
+  const [executionMatrix, setExecutionMatrix] = useState<
+    Record<string, Record<string, import("@/api/types").ExecutionMatrixCell>>
+  >({});
+
+  const updateExecutionCell = useCallback((
+    scenarioId: string,
+    populationId: string,
+    update: Partial<import("@/api/types").ExecutionMatrixCell>,
+  ) => {
+    setExecutionMatrix((prev) => ({
+      ...prev,
+      [scenarioId]: {
+        ...(prev[scenarioId] || {}),
+        [populationId]: {
+          ...(prev[scenarioId]?.[populationId] || {
+            scenarioId,
+            populationId,
+            status: "NOT_EXECUTED" as const,
+          }),
+          ...update,
+        },
+      },
+    }));
+  }, []);
 
   // Selections
   const [selectedPopulationId, setSelectedPopulationId] = useState("");
@@ -660,6 +694,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setSelectedPortfolioName,
       selectedComparisonRunIds,
       setSelectedComparisonRunIds,
+      executionMatrix,
+      updateExecutionCell,
       apiConnected: !populationsMock && !templatesMock,
     }),
     [
@@ -680,6 +716,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       results, resultsLoading, refetchResults,
       selectedPortfolioName, setSelectedPortfolioName,
       selectedComparisonRunIds, setSelectedComparisonRunIds,
+      executionMatrix, updateExecutionCell,
       populationsMock, templatesMock,
     ],
   );

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 Lucas Vivier
-/** Simulation Runner Screen — Story 17.3, AC-1, AC-2, AC-3, AC-4.
+/** Simulation Runner Screen — Story 20.6, AC-2.
+ *
+ * Refactored to use WorkspaceScenario from AppContext instead of legacy props.
  *
  * Three internal sub-views:
  *   1. Pre-run summary — Configure and start a simulation run.
@@ -19,6 +21,7 @@ import { ResultsListPanel } from "@/components/simulation/ResultsListPanel";
 import { runScenario } from "@/api/runs";
 import { listResults, exportResultCsv, exportResultParquet } from "@/api/results";
 import type { ResultDetailResponse, ResultListItem } from "@/api/types";
+import { useAppState } from "@/contexts/AppContext";
 
 // ============================================================================
 // Types
@@ -27,9 +30,6 @@ import type { ResultDetailResponse, ResultListItem } from "@/api/types";
 type SubView = "configure" | "progress" | "post-run";
 
 interface SimulationRunnerScreenProps {
-  selectedPopulationId: string | null;
-  selectedPortfolioName: string | null;
-  selectedTemplateName: string | null;
   onCancel: () => void;
 }
 
@@ -37,22 +37,19 @@ interface SimulationRunnerScreenProps {
 // SimulationRunnerScreen
 // ============================================================================
 
-export function SimulationRunnerScreen({
-  selectedPopulationId,
-  selectedPortfolioName,
-  selectedTemplateName,
-  onCancel,
-}: SimulationRunnerScreenProps) {
+export function SimulationRunnerScreen({ onCancel }: SimulationRunnerScreenProps) {
+  const {
+    activeScenario,
+    updateExecutionCell,
+    updateScenarioField,
+  } = useAppState();
+
   const [subView, setSubView] = useState<SubView>("configure");
   const [progress, setProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState("Preparing...");
   const [eta, setEta] = useState("calculating...");
   const [error, setError] = useState<ErrorState | null>(null);
-
-  // Pre-run config local state
-  const [startYear, setStartYear] = useState(2025);
-  const [endYear, setEndYear] = useState(2030);
-  const [seed, setSeed] = useState<number | null>(null);
+  const [currentPopulationId, setCurrentPopulationId] = useState<string | null>(null);
 
   // Post-run state
   const [lastRunId, setLastRunId] = useState<string | null>(null);
@@ -80,41 +77,80 @@ export function SimulationRunnerScreen({
   }, []);
 
   const handleStartRun = useCallback(async () => {
+    if (!activeScenario) {
+      setError({
+        what: "No scenario selected",
+        why: "Please create or select a scenario before running",
+        fix: "Go to the Policies stage to create a scenario",
+      });
+      return;
+    }
+
+    if (activeScenario.populationIds.length === 0) {
+      setError({
+        what: "No population selected",
+        why: "Please select at least one population before running",
+        fix: "Go to the Population stage to select a population",
+      });
+      return;
+    }
+
+    // Use the first population ID for now (multi-population support in future stories)
+    const populationId = currentPopulationId ?? activeScenario.populationIds[0] ?? null;
+
     setError(null);
     setSubView("progress");
     setProgress(0);
-    setCurrentStep(`Computing year ${startYear}...`);
+    setCurrentStep(`Computing year ${activeScenario.engineConfig.startYear}...`);
 
-    const totalYears = endYear - startYear + 1;
+    const totalYears = activeScenario.engineConfig.endYear - activeScenario.engineConfig.startYear + 1;
     const estimatedMs = totalYears * 1500;
     const tickMs = estimatedMs / totalYears;
-    let currentYear = startYear;
+    let currentYear = activeScenario.engineConfig.startYear;
+
+    // Update matrix cell to RUNNING
+    updateExecutionCell(activeScenario.id, populationId, {
+      status: "RUNNING",
+      startedAt: new Date().toISOString(),
+    });
 
     timerRef.current = setInterval(() => {
       currentYear++;
-      if (currentYear <= endYear) {
-        const pct = Math.round(((currentYear - startYear) / totalYears) * 90);
+      if (currentYear <= activeScenario.engineConfig.endYear) {
+        const pct = Math.round(((currentYear - activeScenario.engineConfig.startYear) / totalYears) * 90);
         setProgress(pct);
         setCurrentStep(`Computing year ${currentYear}...`);
-        const remaining = endYear - currentYear;
+        const remaining = activeScenario.engineConfig.endYear - currentYear;
         setEta(`~${Math.ceil((remaining * tickMs) / 1000)}s`);
       }
     }, tickMs);
 
     try {
       const result = await runScenario({
-        template_name: selectedTemplateName ?? selectedPortfolioName ?? "carbon_tax",
+        template_name: activeScenario.portfolioName ?? activeScenario.policyType ?? "carbon_tax",
         policy: {},
-        start_year: startYear,
-        end_year: endYear,
-        population_id: selectedPopulationId,
-        seed: seed ?? undefined,
+        start_year: activeScenario.engineConfig.startYear,
+        end_year: activeScenario.engineConfig.endYear,
+        population_id: populationId,
+        seed: activeScenario.engineConfig.seed ?? undefined,
       });
 
       clearTimer();
       setProgress(100);
       setCurrentStep("Complete");
       setLastRunId(result.run_id);
+
+      // Update matrix cell to COMPLETED
+      updateExecutionCell(activeScenario.id, populationId, {
+        status: "COMPLETED",
+        runId: result.run_id,
+        finishedAt: new Date().toISOString(),
+      });
+
+      // Update activeScenario.lastRunId
+      if (activeScenario) {
+        updateScenarioField("lastRunId", result.run_id);
+      }
 
       // Brief pause then switch to post-run
       await new Promise((resolve) => setTimeout(resolve, 500));
@@ -134,6 +170,13 @@ export function SimulationRunnerScreen({
       setSubView("post-run");
     } catch (err: unknown) {
       clearTimer();
+
+      // Update matrix cell to FAILED
+      updateExecutionCell(activeScenario.id, populationId, {
+        status: "FAILED",
+        error: err instanceof Error ? err.message : String(err),
+      });
+
       if (err && typeof err === "object" && "what" in err) {
         const apiErr = err as { what: string; why: string; fix: string };
         setError({ what: apiErr.what, why: apiErr.why, fix: apiErr.fix });
@@ -143,9 +186,11 @@ export function SimulationRunnerScreen({
       }
     }
   }, [
-    startYear, endYear, seed,
-    selectedPopulationId, selectedPortfolioName, selectedTemplateName,
-    clearTimer, fetchResults,
+    activeScenario,
+    currentPopulationId,
+    updateExecutionCell,
+    clearTimer,
+    fetchResults,
   ]);
 
   // Load initial results list on mount
@@ -155,6 +200,15 @@ export function SimulationRunnerScreen({
 
   // Cleanup timer on unmount
   useEffect(() => clearTimer, [clearTimer]);
+
+  // Sync currentPopulationId with activeScenario.populationIds
+  useEffect(() => {
+    if (activeScenario && activeScenario.populationIds.length > 0) {
+      if (!currentPopulationId || !activeScenario.populationIds.includes(currentPopulationId)) {
+        setCurrentPopulationId(activeScenario.populationIds[0]);
+      }
+    }
+  }, [activeScenario, currentPopulationId]);
 
   const handleSelectResult = useCallback(async (runId: string) => {
     setSelectedResultId(runId);
@@ -191,30 +245,58 @@ export function SimulationRunnerScreen({
           </p>
         </div>
 
+        {/* Scenario summary */}
+        {activeScenario ? (
+          <div className="rounded-lg border border-slate-200 bg-white p-3 space-y-2">
+            <p className="text-xs font-semibold uppercase text-slate-500 mb-2">Scenario</p>
+
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+              <span className="text-slate-500">Name</span>
+              <span className="font-medium text-slate-800">{activeScenario.name}</span>
+
+              <span className="text-slate-500">Portfolio</span>
+              <span className="font-medium text-slate-800">
+                {activeScenario.portfolioName ?? (
+                  <span className="text-amber-600">no portfolio selected</span>
+                )}
+              </span>
+
+              <span className="text-slate-500">Population</span>
+              <span className="font-medium text-slate-800">
+                {activeScenario.populationIds.length > 0
+                  ? `${activeScenario.populationIds.length} population(s) selected`
+                  : <span className="text-amber-600">no population selected</span>
+                }
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+            <p className="text-xs text-amber-800">
+              No scenario selected. Please create or select a scenario first.
+            </p>
+          </div>
+        )}
+
         {/* Configuration summary */}
         <div className="rounded-lg border border-slate-200 bg-white p-3 space-y-2">
           <p className="text-xs font-semibold uppercase text-slate-500 mb-2">Run Configuration</p>
 
           <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-            <span className="text-slate-500">Population</span>
-            <span className="font-medium text-slate-800 data-mono">
-              {selectedPopulationId ?? <span className="text-amber-600">not selected</span>}
-            </span>
-
-            <span className="text-slate-500">Policy</span>
-            <span className="font-medium text-slate-800 data-mono">
-              {selectedPortfolioName ?? selectedTemplateName ?? (
-                <span className="text-amber-600">not selected</span>
-              )}
-            </span>
-
             <span className="text-slate-500">Start year</span>
             <Input
               type="number"
-              value={startYear}
+              value={activeScenario?.engineConfig.startYear ?? 2025}
               min={2020}
-              max={endYear - 1}
-              onChange={(e) => setStartYear(Number(e.target.value))}
+              max={activeScenario?.engineConfig.endYear ? activeScenario.engineConfig.endYear - 1 : 2049}
+              onChange={(e) => {
+                if (activeScenario) {
+                  updateScenarioField("engineConfig", {
+                    ...activeScenario.engineConfig,
+                    startYear: Number(e.target.value),
+                  });
+                }
+              }}
               className="w-24 h-auto py-0.5 text-xs font-mono"
               aria-label="Start year"
             />
@@ -222,10 +304,17 @@ export function SimulationRunnerScreen({
             <span className="text-slate-500">End year</span>
             <Input
               type="number"
-              value={endYear}
-              min={startYear + 1}
+              value={activeScenario?.engineConfig.endYear ?? 2030}
+              min={activeScenario?.engineConfig.startYear ? activeScenario.engineConfig.startYear + 1 : 2021}
               max={2050}
-              onChange={(e) => setEndYear(Number(e.target.value))}
+              onChange={(e) => {
+                if (activeScenario) {
+                  updateScenarioField("engineConfig", {
+                    ...activeScenario.engineConfig,
+                    endYear: Number(e.target.value),
+                  });
+                }
+              }}
               className="w-24 h-auto py-0.5 text-xs font-mono"
               aria-label="End year"
             />
@@ -233,9 +322,16 @@ export function SimulationRunnerScreen({
             <span className="text-slate-500">Seed</span>
             <Input
               type="number"
-              value={seed ?? ""}
+              value={activeScenario?.engineConfig.seed ?? ""}
               placeholder="random"
-              onChange={(e) => setSeed(e.target.value === "" ? null : Number(e.target.value))}
+              onChange={(e) => {
+                if (activeScenario) {
+                  updateScenarioField("engineConfig", {
+                    ...activeScenario.engineConfig,
+                    seed: e.target.value === "" ? null : Number(e.target.value),
+                  });
+                }
+              }}
               className="w-24 h-auto py-0.5 text-xs font-mono"
               aria-label="Random seed"
             />
@@ -243,7 +339,11 @@ export function SimulationRunnerScreen({
         </div>
 
         <div className="flex gap-2">
-          <Button onClick={() => void handleStartRun()} aria-label="Run simulation">
+          <Button
+            onClick={() => void handleStartRun()}
+            aria-label="Run simulation"
+            disabled={!activeScenario || activeScenario.populationIds.length === 0}
+          >
             Run Simulation
           </Button>
           <Button variant="outline" onClick={onCancel}>
