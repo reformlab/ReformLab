@@ -8,7 +8,7 @@ the server layer creates parallel Pydantic models for wire format translation.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -529,4 +529,148 @@ class DecisionSummaryResponse(BaseModel):
     run_id: str
     domains: list[DomainSummary]
     metadata: dict[str, Any]
+    warnings: list[str]
+
+
+# ---------------------------------------------------------------------------
+# Population explorer models — Story 20.7
+# ---------------------------------------------------------------------------
+
+
+class PopulationLibraryItem(BaseModel):
+    """Extended population item with origin and metadata for library display."""
+
+    id: str
+    name: str
+    households: int
+    source: str
+    year: int
+    origin: Literal["built-in", "generated", "uploaded"]
+    column_count: int
+    created_date: str | None = None  # ISO 8601 UTC for generated/uploaded, null for built-in
+
+
+class PopulationPreviewColumnInfo(BaseModel):
+    """Column metadata for population preview."""
+
+    name: str
+    type: str  # "integer" | "float" | "string" | "boolean"
+    description: str
+
+
+class PopulationPreviewResponse(BaseModel):
+    """Paginated row preview with column metadata."""
+
+    id: str
+    name: str
+    rows: list[dict[str, Any]]  # max 100 rows
+    columns: list[PopulationPreviewColumnInfo]
+    total_rows: int
+
+
+class ColumnProfileNumeric(BaseModel):
+    """Numeric column profile with statistics and histogram."""
+
+    type: Literal["numeric"]
+    count: int
+    nulls: int
+    null_pct: float
+    min: float
+    max: float
+    mean: float
+    median: float
+    std: float
+    percentiles: dict[str, float]  # p1, p5, p25, p50, p75, p95, p99
+    histogram_buckets: list[dict[str, Any]]  # [{"bin_start": 0, "bin_end": 10, "count": 123}, ...]
+
+
+class ColumnProfileCategorical(BaseModel):
+    """Categorical column profile with value counts."""
+
+    type: Literal["categorical"]
+    count: int
+    nulls: int
+    null_pct: float
+    cardinality: int
+    value_counts: list[dict[str, Any]]  # [{"value": "x", "count": 123}, ...]
+
+
+class ColumnProfileBoolean(BaseModel):
+    """Boolean column profile with true/false counts."""
+
+    type: Literal["boolean"]
+    count: int
+    nulls: int
+    null_pct: float
+    true_count: int
+    false_count: int
+
+
+ColumnProfile = ColumnProfileNumeric | ColumnProfileCategorical | ColumnProfileBoolean
+
+
+class ColumnProfileEntry(BaseModel):
+    """Single column profile entry."""
+
+    name: str
+    profile: ColumnProfile
+
+
+class PopulationProfileResponse(BaseModel):
+    """Per-column profile statistics for a population."""
+
+    id: str
+    columns: list[ColumnProfileEntry]
+
+
+class PopulationCrosstabResponse(BaseModel):
+    """Cross-tabulation of two columns."""
+
+    col_a: str
+    col_b: str
+    data: list[dict[str, Any]]  # flattened crosstab with col_a, col_b, count columns
+    truncated: bool = False  # true if results limited to top 1000 combinations
+
+
+class PopulationUploadResponse(BaseModel):
+    """Upload validation feedback."""
+
+    id: str
+    name: str
+    row_count: int
+    column_count: int
+    matched_columns: list[str]
+    unrecognized_columns: list[str]
+    missing_required: list[str]
+    valid: bool
+
+
+# ---------------------------------------------------------------------------
+# Validation/preflight models — Story 20.7
+# ---------------------------------------------------------------------------
+
+
+class PreflightRequest(BaseModel):
+    """Request for pre-execution validation."""
+
+    scenario: dict[str, Any]  # WorkspaceScenario serialized as dict
+    population_id: str | None = None
+    template_name: str | None = None
+
+
+class ValidationCheckResult(BaseModel):
+    """Result of a single validation check."""
+
+    id: str
+    label: str
+    passed: bool
+    severity: Literal["error", "warning"]
+    message: str
+
+
+class PreflightResponse(BaseModel):
+    """Response for pre-execution validation."""
+
+    passed: bool
+    checks: list[ValidationCheckResult]
     warnings: list[str]

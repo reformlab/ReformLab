@@ -24,10 +24,11 @@ so that the Population Library and Engine stages can operate on real data instea
 **When** a caller requests population data,
 **Then** all endpoints exist and return typed responses matching the frontend model contracts:
 - `GET /api/populations` — list all populations (already exists, needs origin/tag enhancement)
-- `GET /api/populations/{id}/preview` — paginated row preview with sort/filter
-- `GET /api/populations/{id}/profile` — per-column statistics (numeric/categorical/boolean)
+- `GET /api/populations/{id}/preview` — paginated row preview with sort (first 100 rows by default)
+- `GET /api/populations/{id}/profile` — per-column statistics (numeric/categorical/boolean) with histogram data
 - `GET /api/populations/{id}/crosstab` — cross-tabulation of two columns
 - `POST /api/populations/upload` — CSV/Parquet file upload with validation feedback
+- `DELETE /api/populations/{id}` — delete an uploaded or generated population (built-in populations cannot be deleted)
 
 ### AC-2: Validation/Preflight Endpoint Returns Pass/Fail with Check-Level Detail
 
@@ -45,12 +46,12 @@ The endpoint must use an extensible check registry pattern so EPIC-21 Story 21.5
 **Given** any new endpoint is called,
 **When** the response is deserialized in the frontend,
 **Then** the response matches the TypeScript interfaces defined in `frontend/src/api/types.ts`:
-- `PopulationPreviewResponse` — preview rows with column metadata
-- `PopulationProfileResponse` — column profiles (numeric/categorical/boolean)
-- `PopulationCrosstabResponse` — cross-tabulated data
+- `PopulationPreviewResponse` — preview rows with column metadata (includes `id`, `name`, `rows`, `columns`, `total_rows`)
+- `PopulationProfileResponse` — column profiles (numeric/categorical/boolean) with histogram data for numeric columns
+- `PopulationCrosstabResponse` — cross-tabulated data with `truncated` flag
 - `PopulationUploadResponse` — upload validation feedback
-- `ValidationResponse` — validation check results
 - `PopulationLibraryItem` — extends `PopulationItem` with `origin`, `column_count`, `created_date`
+- Note: Preflight endpoint returns `PreflightResponse` (passed, checks, warnings) — frontend types should be added in follow-up story
 
 ---
 
@@ -71,12 +72,22 @@ The endpoint must use an extensible check registry pattern so EPIC-21 Story 21.5
 - [ ] Add tests for origin detection and library item metadata
 
 **Dev Notes**:
-- Origin detection: check for `manifest.json` alongside data file for generated populations
+- Origin detection: check for `{id}.manifest.json` alongside data file for generated populations
+- Generated population manifest structure (from data fusion):
+  ```json
+  {
+    "success": true,
+    "summary": {"record_count": 100000, "column_count": 14},
+    "step_log": [...],
+    "assumption_chain": [...],
+    "generated_at": "2026-03-27T12:00:00Z"
+  }
+  ```
+- If manifest.json exists and has `generated_at` field: `origin = "generated"`, read `created_date` from `generated_at`
 - Uploaded populations directory: `~/.reformlab/uploaded-populations/` (create on init)
+- Uploaded population metadata: create `{id}.meta.json` sidecar with `{"id": "...", "origin": "uploaded", "created_date": "ISO-8601", "original_filename": "...", "file_path": "..."}`
 - Use `pathlib.Path` for filesystem operations; handle missing directories gracefully
 - For built-in populations: set `created_date = None`, `origin = "built-in"`
-- For generated populations: read `created_date` from manifest metadata
-- For uploaded populations: set `created_date` from file mtime (`datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc).isoformat()`)
 
 ### 20.7.2: Implement `GET /api/populations/{id}/preview` Endpoint (AC: #1, #3)
 
@@ -99,7 +110,7 @@ The endpoint must use an extensible check registry pattern so EPIC-21 Story 21.5
   ```python
   class PopulationPreviewRequest(BaseModel):
       offset: int = 0
-      limit: int = 10
+      limit: int = 100  # Default to 100 rows for quick preview; max enforced at 100
       sort_by: str | None = None
       order: Literal["asc", "desc"] = "asc"
   ```
@@ -109,7 +120,10 @@ The endpoint must use an extensible check registry pattern so EPIC-21 Story 21.5
   - `table.slice(offset, limit)` for pagination
   - `table.sort_by(sort_by, order=[(sort_by, "ascending" if order=="asc" else "descending")])`
 - [ ] Extract column schema to build `ColumnInfo` list (map PyArrow types to strings)
-- [ ] Return 404 with error response if population not found
+- [ ] Return 404 ErrorResponse if population not found:
+  - what: `"Population '{id}' not found"`
+  - why: `"No population file exists for this ID"`
+  - fix: `"Check available populations via GET /api/populations"`
 - [ ] Add tests for preview endpoint with CSV and Parquet files
 
 **Dev Notes**:
@@ -134,6 +148,7 @@ The endpoint must use an extensible check registry pattern so EPIC-21 Story 21.5
       median: float
       std: float
       percentiles: dict[str, float]  # p1, p5, p25, p50, p75, p95, p99
+      histogram_buckets: list[dict[str, Any]]  # [{"bin_start": 0, "bin_end": 10, "count": 123}, ...] (20 equal-width bins)
 
   class ColumnProfileCategorical(BaseModel):
       type: Literal["categorical"]
@@ -164,10 +179,13 @@ The endpoint must use an extensible check registry pattern so EPIC-21 Story 21.5
 - [ ] Implement `profile_population(id: str)` endpoint
 - [ ] Load population file via PyArrow
 - [ ] Compute per-column statistics:
-  - Numeric: compute all statistics using PyArrow compute functions
+  - Numeric: compute all statistics including 20-bin histogram using PyArrow compute functions
   - Categorical: compute value counts (top 50 values by frequency)
   - Boolean: compute true/false/null counts
-- [ ] Return 404 if population not found
+- [ ] Return 404 ErrorResponse if population not found:
+  - what: `"Population '{id}' not found"`
+  - why: `"No population file exists for this ID"`
+  - fix: `"Check available populations via GET /api/populations"`
 - [ ] Add tests for profile endpoint with various column types
 
 **Dev Notes**:
@@ -176,6 +194,7 @@ The endpoint must use an extensible check registry pattern so EPIC-21 Story 21.5
 - Median: use `pc.quantile(table, q=0.5)` for approximation
 - Percentiles: compute p1, p5, p25, p50, p75, p95, p99 using `pc.quantiles()`
 - Null percentage: `(null_count / total_rows) * 100`
+- Histogram buckets: compute 20 equal-width bins from min to max; each bucket has `bin_start`, `bin_end`, `count` fields
 
 ### 20.7.4: Implement `GET /api/populations/{id}/crosstab` Endpoint (AC: #1, #3)
 
@@ -186,16 +205,23 @@ The endpoint must use an extensible check registry pattern so EPIC-21 Story 21.5
       col_a: str
       col_b: str
       data: list[dict[str, Any]]  # flattened crosstab with col_a, col_b, count columns
+      truncated: bool = False  # true if results limited to top 1000 combinations
   ```
 - [ ] Implement `crosstab_population(id: str, col_a: str, col_b: str)` endpoint with query parameters
-- [ ] Validate both columns exist in the population (return 400 with error message if not)
+- [ ] Validate both columns exist in the population (return 400 ErrorResponse if not):
+  - what: `"Column '{column_name}' not found"`
+  - why: `"The specified column does not exist in this population"`
+  - fix: `"Check available columns via GET /api/populations/{id}/profile"`
 - [ ] Load population file via PyArrow
 - [ ] Compute cross-tabulation:
   - Group by col_a and col_b
   - Count occurrences of each combination
   - Return as list of dictionaries with col_a, col_b, count keys
-- [ ] Limit to top 1000 combinations by count (warn if truncated)
-- [ ] Return 404 if population not found
+- [ ] Limit to top 1000 combinations by count (add `truncated: true` to response if limit exceeded)
+- [ ] Return 404 ErrorResponse if population not found:
+  - what: `"Population '{id}' not found"`
+  - why: `"No population file exists for this ID"`
+  - fix: `"Check available populations via GET /api/populations"`
 - [ ] Add tests for crosstab endpoint
 
 **Dev Notes**:
@@ -222,26 +248,57 @@ The endpoint must use an extensible check registry pattern so EPIC-21 Story 21.5
   ```
 - [ ] Implement `upload_population(file: UploadFile)` endpoint
 - [ ] Validate uploaded file is CSV or Parquet (check extension and content type)
-- [ ] Save file to `~/.reformlab/uploaded-populations/{original_filename}` with UUID prefix
+- [ ] Generate unique population ID: `uploaded-{uuid}`
+- [ ] Save file to `~/.reformlab/uploaded-populations/{id}.{csv|parquet}`
+- [ ] Create metadata sidecar file `{id}.meta.json` with:
+  - `id`: population ID
+  - `origin`: "uploaded"
+  - `created_date`: ISO 8601 timestamp
+  - `original_filename`: user's original filename
+  - `file_path`: path to saved data file
 - [ ] Load file via PyArrow to validate structure
 - [ ] Perform column validation:
   - Match against known ReformLab columns (household_id, person_id, income, etc.)
   - Report unrecognized columns
   - Report missing required columns (household_id is required)
-- [ ] Generate unique population ID: `uploaded-{uuid}`
 - [ ] Return validation response with `valid=True` if basic structure is valid
 - [ ] Add tests for upload endpoint with valid and invalid files
 
 **Dev Notes**:
 - Required columns: `household_id` (minimum for execution)
 - Known columns (from `reformlab.population` schemas): check against expected names
-- File size limit: 100 MB (enforced via FastAPI `UploadFile.spool_max_size`)
-- Virus/security: basic validation only; assume trusted environment for Story 20.7
-- Uploaded directory: create `~/.reformlab/uploaded-populations/` if not exists
-- File naming: `{uuid}-{original_filename}` to avoid collisions
-- Origin tag: uploaded populations get `origin="uploaded"`
+- File size limit: 100 MB (enforce via FastAPI `UploadFile.spool_max_size` exception handler)
+- Security: basic validation — sanitize filename, reject .exe/.sh/.bat extensions, use UUID prefix for path safety
+- Uploaded directory: create `~/.reformlab/uploaded-populations/` if not exists (0755 permissions)
+- File naming: `{id}.{csv|parquet}` where id is `uploaded-{uuid}`; sidecar is `{id}.meta.json`
+- ID→path resolution: `{id}.meta.json` stores the actual file path for list/preview/profile/crosstab operations
+- Origin tag: uploaded populations get `origin="uploaded"` persisted in sidecar file
 
-### 20.7.6: Implement `POST /api/validation/preflight` Endpoint with Extensible Check Registry (AC: #2)
+### 20.7.6: Implement `DELETE /api/populations/{id}` Endpoint (AC: #1)
+
+**Subtasks**:
+- [ ] Implement `delete_population(id: str)` endpoint
+- [ ] Check population origin by reading `{id}.meta.json` or file location
+- [ ] Reject deletion for built-in populations (return 403 ErrorResponse):
+  - what: `"Cannot delete built-in population"`
+  - why: `"Built-in populations are protected and cannot be deleted"`
+  - fix: `"Only uploaded and generated populations can be deleted"`
+- [ ] For uploaded/generated populations: delete data file and sidecar file
+- [ ] Return 204 No Content on successful deletion
+- [ ] Return 404 ErrorResponse if population not found:
+  - what: `"Population '{id}' not found"`
+  - why: `"No population file exists for this ID"`
+  - fix: `"Check available populations via GET /api/populations"`
+- [ ] Add tests for delete endpoint with built-in, uploaded, and generated populations
+
+**Dev Notes**:
+- Built-in populations are in `data/populations/` and cannot be deleted
+- Uploaded populations: delete both `{id}.csv|parquet` and `{id}.meta.json` from `~/.reformlab/uploaded-populations/`
+- Generated populations: delete both `{id}.csv|parquet` and `{id}.manifest.json` from appropriate data directory
+- Use `pathlib.Path` for filesystem operations; handle missing files gracefully
+- Return 204 with no body on success (FastAPI default for DELETE with no return value)
+
+### 20.7.7: Implement `POST /api/validation/preflight` Endpoint with Extensible Check Registry (AC: #2)
 
 **Subtasks**:
 - [ ] Add validation models to `src/reformlab/server/models.py`:
@@ -288,6 +345,7 @@ The endpoint must use an extensible check registry pattern so EPIC-21 Story 21.5
   - `portfolio-selected`: error if `scenario["portfolioName"]` is null/empty
   - `population-selected`: error if `scenario["populationIds"]` is empty
   - `time-horizon-valid`: error if `startYear >= endYear` or `endYear - startYear > 50`
+  - `investment-decisions-calibrated`: warning if `scenario["engineConfig"]["investmentDecisionsEnabled"]` is true but calibration data is missing
   - `memory-preflight`: calls existing `check_memory_requirements()` (reuse from `/api/runs/memory-check`)
 - [ ] Implement `preflight_validation(request: PreflightRequest)` endpoint
 - [ ] Register built-in checks at module import time
@@ -295,12 +353,18 @@ The endpoint must use an extensible check registry pattern so EPIC-21 Story 21.5
 
 **Dev Notes**:
 - Check registry design: module-level list + `register_check()` function allows EPIC-21 Story 21.5 to append checks without modifying core code
-- Memory check integration: reuse `check_memory_requirements()` from `reformlab.interfaces.api`
-- Scenario serialization: frontend sends `WorkspaceScenario` as dict; backend validates structure
+- Memory check integration: `check_memory_requirements()` is in `src/reformlab/server/routes/runs.py` (import from there, not `reformlab.interfaces.api`)
+- Scenario serialization format: `scenario` dict contains these optional fields (all may be null/missing for validation):
+  - `name: str | None`
+  - `portfolioName: str | None`
+  - `populationIds: list[str] | None`
+  - `engineConfig: dict | None` with `startYear`, `endYear`, `seed`, `investmentDecisionsEnabled`, `logitModel`, `discountRate`
+  - `policyType: str | None`
 - Severity handling: "warning" checks don't block execution, "error" checks do
 - Extensibility: import-time registration pattern means new checks are registered on server startup
+- Registry safety: `register_check()` should raise `ValueError` on duplicate check IDs to prevent accidental overwrites
 
-### 20.7.7: Wire New Endpoints into FastAPI App (AC: #1)
+### 20.7.8: Wire New Endpoints into FastAPI App (AC: #1)
 
 **Subtasks**:
 - [ ] Update `src/reformlab/server/routes/populations.py` to export the extended router
@@ -314,7 +378,7 @@ The endpoint must use an extensible check registry pattern so EPIC-21 Story 21.5
 - [ ] Add OpenAPI tags and descriptions for documentation
 - [ ] Verify all endpoints appear in `/docs` (FastAPI auto-generated docs)
 
-### 20.7.8: Add Comprehensive Tests for All Endpoints (AC: #1, #2, #3)
+### 20.7.9: Add Comprehensive Tests for All Endpoints (AC: #1, #2, #3)
 
 **Subtasks**:
 - [ ] Create `tests/server/test_populations_api.py` with test fixtures:
@@ -327,6 +391,7 @@ The endpoint must use an extensible check registry pattern so EPIC-21 Story 21.5
 - [ ] Test `GET /api/populations/{id}/crosstab` with valid and invalid column names
 - [ ] Test `POST /api/populations/upload` with valid CSV/Parquet files
 - [ ] Test `POST /api/populations/upload` rejects non-CSV/Parquet files
+- [ ] Test `DELETE /api/populations/{id}` with built-in (should fail 403), uploaded, and generated populations
 - [ ] Test `POST /api/validation/preflight` with valid and invalid scenarios
 - [ ] Test `POST /api/validation/preflight` includes all built-in check results
 - [ ] Test check registry extensibility (register custom check and verify it runs)
@@ -347,17 +412,21 @@ The endpoint must use an extensible check registry pattern so EPIC-21 Story 21.5
 - **Error Response Pattern**: All errors follow `{"what": str, "why": str, "fix": str}` format (see `ErrorResponse` model in `models.py`)
 - **File Storage Patterns**:
   - Built-in: `data/populations/{id}.{csv|parquet}`
-  - Uploaded: `~/.reformlab/uploaded-populations/{uuid}-{original_filename}`
+  - Uploaded: `~/.reformlab/uploaded-populations/{id}.{csv|parquet}` with `{id}.meta.json` sidecar
+  - Generated: data directory with `{id}.{csv|parquet}` and `{id}.manifest.json`
+  - Population search order: built-in → uploaded → generated (first match wins)
+  - All directories created lazily with 0755 permissions
   - Use `pathlib.Path` for all filesystem operations
 - **Type Safety**: Backend Pydantic models must match frontend TypeScript interfaces exactly
 - **Validation Registry**: Module-level registration pattern allows extensibility without core code changes
+- **Testing Isolation**: Upload directory should be configurable via `REFORMLAB_UPLOADED_POPULATIONS_DIR` env var for tests
 
 ### Source Tree Components
 
 | File | Modification |
 |------|--------------|
 | `src/reformlab/server/models.py` | Add PopulationPreviewResponse, PopulationProfileResponse, PopulationCrosstabResponse, PopulationUploadResponse, PopulationLibraryItem, PreflightRequest, PreflightResponse, ValidationCheckResult |
-| `src/reformlab/server/routes/populations.py` | Extend list_populations, add preview/profile/crosstab/upload endpoints |
+| `src/reformlab/server/routes/populations.py` | Extend list_populations, add preview/profile/crosstab/upload/delete endpoints |
 | `src/reformlab/server/routes/validation.py` | NEW: preflight endpoint with check registry |
 | `src/reformlab/server/validation.py` | NEW: check registry and built-in checks |
 | `src/reformlab/server/app.py` | Register validation router |
@@ -384,6 +453,7 @@ The endpoint must use an extensible check registry pattern so EPIC-21 Story 21.5
 - **Frontend expects**: `PopulationLibraryItem` with `origin` field — backend currently returns `PopulationItem` without it (Task 20.7.1 resolves this)
 - **Frontend mock data**: Story 20.4 uses mock data for preview/profile — this story replaces mocks with real endpoints
 - **Memory check duplication**: `/api/runs/memory-check` exists; preflight endpoint should reuse the same underlying function, not duplicate code
+- **Population path resolution**: `runs.py` `_resolve_population_path` currently only scans `data/populations/` — uploaded and generated populations won't be executable without extending this function to check additional directories and read sidecar files
 
 ---
 
@@ -415,6 +485,8 @@ The endpoint must use an extensible check registry pattern so EPIC-21 Story 21.5
 - Story 20.4 frontend uses mock data — these endpoints will replace mocks with real data
 - Story 20.5 validation gate calls `/api/validation/preflight` — this story implements that endpoint
 - Memory check reuses existing `check_memory_requirements()` function — no duplication needed
+- DELETE endpoint prevents deletion of built-in populations (403 error) while allowing uploaded/generated deletion
+- Population execution requires `runs.py` `_resolve_population_path` extension — this is a follow-up task noted in Detected Conflicts
 
 **EPIC-21 Coordination**:
 - Validation check registry design enables Story 21.5 to add trust-status rules
@@ -426,9 +498,10 @@ The endpoint must use an extensible check registry pattern so EPIC-21 Story 21.5
 
 **Backend**:
 - `src/reformlab/server/models.py` — extend with new response models
-- `src/reformlab/server/routes/populations.py` — extend with preview/profile/crosstab/upload
+- `src/reformlab/server/routes/populations.py` — extend with preview/profile/crosstab/upload/delete endpoints
 - `src/reformlab/server/routes/validation.py` — NEW: preflight endpoint
 - `src/reformlab/server/validation.py` — NEW: check registry
+- `src/reformlab/server/routes/runs.py` — extend `_resolve_population_path` to support uploaded/generated populations (follow-up task)
 - `src/reformlab/server/app.py` — register validation router
 - `tests/server/test_populations_api.py` — NEW: API tests
 
