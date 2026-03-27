@@ -16,6 +16,12 @@ import pyarrow as pa
 import pyarrow.compute as pc
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
+# Story 21.2 / AC7: Import canonical evidence literal types from reformlab.data
+from reformlab.data import (  # type: ignore[attr-defined]
+    DataAssetAccessMode,
+    DataAssetOrigin,
+    DataAssetTrustStatus,
+)
 from reformlab.server.dependencies import get_result_store
 from reformlab.server.models import (
     ColumnProfile,
@@ -107,7 +113,10 @@ def _find_population_file(population_id: str) -> Path | None:
     return None
 
 
-def _get_population_origin(population_id: str, file_path: Path | None) -> Literal["built-in", "generated", "uploaded"]:
+def _get_population_origin(
+    population_id: str,
+    file_path: Path | None,
+) -> Literal["built-in", "generated", "uploaded"]:
     """Determine the origin of a population."""
     if file_path is None:
         return "built-in"
@@ -125,6 +134,35 @@ def _get_population_origin(population_id: str, file_path: Path | None) -> Litera
         return "generated"
 
     return "built-in"
+
+
+def _map_to_canonical_evidence(
+    legacy_origin: Literal["built-in", "generated", "uploaded"],
+) -> tuple[DataAssetOrigin, DataAssetAccessMode, DataAssetTrustStatus]:
+    """Map legacy origin tag to canonical evidence classification.
+
+    Story 21.2 / AC4: Mapping rules for population evidence fields.
+    Legacy origin field is preserved separately for UI compatibility.
+
+    Returns:
+        (canonical_origin, access_mode, trust_status) tuple
+
+    Raises:
+        HTTPException: If legacy_origin is not a recognized value (fail-fast)
+    """
+    if legacy_origin == "built-in":
+        return ("synthetic-public", "bundled", "exploratory")
+    elif legacy_origin == "generated":
+        return ("synthetic-public", "bundled", "exploratory")
+    elif legacy_origin == "uploaded":
+        # User-uploaded data lacks official provenance, classified as synthetic-public
+        return ("synthetic-public", "bundled", "exploratory")
+    else:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unknown legacy origin: {legacy_origin!r}. "
+                    "Valid values: built-in, generated, uploaded"
+        )
 
 
 def _load_population_table(file_path: Path) -> pa.Table:
@@ -149,7 +187,7 @@ def _read_generated_metadata(population_id: str) -> dict[str, Any] | None:
         return None
 
     try:
-        return json.loads(manifest_path.read_text())
+        return json.loads(manifest_path.read_text())  # type: ignore[no-any-return]
     except (json.JSONDecodeError, OSError):
         return None
 
@@ -163,9 +201,36 @@ def _read_uploaded_metadata(population_id: str) -> dict[str, Any] | None:
         return None
 
     try:
-        return json.loads(meta_path.read_text())
+        return json.loads(meta_path.read_text())  # type: ignore[no-any-return]
     except (json.JSONDecodeError, OSError):
         return None
+
+
+def _get_canonical_evidence_from_metadata(
+    metadata: dict[str, Any] | None,
+    legacy_origin: Literal["built-in", "generated", "uploaded"],
+) -> tuple[DataAssetOrigin, DataAssetAccessMode, DataAssetTrustStatus]:
+    """Get canonical evidence fields from metadata with defaults for legacy files.
+
+    Story 21.2 / Task 9: Legacy metadata without canonical fields loads with
+    appropriate defaults via the mapping function.
+
+    Args:
+        metadata: Population metadata dict (may be None or missing canonical fields)
+        legacy_origin: Legacy origin string for fallback mapping
+
+    Returns:
+        (canonical_origin, access_mode, trust_status) tuple
+    """
+    if metadata and all(k in metadata for k in ("canonical_origin", "access_mode", "trust_status")):
+        # New metadata with canonical fields - use them directly
+        return (
+            metadata["canonical_origin"],
+            metadata["access_mode"],
+            metadata["trust_status"],
+        )
+    # Legacy metadata or missing fields - use mapping function
+    return _map_to_canonical_evidence(legacy_origin)
 
 
 # =============================================================================
@@ -235,6 +300,9 @@ def _scan_populations_with_origin() -> list[PopulationLibraryItem]:
                 elif part.isdigit() and len(part) >= 3:
                     households = int(part)
 
+            # Story 21.2 / AC3, AC4: Map legacy origin to canonical evidence fields
+            canonical_origin, access_mode, trust_status = _map_to_canonical_evidence(origin)
+
             items.append(
                 PopulationLibraryItem(
                     id=pop_id,
@@ -242,7 +310,10 @@ def _scan_populations_with_origin() -> list[PopulationLibraryItem]:
                     households=households,
                     source=source,
                     year=year,
-                    origin=origin,
+                    origin=origin,  # Legacy field preserved for UI compatibility
+                    canonical_origin=canonical_origin,  # Story 21.2 / AC1
+                    access_mode=access_mode,
+                    trust_status=trust_status,
                     column_count=column_count,
                     created_date=created_date,
                 )
@@ -265,7 +336,11 @@ def _scan_populations_with_origin() -> list[PopulationLibraryItem]:
                 meta = None
 
             if not meta:
-                logger.warning("Failed to read metadata for uploaded population '%s' from '%s'", pop_id, meta_path)
+                logger.warning(
+                    "Failed to read metadata for uploaded population '%s' from '%s'",
+                    pop_id,
+                    meta_path,
+                )
                 continue
 
             # Load column count from data file
@@ -281,6 +356,13 @@ def _scan_populations_with_origin() -> list[PopulationLibraryItem]:
                 except Exception:
                     pass
 
+            # Story 21.2 / Task 9: Get canonical evidence from metadata with defaults
+            # for legacy files
+            canonical_origin, access_mode, trust_status = _get_canonical_evidence_from_metadata(
+                meta,
+                "uploaded",
+            )
+
             items.append(
                 PopulationLibraryItem(
                     id=pop_id,
@@ -288,7 +370,10 @@ def _scan_populations_with_origin() -> list[PopulationLibraryItem]:
                     households=0,
                     source="uploaded",
                     year=2025,
-                    origin="uploaded",
+                    origin="uploaded",  # Legacy field preserved for UI compatibility
+                    canonical_origin=canonical_origin,  # Story 21.2 / AC1
+                    access_mode=access_mode,
+                    trust_status=trust_status,
                     column_count=column_count,
                     created_date=meta.get("created_date"),
                 )
@@ -787,10 +872,15 @@ async def upload_population(
 
         valid = len(missing_required) == 0
 
-        # Create metadata sidecar
+        # Create metadata sidecar with evidence fields (Story 21.2 / AC3)
+        canonical_origin, access_mode, trust_status = _map_to_canonical_evidence("uploaded")
         meta = {
             "id": population_id,
-            "origin": "uploaded",
+            "origin": "uploaded",  # Legacy field preserved
+            # Story 21.2 / AC3: Canonical evidence fields
+            "canonical_origin": canonical_origin,
+            "access_mode": access_mode,
+            "trust_status": trust_status,
             "created_date": datetime.now(timezone.utc).isoformat(),
             "original_filename": filename,
             "file_path": str(data_file),

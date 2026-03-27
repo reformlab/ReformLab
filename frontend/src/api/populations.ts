@@ -4,16 +4,19 @@
 
 import { apiFetch } from "./client";
 import type {
-  PopulationItem,
+  PopulationLibraryItem,
   PopulationPreviewResponse,
   PopulationProfileResponse,
   PopulationCrosstabResponse,
   PopulationUploadResponse,
 } from "./types";
 
-/** List available population datasets. */
-export async function listPopulations(): Promise<PopulationItem[]> {
-  const result = await apiFetch<{ populations: PopulationItem[] }>(
+/** List available population datasets.
+
+Story 21.2 / AC2: Returns PopulationLibraryItem[] with dual-field evidence classification.
+*/
+export async function listPopulations(): Promise<PopulationLibraryItem[]> {
+  const result = await apiFetch<{ populations: PopulationLibraryItem[] }>(
     "/api/populations",
   );
   return result.populations;

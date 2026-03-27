@@ -14,7 +14,7 @@ import { listPortfolios as apiListPortfolios, validatePortfolio as apiValidatePo
 import { listResults as apiListResults, deleteResult as apiDeleteResult } from "@/api/results";
 import { AuthError } from "@/api/client";
 import type {
-  PopulationItem,
+  PopulationLibraryItem,
   RunRequest,
   RunResponse,
   TemplateListItem,
@@ -28,9 +28,8 @@ import type {
   PopulationProfileResponse,
   PopulationCrosstabResponse,
 } from "@/api/types";
-import type { Population, Template, Parameter, MockDataSource, MockMergeMethod, MockPortfolio } from "@/data/mock-data";
+import type { Template, Parameter, MockDataSource, MockMergeMethod, MockPortfolio } from "@/data/mock-data";
 import {
-  mockPopulations,
   mockTemplates,
   mockParameters,
   mockDataSources,
@@ -44,7 +43,24 @@ import { mockPopulationPreview, mockPopulationProfile } from "@/data/mock-popula
 // ============================================================================
 
 export function usePopulations() {
-  const [populations, setPopulations] = useState<Population[]>(mockPopulations);
+  // Story 21.2 / AC6: Use PopulationLibraryItem directly from API
+  // Mock data fallback with minimal evidence fields
+  const mockWithEvidence: PopulationLibraryItem[] = [
+    {
+      id: "mock-population",
+      name: "Mock Population",
+      households: 1000,
+      source: "mock",
+      year: 2025,
+      origin: "built-in",
+      canonical_origin: "synthetic-public",
+      access_mode: "bundled",
+      trust_status: "exploratory",
+      column_count: 10,
+      created_date: null,
+    },
+  ];
+  const [populations, setPopulations] = useState<PopulationLibraryItem[]>(mockWithEvidence);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [usingMockData, setUsingMockData] = useState(true);
@@ -54,8 +70,9 @@ export function usePopulations() {
     setError(null);
     try {
       const items = await listPopulations();
+      // Story 21.2 / AC6: Pass through all evidence fields from API response
       if (items.length > 0) {
-        setPopulations(items.map(mapPopulation));
+        setPopulations(items);
         setUsingMockData(false);
       }
       // If empty, keep mock data as fallback
@@ -69,16 +86,6 @@ export function usePopulations() {
   }, []);
 
   return { populations, loading, error, usingMockData, refetch: fetch };
-}
-
-function mapPopulation(item: PopulationItem): Population {
-  return {
-    id: item.id,
-    name: item.name,
-    households: item.households,
-    source: item.source,
-    year: item.year,
-  };
 }
 
 // ============================================================================

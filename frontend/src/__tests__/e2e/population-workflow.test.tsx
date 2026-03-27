@@ -101,14 +101,28 @@ const mockPopulations = [
   {
     id: "fr-synthetic-2024",
     name: "France Synthetic 2024",
+    households: 10000,
+    source: "insee",
+    year: 2024,
     origin: "built-in" as const,
+    // Story 21.2 / AC2: Canonical evidence fields
+    canonical_origin: "synthetic-public" as const,
+    access_mode: "bundled" as const,
+    trust_status: "exploratory" as const,
     column_count: 15,
     created_date: null,
   },
   {
     id: "eu-synthetic-2024",
     name: "EU Synthetic 2024",
+    households: 20000,
+    source: "eurostat",
+    year: 2024,
     origin: "built-in" as const,
+    // Story 21.2 / AC2: Canonical evidence fields
+    canonical_origin: "synthetic-public" as const,
+    access_mode: "bundled" as const,
+    trust_status: "exploratory" as const,
     column_count: 12,
     created_date: null,
   },

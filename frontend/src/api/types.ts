@@ -169,6 +169,16 @@ export interface DataSourceItem {
   variable_count: number;
   record_count: number | null;
   source_url: string;
+  // Story 21.2 / AC5, AC6: Evidence classification fields for data fusion sources
+  origin: "open-official" | "synthetic-public";
+  access_mode: "bundled" | "fetched";
+  trust_status:
+    | "production-safe"
+    | "exploratory"
+    | "demo-only"
+    | "validation-pending"
+    | "not-for-public-inference";
+  data_class: "structural";
 }
 
 export interface ColumnInfo {
@@ -472,7 +482,17 @@ export interface PopulationUploadResponse {
 }
 
 export interface PopulationLibraryItem extends PopulationItem {
+  // Legacy field preserved for UI behavior (edit/delete button visibility)
   origin: "built-in" | "generated" | "uploaded";
+  // Story 21.2 / AC1, AC2: New canonical fields for evidence governance
+  canonical_origin: "open-official" | "synthetic-public";
+  access_mode: "bundled" | "fetched";
+  trust_status:
+    | "production-safe"
+    | "exploratory"
+    | "demo-only"
+    | "validation-pending"
+    | "not-for-public-inference";
   column_count: number;
   created_date: string | null;
 }

@@ -32,13 +32,34 @@ export interface PopulationLibraryScreenProps {
 }
 
 // ============================================================================
-// Origin badge
+// Origin and trust status badges
 // ============================================================================
 
 function OriginBadge({ origin }: { origin: PopulationLibraryItem["origin"] }) {
   const label = origin === "built-in" ? "[Built-in]" : origin === "generated" ? "[Generated]" : "[Uploaded]";
   const variant = origin === "built-in" ? "secondary" : origin === "generated" ? "default" : "outline";
   return <Badge variant={variant} className="text-xs">{label}</Badge>;
+}
+
+/** Trust status badge component.
+
+Story 21.2 / AC8: Display trust status using canonical evidence field.
+*/
+function TrustStatusBadge({ trustStatus }: { trustStatus: PopulationLibraryItem["trust_status"] }) {
+  switch (trustStatus) {
+    case "production-safe":
+      return <Badge className="bg-green-100 text-green-800 text-xs">Production-Safe</Badge>;
+    case "exploratory":
+      return <Badge className="bg-yellow-100 text-yellow-800 text-xs">Exploratory</Badge>;
+    case "demo-only":
+      return <Badge className="bg-gray-100 text-gray-800 text-xs">Demo Only</Badge>;
+    case "validation-pending":
+      return <Badge className="bg-orange-100 text-orange-800 text-xs">Validation Pending</Badge>;
+    case "not-for-public-inference":
+      return <Badge className="bg-red-100 text-red-800 text-xs">Internal Use Only</Badge>;
+    default:
+      return <Badge variant="outline" className="text-xs">{trustStatus}</Badge>;
+  }
 }
 
 // ============================================================================
@@ -80,7 +101,11 @@ function PopulationCard({
       {/* Header */}
       <div className="flex flex-col gap-1 pr-6">
         <span className="text-sm font-semibold text-slate-900 leading-tight">{population.name}</span>
-        <OriginBadge origin={population.origin} />
+        {/* Story 21.2 / AC8: Display both origin badge (legacy) and trust status badge (canonical) */}
+        <div className="flex flex-wrap gap-1">
+          <OriginBadge origin={population.origin} />
+          <TrustStatusBadge trustStatus={population.trust_status} />
+        </div>
       </div>
 
       {/* Metadata */}
