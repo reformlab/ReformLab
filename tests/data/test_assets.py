@@ -1198,3 +1198,555 @@ def validation_descriptor() -> DataAssetDescriptor:
         access_mode="fetched",
         trust_status="production-safe",
     )
+
+
+# ============================================================================
+# Story 21.5 Tests - Calibration/Validation Asset Extensions
+# ============================================================================
+
+
+class TestCalibrationAssetStory21_5:
+    """Tests for CalibrationAsset Story 21.5 extensions.
+
+    Story 21.5 / Task 1 - Train/test separation fields.
+    """
+
+    def test_new_train_test_separation_fields(self) -> None:
+        """Given calibration asset, when created with new fields, then fields are accessible."""
+        descriptor = DataAssetDescriptor(
+            asset_id="calibration-test",
+            name="Test Calibration",
+            description="Test calibration with new fields",
+            data_class="calibration",
+            origin="open-official",
+            access_mode="fetched",
+            trust_status="production-safe",
+        )
+        asset = CalibrationAsset(
+            descriptor=descriptor,
+            target_type="transition_rate",
+            coverage="national",
+            # Story 21.5 / Task 1: New train/test separation fields
+            is_in_sample=True,
+            holdout_group="train",
+            calibration_method="maximum_likelihood",
+            target_years=(2015, 2016, 2017, 2018, 2019, 2020),
+        )
+        assert asset.is_in_sample is True
+        assert asset.holdout_group == "train"
+        assert asset.calibration_method == "maximum_likelihood"
+        assert asset.target_years == (2015, 2016, 2017, 2018, 2019, 2020)
+
+    def test_holdout_group_validation_accepts_valid_values(self) -> None:
+        """Given valid holdout_group values, when created, then succeeds."""
+        descriptor = DataAssetDescriptor(
+            asset_id="calibration-test",
+            name="Test",
+            description="Test",
+            data_class="calibration",
+            origin="open-official",
+            access_mode="fetched",
+            trust_status="production-safe",
+        )
+        for holdout_group in ["train", "validation", "test", None]:
+            asset = CalibrationAsset(
+                descriptor=descriptor,
+                target_type="marginal",
+                coverage="national",
+                holdout_group=holdout_group,  # type: ignore[arg-type]
+            )
+            assert asset.holdout_group == holdout_group
+
+    def test_invalid_holdout_group_raises_error(self) -> None:
+        """Given invalid holdout_group, when created, then raises."""
+        descriptor = DataAssetDescriptor(
+            asset_id="calibration-test",
+            name="Test",
+            description="Test",
+            data_class="calibration",
+            origin="open-official",
+            access_mode="fetched",
+            trust_status="production-safe",
+        )
+        with pytest.raises(EvidenceAssetError, match="holdout_group.*valid HoldoutGroup"):
+            CalibrationAsset(
+                descriptor=descriptor,
+                target_type="marginal",
+                coverage="national",
+                holdout_group="invalid_group",  # type: ignore[arg-type]
+            )
+
+    def test_calibration_method_validation(self) -> None:
+        """Given each valid calibration_method, when created, then succeeds."""
+        descriptor = DataAssetDescriptor(
+            asset_id="calibration-test",
+            name="Test",
+            description="Test",
+            data_class="calibration",
+            origin="open-official",
+            access_mode="fetched",
+            trust_status="production-safe",
+        )
+        for method in ["maximum_likelihood", "method_of_moments", "bayesian"]:
+            asset = CalibrationAsset(
+                descriptor=descriptor,
+                target_type="marginal",
+                coverage="national",
+                calibration_method=method,  # type: ignore[arg-type]
+            )
+            assert asset.calibration_method == method
+
+    def test_invalid_calibration_method_raises_error(self) -> None:
+        """Given invalid calibration_method, when created, then raises."""
+        descriptor = DataAssetDescriptor(
+            asset_id="calibration-test",
+            name="Test",
+            description="Test",
+            data_class="calibration",
+            origin="open-official",
+            access_mode="fetched",
+            trust_status="production-safe",
+        )
+        with pytest.raises(EvidenceAssetError, match="calibration_method.*valid CalibrationMethod"):
+            CalibrationAsset(
+                descriptor=descriptor,
+                target_type="marginal",
+                coverage="national",
+                calibration_method="invalid_method",  # type: ignore[arg-type]
+            )
+
+    def test_to_json_includes_new_fields(self) -> None:
+        """Given calibration asset with new fields, when serialized, then includes new fields."""
+        descriptor = DataAssetDescriptor(
+            asset_id="calibration-test",
+            name="Test",
+            description="Test",
+            data_class="calibration",
+            origin="open-official",
+            access_mode="fetched",
+            trust_status="production-safe",
+        )
+        asset = CalibrationAsset(
+            descriptor=descriptor,
+            target_type="transition_rate",
+            coverage="national",
+            is_in_sample=False,
+            holdout_group="validation",
+            calibration_method="bayesian",
+            target_years=(2021, 2022),
+        )
+        json_dict = asset.to_json()
+        assert json_dict["is_in_sample"] is False
+        assert json_dict["holdout_group"] == "validation"
+        assert json_dict["calibration_method"] == "bayesian"
+        assert json_dict["target_years"] == [2021, 2022]
+
+    def test_from_json_restores_new_fields(self) -> None:
+        """Given JSON with new fields, when deserialized, then restores all fields."""
+        json_dict = {
+            "descriptor": {
+                "asset_id": "calibration-test",
+                "name": "Test",
+                "description": "Test",
+                "data_class": "calibration",
+                "origin": "open-official",
+                "access_mode": "fetched",
+                "trust_status": "production-safe",
+            },
+            "target_type": "adoption_rate",
+            "coverage": "regional",
+            # Story 21.5 / Task 1: New fields
+            "is_in_sample": True,
+            "holdout_group": "test",
+            "calibration_method": "method_of_moments",
+            "target_years": [2018, 2019, 2020],
+        }
+        asset = CalibrationAsset.from_json(json_dict)
+        assert asset.is_in_sample is True
+        assert asset.holdout_group == "test"
+        assert asset.calibration_method == "method_of_moments"
+        assert asset.target_years == (2018, 2019, 2020)
+
+    def test_from_json_backward_compatible_without_new_fields(self) -> None:
+        """Given JSON without new fields, when deserialized, then uses defaults."""
+        json_dict = {
+            "descriptor": {
+                "asset_id": "calibration-test",
+                "name": "Test",
+                "description": "Test",
+                "data_class": "calibration",
+                "origin": "open-official",
+                "access_mode": "fetched",
+                "trust_status": "production-safe",
+            },
+            "target_type": "marginal",
+            "coverage": "national",
+        }
+        asset = CalibrationAsset.from_json(json_dict)
+        # Default values for new fields
+        assert asset.is_in_sample is True  # Default
+        assert asset.holdout_group is None  # Default
+        assert asset.calibration_method == "maximum_likelihood"  # Default
+        assert asset.target_years == ()  # Default
+
+    def test_from_json_validates_target_years_are_integers(self) -> None:
+        """Given target_years with non-integers, when deserialized, then raises."""
+        json_dict = {
+            "descriptor": {
+                "asset_id": "calibration-test",
+                "name": "Test",
+                "description": "Test",
+                "data_class": "calibration",
+                "origin": "open-official",
+                "access_mode": "fetched",
+                "trust_status": "production-safe",
+            },
+            "target_type": "marginal",
+            "coverage": "national",
+            "target_years": [2015, "invalid", 2017],  # Invalid: string in list
+        }
+        with pytest.raises(EvidenceAssetError, match="target_years.*contains invalid value"):
+            CalibrationAsset.from_json(json_dict)
+
+
+class TestValidationAssetStory21_5:
+    """Tests for ValidationAsset Story 21.5 extensions.
+
+    Story 21.5 / Task 1 - Certification fields.
+    """
+
+    def test_new_certification_fields(self) -> None:
+        """Given validation asset, when created with new fields, then fields are accessible."""
+        descriptor = DataAssetDescriptor(
+            asset_id="validation-test",
+            name="Test Validation",
+            description="Test validation with new fields",
+            data_class="validation",
+            origin="open-official",
+            access_mode="fetched",
+            trust_status="production-safe",
+        )
+        asset = ValidationAsset(
+            descriptor=descriptor,
+            validation_type="marginal_check",
+            benchmark_status="passed",
+            criteria={"max_relative_error": 0.05},
+            # Story 21.5 / Task 1: New certification fields
+            certified_at="2026-03-27T15:00:00Z",
+            certified_by="analyst@example.com",
+            validation_method="holdout",
+            holdout_years=(2021, 2022),
+        )
+        assert asset.certified_at == "2026-03-27T15:00:00Z"
+        assert asset.certified_by == "analyst@example.com"
+        assert asset.validation_method == "holdout"
+        assert asset.holdout_years == (2021, 2022)
+
+    def test_validation_method_validation(self) -> None:
+        """Given each valid validation_method, when created, then succeeds."""
+        descriptor = DataAssetDescriptor(
+            asset_id="validation-test",
+            name="Test",
+            description="Test",
+            data_class="validation",
+            origin="open-official",
+            access_mode="fetched",
+            trust_status="production-safe",
+        )
+        for method in ["holdout", "cross_validation", "external", "bootstrap"]:
+            asset = ValidationAsset(
+                descriptor=descriptor,
+                validation_type="marginal_check",
+                benchmark_status="passed",
+                criteria={},
+                validation_method=method,  # type: ignore[arg-type]
+            )
+            assert asset.validation_method == method
+
+    def test_invalid_validation_method_raises_error(self) -> None:
+        """Given invalid validation_method, when created, then raises."""
+        descriptor = DataAssetDescriptor(
+            asset_id="validation-test",
+            name="Test",
+            description="Test",
+            data_class="validation",
+            origin="open-official",
+            access_mode="fetched",
+            trust_status="production-safe",
+        )
+        with pytest.raises(EvidenceAssetError, match="validation_method.*valid ValidationMethod"):
+            ValidationAsset(
+                descriptor=descriptor,
+                validation_type="marginal_check",
+                benchmark_status="passed",
+                criteria={},
+                validation_method="invalid_method",  # type: ignore[arg-type]
+            )
+
+    def test_to_json_includes_new_fields(self) -> None:
+        """Given validation asset with new fields, when serialized, then includes new fields."""
+        descriptor = DataAssetDescriptor(
+            asset_id="validation-test",
+            name="Test",
+            description="Test",
+            data_class="validation",
+            origin="open-official",
+            access_mode="fetched",
+            trust_status="production-safe",
+        )
+        asset = ValidationAsset(
+            descriptor=descriptor,
+            validation_type="joint_distribution",
+            benchmark_status="passed",
+            criteria={"chi_squared_p_value": 0.95},
+            certified_at="2026-03-27T10:30:00Z",
+            certified_by="system",
+            validation_method="cross_validation",
+            holdout_years=(2020, 2021, 2022),
+        )
+        json_dict = asset.to_json()
+        assert json_dict["certified_at"] == "2026-03-27T10:30:00Z"
+        assert json_dict["certified_by"] == "system"
+        assert json_dict["validation_method"] == "cross_validation"
+        assert json_dict["holdout_years"] == [2020, 2021, 2022]
+
+    def test_from_json_restores_new_fields(self) -> None:
+        """Given JSON with new fields, when deserialized, then restores all fields."""
+        json_dict = {
+            "descriptor": {
+                "asset_id": "validation-test",
+                "name": "Test",
+                "description": "Test",
+                "data_class": "validation",
+                "origin": "open-official",
+                "access_mode": "fetched",
+                "trust_status": "production-safe",
+            },
+            "validation_type": "subgroup_stability",
+            "benchmark_status": "passed",
+            "criteria": {"min_subgroup_n": 100},
+            # Story 21.5 / Task 1: New certification fields
+            "certified_at": "2026-03-27T12:00:00Z",
+            "certified_by": "expert@institution.edu",
+            "validation_method": "external",
+            "holdout_years": [2021],
+        }
+        asset = ValidationAsset.from_json(json_dict)
+        assert asset.certified_at == "2026-03-27T12:00:00Z"
+        assert asset.certified_by == "expert@institution.edu"
+        assert asset.validation_method == "external"
+        assert asset.holdout_years == (2021,)
+
+    def test_from_json_backward_compatible_without_new_fields(self) -> None:
+        """Given JSON without new fields, when deserialized, then uses defaults."""
+        json_dict = {
+            "descriptor": {
+                "asset_id": "validation-test",
+                "name": "Test",
+                "description": "Test",
+                "data_class": "validation",
+                "origin": "open-official",
+                "access_mode": "fetched",
+                "trust_status": "production-safe",
+            },
+            "validation_type": "marginal_check",
+            "benchmark_status": "pending",
+            "criteria": {},
+        }
+        asset = ValidationAsset.from_json(json_dict)
+        # Default values for new fields
+        assert asset.certified_at is None  # Default
+        assert asset.certified_by is None  # Default
+        assert asset.validation_method == "holdout"  # Default
+        assert asset.holdout_years == ()  # Default
+
+    def test_from_json_validates_holdout_years_are_integers(self) -> None:
+        """Given holdout_years with non-integers, when deserialized, then raises."""
+        json_dict = {
+            "descriptor": {
+                "asset_id": "validation-test",
+                "name": "Test",
+                "description": "Test",
+                "data_class": "validation",
+                "origin": "open-official",
+                "access_mode": "fetched",
+                "trust_status": "production-safe",
+            },
+            "validation_type": "marginal_check",
+            "benchmark_status": "passed",
+            "criteria": {},
+            "holdout_years": [2021, "invalid", 2022],  # Invalid: string in list
+        }
+        with pytest.raises(EvidenceAssetError, match="holdout_years.*contains invalid value"):
+            ValidationAsset.from_json(json_dict)
+
+
+class TestAssetLoadFunctionsStory21_5:
+    """Tests for asset load functions.
+
+    Story 21.5 / Task 1, Task 5.
+    """
+
+    def test_load_calibration_asset_missing_folder_raises_error(self, tmp_path) -> None:
+        """Given non-existent asset_id, when loading, then raises EvidenceAssetError."""
+        # Temporarily override base path for test
+        import reformlab.data.assets as assets_module
+        original_path = assets_module._CALIBRATION_ASSETS_BASE_PATH
+        assets_module._CALIBRATION_ASSETS_BASE_PATH = tmp_path
+
+        try:
+            with pytest.raises(EvidenceAssetError, match="folder does not exist"):
+                assets_module.load_calibration_asset("non-existent-asset")
+        finally:
+            assets_module._CALIBRATION_ASSETS_BASE_PATH = original_path
+
+    def test_load_validation_asset_missing_folder_raises_error(self, tmp_path) -> None:
+        """Given non-existent asset_id, when loading, then raises EvidenceAssetError."""
+        import reformlab.data.assets as assets_module
+        original_path = assets_module._VALIDATION_ASSETS_BASE_PATH
+        assets_module._VALIDATION_ASSETS_BASE_PATH = tmp_path
+
+        try:
+            with pytest.raises(EvidenceAssetError, match="folder does not exist"):
+                assets_module.load_validation_asset("non-existent-asset")
+        finally:
+            assets_module._VALIDATION_ASSETS_BASE_PATH = original_path
+
+    def test_load_calibration_asset_missing_descriptor_raises_error(self, tmp_path) -> None:
+        """Given asset folder without descriptor.json, when loading, then raises."""
+        import reformlab.data.assets as assets_module
+        original_path = assets_module._CALIBRATION_ASSETS_BASE_PATH
+        assets_module._CALIBRATION_ASSETS_BASE_PATH = tmp_path
+
+        try:
+            # Create folder but no descriptor.json
+            asset_folder = tmp_path / "test-asset"
+            asset_folder.mkdir()
+
+            with pytest.raises(EvidenceAssetError, match="missing required file.*descriptor.json"):
+                assets_module.load_calibration_asset("test-asset")
+        finally:
+            assets_module._VALIDATION_ASSETS_BASE_PATH = original_path
+
+    def test_load_calibration_asset_missing_metadata_raises_error(self, tmp_path) -> None:
+        """Given asset folder without metadata.json, when loading, then raises."""
+        import reformlab.data.assets as assets_module
+        original_path = assets_module._CALIBRATION_ASSETS_BASE_PATH
+        assets_module._CALIBRATION_ASSETS_BASE_PATH = tmp_path
+
+        try:
+            # Create folder with descriptor.json but no metadata.json
+            asset_folder = tmp_path / "test-asset"
+            asset_folder.mkdir()
+
+            import json
+            with (asset_folder / "descriptor.json").open("w") as f:
+                json.dump({
+                    "asset_id": "test-asset",
+                    "name": "Test",
+                    "description": "Test",
+                    "data_class": "calibration",
+                    "origin": "open-official",
+                    "access_mode": "fetched",
+                    "trust_status": "production-safe",
+                }, f)
+
+            with pytest.raises(EvidenceAssetError, match="missing required file.*metadata.json"):
+                assets_module.load_calibration_asset("test-asset")
+        finally:
+            assets_module._CALIBRATION_ASSETS_BASE_PATH = original_path
+
+    def test_load_calibration_asset_success(self, tmp_path) -> None:
+        """Given valid asset folder, when loading, then returns CalibrationAsset."""
+        import reformlab.data.assets as assets_module
+        import json
+
+        original_path = assets_module._CALIBRATION_ASSETS_BASE_PATH
+        assets_module._CALIBRATION_ASSETS_BASE_PATH = tmp_path
+
+        try:
+            asset_folder = tmp_path / "test-calibration"
+            asset_folder.mkdir()
+
+            # Write descriptor.json
+            descriptor = {
+                "asset_id": "test-calibration",
+                "name": "Test Calibration",
+                "description": "Test calibration asset",
+                "data_class": "calibration",
+                "origin": "open-official",
+                "access_mode": "fetched",
+                "trust_status": "production-safe",
+            }
+            with (asset_folder / "descriptor.json").open("w") as f:
+                json.dump(descriptor, f)
+
+            # Write metadata.json with Story 21.5 fields
+            metadata = {
+                "target_type": "transition_rate",
+                "coverage": "national",
+                "is_in_sample": True,
+                "holdout_group": "train",
+                "calibration_method": "maximum_likelihood",
+                "target_years": [2015, 2016, 2017],
+            }
+            with (asset_folder / "metadata.json").open("w") as f:
+                json.dump(metadata, f)
+
+            asset = assets_module.load_calibration_asset("test-calibration")
+            assert asset.descriptor.asset_id == "test-calibration"
+            assert asset.target_type == "transition_rate"
+            assert asset.is_in_sample is True
+            assert asset.holdout_group == "train"
+            assert asset.calibration_method == "maximum_likelihood"
+            assert asset.target_years == (2015, 2016, 2017)
+        finally:
+            assets_module._CALIBRATION_ASSETS_BASE_PATH = original_path
+
+    def test_load_validation_asset_success(self, tmp_path) -> None:
+        """Given valid asset folder, when loading, then returns ValidationAsset."""
+        import reformlab.data.assets as assets_module
+        import json
+
+        original_path = assets_module._VALIDATION_ASSETS_BASE_PATH
+        assets_module._VALIDATION_ASSETS_BASE_PATH = tmp_path
+
+        try:
+            asset_folder = tmp_path / "test-validation"
+            asset_folder.mkdir()
+
+            # Write descriptor.json
+            descriptor = {
+                "asset_id": "test-validation",
+                "name": "Test Validation",
+                "description": "Test validation asset",
+                "data_class": "validation",
+                "origin": "open-official",
+                "access_mode": "fetched",
+                "trust_status": "production-safe",
+            }
+            with (asset_folder / "descriptor.json").open("w") as f:
+                json.dump(descriptor, f)
+
+            # Write metadata.json with Story 21.5 fields
+            metadata = {
+                "validation_type": "marginal_check",
+                "benchmark_status": "passed",
+                "criteria": {"max_relative_error": 0.05},
+                "certified_at": "2026-03-27T15:00:00Z",
+                "certified_by": "analyst@example.com",
+                "validation_method": "holdout",
+                "holdout_years": [2021, 2022],
+            }
+            with (asset_folder / "metadata.json").open("w") as f:
+                json.dump(metadata, f)
+
+            asset = assets_module.load_validation_asset("test-validation")
+            assert asset.descriptor.asset_id == "test-validation"
+            assert asset.validation_type == "marginal_check"
+            assert asset.certified_at == "2026-03-27T15:00:00Z"
+            assert asset.certified_by == "analyst@example.com"
+            assert asset.validation_method == "holdout"
+            assert asset.holdout_years == (2021, 2022)
+        finally:
+            assets_module._VALIDATION_ASSETS_BASE_PATH = original_path

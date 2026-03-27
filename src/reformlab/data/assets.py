@@ -20,8 +20,10 @@ See also:
 
 from __future__ import annotations
 
+import json
 import math
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Literal, get_args
 
 import pyarrow as pa
@@ -93,11 +95,68 @@ Values define the outcome of a validation benchmark:
 Story 21.3 / AC4.
 """
 
+# ============================================================================
+# Additional Literal Type Definitions — Story 21.5
+# ============================================================================
+#
+# These literal types define valid values for train/test separation,
+# calibration methods, and validation methods.
+
+HoldoutGroup = Literal[
+    "train",
+    "validation",
+    "test",
+]
+"""Holdout group literal for train/test separation.
+
+Values define which holdout group a calibration or validation dataset belongs to:
+- ``"train"``: In-sample training data for calibration
+- ``"validation"``: Holdout validation set for tuning
+- ``"test"``: Final test set for evaluation
+
+Story 21.5 / Task 1.
+"""
+
+CalibrationMethod = Literal[
+    "maximum_likelihood",
+    "method_of_moments",
+    "bayesian",
+]
+"""Calibration method literal.
+
+Values define which statistical method is used for calibration:
+- ``"maximum_likelihood"``: Maximum likelihood estimation
+- ``"method_of_moments"``: Method of moments estimation
+- ``"bayesian"``: Bayesian estimation with priors
+
+Story 21.5 / Task 1.
+"""
+
+ValidationMethod = Literal[
+    "holdout",
+    "cross_validation",
+    "external",
+    "bootstrap",
+]
+"""Validation method literal.
+
+Values define which validation method is used:
+- ``"holdout"``: Single train/validation/test split
+- ``"cross_validation"``: K-fold cross-validation
+- ``"external"``: External validation against independent dataset
+- ``"bootstrap"``: Bootstrap resampling validation
+
+Story 21.5 / Task 1.
+"""
+
 # Runtime validation constants for Literal types
 # Using get_args() ensures single source of truth from Literal definitions (Story 21.1 pattern)
 _VALID_CALIBRATION_TARGET_TYPES = get_args(CalibrationTargetType)
 _VALID_VALIDATION_TYPES = get_args(ValidationType)
 _VALID_BENCHMARK_STATUSES = get_args(ValidationBenchmarkStatus)
+_VALID_HOLDOUT_GROUPS = get_args(HoldoutGroup)
+_VALID_CALIBRATION_METHODS = get_args(CalibrationMethod)
+_VALID_VALIDATION_METHODS = get_args(ValidationMethod)
 
 # ============================================================================
 # Structural Asset
@@ -641,6 +700,9 @@ class CalibrationAsset:
     Calibration data defines targets for fitting the model to observed reality —
     distribution marginals, official aggregates, technology adoption rates, etc.
 
+    Story 21.5 extends CalibrationAsset with train/test separation fields to prevent
+    leakage between calibration and validation data.
+
     Attributes
     ----------
     descriptor : DataAssetDescriptor
@@ -657,8 +719,18 @@ class CalibrationAsset:
         Statistical confidence level (e.g., ``0.95`` for 95% confidence).
     methodology_notes : str
         Free-text notes on calibration methodology.
+    is_in_sample : bool
+        Whether this calibration data is in-sample (True) or out-of-sample (False).
+        Story 21.5 / Task 1.
+    holdout_group : HoldoutGroup | None
+        Holdout group designation for train/test separation. None if not applicable.
+        Story 21.5 / Task 1.
+    calibration_method : CalibrationMethod
+        Statistical method used for calibration. Story 21.5 / Task 1.
+    target_years : tuple[int, ...]
+        Years covered by this calibration target. Story 21.5 / Task 1.
 
-    Story 21.3 / AC3.
+    Story 21.3 / AC3, Story 21.5 / Task 1.
     """
 
     descriptor: DataAssetDescriptor
@@ -668,13 +740,18 @@ class CalibrationAsset:
     margin_of_error: float | None = None
     confidence_level: float | None = None
     methodology_notes: str = ""
+    # Story 21.5 / Task 1: Train/test separation fields
+    is_in_sample: bool = True
+    holdout_group: HoldoutGroup | None = None
+    calibration_method: CalibrationMethod = "maximum_likelihood"
+    target_years: tuple[int, ...] = ()
 
     def __post_init__(self) -> None:
-        """Validate data_class and target_type are valid.
+        """Validate data_class, target_type, and new Story 21.5 fields.
 
         Raises EvidenceAssetError if validation fails.
 
-        Story 21.3 / AC9, AC10.
+        Story 21.3 / AC9, AC10, Story 21.5 / Task 1.
         """
         if self.descriptor.data_class != "calibration":
             raise EvidenceAssetError(
@@ -688,10 +765,24 @@ class CalibrationAsset:
                 f"CalibrationTargetType - use one of {_VALID_CALIBRATION_TARGET_TYPES}"
             )
 
+        # Story 21.5 / Task 1: Validate holdout_group is valid
+        if self.holdout_group is not None and self.holdout_group not in _VALID_HOLDOUT_GROUPS:
+            raise EvidenceAssetError(
+                f"CalibrationAsset holdout_group {self.holdout_group!r} is not a valid "
+                f"HoldoutGroup - use one of {_VALID_HOLDOUT_GROUPS} or None"
+            )
+
+        # Story 21.5 / Task 1: Validate calibration_method is valid
+        if self.calibration_method not in _VALID_CALIBRATION_METHODS:
+            raise EvidenceAssetError(
+                f"CalibrationAsset calibration_method {self.calibration_method!r} is not a valid "
+                f"CalibrationMethod - use one of {_VALID_CALIBRATION_METHODS}"
+            )
+
     def to_json(self) -> dict[str, Any]:
         """Serialize to a JSON-compatible dict.
 
-        Story 21.3 / AC6.
+        Story 21.3 / AC6, Story 21.5 / Task 1.
 
         Returns
         -------
@@ -702,6 +793,9 @@ class CalibrationAsset:
             "descriptor": self.descriptor.to_json(),
             "target_type": self.target_type,
             "coverage": self.coverage,
+            # Story 21.5 / Task 1: New train/test separation fields
+            "is_in_sample": self.is_in_sample,
+            "calibration_method": self.calibration_method,
         }
         if self.source_material:
             result["source_material"] = list(self.source_material)
@@ -711,13 +805,18 @@ class CalibrationAsset:
             result["confidence_level"] = self.confidence_level
         if self.methodology_notes:
             result["methodology_notes"] = self.methodology_notes
+        # Story 21.5 / Task 1: Optional fields (include when not default)
+        if self.holdout_group is not None:
+            result["holdout_group"] = self.holdout_group
+        if self.target_years:
+            result["target_years"] = list(self.target_years)
         return result
 
     @classmethod
     def from_json(cls, data: dict[str, Any]) -> CalibrationAsset:
         """Deserialize from a JSON-compatible dict with full validation.
 
-        Story 21.3 / AC6.
+        Story 21.3 / AC6, Story 21.5 / Task 1.
 
         Parameters
         ----------
@@ -753,6 +852,49 @@ class CalibrationAsset:
                 f"CalibrationAsset JSON target_type {target_type!r} is not a valid "
                 f"CalibrationTargetType - use one of {_VALID_CALIBRATION_TARGET_TYPES}"
             )
+
+        # Story 21.5 / Task 1: Validate calibration_method
+        calibration_method = data.get("calibration_method", "maximum_likelihood")
+        if calibration_method not in _VALID_CALIBRATION_METHODS:
+            raise EvidenceAssetError(
+                f"CalibrationAsset JSON calibration_method {calibration_method!r} is not a valid "
+                f"CalibrationMethod - use one of {_VALID_CALIBRATION_METHODS}"
+            )
+
+        # Story 21.5 / Task 1: Extract and validate is_in_sample (default True for backward compat)
+        is_in_sample = data.get("is_in_sample", True)
+        if not isinstance(is_in_sample, bool):
+            raise EvidenceAssetError(
+                f"CalibrationAsset JSON 'is_in_sample' has invalid type "
+                f"{type(is_in_sample).__name__} - expected boolean"
+            )
+
+        # Story 21.5 / Task 1: Extract and validate holdout_group (optional)
+        holdout_group = data.get("holdout_group")
+        if holdout_group is not None and holdout_group not in _VALID_HOLDOUT_GROUPS:
+            raise EvidenceAssetError(
+                f"CalibrationAsset JSON holdout_group {holdout_group!r} is not a valid "
+                f"HoldoutGroup - use one of {_VALID_HOLDOUT_GROUPS} or null"
+            )
+
+        # Story 21.5 / Task 1: Extract and validate target_years (optional)
+        target_years_raw = data.get("target_years", [])
+        if target_years_raw is not None and not isinstance(target_years_raw, (list, tuple)):
+            raise EvidenceAssetError(
+                f"CalibrationAsset JSON 'target_years' has invalid type "
+                f"{type(target_years_raw).__name__} - expected list or tuple"
+            )
+        target_years: tuple[int, ...] = ()
+        if target_years_raw:
+            target_years_list = []
+            for y in target_years_raw:
+                if not isinstance(y, int) or isinstance(y, bool):
+                    raise EvidenceAssetError(
+                        f"CalibrationAsset JSON 'target_years' contains invalid value "
+                        f"{y!r} (type {type(y).__name__}) - expected integers"
+                    )
+                target_years_list.append(int(y))
+            target_years = tuple(target_years_list)
 
         # Extract optional fields with type validation
         source_material_raw = data.get("source_material", [])
@@ -802,6 +944,11 @@ class CalibrationAsset:
             margin_of_error=float(margin_of_error) if margin_of_error is not None else None,
             confidence_level=float(confidence_level) if confidence_level is not None else None,
             methodology_notes=methodology_notes if methodology_notes is not None else "",
+            # Story 21.5 / Task 1: New train/test separation fields
+            is_in_sample=is_in_sample,
+            holdout_group=holdout_group,
+            calibration_method=calibration_method,
+            target_years=target_years,
         )
 
 
@@ -819,6 +966,9 @@ class ValidationAsset:
     observations — marginal distribution checks, joint distribution tests,
     subgroup stability verification, downstream performance validation, etc.
 
+    Story 21.5 extends ValidationAsset with certification fields for explicit
+    validation dossier requirements and production-safe trust status upgrades.
+
     Attributes
     ----------
     descriptor : DataAssetDescriptor
@@ -835,8 +985,19 @@ class ValidationAsset:
         URL or path to validation dossier documentation.
     trust_status_upgradable : bool
         Whether the benchmark status can be improved with additional evidence.
+    certified_at : str | None
+        ISO 8601 timestamp of certification (when trust_status upgraded to
+        production-safe). Story 21.5 / Task 1.
+    certified_by : str | None
+        Actor identity (username or system ID) that certified this benchmark.
+        Story 21.5 / Task 1.
+    validation_method : ValidationMethod
+        Validation method used (holdout, cross_validation, external, bootstrap).
+        Story 21.5 / Task 1.
+    holdout_years : tuple[int, ...]
+        Holdout years covered by this validation benchmark. Story 21.5 / Task 1.
 
-    Story 21.3 / AC4.
+    Story 21.3 / AC4, Story 21.5 / Task 1.
     """
 
     descriptor: DataAssetDescriptor
@@ -846,13 +1007,18 @@ class ValidationAsset:
     last_validated: str = ""
     validation_dossier: str = ""
     trust_status_upgradable: bool = False
+    # Story 21.5 / Task 1: Certification fields
+    certified_at: str | None = None
+    certified_by: str | None = None
+    validation_method: ValidationMethod = "holdout"
+    holdout_years: tuple[int, ...] = ()
 
     def __post_init__(self) -> None:
-        """Validate data_class, validation_type, and benchmark_status are valid.
+        """Validate data_class, validation_type, benchmark_status, and Story 21.5 fields.
 
         Raises EvidenceAssetError if validation fails.
 
-        Story 21.3 / AC9, AC10.
+        Story 21.3 / AC9, AC10, Story 21.5 / Task 1.
         """
         if self.descriptor.data_class != "validation":
             raise EvidenceAssetError(
@@ -872,10 +1038,17 @@ class ValidationAsset:
                 f"ValidationBenchmarkStatus - use one of {_VALID_BENCHMARK_STATUSES}"
             )
 
+        # Story 21.5 / Task 1: Validate validation_method is valid
+        if self.validation_method not in _VALID_VALIDATION_METHODS:
+            raise EvidenceAssetError(
+                f"ValidationAsset validation_method {self.validation_method!r} is not a valid "
+                f"ValidationMethod - use one of {_VALID_VALIDATION_METHODS}"
+            )
+
     def to_json(self) -> dict[str, Any]:
         """Serialize to a JSON-compatible dict.
 
-        Story 21.3 / AC6.
+        Story 21.3 / AC6, Story 21.5 / Task 1.
 
         Returns
         -------
@@ -887,6 +1060,8 @@ class ValidationAsset:
             "validation_type": self.validation_type,
             "benchmark_status": self.benchmark_status,
             "criteria": self.criteria,
+            # Story 21.5 / Task 1: New certification fields
+            "validation_method": self.validation_method,
         }
         if self.last_validated:
             result["last_validated"] = self.last_validated
@@ -894,13 +1069,20 @@ class ValidationAsset:
             result["validation_dossier"] = self.validation_dossier
         if self.trust_status_upgradable:
             result["trust_status_upgradable"] = True
+        # Story 21.5 / Task 1: Optional certification fields (include when set)
+        if self.certified_at is not None:
+            result["certified_at"] = self.certified_at
+        if self.certified_by is not None:
+            result["certified_by"] = self.certified_by
+        if self.holdout_years:
+            result["holdout_years"] = list(self.holdout_years)
         return result
 
     @classmethod
     def from_json(cls, data: dict[str, Any]) -> ValidationAsset:
         """Deserialize from a JSON-compatible dict with full validation.
 
-        Story 21.3 / AC6.
+        Story 21.3 / AC6, Story 21.5 / Task 1.
 
         Parameters
         ----------
@@ -952,6 +1134,49 @@ class ValidationAsset:
                 f"{type(criteria).__name__} - expected object"
             )
 
+        # Story 21.5 / Task 1: Validate validation_method
+        validation_method = data.get("validation_method", "holdout")
+        if validation_method not in _VALID_VALIDATION_METHODS:
+            raise EvidenceAssetError(
+                f"ValidationAsset JSON validation_method {validation_method!r} is not a valid "
+                f"ValidationMethod - use one of {_VALID_VALIDATION_METHODS}"
+            )
+
+        # Story 21.5 / Task 1: Extract and validate certified_at (optional)
+        certified_at = data.get("certified_at")
+        if certified_at is not None and not isinstance(certified_at, str):
+            raise EvidenceAssetError(
+                f"ValidationAsset JSON 'certified_at' has invalid type "
+                f"{type(certified_at).__name__} - expected string or null"
+            )
+
+        # Story 21.5 / Task 1: Extract and validate certified_by (optional)
+        certified_by = data.get("certified_by")
+        if certified_by is not None and not isinstance(certified_by, str):
+            raise EvidenceAssetError(
+                f"ValidationAsset JSON 'certified_by' has invalid type "
+                f"{type(certified_by).__name__} - expected string or null"
+            )
+
+        # Story 21.5 / Task 1: Extract and validate holdout_years (optional)
+        holdout_years_raw = data.get("holdout_years", [])
+        if holdout_years_raw is not None and not isinstance(holdout_years_raw, (list, tuple)):
+            raise EvidenceAssetError(
+                f"ValidationAsset JSON 'holdout_years' has invalid type "
+                f"{type(holdout_years_raw).__name__} - expected list or tuple"
+            )
+        holdout_years: tuple[int, ...] = ()
+        if holdout_years_raw:
+            holdout_years_list = []
+            for y in holdout_years_raw:
+                if not isinstance(y, int) or isinstance(y, bool):
+                    raise EvidenceAssetError(
+                        f"ValidationAsset JSON 'holdout_years' contains invalid value "
+                        f"{y!r} (type {type(y).__name__}) - expected integers"
+                    )
+                holdout_years_list.append(int(y))
+            holdout_years = tuple(holdout_years_list)
+
         # Extract optional fields with type validation
         last_validated = data.get("last_validated", "")
         if last_validated is not None and not isinstance(last_validated, str):
@@ -988,6 +1213,11 @@ class ValidationAsset:
             last_validated=last_validated if last_validated is not None else "",
             validation_dossier=validation_dossier if validation_dossier is not None else "",
             trust_status_upgradable=trust_status_upgradable,
+            # Story 21.5 / Task 1: New certification fields
+            certified_at=certified_at,
+            certified_by=certified_by,
+            validation_method=validation_method,
+            holdout_years=holdout_years,
         )
 
 
@@ -1272,6 +1502,11 @@ def create_calibration_asset(
     margin_of_error: float | None = None,
     confidence_level: float | None = None,
     methodology_notes: str = "",
+    # Story 21.5 / Task 1: Train/test separation fields
+    is_in_sample: bool = True,
+    holdout_group: HoldoutGroup | None = None,
+    calibration_method: CalibrationMethod = "maximum_likelihood",
+    target_years: tuple[int, ...] = (),
     # Optional descriptor fields
     source_url: str = "",
     license: str = "",
@@ -1290,7 +1525,7 @@ def create_calibration_asset(
     Constructs a ``DataAssetDescriptor`` with ``data_class="calibration"`` and
     wraps it in a ``CalibrationAsset``.
 
-    Story 21.3 / AC8.
+    Story 21.3 / AC8, Story 21.5 / Task 1.
 
     Parameters
     ----------
@@ -1318,6 +1553,14 @@ def create_calibration_asset(
         Statistical confidence level.
     methodology_notes : str
         Free-text notes on calibration methodology.
+    is_in_sample : bool
+        Whether this calibration data is in-sample. Story 21.5 / Task 1.
+    holdout_group : HoldoutGroup | None
+        Holdout group designation. Story 21.5 / Task 1.
+    calibration_method : CalibrationMethod
+        Statistical method for calibration. Story 21.5 / Task 1.
+    target_years : tuple[int, ...]
+        Years covered by calibration target. Story 21.5 / Task 1.
     source_url : str
         Direct URL to the asset source.
     license : str
@@ -1379,6 +1622,11 @@ def create_calibration_asset(
         margin_of_error=margin_of_error,
         confidence_level=confidence_level,
         methodology_notes=methodology_notes,
+        # Story 21.5 / Task 1: New train/test separation fields
+        is_in_sample=is_in_sample,
+        holdout_group=holdout_group,
+        calibration_method=calibration_method,
+        target_years=target_years,
     )
 
 
@@ -1397,6 +1645,11 @@ def create_validation_asset(
     last_validated: str = "",
     validation_dossier: str = "",
     trust_status_upgradable: bool = False,
+    # Story 21.5 / Task 1: Certification fields
+    certified_at: str | None = None,
+    certified_by: str | None = None,
+    validation_method: ValidationMethod = "holdout",
+    holdout_years: tuple[int, ...] = (),
     # Optional descriptor fields
     source_url: str = "",
     license: str = "",
@@ -1415,7 +1668,7 @@ def create_validation_asset(
     Constructs a ``DataAssetDescriptor`` with ``data_class="validation"`` and
     wraps it in a ``ValidationAsset``.
 
-    Story 21.3 / AC8.
+    Story 21.3 / AC8, Story 21.5 / Task 1.
 
     Parameters
     ----------
@@ -1443,6 +1696,14 @@ def create_validation_asset(
         URL or path to validation dossier.
     trust_status_upgradable : bool
         Whether the benchmark status can be improved.
+    certified_at : str | None
+        ISO 8601 timestamp of certification. Story 21.5 / Task 1.
+    certified_by : str | None
+        Actor identity that certified this benchmark. Story 21.5 / Task 1.
+    validation_method : ValidationMethod
+        Validation method used. Story 21.5 / Task 1.
+    holdout_years : tuple[int, ...]
+        Holdout years covered. Story 21.5 / Task 1.
     source_url : str
         Direct URL to the asset source.
     license : str
@@ -1504,4 +1765,180 @@ def create_validation_asset(
         last_validated=last_validated,
         validation_dossier=validation_dossier,
         trust_status_upgradable=trust_status_upgradable,
+        # Story 21.5 / Task 1: New certification fields
+        certified_at=certified_at,
+        certified_by=certified_by,
+        validation_method=validation_method,
+        holdout_years=holdout_years,
     )
+
+
+# ============================================================================
+# Asset Load Functions — Story 21.5 / Task 1, Task 5
+# ============================================================================
+
+
+_CALIBRATION_ASSETS_BASE_PATH = Path("data/calibration/targets")
+_VALIDATION_ASSETS_BASE_PATH = Path("data/validation/benchmarks")
+
+
+def load_calibration_asset(asset_id: str) -> CalibrationAsset:
+    """Load a calibration asset from disk by asset_id.
+
+    Reads the asset folder at ``data/calibration/targets/{asset_id}/`` which
+    contains ``descriptor.json``, ``metadata.json``, and optionally ``data.parquet``.
+
+    Story 21.5 / Task 1, Task 5.
+
+    Parameters
+    ----------
+    asset_id : str
+        Unique identifier for the calibration asset.
+
+    Returns
+    -------
+    CalibrationAsset
+        Immutable calibration asset instance loaded from disk.
+
+    Raises
+    ------
+    EvidenceAssetError
+        If the asset folder does not exist, required files are missing,
+        or validation fails.
+    """
+    asset_path = _CALIBRATION_ASSETS_BASE_PATH / asset_id
+
+    # Check asset folder exists
+    if not asset_path.exists():
+        raise EvidenceAssetError(
+            f"Calibration asset folder does not exist: {asset_path}"
+        )
+    if not asset_path.is_dir():
+        raise EvidenceAssetError(
+            f"Calibration asset path is not a directory: {asset_path}"
+        )
+
+    # Load descriptor.json
+    descriptor_path = asset_path / "descriptor.json"
+    if not descriptor_path.exists():
+        raise EvidenceAssetError(
+            f"Calibration asset missing required file: {descriptor_path}"
+        )
+
+    try:
+        with descriptor_path.open("r") as f:
+            descriptor_data = json.load(f)
+    except (json.JSONDecodeError, OSError) as exc:
+        raise EvidenceAssetError(
+            f"Failed to read calibration asset descriptor.json: {exc}"
+        ) from exc
+
+    # Load metadata.json
+    metadata_path = asset_path / "metadata.json"
+    if not metadata_path.exists():
+        raise EvidenceAssetError(
+            f"Calibration asset missing required file: {metadata_path}"
+        )
+
+    try:
+        with metadata_path.open("r") as f:
+            metadata = json.load(f)
+    except (json.JSONDecodeError, OSError) as exc:
+        raise EvidenceAssetError(
+            f"Failed to read calibration asset metadata.json: {exc}"
+        ) from exc
+
+    # Structure: nested descriptor with metadata fields at top level
+    asset_data = {"descriptor": descriptor_data, **metadata}
+
+    # Construct CalibrationAsset via from_json for validation
+    try:
+        return CalibrationAsset.from_json(asset_data)
+    except EvidenceAssetError:
+        # Re-raise as-is (already has proper error message)
+        raise
+    except Exception as exc:
+        raise EvidenceAssetError(
+            f"Failed to construct CalibrationAsset from JSON: {exc}"
+        ) from exc
+
+
+def load_validation_asset(asset_id: str) -> ValidationAsset:
+    """Load a validation asset from disk by asset_id.
+
+    Reads the asset folder at ``data/validation/benchmarks/{asset_id}/`` which
+    contains ``descriptor.json``, ``metadata.json``, and optionally ``data.parquet``.
+
+    Story 21.5 / Task 1, Task 5.
+
+    Parameters
+    ----------
+    asset_id : str
+        Unique identifier for the validation asset.
+
+    Returns
+    -------
+    ValidationAsset
+        Immutable validation asset instance loaded from disk.
+
+    Raises
+    ------
+    EvidenceAssetError
+        If the asset folder does not exist, required files are missing,
+        or validation fails.
+    """
+    asset_path = _VALIDATION_ASSETS_BASE_PATH / asset_id
+
+    # Check asset folder exists
+    if not asset_path.exists():
+        raise EvidenceAssetError(
+            f"Validation asset folder does not exist: {asset_path}"
+        )
+    if not asset_path.is_dir():
+        raise EvidenceAssetError(
+            f"Validation asset path is not a directory: {asset_path}"
+        )
+
+    # Load descriptor.json
+    descriptor_path = asset_path / "descriptor.json"
+    if not descriptor_path.exists():
+        raise EvidenceAssetError(
+            f"Validation asset missing required file: {descriptor_path}"
+        )
+
+    try:
+        with descriptor_path.open("r") as f:
+            descriptor_data = json.load(f)
+    except (json.JSONDecodeError, OSError) as exc:
+        raise EvidenceAssetError(
+            f"Failed to read validation asset descriptor.json: {exc}"
+        ) from exc
+
+    # Load metadata.json
+    metadata_path = asset_path / "metadata.json"
+    if not metadata_path.exists():
+        raise EvidenceAssetError(
+            f"Validation asset missing required file: {metadata_path}"
+        )
+
+    try:
+        with metadata_path.open("r") as f:
+            metadata = json.load(f)
+    except (json.JSONDecodeError, OSError) as exc:
+        raise EvidenceAssetError(
+            f"Failed to read validation asset metadata.json: {exc}"
+        ) from exc
+
+    # Structure: nested descriptor with metadata fields at top level
+    asset_data = {"descriptor": descriptor_data, **metadata}
+
+    # Construct ValidationAsset via from_json for validation
+    try:
+        return ValidationAsset.from_json(asset_data)
+    except EvidenceAssetError:
+        # Re-raise as-is (already has proper error message)
+        raise
+    except Exception as exc:
+        raise EvidenceAssetError(
+            f"Failed to construct ValidationAsset from JSON: {exc}"
+        ) from exc

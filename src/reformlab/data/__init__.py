@@ -4,16 +4,21 @@ from __future__ import annotations
 
 from reformlab.data.assets import (
     CalibrationAsset,
+    CalibrationMethod,
     CalibrationTargetType,
     ExogenousAsset,
+    HoldoutGroup,
     StructuralAsset,
     ValidationAsset,
     ValidationBenchmarkStatus,
+    ValidationMethod,
     ValidationType,
     create_calibration_asset,
     create_exogenous_asset,
     create_structural_asset,
     create_validation_asset,
+    load_calibration_asset,
+    load_validation_asset,
 )
 from reformlab.data.comparison import (
     NumericColumnComparison,
@@ -51,6 +56,7 @@ from reformlab.data.synthetic_catalog import (
 __all__ = [
     "EMISSION_FACTOR_SCHEMA",
     "CalibrationAsset",
+    "CalibrationMethod",
     "CalibrationTargetType",
     "DataAssetAccessMode",
     "DataAssetClass",
@@ -64,6 +70,7 @@ __all__ = [
     "EmissionFactorIndex",
     "EvidenceAssetError",
     "ExogenousAsset",
+    "HoldoutGroup",
     "NumericColumnComparison",
     "PopulationComparison",
     "SYNTHETIC_POPULATION_SCHEMA",
@@ -71,6 +78,7 @@ __all__ = [
     "SyntheticAssetRegistry",
     "ValidationAsset",
     "ValidationBenchmarkStatus",
+    "ValidationMethod",
     "ValidationType",
     "build_emission_factor_index",
     "compare_populations",
@@ -81,7 +89,9 @@ __all__ = [
     "generate_synthetic_population",
     "get_synthetic_registry",
     "hash_file",
+    "load_calibration_asset",
     "load_dataset",
     "load_population_folder",
+    "load_validation_asset",
     "save_synthetic_population",
 ]
