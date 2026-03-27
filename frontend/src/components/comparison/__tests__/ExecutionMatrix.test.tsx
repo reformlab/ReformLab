@@ -9,7 +9,8 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
 import { ExecutionMatrix } from "@/components/comparison/ExecutionMatrix";
-import type { ExecutionMatrixCell, WorkspaceScenario } from "@/api/types";
+import type { ExecutionMatrixCell } from "@/api/types";
+import type { WorkspaceScenario } from "@/types/workspace";
 import type { StageKey } from "@/types/workspace";
 
 describe("ExecutionMatrix", () => {
@@ -86,6 +87,7 @@ describe("ExecutionMatrix", () => {
   const mockOnCellClick = vi.fn();
   const mockOnNavigateTo = vi.fn();
   const mockOnCloneScenario = vi.fn();
+  const mockOnViewResults = vi.fn();
   const mockOnDeleteRun = vi.fn();
   const mockOnExportRun = vi.fn();
   const mockOnRetryRun = vi.fn();
@@ -99,6 +101,7 @@ describe("ExecutionMatrix", () => {
         onCellClick={mockOnCellClick}
         onNavigateTo={mockOnNavigateTo}
         onCloneScenario={mockOnCloneScenario}
+        onViewResults={mockOnViewResults}
         onDeleteRun={mockOnDeleteRun}
         onExportRun={mockOnExportRun}
         onRetryRun={mockOnRetryRun}
@@ -128,6 +131,7 @@ describe("ExecutionMatrix", () => {
         onCellClick={mockOnCellClick}
         onNavigateTo={mockOnNavigateTo}
         onCloneScenario={mockOnCloneScenario}
+        onViewResults={mockOnViewResults}
         onDeleteRun={mockOnDeleteRun}
         onExportRun={mockOnExportRun}
         onRetryRun={mockOnRetryRun}
@@ -156,6 +160,7 @@ describe("ExecutionMatrix", () => {
         onCellClick={mockOnCellClick}
         onNavigateTo={mockOnNavigateTo}
         onCloneScenario={mockOnCloneScenario}
+        onViewResults={mockOnViewResults}
         onDeleteRun={mockOnDeleteRun}
         onExportRun={mockOnExportRun}
         onRetryRun={mockOnRetryRun}
@@ -175,6 +180,7 @@ describe("ExecutionMatrix", () => {
         onCellClick={mockOnCellClick}
         onNavigateTo={mockOnNavigateTo}
         onCloneScenario={mockOnCloneScenario}
+        onViewResults={mockOnViewResults}
         onDeleteRun={mockOnDeleteRun}
         onExportRun={mockOnExportRun}
         onRetryRun={mockOnRetryRun}
@@ -204,6 +210,7 @@ describe("ExecutionMatrix", () => {
         onCellClick={mockOnCellClick}
         onNavigateTo={mockOnNavigateTo}
         onCloneScenario={mockOnCloneScenario}
+        onViewResults={mockOnViewResults}
         onDeleteRun={mockOnDeleteRun}
         onExportRun={mockOnExportRun}
         onRetryRun={mockOnRetryRun}
@@ -224,6 +231,7 @@ describe("ExecutionMatrix", () => {
         onCellClick={mockOnCellClick}
         onNavigateTo={mockOnNavigateTo}
         onCloneScenario={mockOnCloneScenario}
+        onViewResults={mockOnViewResults}
         onDeleteRun={mockOnDeleteRun}
         onExportRun={mockOnExportRun}
         onRetryRun={mockOnRetryRun}

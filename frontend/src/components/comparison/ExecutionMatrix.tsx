@@ -33,12 +33,15 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@/components/ui/table";
-import type { ExecutionMatrixCell, WorkspaceScenario } from "@/api/types";
+import type { ExecutionMatrixCell } from "@/api/types";
+import type { WorkspaceScenario } from "@/types/workspace";
 import type { StageKey, SubView } from "@/types/workspace";
 
 // ============================================================================
 // Status helpers
 // ============================================================================
+
+import type { ExecutionStatus } from "@/api/types";
 
 function statusVariant(status: ExecutionStatus): "success" | "destructive" | "warning" | "default" {
   switch (status) {
@@ -85,6 +88,8 @@ function statusTooltip(cell: ExecutionMatrixCell): string {
       return cell.error
         ? `Run failed: ${cell.error}. Click to retry.`
         : "Run failed. Click to retry.";
+    default:
+      return "Unknown status";
   }
 }
 
@@ -100,6 +105,7 @@ interface ExecutionMatrixProps {
   onCellClick: (cell: ExecutionMatrixCell) => void;
   onNavigateTo: (stage: StageKey, subView?: SubView) => void;
   onCloneScenario: (scenarioId: string) => void;
+  onViewResults: (runId: string) => void;
   onDeleteRun: (runId: string) => void;
   onExportRun: (runId: string) => void;
   onRetryRun: (cell: ExecutionMatrixCell) => void;
@@ -117,6 +123,7 @@ export function ExecutionMatrix({
   onCellClick,
   onNavigateTo,
   onCloneScenario,
+  onViewResults,
   onDeleteRun,
   onExportRun,
   onRetryRun,
@@ -241,6 +248,12 @@ export function ExecutionMatrix({
             onCloneScenario(contextMenuCell.scenarioId);
             setContextMenuCell(null);
           }}
+          onViewResults={() => {
+            if (contextMenuCell.runId) {
+              onViewResults(contextMenuCell.runId);
+            }
+            setContextMenuCell(null);
+          }}
           onDelete={() => {
             if (contextMenuCell.runId) {
               onDeleteRun(contextMenuCell.runId);
@@ -302,12 +315,13 @@ interface ContextMenuProps {
   cell: ExecutionMatrixCell;
   onClose: () => void;
   onClone: () => void;
+  onViewResults: () => void;
   onDelete: () => void;
   onExport: () => void;
   onRetry: () => void;
 }
 
-function ContextMenu({ cell, onClose, onClone, onDelete, onExport, onRetry }: ContextMenuProps) {
+function ContextMenu({ cell, onClose, onClone, onViewResults, onDelete, onExport, onRetry }: ContextMenuProps) {
   const canView = cell.status === "COMPLETED" && !!cell.runId;
   const canDelete = cell.status !== "RUNNING" && cell.status !== "QUEUED";
   const canExport = cell.status === "COMPLETED" && !!cell.runId;
@@ -328,7 +342,7 @@ function ContextMenu({ cell, onClose, onClone, onDelete, onExport, onRetry }: Co
             <button
               className="w-full text-left px-2 py-1.5 text-sm hover:bg-slate-100 rounded disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={!canView}
-              onClick={(e) => { e.stopPropagation(); onClose(); }}
+              onClick={(e) => { e.stopPropagation(); onViewResults(); }}
             >
               View Results
             </button>

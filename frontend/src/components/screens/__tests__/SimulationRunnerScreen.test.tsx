@@ -89,15 +89,21 @@ describe("SimulationRunnerScreen", () => {
     const onCancel = vi.fn();
 
     it("renders the configure sub-view by default", () => {
-      render(<SimulationRunnerScreen onCancel={onCancel} />);
-      // Component should render without crashing
-      expect(true).toBe(true);
+      const { container } = render(<SimulationRunnerScreen onCancel={onCancel} />);
+      // Should show run configuration heading
+      expect(container.textContent).toContain("Run Simulation");
+      // Should show scenario summary
+      expect(container.textContent).toContain("Scenario");
     });
 
     it("calls onCancel when cancel button clicked", async () => {
-      const { container } = render(<SimulationRunnerScreen onCancel={onCancel} />);
-      const cancelButton = container.querySelector('button:not([aria-label="Run Simulation"])');
+      const user = userEvent.setup();
+      render(<SimulationRunnerScreen onCancel={onCancel} />);
+      // Find cancel button by text content
+      const cancelButton = screen.getByRole("button", { name: /cancel/i });
       expect(cancelButton).toBeInTheDocument();
+      await user.click(cancelButton);
+      expect(onCancel).toHaveBeenCalledTimes(1);
     });
   });
 });

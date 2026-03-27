@@ -167,57 +167,49 @@ export function matchesFilter(
   if (filters.length === 0) return true;
 
   return filters.every((filter) => {
-    // Check for custom dimension IDs first (not scenario/population/status)
-    const dimension = get(filter.dimensionId);
-    if (dimension && dimension.id !== "scenario" && dimension.id !== "population" && dimension.id !== "status") {
-      // For custom dimensions, we'd need to extract values from runResults
-      // For now, don't filter out for unknown dimensions
-      return true;
-    }
+    // Extract dimension value based on dimension type
+    let dimensionValue: unknown;
 
-    // Built-in filters that work on the cell directly
     if (filter.dimensionId === "scenario") {
-      const scenarioValue = cell.scenarioId;
-      if (filter.operator === "equals") {
-        return filter.values.includes(scenarioValue);
+      // Built-in: filter by scenario ID from cell
+      dimensionValue = cell.scenarioId;
+    } else if (filter.dimensionId === "population") {
+      // Built-in: filter by population ID from cell
+      dimensionValue = cell.populationId;
+    } else if (filter.dimensionId === "status") {
+      // Built-in: filter by execution status from cell
+      dimensionValue = cell.status;
+    } else {
+      // Custom dimension: use registered dimension's getValue() method
+      const dimension = get(filter.dimensionId);
+
+      // Unknown dimension: don't filter out (fail-open for extensibility)
+      if (!dimension) {
+        return true;
       }
-      if (filter.operator === "in") {
-        return filter.values.includes(scenarioValue);
+
+      // For custom dimensions, extract value from run results using dimension.getValue()
+      const runResult = runResults.get(cell.scenarioId);
+      if (!runResult) {
+        // No run result available: don't filter out
+        return true;
       }
-      if (filter.operator === "contains") {
-        const searchStr = String(filter.values[0] ?? "").toLowerCase();
-        return scenarioValue.toLowerCase().includes(searchStr);
-      }
-      return false; // Unknown operator: filter out
+      dimensionValue = dimension.getValue(runResult);
     }
 
-    if (filter.dimensionId === "population") {
-      const populationValue = cell.populationId;
-      if (filter.operator === "equals") {
-        return filter.values.includes(populationValue);
-      }
-      if (filter.operator === "in") {
-        return filter.values.includes(populationValue);
-      }
-      if (filter.operator === "contains") {
-        const searchStr = String(filter.values[0] ?? "").toLowerCase();
-        return populationValue.toLowerCase().includes(searchStr);
-      }
-      return false; // Unknown operator: filter out
+    // Apply filter operator
+    if (filter.operator === "equals") {
+      return filter.values.includes(dimensionValue);
+    }
+    if (filter.operator === "in") {
+      return filter.values.includes(dimensionValue);
+    }
+    if (filter.operator === "contains") {
+      const searchStr = String(filter.values[0] ?? "").toLowerCase();
+      return String(dimensionValue ?? "").toLowerCase().includes(searchStr);
     }
 
-    if (filter.dimensionId === "status") {
-      const statusValue = cell.status;
-      if (filter.operator === "in") {
-        return filter.values.includes(statusValue);
-      }
-      if (filter.operator === "equals") {
-        return filter.values.includes(statusValue);
-      }
-      return false; // Unknown operator: filter out
-    }
-
-    // Unknown dimension ID: don't filter out
-    return true;
+    // Unknown operator: filter out
+    return false;
   });
 }

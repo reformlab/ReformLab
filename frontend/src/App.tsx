@@ -154,14 +154,7 @@ function Workspace() {
   // Stage 4 sub-view content
   const resultsContent = (() => {
     if (activeSubView === "runner") {
-      return (
-        <SimulationRunnerScreen
-          selectedPopulationId={selectedPopulationId || null}
-          selectedPortfolioName={selectedPortfolioName}
-          selectedTemplateName={selectedTemplateId || null}
-          onCancel={() => { navigateTo("engine"); }}
-        />
-      );
+      return <SimulationRunnerScreen onCancel={() => { navigateTo("results"); }} />;
     }
     if (activeSubView === "comparison") {
       return (
