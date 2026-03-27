@@ -577,6 +577,172 @@ class TestExogenousAssetFrozen:
             asset.values = {2021: 110.0}  # type: ignore[misc]
 
 
+class TestExogenousAssetValidation:
+    """Tests for ExogenousAsset validation edge cases.
+
+    Story 21.3 / AC10.
+    """
+
+    def test_validate_coverage_inverted_range_raises_error(self) -> None:
+        """Given start_year > end_year, when validate_coverage(), then raises."""
+        descriptor = DataAssetDescriptor(
+            asset_id="test-asset",
+            name="Test",
+            description="Test",
+            data_class="exogenous",
+            origin="open-official",
+            access_mode="fetched",
+            trust_status="production-safe",
+        )
+        asset = ExogenousAsset(
+            descriptor=descriptor,
+            name="test",
+            values={2020: 100.0, 2022: 120.0},
+            unit="%",
+        )
+        with pytest.raises(EvidenceAssetError, match="start_year.*must be <= end_year"):
+            asset.validate_coverage(2030, 2020)
+
+    def test_invalid_interpolation_method_raises_error_at_construction(self) -> None:
+        """Given invalid interpolation_method, when created, then raises EvidenceAssetError."""
+        descriptor = DataAssetDescriptor(
+            asset_id="test-asset",
+            name="Test",
+            description="Test",
+            data_class="exogenous",
+            origin="open-official",
+            access_mode="fetched",
+            trust_status="production-safe",
+        )
+        with pytest.raises(EvidenceAssetError, match="interpolation_method.*invalid"):
+            ExogenousAsset(
+                descriptor=descriptor,
+                name="test",
+                values={2020: 100.0},
+                unit="%",
+                interpolation_method="invalid_method",
+            )
+
+
+class TestFromJsonStrictTypeValidation:
+    """Tests for from_json() strict type validation (no coercion).
+
+    Story 21.3 / AC6, AC10.
+    """
+
+    def test_exogenous_from_json_rejects_non_string_name(self) -> None:
+        """Given non-string name in JSON, when from_json(), then raises EvidenceAssetError."""
+        json_dict = {
+            "descriptor": {
+                "asset_id": "test",
+                "name": "Test",
+                "description": "Test",
+                "data_class": "exogenous",
+                "origin": "open-official",
+                "access_mode": "fetched",
+                "trust_status": "production-safe",
+            },
+            "name": 123,  # Not a string!
+            "values": {"2020": 100.0},
+            "unit": "%",
+        }
+        with pytest.raises(EvidenceAssetError, match="'name'.*invalid type"):
+            ExogenousAsset.from_json(json_dict)
+
+    def test_exogenous_from_json_rejects_non_string_unit(self) -> None:
+        """Given non-string unit in JSON, when from_json(), then raises EvidenceAssetError."""
+        json_dict = {
+            "descriptor": {
+                "asset_id": "test",
+                "name": "Test",
+                "description": "Test",
+                "data_class": "exogenous",
+                "origin": "open-official",
+                "access_mode": "fetched",
+                "trust_status": "production-safe",
+            },
+            "name": "test",
+            "values": {"2020": 100.0},
+            "unit": 456,  # Not a string!
+        }
+        with pytest.raises(EvidenceAssetError, match="'unit'.*invalid type"):
+            ExogenousAsset.from_json(json_dict)
+
+    def test_structural_from_json_rejects_non_string_entity_type(self) -> None:
+        """Given non-string entity_type in JSON, when from_json(), then raises EvidenceAssetError."""
+        json_dict = {
+            "descriptor": {
+                "asset_id": "test",
+                "name": "Test",
+                "description": "Test",
+                "data_class": "structural",
+                "origin": "synthetic-public",
+                "access_mode": "bundled",
+                "trust_status": "exploratory",
+            },
+            "entity_type": 123,  # Not a string!
+            "record_count": 100,
+        }
+        with pytest.raises(EvidenceAssetError, match="'entity_type'.*invalid type"):
+            StructuralAsset.from_json(json_dict)
+
+    def test_structural_from_json_rejects_non_integer_record_count(self) -> None:
+        """Given non-integer record_count in JSON, when from_json(), then raises EvidenceAssetError."""
+        json_dict = {
+            "descriptor": {
+                "asset_id": "test",
+                "name": "Test",
+                "description": "Test",
+                "data_class": "structural",
+                "origin": "synthetic-public",
+                "access_mode": "bundled",
+                "trust_status": "exploratory",
+            },
+            "entity_type": "household",
+            "record_count": "100",  # String, not int!
+        }
+        with pytest.raises(EvidenceAssetError, match="'record_count'.*invalid type"):
+            StructuralAsset.from_json(json_dict)
+
+    def test_calibration_from_json_rejects_non_string_coverage(self) -> None:
+        """Given non-string coverage in JSON, when from_json(), then raises EvidenceAssetError."""
+        json_dict = {
+            "descriptor": {
+                "asset_id": "test",
+                "name": "Test",
+                "description": "Test",
+                "data_class": "calibration",
+                "origin": "open-official",
+                "access_mode": "fetched",
+                "trust_status": "production-safe",
+            },
+            "target_type": "marginal",
+            "coverage": 123,  # Not a string!
+        }
+        with pytest.raises(EvidenceAssetError, match="'coverage'.*invalid type"):
+            CalibrationAsset.from_json(json_dict)
+
+    def test_validation_from_json_rejects_non_boolean_trust_status_upgradable(self) -> None:
+        """Given non-boolean trust_status_upgradable, when from_json(), then raises."""
+        json_dict = {
+            "descriptor": {
+                "asset_id": "test",
+                "name": "Test",
+                "description": "Test",
+                "data_class": "validation",
+                "origin": "open-official",
+                "access_mode": "fetched",
+                "trust_status": "production-safe",
+            },
+            "validation_type": "marginal_check",
+            "benchmark_status": "pending",
+            "criteria": {},
+            "trust_status_upgradable": "true",  # String, not bool!
+        }
+        with pytest.raises(EvidenceAssetError, match="'trust_status_upgradable'.*invalid type"):
+            ValidationAsset.from_json(json_dict)
+
+
 class TestCalibrationAsset:
     """Tests for CalibrationAsset typed contract.
 

@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Literal, get_args
 
 import pyarrow as pa
 
@@ -94,24 +94,10 @@ Story 21.3 / AC4.
 """
 
 # Runtime validation constants for Literal types
-_VALID_CALIBRATION_TARGET_TYPES: tuple[CalibrationTargetType, ...] = (
-    "marginal",
-    "aggregate_total",
-    "adoption_rate",
-    "transition_rate",
-)
-_VALID_VALIDATION_TYPES: tuple[ValidationType, ...] = (
-    "marginal_check",
-    "joint_distribution",
-    "subgroup_stability",
-    "downstream_performance",
-)
-_VALID_BENCHMARK_STATUSES: tuple[ValidationBenchmarkStatus, ...] = (
-    "passed",
-    "failed",
-    "pending",
-    "not_applicable",
-)
+# Using get_args() ensures single source of truth from Literal definitions (Story 21.1 pattern)
+_VALID_CALIBRATION_TARGET_TYPES = get_args(CalibrationTargetType)
+_VALID_VALIDATION_TYPES = get_args(ValidationType)
+_VALID_BENCHMARK_STATUSES = get_args(ValidationBenchmarkStatus)
 
 # ============================================================================
 # Structural Asset
@@ -183,8 +169,8 @@ class StructuralAsset:
     def to_json(self) -> dict[str, Any]:
         """Serialize to a JSON-compatible dict.
 
-        The table is NOT serialized — use a ``table_path`` field to
-        reference external storage if needed.
+        The table is NOT serialized. Callers must store/retrieve tables
+        separately using their own storage layer.
 
         Story 21.3 / AC6.
 
@@ -244,23 +230,41 @@ class StructuralAsset:
         # Validate data_class through descriptor construction
         descriptor = DataAssetDescriptor.from_json(data["descriptor"])
 
-        # Extract optional fields
+        # Validate required field types (fail-loud, no coercion)
+        if not isinstance(data["entity_type"], str):
+            raise EvidenceAssetError(
+                f"StructuralAsset JSON 'entity_type' has invalid type "
+                f"{type(data['entity_type']).__name__} - expected string"
+            )
+        if not isinstance(data["record_count"], int) or isinstance(data["record_count"], bool):
+            raise EvidenceAssetError(
+                f"StructuralAsset JSON 'record_count' has invalid type "
+                f"{type(data['record_count']).__name__} - expected integer"
+            )
+
+        # Extract optional fields with type validation
         relationships_raw = data.get("relationships", [])
-        if not isinstance(relationships_raw, (list, tuple)):
+        if relationships_raw is not None and not isinstance(relationships_raw, (list, tuple)):
             raise EvidenceAssetError(
                 f"StructuralAsset JSON 'relationships' has invalid type "
                 f"{type(relationships_raw).__name__} - expected list or tuple"
             )
-        relationships = tuple(str(v) for v in relationships_raw)
+        relationships = tuple(str(v) for v in relationships_raw) if relationships_raw else ()
 
-        primary_key = str(data.get("primary_key", ""))
+        primary_key_raw = data.get("primary_key", "")
+        if primary_key_raw is not None and not isinstance(primary_key_raw, str):
+            raise EvidenceAssetError(
+                f"StructuralAsset JSON 'primary_key' has invalid type "
+                f"{type(primary_key_raw).__name__} - expected string or null"
+            )
+        primary_key = primary_key_raw if primary_key_raw is not None else ""
 
         # Construct instance (triggers __post_init__ validation)
         return cls(
             descriptor=descriptor,
             table=pa.Table.from_pydict({}),  # Empty placeholder - caller must replace
-            entity_type=str(data["entity_type"]),
-            record_count=int(data["record_count"]),
+            entity_type=data["entity_type"],
+            record_count=data["record_count"],
             relationships=relationships,
             primary_key=primary_key,
         )
@@ -332,6 +336,13 @@ class ExogenousAsset:
             raise EvidenceAssetError(
                 f"ExogenousAsset requires data_class='exogenous', "
                 f"got '{self.descriptor.data_class}'"
+            )
+
+        # Validate interpolation_method value (fail-fast at construction)
+        if self.interpolation_method not in ("linear", "step", "none"):
+            raise EvidenceAssetError(
+                f"ExogenousAsset interpolation_method {self.interpolation_method!r} is invalid - "
+                f"use 'linear', 'step', or 'none'"
             )
 
         if not self.values:
@@ -432,7 +443,7 @@ class ExogenousAsset:
         """Validate coverage for a range of years.
 
         Raises ``EvidenceAssetError`` if any year in the range is missing
-        from ``values``.
+        from ``values`` or if the range is inverted.
 
         Story 21.3 / AC2.
 
@@ -446,8 +457,13 @@ class ExogenousAsset:
         Raises
         ------
         EvidenceAssetError
-            If any year in the range is missing.
+            If start_year > end_year or if any year in the range is missing.
         """
+        if start_year > end_year:
+            raise EvidenceAssetError(
+                f"ExogenousAsset validate_coverage() start_year ({start_year}) "
+                f"must be <= end_year ({end_year})"
+            )
         missing = [y for y in range(start_year, end_year + 1) if y not in self.values]
         if missing:
             raise EvidenceAssetError(
@@ -543,17 +559,72 @@ class ExogenousAsset:
         # Construct descriptor and asset
         descriptor = DataAssetDescriptor.from_json(data["descriptor"])
 
+        # Validate string field types (fail-loud, no coercion)
+        if not isinstance(data["name"], str):
+            raise EvidenceAssetError(
+                f"ExogenousAsset JSON 'name' has invalid type "
+                f"{type(data['name']).__name__} - expected string"
+            )
+        if not isinstance(data["unit"], str):
+            raise EvidenceAssetError(
+                f"ExogenousAsset JSON 'unit' has invalid type "
+                f"{type(data['unit']).__name__} - expected string"
+            )
+
+        # Optional string fields with type validation
+        frequency = data.get("frequency", "annual")
+        if not isinstance(frequency, str):
+            raise EvidenceAssetError(
+                f"ExogenousAsset JSON 'frequency' has invalid type "
+                f"{type(frequency).__name__} - expected string"
+            )
+
+        source = data.get("source", "")
+        if source is not None and not isinstance(source, str):
+            raise EvidenceAssetError(
+                f"ExogenousAsset JSON 'source' has invalid type "
+                f"{type(source).__name__} - expected string or null"
+            )
+
+        vintage = data.get("vintage", "")
+        if vintage is not None and not isinstance(vintage, str):
+            raise EvidenceAssetError(
+                f"ExogenousAsset JSON 'vintage' has invalid type "
+                f"{type(vintage).__name__} - expected string or null"
+            )
+
+        interpolation_method = data.get("interpolation_method", "linear")
+        if not isinstance(interpolation_method, str):
+            raise EvidenceAssetError(
+                f"ExogenousAsset JSON 'interpolation_method' has invalid type "
+                f"{type(interpolation_method).__name__} - expected string"
+            )
+
+        aggregation_method = data.get("aggregation_method", "mean")
+        if not isinstance(aggregation_method, str):
+            raise EvidenceAssetError(
+                f"ExogenousAsset JSON 'aggregation_method' has invalid type "
+                f"{type(aggregation_method).__name__} - expected string"
+            )
+
+        revision_policy = data.get("revision_policy", "")
+        if revision_policy is not None and not isinstance(revision_policy, str):
+            raise EvidenceAssetError(
+                f"ExogenousAsset JSON 'revision_policy' has invalid type "
+                f"{type(revision_policy).__name__} - expected string or null"
+            )
+
         return cls(
             descriptor=descriptor,
-            name=str(data["name"]),
+            name=data["name"],
             values=values,
-            unit=str(data["unit"]),
-            frequency=str(data.get("frequency", "annual")),
-            source=str(data.get("source", "")),
-            vintage=str(data.get("vintage", "")),
-            interpolation_method=str(data.get("interpolation_method", "linear")),
-            aggregation_method=str(data.get("aggregation_method", "mean")),
-            revision_policy=str(data.get("revision_policy", "")),
+            unit=data["unit"],
+            frequency=frequency,
+            source=source if source is not None else "",
+            vintage=vintage if vintage is not None else "",
+            interpolation_method=interpolation_method,
+            aggregation_method=aggregation_method,
+            revision_policy=revision_policy if revision_policy is not None else "",
         )
 
 
@@ -683,14 +754,14 @@ class CalibrationAsset:
                 f"CalibrationTargetType - use one of {_VALID_CALIBRATION_TARGET_TYPES}"
             )
 
-        # Extract optional fields
+        # Extract optional fields with type validation
         source_material_raw = data.get("source_material", [])
-        if not isinstance(source_material_raw, (list, tuple)):
+        if source_material_raw is not None and not isinstance(source_material_raw, (list, tuple)):
             raise EvidenceAssetError(
                 f"CalibrationAsset JSON 'source_material' has invalid type "
                 f"{type(source_material_raw).__name__} - expected list or tuple"
             )
-        source_material = tuple(str(v) for v in source_material_raw)
+        source_material = tuple(str(v) for v in source_material_raw) if source_material_raw else ()
 
         margin_of_error = data.get("margin_of_error")
         if margin_of_error is not None and not isinstance(margin_of_error, (int, float)):
@@ -706,17 +777,31 @@ class CalibrationAsset:
                 f"{type(confidence_level).__name__} - expected number or null"
             )
 
+        methodology_notes = data.get("methodology_notes", "")
+        if methodology_notes is not None and not isinstance(methodology_notes, str):
+            raise EvidenceAssetError(
+                f"CalibrationAsset JSON 'methodology_notes' has invalid type "
+                f"{type(methodology_notes).__name__} - expected string or null"
+            )
+
+        # Validate required field types (fail-loud, no coercion)
+        if not isinstance(data["coverage"], str):
+            raise EvidenceAssetError(
+                f"CalibrationAsset JSON 'coverage' has invalid type "
+                f"{type(data['coverage']).__name__} - expected string"
+            )
+
         # Construct descriptor and asset
         descriptor = DataAssetDescriptor.from_json(data["descriptor"])
 
         return cls(
             descriptor=descriptor,
             target_type=target_type,
-            coverage=str(data["coverage"]),
+            coverage=data["coverage"],
             source_material=source_material,
             margin_of_error=float(margin_of_error) if margin_of_error is not None else None,
             confidence_level=float(confidence_level) if confidence_level is not None else None,
-            methodology_notes=str(data.get("methodology_notes", "")),
+            methodology_notes=methodology_notes if methodology_notes is not None else "",
         )
 
 
@@ -867,10 +952,30 @@ class ValidationAsset:
                 f"{type(criteria).__name__} - expected object"
             )
 
-        # Extract optional fields
-        last_validated = str(data.get("last_validated", ""))
-        validation_dossier = str(data.get("validation_dossier", ""))
-        trust_status_upgradable = bool(data.get("trust_status_upgradable", False))
+        # Extract optional fields with type validation
+        last_validated = data.get("last_validated", "")
+        if last_validated is not None and not isinstance(last_validated, str):
+            raise EvidenceAssetError(
+                f"ValidationAsset JSON 'last_validated' has invalid type "
+                f"{type(last_validated).__name__} - expected string or null"
+            )
+
+        validation_dossier = data.get("validation_dossier", "")
+        if validation_dossier is not None and not isinstance(validation_dossier, str):
+            raise EvidenceAssetError(
+                f"ValidationAsset JSON 'validation_dossier' has invalid type "
+                f"{type(validation_dossier).__name__} - expected string or null"
+            )
+
+        trust_status_upgradable_raw = data.get("trust_status_upgradable", False)
+        if trust_status_upgradable_raw is not None and not isinstance(trust_status_upgradable_raw, bool):
+            raise EvidenceAssetError(
+                f"ValidationAsset JSON 'trust_status_upgradable' has invalid type "
+                f"{type(trust_status_upgradable_raw).__name__} - expected boolean or null"
+            )
+        trust_status_upgradable = (
+            trust_status_upgradable_raw if trust_status_upgradable_raw is not None else False
+        )
 
         # Construct descriptor and asset
         descriptor = DataAssetDescriptor.from_json(data["descriptor"])
@@ -880,8 +985,8 @@ class ValidationAsset:
             validation_type=validation_type,
             benchmark_status=benchmark_status,
             criteria=criteria,
-            last_validated=last_validated,
-            validation_dossier=validation_dossier,
+            last_validated=last_validated if last_validated is not None else "",
+            validation_dossier=validation_dossier if validation_dossier is not None else "",
             trust_status_upgradable=trust_status_upgradable,
         )
 
