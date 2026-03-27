@@ -21,6 +21,16 @@ export default defineConfig({
         { icon: 'rocket', href: 'https://app.reform-lab.eu', label: 'Open App' },
         { icon: 'external', href: 'https://reform-lab.eu', label: 'Website' },
       ],
+      head: [
+        {
+          tag: 'link',
+          attrs: {
+            rel: 'apple-touch-icon',
+            href: '/apple-touch-icon.png',
+            sizes: '180x180',
+          },
+        },
+      ],
       customCss: [
         '@fontsource-variable/inter/index.css',
         '@fontsource/ibm-plex-mono/400.css',
