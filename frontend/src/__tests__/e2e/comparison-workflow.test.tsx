@@ -79,7 +79,7 @@ import { listDataSources, listMergeMethods } from "@/api/data-fusion";
 import App from "@/App";
 import { AppProvider } from "@/contexts/AppContext";
 import { cleanLocalStorage } from "./helpers";
-import { createTestScenario } from "./fixtures";
+import { createTestScenario, expectedLineageFields } from "./fixtures";
 
 // ============================================================================
 // Render helper

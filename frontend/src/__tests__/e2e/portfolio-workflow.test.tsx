@@ -86,7 +86,7 @@ import {
   setupDemoScenario,
   waitForNavigation,
 } from "./helpers";
-import { createPortfolioScenario } from "./fixtures";
+import { createPortfolioScenario, singlePolicyConfig } from "./fixtures";
 
 // ============================================================================
 // Render helper
