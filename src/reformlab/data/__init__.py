@@ -2,7 +2,14 @@
 # Copyright 2026 Lucas Vivier
 from __future__ import annotations
 
-from reformlab.data.descriptor import DatasetDescriptor
+from reformlab.data.descriptor import (
+    DataAssetAccessMode,
+    DataAssetClass,
+    DataAssetDescriptor,
+    DataAssetOrigin,
+    DataAssetTrustStatus,
+    DatasetDescriptor,
+)
 from reformlab.data.emission_factors import (
     EmissionFactorIndex,
     build_emission_factor_index,
@@ -20,6 +27,11 @@ from reformlab.data.synthetic import generate_synthetic_population, save_synthet
 
 __all__ = [
     "EMISSION_FACTOR_SCHEMA",
+    "DataAssetAccessMode",
+    "DataAssetClass",
+    "DataAssetDescriptor",
+    "DataAssetOrigin",
+    "DataAssetTrustStatus",
     "DatasetDescriptor",
     "DatasetManifest",
     "DatasetRegistry",

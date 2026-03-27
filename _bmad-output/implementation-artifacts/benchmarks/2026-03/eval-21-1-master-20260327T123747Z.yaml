@@ -1,0 +1,53 @@
+record_id: 12622046-b6bc-4cc4-af2f-daa5d5067caa
+created_at: '2026-03-27T12:37:47.871166+00:00'
+workflow:
+  id: dev-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 21
+  story_num: 1
+  title: Story 21.1
+  complexity_flags: {}
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: master
+  role_id: null
+  session_id: 7b205fe3-6085-45a1-8bb7-d976fa2fb2b5
+execution:
+  start_time: '2026-03-27T12:30:46.348114Z'
+  end_time: '2026-03-27T12:37:47.748395Z'
+  duration_ms: 421400
+  input_tokens: 0
+  output_tokens: 0
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 4643
+  heading_count: 8
+  list_depth_max: 1
+  code_block_count: 0
+  sections_detected:
+  - 'Task 1: Create new error type for evidence validation## Task 2 & 3: Define Literal types and implement DataAssetDescriptorNow
+    let me add the DataAssetDescriptor class at the end of the descriptor.py file:Now let me update the data module''s `__init__.py`
+    to export the new types:## Task 4: Create comprehensive test suite'
+  - 'Task 5: Create versioned source matrix document## Task 6: Verify and run full test suite'
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: d9a1dd6550f0
+findings: null
+reasoning: null
+linguistic: null
+quality: null
+consensus: null
+ground_truth: null
+custom: null

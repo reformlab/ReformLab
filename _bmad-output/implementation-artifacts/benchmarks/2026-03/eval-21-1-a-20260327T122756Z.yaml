@@ -1,0 +1,144 @@
+record_id: 03c91b55-9bb3-42ff-bb62-98048e5bf6db
+created_at: '2026-03-27T12:27:56.286715+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 21
+  story_num: 1
+  title: Story 21.1
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-03-27T12:22:56.527360Z'
+  end_time: '2026-03-27T12:24:36.889360Z'
+  duration_ms: 100362
+  input_tokens: 0
+  output_tokens: 6119
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 24479
+  heading_count: 48
+  list_depth_max: 2
+  code_block_count: 15
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 21.7'
+  - 🎯 Ruthless Story Validation 21.1
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 21.7 → MAJOR REWORK'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Missing Required vs Optional Field Specification
+  - 2. years Field Type Ambiguity
+  - 3. references Field Type Unspecified
+  - 4. No Trust Status Combination Validation Requirement
+  - 5. Source Matrix Lacks Specific Dataset Guidance
+  - 6. No Provenance Integration with Governance Manifests
+  - 7. Typo in Task 5 List Item (Line 60)
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Empty String vs None Handling Specification
+  - 2. Asset ID Naming Convention
+  - 3. to_json() Output Format for Complex Fields
+  - 4. Source Matrix Versioning Process
+  - 5. Error Message Templates
+  - 6. Validation Fixture Examples
+  - 7. Data Class Taxonomic Verification
+  - 8. Matrix Template Column Count Mismatch
+  - ✨ Optimizations (Nice to Have)
+  - 1. Consider Adding data_class Helper Methods
+  - 2. Suggest Pydantic Model for Story 21.2
+  - 3. Source Matrix Could Include Asset ID Index
+  - Asset Index
+  - 🤖 LLM Optimization Improvements
+  - 1. Redundant Type System Documentation
+  - Classification Axes (Section 3.2 of synthetic data decision doc)
+  - Type System Constraints
+  - Classification Axes and Literal Types
+  - 2. Verbose Existing Pattern Examples
+  - 3. Redundant Export Instructions
+  - 4. Overly Specific References Section
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: d9a1dd6550f0
+findings:
+  total_count: 22
+  by_severity:
+    critical: 7
+    major: 8
+    minor: 3
+    nit: 4
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 8
+    completeness: 16
+    clarity: 18
+    testability: 2
+  has_fix_count: 22
+  has_location_count: 22
+  has_evidence_count: 21
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 14
+  confidence_phrases_count: 5
+linguistic:
+  avg_sentence_length: 18.011627906976745
+  vocabulary_richness: 0.27307940606843123
+  flesch_reading_ease: 19.53550857554518
+  vague_terms_count: 7
+  formality_score: 0.72
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.86
+  evidence_quality: 0.91
+  follows_template: true
+  internal_consistency: 0.94
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
