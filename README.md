@@ -27,9 +27,28 @@ npm install
 npm run dev
 ```
 
+First launch loads a demo scenario automatically — a carbon tax with dividend policy on a French synthetic population — so you can explore the workspace immediately.
+
+## Features
+
+### Four-Stage Workspace
+
+The ReformLab GUI organizes policy analysis into four stages:
+
+- **Stage 1: Policies & Portfolio** — Build policy bundles from templates, compose multiple policies, and manage conflict resolution
+- **Stage 2: Population** — Select built-in populations, explore data profiles, or generate synthetic populations via data fusion
+- **Stage 3: Engine** — Configure time horizon, set simulation parameters, and validate before execution
+- **Stage 4: Run / Results / Compare** — Execute simulations, view distributional charts, and compare outcomes across scenarios
+
+### Python API & Notebooks
+
+Programmatic access via Python API for batch simulations and custom analysis workflows.
+
 ## Architecture
 
-Data Layer → Scenario Templates → Dynamic Orchestrator → Indicators → Governance → Interfaces (API, Notebooks, GUI), with OpenFisca as an external computation backend accessed via an adapter interface.
+**Backend:** Data Layer → Scenario Templates → Dynamic Orchestrator → Indicators → Governance → FastAPI
+
+**Frontend:** Four-stage workspace (Policies, Population, Engine, Results) with OpenFisca as external computation backend
 
 ```mermaid
 graph LR
@@ -38,10 +57,12 @@ graph LR
     ST --> DO[Dynamic Orchestrator]
     DO --> IN[Indicators]
     IN --> GV[Governance]
-    GV --> IF[Interfaces]
-    IF --> API[FastAPI]
-    IF --> NB[Notebooks]
-    IF --> GUI[React GUI]
+    GV --> API[FastAPI]
+    GV --> GUI[Four-Stage Workspace]
+    GUI --> P1[Stage 1: Policies]
+    GUI --> P2[Stage 2: Population]
+    GUI --> P3[Stage 3: Engine]
+    GUI --> P4[Stage 4: Results]
 ```
 
 ## Live services
