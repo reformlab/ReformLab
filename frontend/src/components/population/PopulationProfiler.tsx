@@ -119,7 +119,7 @@ function NumericProfile({
             <XAxis dataKey="bin" tick={{ fontSize: 9 }} interval="preserveStartEnd" />
             <YAxis tick={{ fontSize: 9 }} width={40} />
             <Tooltip
-              formatter={(v: number) => [v.toLocaleString(), "count"]}
+              formatter={(v) => [Number(v).toLocaleString(), "count"]}
               contentStyle={{ fontSize: 11 }}
             />
             <Bar dataKey="count" fill="#94a3b8" radius={[2, 2, 0, 0]} />
@@ -212,7 +212,7 @@ function CategoricalProfile({
             <XAxis type="number" tick={{ fontSize: 9 }} />
             <YAxis type="category" dataKey="value" tick={{ fontSize: 9 }} width={80} />
             <Tooltip
-              formatter={(v: number) => [v.toLocaleString(), "count"]}
+              formatter={(v) => [Number(v).toLocaleString(), "count"]}
               contentStyle={{ fontSize: 11 }}
             />
             <Bar dataKey="count" fill="#94a3b8" radius={[0, 2, 2, 0]} />

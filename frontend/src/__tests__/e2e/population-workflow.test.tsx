@@ -101,6 +101,9 @@ const mockPopulations = [
   {
     id: "fr-synthetic-2024",
     name: "France Synthetic 2024",
+    households: 100000,
+    source: "INSEE",
+    year: 2024,
     origin: "built-in" as const,
     column_count: 15,
     created_date: null,
@@ -108,6 +111,9 @@ const mockPopulations = [
   {
     id: "eu-synthetic-2024",
     name: "EU Synthetic 2024",
+    households: 80000,
+    source: "Eurostat",
+    year: 2024,
     origin: "built-in" as const,
     column_count: 12,
     created_date: null,
@@ -268,8 +274,9 @@ describe("Population Selection Flow", () => {
       valid: true,
       row_count: 5,
       column_count: 3,
+      matched_columns: ["household_id", "income", "region"],
+      unrecognized_columns: [],
       missing_required: [],
-      preview_data: null,
     });
 
     vi.mocked(getPopulationPreview).mockResolvedValue({

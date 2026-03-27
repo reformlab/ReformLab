@@ -11,7 +11,7 @@ import "@testing-library/jest-dom";
 import { ExecutionMatrix } from "@/components/comparison/ExecutionMatrix";
 import type { ExecutionMatrixCell } from "@/api/types";
 import type { WorkspaceScenario } from "@/types/workspace";
-import type { StageKey } from "@/types/workspace";
+
 
 describe("ExecutionMatrix", () => {
   const mockScenarios: WorkspaceScenario[] = [

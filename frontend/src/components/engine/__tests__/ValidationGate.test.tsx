@@ -157,7 +157,7 @@ describe("ValidationGate — Story 20.5", () => {
       const user = userEvent.setup();
       const onRun = vi.fn();
       // Slow memory check to capture loading state
-      let resolve: (v: unknown) => void;
+      let resolve: (v: Awaited<ReturnType<typeof checkMemory>>) => void;
       vi.mocked(checkMemory).mockReturnValueOnce(
         new Promise((res) => { resolve = res; }),
       );

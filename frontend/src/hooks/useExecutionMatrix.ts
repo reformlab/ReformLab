@@ -7,8 +7,7 @@
  * where the outer key is scenarioId and inner key is populationId.
  */
 
-import { useContext } from "react";
-import { AppContext } from "@/contexts/AppContext";
+import { useAppState } from "@/contexts/AppContext";
 import type { ExecutionMatrixCell } from "@/api/types";
 
 export interface UseExecutionMatrixReturn {
@@ -22,7 +21,7 @@ export interface UseExecutionMatrixReturn {
  * The matrix tracks execution status for scenario-by-population combinations.
  */
 export function useExecutionMatrix(): UseExecutionMatrixReturn {
-  const { executionMatrix, updateExecutionCell } = useContext(AppContext);
+  const { executionMatrix, updateExecutionCell } = useAppState();
 
   /**
    * Refresh the matrix by fetching from the API.

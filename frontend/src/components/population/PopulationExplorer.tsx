@@ -66,7 +66,7 @@ export function PopulationExplorer({
   function handleCrosstabRequest(colA: string, colB: string) {
     // Use mock data for Story 20.4; Story 20.7 wires real API
     setCrosstabData({ ...mockCrosstabData, col_a: colA, col_b: colB });
-    onCrosstabRequest?.(populationId, colA, colB);
+    onCrosstabRequest?.(populationId!, colA, colB);
   }
 
   return (

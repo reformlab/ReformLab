@@ -41,7 +41,7 @@ function isComplete(
   key: StageKey,
   selectedPopulationId: string,
   dataFusionResult: GenerationResult | null,
-  portfolios: PortfolioListItem[],
+  _portfolios: PortfolioListItem[],
   results: ResultListItem[],
   activeScenario: WorkspaceScenario | null,
 ): boolean {
@@ -72,7 +72,7 @@ function getSummary(
   key: StageKey,
   selectedPopulationId: string,
   dataFusionResult: GenerationResult | null,
-  portfolios: PortfolioListItem[],
+  _portfolios: PortfolioListItem[],
   results: ResultListItem[],
   activeScenario: WorkspaceScenario | null,
   populations: PopulationItem[],

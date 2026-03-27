@@ -115,7 +115,7 @@ export async function waitForElement(
     },
     { timeout },
   );
-  return element as HTMLElement;
+  return element as unknown as HTMLElement;
 }
 
 /**

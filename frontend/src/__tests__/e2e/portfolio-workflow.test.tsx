@@ -86,7 +86,7 @@ import {
   setupDemoScenario,
   waitForNavigation,
 } from "./helpers";
-import { createPortfolioScenario, singlePolicyConfig } from "./fixtures";
+import { createPortfolioScenario } from "./fixtures";
 
 // ============================================================================
 // Render helper
@@ -118,9 +118,8 @@ describe("Portfolio Editing Flow", () => {
     vi.mocked(listDataSources).mockResolvedValue({});
     vi.mocked(listMergeMethods).mockResolvedValue([]);
     vi.mocked(validatePortfolio).mockResolvedValue({
-      passed: true,
-      checks: [],
-      warnings: [],
+      conflicts: [],
+      is_compatible: true,
     });
   });
 
@@ -150,10 +149,7 @@ describe("Portfolio Editing Flow", () => {
 
     // Create portfolio for testing
     const portfolioName = "Test Edited Portfolio";
-    vi.mocked(createPortfolio).mockResolvedValue({
-      name: portfolioName,
-      policies: singlePolicyConfig.policies,
-    });
+    vi.mocked(createPortfolio).mockResolvedValue(portfolioName);
 
     // Update scenario with portfolio
     await waitFor(async () => {
@@ -249,17 +245,15 @@ describe("Portfolio Editing Flow", () => {
 
     // Mock validation to fail for missing portfolio
     vi.mocked(validatePortfolio).mockResolvedValue({
-      passed: false,
-      checks: [
+      conflicts: [
         {
-          id: "portfolio-selected",
-          label: "Portfolio Selected",
-          passed: false,
-          severity: "error",
-          message: "No portfolio selected. Please select or create a portfolio before running.",
+          conflict_type: "missing",
+          policy_indices: [],
+          parameter_name: "portfolio-selected",
+          description: "No portfolio selected. Please select or create a portfolio before running.",
         },
       ],
-      warnings: [],
+      is_compatible: false,
     });
 
     const user = userEvent.setup();
@@ -294,17 +288,15 @@ describe("Portfolio Editing Flow", () => {
    */
   it("portfolio with conflicts shows validation warning", async () => {
     vi.mocked(validatePortfolio).mockResolvedValue({
-      passed: false,
-      checks: [
+      conflicts: [
         {
-          id: "parameter-conflicts",
-          label: "Parameter Conflicts",
-          passed: false,
-          severity: "error",
-          message: "Conflicting parameters: carbon_tax_rate",
+          conflict_type: "parameter",
+          policy_indices: [0, 1],
+          parameter_name: "carbon_tax_rate",
+          description: "Conflicting parameters: carbon_tax_rate",
         },
       ],
-      warnings: [],
+      is_compatible: false,
     });
 
     // Set up scenario

@@ -45,8 +45,8 @@ function Workspace() {
     activeSubView,
     navigateTo,
     activeScenario,
-    selectedPortfolioName,
-    selectedTemplateId,
+    selectedPortfolioName: _selectedPortfolioName,
+    selectedTemplateId: _selectedTemplateId,
   } = useAppState();
 
   const [leftCollapsed, setLeftCollapsed] = useState(false);

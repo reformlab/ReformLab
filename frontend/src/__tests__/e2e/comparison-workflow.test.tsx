@@ -79,7 +79,7 @@ import { listDataSources, listMergeMethods } from "@/api/data-fusion";
 import App from "@/App";
 import { AppProvider } from "@/contexts/AppContext";
 import { cleanLocalStorage } from "./helpers";
-import { createTestScenario, expectedLineageFields } from "./fixtures";
+import { createTestScenario } from "./fixtures";
 
 // ============================================================================
 // Render helper
@@ -154,6 +154,7 @@ describe("Comparison Workflow", () => {
           data_available: true,
           template_name: "carbon-tax",
           policy_type: "carbon-tax",
+          manifest_id: "manifest-baseline-001",
           adapter_version: "1.0.0",
           started_at: "2026-03-27T00:00:00Z",
           finished_at: "2026-03-27T00:00:10Z",
@@ -179,6 +180,7 @@ describe("Comparison Workflow", () => {
           data_available: true,
           template_name: "carbon-tax",
           policy_type: "carbon-tax",
+          manifest_id: "manifest-reform-001",
           adapter_version: "1.0.0",
           started_at: "2026-03-27T00:01:00Z",
           finished_at: "2026-03-27T00:01:10Z",
@@ -251,14 +253,10 @@ describe("Comparison Workflow", () => {
    * Tracking: Story 20.8, Task 20.8.5
    */
   it.skip("export includes scenario lineage", async () => {
-    const runId = "run-with-lineage-001";
+    // const runId = "run-with-lineage-001"; // TODO: Uncomment when Story 20.6 complete
 
-    // Mock export response with lineage columns
-    vi.mocked(exportResultCsv).mockResolvedValue({
-      content: "scenario_id,scenario_name,population_id,decile,value\n" +
-                `${expectedLineageFields.scenario_id},${expectedLineageFields.scenario_name},${expectedLineageFields.population_id},1,-100\n`,
-      filename: `export-${runId}.csv`,
-    });
+    // Mock export response (exportResultCsv returns void — triggers file download)
+    vi.mocked(exportResultCsv).mockResolvedValue(undefined);
 
     // TODO: When Story 20.6 complete:
     // 1. From comparison view, export results

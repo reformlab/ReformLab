@@ -19,11 +19,7 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -329,15 +325,7 @@ function ContextMenu({ cell, onClose, onClone, onViewResults, onDelete, onExport
 
   return (
     <div className="fixed inset-0 z-50" onClick={onClose}>
-      <Popover open={true} onOpenChange={onClose}>
-        <PopoverTrigger asChild>
-          <div />
-        </PopoverTrigger>
-        <PopoverContent
-          className="w-48 p-1"
-          align="start"
-          onPointerDownOutside={onClose}
-        >
+      <Popover className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-48 rounded-md border border-slate-200 bg-white p-1 shadow-md">
           <div className="space-y-0.5">
             <button
               className="w-full text-left px-2 py-1.5 text-sm hover:bg-slate-100 rounded disabled:opacity-50 disabled:cursor-not-allowed"
@@ -374,7 +362,6 @@ function ContextMenu({ cell, onClose, onClone, onViewResults, onDelete, onExport
               Retry Run
             </button>
           </div>
-        </PopoverContent>
       </Popover>
     </div>
   );

@@ -337,4 +337,5 @@ export const mockCrosstabData: PopulationCrosstabResponse = {
       mobile: Math.floor(total * 0.05),
     };
   }),
+  truncated: false,
 };

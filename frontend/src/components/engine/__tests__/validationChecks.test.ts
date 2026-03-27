@@ -13,6 +13,7 @@ import {
   investmentDecisionsCalibratedCheck,
   memoryPreflightCheck,
   type ValidationContext,
+  type ValidationCheckResult,
 } from "../validationChecks";
 
 // ============================================================================
@@ -70,13 +71,13 @@ function makeScenario(overrides: Record<string, unknown> = {}) {
 describe("portfolioSelectedCheck", () => {
   it("passes when portfolioName is set", () => {
     const ctx = makeContext({ scenario: makeScenario() });
-    const result = portfolioSelectedCheck.fn(ctx) as ReturnType<typeof portfolioSelectedCheck.fn>;
+    const result = portfolioSelectedCheck.fn(ctx) as ValidationCheckResult;
     expect(result).toEqual({ passed: true, message: "", severity: "error" });
   });
 
   it("fails when portfolioName is null", () => {
     const ctx = makeContext({ scenario: makeScenario({ portfolioName: null }) });
-    const result = portfolioSelectedCheck.fn(ctx) as ReturnType<typeof portfolioSelectedCheck.fn>;
+    const result = portfolioSelectedCheck.fn(ctx) as ValidationCheckResult;
     expect(result.passed).toBe(false);
     expect(result.severity).toBe("error");
     expect(result.message).toMatch(/portfolio/i);
@@ -84,13 +85,13 @@ describe("portfolioSelectedCheck", () => {
 
   it("fails when portfolioName is empty string", () => {
     const ctx = makeContext({ scenario: makeScenario({ portfolioName: "" }) });
-    const result = portfolioSelectedCheck.fn(ctx) as ReturnType<typeof portfolioSelectedCheck.fn>;
+    const result = portfolioSelectedCheck.fn(ctx) as ValidationCheckResult;
     expect(result.passed).toBe(false);
   });
 
   it("fails when scenario is null", () => {
     const ctx = makeContext({ scenario: null });
-    const result = portfolioSelectedCheck.fn(ctx) as ReturnType<typeof portfolioSelectedCheck.fn>;
+    const result = portfolioSelectedCheck.fn(ctx) as ValidationCheckResult;
     expect(result.passed).toBe(false);
   });
 });
@@ -102,20 +103,20 @@ describe("portfolioSelectedCheck", () => {
 describe("populationSelectedCheck", () => {
   it("passes when populationIds has at least one entry", () => {
     const ctx = makeContext({ scenario: makeScenario({ populationIds: ["fr-2024"] }) });
-    const result = populationSelectedCheck.fn(ctx) as ReturnType<typeof populationSelectedCheck.fn>;
+    const result = populationSelectedCheck.fn(ctx) as ValidationCheckResult;
     expect(result.passed).toBe(true);
   });
 
   it("fails when populationIds is empty", () => {
     const ctx = makeContext({ scenario: makeScenario({ populationIds: [] }) });
-    const result = populationSelectedCheck.fn(ctx) as ReturnType<typeof populationSelectedCheck.fn>;
+    const result = populationSelectedCheck.fn(ctx) as ValidationCheckResult;
     expect(result.passed).toBe(false);
     expect(result.severity).toBe("error");
   });
 
   it("fails when scenario is null", () => {
     const ctx = makeContext();
-    const result = populationSelectedCheck.fn(ctx) as ReturnType<typeof populationSelectedCheck.fn>;
+    const result = populationSelectedCheck.fn(ctx) as ValidationCheckResult;
     expect(result.passed).toBe(false);
   });
 });
@@ -127,33 +128,33 @@ describe("populationSelectedCheck", () => {
 describe("timeHorizonValidCheck", () => {
   it("passes for valid range (startYear < endYear, ≤50 years)", () => {
     const ctx = makeContext({ scenario: makeScenario({ engineConfig: { startYear: 2025, endYear: 2030, seed: null, investmentDecisionsEnabled: false, logitModel: null, discountRate: 0.03 } }) });
-    const result = timeHorizonValidCheck.fn(ctx) as ReturnType<typeof timeHorizonValidCheck.fn>;
+    const result = timeHorizonValidCheck.fn(ctx) as ValidationCheckResult;
     expect(result.passed).toBe(true);
   });
 
   it("fails when startYear >= endYear", () => {
     const ctx = makeContext({ scenario: makeScenario({ engineConfig: { startYear: 2030, endYear: 2025, seed: null, investmentDecisionsEnabled: false, logitModel: null, discountRate: 0.03 } }) });
-    const result = timeHorizonValidCheck.fn(ctx) as ReturnType<typeof timeHorizonValidCheck.fn>;
+    const result = timeHorizonValidCheck.fn(ctx) as ValidationCheckResult;
     expect(result.passed).toBe(false);
     expect(result.message).toMatch(/end year/i);
   });
 
   it("fails when startYear === endYear", () => {
     const ctx = makeContext({ scenario: makeScenario({ engineConfig: { startYear: 2025, endYear: 2025, seed: null, investmentDecisionsEnabled: false, logitModel: null, discountRate: 0.03 } }) });
-    const result = timeHorizonValidCheck.fn(ctx) as ReturnType<typeof timeHorizonValidCheck.fn>;
+    const result = timeHorizonValidCheck.fn(ctx) as ValidationCheckResult;
     expect(result.passed).toBe(false);
   });
 
   it("fails when range exceeds 50 years", () => {
     const ctx = makeContext({ scenario: makeScenario({ engineConfig: { startYear: 2025, endYear: 2080, seed: null, investmentDecisionsEnabled: false, logitModel: null, discountRate: 0.03 } }) });
-    const result = timeHorizonValidCheck.fn(ctx) as ReturnType<typeof timeHorizonValidCheck.fn>;
+    const result = timeHorizonValidCheck.fn(ctx) as ValidationCheckResult;
     expect(result.passed).toBe(false);
     expect(result.message).toMatch(/50/);
   });
 
   it("passes for exactly 50 years", () => {
     const ctx = makeContext({ scenario: makeScenario({ engineConfig: { startYear: 2025, endYear: 2075, seed: null, investmentDecisionsEnabled: false, logitModel: null, discountRate: 0.03 } }) });
-    const result = timeHorizonValidCheck.fn(ctx) as ReturnType<typeof timeHorizonValidCheck.fn>;
+    const result = timeHorizonValidCheck.fn(ctx) as ValidationCheckResult;
     expect(result.passed).toBe(true);
   });
 });
@@ -165,13 +166,13 @@ describe("timeHorizonValidCheck", () => {
 describe("investmentDecisionsCalibratedCheck", () => {
   it("passes (no warning) when investment decisions are disabled", () => {
     const ctx = makeContext({ scenario: makeScenario({ engineConfig: { startYear: 2025, endYear: 2030, seed: null, investmentDecisionsEnabled: false, logitModel: null, discountRate: 0.03 } }) });
-    const result = investmentDecisionsCalibratedCheck.fn(ctx) as ReturnType<typeof investmentDecisionsCalibratedCheck.fn>;
+    const result = investmentDecisionsCalibratedCheck.fn(ctx) as ValidationCheckResult;
     expect(result.passed).toBe(true);
   });
 
   it("is a warning (not error) when investment decisions are enabled", () => {
     const ctx = makeContext({ scenario: makeScenario({ engineConfig: { startYear: 2025, endYear: 2030, seed: null, investmentDecisionsEnabled: true, logitModel: "multinomial_logit", discountRate: 0.03 } }) });
-    const result = investmentDecisionsCalibratedCheck.fn(ctx) as ReturnType<typeof investmentDecisionsCalibratedCheck.fn>;
+    const result = investmentDecisionsCalibratedCheck.fn(ctx) as ValidationCheckResult;
     expect(result.passed).toBe(false);
     expect(result.severity).toBe("warning");
     expect(result.message).toMatch(/calibration/i);
@@ -179,7 +180,7 @@ describe("investmentDecisionsCalibratedCheck", () => {
 
   it("passes when scenario is null (investment decisions cannot be enabled)", () => {
     const ctx = makeContext();
-    const result = investmentDecisionsCalibratedCheck.fn(ctx) as ReturnType<typeof investmentDecisionsCalibratedCheck.fn>;
+    const result = investmentDecisionsCalibratedCheck.fn(ctx) as ValidationCheckResult;
     expect(result.passed).toBe(true);
   });
 });

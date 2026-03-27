@@ -13,8 +13,6 @@ import {
   listAll,
   scenarioDimension,
   portfolioDimension,
-  populationDimension,
-  engineDimension,
   matchesFilter,
 } from "@/components/comparison/DimensionRegistry";
 import type { ResultDetailResponse } from "@/api/types";
