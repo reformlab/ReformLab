@@ -457,6 +457,7 @@ export interface PopulationCrosstabResponse {
   col_a: string;
   col_b: string;
   data: Array<Record<string, unknown>>;
+  truncated: boolean;
 }
 
 export interface PopulationUploadResponse {

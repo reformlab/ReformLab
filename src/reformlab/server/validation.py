@@ -10,7 +10,7 @@ Story 21.5 to add trust-status rules without modifying core code.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Callable, Literal
 
 from reformlab.server.models import (

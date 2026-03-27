@@ -36,6 +36,13 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Population endpoint constants
+PREVIEW_DEFAULT_LIMIT = 100
+PREVIEW_MAX_LIMIT = 100
+CROSSTAB_MAX_COMBINATIONS = 1000
+HISTOGRAM_BINS = 20
+CATEGORICAL_TOP_VALUES = 50
+
 router = APIRouter()
 
 # Supported data file extensions
@@ -320,7 +327,7 @@ def _map_arrow_type_to_string(arrow_type: pa.DataType) -> str:
 async def preview_population(
     population_id: str,
     offset: int = 0,
-    limit: int = 100,
+    limit: int = PREVIEW_DEFAULT_LIMIT,
     sort_by: str | None = None,
     order: Literal["asc", "desc"] = "asc",
 ) -> PopulationPreviewResponse:
@@ -338,7 +345,7 @@ async def preview_population(
         )
 
     # Enforce max limit
-    limit = min(limit, 100)
+    limit = min(limit, PREVIEW_MAX_LIMIT)
 
     try:
         table = _load_population_table(file_path)
@@ -459,16 +466,20 @@ def _compute_numeric_profile(table: pa.Table, column_name: str) -> ColumnProfile
     # Compute histogram (20 equal-width bins)
     histogram_buckets = []
     if max_val > min_val:
-        bin_width = (max_val - min_val) / 20
-        for i in range(20):
+        bin_width = (max_val - min_val) / HISTOGRAM_BINS
+        for i in range(HISTOGRAM_BINS):
             bin_start = min_val + i * bin_width
             bin_end = min_val + (i + 1) * bin_width
 
             # Count values in this bin
-            mask = pc.and_(
-                pc.greater_equal(valid_data, bin_start),
-                pc.less(valid_data, bin_end),
-            )
+            # Last bin includes the max value
+            if i == HISTOGRAM_BINS - 1:
+                mask = pc.greater_equal(valid_data, bin_start)
+            else:
+                mask = pc.and_(
+                    pc.greater_equal(valid_data, bin_start),
+                    pc.less(valid_data, bin_end),
+                )
             count_val = pc.sum(mask.cast(pa.int32())).as_py()
 
             histogram_buckets.append({
@@ -509,12 +520,11 @@ def _compute_categorical_profile(table: pa.Table, column_name: str) -> ColumnPro
         value_counts_table = pc.value_counts(valid_data)
         sorted_table = value_counts_table.sort_by([("counts", "descending")])
 
-        # Take top 50
-        limit = min(50, sorted_table.num_rows)
+        # Take top N values
+        limit = min(CATEGORICAL_TOP_VALUES, sorted_table.num_rows)
         for i in range(limit):
             val = sorted_table["values"][i].as_py()
             cnt = sorted_table["counts"][i].as_py()
-            cnt = value_counts_table["counts"][idx].as_py()
             value_counts_list.append({"value": str(val), "count": int(cnt)})
     except Exception:
         pass
@@ -673,10 +683,10 @@ async def crosstab_population(
             # Sort by count descending
             sorted_table = grouped.sort_by([(col_a + "_count", "descending")])
 
-            # Limit to 1000 combinations
+            # Limit to max combinations
             total_rows = sorted_table.num_rows
-            truncated = total_rows > 1000
-            limited_table = sorted_table.slice(0, min(1000, total_rows))
+            truncated = total_rows > CROSSTAB_MAX_COMBINATIONS
+            limited_table = sorted_table.slice(0, min(CROSSTAB_MAX_COMBINATIONS, total_rows))
 
             # Convert to list of dicts
             data = []
