@@ -20,6 +20,12 @@ class PopulationData:
     The underlying data is a PyArrow Table keyed by entity type
     (e.g. ``"individu"``, ``"menage"``).  A single-entity dataset
     can use the default ``"default"`` key.
+
+    **Narrow Scope (Story 21.3 / AC5):**
+    This type stays narrow — governance metadata (asset_id, origin, trust status,
+    etc.) lives in the ``DataAssetDescriptor`` envelope, not here. The ``metadata``
+    dict carries only runtime/technical metadata (e.g., ingestion timestamps,
+    schema hashes), not governance data.
     """
 
     tables: dict[str, pa.Table]

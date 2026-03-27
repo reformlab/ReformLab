@@ -1,0 +1,15 @@
+{
+  "columns": [
+    {"name": "household_id", "type": "int64", "required": true},
+    {"name": "income", "type": "double", "required": true},
+    {"name": "region", "type": "string", "required": false},
+    {"name": "income_decile", "type": "int64", "required": false},
+    {"name": "household_size", "type": "int64", "required": false},
+    {"name": "housing_type", "type": "string", "required": false},
+    {"name": "heating_type", "type": "string", "required": false},
+    {"name": "vehicle_type", "type": "string", "required": false},
+    {"name": "vehicle_age", "type": "int64", "required": false},
+    {"name": "energy_consumption", "type": "double", "required": false},
+    {"name": "carbon_emissions", "type": "double", "required": false}
+  ]
+}

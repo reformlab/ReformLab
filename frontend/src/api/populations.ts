@@ -4,16 +4,20 @@
 
 import { apiFetch } from "./client";
 import type {
-  PopulationItem,
+  PopulationLibraryItem,
   PopulationPreviewResponse,
   PopulationProfileResponse,
   PopulationCrosstabResponse,
   PopulationUploadResponse,
+  PopulationComparisonResponse,
 } from "./types";
 
-/** List available population datasets. */
-export async function listPopulations(): Promise<PopulationItem[]> {
-  const result = await apiFetch<{ populations: PopulationItem[] }>(
+/** List available population datasets.
+
+Story 21.2 / AC2: Returns PopulationLibraryItem[] with dual-field evidence classification.
+*/
+export async function listPopulations(): Promise<PopulationLibraryItem[]> {
+  const result = await apiFetch<{ populations: PopulationLibraryItem[] }>(
     "/api/populations",
   );
   return result.populations;
@@ -61,4 +65,22 @@ export async function uploadPopulation(file: File): Promise<PopulationUploadResp
 /** Delete a population dataset by ID. */
 export async function deletePopulation(id: string): Promise<void> {
   await apiFetch<void>(`/api/populations/${id}`, { method: "DELETE" });
+}
+
+/** Compare observed and synthetic populations.
+
+Story 21.4 / AC4: Computes distributional statistics comparing observed
+and synthetic populations with trust labels for both.
+
+@throws {Error} With detail.what/why/fix structure for validation errors.
+*/
+export async function comparePopulations(
+  observedId: string,
+  syntheticId: string,
+): Promise<PopulationComparisonResponse> {
+  const query = new URLSearchParams({
+    observed_id: observedId,
+    synthetic_id: syntheticId,
+  });
+  return apiFetch<PopulationComparisonResponse>(`/api/populations/compare?${query.toString()}`);
 }

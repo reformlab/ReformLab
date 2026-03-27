@@ -105,6 +105,10 @@ const mockPopulations = [
     source: "INSEE",
     year: 2024,
     origin: "built-in" as const,
+    // Story 21.2 / AC2: Canonical evidence fields
+    canonical_origin: "synthetic-public" as const,
+    access_mode: "bundled" as const,
+    trust_status: "exploratory" as const,
     column_count: 15,
     created_date: null,
   },
@@ -115,6 +119,10 @@ const mockPopulations = [
     source: "Eurostat",
     year: 2024,
     origin: "built-in" as const,
+    // Story 21.2 / AC2: Canonical evidence fields
+    canonical_origin: "synthetic-public" as const,
+    access_mode: "bundled" as const,
+    trust_status: "exploratory" as const,
     column_count: 12,
     created_date: null,
   },

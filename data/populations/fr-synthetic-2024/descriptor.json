@@ -1,0 +1,20 @@
+{
+  "asset_id": "fr-synthetic-2024",
+  "name": "French Synthetic Population 2024",
+  "description": "100k synthetic households for France - exploratory use only. Generated deterministically with seed=42 for benchmarking and scale validation. Not for production decision support.",
+  "data_class": "structural",
+  "origin": "synthetic-public",
+  "access_mode": "bundled",
+  "trust_status": "exploratory",
+  "source_url": "",
+  "license": "AGPL-3.0-or-later",
+  "version": "1.0.0",
+  "geographic_coverage": ["FR"],
+  "years": [2024],
+  "intended_use": "Benchmarking, scale validation, and exploratory analysis. Not suitable for production decision support.",
+  "redistribution_allowed": true,
+  "redistribution_notes": "Redistribution permitted under AGPL-3.0-or-later. Users must retain exploratory trust status labeling.",
+  "update_cadence": "",
+  "quality_notes": "Synthetic data with deterministic generation (seed=42). Income distribution: 15k-95k EUR with linear ramp. Age: uniform 20-80. Energy values correlated with income.",
+  "references": []
+}

@@ -1,0 +1,20 @@
+{
+  "asset_id": "fr-household-example-2024",
+  "name": "French Household Example 2024",
+  "description": "Example French household dataset with carbon emissions for demonstration purposes. Based on open statistical data with illustrative carbon calculations.",
+  "data_class": "structural",
+  "origin": "open-official",
+  "access_mode": "bundled",
+  "trust_status": "production-safe",
+  "source_url": "https://www.insee.fr/",
+  "license": "AGPL-3.0-or-later",
+  "version": "1.0.0",
+  "geographic_coverage": ["FR"],
+  "years": [2024],
+  "intended_use": "Demo and testing of carbon tax policy analysis.",
+  "redistribution_allowed": true,
+  "redistribution_notes": "Example data provided for demonstration purposes.",
+  "update_cadence": "static",
+  "quality_notes": "This is a small example dataset (100 households) for demonstration. Not suitable for production analysis.",
+  "references": ["https://www.insee.fr/"]
+}

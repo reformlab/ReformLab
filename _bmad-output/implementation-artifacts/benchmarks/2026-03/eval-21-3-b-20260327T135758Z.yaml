@@ -1,0 +1,109 @@
+record_id: 11d76e25-ca5e-4356-932f-8864c4cd30ea
+created_at: '2026-03-27T13:57:58.480762+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 21
+  story_num: '3'
+  title: Story 21.3
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: true
+    requires_migration: false
+evaluator:
+  provider: codex
+  model: gpt-5.3-codex
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-03-27T13:52:45.115612Z'
+  end_time: '2026-03-27T13:56:52.234612Z'
+  duration_ms: 247119
+  input_tokens: 0
+  output_tokens: 2617
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 10469
+  heading_count: 9
+  list_depth_max: 1
+  code_block_count: 0
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: 12.6'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes & Readability
+  - ⚡ Performance & Scalability
+  - 🐛 Correctness & Safety
+  - 🔧 Maintainability Issues
+  - 🛠️ Suggested Fixes
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 2aaeedfbd98a
+findings:
+  total_count: 11
+  by_severity:
+    critical: 4
+    major: 5
+    minor: 2
+    nit: 0
+  by_category:
+    security: 0
+    performance: 1
+    correctness: 4
+    completeness: 3
+    clarity: 1
+    testability: 2
+  has_fix_count: 10
+  has_location_count: 11
+  has_evidence_count: 11
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: true
+  uses_conditionals: false
+  uncertainty_phrases_count: 0
+  confidence_phrases_count: 0
+linguistic:
+  avg_sentence_length: 29.4468085106383
+  vocabulary_richness: 0.2680635838150289
+  flesch_reading_ease: -142.27037735849052
+  vague_terms_count: 0
+  formality_score: 0.78
+  sentiment: negative
+quality:
+  actionable_ratio: 0.91
+  specificity_score: 0.95
+  evidence_quality: 0.9
+  follows_template: true
+  internal_consistency: 0.93
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: true
+    requires_migration: false
+  phase: code-review
+  file_count: 6
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

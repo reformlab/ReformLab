@@ -1,0 +1,11 @@
+{
+  "columns": [
+    {"name": "household_id", "type": "int64", "required": true},
+    {"name": "person_id", "type": "int64", "required": true},
+    {"name": "age", "type": "int64", "required": true},
+    {"name": "income", "type": "double", "required": true},
+    {"name": "energy_transport_fuel", "type": "double", "required": true},
+    {"name": "energy_heating_fuel", "type": "double", "required": true},
+    {"name": "energy_natural_gas", "type": "double", "required": true}
+  ]
+}

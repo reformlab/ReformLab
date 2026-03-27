@@ -10,7 +10,14 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
+
+# Story 21.2 / AC7: Import canonical evidence literal types from reformlab.data
+from reformlab.data import (  # type: ignore[attr-defined]
+    DataAssetAccessMode,
+    DataAssetOrigin,
+    DataAssetTrustStatus,
+)
 
 # ---------------------------------------------------------------------------
 # Request models
@@ -211,7 +218,10 @@ class ColumnInfo(BaseModel):
 
 
 class DataSourceItem(BaseModel):
-    """Metadata for a single data source dataset."""
+    """Metadata for a single data source dataset.
+
+    Story 21.2 / AC5: Includes evidence classification fields for data fusion sources.
+    """
 
     id: str
     provider: str
@@ -220,6 +230,12 @@ class DataSourceItem(BaseModel):
     variable_count: int
     record_count: int | None = None
     source_url: str
+    # Story 21.2 / AC5, AC7: Evidence classification fields using canonical Literal types
+    # Story 21.2 code review fix: Removed defaults for Literal types - must be explicit
+    origin: DataAssetOrigin  # All current providers are open-official
+    access_mode: DataAssetAccessMode  # All current providers are fetched
+    trust_status: DataAssetTrustStatus  # Official sources are production-safe
+    data_class: Literal["structural"] = "structural"  # All fusion sources are structural in current phase
 
 
 class DataSourceDetail(DataSourceItem):
@@ -538,16 +554,36 @@ class DecisionSummaryResponse(BaseModel):
 
 
 class PopulationLibraryItem(BaseModel):
-    """Extended population item with origin and metadata for library display."""
+    """Extended population item with dual-field evidence classification.
+
+    Story 21.2 / AC1: Preserves legacy origin for UI behavior compatibility
+    while adding canonical evidence governance from Story 21.1.
+
+    Dual-field design:
+    - Legacy origin field: Preserved for edit/delete button visibility and backward compatibility
+    - Canonical fields: Added for evidence governance (canonical_origin, access_mode, trust_status)
+
+    Story 21.4 / AC5: Added is_synthetic boolean field for easier UI filtering.
+    """
 
     id: str
     name: str
     households: int
     source: str
     year: int
+    # Legacy field preserved for UI compatibility (edit/delete button logic)
     origin: Literal["built-in", "generated", "uploaded"]
+    # Story 21.2 / AC1, AC7: New canonical fields for evidence governance
+    canonical_origin: DataAssetOrigin  # "open-official" | "synthetic-public"
+    access_mode: DataAssetAccessMode  # "bundled" | "fetched"
+    trust_status: DataAssetTrustStatus  # "production-safe" | "exploratory" | ...
     column_count: int
     created_date: str | None = None  # ISO 8601 UTC for generated/uploaded, null for built-in
+
+    @computed_field
+    def is_synthetic(self) -> bool:
+        """Story 21.4 / AC5: Computed field - True if canonical_origin is synthetic-public."""
+        return self.canonical_origin == "synthetic-public"
 
 
 class PopulationPreviewColumnInfo(BaseModel):
@@ -643,6 +679,48 @@ class PopulationUploadResponse(BaseModel):
     unrecognized_columns: list[str]
     missing_required: list[str]
     valid: bool
+
+
+# ---------------------------------------------------------------------------
+# Population comparison models — Story 21.4
+# ---------------------------------------------------------------------------
+
+
+class NumericColumnComparison(BaseModel):
+    """Comparison of a single numeric column between observed and synthetic populations.
+
+    Story 21.4 / AC3, AC8.
+    """
+
+    column_name: str
+    observed_mean: float
+    synthetic_mean: float
+    relative_diff_pct: float
+    observed_median: float
+    synthetic_median: float
+    observed_std: float
+    synthetic_std: float
+    observed_p10: float
+    synthetic_p10: float
+    observed_p50: float
+    synthetic_p50: float
+    observed_p90: float
+    synthetic_p90: float
+
+
+class PopulationComparisonResponse(BaseModel):
+    """Response for GET /api/populations/compare.
+
+    Story 21.4 / AC4, AC8.
+    """
+
+    observed_asset_id: str
+    synthetic_asset_id: str
+    row_counts: dict[str, int]  # {"observed": N, "synthetic": M}
+    column_counts: dict[str, int]
+    common_numeric_columns: list[str]
+    numeric_comparison: dict[str, NumericColumnComparison]
+    trust_labels: dict[str, dict[str, str]]  # Per-asset governance fields
 
 
 # ---------------------------------------------------------------------------

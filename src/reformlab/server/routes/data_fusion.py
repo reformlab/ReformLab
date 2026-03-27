@@ -48,10 +48,54 @@ router = APIRouter()
 _VALID_PROVIDERS = frozenset({"insee", "eurostat", "ademe", "sdes"})
 _VALID_MERGE_METHODS = frozenset({"uniform", "ipf", "conditional"})
 
+# ============================================================================
+# Provider evidence mapping (Story 21.2 / AC6)
+# ============================================================================
+# All current providers are open-official/fetched/production-safe with structural data class
+_PROVIDER_EVIDENCE: dict[str, dict[str, str]] = {
+    "insee": {
+        "origin": "open-official",
+        "access_mode": "fetched",
+        "trust_status": "production-safe",
+        "data_class": "structural",
+    },
+    "eurostat": {
+        "origin": "open-official",
+        "access_mode": "fetched",
+        "trust_status": "production-safe",
+        "data_class": "structural",
+    },
+    "ademe": {
+        "origin": "open-official",
+        "access_mode": "fetched",
+        "trust_status": "production-safe",
+        "data_class": "structural",
+    },
+    "sdes": {
+        "origin": "open-official",
+        "access_mode": "fetched",
+        "trust_status": "production-safe",
+        "data_class": "structural",
+    },
+}
+
 
 def _build_source_item(provider: str, dataset_id: str, dataset: Any) -> DataSourceItem:
-    """Convert a catalog dataset entry to a DataSourceItem response model."""
+    """Convert a catalog dataset entry to a DataSourceItem response model.
+
+    Story 21.2 / AC6: Populates evidence metadata from provider catalog.
+    """
     col_count = len(dataset.columns) if hasattr(dataset, "columns") else 0
+
+    # Story 21.2 code review fix: Fail-fast for unknown providers instead of silent INSEE fallback
+    if provider not in _PROVIDER_EVIDENCE:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unknown provider evidence mapping: {provider!r}. "
+                    f"Valid providers: {sorted(_VALID_PROVIDERS)}",
+        )
+
+    evidence = _PROVIDER_EVIDENCE[provider]
     return DataSourceItem(
         id=dataset_id,
         provider=provider,
@@ -60,6 +104,11 @@ def _build_source_item(provider: str, dataset_id: str, dataset: Any) -> DataSour
         variable_count=col_count,
         record_count=None,
         source_url=dataset.url,
+        # Story 21.2 / AC6: Evidence fields from provider mapping
+        origin=evidence["origin"],
+        access_mode=evidence["access_mode"],
+        trust_status=evidence["trust_status"],
+        data_class="structural",  # All fusion sources are structural in current phase
     )
 
 

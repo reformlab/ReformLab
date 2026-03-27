@@ -16,6 +16,14 @@ import pyarrow as pa
 import pyarrow.compute as pc
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
+# Story 21.2 / AC7: Import canonical evidence literal types from reformlab.data
+from reformlab.data import (  # type: ignore[attr-defined]
+    DataAssetAccessMode,
+    DataAssetOrigin,
+    DataAssetTrustStatus,
+    compare_populations,
+)
+from reformlab.data.descriptor import DataAssetDescriptor
 from reformlab.server.dependencies import get_result_store
 from reformlab.server.models import (
     ColumnProfile,
@@ -23,6 +31,8 @@ from reformlab.server.models import (
     ColumnProfileCategorical,
     ColumnProfileEntry,
     ColumnProfileNumeric,
+    NumericColumnComparison,
+    PopulationComparisonResponse,
     PopulationCrosstabResponse,
     PopulationLibraryItem,
     PopulationPreviewColumnInfo,
@@ -42,6 +52,8 @@ PREVIEW_MAX_LIMIT = 100
 CROSSTAB_MAX_COMBINATIONS = 1000
 HISTOGRAM_BINS = 20
 CATEGORICAL_TOP_VALUES = 50
+# Story 21.2 code review fix: Maximum upload size to prevent memory exhaustion (100 MB)
+MAX_UPLOAD_SIZE = 100 * 1024 * 1024
 
 router = APIRouter()
 
@@ -108,7 +120,8 @@ def _find_population_file(population_id: str) -> Path | None:
 
 
 def _get_population_origin(
-    population_id: str, file_path: Path | None,
+    population_id: str,
+    file_path: Path | None,
 ) -> Literal["built-in", "generated", "uploaded"]:
     """Determine the origin of a population."""
     if file_path is None:
@@ -127,6 +140,35 @@ def _get_population_origin(
         return "generated"
 
     return "built-in"
+
+
+def _map_to_canonical_evidence(
+    legacy_origin: Literal["built-in", "generated", "uploaded"],
+) -> tuple[DataAssetOrigin, DataAssetAccessMode, DataAssetTrustStatus]:
+    """Map legacy origin tag to canonical evidence classification.
+
+    Story 21.2 / AC4: Mapping rules for population evidence fields.
+    Legacy origin field is preserved separately for UI compatibility.
+
+    Returns:
+        (canonical_origin, access_mode, trust_status) tuple
+
+    Raises:
+        HTTPException: If legacy_origin is not a recognized value (fail-fast)
+    """
+    if legacy_origin == "built-in":
+        return ("synthetic-public", "bundled", "exploratory")
+    elif legacy_origin == "generated":
+        return ("synthetic-public", "bundled", "exploratory")
+    elif legacy_origin == "uploaded":
+        # User-uploaded data lacks official provenance, classified as synthetic-public
+        return ("synthetic-public", "bundled", "exploratory")
+    else:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unknown legacy origin: {legacy_origin!r}. "
+                    "Valid values: built-in, generated, uploaded"
+        )
 
 
 def _load_population_table(file_path: Path) -> pa.Table:
@@ -172,6 +214,65 @@ def _read_uploaded_metadata(population_id: str) -> dict[str, Any] | None:
         return None
 
 
+def _get_canonical_evidence_from_metadata(
+    metadata: dict[str, Any] | None,
+    legacy_origin: Literal["built-in", "generated", "uploaded"],
+) -> tuple[DataAssetOrigin, DataAssetAccessMode, DataAssetTrustStatus]:
+    """Get canonical evidence fields from metadata with defaults for legacy files.
+
+    Story 21.2 / Task 9: Legacy metadata without canonical fields loads with
+    appropriate defaults via the mapping function.
+    """
+    if metadata and all(k in metadata for k in ("canonical_origin", "access_mode", "trust_status")):
+        canonical_origin = metadata["canonical_origin"]
+        access_mode = metadata["access_mode"]
+        trust_status = metadata["trust_status"]
+
+        valid_origins = DataAssetOrigin.__args__
+        valid_modes = DataAssetAccessMode.__args__
+        valid_statuses = DataAssetTrustStatus.__args__
+
+        if canonical_origin not in valid_origins:
+            logger.warning(
+                "event=invalid_metadata field=canonical_origin value=%s using_fallback=true",
+                canonical_origin,
+            )
+            return _map_to_canonical_evidence(legacy_origin)
+        if access_mode not in valid_modes:
+            logger.warning(
+                "event=invalid_metadata field=access_mode value=%s using_fallback=true",
+                access_mode,
+            )
+            return _map_to_canonical_evidence(legacy_origin)
+        if trust_status not in valid_statuses:
+            logger.warning(
+                "event=invalid_metadata field=trust_status value=%s using_fallback=true",
+                trust_status,
+            )
+            return _map_to_canonical_evidence(legacy_origin)
+
+        return (canonical_origin, access_mode, trust_status)
+
+    return _map_to_canonical_evidence(legacy_origin)
+
+
+def _read_descriptor_from_folder(population_id: str, data_dir: Path) -> dict[str, Any] | None:
+    """Read descriptor.json from a population folder."""
+    pop_folder = data_dir / population_id
+    if not pop_folder.is_dir():
+        return None
+
+    descriptor_path = pop_folder / "descriptor.json"
+    if not descriptor_path.exists():
+        return None
+
+    try:
+        result: dict[str, Any] = json.loads(descriptor_path.read_text())
+        return result
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
 # =============================================================================
 # Extended list endpoint with origin detection — Task 20.7.1
 # =============================================================================
@@ -189,6 +290,93 @@ def _scan_populations_with_origin() -> list[PopulationLibraryItem]:
 
     # Scan built-in and generated populations
     if data_dir.exists():
+        # Story 21.4 / Task 2.6: First scan folder-based populations (with descriptor.json)
+        for pop_folder in sorted(data_dir.iterdir()):
+            if not pop_folder.is_dir():
+                continue
+
+            # Check if this folder contains a data file
+            data_file = None
+            for ext in _DATA_EXTENSIONS:
+                candidate = pop_folder / f"data.{ext.lstrip('.')}"
+                if candidate.exists():
+                    data_file = candidate
+                    break
+
+            # If no data.csv/data.parquet, check for any CSV/Parquet file
+            if data_file is None:
+                for ext in (".csv", ".parquet"):
+                    candidates = list(pop_folder.glob(f"*{ext}"))
+                    if len(candidates) == 1:
+                        data_file = candidates[0]
+                        break
+
+            if data_file is None:
+                continue
+
+            pop_id = pop_folder.name
+            if pop_id in seen_ids:
+                continue
+            seen_ids.add(pop_id)
+
+            # Check for descriptor.json in folder
+            descriptor = _read_descriptor_from_folder(pop_id, data_dir)
+
+            # Load column count from data file
+            column_count = 0
+            try:
+                table = _load_population_table(data_file)
+                column_count = table.num_columns
+            except Exception:
+                column_count = 0
+
+            # Derive display name and metadata
+            name = pop_id.replace("-", " ").title()
+
+            parts = pop_id.split("-")
+            source = parts[0] if parts else "unknown"
+            year = 2025
+            households = 0
+
+            for part in parts:
+                if len(part) == 4 and part.isdigit():
+                    year = int(part)
+                elif part.endswith("k") and part[:-1].isdigit():
+                    households = int(part[:-1]) * 1000
+                elif part.isdigit() and len(part) >= 3:
+                    households = int(part)
+
+            # Determine canonical evidence from descriptor or use defaults
+            if descriptor and all(k in descriptor for k in ("origin", "access_mode", "trust_status")):
+                canonical_origin = descriptor["origin"]
+                access_mode = descriptor["access_mode"]
+                trust_status = descriptor["trust_status"]
+                # Use descriptor name if available
+                if descriptor.get("name"):
+                    name = descriptor["name"]
+            else:
+                canonical_origin, access_mode, trust_status = _map_to_canonical_evidence("built-in")
+
+            # Folder-based populations are treated as "built-in" origin
+            origin = "built-in"
+
+            items.append(
+                PopulationLibraryItem(
+                    id=pop_id,
+                    name=name,
+                    households=households,
+                    source=source,
+                    year=year,
+                    origin=origin,
+                    canonical_origin=canonical_origin,
+                    access_mode=access_mode,
+                    trust_status=trust_status,
+                    column_count=column_count,
+                    created_date=None,
+                )
+            )
+
+        # Then scan file-based populations (existing behavior for backward compatibility)
         for path in sorted(data_dir.iterdir()):
             if path.suffix.lower() not in _DATA_EXTENSIONS:
                 continue
@@ -239,6 +427,17 @@ def _scan_populations_with_origin() -> list[PopulationLibraryItem]:
                 elif part.isdigit() and len(part) >= 3:
                     households = int(part)
 
+            # Story 21.4 / Task 2.6: Check for descriptor.json in population folder first
+            descriptor = _read_descriptor_from_folder(pop_id, data_dir)
+            if descriptor and all(k in descriptor for k in ("origin", "access_mode", "trust_status")):
+                # Use canonical evidence from descriptor.json
+                canonical_origin = descriptor["origin"]
+                access_mode = descriptor["access_mode"]
+                trust_status = descriptor["trust_status"]
+            else:
+                # Story 21.2 / AC3, AC4: Map legacy origin to canonical evidence fields
+                canonical_origin, access_mode, trust_status = _map_to_canonical_evidence(origin)
+
             items.append(
                 PopulationLibraryItem(
                     id=pop_id,
@@ -246,7 +445,10 @@ def _scan_populations_with_origin() -> list[PopulationLibraryItem]:
                     households=households,
                     source=source,
                     year=year,
-                    origin=origin,
+                    origin=origin,  # Legacy field preserved for UI compatibility
+                    canonical_origin=canonical_origin,  # Story 21.2 / AC1
+                    access_mode=access_mode,
+                    trust_status=trust_status,
                     column_count=column_count,
                     created_date=created_date,
                 )
@@ -271,7 +473,8 @@ def _scan_populations_with_origin() -> list[PopulationLibraryItem]:
             if not meta:
                 logger.warning(
                     "Failed to read metadata for uploaded population '%s' from '%s'",
-                    pop_id, meta_path,
+                    pop_id,
+                    meta_path,
                 )
                 continue
 
@@ -288,6 +491,13 @@ def _scan_populations_with_origin() -> list[PopulationLibraryItem]:
                 except Exception:
                     pass
 
+            # Story 21.2 / Task 9: Get canonical evidence from metadata with defaults
+            # for legacy files
+            canonical_origin, access_mode, trust_status = _get_canonical_evidence_from_metadata(
+                meta,
+                "uploaded",
+            )
+
             items.append(
                 PopulationLibraryItem(
                     id=pop_id,
@@ -295,7 +505,10 @@ def _scan_populations_with_origin() -> list[PopulationLibraryItem]:
                     households=0,
                     source="uploaded",
                     year=2025,
-                    origin="uploaded",
+                    origin="uploaded",  # Legacy field preserved for UI compatibility
+                    canonical_origin=canonical_origin,  # Story 21.2 / AC1
+                    access_mode=access_mode,
+                    trust_status=trust_status,
                     column_count=column_count,
                     created_date=meta.get("created_date"),
                 )
@@ -309,6 +522,232 @@ async def list_populations() -> dict[str, list[PopulationLibraryItem]]:
     """List available population datasets with origin tags — AC-1, #1."""
     populations = _scan_populations_with_origin()
     return {"populations": populations}
+
+
+# =============================================================================
+# Comparison endpoint — Story 21.4 (MUST be before /{population_id} routes)
+# =============================================================================
+
+
+@router.get("/compare", response_model=PopulationComparisonResponse)
+async def compare_populations_endpoint(
+    observed_id: str,
+    synthetic_id: str,
+) -> PopulationComparisonResponse:
+    """Compare observed and synthetic populations — Story 21.4 / AC4, AC8.
+
+    Validates:
+    - Both populations exist (404 if not found)
+    - One is observed (open-official) and one is synthetic (synthetic-public) (422 if invalid pairing)
+    - Schemas have at least one common numeric column (400 if no overlap)
+
+    Returns comparison metrics with trust labels for both assets.
+    """
+    data_dir = _get_data_dir()
+    uploaded_dir = _get_uploaded_dir()
+
+    # Helper function to get population file path
+    def _get_pop_path(pop_id: str) -> Path | None:
+        # Check folder-based populations (with descriptor.json)
+        pop_folder = data_dir / pop_id
+        if pop_folder.is_dir():
+            # Check for data.csv or data.parquet
+            for ext in ("data.parquet", "data.csv"):
+                candidate = pop_folder / ext
+                if candidate.exists():
+                    return candidate
+            # Check for any CSV or Parquet file
+            for ext in (".parquet", ".csv"):
+                candidates = list(pop_folder.glob(f"*{ext}"))
+                if len(candidates) == 1:
+                    return candidates[0]
+        # Check file-based populations
+        for ext in (".parquet", ".csv"):
+            candidate = data_dir / f"{pop_id}{ext}"
+            if candidate.exists():
+                return candidate
+        # Check uploaded populations
+        for ext in (".parquet", ".csv"):
+            candidate = uploaded_dir / f"{pop_id}{ext}"
+            if candidate.exists():
+                return candidate
+        return None
+
+    # Helper function to get descriptor from metadata
+    def _get_descriptor(pop_id: str, data_file: Path) -> DataAssetDescriptor:
+        """Get DataAssetDescriptor from descriptor.json or create default.
+
+        Raises HTTPException 422 if descriptor.json exists but is malformed.
+        """
+        # Check for folder-based descriptor.json
+        if data_file.parent.is_dir():
+            descriptor_path = data_file.parent / "descriptor.json"
+            if descriptor_path.exists():
+                try:
+                    desc_data = json.loads(descriptor_path.read_text())
+                    return DataAssetDescriptor.from_json(desc_data)
+                except json.JSONDecodeError as e:
+                    raise HTTPException(
+                        status_code=422,
+                        detail={
+                            "what": f"Malformed descriptor.json for population '{pop_id}'",
+                            "why": f"Invalid JSON: {e}",
+                            "fix": "Fix the JSON syntax in descriptor.json",
+                        },
+                    )
+                except Exception as e:
+                    raise HTTPException(
+                        status_code=422,
+                        detail={
+                            "what": f"Invalid descriptor.json for population '{pop_id}'",
+                            "why": f"Validation error: {e}",
+                            "fix": "Ensure descriptor.json conforms to DataAssetDescriptor schema",
+                        },
+                    )
+
+        # No descriptor.json file - create descriptor based on scan metadata
+        items = _scan_populations_with_origin()
+        for item in items:
+            if item.id == pop_id:
+                return DataAssetDescriptor(
+                    asset_id=pop_id,
+                    name=item.name,
+                    description=item.name,
+                    data_class="structural",
+                    origin=item.canonical_origin,
+                    access_mode=item.access_mode,
+                    trust_status=item.trust_status,
+                )
+
+        # Fallback to default (should not happen for known populations)
+        return DataAssetDescriptor(
+            asset_id=pop_id,
+            name=pop_id,
+            description=f"Population {pop_id}",
+            data_class="structural",
+            origin="synthetic-public",
+            access_mode="bundled",
+            trust_status="exploratory",
+        )
+
+    # Validate both populations exist
+    observed_file = _get_pop_path(observed_id)
+    synthetic_file = _get_pop_path(synthetic_id)
+
+    if observed_file is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "what": f"Observed population '{observed_id}' not found",
+                "why": "No population file exists for this ID",
+                "fix": "Check available populations via GET /api/populations",
+            },
+        )
+
+    if synthetic_file is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "what": f"Synthetic population '{synthetic_id}' not found",
+                "why": "No population file exists for this ID",
+                "fix": "Check available populations via GET /api/populations",
+            },
+        )
+
+    # Get descriptors
+    observed_descriptor = _get_descriptor(observed_id, observed_file)
+    synthetic_descriptor = _get_descriptor(synthetic_id, synthetic_file)
+
+    # Validate one is observed and one is synthetic (strict parameter semantics)
+    if observed_descriptor.origin != "open-official":
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "what": "Invalid observed population origin",
+                "why": (
+                    f"The observed_id parameter must refer to an open-official population, "
+                    f"got origin '{observed_descriptor.origin}'"
+                ),
+                "fix": "Use an observed (open-official) population for observed_id parameter",
+            },
+        )
+
+    if synthetic_descriptor.origin != "synthetic-public":
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "what": "Invalid synthetic population origin",
+                "why": (
+                    f"The synthetic_id parameter must refer to a synthetic-public population, "
+                    f"got origin '{synthetic_descriptor.origin}'"
+                ),
+                "fix": "Use a synthetic (synthetic-public) population for synthetic_id parameter",
+            },
+        )
+
+    # Load tables
+    try:
+        observed_table = _load_population_table(observed_file)
+        synthetic_table = _load_population_table(synthetic_file)
+    except Exception as e:
+        logger.exception("Failed to load population tables for comparison")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "what": "Failed to load population data",
+                "why": str(e),
+                "fix": "Ensure population files are valid CSV or Parquet files",
+            },
+        )
+
+    # Perform comparison
+    try:
+        comparison = compare_populations(
+            observed_table,
+            synthetic_table,
+            observed_descriptor,
+            synthetic_descriptor,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "what": "Cannot compare populations",
+                "why": str(e),
+                "fix": "Ensure both populations have at least one common numeric column",
+            },
+        )
+
+    # Convert domain models to API response
+    numeric_comparison_response = {
+        col_name: NumericColumnComparison(
+            column_name=comp.column_name,
+            observed_mean=comp.observed_mean,
+            synthetic_mean=comp.synthetic_mean,
+            relative_diff_pct=comp.relative_diff_pct,
+            observed_median=comp.observed_median,
+            synthetic_median=comp.synthetic_median,
+            observed_std=comp.observed_std,
+            synthetic_std=comp.synthetic_std,
+            observed_p10=comp.observed_p10,
+            synthetic_p10=comp.synthetic_p10,
+            observed_p50=comp.observed_p50,
+            synthetic_p50=comp.synthetic_p50,
+            observed_p90=comp.observed_p90,
+            synthetic_p90=comp.synthetic_p90,
+        )
+        for col_name, comp in comparison.numeric_comparison.items()
+    }
+
+    return PopulationComparisonResponse(
+        observed_asset_id=comparison.observed_asset_id,
+        synthetic_asset_id=comparison.synthetic_asset_id,
+        row_counts=comparison.row_counts,
+        column_counts=comparison.column_counts,
+        common_numeric_columns=comparison.common_numeric_columns,
+        numeric_comparison=numeric_comparison_response,
+        trust_labels=comparison.trust_labels,
+    )
 
 
 # =============================================================================
@@ -764,11 +1203,27 @@ async def upload_population(
     population_id = f"uploaded-{uuid.uuid4()}"
     uploaded_dir = _get_uploaded_dir()
 
-    # Save file
+    # Save file with size limit to prevent memory exhaustion
     data_file = uploaded_dir / f"{population_id}{ext}"
     try:
-        contents = file.file.read()
-        data_file.write_bytes(contents)
+        # Story 21.2 code review fix: Stream file to disk with size limit
+        chunk_size = 64 * 1024  # 64 KB chunks
+        total_size = 0
+        with data_file.open("wb") as f:
+            while chunk := file.file.read(chunk_size):
+                total_size += len(chunk)
+                if total_size > MAX_UPLOAD_SIZE:
+                    raise HTTPException(
+                        status_code=413,
+                        detail={
+                            "what": "File too large",
+                            "why": f"Maximum upload size is {MAX_UPLOAD_SIZE // (1024 * 1024)} MB",
+                            "fix": "Upload a smaller file or split into multiple files",
+                        },
+                    )
+                f.write(chunk)
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception("Failed to save uploaded file")
         raise HTTPException(
@@ -794,10 +1249,15 @@ async def upload_population(
 
         valid = len(missing_required) == 0
 
-        # Create metadata sidecar
+        # Create metadata sidecar with evidence fields (Story 21.2 / AC3)
+        canonical_origin, access_mode, trust_status = _map_to_canonical_evidence("uploaded")
         meta = {
             "id": population_id,
-            "origin": "uploaded",
+            "origin": "uploaded",  # Legacy field preserved
+            # Story 21.2 / AC3: Canonical evidence fields
+            "canonical_origin": canonical_origin,
+            "access_mode": access_mode,
+            "trust_status": trust_status,
             "created_date": datetime.now(timezone.utc).isoformat(),
             "original_filename": filename,
             "file_path": str(data_file),

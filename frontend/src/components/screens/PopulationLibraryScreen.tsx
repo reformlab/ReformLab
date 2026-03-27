@@ -10,9 +10,11 @@
  */
 
 import { Eye, BarChart3, CheckCircle2, Trash2, Pencil, Upload, Plus } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { OriginBadge } from "@/components/population/OriginBadge";
+import { TrustStatusBadge } from "@/components/population/TrustStatusBadge";
+import { SyntheticBadge } from "@/components/population/SyntheticBadge";
 import type { PopulationLibraryItem } from "@/api/types";
 
 // ============================================================================
@@ -29,16 +31,6 @@ export interface PopulationLibraryScreenProps {
   onDelete: (id: string) => void;
   onUpload: () => void;
   onBuildNew: () => void;
-}
-
-// ============================================================================
-// Origin badge
-// ============================================================================
-
-function OriginBadge({ origin }: { origin: PopulationLibraryItem["origin"] }) {
-  const label = origin === "built-in" ? "[Built-in]" : origin === "generated" ? "[Generated]" : "[Uploaded]";
-  const variant = origin === "built-in" ? "secondary" : origin === "generated" ? "default" : "outline";
-  return <Badge variant={variant} className="text-xs">{label}</Badge>;
 }
 
 // ============================================================================
@@ -80,7 +72,20 @@ function PopulationCard({
       {/* Header */}
       <div className="flex flex-col gap-1 pr-6">
         <span className="text-sm font-semibold text-slate-900 leading-tight">{population.name}</span>
-        <OriginBadge origin={population.origin} />
+        {/* Story 21.2 / AC8: Display trust status badge (canonical) */}
+        {/* Story 21.4 / AC6, AC10: Display synthetic indicator badge for observed/synthetic populations */}
+        <div className="flex flex-wrap gap-1">
+          <OriginBadge origin={population.origin} />
+          <TrustStatusBadge trustStatus={population.trust_status} />
+          {/* Show SyntheticBadge for populations with clear origin (open-official or synthetic-public) */}
+          {(population.canonical_origin === "open-official" ||
+            population.canonical_origin === "synthetic-public") && (
+            <SyntheticBadge
+              origin={population.canonical_origin}
+              isSynthetic={population.is_synthetic}
+            />
+          )}
+        </div>
       </div>
 
       {/* Metadata */}

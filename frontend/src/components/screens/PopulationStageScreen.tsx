@@ -29,20 +29,13 @@ import { deletePopulation } from "@/api/populations";
 // Helpers
 // ============================================================================
 
-/** Map API populations to PopulationLibraryItem (built-in). */
-function toLibraryItem(p: {
-  id: string;
-  name: string;
-  households: number;
-  source: string;
-  year: number;
-}): PopulationLibraryItem {
-  return {
-    ...p,
-    origin: "built-in",
-    column_count: 14, // Placeholder — Story 20.7 returns real column_count
-    created_date: null,
-  };
+/** Map API populations to PopulationLibraryItem.
+
+Story 21.2 / AC2: Preserves all evidence fields from API response.
+The API returns PopulationLibraryItem with dual-field design (legacy + canonical).
+*/
+function toLibraryItem(p: PopulationLibraryItem): PopulationLibraryItem {
+  return p;
 }
 
 // ============================================================================
@@ -93,6 +86,10 @@ export function PopulationStageScreen() {
             source: "Data Fusion",
             year: new Date().getFullYear(),
             origin: "generated",
+            // Story 21.2 / AC4: Canonical evidence fields for generated populations
+            canonical_origin: "synthetic-public",
+            access_mode: "bundled",
+            trust_status: "exploratory",
             column_count: dataFusionResult.summary.column_count,
             created_date: new Date().toISOString(),
           },
