@@ -358,7 +358,7 @@ def _scan_populations_with_origin() -> list[PopulationLibraryItem]:
                 canonical_origin, access_mode, trust_status = _map_to_canonical_evidence("built-in")
 
             # Folder-based populations are treated as "built-in" origin
-            origin = "built-in"
+            origin: Literal["built-in", "generated", "uploaded"] = "built-in"
 
             items.append(
                 PopulationLibraryItem(

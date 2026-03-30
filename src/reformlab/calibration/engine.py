@@ -319,6 +319,14 @@ class CalibrationEngine:
         # 1. Filter targets to domain
         domain_targets = self.config.targets.by_domain(domain)
 
+        # TODO: Story 21.5 — wire asset descriptors into CalibrationConfig for
+        # trust-status guard. CalibrationTarget currently has no DataAssetDescriptor,
+        # so trust-status cannot be checked here. When CalibrationConfig exposes
+        # asset descriptors, add a guard using check_asset_trust() that:
+        # - Logs warning via logger.warning() for non-production-safe assets
+        # - Records trust_warnings in CalibrationResult metadata
+        # - Does NOT block calibration execution
+
         # 2. Validate inputs before constructing optimizer vectors
         self._validate_inputs(domain_targets)
 
@@ -540,7 +548,11 @@ class CalibrationEngine:
         for param_name, diag in param_diags.items():
             if diag.gradient_component is not None:
                 # Use absolute value to catch both positive and negative near-zero gradients
-                if abs(diag.gradient_component) < 1e-6 and not diag.at_lower_bound and not diag.at_upper_bound:
+                if (
+                    abs(diag.gradient_component) < 1e-6
+                    and not diag.at_lower_bound
+                    and not diag.at_upper_bound
+                ):
                     identifiability_flags[param_name] = "low_sensitivity"
 
         # TODO: Hessian-based correlation detection (requires scipy method with hess_inv)

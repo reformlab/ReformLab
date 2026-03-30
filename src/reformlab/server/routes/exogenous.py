@@ -10,11 +10,11 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
+import reformlab.data.exogenous_loader as exogenous_loader
 from reformlab.data.descriptor import (
     DataAssetOrigin,
 )
 from reformlab.data.errors import EvidenceAssetError
-from reformlab.data.exogenous_loader import _EXOGENOUS_ASSETS_BASE_PATH, load_exogenous_asset
 from reformlab.server.models import (
     ExogenousAssetRequest,
     ExogenousAssetResponse,
@@ -85,11 +85,12 @@ def _list_asset_folders() -> list[str]:
     list[str]
         List of series names (folder names) that exist in data/exogenous/.
     """
-    if not _EXOGENOUS_ASSETS_BASE_PATH.exists():
+    base_path = exogenous_loader._EXOGENOUS_ASSETS_BASE_PATH
+    if not base_path.exists():
         return []
 
     series_names: list[str] = []
-    for entry in _EXOGENOUS_ASSETS_BASE_PATH.iterdir():
+    for entry in base_path.iterdir():
         if entry.is_dir() and not entry.name.startswith("_"):
             # Check for required files
             descriptor_path = entry / "descriptor.json"
@@ -130,7 +131,7 @@ async def list_exogenous_series(
 
     for series_name in series_names:
         try:
-            asset = load_exogenous_asset(series_name)
+            asset = exogenous_loader.load_exogenous_asset(series_name)
             response = _asset_to_response(asset)
 
             # Apply filters
@@ -175,7 +176,7 @@ async def get_exogenous_series(series_name: str) -> ExogenousAssetResponse:
         404 if the asset does not exist.
     """
     try:
-        asset = load_exogenous_asset(series_name)
+        asset = exogenous_loader.load_exogenous_asset(series_name)
         return _asset_to_response(asset)
     except EvidenceAssetError as exc:
         raise HTTPException(
@@ -225,7 +226,7 @@ async def create_exogenous_series(request: ExogenousAssetRequest) -> ExogenousAs
             },
         )
 
-    asset_path = _EXOGENOUS_ASSETS_BASE_PATH / series_name
+    asset_path = exogenous_loader._EXOGENOUS_ASSETS_BASE_PATH / series_name
 
     # Check if asset already exists
     if asset_path.exists():
@@ -284,7 +285,7 @@ async def create_exogenous_series(request: ExogenousAssetRequest) -> ExogenousAs
             json.dump(metadata_data, f, indent=2)
 
         # Load and return the created asset
-        asset = load_exogenous_asset(series_name)
+        asset = exogenous_loader.load_exogenous_asset(series_name)
         return _asset_to_response(asset)
 
     except (OSError, json.JSONDecodeError) as exc:

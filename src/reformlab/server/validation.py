@@ -351,6 +351,79 @@ def _check_memory_preflight(request: PreflightRequest) -> ValidationCheckResult:
         )
 
 
+def _check_trust_status(request: PreflightRequest) -> ValidationCheckResult:
+    """Preflight check for evidence asset trust status.
+
+    Story 21.5: Evaluates trust status of all scenario assets (exogenous series)
+    and warns if any are non-production-safe. Warning-severity only — never blocks.
+    """
+    from reformlab.data.exogenous_loader import load_exogenous_asset
+    from reformlab.data.trust_rules import (
+        TrustCheckResult,
+        check_asset_trust,
+        summarize_trust_warnings,
+    )
+
+    engine_config = request.scenario.get("engineConfig", {})
+
+    if not isinstance(engine_config, dict):
+        return ValidationCheckResult(
+            id="trust-status",
+            label="Evidence trust status",
+            passed=True,
+            severity="warning",
+            message="Engine configuration missing — cannot verify trust status",
+        )
+
+    exogenous_series = engine_config.get("exogenousSeries")
+    if not exogenous_series or not isinstance(exogenous_series, list):
+        return ValidationCheckResult(
+            id="trust-status",
+            label="Evidence trust status",
+            passed=True,
+            severity="warning",
+            message="No exogenous series configured — nothing to check",
+        )
+
+    trust_results: list[TrustCheckResult] = []
+    for series_name in exogenous_series:
+        if not isinstance(series_name, str):
+            continue
+        try:
+            asset = load_exogenous_asset(series_name)
+            trust_results.append(check_asset_trust(asset.descriptor))
+        except Exception:
+            logger.debug("Could not load asset '%s' for trust check", series_name)
+
+    if not trust_results:
+        return ValidationCheckResult(
+            id="trust-status",
+            label="Evidence trust status",
+            passed=True,
+            severity="warning",
+            message="Could not verify trust status — no assets loaded",
+        )
+
+    summary = summarize_trust_warnings(tuple(trust_results))
+
+    if summary is not None:
+        return ValidationCheckResult(
+            id="trust-status",
+            label="Evidence trust status",
+            passed=False,
+            severity="warning",
+            message=summary,
+        )
+
+    return ValidationCheckResult(
+        id="trust-status",
+        label="Evidence trust status",
+        passed=True,
+        severity="warning",
+        message="All evidence assets are production-safe",
+    )
+
+
 def _check_exogenous_coverage(request: PreflightRequest) -> ValidationCheckResult:
     """Preflight check for exogenous time series coverage.
 
@@ -491,6 +564,12 @@ def _register_builtin_checks() -> None:
             label="Exogenous series coverage",
             severity="error",  # Changed to error since we now do actual validation
             check_fn=_check_exogenous_coverage,
+        ),
+        ValidationCheck(
+            check_id="trust-status",
+            label="Evidence trust status",
+            severity="warning",
+            check_fn=_check_trust_status,
         ),
     ]
 

@@ -591,7 +591,7 @@ class PopulationLibraryItem(BaseModel):
     @computed_field
     def is_synthetic(self) -> bool:
         """Story 21.4 / AC5: Computed field - True if canonical_origin is synthetic-public."""
-        return self.canonical_origin == "synthetic-public"
+        return bool(self.canonical_origin == "synthetic-public")
 
 
 class PopulationPreviewColumnInfo(BaseModel):
@@ -834,4 +834,3 @@ class ExogenousAssetResponse(BaseModel):
     interpolation_method: str
     aggregation_method: str
     revision_policy: str
-
