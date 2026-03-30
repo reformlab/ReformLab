@@ -160,6 +160,210 @@ class TestTasteParameters:
         assert tp.beta_cost == 1.5
 
 
+# ============================================================================
+# Story 21.7: Generalized TasteParameters with ASCs and betas
+# ============================================================================
+
+
+class TestTasteParametersGeneralized:
+    """Tests for generalized TasteParameters with ASCs and named betas (Story 21.7 / AC1)."""
+
+    def test_from_beta_cost_factory_creates_generalized_structure(self) -> None:
+        """from_beta_cost(-0.01) creates instance with asc={}, betas={'cost': -0.01}."""
+        tp = TasteParameters.from_beta_cost(-0.01)
+        assert tp.beta_cost == -0.01  # legacy field retained
+        assert tp.asc == {}
+        assert tp.betas == {"cost": -0.01}
+        assert tp.calibrate == frozenset(["cost"])
+        assert tp.fixed == frozenset()
+
+    def test_from_beta_cost_creates_legacy_mode_instance(self) -> None:
+        """from_beta_cost() creates instance with is_legacy_mode=True."""
+        tp = TasteParameters.from_beta_cost(-0.01)
+        assert tp.is_legacy_mode is True
+
+    def test_is_legacy_mode_true_for_empty_asc_and_single_cost_beta(self) -> None:
+        """is_legacy_mode=True when asc empty and betas has only 'cost' key."""
+        tp = TasteParameters(beta_cost=-0.5, asc={}, betas={"cost": -0.5})
+        assert tp.is_legacy_mode is True
+
+    def test_is_legacy_mode_false_for_non_empty_asc(self) -> None:
+        """is_legacy_mode=False when asc is non-empty with calibrate/fixed specified."""
+        tp = TasteParameters(
+            beta_cost=0.0,
+            asc={"ev": 0.0, "petrol": -0.5},
+            betas={"cost": -0.01},
+            calibrate=frozenset(["ev"]),
+            fixed=frozenset(["petrol", "cost"]),
+        )
+        assert tp.is_legacy_mode is False
+
+    def test_is_legacy_mode_false_for_multiple_betas(self) -> None:
+        """is_legacy_mode=False when betas has more than just 'cost' key."""
+        tp = TasteParameters(beta_cost=0.0, asc={}, betas={"cost": -0.01, "time": -0.05})
+        assert tp.is_legacy_mode is False
+
+    def test_generalized_construction_with_ascs_only(self) -> None:
+        """Construction with ASCs only (all betas fixed)."""
+        tp = TasteParameters(
+            beta_cost=0.0,  # unused in generalized mode
+            asc={"ev": 0.0, "petrol": -0.5, "diesel": -0.6},
+            betas={"cost": -0.01},
+            calibrate=frozenset(["ev", "petrol"]),
+            fixed=frozenset(["cost", "diesel"]),
+            reference_alternative="ev",
+        )
+        assert tp.asc == {"ev": 0.0, "petrol": -0.5, "diesel": -0.6}
+        assert tp.betas == {"cost": -0.01}
+        assert tp.calibrate == frozenset(["ev", "petrol"])
+        assert tp.fixed == frozenset(["cost", "diesel"])
+        assert tp.reference_alternative == "ev"
+        assert tp.is_legacy_mode is False
+
+    def test_generalized_construction_with_betas_only(self) -> None:
+        """Construction with multiple betas (all ASCs fixed)."""
+        tp = TasteParameters(
+            beta_cost=0.0,
+            asc={"ev": 0.0, "petrol": -0.5},
+            betas={"cost": -0.01, "emissions": -0.05},
+            calibrate=frozenset(["cost"]),
+            fixed=frozenset(["emissions", "ev", "petrol"]),
+            reference_alternative="ev",
+        )
+        assert tp.asc == {"ev": 0.0, "petrol": -0.5}
+        assert tp.betas == {"cost": -0.01, "emissions": -0.05}
+        assert "cost" in tp.calibrate
+        assert "emissions" in tp.fixed
+
+    def test_generalized_construction_with_ascs_and_betas(self) -> None:
+        """Full generalized mode with ASCs + multiple betas."""
+        tp = TasteParameters(
+            beta_cost=0.0,
+            asc={"ev": 0.0, "petrol": -0.5, "hybrid": -0.3},
+            betas={"cost": -0.01, "emissions": -0.05},
+            calibrate=frozenset(["ev", "cost"]),
+            fixed=frozenset(["petrol", "hybrid", "emissions"]),
+            reference_alternative="ev",
+            literature_sources={"emissions": "Dargay & Gately 1999"},
+        )
+        assert len(tp.asc) == 3
+        assert len(tp.betas) == 2
+        assert len(tp.calibrate) == 2
+        assert len(tp.fixed) == 3
+        assert tp.literature_sources == {"emissions": "Dargay & Gately 1999"}
+
+    def test_calibrate_and_fixed_must_be_disjoint(self) -> None:
+        """Overlapping calibrate and fixed sets raise DiscreteChoiceError."""
+        from reformlab.discrete_choice.errors import DiscreteChoiceError
+
+        with pytest.raises(DiscreteChoiceError, match="disjoint"):
+            TasteParameters(
+                beta_cost=0.0,
+                asc={"ev": 0.0},
+                betas={"cost": -0.01},
+                calibrate=frozenset(["cost"]),
+                fixed=frozenset(["cost"]),  # overlap!
+            )
+
+    def test_calibrate_must_be_subset_of_asc_or_betas_keys(self) -> None:
+        """calibrate containing unknown parameter names raises DiscreteChoiceError."""
+        from reformlab.discrete_choice.errors import DiscreteChoiceError
+
+        with pytest.raises(DiscreteChoiceError, match="Invalid in calibrate"):
+            TasteParameters(
+                beta_cost=0.0,
+                asc={"ev": 0.0},
+                betas={"cost": -0.01},
+                calibrate=frozenset(["unknown_param"]),
+            )
+
+    def test_fixed_must_be_subset_of_asc_or_betas_keys(self) -> None:
+        """fixed containing unknown parameter names raises DiscreteChoiceError."""
+        from reformlab.discrete_choice.errors import DiscreteChoiceError
+
+        with pytest.raises(DiscreteChoiceError, match="Invalid in fixed"):
+            TasteParameters(
+                beta_cost=0.0,
+                asc={"ev": 0.0},
+                betas={"cost": -0.01},
+                fixed=frozenset(["unknown_param"]),
+            )
+
+    def test_at_least_one_parameter_must_be_calibrated_or_fixed(self) -> None:
+        """Empty calibrate and fixed with non-empty asc and single cost beta raises error."""
+        # When using single "cost" beta with non-empty asc, must specify calibrate or fixed
+        # to avoid ambiguous legacy/generalized mode.
+        from reformlab.discrete_choice.errors import DiscreteChoiceError
+
+        with pytest.raises(DiscreteChoiceError, match="is_legacy_mode.*asc is non-empty"):
+            TasteParameters(
+                beta_cost=0.0,
+                asc={"ev": 0.0},
+                betas={"cost": -0.01},
+                calibrate=frozenset(),
+                fixed=frozenset(),
+            )
+
+    def test_reference_alternative_must_exist_in_asc(self) -> None:
+        """reference_alternative not in asc keys raises DiscreteChoiceError."""
+        from reformlab.discrete_choice.errors import DiscreteChoiceError
+
+        with pytest.raises(DiscreteChoiceError, match="not found in asc"):
+            TasteParameters(
+                beta_cost=0.0,
+                asc={"ev": 0.0, "petrol": -0.5},
+                betas={"cost": -0.01},
+                calibrate=frozenset(["ev"]),
+                fixed=frozenset(),
+                reference_alternative="diesel",  # not in asc
+            )
+
+    def test_reference_alternative_asc_must_be_zero(self) -> None:
+        """reference_alternative with ASC != 0.0 raises DiscreteChoiceError."""
+        from reformlab.discrete_choice.errors import DiscreteChoiceError
+
+        with pytest.raises(DiscreteChoiceError, match="must have ASC=0\\.0"):
+            TasteParameters(
+                beta_cost=0.0,
+                asc={"ev": 0.5, "petrol": -0.5},  # ev ASC is 0.5, not 0.0
+                betas={"cost": -0.01},
+                calibrate=frozenset(["ev"]),  # Add calibrate to avoid special case
+                fixed=frozenset(),
+                reference_alternative="ev",
+            )
+
+    def test_legacy_mode_requires_empty_asc(self) -> None:
+        """is_legacy_mode=True with non-empty asc raises DiscreteChoiceError."""
+        from reformlab.discrete_choice.errors import DiscreteChoiceError
+
+        with pytest.raises(DiscreteChoiceError, match="is_legacy_mode.*asc is non-empty"):
+            TasteParameters(
+                beta_cost=-0.01,
+                asc={"ev": 0.0},  # non-empty asc
+                betas={"cost": -0.01},
+            )
+
+    def test_legacy_mode_requires_none_reference_alternative(self) -> None:
+        """is_legacy_mode=True with reference_alternative raises DiscreteChoiceError."""
+        from reformlab.discrete_choice.errors import DiscreteChoiceError
+
+        with pytest.raises(DiscreteChoiceError, match="is_legacy_mode.*reference_alternative"):
+            TasteParameters(
+                beta_cost=-0.01,
+                asc={},
+                betas={"cost": -0.01},
+                reference_alternative="ev",
+            )
+
+    def test_backward_compatibility_legacy_construction_still_works(self) -> None:
+        """Legacy single-beta construction still works without new fields."""
+        tp = TasteParameters(beta_cost=-0.01)
+        assert tp.beta_cost == -0.01
+        assert tp.asc == {}
+        assert tp.betas == {}
+        assert tp.is_legacy_mode is False  # structurally not legacy (no betas["cost"])
+
+
 class TestChoiceResult:
     """Tests for ChoiceResult frozen dataclass (AC-6, AC-5)."""
 

@@ -135,6 +135,278 @@ class TestComputeUtilities:
 
 
 # ============================================================================
+# Story 21.7: Generalized compute_utilities() with ASCs and betas (AC-2)
+# ============================================================================
+
+
+class TestComputeUtilitiesGeneralized:
+    """Tests for generalized compute_utilities with ASCs and multiple betas."""
+
+    def test_legacy_mode_produces_identical_results(self) -> None:
+        """Legacy mode (is_legacy_mode=True) produces identical results to current implementation."""
+        cost_matrix = CostMatrix(
+            table=pa.table({
+                "a": pa.array([100.0, 200.0]),
+                "b": pa.array([150.0, 300.0]),
+            }),
+            alternative_ids=("a", "b"),
+        )
+        # Legacy TasteParameters
+        taste = TasteParameters.from_beta_cost(-0.01)
+
+        # Call without utility_attributes (legacy mode)
+        result = compute_utilities(cost_matrix, taste)
+
+        # Should match original V_ij = beta_cost × cost_ij
+        assert result.column("a")[0].as_py() == pytest.approx(-1.0)
+        assert result.column("a")[1].as_py() == pytest.approx(-2.0)
+        assert result.column("b")[0].as_py() == pytest.approx(-1.5)
+        assert result.column("b")[1].as_py() == pytest.approx(-3.0)
+
+    def test_ascs_only_utilities(self) -> None:
+        """Generalized mode with ASCs only (all betas fixed)."""
+        cost_matrix = CostMatrix(
+            table=pa.table({
+                "ev": pa.array([100.0, 200.0]),
+                "petrol": pa.array([150.0, 300.0]),
+            }),
+            alternative_ids=("ev", "petrol"),
+        )
+        taste = TasteParameters(
+            beta_cost=0.0,
+            asc={"ev": 0.0, "petrol": -0.5},
+            betas={"cost": -0.01},
+            calibrate=frozenset(),
+            fixed=frozenset(["ev", "petrol", "cost"]),
+            reference_alternative="ev",
+        )
+
+        # Without utility_attributes, use cost_matrix for "cost" beta
+        result = compute_utilities(cost_matrix, taste)
+
+        # V_ij = ASC_j + beta_cost × cost_ij
+        # ev: 0.0 + (-0.01 × cost) = [-1.0, -2.0]
+        # petrol: -0.5 + (-0.01 × cost) = [-2.0, -3.5]
+        assert result.column("ev")[0].as_py() == pytest.approx(-1.0)
+        assert result.column("ev")[1].as_py() == pytest.approx(-2.0)
+        assert result.column("petrol")[0].as_py() == pytest.approx(-2.0)
+        assert result.column("petrol")[1].as_py() == pytest.approx(-3.5)
+
+    def test_betas_only_utilities(self) -> None:
+        """Generalized mode with multiple betas (all ASCs fixed/zero)."""
+        cost_matrix = CostMatrix(
+            table=pa.table({
+                "a": pa.array([100.0, 200.0]),
+                "b": pa.array([150.0, 300.0]),
+            }),
+            alternative_ids=("a", "b"),
+        )
+
+        # Create utility attributes for cost and emissions
+        utility_attrs = {
+            "cost": cost_matrix.table,  # Use cost matrix as cost attribute
+            "emissions": pa.table({
+                "a": pa.array([0.0, 0.0]),  # electric: zero emissions
+                "b": pa.array([120.0, 120.0]),  # petrol: 120 g/km
+            }),
+        }
+
+        taste = TasteParameters(
+            beta_cost=0.0,
+            asc={},  # No ASCs
+            betas={"cost": -0.01, "emissions": -0.05},
+            calibrate=frozenset(["cost"]),
+            fixed=frozenset(["emissions"]),
+            reference_alternative=None,
+        )
+
+        result = compute_utilities(cost_matrix, taste, utility_attributes=utility_attrs)
+
+        # V_a = 0 + (-0.01 × 100) + (-0.05 × 0) = -1.0
+        # V_b = 0 + (-0.01 × 150) + (-0.05 × 120) = -1.5 - 6.0 = -7.5
+        assert result.column("a")[0].as_py() == pytest.approx(-1.0)
+        assert result.column("b")[0].as_py() == pytest.approx(-7.5)
+
+    def test_ascs_and_multiple_betas_utilities(self) -> None:
+        """Full generalized mode with ASCs + multiple betas."""
+        cost_matrix = CostMatrix(
+            table=pa.table({
+                "ev": pa.array([100.0, 200.0]),
+                "petrol": pa.array([150.0, 300.0]),
+            }),
+            alternative_ids=("ev", "petrol"),
+        )
+
+        utility_attrs = {
+            "cost": cost_matrix.table,
+            "emissions": pa.table({
+                "ev": pa.array([0.0, 0.0]),
+                "petrol": pa.array([120.0, 120.0]),
+            }),
+        }
+
+        taste = TasteParameters(
+            beta_cost=0.0,
+            asc={"ev": 0.0, "petrol": -0.3},  # petrol has negative inertia ASC
+            betas={"cost": -0.01, "emissions": -0.05},
+            calibrate=frozenset(["ev", "cost"]),
+            fixed=frozenset(["petrol", "emissions"]),
+            reference_alternative="ev",
+        )
+
+        result = compute_utilities(cost_matrix, taste, utility_attributes=utility_attrs)
+
+        # V_ev_0 = 0 + (-0.01 × 100) + (-0.05 × 0) = -1.0
+        # V_petrol_0 = -0.3 + (-0.01 × 150) + (-0.05 × 120) = -0.3 - 1.5 - 6.0 = -7.8
+        assert result.column("ev")[0].as_py() == pytest.approx(-1.0)
+        assert result.column("petrol")[0].as_py() == pytest.approx(-7.8)
+
+    def test_multi_beta_requires_explicit_attributes(self) -> None:
+        """Multi-beta without utility_attributes in generalized mode raises DiscreteChoiceError."""
+        from reformlab.discrete_choice.errors import DiscreteChoiceError
+
+        cost_matrix = CostMatrix(
+            table=pa.table({
+                "a": pa.array([100.0]),
+                "b": pa.array([200.0]),
+            }),
+            alternative_ids=("a", "b"),
+        )
+
+        taste = TasteParameters(
+            beta_cost=0.0,
+            asc={},
+            betas={"cost": -0.01, "emissions": -0.05},
+            calibrate=frozenset(["cost"]),
+            fixed=frozenset(["emissions"]),
+        )
+
+        with pytest.raises(DiscreteChoiceError, match="Multi-beta mode requires utility_attributes"):
+            compute_utilities(cost_matrix, taste, utility_attributes=None)
+
+    def test_utility_attributes_validation_shape(self) -> None:
+        """Utility attributes with wrong shape raises DiscreteChoiceError."""
+        from reformlab.discrete_choice.errors import DiscreteChoiceError
+
+        cost_matrix = CostMatrix(
+            table=pa.table({
+                "a": pa.array([100.0, 200.0]),
+                "b": pa.array([150.0, 300.0]),
+            }),
+            alternative_ids=("a", "b"),
+        )
+
+        utility_attrs = {
+            "cost": cost_matrix.table,
+            "emissions": pa.table({
+                "a": pa.array([0.0]),  # Only 1 row, should be 2
+                "b": pa.array([120.0]),
+            }),
+        }
+
+        taste = TasteParameters(
+            beta_cost=0.0,
+            asc={},
+            betas={"cost": -0.01, "emissions": -0.05},
+            calibrate=frozenset(["cost"]),
+            fixed=frozenset(["emissions"]),
+        )
+
+        with pytest.raises(DiscreteChoiceError, match="has 1 row.*expected 2"):
+            compute_utilities(cost_matrix, taste, utility_attributes=utility_attrs)
+
+    def test_utility_attributes_validation_columns(self) -> None:
+        """Utility attributes with wrong columns raises DiscreteChoiceError."""
+        from reformlab.discrete_choice.errors import DiscreteChoiceError
+
+        cost_matrix = CostMatrix(
+            table=pa.table({
+                "a": pa.array([100.0]),
+                "b": pa.array([200.0]),
+            }),
+            alternative_ids=("a", "b"),
+        )
+
+        utility_attrs = {
+            "cost": cost_matrix.table,
+            "emissions": pa.table({
+                "x": pa.array([0.0]),  # Wrong column name
+                "y": pa.array([120.0]),
+            }),
+        }
+
+        taste = TasteParameters(
+            beta_cost=0.0,
+            asc={},
+            betas={"cost": -0.01, "emissions": -0.05},
+            calibrate=frozenset(["cost"]),
+            fixed=frozenset(["emissions"]),
+        )
+
+        with pytest.raises(DiscreteChoiceError, match="has columns.*expected.*\\['a', 'b'\\]"):
+            compute_utilities(cost_matrix, taste, utility_attributes=utility_attrs)
+
+    def test_utility_attributes_validation_nan_inf(self) -> None:
+        """Utility attributes with NaN/Inf raises DiscreteChoiceError."""
+        from reformlab.discrete_choice.errors import DiscreteChoiceError
+
+        cost_matrix = CostMatrix(
+            table=pa.table({
+                "a": pa.array([100.0]),
+                "b": pa.array([200.0]),
+            }),
+            alternative_ids=("a", "b"),
+        )
+
+        utility_attrs = {
+            "cost": cost_matrix.table,
+            "emissions": pa.table({
+                "a": pa.array([float("nan")]),  # NaN value
+                "b": pa.array([120.0]),
+            }),
+        }
+
+        taste = TasteParameters(
+            beta_cost=0.0,
+            asc={},
+            betas={"cost": -0.01, "emissions": -0.05},
+            calibrate=frozenset(["cost"]),
+            fixed=frozenset(["emissions"]),
+        )
+
+        with pytest.raises(DiscreteChoiceError, match="NaN|Inf"):
+            compute_utilities(cost_matrix, taste, utility_attributes=utility_attrs)
+
+    def test_utility_attributes_missing_beta_raises(self) -> None:
+        """Utility attributes missing table for a beta raises DiscreteChoiceError."""
+        from reformlab.discrete_choice.errors import DiscreteChoiceError
+
+        cost_matrix = CostMatrix(
+            table=pa.table({
+                "a": pa.array([100.0]),
+                "b": pa.array([200.0]),
+            }),
+            alternative_ids=("a", "b"),
+        )
+
+        utility_attrs = {
+            "cost": cost_matrix.table,
+            # Missing "emissions" table
+        }
+
+        taste = TasteParameters(
+            beta_cost=0.0,
+            asc={},
+            betas={"cost": -0.01, "emissions": -0.05},
+            calibrate=frozenset(["cost"]),
+            fixed=frozenset(["emissions"]),
+        )
+
+        with pytest.raises(DiscreteChoiceError, match="Missing utility attribute.*emissions"):
+            compute_utilities(cost_matrix, taste, utility_attributes=utility_attrs)
+
+
+# ============================================================================
 # TestComputeProbabilities (AC-1, AC-5)
 # ============================================================================
 

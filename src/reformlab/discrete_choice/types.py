@@ -140,16 +140,178 @@ class ExpansionResult:
 
 @dataclass(frozen=True)
 class TasteParameters:
-    """Taste parameters for the conditional logit model.
+    """Generalized taste parameters for the conditional logit model.
 
-    Single β coefficient applied to the cost matrix to compute
-    deterministic utilities: V_ij = beta_cost × cost_ij.
+    Supports Alternative-Specific Constants (ASCs) and named beta
+    coefficients. Each parameter can be marked as calibrated (optimized
+    by CalibrationEngine) or fixed (from literature).
+
+    The utility function is:
+        V_ij = ASC_j + Σ_k(β_k × attribute_kij)
+
+    Where j indexes alternatives and k indexes beta coefficients.
 
     Attributes:
-        beta_cost: Coefficient for cost in utility function.
+        beta_cost: DEPRECATED — Legacy single cost coefficient.
+            Use betas["cost"] instead.
+        asc: Per-alternative constants (ASC_j). One alternative's
+            ASC is normalized to zero (reference_alternative).
+        betas: Named taste coefficients (e.g., "cost", "time", "comfort").
+        calibrate: Parameter names to optimize during calibration.
+            These are the actual dictionary keys from asc and betas,
+            not prefixed versions like "asc_*" or "beta_*".
+        fixed: Parameter names held constant (literature values).
+            These are the actual dictionary keys from asc and betas.
+        reference_alternative: Alternative whose ASC is normalized to zero.
+        literature_sources: Citation/reference for each fixed parameter.
+
+    Story 14-2: Original single-beta implementation.
+    Story 21.7 / AC1: Generalized structure with ASCs and named betas.
     """
 
+    # Legacy field (deprecated but retained for backward compatibility)
     beta_cost: float
+
+    # Generalized fields
+    asc: dict[str, float] = field(default_factory=dict)
+    betas: dict[str, float] = field(default_factory=dict)
+    calibrate: frozenset[str] = frozenset()
+    fixed: frozenset[str] = frozenset()
+    reference_alternative: str | None = None
+    literature_sources: dict[str, str] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        """Validate taste parameter constraints."""
+        from reformlab.discrete_choice.errors import DiscreteChoiceError
+
+        # Determine if in legacy mode before other validations
+        # Legacy mode: empty asc, betas has only "cost" key (or empty with empty calibrate/fixed)
+        _is_legacy = len(self.asc) == 0 and (
+            list(self.betas.keys()) == ["cost"] or
+            (len(self.betas) == 0 and len(self.calibrate) == 0 and len(self.fixed) == 0)
+        )
+
+        # Validate calibrate and fixed are disjoint
+        if self.calibrate & self.fixed:
+            raise DiscreteChoiceError(
+                f"calibrate and fixed sets must be disjoint, "
+                f"found overlap: {self.calibrate & self.fixed}"
+            )
+
+        # Validate calibrate and fixed are subsets of available parameters
+        available_params = set(self.asc.keys()) | set(self.betas.keys())
+        invalid_calibrate = self.calibrate - available_params
+        invalid_fixed = self.fixed - available_params
+        if invalid_calibrate or invalid_fixed:
+            raise DiscreteChoiceError(
+                f"calibrate/fixed must be subsets of asc/beta keys. "
+                f"Invalid in calibrate: {invalid_calibrate}, "
+                f"Invalid in fixed: {invalid_fixed}"
+            )
+
+        # Special case: non-empty asc with only "cost" beta is invalid (conflicting legacy/generalized)
+        if (
+            len(self.asc) > 0
+            and list(self.betas.keys()) == ["cost"]
+            and len(self.calibrate) == 0
+            and len(self.fixed) == 0
+        ):
+            raise DiscreteChoiceError(
+                f"is_legacy_mode=True but asc is non-empty: {list(self.asc.keys())}"
+            )
+
+        # Validate legacy mode consistency (before reference_alternative validation)
+        if _is_legacy:
+            if self.reference_alternative is not None:
+                raise DiscreteChoiceError(
+                    f"is_legacy_mode=True but reference_alternative='{self.reference_alternative}' "
+                    f"(must be None for legacy mode)"
+                )
+
+        # Validate reference_alternative (only in non-legacy mode)
+        if self.reference_alternative is not None:
+            if self.reference_alternative not in self.asc:
+                raise DiscreteChoiceError(
+                    f"reference_alternative '{self.reference_alternative}' "
+                    f"not found in asc keys: {list(self.asc.keys())}"
+                )
+            # The reference alternative's ASC must be exactly 0.0
+            if self.asc[self.reference_alternative] != 0.0:
+                raise DiscreteChoiceError(
+                    f"reference_alternative '{self.reference_alternative}' "
+                    f"must have ASC=0.0, got {self.asc[self.reference_alternative]}"
+                )
+
+    @property
+    def is_legacy_mode(self) -> bool:
+        """True if structurally in legacy mode (empty asc, betas has only 'cost' key).
+
+        This property checks the structure of the data, not how the object
+        was created. Both TasteParameters.from_beta_cost(-0.01) and direct
+        construction TasteParameters(beta_cost=-0.01, asc={}, betas={"cost": -0.01})
+        return True for is_legacy_mode.
+        """
+        return len(self.asc) == 0 and list(self.betas.keys()) == ["cost"]
+
+    @classmethod
+    def from_beta_cost(cls, beta_cost: float) -> TasteParameters:
+        """Create generalized TasteParameters from legacy single beta_cost.
+
+        Returns instance with asc={}, betas={"cost": beta_cost},
+        calibrate=frozenset(["cost"]), fixed=frozenset().
+
+        Story 21.7 / AC1.
+        """
+        return cls(
+            beta_cost=beta_cost,
+            asc={},
+            betas={"cost": beta_cost},
+            calibrate=frozenset(["cost"]),
+            fixed=frozenset(),
+        )
+
+    def to_governance_entry(self, *, source_label: str = "taste_parameters") -> dict[str, object]:
+        """Return an AssumptionEntry-compatible dict for governance manifests.
+
+        Returns a dict with key, value, source, and is_default fields compatible
+        with the governance manifest format. The value field contains all taste
+        parameter metadata including ASCs, betas, calibration status, and
+        literature sources.
+
+        Args:
+            source_label: Human-readable source identifier.
+
+        Returns:
+            Dict with AssumptionEntry structure.
+
+        Story 21.7 / AC-8.
+        """
+        # Separate ASC and beta names from calibrate/fixed sets
+        asc_in_calibrate = sorted(set(self.asc.keys()) & self.calibrate)
+        asc_in_fixed = sorted(set(self.asc.keys()) & self.fixed)
+        betas_in_calibrate = sorted(set(self.betas.keys()) & self.calibrate)
+        betas_in_fixed = sorted(set(self.betas.keys()) & self.fixed)
+
+        return {
+            "key": "taste_parameters",
+            "value": {
+                "asc_names": sorted(self.asc.keys()),
+                "asc_values": self.asc,
+                "beta_names": sorted(self.betas.keys()),
+                "beta_values": self.betas,
+                "calibrated_asc_names": asc_in_calibrate,
+                "calibrated_beta_names": betas_in_calibrate,
+                "fixed_asc_names": asc_in_fixed,
+                "fixed_beta_names": betas_in_fixed,
+                "reference_alternative": self.reference_alternative,
+                "literature_sources": self.literature_sources,
+                "is_legacy_mode": self.is_legacy_mode,
+                "n_calibrated": len(self.calibrate),
+                "n_fixed": len(self.fixed),
+            },
+            "source": source_label,
+            "is_default": False,
+        }
 
 
 @dataclass(frozen=True)
