@@ -1,0 +1,140 @@
+record_id: 1e3e1742-6780-4cbd-aa66-2d879fea24c1
+created_at: '2026-03-27T20:08:42.648039+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 21
+  story_num: 7
+  title: Story 21.7
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-03-27T20:04:18.036745Z'
+  end_time: '2026-03-27T20:05:40.565745Z'
+  duration_ms: 82529
+  input_tokens: 0
+  output_tokens: 6758
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 27032
+  heading_count: 44
+  list_depth_max: 3
+  code_block_count: 23
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 19.9'
+  - 🎯 Ruthless Story Validation 21.7
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 19.9 → REJECT'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Missing Utility Attribute Validation Specifications
+  - 2. No scipy Optimization Failure Handling for Multi-Dimensional Case
+  - 3. Unclear ASC Normalization Behavior with Empty asc Dict
+  - 4. Missing Table Shape Validation for Utility Attributes
+  - 5. Unclear is_legacy_mode Validation Logic in CalibrationConfig
+  - 6. Missing Governance Manifest Capture Integration
+  - 7. No Identifiability Detection Algorithm Specification
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Add Calibration State Transition Diagram
+  - 2. Specify Optimization Method Recommendations
+  - 3. Add Utility Computation Example with ASCs + Betas
+  - 4. Specify Performance Benchmarks for Multi-Attribute Utilities
+  - 5. Clarify Vehicle Domain Default Behavior
+  - ✨ Optimizations (Nice to Have)
+  - 1. Add PyArrow Compute Optimization Hint
+  - 'Instead of:'
+  - 'Use:'
+  - Pre-allocate arrays and use pc.add for vectorized addition
+  - 2. Suggest TasteParameters Builder Pattern
+  - 3. Add Calibration Debugging Tips
+  - 🤖 LLM Optimization Improvements
+  - 1. Remove Redundant Mathematical Formula
+  - 2. Consolidate TasteParameters Field Descriptions
+  - 3. Simplify Calibration Vector Optimization Algorithm
+  - 4. Reduce Task Description Verbosity
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: fb1bdab5862d
+findings:
+  total_count: 19
+  by_severity:
+    critical: 7
+    major: 5
+    minor: 3
+    nit: 4
+  by_category:
+    security: 0
+    performance: 2
+    correctness: 5
+    completeness: 2
+    clarity: 9
+    testability: 1
+  has_fix_count: 19
+  has_location_count: 16
+  has_evidence_count: 17
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 22
+  confidence_phrases_count: 18
+linguistic:
+  avg_sentence_length: 21.694805194805195
+  vocabulary_richness: 0.25860520802155046
+  flesch_reading_ease: 9.001849560403798
+  vague_terms_count: 2
+  formality_score: 0.8
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.85
+  evidence_quality: 0.9
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true

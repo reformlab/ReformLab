@@ -20,15 +20,17 @@ Status: ready-for-dev
    - `reference_alternative: str | None` — alternative whose ASC is normalized to zero (None for legacy single-parameter mode)
    - `literature_sources: dict[str, str]` — citation/reference for each fixed parameter
    - Factory classmethod `from_beta_cost(beta_cost: float) -> TasteParameters` — creates generalized instance from legacy single parameter
-   - Property `is_legacy_mode: bool` — True if created via `from_beta_cost()`, False otherwise
-   - `__post_init__` validates: calibrate and fixed are disjoint subsets of available parameter names; reference_alternative exists in asc keys if provided
+   - Property `is_legacy_mode: bool` — True if structurally in legacy mode (empty asc and betas has only "cost" key), False otherwise
+   - `__post_init__` validates: calibrate and fixed are disjoint subsets of available parameter names; reference_alternative exists in asc keys if provided; reference_alternative's ASC value is 0.0 if provided; if is_legacy_mode=True then asc must be empty and reference_alternative must be None
 
 2. **AC2:** `compute_utilities()` in `src/reformlab/discrete_choice/logit.py` refactored for generalized utility:
    - Legacy mode (`is_legacy_mode=True`): `V_ij = beta_cost × cost_ij` (unchanged behavior)
    - Generalized mode: `V_ij = ASC_j + Σ_k(β_k × attribute_kij)` where sum is over all betas
    - Accepts `utility_attributes: dict[str, pa.Table] | None` parameter — mapping from beta name to N×M attribute table
-   - If `utility_attributes` is None or empty, uses `cost_matrix.table` as the single attribute for all betas
-   - Validates: for each beta in `taste_parameters.betas`, a corresponding column or table exists in utility_attributes
+   - If `utility_attributes` is None or empty and `is_legacy_mode=True`, uses `cost_matrix.table` as the single attribute
+   - If `utility_attributes` is None or empty and `is_legacy_mode=False`, raises `DiscreteChoiceError` (multi-beta requires explicit attributes)
+   - Validates utility_attributes tables: each must have shape N×M (same rows as cost_matrix, columns matching alternative_ids), type pa.float64(), no NaN/Inf values
+   - Validates: for each beta in `taste_parameters.betas`, a corresponding table exists in `utility_attributes`
    - Returns N×M PyArrow Table of utility values with same column names as cost_matrix
 
 3. **AC3:** `LogitChoiceStep` extended to support generalized taste parameters:
@@ -41,24 +43,27 @@ Status: ready-for-dev
 4. **AC4:** `CalibrationConfig` extended at `src/reformlab/calibration/types.py`:
    - Add `initial_values: dict[str, float]` field — initial value for each parameter in calibrate set
    - Add `bounds: dict[str, tuple[float, float]]` field — (lower, upper) bounds for each parameter in calibrate set
-   - Deprecate but retain `initial_beta: float` and `beta_bounds: tuple[float, float]` fields for legacy mode
+   - Deprecate but retain `initial_beta: float | None = None` and `beta_bounds: tuple[float, float] | None = None` fields for legacy mode (changed to Optional)
    - Add `target_parameters: TasteParameters` field — full taste parameters instance (not just beta_cost)
-   - `__post_init__` validates: initial_values keys are subset of target_parameters.calibrate; bounds keys are subset of target_parameters.calibrate; if legacy mode (initial_beta provided), initial_values and bounds must be empty
-   - Add `is_legacy_mode: bool` property — True if using deprecated scalar fields
+   - `__post_init__` validates: if `initial_beta` is not None or `beta_bounds` is not None, then `initial_values` and `bounds` must be empty and `target_parameters.is_legacy_mode` must be True; if `initial_values` and `bounds` are non-empty, then `target_parameters.is_legacy_mode` must be False; initial_values keys are subset of target_parameters.calibrate; bounds keys are subset of target_parameters.calibrate
+   - Add `is_legacy_mode: bool` property — True if `initial_beta` is not None (using deprecated scalar fields), False otherwise
 
 5. **AC5:** `CalibrationEngine` refactored for vector optimization:
    - `_validate_inputs()` validates that all parameters in `config.target_parameters.calibrate` exist in `config.initial_values` and `config.bounds`
-   - `build_objective()` creates parameter vector from `config.target_parameters` using initial values
+   - `build_objective()` creates parameter vector from `config.target_parameters` using initial values with deterministic sorted ordering
    - Objective function computes utilities via generalized `compute_utilities()` with all ASCs and betas
    - Fixed parameters (in `target_parameters.fixed`) are used in utility computation but frozen during optimization
    - Optimizes over vector of calibrated parameters using scipy.optimize.minimize with vectorized bounds
+   - Handles scipy optimization failures: if `result.success` is False, raises `CalibrationOptimizationError` with convergence status, final objective value, iterations, and suggested remediation
+   - Logs warning if gradient_norm exceeds threshold after convergence (possible local minimum)
    - `CalibrationResult` extended with `optimized_parameters: TasteParameters` (full instance with all calibrated values updated, fixed values unchanged)
 
 6. **AC6:** `CalibrationResult` extended with diagnostics:
    - `parameter_diagnostics: dict[str, ParameterDiagnostics]` field — per-parameter convergence info
    - `ParameterDiagnostics` frozen dataclass with: `optimized_value: float`, `initial_value: float`, `absolute_change: float`, `relative_change_pct: float`, `at_lower_bound: bool`, `at_upper_bound: bool`, `gradient_component: float | None`
    - `convergence_warnings: list[str]` field — messages for parameters hitting bounds, failed convergence, or near-zero gradients
-   - `identifiability_flags: dict[str, str]` field — warnings for parameters with low sensitivity or high correlation
+   - `identifiability_flags: dict[str, str]` field — warnings for parameters with low sensitivity (gradient_component < 1e-6 AND not at bounds → "low_sensitivity") or high correlation (if Hessian available from scipy, flag pairs with |correlation| > 0.95 as "highly_correlated_with:{other_param}")
+   - Note: Hessian-based correlation detection requires scipy method that returns Hessian (e.g., BFGS with hess_inv); skip correlation detection if Hessian not available
 
 7. **AC7:** Vehicle domain updated to use generalized taste parameters:
    - `VehicleDomainConfig` extended with `taste_parameters: TasteParameters | None = None` field
@@ -112,20 +117,25 @@ Status: ready-for-dev
   - [ ] Create new fields in `TasteParameters` at `src/reformlab/discrete_choice/types.py`:
     - [ ] `asc: dict[str, float] = field(default_factory=dict)` — per-alternative constants
     - [ ] `betas: dict[str, float] = field(default_factory=dict)` — named taste coefficients
-    - [ ] `calibrate: frozenset[str] = frozenset()` — parameter names to optimize
-    - [ ] `fixed: frozenset[str] = frozenset()` — parameter names held constant
+    - [ ] `calibrate: frozenset[str] = frozenset()` — parameter names to optimize (actual dict keys, not prefixed names)
+    - [ ] `fixed: frozenset[str] = frozenset()` — parameter names held constant (actual dict keys)
     - [ ] `reference_alternative: str | None = None` — alternative with ASC=0
     - [ ] `literature_sources: dict[str, str] = field(default_factory=dict)` — citations for fixed parameters
   - [ ] Keep existing `beta_cost: float` field for backward compatibility (deprecated in docstring)
-  - [ ] Add `is_legacy_mode: bool` property — returns True if `asc` is empty and `betas` has only "cost" key
+  - [ ] Add `is_legacy_mode: bool` property — returns True if `asc` is empty and `betas` has only "cost" key (structural detection)
   - [ ] Add factory classmethod `from_beta_cost(beta_cost: float) -> TasteParameters`:
     - [ ] Creates instance with `asc={}`, `betas={"cost": beta_cost}`, `calibrate=frozenset(["cost"])`
-    - [ ] Sets `is_legacy_mode=True` detection condition
+    - [ ] Returns instance with `is_legacy_mode=True` (structural detection will return True)
   - [ ] Add `__post_init__` validation:
     - [ ] `calibrate` and `fixed` must be disjoint (raise `DiscreteChoiceError` if overlap)
     - [ ] `calibrate ∪ fixed` must be subset of `set(asc.keys()) | set(betas.keys())`
-    - [ ] If `reference_alternative` provided, must exist in `asc` keys
-    - [ ] If `is_legacy_mode=True`, `asc` must be empty and `betas` must have exactly one "cost" key
+    - [ ] At least one parameter must be in `calibrate` or `fixed` (raise error if both empty and generalized mode)
+    - [ ] If `reference_alternative` provided:
+      - [ ] Must exist in `asc` keys
+      - [ ] Its ASC value must be exactly 0.0 (normalization constraint)
+    - [ ] If `is_legacy_mode=True`:
+      - [ ] `asc` must be empty
+      - [ ] `reference_alternative` must be None
   - [ ] Update module docstring to reference Story 21.7 and synthetic-data-decision-document Section 2.3b
 
 - [ ] **Task 2: Refactor compute_utilities() for generalized utility function** (AC: 2)
@@ -135,8 +145,10 @@ Status: ready-for-dev
     - [ ] Initialize utility columns as zero arrays: `utils = {aid: pa.zeros(n, type=pa.float64()) for aid in alternative_ids}`
     - [ ] Add ASCs: for each alternative, add its constant to all households in that alternative's column
     - [ ] Add beta-weighted attributes: for each beta name, multiply corresponding attribute table by beta value and add to utilities
-    - [ ] If `utility_attributes` is None or empty, use `cost_matrix.table` as single attribute for all betas (legacy-compatible)
-    - [ ] Validate: each beta name in `taste_parameters.betas` has corresponding entry in `utility_attributes` or cost_matrix
+    - [ ] If `utility_attributes` is None or empty and `is_legacy_mode=False`, raise `DiscreteChoiceError` (multi-beta requires explicit attributes)
+    - [ ] If `utility_attributes` is None or empty and `is_legacy_mode=True`, use `cost_matrix.table` as single attribute for "cost" beta only
+    - [ ] Validate utility_attributes: each table must have n_rows == cost_matrix.n_households, column_names == cost_matrix.alternative_ids, type pa.float64(), no NaN/Inf values
+    - [ ] Validate: each beta name in `taste_parameters.betas` has corresponding entry in `utility_attributes`
   - [ ] Add structured logging for generalized mode: log ASC values, beta values, attribute names used
   - [ ] Update function docstring to explain both legacy and generalized modes
 
@@ -158,14 +170,18 @@ Status: ready-for-dev
   - [ ] Add `target_parameters: TasteParameters` field to `CalibrationConfig` (replace implicit beta_cost)
   - [ ] Add `initial_values: dict[str, float] = field(default_factory=dict)` field
   - [ ] Add `bounds: dict[str, tuple[float, float]] = field(default_factory=dict)` field
-  - [ ] Deprecate but retain `initial_beta: float = -0.01` field (docstring: "Deprecated: Use initial_values with target_parameters")
-  - [ ] Deprecate but retain `beta_bounds: tuple[float, float] = (-1.0, 0.0)` field (docstring: "Deprecated: Use bounds with target_parameters")
-  - [ ] Add `is_legacy_mode: bool` property — returns True if `initial_values` and `bounds` are empty
+  - [ ] Deprecate but retain `initial_beta: float | None = None` field (docstring: "Deprecated: Use initial_values with target_parameters")
+  - [ ] Deprecate but retain `beta_bounds: tuple[float, float] | None = None` field (docstring: "Deprecated: Use bounds with target_parameters")
+  - [ ] Add `is_legacy_mode: bool` property — returns True if `initial_beta is not None` (using deprecated scalar fields)
   - [ ] Add `__post_init__` validation:
-    - [ ] If `is_legacy_mode=True`, `target_parameters.is_legacy_mode` must be True
-    - [ ] `initial_values` keys must be subset of `target_parameters.calibrate`
-    - [ ] `bounds` keys must be subset of `target_parameters.calibrate`
-    - [ ] All `initial_values` keys must have corresponding entry in `bounds`
+    - [ ] If `initial_beta is not None or beta_bounds is not None` (legacy mode):
+      - [ ] Validate `initial_values` and `bounds` are empty
+      - [ ] Validate `target_parameters.is_legacy_mode` is True
+    - [ ] If `initial_values` and `bounds` are non-empty (generalized mode):
+      - [ ] Validate `target_parameters.is_legacy_mode` is False
+      - [ ] Validate `initial_values` keys are subset of `target_parameters.calibrate`
+      - [ ] Validate `bounds` keys are subset of `target_parameters.calibrate`
+      - [ ] Validate all `initial_values` keys have corresponding entry in `bounds`
   - [ ] Update `to_governance_entry()` to include taste parameter info (see Task 8)
 
 - [ ] **Task 5: Refactor CalibrationEngine for vector optimization** (AC: 5)
@@ -179,17 +195,20 @@ Status: ready-for-dev
     - [ ] Raise `CalibrationOptimizationError` with clear messages for missing values or bounds
   - [ ] Refactor `build_mse_objective()` and `build_log_likelihood_objective()`:
     - [ ] Build parameter vector `x` from `config.target_parameters` using `initial_values` for calibrated parameters
+    - [ ] Use `sorted(calibrate)` for deterministic parameter ordering
     - [ ] Create temporary `TasteParameters` with parameter vector values for utility computation
     - [ ] Fixed parameters use values from `config.target_parameters.fixed` set
     - [ ] Call generalized `compute_utilities()` with ASCs and betas
     - [ ] Compute simulated rates and objective value as before
   - [ ] Update `CalibrationEngine.calibrate()`:
-    - [ ] Pass vectorized bounds to `scipy.optimize.minimize` (list of tuples for each calibrated parameter)
-    - [ ] Extract optimized vector from `result.x` and map back to parameter names
+    - [ ] Pass vectorized bounds to `scipy.optimize.minimize` (list of tuples for each calibrated parameter in sorted order)
+    - [ ] Handle scipy optimization failure: if `result.success is False`, raise `CalibrationOptimizationError` with convergence status, final objective value, iterations, and suggested remediation
+    - [ ] Log warning if gradient_norm > threshold after convergence (possible local minimum)
+    - [ ] Extract optimized vector from `result.x` and map back to parameter names (using same sorted order)
     - [ ] Create new `TasteParameters` with optimized calibrated values and original fixed values
     - [ ] Build `ParameterDiagnostics` for each calibrated parameter:
       - [ ] `optimized_value` from result, `initial_value` from config
-      - [ ] `at_lower_bound` / `at_upper_bound` from bounds comparison
+      - [ ] `at_lower_bound` / `at_upper_bound` from bounds comparison (tolerance 1e-10)
       - [ ] `gradient_component` from `result.jac` if available
     - [ ] Return `CalibrationResult` with `optimized_parameters` as full `TasteParameters` instance
 
@@ -198,9 +217,11 @@ Status: ready-for-dev
   - [ ] Add `convergence_warnings: list[str]` field to `CalibrationResult`
   - [ ] Add `identifiability_flags: dict[str, str]` field to `CalibrationResult`
   - [ ] Update `CalibrationEngine.calibrate()` to populate these fields:
-    - [ ] Generate warnings for parameters at bounds (e.g., "beta_cost hit upper bound 0.0")
+    - [ ] Generate warnings for parameters at bounds (e.g., "cost hit upper bound 0.0")
     - [ ] Generate warnings if `convergence_flag=False`
-    - [ ] Flag parameters with low sensitivity (gradient near zero but not at bound) in `identifiability_flags`
+    - [ ] Flag parameters with low sensitivity in `identifiability_flags`: if `gradient_component < 1e-6 AND not at_lower_bound AND not at_upper_bound`, flag as "low_sensitivity"
+    - [ ] If Hessian available from scipy result (methods like BFGS with hess_inv), compute correlation matrix from Hessian inverse and flag parameter pairs with |correlation| > 0.95 as "highly_correlated_with:{other_param}"
+    - [ ] If Hessian not available, skip correlation detection (log info message)
   - [ ] Update `to_governance_entry()` to include diagnostics summary
 
 - [ ] **Task 7: Update vehicle domain for generalized taste parameters** (AC: 7)
@@ -333,8 +354,7 @@ Status: ready-for-dev
 
 **Files to modify:**
 - `src/reformlab/discrete_choice/types.py` — extend TasteParameters
-- `src/reformlab/discrete_choice/logit.py` — refactor compute_utilities()
-- `src/reformlab/discrete_choice/step.py` — extend LogitChoiceStep
+- `src/reformlab/discrete_choice/logit.py` — refactor compute_utilities(), extend LogitChoiceStep
 - `src/reformlab/discrete_choice/vehicle.py` — add taste_parameters field
 - `src/reformlab/calibration/types.py` — extend CalibrationConfig, CalibrationResult; add ParameterDiagnostics
 - `src/reformlab/calibration/engine.py` — refactor for vector optimization
@@ -373,7 +393,10 @@ class TasteParameters:
             ASC is normalized to zero (reference_alternative).
         betas: Named taste coefficients (e.g., "cost", "time", "comfort").
         calibrate: Parameter names to optimize during calibration.
+            These are the actual dictionary keys from asc and betas,
+            not prefixed versions like "asc_*" or "beta_*".
         fixed: Parameter names held constant (literature values).
+            These are the actual dictionary keys from asc and betas.
         reference_alternative: Alternative whose ASC is normalized to zero.
         literature_sources: Citation/reference for each fixed parameter.
 
@@ -390,9 +413,60 @@ class TasteParameters:
     reference_alternative: str | None = None
     literature_sources: dict[str, str] = field(default_factory=dict)
 
+    def __post_init__(self) -> None:
+        # Validate calibrate and fixed are disjoint
+        if self.calibrate & self.fixed:
+            raise DiscreteChoiceError(
+                f"calibrate and fixed sets must be disjoint, "
+                f"found overlap: {self.calibrate & self.fixed}"
+            )
+
+        # Validate calibrate and fixed are subsets of available parameters
+        available_params = set(self.asc.keys()) | set(self.betas.keys())
+        invalid_calibrate = self.calibrate - available_params
+        invalid_fixed = self.fixed - available_params
+        if invalid_calibrate or invalid_fixed:
+            raise DiscreteChoiceError(
+                f"calibrate/fixed must be subsets of asc/beta keys. "
+                f"Invalid in calibrate: {invalid_calibrate}, "
+                f"Invalid in fixed: {invalid_fixed}"
+            )
+
+        # Validate reference_alternative
+        if self.reference_alternative is not None:
+            if self.reference_alternative not in self.asc:
+                raise DiscreteChoiceError(
+                    f"reference_alternative '{self.reference_alternative}' "
+                    f"not found in asc keys: {list(self.asc.keys())}"
+                )
+            # The reference alternative's ASC must be exactly 0.0
+            if self.asc[self.reference_alternative] != 0.0:
+                raise DiscreteChoiceError(
+                    f"reference_alternative '{self.reference_alternative}' "
+                    f"must have ASC=0.0, got {self.asc[self.reference_alternative]}"
+                )
+
+        # Validate legacy mode consistency
+        if self.is_legacy_mode:
+            if self.asc:
+                raise DiscreteChoiceError(
+                    f"is_legacy_mode=True but asc is non-empty: {list(self.asc.keys())}"
+                )
+            if self.reference_alternative is not None:
+                raise DiscreteChoiceError(
+                    f"is_legacy_mode=True but reference_alternative='{self.reference_alternative}' "
+                    f"(must be None for legacy mode)"
+                )
+
     @property
     def is_legacy_mode(self) -> bool:
-        """True if created via from_beta_cost() factory (single beta_cost)."""
+        """True if structurally in legacy mode (empty asc, betas has only 'cost' key).
+
+        This property checks the structure of the data, not how the object
+        was created. Both TasteParameters.from_beta_cost(-0.01) and direct
+        construction TasteParameters(beta_cost=-0.01, asc={}, betas={"cost": -0.01})
+        return True for is_legacy_mode.
+        """
         return len(self.asc) == 0 and list(self.betas.keys()) == ["cost"]
 
     @classmethod
@@ -476,7 +550,18 @@ Algorithm:
 
 4. Run scipy.optimize.minimize(objective, x0, bounds=scipy_bounds, ...)
 
-5. Extract optimized vector:
+5. Check scipy result:
+   - if result.success is False:
+       raise CalibrationOptimizationError(
+           f"scipy optimization failed: {result.message}, "
+           f"final_objective_value={result.fun}, "
+           f"iterations={result.nit}, "
+           f"suggested_remediation='Try different method (TNC, SLSQP) or relax bounds'"
+       )
+   - if result.jac is not None and np.linalg.norm(result.jac) > threshold:
+       logger.warning("event=high_gradient_norm gradient_norm=%f msg='Possible local minimum'", np.linalg.norm(result.jac))
+
+6. Extract optimized vector:
    optimized_asc = dict(target_parameters.asc)
    optimized_betas = dict(target_parameters.betas)
    for i, param_name in enumerate(sorted(calibrate)):
@@ -485,7 +570,7 @@ Algorithm:
        elif param_name in optimized_betas:
            optimized_betas[param_name] = result.x[i]
 
-6. Build ParameterDiagnostics for each calibrated parameter:
+7. Build ParameterDiagnostics for each calibrated parameter:
    for i, param_name in enumerate(sorted(calibrate)):
        initial = initial_values[param_name]
        optimized = result.x[i]
@@ -500,7 +585,19 @@ Algorithm:
            gradient_component=result.jac[i] if result.jac is not None else None,
        )
 
-7. Create optimized TasteParameters with all values (calibrated + fixed):
+8. Build identifiability_flags:
+   for param_name, diag in diagnostics.items():
+       if diag.gradient_component is not None:
+           if abs(diag.gradient_component) < 1e-6 and not diag.at_lower_bound and not diag.at_upper_bound:
+               identifiability_flags[param_name] = "low_sensitivity"
+
+   # If Hessian available (e.g., from BFGS with hess_inv):
+   if result.hess_inv is not None:
+       # Compute correlation matrix from Hessian inverse
+       # Flag parameter pairs with |correlation| > 0.95
+       ...
+
+9. Create optimized TasteParameters with all values (calibrated + fixed):
    optimized_params = TasteParameters(
        beta_cost=0.0,  # unused
        asc=optimized_asc,
@@ -532,15 +629,17 @@ vehicle_betas = {
     "emissions": -0.05,  # negative: households prefer lower emissions
 }
 
-# Calibration set (which parameters to optimize):
-calibrate = {"asc_buy_ev", "asc_buy_hybrid", "beta_cost"}
+# Calibration set (which ASC/beta names to optimize):
+# These are the actual dictionary keys from asc and betas
+calibrate = {"buy_ev", "buy_hybrid", "cost"}
 
 # Fixed set (from literature):
-fixed = {"beta_emissions"}  # fixed to literature value
+# Note: This is the actual beta name, not a prefixed version
+fixed = {"emissions"}
 
 # Literature sources:
 literature_sources = {
-    "beta_emissions": "Dargay & Gately 1999, 'Income's effect on car vehicle ownership'",
+    "emissions": "Dargay & Gately 1999, 'Income's effect on car vehicle ownership'",
 }
 ```
 
@@ -615,11 +714,11 @@ params = TasteParameters(beta_cost=-0.01)
 
 # New way (generalized):
 params = TasteParameters(
-    beta_cost=0.0,  # unused
+    beta_cost=0.0,  # unused in generalized mode
     asc={"ev": 0.0, "petrol": -0.5, "diesel": -0.6, ...},
     betas={"cost": -0.01, "emissions": -0.05},
-    calibrate=frozenset(["asc_ev", "beta_cost"]),
-    fixed=frozenset(["beta_emissions"]),
+    calibrate=frozenset(["ev", "cost"]),  # Note: actual dict keys, not prefixed
+    fixed=frozenset(["emissions"]),
     reference_alternative="ev",
 )
 ```
@@ -756,8 +855,7 @@ ULTIMATE CONTEXT ENGINE ANALYSIS COMPLETED - Comprehensive developer guide creat
 
 **Files to modify:**
 - `src/reformlab/discrete_choice/types.py` — Extend TasteParameters with ASCs, betas, calibrate, fixed, reference_alternative, literature_sources; add from_beta_cost() factory, is_legacy_mode property
-- `src/reformlab/discrete_choice/logit.py` — Refactor compute_utilities() for generalized utility V_ij = ASC_j + Σ(β_k × attribute_kij)
-- `src/reformlab/discrete_choice/step.py` — Extend LogitChoiceStep with utility_attributes_key parameter
+- `src/reformlab/discrete_choice/logit.py` — Refactor compute_utilities() for generalized utility V_ij = ASC_j + Σ(β_k × attribute_kij); extend LogitChoiceStep with utility_attributes_key parameter
 - `src/reformlab/discrete_choice/vehicle.py` — Add taste_parameters field to VehicleDomainConfig
 - `src/reformlab/calibration/types.py` — Extend CalibrationConfig with target_parameters, initial_values, bounds; add ParameterDiagnostics; extend CalibrationResult with diagnostics fields
 - `src/reformlab/calibration/engine.py` — Refactor CalibrationEngine for vector optimization over calibrate parameter set
