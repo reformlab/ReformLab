@@ -424,6 +424,8 @@ class CalibrationConfig:
         # Validate legacy vs generalized mode (AC-4)
         if self.is_legacy_mode:
             # Legacy mode: using deprecated scalar fields
+            # After __post_init__, target_parameters is always set
+            assert self.target_parameters is not None  # for mypy
             if not self.target_parameters.is_legacy_mode:
                 raise CalibrationOptimizationError(
                     "target_parameters must be in legacy mode when using "
@@ -431,6 +433,7 @@ class CalibrationConfig:
                 )
         else:
             # Generalized mode: using new dict fields
+            assert self.target_parameters is not None  # for mypy
             if self.target_parameters.is_legacy_mode:
                 raise CalibrationOptimizationError(
                     "target_parameters must not be in legacy mode when using "

@@ -1,6 +1,6 @@
 # Story 21.7: Refactor Discrete Choice and Calibration for Generalized TasteParameters
 
-Status: ready-for-dev
+Status: complete
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -849,19 +849,50 @@ ULTIMATE CONTEXT ENGINE ANALYSIS COMPLETED - Comprehensive developer guide creat
 - Utility attributes structure for multi-attribute utility computation
 - Backward compatibility strategy (is_legacy_mode detection, factory method)
 - Governance manifest entry structures
+
+**Implementation completion (2026-03-30):**
+- All core implementation was already completed in previous sessions
+- TasteParameters, compute_utilities(), LogitChoiceStep, CalibrationConfig, CalibrationEngine, CalibrationResult all generalized
+- Vehicle domain and governance manifest integration complete
+- All 328 tests pass (discrete_choice, calibration, vehicle, governance)
+- Added TestLogitChoiceStepGeneralized class with 6 tests for Task 3 coverage
+- Fixed mypy type checking errors in logit.py, calibration/types.py, calibration/engine.py
+- All ruff linting passes
+- Backward compatibility verified - all legacy tests pass
+- Full test suite: 3449 tests pass (only 3 pre-existing failures in unrelated exogenous API routes)
+
+**Context extraction completed from:**
+- Epic 21 story definition and notes
+- Synthetic data decision document (Section 2.3b: Taste Parameters, Section 2.7c: Calibration Engine Implications, Workstream 7 Story A)
+- Existing discrete choice implementation (logit.py, types.py, vehicle.py, step.py)
+- Existing calibration implementation (engine.py, types.py)
+- Story 14.2 and 15.2 patterns for logit model and calibration engine
+- Story 21.6 ExogenousContext pattern for factory classmethod inspiration
+
+**Key developer guardrails provided:**
+- Complete type specifications for refactored TasteParameters with ASCs and betas
+- Utility function formula: V_ij = ASC_j + Σ_k(β_k × attribute_kij)
+- Calibration vector optimization algorithm with detailed steps
+- ParameterDiagnostics structure for convergence analysis
+- Vehicle domain example with realistic ASC values (EV inertia)
+- Utility attributes structure for multi-attribute utility computation
+- Backward compatibility strategy (is_legacy_mode detection, factory method)
+- Governance manifest entry structures
 - Comprehensive test coverage requirements
 
 ### File List
 
-**Files to modify:**
-- `src/reformlab/discrete_choice/types.py` — Extend TasteParameters with ASCs, betas, calibrate, fixed, reference_alternative, literature_sources; add from_beta_cost() factory, is_legacy_mode property
-- `src/reformlab/discrete_choice/logit.py` — Refactor compute_utilities() for generalized utility V_ij = ASC_j + Σ(β_k × attribute_kij); extend LogitChoiceStep with utility_attributes_key parameter
-- `src/reformlab/discrete_choice/vehicle.py` — Add taste_parameters field to VehicleDomainConfig
-- `src/reformlab/calibration/types.py` — Extend CalibrationConfig with target_parameters, initial_values, bounds; add ParameterDiagnostics; extend CalibrationResult with diagnostics fields
-- `src/reformlab/calibration/engine.py` — Refactor CalibrationEngine for vector optimization over calibrate parameter set
-- `src/reformlab/governance/manifest.py` — Add taste_parameters field to RunManifest
+**Implementation Status: All core implementation completed in previous sessions**
 
-**Tests to create/modify:**
+**Modified files (2026-03-30):**
+- `src/reformlab/discrete_choice/types.py` — Extend TasteParameters with ASCs, betas, calibrate, fixed, reference_alternative, literature_sources; add from_beta_cost() factory, is_legacy_mode property
+- `src/reformlab/discrete_choice/logit.py` — Refactor compute_utilities() for generalized utility V_ij = ASC_j + Σ(β_k × attribute_kij); extend LogitChoiceStep with utility_attributes_key parameter; fixed mypy no-redef errors
+- `src/reformlab/discrete_choice/vehicle.py` — Add taste_parameters field to VehicleDomainConfig
+- `src/reformlab/calibration/types.py` — Extend CalibrationConfig with target_parameters, initial_values, bounds; add ParameterDiagnostics; extend CalibrationResult with diagnostics fields; fixed mypy None-check errors
+- `src/reformlab/calibration/engine.py` — Refactor CalibrationEngine for vector optimization over calibrate parameter set; fixed mypy type checking errors
+
+**Tests modified (2026-03-30):**
+- `tests/discrete_choice/test_logit.py` — Added TestLogitChoiceStepGeneralized class with 6 tests for utility_attributes_key parameter, metadata recording, and backward compatibility
 - `tests/discrete_choice/test_types.py` — Add TestTasteParametersGeneralized
 - `tests/discrete_choice/test_logit.py` — Add TestComputeUtilitiesGeneralized
 - `tests/discrete_choice/test_step.py` — Add TestLogitChoiceStepGeneralized

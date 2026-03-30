@@ -101,12 +101,12 @@ def compute_utilities(
     # === Legacy mode: V_ij = beta_cost × cost_ij ===
     if is_legacy:
         beta = taste_parameters.beta_cost
-        utility_columns: dict[str, pa.Array] = {}
+        legacy_util_cols: dict[str, pa.Array] = {}
         for aid in cost_matrix.alternative_ids:
             costs = cost_matrix.table.column(aid).to_pylist()
             utilities = [beta * c for c in costs]
-            utility_columns[aid] = pa.array(utilities)
-        return pa.table(utility_columns)
+            legacy_util_cols[aid] = pa.array(utilities)
+        return pa.table(legacy_util_cols)
 
     # === Generalized mode: V_ij = ASC_j + Σ_k(β_k × attribute_kij) ===
     # Validate utility_attributes if provided
@@ -129,15 +129,15 @@ def compute_utilities(
     # In this case, use beta_cost field as the single beta
     if len(taste_parameters.betas) == 0:
         beta = taste_parameters.beta_cost
-        utility_columns: dict[str, pa.Array] = {}
+        util_cols: dict[str, list[float]] = {}
         for aid in cost_matrix.alternative_ids:
             costs = cost_matrix.table.column(aid).to_pylist()
             utilities = [beta * c for c in costs]
-            utility_columns[aid] = pa.array(utilities)
-        return pa.table(utility_columns)
+            util_cols[aid] = utilities
+        return pa.table({aid: pa.array(util_cols[aid]) for aid in util_cols})
 
     # Initialize utility columns with ASCs
-    utility_columns: dict[str, pa.Array] = {}
+    utility_columns: dict[str, list[float]] = {}
     for aid in cost_matrix.alternative_ids:
         asc_val = taste_parameters.asc.get(aid, 0.0)
         utility_columns[aid] = [asc_val] * n

@@ -1,9 +1,9 @@
 ---
 stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 lastStep: 14
-revision: 2.0
-revisionDate: 2026-03-24
-revisionScope: "Information architecture restructuring, brand-aligned shell, population data explorer, engine stage"
+revision: 3.0
+revisionDate: 2026-03-30
+revisionScope: "Information architecture restructuring plus shell refinement, scenario naming, population sub-navigation, investment-decision guidance, and mobile demo viability"
 inputDocuments:
   - _bmad-output/planning-artifacts/research/technical-entity-graph-data-modeling-and-vectorized-simulation-engines-research-2026-02-23.md
   - _bmad-output/planning-artifacts/research/domain-generic-microsimulation-frameworks-research-2026-02-23.md
@@ -26,6 +26,12 @@ UX scope now assumes:
 - OpenFisca provides baseline policy calculations.
 - ReformLab UX focuses on no-code scenario operations, dynamic (10+ year) projections, and transparent run governance.
 - MVP prioritizes analyst workflow UX before public citizen-facing UX.
+
+## Revision 3.0 Update (2026-03-30)
+
+Revision 3.0 keeps the Revision 2 four-stage architecture but tightens the product around actual use: stronger brand presence, clearer scenario controls, denser policy editing, explicit population sub-steps, user-facing `Scenario` terminology in place of `Engine`, a guided investment-decision flow, a quick test population, and demo-grade phone usability.
+
+Task-level implementation detail for these changes lives in `_bmad-output/implementation-artifacts/ux-revision-3-implementation-spec.md`.
 
 ## Executive Summary
 
@@ -1812,3 +1818,196 @@ flowchart TD
 6. **Stage 3: Engine** — Time horizon, population selection, scenario save/clone, integration validation, projection assumptions, and execution controls.
 7. **Stage 4: Run Queue** — Multi-run queue for scenario × population matrix.
 8. **Cleanup** — Retire ConfigurationScreen, ModelConfigStepper, old ScenarioCard sidebar usage, and unused screens. Remove dead code.
+
+## Revision 3.0 — Interaction Fit, Naming, and Mobile Demo Viability (2026-03-30)
+
+> **This revision supersedes:** the Revision 2 subsections `Application Shell & Navigation`, `Stage 1 — Policies & Portfolio`, `Stage 2 — Population`, `Stage 3 — Engine`, `Updated Nav Rail Stages`, and any earlier responsive guidance that conflicts with the narrower-screen behavior below.
+>
+> **Motivation:** Revision 2 fixed the architecture. Revision 3 responds to actual product use. The stage model is working, but several friction points remain: weak branding in the shell, scenario controls competing with the logo, generic naming defaults, hidden Population sub-views, the misleading `Engine` label, an under-guided investment-decision flow, no explicit fast test population, and poor phone demo ergonomics.
+
+### Revision: Four-Stage Architecture Remains Intact
+
+Revision 3 does not change the top-level workflow:
+
+```
+Stage 1: POLICIES & PORTFOLIO
+Stage 2: POPULATION
+Stage 3: SCENARIO
+Stage 4: RUN / RESULTS / COMPARE
+```
+
+The change is interpretive, not structural:
+
+- Stage 3 is now presented to users as **Scenario**, not **Engine**.
+- Internal route keys and type names may remain `engine` in code if that keeps the refactor low-risk.
+- The object model still distinguishes **Portfolio** from **Scenario**.
+
+### Revision: Application Shell And Scenario Controls
+
+Revision 2 treated the logo as sidebar chrome and the top bar as a pure stage header. Current implementation experience shows the product needs a stronger shell identity and clearer separation between brand and scenario navigation.
+
+#### Shell Principles
+
+- The workspace keeps a slim top bar plus stage navigation.
+- The shell must show a stronger brand presence than Revision 2 specified.
+- Scenario switching remains globally accessible, but it must no longer sit beside the brand mark.
+
+#### Updated Top Bar Guidance
+
+- The top bar includes a dedicated brand block with:
+  - larger logo treatment,
+  - `ReformLab` wordmark,
+  - spacing that makes the product identity immediately legible in demos.
+- GitHub and website links are first-class shell actions and must be wired:
+  - Website: `https://reform-lab.eu`
+  - GitHub: `https://github.com/reformlab/ReformLab`
+- External links open in a new tab.
+- The active scenario trigger moves into a dedicated scenario-controls area separate from the brand block.
+- Stage title remains visible, but it no longer owns the full left side of the top bar.
+
+#### Updated Navigation Guidance
+
+- The top-level nav remains the four-stage workflow.
+- When Population is active, the nav pattern should expose stage-local sub-steps:
+  - `Library`
+  - `Build`
+  - `Explorer`
+- These are sub-steps, not additional top-level stages.
+
+### Revision: Stage 1 — Policies & Portfolio
+
+Revision 2 established inline policy composition. Revision 3 adds stronger layout and naming guidance.
+
+#### Updated Layout Guidance
+
+- On desktop, Stage 1 uses a deliberate **50/50 split** between:
+  - policy template browsing,
+  - portfolio composition and editing.
+- This split should feel like one workbench, not a primary panel plus a cramped sidebar.
+- On phone, the panels stack vertically.
+
+#### Updated Density Guidance
+
+- Parameter controls should become slightly denser than the current default.
+- Parameter labels may use `text-xs`; editable values remain comfortably legible.
+- Section headings and validation states should still anchor the eye.
+
+#### Updated Portfolio Naming Guidance
+
+- The save flow should pre-fill a deterministic suggested portfolio name derived from the selected policy templates.
+- The system may keep updating the suggestion only until the user manually edits it.
+- Once edited manually, the name is user-owned and must not be overwritten.
+
+### Revision: Stage 2 — Population
+
+Revision 2 made Population a complete data workspace. Revision 3 clarifies wayfinding and adds a faster demo/test path.
+
+#### Updated Population Navigation
+
+- The user should see Population sub-steps in navigation when Stage 2 is active.
+- Hidden route state alone is not sufficient product guidance.
+
+#### Updated Library Guidance
+
+- The Population Library remains the default entry view.
+- Add a clearly labeled built-in **Quick Test Population** near the top of the library.
+- It is intended for:
+  - demos,
+  - smoke tests,
+  - quick walkthroughs.
+- It must be visually differentiated from analysis-grade populations with copy such as:
+  - `Fast demo / smoke test`
+  - `Not for substantive analysis`
+
+### Revision: Stage 3 — Scenario
+
+The third stage is now named **Scenario** in all user-facing product copy.
+
+#### Updated Scope
+
+This stage still owns:
+
+- time horizon,
+- population sensitivity selection,
+- investment decisions,
+- discount rate and related advanced controls,
+- save/clone actions,
+- cross-stage validation before execution.
+
+#### Updated Naming Guidance
+
+- New scenarios should not default to `New Scenario`.
+- Scenario names should be suggested deterministically from current context, preferring:
+  - portfolio name,
+  - primary population name,
+  - simple fallback phrasing when full context is not yet available.
+- The system may refine an auto-generated name until the user manually edits it.
+- Manual edits freeze the name.
+
+#### Updated Investment Decision Guidance
+
+Revision 2 described an advanced accordion. Revision 3 replaces that interaction with a guided Scenario-stage flow:
+
+1. `Enable`
+2. `Model`
+3. `Parameters`
+4. `Review`
+
+This remains an advanced and optional feature. The default path through Scenario must still be simple when investment decisions are disabled.
+
+### Revision: Updated Nav Rail Labels
+
+Revision 3 user-facing labels are:
+
+```typescript
+const STAGES = [
+  {
+    key: "policies",
+    label: "Policies & Portfolio",
+    activeFor: ["policies"],
+  },
+  {
+    key: "population",
+    label: "Population",
+    activeFor: ["population", "data-fusion", "population-explorer"],
+  },
+  {
+    key: "engine",
+    label: "Scenario",
+    activeFor: ["engine"],
+  },
+  {
+    key: "results",
+    label: "Run / Results / Compare",
+    activeFor: ["results", "comparison", "decisions", "runner"],
+  },
+];
+```
+
+The persistence and routing model does not need a full internal rename in this revision if that adds unnecessary implementation risk.
+
+### Revision: Mobile Demo Viability
+
+Revision 3 adds a narrow-screen constraint:
+
+- the app should be presentable and navigable on a phone for demos and light edits,
+- without promising a full mobile product redesign.
+
+#### Mobile Rules
+
+- No page-level horizontal overflow at phone width.
+- Stage navigation must remain reachable from every screen.
+- The top bar should collapse low-priority actions into overflow when space is tight.
+- Desktop split layouts stack vertically on phone.
+- Fixed-width secondary panels move below primary content on phone.
+- Population cards collapse to a single-column mobile layout.
+
+#### Explicit Scope Boundary
+
+This revision targets **demo-grade phone usability**, not perfect analytic parity on mobile. Dense result tables and advanced analysis remain desktop-first.
+
+### Revision: Implementation Reference
+
+For implementation-ready delta requirements, acceptance criteria, affected files, and story grouping, use:
+
+- `_bmad-output/implementation-artifacts/ux-revision-3-implementation-spec.md`

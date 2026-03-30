@@ -315,6 +315,13 @@ class CalibrationEngine:
         self._validate_inputs(domain_targets)
 
         # Detect mode and prepare parameters
+        param_order: tuple[str, ...]
+        calibrate: frozenset[str]
+        target_params: TasteParameters
+        utility_attrs: dict[str, pa.Table] | None
+        x0: list[float]
+        bounds: list[tuple[float, float]]
+
         if is_legacy:
             # Legacy mode: use deprecated scalar fields
             initial_beta = self.config.initial_beta
@@ -333,6 +340,8 @@ class CalibrationEngine:
             )
         else:
             # Generalized mode: use vector optimization
+            # After CalibrationConfig.__post_init__, target_parameters is always set
+            assert self.config.target_parameters is not None  # for mypy
             calibrate = self.config.target_parameters.calibrate
             param_order = tuple(sorted(calibrate))
             x0 = [self.config.initial_values[p] for p in param_order]
@@ -413,7 +422,8 @@ class CalibrationEngine:
                 gradient_norm = float(abs(result.jac[0]))
             else:
                 # Compute L2 norm of gradient vector
-                gradient_norm = float(math.sqrt(sum(g**2 for g in result.jac)))  # type: ignore[arg-type]
+                jac_list = list(result.jac)
+                gradient_norm = float(math.sqrt(sum(g**2 for g in jac_list)))
 
             # Warn if gradient is large after convergence (possible local minimum)
             if gradient_norm > 0.1:
@@ -462,9 +472,9 @@ class CalibrationEngine:
                 initial_value = self.config.initial_values[param_name]
                 lower_bound, upper_bound = self.config.bounds[param_name]
 
-                grad_val: float | None = None
+                grad_component: float | None = None
                 if hasattr(result, "jac") and result.jac is not None:
-                    grad_val = float(result.jac[i])
+                    grad_component = float(result.jac[i])
 
                 param_diags[param_name] = ParameterDiagnostics(
                     optimized_value=optimized_value,
@@ -477,7 +487,7 @@ class CalibrationEngine:
                     ),
                     at_lower_bound=abs(optimized_value - lower_bound) < 1e-10,
                     at_upper_bound=abs(optimized_value - upper_bound) < 1e-10,
-                    gradient_component=grad_val,
+                    gradient_component=grad_component,
                 )
 
         # 8. Compute final simulated rates for comparison
@@ -616,6 +626,8 @@ class CalibrationEngine:
 
         # 6. Generalized mode validation
         if not self.config.is_legacy_mode:
+            # After CalibrationConfig.__post_init__, target_parameters is always set
+            assert self.config.target_parameters is not None  # for mypy
             # Validate all calibrate params have initial_values
             calibrate = self.config.target_parameters.calibrate
             missing_initial = calibrate - set(self.config.initial_values.keys())
