@@ -246,5 +246,218 @@ describe("InvestmentDecisionsWizard — Story 22.6", () => {
         }),
       );
     });
+
+    it("re-enable preserves previously selected model", async () => {
+      const user = userEvent.setup();
+      // Start with a specific model enabled
+      const initialConfig = makeConfig({
+        investmentDecisionsEnabled: true,
+        logitModel: "nested_logit",
+      });
+      const { rerender } = renderWizard(initialConfig);
+
+      // We're on Model step now. Go back to Enable step to access the toggle
+      await user.click(screen.getByRole("button", { name: /^Back$/i }));
+
+      // Now we're on Enable step with toggle visible
+      const toggle = screen.getByRole("checkbox");
+      expect(toggle).toBeChecked();
+
+      // Clear previous mock calls
+      mockOnUpdateEngineConfig.mockClear();
+
+      // Disable by clicking the toggle
+      await user.click(toggle);
+
+      // Verify the disable call
+      const disableCall = mockOnUpdateEngineConfig.mock.calls.find(
+        (call) => call[0]?.investmentDecisionsEnabled === false
+      );
+      expect(disableCall).toBeDefined();
+      expect(disableCall![0]).toMatchObject({
+        investmentDecisionsEnabled: false,
+        logitModel: null,
+      });
+
+      // Now rerender with the disabled state (simulating parent update)
+      // This keeps the same component instance, so the ref should still have "nested_logit"
+      rerender(
+        <InvestmentDecisionsWizard
+          engineConfig={makeConfig({
+            investmentDecisionsEnabled: false,
+            logitModel: null,
+          })}
+          onUpdateEngineConfig={mockOnUpdateEngineConfig}
+        />,
+      );
+
+      // Verify toggle is unchecked
+      expect(screen.getByRole("checkbox")).not.toBeChecked();
+
+      // Clear mock and re-enable
+      mockOnUpdateEngineConfig.mockClear();
+      await user.click(screen.getByRole("checkbox"));
+
+      // Verify the enable call uses the preserved model (nested_logit from ref)
+      const enableCall = mockOnUpdateEngineConfig.mock.calls.find(
+        (call) => call[0]?.investmentDecisionsEnabled === true
+      );
+      expect(enableCall).toBeDefined();
+      expect(enableCall![0]).toMatchObject({
+        investmentDecisionsEnabled: true,
+        logitModel: "nested_logit",
+      });
+    });
+  });
+
+  describe("Stepper navigation (Task 9)", () => {
+    it("Next button advances step sequentially", async () => {
+      const user = userEvent.setup();
+      renderWizard(
+        makeConfig({
+          investmentDecisionsEnabled: true,
+          logitModel: "multinomial_logit",
+        }),
+      );
+
+      // On Model step after enabling
+      expect(screen.getByText("Choose Logit Model")).toBeInTheDocument();
+
+      // Click Next - should advance to Parameters step
+      await user.click(screen.getByRole("button", { name: /^Next$/i }));
+
+      expect(screen.getByText("Taste Parameters")).toBeInTheDocument();
+
+      // Click Next again - should advance to Review step
+      await user.click(screen.getByRole("button", { name: /^Next$/i }));
+
+      expect(screen.getByText("Review Configuration")).toBeInTheDocument();
+    });
+
+    it("Back button retreats step sequentially", async () => {
+      const user = userEvent.setup();
+      renderWizard(
+        makeConfig({
+          investmentDecisionsEnabled: true,
+          logitModel: "multinomial_logit",
+          tasteParameters: DEFAULT_TASTE_PARAMETERS,
+        }),
+      );
+
+      // On Model step initially
+      expect(screen.getByText("Choose Logit Model")).toBeInTheDocument();
+
+      // Click Next to go to Parameters step
+      const nextButton = () => screen.getByRole("button", { name: /^Next$/i });
+      await user.click(nextButton());
+      await waitFor(() => {
+        expect(screen.getByText("Taste Parameters")).toBeInTheDocument();
+      });
+
+      // Click Back - should return to Model step
+      await user.click(screen.getByRole("button", { name: /^Back$/i }));
+
+      expect(screen.getByText("Choose Logit Model")).toBeInTheDocument();
+    });
+
+    it("Edit buttons in Review step jump to correct steps", async () => {
+      const user = userEvent.setup();
+      renderWizard(
+        makeConfig({
+          investmentDecisionsEnabled: true,
+          logitModel: "nested_logit",
+          tasteParameters: DEFAULT_TASTE_PARAMETERS,
+        }),
+      );
+
+      // Navigate to Review step
+      await user.click(screen.getByRole("button", { name: /^Next$/i }));
+      await user.click(screen.getByRole("button", { name: /^Next$/i }));
+
+      expect(screen.getByText("Review Configuration")).toBeInTheDocument();
+
+      // Click Edit on Logit Model section (first Edit button)
+      const editButtons = screen.getAllByRole("button", { name: /edit/i });
+      await user.click(editButtons[0]);
+
+      // Should return to Model step
+      expect(screen.getByText("Choose Logit Model")).toBeInTheDocument();
+    });
+
+    it("step resets on component unmount/remount", async () => {
+      const user = userEvent.setup();
+      const config = makeConfig({
+        investmentDecisionsEnabled: true,
+        logitModel: "multinomial_logit",
+        tasteParameters: DEFAULT_TASTE_PARAMETERS,
+      });
+      const { rerender } = renderWizard(config);
+
+      // Navigate to Parameters step
+      await user.click(screen.getByRole("button", { name: /^Next$/i }));
+      await waitFor(() => {
+        expect(screen.getByText("Taste Parameters")).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByRole("button", { name: /^Next$/i }));
+      await waitFor(() => {
+        expect(screen.getByText("Review Configuration")).toBeInTheDocument();
+      });
+
+      // Unmount and remount (step state is transient)
+      rerender(<div />);
+      rerender(
+        <InvestmentDecisionsWizard
+          engineConfig={config}
+          onUpdateEngineConfig={mockOnUpdateEngineConfig}
+        />,
+      );
+
+      // Should reset to Model step (since enabled and step state was lost)
+      expect(screen.getByText("Choose Logit Model")).toBeInTheDocument();
+    });
+  });
+
+  describe("Slider interactions (Task 9)", () => {
+    it("sliders are rendered on Parameters step", async () => {
+      const user = userEvent.setup();
+      renderWizard(
+        makeConfig({
+          investmentDecisionsEnabled: true,
+          logitModel: "multinomial_logit",
+          tasteParameters: DEFAULT_TASTE_PARAMETERS,
+        }),
+      );
+
+      // Navigate to Parameters step
+      await user.click(screen.getByRole("button", { name: /^Next$/i }));
+
+      expect(screen.getByText("Taste Parameters")).toBeInTheDocument();
+
+      // Verify sliders are present
+      const sliders = screen.getAllByRole("slider");
+      expect(sliders.length).toBe(3);
+    });
+
+    it("sliders display current taste parameter values", async () => {
+      const user = userEvent.setup();
+      renderWizard(
+        makeConfig({
+          investmentDecisionsEnabled: true,
+          logitModel: "multinomial_logit",
+          tasteParameters: { priceSensitivity: -2.5, rangeAnxiety: -1.2, envPreference: 1.5 },
+        }),
+      );
+
+      // Navigate to Parameters step
+      await user.click(screen.getByRole("button", { name: /^Next$/i }));
+
+      expect(screen.getByText("Taste Parameters")).toBeInTheDocument();
+
+      // Verify the displayed values match the config
+      expect(screen.getByText("-2.5")).toBeInTheDocument();
+      expect(screen.getByText("-1.2")).toBeInTheDocument();
+      expect(screen.getByText("1.5")).toBeInTheDocument();
+    });
   });
 });

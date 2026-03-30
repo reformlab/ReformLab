@@ -49,17 +49,23 @@ export function loadScenario(): WorkspaceScenario | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as WorkspaceScenario;
 
-    // Story 22.6: Migration logic for legacy scenarios
-    // If tasteParameters is missing, set to default values
-    if (parsed.engineConfig && parsed.engineConfig.tasteParameters === undefined) {
-      parsed.engineConfig.tasteParameters = DEFAULT_TASTE_PARAMETERS;
-    }
-    // If calibrationState is missing, set to "not_configured"
-    if (parsed.engineConfig && parsed.engineConfig.calibrationState === undefined) {
-      parsed.engineConfig.calibrationState = "not_configured";
+    // Story 22.6: Migration logic for legacy scenarios (immutable - returns new object)
+    const needsTasteMigration = parsed.engineConfig?.tasteParameters === undefined;
+    const needsCalibrationMigration = parsed.engineConfig?.calibrationState === undefined;
+
+    if (!needsTasteMigration && !needsCalibrationMigration) {
+      return parsed;
     }
 
-    return parsed;
+    // Return new object with migrated fields (don't mutate parsed)
+    return {
+      ...parsed,
+      engineConfig: {
+        ...parsed.engineConfig,
+        tasteParameters: parsed.engineConfig.tasteParameters ?? DEFAULT_TASTE_PARAMETERS,
+        calibrationState: parsed.engineConfig.calibrationState ?? "not_configured",
+      },
+    };
   } catch {
     return null;
   }
@@ -101,15 +107,24 @@ export function getSavedScenarios(): WorkspaceScenario[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw) as WorkspaceScenario[];
 
-    // Story 22.6: Migration logic for legacy scenarios
+    // Story 22.6: Migration logic for legacy scenarios (immutable - returns new objects)
     return parsed.map((scenario) => {
-      if (scenario.engineConfig && scenario.engineConfig.tasteParameters === undefined) {
-        scenario.engineConfig.tasteParameters = DEFAULT_TASTE_PARAMETERS;
+      const needsTasteMigration = scenario.engineConfig?.tasteParameters === undefined;
+      const needsCalibrationMigration = scenario.engineConfig?.calibrationState === undefined;
+
+      if (!needsTasteMigration && !needsCalibrationMigration) {
+        return scenario;
       }
-      if (scenario.engineConfig && scenario.engineConfig.calibrationState === undefined) {
-        scenario.engineConfig.calibrationState = "not_configured";
-      }
-      return scenario;
+
+      // Return new object with migrated fields (don't mutate parsed)
+      return {
+        ...scenario,
+        engineConfig: {
+          ...scenario.engineConfig,
+          tasteParameters: scenario.engineConfig.tasteParameters ?? DEFAULT_TASTE_PARAMETERS,
+          calibrationState: scenario.engineConfig.calibrationState ?? "not_configured",
+        },
+      };
     });
   } catch {
     return [];

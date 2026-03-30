@@ -111,6 +111,63 @@ describe("saveScenario / loadScenario", () => {
     expect(loaded?.engineConfig.seed).toBe(99);
     expect(loaded?.engineConfig.investmentDecisionsEnabled).toBe(true);
   });
+
+  describe("Story 22.6: Migration logic", () => {
+    it("loadScenario migrates missing tasteParameters with defaults", () => {
+      // Save a legacy scenario without tasteParameters
+      const legacyScenario = makeScenario();
+      delete (legacyScenario.engineConfig as any).tasteParameters;
+      delete (legacyScenario.engineConfig as any).calibrationState;
+
+      localStorage.setItem(SCENARIO_STORAGE_KEY, JSON.stringify(legacyScenario));
+
+      const { loadScenario } = getHook();
+      const loaded = loadScenario();
+
+      expect(loaded?.engineConfig.tasteParameters).toEqual(DEFAULT_TASTE_PARAMETERS);
+      expect(loaded?.engineConfig.calibrationState).toBe("not_configured");
+    });
+
+    it("loadScenario does not mutate the stored scenario object", () => {
+      // Save a legacy scenario
+      const legacyScenario = makeScenario();
+      delete (legacyScenario.engineConfig as any).tasteParameters;
+
+      const rawJson = JSON.stringify(legacyScenario);
+      localStorage.setItem(SCENARIO_STORAGE_KEY, rawJson);
+
+      const { loadScenario } = getHook();
+      const loaded = loadScenario();
+
+      // The stored JSON should remain unchanged
+      expect(localStorage.getItem(SCENARIO_STORAGE_KEY)).toBe(rawJson);
+
+      // But the loaded object should have the migrated fields
+      expect(loaded?.engineConfig.tasteParameters).toEqual(DEFAULT_TASTE_PARAMETERS);
+    });
+
+    it("getSavedScenarios migrates missing tasteParameters with defaults", () => {
+      const legacyScenarios = [
+        makeScenario({ id: "s1" }),
+        makeScenario({ id: "s2" }),
+      ];
+
+      // Remove tasteParameters from one scenario
+      delete (legacyScenarios[0].engineConfig as any).tasteParameters;
+      delete (legacyScenarios[0].engineConfig as any).calibrationState;
+
+      localStorage.setItem(SAVED_SCENARIOS_KEY, JSON.stringify(legacyScenarios));
+
+      const { getSavedScenarios } = getHook();
+      const loaded = getSavedScenarios();
+
+      expect(loaded).toHaveLength(2);
+      expect(loaded[0].engineConfig.tasteParameters).toEqual(DEFAULT_TASTE_PARAMETERS);
+      expect(loaded[0].engineConfig.calibrationState).toBe("not_configured");
+      // Second scenario should be unchanged
+      expect(loaded[1].engineConfig.tasteParameters).toEqual(DEFAULT_TASTE_PARAMETERS);
+    });
+  });
 });
 
 // ============================================================================

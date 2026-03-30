@@ -118,8 +118,10 @@ const logitModelRequiredCheck: ValidationCheck = {
     if (!enabled) {
       return { passed: true, message: "", severity: "error" };
     }
-    const hasModel = ctx.scenario?.engineConfig.logitModel !== null;
-    if (!hasModel) {
+    const model = ctx.scenario?.engineConfig.logitModel;
+    const allowedModels = ["multinomial_logit", "nested_logit", "mixed_logit"] as const;
+    const hasValidModel = model !== null && allowedModels.includes(model);
+    if (!hasValidModel) {
       return {
         passed: false,
         message: "Investment decisions require a logit model to be selected.",
@@ -150,9 +152,9 @@ const tasteParametersRequiredCheck: ValidationCheck = {
     }
     // Check all required fields exist and are within valid bounds
     const { priceSensitivity, rangeAnxiety, envPreference } = params;
-    const hasPriceSensitivity = typeof priceSensitivity === "number" && priceSensitivity >= -5 && priceSensitivity <= 0;
-    const hasRangeAnxiety = typeof rangeAnxiety === "number" && rangeAnxiety >= -3 && rangeAnxiety <= 0;
-    const hasEnvPreference = typeof envPreference === "number" && envPreference >= 0 && envPreference <= 3;
+    const hasPriceSensitivity = Number.isFinite(priceSensitivity) && priceSensitivity >= -5 && priceSensitivity <= 0;
+    const hasRangeAnxiety = Number.isFinite(rangeAnxiety) && rangeAnxiety >= -3 && rangeAnxiety <= 0;
+    const hasEnvPreference = Number.isFinite(envPreference) && envPreference >= 0 && envPreference <= 3;
 
     if (!hasPriceSensitivity || !hasRangeAnxiety || !hasEnvPreference) {
       return {

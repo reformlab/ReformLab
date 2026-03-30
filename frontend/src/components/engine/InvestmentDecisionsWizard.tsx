@@ -11,7 +11,7 @@
  * Story 22.6 — AC-1, AC-2, AC-3, AC-4.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -50,8 +50,21 @@ const LOGIT_MODEL_DESCRIPTIONS = {
 
 export function InvestmentDecisionsWizard({ engineConfig, onUpdateEngineConfig }: InvestmentDecisionsWizardProps) {
   const [activeStep, setActiveStep] = useState<WizardStep>(0);
+  const [visitedSteps, setVisitedSteps] = useState<Set<WizardStep>>(new Set([0]));
+
+  // Track the previous model value to preserve it on re-enable
+  const previousLogitModelRef = useRef<EngineConfig["logitModel"]>(engineConfig.logitModel);
+
+  // Update ref when model changes from external sources (not our own toggle)
+  useEffect(() => {
+    if (engineConfig.logitModel !== null) {
+      previousLogitModelRef.current = engineConfig.logitModel;
+    }
+  }, [engineConfig.logitModel]);
 
   const isEnabled = engineConfig.investmentDecisionsEnabled;
+  // For Parameters step, use defaults if null (for slider display)
+  // For Review step, we check if tasteParameters is actually configured
   const tasteParams = engineConfig.tasteParameters ?? DEFAULT_TASTE_PARAMETERS;
 
   // Sync step state when investment decisions are enabled from outside the component
@@ -70,11 +83,14 @@ export function InvestmentDecisionsWizard({ engineConfig, onUpdateEngineConfig }
 
   const goToStep = (step: WizardStep) => {
     setActiveStep(step);
+    setVisitedSteps((prev) => new Set([...prev, step]));
   };
 
   const handleNext = () => {
     if (activeStep < 3) {
-      setActiveStep((prev) => (prev + 1) as WizardStep);
+      const nextStep = (activeStep + 1) as WizardStep;
+      setActiveStep(nextStep);
+      setVisitedSteps((prev) => new Set([...prev, nextStep]));
     }
   };
 
@@ -85,10 +101,21 @@ export function InvestmentDecisionsWizard({ engineConfig, onUpdateEngineConfig }
   };
 
   const handleToggle = (enabled: boolean) => {
+    // Preserve existing model on re-enable; only set default on first enable
+    // Use the ref to track the model across disable/enable cycles
+    const newLogitModel = enabled
+      ? (engineConfig.logitModel ?? previousLogitModelRef.current ?? "multinomial_logit")
+      : null;
+
+    // Update ref before disabling so we remember the model
+    if (!enabled && engineConfig.logitModel !== null) {
+      previousLogitModelRef.current = engineConfig.logitModel;
+    }
+
     onUpdateEngineConfig({
       ...engineConfig,
       investmentDecisionsEnabled: enabled,
-      logitModel: enabled ? "multinomial_logit" : null,
+      logitModel: newLogitModel,
     });
     // When enabling, auto-advance to Model step
     if (enabled && activeStep === 0) {
@@ -107,10 +134,12 @@ export function InvestmentDecisionsWizard({ engineConfig, onUpdateEngineConfig }
     key: K,
     value: TasteParameters[K],
   ) => {
+    // Read from engineConfig directly to avoid stale closure
+    const currentTasteParams = engineConfig.tasteParameters ?? DEFAULT_TASTE_PARAMETERS;
     onUpdateEngineConfig({
       ...engineConfig,
       tasteParameters: {
-        ...tasteParams,
+        ...currentTasteParams,
         [key]: value,
       },
     });
@@ -125,7 +154,7 @@ export function InvestmentDecisionsWizard({ engineConfig, onUpdateEngineConfig }
       <div className="flex items-center gap-3 mb-4">
         {STEP_LABELS.map((label, idx) => {
           const step = idx as WizardStep;
-          const isCompleted = step < activeStep || (step === 3 && isEnabled);
+          const isCompleted = step < activeStep || (step === activeStep && visitedSteps.has(step) && step > 0);
           const isCurrent = step === activeStep;
           const isDisabled = !isEnabled && step > 0;
 
@@ -345,20 +374,24 @@ export function InvestmentDecisionsWizard({ engineConfig, onUpdateEngineConfig }
                 Edit
               </Button>
             </div>
-            <div className="grid grid-cols-3 gap-2 text-xs">
-              <div>
-                <span className="text-slate-500">Price: </span>
-                <span className="font-mono font-medium">{tasteParams.priceSensitivity.toFixed(1)}</span>
+            {engineConfig.tasteParameters ? (
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <div>
+                  <span className="text-slate-500">Price: </span>
+                  <span className="font-mono font-medium">{tasteParams.priceSensitivity.toFixed(1)}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Range: </span>
+                  <span className="font-mono font-medium">{tasteParams.rangeAnxiety.toFixed(1)}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Env: </span>
+                  <span className="font-mono font-medium">{tasteParams.envPreference.toFixed(1)}</span>
+                </div>
               </div>
-              <div>
-                <span className="text-slate-500">Range: </span>
-                <span className="font-mono font-medium">{tasteParams.rangeAnxiety.toFixed(1)}</span>
-              </div>
-              <div>
-                <span className="text-slate-500">Env: </span>
-                <span className="font-mono font-medium">{tasteParams.envPreference.toFixed(1)}</span>
-              </div>
-            </div>
+            ) : (
+              <p className="text-xs text-slate-500 italic">Not configured</p>
+            )}
           </div>
 
           {/* Calibration status */}
