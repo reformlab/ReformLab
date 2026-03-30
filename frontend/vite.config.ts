@@ -26,5 +26,11 @@ export default defineConfig({
     globals: true,
     testTimeout: 120000, // E2E tests need longer timeout (2 minutes)
     hookTimeout: 30000, // Test hooks timeout (30 seconds)
+    pool: "forks",
+    poolOptions: {
+      forks: {
+        maxForks: 2,
+      },
+    },
   },
 });
