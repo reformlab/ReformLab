@@ -26,6 +26,8 @@ export const SCENARIO_STORAGE_KEY = "reformlab-active-scenario";
 export const STAGE_STORAGE_KEY = "reformlab-active-stage";
 export const SAVED_SCENARIOS_KEY = "reformlab-saved-scenarios";
 export const HAS_LAUNCHED_KEY = "reformlab-has-launched";
+// Story 22.3: Track scenario IDs with manually edited names
+export const MANUALLY_EDITED_NAMES_KEY = "reformlab-manually-edited-names";
 
 const MAX_SAVED_SCENARIOS = 20;
 
@@ -110,6 +112,45 @@ export function saveScenarioToList(scenario: WorkspaceScenario): void {
   } catch {
     // Storage quota exceeded — silently ignore
   }
+}
+
+// ============================================================================
+// Story 22.3: Manually edited scenario names tracking
+// ============================================================================
+
+/** Load the set of manually edited scenario IDs from localStorage. */
+export function getManuallyEditedNames(): Set<string> {
+  try {
+    const raw = localStorage.getItem(MANUALLY_EDITED_NAMES_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw) as string[];
+    return new Set(parsed);
+  } catch {
+    return new Set();
+  }
+}
+
+/** Save the set of manually edited scenario IDs to localStorage. */
+export function saveManuallyEditedNames(ids: Set<string>): void {
+  try {
+    localStorage.setItem(MANUALLY_EDITED_NAMES_KEY, JSON.stringify([...ids]));
+  } catch {
+    // Storage quota exceeded — silently ignore
+  }
+}
+
+/** Add a scenario ID to the manually edited names set. */
+export function addManuallyEditedName(id: string): void {
+  const current = getManuallyEditedNames();
+  current.add(id);
+  saveManuallyEditedNames(current);
+}
+
+/** Remove a scenario ID from the manually edited names set. */
+export function removeManuallyEditedName(id: string): void {
+  const current = getManuallyEditedNames();
+  current.delete(id);
+  saveManuallyEditedNames(current);
 }
 
 // ============================================================================

@@ -40,6 +40,7 @@ import {
 } from "@/api/portfolios";
 import { useAppState } from "@/contexts/AppContext";
 import type { PortfolioConflict } from "@/api/types";
+import { generatePortfolioSuggestion, generatePortfolioCloneName } from "@/utils/naming";
 
 // ============================================================================
 // Constants
@@ -96,6 +97,9 @@ export function PoliciesStageScreen() {
   const [saveNameError, setSaveNameError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // Story 22.3: Track whether user has manually edited the portfolio name in the dialog
+  const [saveDialogNameManuallyEdited, setSaveDialogNameManuallyEdited] = useState(false);
+
   const [loadDialogOpen, setLoadDialogOpen] = useState(false);
 
   const [cloneDialogName, setCloneDialogName] = useState<string | null>(null);
@@ -111,6 +115,17 @@ export function PoliciesStageScreen() {
   const isPortfolioValid =
     composition.length >= 1 &&
     (composition.length < 2 || conflicts.length === 0 || resolutionStrategy !== "error");
+
+  // ============================================================================
+  // Portfolio name auto-suggestion (Story 22.3, AC-1 through AC-5)
+  // ============================================================================
+
+  // Generate suggestion when composition changes, but only if user hasn't manually edited
+  useEffect(() => {
+    if (!saveDialogOpen || saveDialogNameManuallyEdited) return;
+    const suggestion = generatePortfolioSuggestion(templates, composition);
+    setPortfolioSaveName(suggestion);
+  }, [composition, templates, saveDialogOpen, saveDialogNameManuallyEdited]);
 
   // ============================================================================
   // Template selection → composition sync
@@ -321,6 +336,7 @@ export function PoliciesStageScreen() {
       setSaveDialogOpen(false);
       setPortfolioSaveName("");
       setPortfolioSaveDesc("");
+      setSaveDialogNameManuallyEdited(false);
     } catch (err) {
       if (err instanceof ApiError) {
         toast.error(`${err.what} — ${err.why}`, { description: err.fix });
@@ -463,9 +479,12 @@ export function PoliciesStageScreen() {
             size="sm"
             variant="outline"
             onClick={() => {
-              setPortfolioSaveName("");
+              // Story 22.3: Set initial suggestion from composition, reset manual edit flag
+              const suggestion = generatePortfolioSuggestion(templates, composition);
+              setPortfolioSaveName(suggestion);
               setPortfolioSaveDesc("");
               setSaveNameError(null);
+              setSaveDialogNameManuallyEdited(false);
               setSaveDialogOpen(true);
             }}
             disabled={composition.length < 1}
@@ -488,8 +507,11 @@ export function PoliciesStageScreen() {
               size="sm"
               variant="outline"
               onClick={() => {
+                // Story 22.3: Use collision handling for clone names
+                const existingNames = new Set(portfolios.map((p) => p.name));
+                const cloneName = generatePortfolioCloneName(activePortfolioName, existingNames);
                 setCloneDialogName(activePortfolioName);
-                setCloneNewName(`${activePortfolioName}-copy`);
+                setCloneNewName(cloneName);
                 setCloneNameError(null);
               }}
               title="Clone active portfolio"
@@ -614,8 +636,11 @@ export function PoliciesStageScreen() {
                 <button
                   type="button"
                   onClick={() => {
+                    // Story 22.3: Use collision handling for clone names
+                    const existingNames = new Set(portfolios.map((port) => port.name));
+                    const cloneName = generatePortfolioCloneName(p.name, existingNames);
                     setCloneDialogName(p.name);
-                    setCloneNewName(`${p.name}-copy`);
+                    setCloneNewName(cloneName);
                     setCloneNameError(null);
                   }}
                   className="shrink-0 border border-slate-200 p-1 text-slate-500 hover:bg-slate-50"
@@ -646,11 +671,11 @@ export function PoliciesStageScreen() {
           aria-modal="true"
           aria-labelledby="save-portfolio-dialog-title"
           className="fixed inset-0 z-50 flex items-center justify-center"
-          onKeyDown={(e) => { if (e.key === "Escape") setSaveDialogOpen(false); }}
+          onKeyDown={(e) => { if (e.key === "Escape") { setSaveDialogOpen(false); setSaveDialogNameManuallyEdited(false); } }}
         >
           <div
             className="absolute inset-0 bg-black/30"
-            onClick={() => setSaveDialogOpen(false)}
+            onClick={() => { setSaveDialogOpen(false); setSaveDialogNameManuallyEdited(false); }}
             aria-hidden="true"
           />
           <div className="relative z-10 w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-lg">
@@ -668,6 +693,8 @@ export function PoliciesStageScreen() {
                   type="text"
                   value={portfolioSaveName}
                   onChange={(e) => {
+                    // Story 22.3: Mark as manually edited on any user input
+                    setSaveDialogNameManuallyEdited(true);
                     setPortfolioSaveName(e.target.value);
                     setSaveNameError(validatePortfolioName(e.target.value));
                   }}
@@ -708,7 +735,7 @@ export function PoliciesStageScreen() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setSaveDialogOpen(false)}
+                onClick={() => { setSaveDialogOpen(false); setSaveDialogNameManuallyEdited(false); }}
                 disabled={saving}
               >
                 Cancel
