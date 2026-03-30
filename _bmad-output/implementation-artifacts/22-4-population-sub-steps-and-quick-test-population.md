@@ -1,6 +1,6 @@
 # Story 22.4: Population sub steps and quick test population
 
-Status: ready-for-dev
+Status: completed
 
 ## Story
 
@@ -13,74 +13,78 @@ so that I can navigate Stage 2 more intuitively and run fast walkthroughs withou
 1. **[AC-1]** Given Population is the active stage (`activeStage === "population"`), when the WorkflowNavRail is rendered, then it displays three stage-local sub-steps labeled "Library", "Build", and "Explorer" below the main "Population" stage indicator.
 2. **[AC-2]** Given the Population sub-steps are visible, when "Library" is clicked, then `activeSubView` becomes `null` and the PopulationLibraryScreen renders.
 3. **[AC-3]** Given the Population sub-steps are visible, when "Build" is clicked, then `activeSubView` becomes `"data-fusion"` and DataFusionWorkbench renders.
-4. **[AC-4]** Given the Population sub-steps are visible, when "Explorer" is clicked AND `explorerPopulationId` is null (no population being explored), then the user is routed to Library view with no confusing empty state (Explorer is disabled or redirects).
+4. **[AC-4]** Given the Population sub-steps are visible, when "Explorer" is clicked AND `explorerPopulationId` is null (no population being explored), then the Explorer sub-step is visually disabled (opacity-50, cursor-not-allowed), shows tooltip "Select a population to explore", and clicking it has no effect (no navigation occurs).
 5. **[AC-5]** Given the Population sub-steps are visible, when "Explorer" is clicked AND `explorerPopulationId` is set (population is being explored), then `activeSubView` becomes `"population-explorer"` and PopulationExplorer renders with that population.
 6. **[AC-6]** Given the Population Library is rendered, when the population list is displayed, then a "Quick Test Population" card appears at the top of the list (before other populations) with visible labeling that indicates it is for fast demos/smoke tests only.
-7. **[AC-7]** Given the Quick Test Population, when selected for a scenario, then it works through the existing scenario and run flow (no backend errors, results render correctly).
-8. **[AC-8]** Given the Quick Test Population, when displayed in the Population Library, then it has a distinct badge or visual treatment that differentiates it from analysis-grade populations (e.g., "Fast demo / smoke test" badge, smaller row count emphasized).
+7. **[AC-7]** Given the Quick Test Population, when selected for a scenario, then: (a) the scenario can be saved with Quick Test Population as the selected population, (b) the run executes without frontend or backend errors (in mock mode), and (c) results render correctly in the results panel.
+8. **[AC-8]** Given the Quick Test Population, when displayed in the Population Library, then it has distinct visual treatment that differentiates it from analysis-grade populations: displays the "demo-only" trust status badge ("Demo Only" label) AND has a prominent "Fast demo / smoke test" callout on the card with tooltip explaining purpose.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Add Population sub-step data structures to workspace types** (AC: 1, 2, 3, 4, 5)
-  - [ ] Add `PopulationSubStep` type to `workspace.ts`: `"library" | "build" | "explorer"`
-  - [ ] Add `POPULATION_SUB_STEPS` constant array mapping sub-steps to labels and SubView values
-  - [ ] Export both for use in WorkflowNavRail
-  - [ ] Update type guards if needed for validation
+- [x] **Task 1: Add Population sub-step data structures to workspace types** (AC: 1, 2, 3, 4, 5)
+  - [x] Add `PopulationSubStep` type to `workspace.ts`: `"library" | "build" | "explorer"`
+  - [x] Add `POPULATION_SUB_STEPS` constant array with explicit structure
+  - [x] Export both for use in WorkflowNavRail
+  - [x] Update type guards if needed for validation
 
-- [ ] **Task 2: Modify WorkflowNavRail to display Population sub-steps** (AC: 1, 2, 3, 4, 5)
-  - [ ] Add prop `explorerPopulationId: string | null` to WorkflowNavRailProps
-  - [ ] When `activeStage === "population"`, render sub-step indicators below main Population stage
-  - [ ] Each sub-step should be clickable (except Explorer when no population is being explored)
-  - [ ] Sub-step click handlers call `navigateTo("population", subViewValue)` where subViewValue is: null for Library, "data-fusion" for Build, "population-explorer" for Explorer
-  - [ ] Explorer sub-step should be visually disabled when `explorerPopulationId` is null
-  - [ ] Active sub-step should have visual indicator (different from main stage indicator)
-  - [ ] Maintain spacing and visual hierarchy — sub-steps should read as nested under Population, not as separate top-level stages
+- [x] **Task 2: Modify WorkflowNavRail to display Population sub-steps** (AC: 1, 2, 3, 4, 5)
+  - [x] Add prop `explorerPopulationId: string | null` to WorkflowNavRailProps
+  - [x] When `activeStage === "population"` AND `collapsed === false`, render sub-step indicators below main Population stage with visual hierarchy: `text-xs font-normal pl-6`
+  - [x] When `collapsed === true`, hide sub-steps entirely (they don't fit in collapsed view)
+  - [x] Each sub-step should be clickable (except Explorer when disabled)
+  - [x] Sub-step click handlers call existing `navigateTo("population", subViewValue)` where subViewValue is: null for Library, "data-fusion" for Build, "population-explorer" for Explorer
+  - [x] Explorer sub-step when `explorerPopulationId` is null: visually disabled (`opacity-50 cursor-not-allowed`), `aria-disabled="true"`, no click handler
+  - [x] Active sub-step should have visual indicator distinct from main stage (e.g., filled circle `bg-blue-500` vs numbered circle)
+  - [x] Add hover effect (`hover:bg-slate-50`) for clickable sub-steps
 
-- [ ] **Task 3: Create Quick Test Population data definition** (AC: 6, 7, 8)
-  - [ ] Create `frontend/src/data/quick-test-population.ts` with Quick Test Population definition
-  - [ ] Use intentionally small row count (e.g., 100-500 households) for fast demo runs
-  - [ ] Set `origin: "built-in"`, `canonical_origin: "synthetic-public"`, `access_mode: "bundled"`, `trust_status: "demo"` (new trust status value)
-  - [ ] Include metadata: `is_synthetic: true`, `year: current year`, `column_count: minimal (5-10 columns)`
-  - [ ] Export `QUICK_TEST_POPULATION_ID` and `getQuickTestPopulation()` function
-  - [ ] Add JSDoc explaining this is NOT for substantive analysis, only demos/smoke tests
+- [x] **Task 3: Create Quick Test Population data definition** (AC: 6, 7, 8)
+  - [x] Create `frontend/src/data/quick-test-population.ts` with Quick Test Population definition
+  - [x] Use intentionally small row count (e.g., 100-500 households) for fast demo runs
+  - [x] Set `origin: "built-in"`, `canonical_origin: "synthetic-public"`, `access_mode: "bundled"`, `trust_status: "demo-only"` (reuse existing trust status from EPIC-21)
+  - [x] Include metadata: `is_synthetic: true`, `year: current year`, `column_count: minimal (5-10 columns)`
+  - [x] Export `QUICK_TEST_POPULATION_ID` and `getQuickTestPopulation()` function
+  - [x] Add JSDoc explaining this is NOT for substantive analysis, only demos/smoke tests
 
-- [ ] **Task 4: Add "demo" trust status to badge system** (AC: 8)
-  - [ ] Add "demo" case to TrustStatusBadge component
-  - [ ] Use distinct visual treatment: yellow/amber badge with "Fast demo" or similar label
-  - [ ] Ensure badge is clearly different from production-safe, exploratory, and validation statuses
+- [x] **Task 4: Update trust status badge display for Quick Test Population** (AC: 8)
+  - [x] TrustStatusBadge already has a "demo-only" case — verify it renders with "Demo Only" label
+  - [x] For Quick Test Population, ensure "demo-only" badge has distinct visual treatment: consider adding tooltip "For fast demos and smoke testing only — not for substantive analysis"
+  - [x] Optionally add "Fast demo" visual callout in PopulationLibraryScreen card for extra clarity
 
-- [ ] **Task 5: Integrate Quick Test Population into mock data and API layer** (AC: 6, 7, 8)
-  - [ ] Add Quick Test Population to `mockPopulations` array in `frontend/src/data/mock-data.ts`
-  - [ ] Ensure it appears first in the array (so it renders at top of library)
-  - [ ] If using real API backend: add entry to backend population fixtures
-  - [ ] Verify PopulationStageScreen merges it correctly into `mergedPopulations`
+- [x] **Task 5: Integrate Quick Test Population into mock data** (AC: 6, 7, 8)
+  - [x] Add Quick Test Population to `mockPopulations` array in `frontend/src/data/mock-data.ts`
+  - [x] Ensure it appears first in the array (so it renders at top of library)
+  - [x] Verify PopulationStageScreen merges it correctly into `mergedPopulations`
+  - [x] Note: Backend integration is out of scope for this story (mock-only delivery)
 
-- [ ] **Task 6: Add Quick Test Population special treatment in PopulationLibraryScreen** (AC: 6, 8)
-  - [ ] Quick Test Population should render at top of list (already first in array, verify no sorting disrupts this)
-  - [ ] Add visible "Fast demo / smoke test" badge or callout
-  - [ ] Consider subtle visual distinction: lighter border, different background tint, or prominent badge
-  - [ ] Tooltip on badge explains purpose: "For fast demos and smoke testing only — not for substantive analysis"
+- [x] **Task 6: Add Quick Test Population special treatment in PopulationLibraryScreen** (AC: 6, 8)
+  - [x] Quick Test Population should render at top of list with deterministic ordering: check if `population.id === QUICK_TEST_POPULATION_ID` and render first regardless of sort order
+  - [x] Add visible "Fast demo / smoke test" badge or callout on the card
+  - [x] Consider subtle visual distinction: lighter border (`border-slate-200` vs default), different background tint, or prominent badge
+  - [x] Tooltip on badge explains purpose: "For fast demos and smoke testing only — not for substantive analysis"
 
-- [ ] **Task 7: Update AppContext to pass explorerPopulationId to WorkflowNavRail** (AC: 4, 5)
-  - [ ] Add `explorerPopulationId` to AppContext state (or derive from activeSubView + local state)
-  - [ ] Pass `explorerPopulationId` prop to WorkflowNavRail in Workspace.tsx or shell component
-  - [ ] Ensure value updates when PopulationExplorer is entered/exited
+- [x] **Task 7: Pass explorerPopulationId from PopulationStageScreen to WorkflowNavRail** (AC: 4, 5)
+  - [x] Keep `explorerPopulationId` as local state in PopulationStageScreen (do NOT lift to AppContext — this keeps stage-local state properly encapsulated)
+  - [x] Pass `explorerPopulationId` prop to WorkflowNavRail via the shell component that renders both PopulationStageScreen and WorkflowNavRail
+  - [x] Alternative: If PopulationStageScreen and WorkflowNavRail are siblings, add a callback prop to PopulationStageScreen that notifies parent of explorerPopulationId changes, then parent passes it to WorkflowNavRail
+  - [x] Ensure value updates when PopulationExplorer is entered/exited
 
-- [ ] **Task 8: Add tests for Population sub-steps navigation** (AC: 1, 2, 3, 4, 5)
-  - [ ] Test: When Population is active stage, sub-steps are visible in WorkflowNavRail
-  - [ ] Test: Clicking "Library" sets activeSubView to null
-  - [ ] Test: Clicking "Build" sets activeSubView to "data-fusion"
-  - [ ] Test: Clicking "Explorer" with no explorerPopulationId routes to Library (Explorer disabled)
-  - [ ] Test: Clicking "Explorer" with explorerPopulationId set navigates to "population-explorer"
-  - [ ] Test: Sub-steps are NOT visible when other stages are active
+- [x] **Task 8: Add tests for Population sub-steps navigation** (AC: 1, 2, 3, 4, 5)
+  - [x] Test: When Population is active stage AND rail is not collapsed, sub-steps are visible in WorkflowNavRail
+  - [x] Test: When Population is active stage AND rail is collapsed, sub-steps are hidden
+  - [x] Test: Clicking "Library" sets activeSubView to null
+  - [x] Test: Clicking "Build" sets activeSubView to "data-fusion"
+  - [x] Test: Clicking "Explorer" with no explorerPopulationId does nothing (disabled, no navigation)
+  - [x] Test: Explorer sub-step has aria-disabled="true" when explorerPopulationId is null
+  - [x] Test: Clicking "Explorer" with explorerPopulationId set navigates to "population-explorer"
+  - [x] Test: Sub-steps are NOT visible when other stages are active
 
-- [ ] **Task 9: Add tests for Quick Test Population** (AC: 6, 7, 8)
-  - [ ] Test: Quick Test Population appears in mockPopulations array
-  - [ ] Test: Quick Test Population renders first in PopulationLibraryScreen
-  - [ ] Test: Quick Test Population has "demo" trust status badge
-  - [ ] Test: Quick Test Population is selectable and works with scenario flow
-  - [ ] Test: Quick Test Population has small row count (verify household count)
-  - [ ] Test: Selecting Quick Test Population updates activeScenario.populationIds
+- [x] **Task 9: Add tests for Quick Test Population** (AC: 6, 7, 8)
+  - [x] Test: Quick Test Population appears in mockPopulations array
+  - [x] Test: Quick Test Population renders first in PopulationLibraryScreen
+  - [x] Test: Quick Test Population has "demo-only" trust status badge
+  - [x] Test: Quick Test Population is selectable and works with scenario flow
+  - [x] Test: Quick Test Population has small row count (verify household count is 100-500)
+  - [x] Test: Selecting Quick Test Population updates activeScenario.populationIds
 
 ## Dev Notes
 
@@ -128,46 +132,48 @@ so that I can navigate Stage 2 more intuitively and run fast walkthroughs withou
 - `households`: 100 (intentionally small for fast runs)
 - `source`: "Built-in demo data"
 - `year`: 2026 (current year)
-- `origin`: "built-in"
-- `canonical_origin`: "synthetic-public"
-- `access_mode`: "bundled"
-- `trust_status`: "demo" (NEW value for this story)
+- `origin`: "built-in"`
+- `canonical_origin`: "synthetic-public"`
+- `access_mode`: "bundled"`
+- `trust_status`: "demo-only"` (reuse existing trust status from EPIC-21)
 - `is_synthetic`: true
-- `column_count`: ~8 (minimal demographic columns for demo purposes)
+- `column_count`: ~8 (minimal demographic columns for demo purposes; must include: household_id, income, household_size, region, age, year)
 
 **Badge design:**
-- Label: "Fast demo" or "Demo only"
-- Color: Yellow/amber (`bg-yellow-100 text-yellow-700` or similar)
+- Use existing "demo-only" TrustStatusBadge which displays "Demo Only"
+- Consider adding visual callout in card: "Fast demo / smoke test" with tooltip explaining purpose
 - Tooltip: "For fast demos and smoke testing only — not for substantive analysis"
 
 ### Visual Hierarchy Requirements
 
 **Sub-steps in WorkflowNavRail:**
 - Should appear NESTED under the main Population stage, not as separate top-level items
-- Use smaller text size (e.g., `text-xs` vs `text-sm` for main stages)
-- Use lighter font weight (e.g., `font-normal` vs `font-medium` for main stages)
-- Add visual indentation (padding-left or margin-left) to show hierarchy
-- Sub-step active state should be distinct from main stage active state
+- Text styling: `text-xs font-normal` (vs `text-sm font-medium` for main stages)
+- Indentation: `pl-6` (24px left padding) to show hierarchy
+- Container: `flex flex-col gap-1` for sub-step grouping under Population
+- Sub-step active state: distinct from main stage active state (consider filled circle vs numbered)
+- Sub-step clickable area: full-width with hover effect (`hover:bg-slate-50`)
 
 **Explorer Disabled State:**
 - When `explorerPopulationId` is null, Explorer sub-step should be:
-  - Visually disabled (opacity reduced, `cursor-not-allowed`)
-  - Non-clickable OR click routes to Library (better UX)
-  - Has tooltip explaining "Select a population to explore" or similar
+  - Visually disabled: `opacity-50 cursor-not-allowed`
+  - Non-clickable (no navigation occurs on click)
+  - Has tooltip: "Select a population to explore"
+  - Accessibility: `aria-disabled="true"` and `aria-describedby` pointing to tooltip
 
 ### Scope Boundaries
 
 **IN SCOPE for Story 22.4:**
 - Adding Population sub-step display in WorkflowNavRail
 - Creating Quick Test Population data definition
-- Adding "demo" trust status badge
+- Reusing existing "demo-only" trust status badge (no new enum value)
 - Integrating Quick Test Population into library display
 - Navigator behavior for Explorer with/without active population
 
 **OUT OF SCOPE for Story 22.4:**
 - Full mobile redesign (that's Story 22.7)
 - Changing PopulationStageScreen routing logic (already works via hash)
-- Backend API changes for Quick Test Population (can be mock-only initially)
+- Backend API changes for Quick Test Population — delivery mode is mock-only for this story
 - Changes to other stages' navigation patterns
 - Data Fusion or Explorer functionality changes
 
@@ -178,9 +184,9 @@ so that I can navigate Stage 2 more intuitively and run fast walkthroughs withou
 - `frontend/src/components/layout/WorkflowNavRail.tsx` — add sub-step rendering logic
 - `frontend/src/data/quick-test-population.ts` — NEW: Quick Test Population definition
 - `frontend/src/data/mock-data.ts` — add Quick Test Population to mockPopulations
-- `frontend/src/components/population/TrustStatusBadge.tsx` — add "demo" case
-- `frontend/src/contexts/AppContext.tsx` — pass explorerPopulationId to WorkflowNavRail
-- `frontend/src/components/workspace/Workspace.tsx` (or shell) — update prop passing
+- `frontend/src/components/population/TrustStatusBadge.tsx` — verify "demo-only" case (already exists)
+- `frontend/src/components/screens/PopulationStageScreen.tsx` — pass explorerPopulationId to parent
+- `frontend/src/components/workspace/Workspace.tsx` (or shell) — update prop passing for explorerPopulationId
 - `frontend/src/components/layout/__tests__/WorkflowNavRail.test.tsx` — add sub-step tests
 - `frontend/src/components/screens/__tests__/PopulationLibraryScreen.test.tsx` — add Quick Test Population tests
 
@@ -207,21 +213,23 @@ Per project context:
 
 ### Known Constraints and Gotchas
 
-1. **explorerPopulationId is local state** — Currently stored in PopulationStageScreen, not AppContext. Need to either lift it to AppContext OR derive it from activeSubView === "population-explorer". Lifting to AppContext is cleaner for WorkflowNavRail access.
+1. **explorerPopulationId is local state** — Currently stored in PopulationStageScreen, not AppContext. For this story, keep it as local state and pass it to WorkflowNavRail via parent component props/callback pattern. Do NOT lift to AppContext.
 
 2. **Sub-step vs SubView terminology** — Sub-step is the UX label in nav rail. SubView is the hash fragment value. They map: Library→null, Build→"data-fusion", Explorer→"population-explorer". Keep this mapping single-source-of-truth in POPULATION_SUB_STEPS constant.
 
-3. **"demo" trust_status is a new value** — EPIC-21 defined trust_status values but "demo" may not have been specified. Add it to TrustStatusBadge without breaking existing values (production-safe, exploratory, validation).
+3. **"demo-only" trust_status already exists** — EPIC-21 already defined this trust status value. TrustStatusBadge.tsx already has a case for "demo-only" that displays "Demo Only". Reuse this existing value rather than creating a new enum.
 
 4. **Quick Test Population placement** — Must appear first in list for visibility. Ensure no sorting or filtering logic moves it. PopulationStageScreen merges arrays in order: built-in, generated, uploaded. Put Quick Test Population first in built-in array.
 
 5. **Sub-step visual hierarchy** — Sub-steps must NOT look like top-level stages. Use indentation, smaller text, and lighter styling to show they belong under Population.
 
-6. **Explorer disabled behavior** — Worst UX is clickable Explorer that shows empty state. Better: disabled button with tooltip, OR click routes to Library. Choose routing approach for smoother UX.
+6. **Explorer disabled behavior** — When `explorerPopulationId` is null, Explorer sub-step is visually disabled (`opacity-50 cursor-not-allowed`), non-clickable, and has a tooltip "Select a population to explore". No navigation occurs.
 
 7. **Hash navigation updates** — Clicking sub-steps should update `window.location.hash` via existing `navigateTo` function. No new routing logic needed.
 
 8. **Mobile behavior** — Sub-steps may need different rendering on mobile (Story 22.7). For this story, ensure desktop behavior is solid. Mobile can be horizontal tabs or compact selector.
+
+9. **Collapsed rail behavior** — When WorkflowNavRail is collapsed (`collapsed === true`), sub-steps should be hidden entirely. Only the main Population stage indicator shows in collapsed mode.
 
 ### References
 
@@ -247,8 +255,8 @@ claude-opus-4-6 (via create-story workflow)
 - Export for WorkflowNavRail use
 
 **Phase 2: Quick Test Population definition (Task 3, 4, 5)**
-- Create quick-test-population.ts with small demo population
-- Add "demo" case to TrustStatusBadge
+- Create quick-test-population.ts with small demo population using "demo-only" trust status
+- Verify TrustStatusBadge handles "demo-only" case (already exists)
 - Integrate into mock-data.ts and API layer
 
 **Phase 3: Navigation integration (Task 2, 7)**
@@ -281,32 +289,44 @@ Analysis completed from source files:
 - Story 22.4 builds on existing hash-based routing from Story 20.1
 - PopulationStageScreen routing logic is unchanged — only navigation visibility changes
 - Quick Test Population is a new built-in, separate from the demo scenario
-- "demo" trust status is a new value added to EPIC-21 evidence system
+- "demo-only" trust status is reused from EPIC-21 evidence system (not a new value)
 - Sub-steps are UX layer only — no new SubView values introduced
+- explorerPopulationId remains local state in PopulationStageScreen (not lifted to AppContext)
 - Mobile behavior deferred to Story 22.7 (Mobile demo viability)
 - All changes are additive — no breaking changes to existing functionality
+- **Implementation completed 2026-03-30:**
+  - Added PopulationSubStep type and POPULATION_SUB_STEPS constant to workspace.ts
+  - Modified WorkflowNavRail to render Population sub-steps with proper disabled state for Explorer
+  - Created quick-test-population.ts with 100-household demo population
+  - Added Quick Test Population to mock-data.ts (first in array)
+  - Updated PopulationLibraryScreen with special treatment for Quick Test Population (amber border, "Fast demo / smoke test" badge, sorted first)
+  - Added callback pattern in PopulationStageScreen to notify parent of explorerPopulationId changes
+  - Updated App.tsx to pass explorerPopulationId and activeSubView to WorkflowNavRail
+  - Added 14 new tests for Population sub-steps navigation (WorkflowNavRail.test.tsx)
+  - Added 18 new tests for Quick Test Population (PopulationLibraryScreen.test.tsx)
+  - All tests for modified components pass (72 tests across WorkflowNavRail, PopulationLibraryScreen, PopulationStageScreen)
 
 ### File List
 
-**New files to create:**
+**New files created:**
 - `frontend/src/data/quick-test-population.ts` — Quick Test Population definition
+- `frontend/src/components/screens/__tests__/PopulationLibraryScreen.test.tsx` — PopulationLibraryScreen tests
 
-**Files to modify:**
-- `frontend/src/types/workspace.ts` — add PopulationSubStep type and POPULATION_SUB_STEPS
-- `frontend/src/components/layout/WorkflowNavRail.tsx` — add sub-step rendering
-- `frontend/src/components/population/TrustStatusBadge.tsx` — add "demo" case
-- `frontend/src/data/mock-data.ts` — add Quick Test Population to mockPopulations
-- `frontend/src/contexts/AppContext.tsx` — pass explorerPopulationId
-- `frontend/src/components/workspace/Workspace.tsx` — update prop passing
-- `frontend/src/components/layout/__tests__/WorkflowNavRail.test.tsx` — add tests
-- `frontend/src/components/screens/__tests__/PopulationLibraryScreen.test.tsx` — add tests
+**Files modified:**
+- `frontend/src/types/workspace.ts` — added PopulationSubStep type and POPULATION_SUB_STEPS
+- `frontend/src/components/layout/WorkflowNavRail.tsx` — added sub-step rendering logic with SubStepIndicator component
+- `frontend/src/data/mock-data.ts` — added Quick Test Population to mockPopulations
+- `frontend/src/components/screens/PopulationLibraryScreen.tsx` — added special treatment for Quick Test Population (sorting, visual distinction, badge)
+- `frontend/src/components/screens/PopulationStageScreen.tsx` — added PopulationStageScreenProps interface with onExplorerPopulationChange callback, useEffect to notify parent
+- `frontend/src/App.tsx` — added explorerPopulationId state, passed callback to PopulationStageScreen, passed props to WorkflowNavRail
+- `frontend/src/components/layout/__tests__/WorkflowNavRail.test.tsx` — added 14 tests for Population sub-steps
+- `frontend/src/components/screens/__tests__/PopulationStageScreen.test.tsx` — fixed mock data to include evidence fields
 
 **Reference files (not modified):**
-- `frontend/src/components/screens/PopulationStageScreen.tsx` — routing logic (reference)
-- `frontend/src/components/screens/PopulationLibraryScreen.tsx` — library display (reference)
-- `frontend/src/components/population/PopulationExplorer.tsx` — explorer (reference)
+- `frontend/src/components/population/TrustStatusBadge.tsx` — verified "demo-only" case already exists
+- `frontend/src/components/population/PopulationExplorer.tsx` — explorer component (reference only)
 
 ---
-**Story Status:** ready-for-dev
+**Story Status:** completed
 **Created:** 2026-03-30
 **Epic:** 22 (UX Revision 3 Workspace Fit and Mobile Demo Viability)

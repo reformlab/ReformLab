@@ -45,13 +45,16 @@ function Workspace() {
     activeSubView,
     navigateTo,
     activeScenario,
-    selectedPortfolioName: _selectedPortfolioName,
-    selectedTemplateId: _selectedTemplateId,
+    selectedPortfolioName,
+    selectedTemplateId,
   } = useAppState();
 
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const [isNarrow, setIsNarrow] = useState(false);
+
+  // Story 22.4: Track explorer population ID from PopulationStageScreen
+  const [explorerPopulationId, setExplorerPopulationId] = useState<string | null>(null);
 
   // Layout effects
   useEffect(() => {
@@ -198,7 +201,11 @@ function Workspace() {
   const mainPanelContent = (
     <>
       {activeStage === "policies" ? <PoliciesStageScreen /> : null}
-      {activeStage === "population" ? <PopulationStageScreen /> : null}
+      {activeStage === "population" ? (
+        <PopulationStageScreen
+          onExplorerPopulationChange={setExplorerPopulationId}
+        />
+      ) : null}
       {activeStage === "engine" ? <EngineStageScreen /> : null}
       {activeStage === "results" ? resultsContent : null}
     </>
@@ -228,6 +235,8 @@ function Workspace() {
               results={results}
               activeScenario={activeScenario}
               populations={populations}
+              explorerPopulationId={explorerPopulationId}
+              activeSubView={activeSubView}
             />
           </LeftPanel>
         }

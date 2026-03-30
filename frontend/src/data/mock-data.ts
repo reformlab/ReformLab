@@ -62,6 +62,13 @@ export interface SummaryStatistic {
 
 export const mockPopulations: Population[] = [
   {
+    id: "quick-test-population",
+    name: "Quick Test Population",
+    households: 100,
+    source: "Built-in demo data",
+    year: 2026,
+  },
+  {
     id: "fr-synthetic-2024",
     name: "France Synthetic 2024",
     households: 100_000,

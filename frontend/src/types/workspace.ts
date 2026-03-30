@@ -23,6 +23,18 @@ export type SubView =
   | "runner";
 
 // ============================================================================
+// Population sub-step types — Story 22.4
+// ============================================================================
+
+export type PopulationSubStep = "library" | "build" | "explorer";
+
+export const POPULATION_SUB_STEPS = [
+  { key: "library" as const, label: "Library", subView: null as const },
+  { key: "build" as const, label: "Build", subView: "data-fusion" as const },
+  { key: "explorer" as const, label: "Explorer", subView: "population-explorer" as const },
+] as const;
+
+// ============================================================================
 // Scenario types
 // ============================================================================
 

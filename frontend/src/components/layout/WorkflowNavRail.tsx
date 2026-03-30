@@ -11,11 +11,11 @@
  * Story 20.1 — AC-1, refactored from Story 18.1.
  */
 
-import { Check } from "lucide-react";
+import { Check, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { GenerationResult, PortfolioListItem, ResultListItem, PopulationItem } from "@/api/types";
-import type { StageKey, WorkspaceScenario } from "@/types/workspace";
-import { STAGES } from "@/types/workspace";
+import type { StageKey, WorkspaceScenario, SubView } from "@/types/workspace";
+import { STAGES, POPULATION_SUB_STEPS } from "@/types/workspace";
 
 // ============================================================================
 // Types
@@ -23,7 +23,7 @@ import { STAGES } from "@/types/workspace";
 
 export interface WorkflowNavRailProps {
   activeStage: StageKey;
-  navigateTo: (stage: StageKey) => void;
+  navigateTo: (stage: StageKey, subView?: SubView | null) => void;
   collapsed: boolean;
   selectedPopulationId: string;
   dataFusionResult: GenerationResult | null;
@@ -31,6 +31,8 @@ export interface WorkflowNavRailProps {
   results: ResultListItem[];
   activeScenario: WorkspaceScenario | null;
   populations: PopulationItem[];
+  explorerPopulationId: string | null; // Story 22.4 - for Explorer sub-step disabled state
+  activeSubView: SubView | null; // Story 22.4 - for active sub-step indication
 }
 
 // ============================================================================
@@ -136,6 +138,51 @@ function StepIndicator({ stageKey, index, active, complete }: StepIndicatorProps
 }
 
 // ============================================================================
+// SubStepIndicator sub-component — Story 22.4
+// ============================================================================
+
+interface SubStepIndicatorProps {
+  label: string;
+  active: boolean;
+  disabled: boolean;
+  onClick: () => void;
+  testId: string;
+}
+
+function SubStepIndicator({ label, active, disabled, onClick, testId }: SubStepIndicatorProps) {
+  return (
+    <button
+      type="button"
+      data-testid={testId}
+      aria-disabled={disabled ? "true" : undefined}
+      onClick={disabled ? undefined : onClick}
+      className={cn(
+        "flex items-center gap-2 rounded px-2 py-1 text-xs transition-colors",
+        "hover:bg-slate-50",
+        disabled && "cursor-not-allowed opacity-50 hover:bg-transparent",
+        !disabled && "cursor-pointer",
+      )}
+    >
+      <Circle
+        className={cn(
+          "h-2 w-2 shrink-0 fill-current",
+          active && "bg-blue-500 text-blue-500",
+          !active && "bg-slate-300 text-slate-300",
+        )}
+      />
+      <span
+        className={cn(
+          "font-normal leading-none",
+          active ? "text-slate-900" : "text-slate-600",
+        )}
+      >
+        {label}
+      </span>
+    </button>
+  );
+}
+
+// ============================================================================
 // Main component
 // ============================================================================
 
@@ -149,6 +196,8 @@ export function WorkflowNavRail({
   results,
   activeScenario,
   populations,
+  explorerPopulationId,
+  activeSubView,
 }: WorkflowNavRailProps) {
   return (
     <nav aria-label="Workflow navigation" className="flex flex-col gap-0">
@@ -159,6 +208,9 @@ export function WorkflowNavRail({
           ? null
           : getSummary(stage.key, selectedPopulationId, dataFusionResult, portfolios, results, activeScenario, populations);
         const isLast = index === STAGES.length - 1;
+
+        // Story 22.4: Population sub-steps (Library, Build, Explorer)
+        const showPopulationSubSteps = !collapsed && stage.key === "population" && active;
 
         return (
           <div key={stage.key} className="flex flex-col">
@@ -179,7 +231,7 @@ export function WorkflowNavRail({
                     complete={complete}
                   />
                 </button>
-                {!isLast && (
+                {!isLast && !showPopulationSubSteps && (
                   <div className="my-1 w-0.5 flex-1 self-stretch border-l-2 border-slate-200" style={{ minHeight: "1.5rem" }} />
                 )}
               </div>
@@ -203,9 +255,34 @@ export function WorkflowNavRail({
                       {summary}
                     </span>
                   )}
+                  {/* Story 22.4: Population sub-steps rendered under main stage label */}
+                  {showPopulationSubSteps && (
+                    <div className="mt-2 flex flex-col gap-1 pl-6">
+                      {POPULATION_SUB_STEPS.map((subStep) => {
+                        const isActive = subStep.subView === activeSubView;
+                        const isDisabled = subStep.key === "explorer" && !explorerPopulationId;
+
+                        return (
+                          <SubStepIndicator
+                            key={subStep.key}
+                            label={subStep.label}
+                            active={isActive}
+                            disabled={isDisabled}
+                            onClick={() => { navigateTo("population", subStep.subView); }}
+                            testId={`substep-population-${subStep.key}`}
+                          />
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
+
+            {/* Story 22.4: Connecting line after Population stage with sub-steps */}
+            {showPopulationSubSteps && !isLast && (
+              <div className="ml-[3.5rem] mt-1 w-0.5 flex-1 border-l-2 border-slate-200" style={{ minHeight: "1rem" }} />
+            )}
           </div>
         );
       })}

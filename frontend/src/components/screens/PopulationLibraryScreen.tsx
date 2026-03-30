@@ -9,13 +9,14 @@
  * Story 20.4 — AC-1, AC-5, AC-6.
  */
 
-import { Eye, BarChart3, CheckCircle2, Trash2, Pencil, Upload, Plus } from "lucide-react";
+import { Eye, BarChart3, CheckCircle2, Trash2, Pencil, Upload, Plus, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { OriginBadge } from "@/components/population/OriginBadge";
 import { TrustStatusBadge } from "@/components/population/TrustStatusBadge";
 import { SyntheticBadge } from "@/components/population/SyntheticBadge";
 import type { PopulationLibraryItem } from "@/api/types";
+import { QUICK_TEST_POPULATION_ID } from "@/data/quick-test-population";
 
 // ============================================================================
 // Types
@@ -56,11 +57,15 @@ function PopulationCard({
   onDelete,
   onEdit,
 }: PopulationCardProps) {
+  // Story 22.4: Special treatment for Quick Test Population
+  const isQuickTest = population.id === QUICK_TEST_POPULATION_ID;
+
   return (
     <div
       className={`relative flex flex-col gap-3 rounded-lg border bg-white p-4 shadow-sm transition-all ${
         isSelected ? "border-blue-500 ring-2 ring-blue-200" : "border-slate-200 hover:border-slate-300"
-      }`}
+      } ${isQuickTest ? "border-amber-200 bg-amber-50/30" : ""}`}
+      title={isQuickTest ? "For fast demos and smoke testing only — not for substantive analysis" : undefined}
     >
       {/* Selection indicator */}
       {isSelected && (
@@ -71,7 +76,19 @@ function PopulationCard({
 
       {/* Header */}
       <div className="flex flex-col gap-1 pr-6">
-        <span className="text-sm font-semibold text-slate-900 leading-tight">{population.name}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-slate-900 leading-tight">{population.name}</span>
+          {/* Story 22.4: Quick Test Population indicator */}
+          {isQuickTest && (
+            <div
+              className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
+              title="For fast demos and smoke testing only — not for substantive analysis"
+            >
+              <Zap className="h-3 w-3" />
+              Fast demo / smoke test
+            </div>
+          )}
+        </div>
         {/* Story 21.2 / AC8: Display trust status badge (canonical) */}
         {/* Story 21.4 / AC6, AC10: Display synthetic indicator badge for observed/synthetic populations */}
         <div className="flex flex-wrap gap-1">
@@ -181,6 +198,13 @@ export function PopulationLibraryScreen({
   onUpload,
   onBuildNew,
 }: PopulationLibraryScreenProps) {
+  // Story 22.4: Ensure Quick Test Population is always displayed first
+  const sortedPopulations = [...populations].sort((a, b) => {
+    if (a.id === QUICK_TEST_POPULATION_ID) return -1;
+    if (b.id === QUICK_TEST_POPULATION_ID) return 1;
+    return 0; // Maintain original order for other populations
+  });
+
   const selectedPopulation = populations.find((p) => p.id === selectedPopulationId);
 
   return (
@@ -210,14 +234,14 @@ export function PopulationLibraryScreen({
           <div className="flex items-center justify-center py-16 text-sm text-slate-400">
             Loading populations…
           </div>
-        ) : populations.length === 0 ? (
+        ) : sortedPopulations.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-3 py-16">
             <p className="text-sm text-slate-500">No populations available.</p>
             <Button size="sm" onClick={onBuildNew}>Build New Population</Button>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4 xl:grid-cols-3 2xl:grid-cols-4">
-            {populations.map((pop) => (
+            {sortedPopulations.map((pop) => (
               <PopulationCard
                 key={pop.id}
                 population={pop}

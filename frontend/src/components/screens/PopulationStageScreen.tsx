@@ -13,7 +13,7 @@
  * Story 20.4 — AC-1 through AC-6.
  */
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { toast } from "sonner";
 
 import { useAppState } from "@/contexts/AppContext";
@@ -48,10 +48,19 @@ function toLibraryItem(p: PopulationLibraryItem): PopulationLibraryItem {
 let _uploadedPopulationsCache: PopulationLibraryItem[] = [];
 
 // ============================================================================
+// Types
+// ============================================================================
+
+export interface PopulationStageScreenProps {
+  /** Story 22.4: Callback when explorer population ID changes */
+  onExplorerPopulationChange?: (populationId: string | null) => void;
+}
+
+// ============================================================================
 // Main component
 // ============================================================================
 
-export function PopulationStageScreen() {
+export function PopulationStageScreen({ onExplorerPopulationChange }: PopulationStageScreenProps) {
   const {
     populations,
     populationsLoading,
@@ -104,6 +113,11 @@ export function PopulationStageScreen() {
     if (!previewPopulationId) return "";
     return mergedPopulations.find((p) => p.id === previewPopulationId)?.name ?? previewPopulationId;
   }, [previewPopulationId, mergedPopulations]);
+
+  // Story 22.4: Notify parent when explorer population ID changes
+  useEffect(() => {
+    onExplorerPopulationChange?.(explorerPopulationId);
+  }, [explorerPopulationId, onExplorerPopulationChange]);
 
   // ============================================================================
   // Callbacks

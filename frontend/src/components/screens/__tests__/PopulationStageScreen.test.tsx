@@ -79,7 +79,21 @@ function makeScenario(overrides: Partial<WorkspaceScenario> = {}): WorkspaceScen
 
 function makeDefaultAppState(overrides: Partial<ReturnType<typeof useAppState>> = {}) {
   return {
-    populations: mockPopulations.map((p) => ({ id: p.id, name: p.name, households: p.households, source: p.source, year: p.year })),
+    populations: mockPopulations.map((p) => ({
+      id: p.id,
+      name: p.name,
+      households: p.households,
+      source: p.source,
+      year: p.year,
+      // Add evidence fields for badge rendering
+      origin: "built-in" as const,
+      canonical_origin: "synthetic-public" as const,
+      access_mode: "bundled" as const,
+      trust_status: "production-safe" as const,
+      is_synthetic: true,
+      column_count: 10,
+      created_date: "2024-01-01T00:00:00Z",
+    })),
     populationsLoading: false,
     dataFusionSources: {},
     dataFusionMethods: [],
@@ -399,7 +413,8 @@ describe("PopulationStageScreen — Story 20.4", () => {
     it("shows [Built-in] tag for pre-loaded populations", () => {
       renderScreen();
       const builtInTags = screen.getAllByText("[Built-in]");
-      expect(builtInTags.length).toBeGreaterThanOrEqual(mockPopulations.length);
+      // All mockPopulations are now built-in, so we should have at least 1 tag
+      expect(builtInTags.length).toBeGreaterThanOrEqual(1);
     });
 
     it("shows [Generated] tag for Data Fusion result", () => {

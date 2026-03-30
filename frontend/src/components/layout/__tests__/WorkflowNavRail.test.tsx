@@ -33,6 +33,8 @@ function baseProps(overrides: Partial<WorkflowNavRailProps> = {}): WorkflowNavRa
     results: [],
     activeScenario: null,
     populations: [],
+    explorerPopulationId: null,
+    activeSubView: null,
     ...overrides,
   };
 }
@@ -214,5 +216,100 @@ describe("WorkflowNavRail - collapsed state", () => {
     expect(screen.getByTestId("step-indicator-population")).toBeInTheDocument();
     expect(screen.getByTestId("step-indicator-engine")).toBeInTheDocument();
     expect(screen.getByTestId("step-indicator-results")).toBeInTheDocument();
+  });
+});
+
+// ============================================================================
+// Story 22.4: Population sub-steps
+// ============================================================================
+
+describe("WorkflowNavRail - Population sub-steps (Story 22.4)", () => {
+  it("does NOT show sub-steps when Population stage is NOT active", () => {
+    render(<WorkflowNavRail {...baseProps({ activeStage: "policies" })} />);
+    expect(screen.queryByTestId("substep-population-library")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("substep-population-build")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("substep-population-explorer")).not.toBeInTheDocument();
+  });
+
+  it("shows sub-steps when Population stage is active and rail is NOT collapsed", () => {
+    render(<WorkflowNavRail {...baseProps({ activeStage: "population", collapsed: false })} />);
+    expect(screen.getByTestId("substep-population-library")).toBeInTheDocument();
+    expect(screen.getByTestId("substep-population-build")).toBeInTheDocument();
+    expect(screen.getByTestId("substep-population-explorer")).toBeInTheDocument();
+  });
+
+  it("does NOT show sub-steps when rail is collapsed", () => {
+    render(<WorkflowNavRail {...baseProps({ activeStage: "population", collapsed: true })} />);
+    expect(screen.queryByTestId("substep-population-library")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("substep-population-build")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("substep-population-explorer")).not.toBeInTheDocument();
+  });
+
+  it("shows all three sub-step labels: Library, Build, Explorer", () => {
+    render(<WorkflowNavRail {...baseProps({ activeStage: "population" })} />);
+    expect(screen.getByText("Library")).toBeInTheDocument();
+    expect(screen.getByText("Build")).toBeInTheDocument();
+    expect(screen.getByText("Explorer")).toBeInTheDocument();
+  });
+
+  it("calls navigateTo with population and null subView when Library is clicked", async () => {
+    const navigateTo = vi.fn();
+    render(<WorkflowNavRail {...baseProps({ activeStage: "population", navigateTo })} />);
+    await userEvent.click(screen.getByTestId("substep-population-library"));
+    expect(navigateTo).toHaveBeenCalledWith("population", null);
+  });
+
+  it("calls navigateTo with population and data-fusion when Build is clicked", async () => {
+    const navigateTo = vi.fn();
+    render(<WorkflowNavRail {...baseProps({ activeStage: "population", navigateTo })} />);
+    await userEvent.click(screen.getByTestId("substep-population-build"));
+    expect(navigateTo).toHaveBeenCalledWith("population", "data-fusion");
+  });
+
+  it("Explorer sub-step is disabled when explorerPopulationId is null", () => {
+    render(<WorkflowNavRail {...baseProps({ activeStage: "population", explorerPopulationId: null })} />);
+    const explorerButton = screen.getByTestId("substep-population-explorer");
+    expect(explorerButton).toHaveAttribute("aria-disabled", "true");
+    expect(explorerButton).toHaveClass("cursor-not-allowed", "opacity-50");
+  });
+
+  it("Explorer sub-step is NOT disabled when explorerPopulationId is set", () => {
+    render(<WorkflowNavRail {...baseProps({ activeStage: "population", explorerPopulationId: "fr-synthetic-2024" })} />);
+    const explorerButton = screen.getByTestId("substep-population-explorer");
+    expect(explorerButton).not.toHaveAttribute("aria-disabled", "true");
+    expect(explorerButton).not.toHaveClass("cursor-not-allowed");
+  });
+
+  it("does NOT call navigateTo when Explorer is clicked with no explorerPopulationId (disabled)", async () => {
+    const navigateTo = vi.fn();
+    render(<WorkflowNavRail {...baseProps({ activeStage: "population", explorerPopulationId: null, navigateTo })} />);
+    await userEvent.click(screen.getByTestId("substep-population-explorer"));
+    expect(navigateTo).not.toHaveBeenCalled();
+  });
+
+  it("calls navigateTo with population and population-explorer when Explorer is clicked with explorerPopulationId set", async () => {
+    const navigateTo = vi.fn();
+    render(<WorkflowNavRail {...baseProps({ activeStage: "population", explorerPopulationId: "fr-synthetic-2024", navigateTo })} />);
+    await userEvent.click(screen.getByTestId("substep-population-explorer"));
+    expect(navigateTo).toHaveBeenCalledWith("population", "population-explorer");
+  });
+
+  it("marks Library sub-step as active when activeSubView is null", () => {
+    render(<WorkflowNavRail {...baseProps({ activeStage: "population", activeSubView: null })} />);
+    const libraryButton = screen.getByTestId("substep-population-library");
+    // Active sub-step should have text-slate-900 on the span element
+    expect(libraryButton.querySelector("span")).toHaveClass("text-slate-900");
+  });
+
+  it("marks Build sub-step as active when activeSubView is data-fusion", () => {
+    render(<WorkflowNavRail {...baseProps({ activeStage: "population", activeSubView: "data-fusion" })} />);
+    const buildButton = screen.getByTestId("substep-population-build");
+    expect(buildButton.querySelector("span")).toHaveClass("text-slate-900");
+  });
+
+  it("marks Explorer sub-step as active when activeSubView is population-explorer", () => {
+    render(<WorkflowNavRail {...baseProps({ activeStage: "population", activeSubView: "population-explorer" })} />);
+    const explorerButton = screen.getByTestId("substep-population-explorer");
+    expect(explorerButton.querySelector("span")).toHaveClass("text-slate-900");
   });
 });
