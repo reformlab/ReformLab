@@ -114,6 +114,14 @@ def _build_generalized_taste_parameters(
         value = float(x[i])  # type: ignore[index]
         if param_name == reference_alternative:
             value = 0.0
+        # Validate param_name exists in asc or betas before assignment
+        if param_name not in optimized_asc and param_name not in optimized_betas:
+            raise CalibrationOptimizationError(
+                f"Parameter '{param_name}' not found in asc or betas keys. "
+                f"Available asc keys: {list(optimized_asc.keys())}, "
+                f"Available beta keys: {list(optimized_betas.keys())}. "
+                f"This indicates a calibration/configuration error."
+            )
         if param_name in optimized_asc:
             optimized_asc[param_name] = value
         elif param_name in optimized_betas:
@@ -531,7 +539,8 @@ class CalibrationEngine:
         identifiability_flags: dict[str, str] = {}
         for param_name, diag in param_diags.items():
             if diag.gradient_component is not None:
-                if diag.gradient_component < 1e-6 and not diag.at_lower_bound and not diag.at_upper_bound:
+                # Use absolute value to catch both positive and negative near-zero gradients
+                if abs(diag.gradient_component) < 1e-6 and not diag.at_lower_bound and not diag.at_upper_bound:
                     identifiability_flags[param_name] = "low_sensitivity"
 
         # TODO: Hessian-based correlation detection (requires scipy method with hess_inv)
@@ -643,4 +652,12 @@ class CalibrationEngine:
                 raise CalibrationOptimizationError(
                     f"Missing bounds for calibrated parameters {sorted(missing_bounds)} "
                     f"in domain={domain!r}"
+                )
+
+            # Validate initial_values and bounds have matching keys
+            mismatch = set(self.config.initial_values.keys()) ^ set(self.config.bounds.keys())
+            if mismatch:
+                raise CalibrationOptimizationError(
+                    f"initial_values and bounds must have matching keys for all calibrated parameters; "
+                    f"found in one but not the other: {sorted(mismatch)} in domain={domain!r}"
                 )

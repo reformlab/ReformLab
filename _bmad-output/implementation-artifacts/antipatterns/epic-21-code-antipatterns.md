@@ -41,3 +41,14 @@
 | medium | Missing Tests**: No governance, API, certification, or preflight tests | Cannot fix - code to test doesn't exist |
 | low | Inconsistent Naming**: `_CALIBRATION_ASSETS_BASE_PATH` vs shorter naming pattern elsewhere | Defer - naming is clear enough, not a functional issue |
 | low | SRP Breach in assets.py**: 1900+ line module with multiple responsibilities | Defer - broader refactoring out of scope for this story |
+
+## Story 21-7 (2026-03-30)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | Inconsistent legacy mode detection allows validation bypass | Modified `is_legacy_mode` property to also handle empty betas case (`len(self.betas) == 0`) for backward compatibility with legacy construction `TasteParameters(beta_cost=-0.01)`. Updated test assertion to expect correct behavior. |
+| critical | AC8 not implemented in RunManifest - missing taste_parameters field | Added `taste_parameters: dict[str, Any] = field(default_factory=dict)` to RunManifest dataclass; added to OPTIONAL_JSON_FIELDS; updated from_json() and with_integrity_hash() methods to handle the new field. |
+| high | Identifiability flag logic wrong for negative gradients | Changed `diag.gradient_component < 1e-6` to `abs(diag.gradient_component) < 1e-6` for proper magnitude-based sensitivity detection. |
+| high | Test assertion contradicts test name/description | Changed assertion from `assert tp.is_legacy_mode is False` to `assert tp.is_legacy_mode is True` to match the corrected legacy mode detection behavior. |
+| medium | Potential KeyError in _build_generalized_taste_parameters | Added validation before assignment: if param_name not in asc or betas, raise CalibrationOptimizationError with clear message about available keys. |
+| medium | Missing validation for initial_values/bounds key mismatch | Added validation in CalibrationEngine._validate_inputs() to check that initial_values and bounds have matching keys for all calibrated parameters. |

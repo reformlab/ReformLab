@@ -61,6 +61,7 @@ REQUIRED_JSON_FIELDS = (
 # Optional JSON fields that can be missing (have defaults in dataclass)
 OPTIONAL_JSON_FIELDS = (
     "exogenous_series",  # Story 21.6 / AC4
+    "taste_parameters",  # Story 21.7 / AC8
 )
 
 
@@ -123,9 +124,11 @@ class RunManifest:
         parent_manifest_id: Parent manifest UUID for lineage (empty string for root).
         child_manifests: Mapping of year to child manifest UUID for lineage.
         exogenous_series: Optional tuple of exogenous series names used (empty tuple if none).
+        taste_parameters: Optional taste parameters dict for discrete choice models (empty dict if none).
         integrity_hash: SHA-256 hash of entire manifest content (excluding this field).
 
     Story 21.6 / AC4: Added exogenous_series field for manifest recording.
+    Story 21.7 / AC8: Added taste_parameters field for governance provenance.
     """
 
     manifest_id: str
@@ -145,6 +148,7 @@ class RunManifest:
     parent_manifest_id: str = ""
     child_manifests: dict[int, str] = field(default_factory=dict)
     exogenous_series: tuple[str, ...] = ()  # Story 21.6 / AC4
+    taste_parameters: dict[str, Any] = field(default_factory=dict)  # Story 21.7 / AC8
     integrity_hash: str = ""
 
     def __post_init__(self) -> None:
@@ -454,6 +458,7 @@ class RunManifest:
                 parent_manifest_id=data["parent_manifest_id"],
                 child_manifests=child_manifests,
                 exogenous_series=tuple(data.get("exogenous_series", [])),  # Story 21.6 / AC4
+                taste_parameters=data.get("taste_parameters", {}),  # Story 21.7 / AC8
                 integrity_hash=data["integrity_hash"],
             )
         except (TypeError, KeyError) as e:
@@ -531,6 +536,7 @@ class RunManifest:
             parent_manifest_id=self.parent_manifest_id,
             child_manifests=self.child_manifests,
             exogenous_series=self.exogenous_series,  # Story 21.6 / AC4
+            taste_parameters=self.taste_parameters,  # Story 21.7 / AC8
             integrity_hash=computed_hash,
         )
 

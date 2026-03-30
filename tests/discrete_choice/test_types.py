@@ -361,7 +361,8 @@ class TestTasteParametersGeneralized:
         assert tp.beta_cost == -0.01
         assert tp.asc == {}
         assert tp.betas == {}
-        assert tp.is_legacy_mode is False  # structurally not legacy (no betas["cost"])
+        # Empty betas with empty asc is treated as legacy mode for backward compatibility
+        assert tp.is_legacy_mode is True
 
 
 class TestChoiceResult:

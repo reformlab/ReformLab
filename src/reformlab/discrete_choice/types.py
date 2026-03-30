@@ -250,8 +250,13 @@ class TasteParameters:
         was created. Both TasteParameters.from_beta_cost(-0.01) and direct
         construction TasteParameters(beta_cost=-0.01, asc={}, betas={"cost": -0.01})
         return True for is_legacy_mode.
+
+        Also handles empty betas case (legacy construction without betas dict)
+        for backward compatibility.
         """
-        return len(self.asc) == 0 and list(self.betas.keys()) == ["cost"]
+        return len(self.asc) == 0 and (
+            list(self.betas.keys()) == ["cost"] or len(self.betas) == 0
+        )
 
     @classmethod
     def from_beta_cost(cls, beta_cost: float) -> TasteParameters:
