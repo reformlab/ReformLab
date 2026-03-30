@@ -45,6 +45,7 @@ export function TopBar() {
             type="button"
             className="text-sm text-slate-500 truncate max-w-48 hover:text-slate-700 transition-colors"
             aria-label="Switch scenario"
+            title={activeScenario?.name ?? "No scenario"}
             onClick={() => setScenarioDialogOpen(true)}
           >
             {activeScenario?.name ?? "No scenario"}
@@ -76,6 +77,7 @@ export function TopBar() {
           target="_blank"
           rel="noopener noreferrer"
           aria-label="Open documentation at reform-lab.eu"
+          title="Open documentation at reform-lab.eu"
           className="hidden md:flex items-center text-slate-500 hover:text-slate-700 transition-colors"
         >
           <BookOpen className="h-4 w-4" />
@@ -87,21 +89,24 @@ export function TopBar() {
           target="_blank"
           rel="noopener noreferrer"
           aria-label="View source code on GitHub"
+          title="View source code on GitHub"
           className="hidden md:flex items-center text-slate-500 hover:text-slate-700 transition-colors"
         >
           <Github className="h-4 w-4" />
         </a>
 
-        {/* API status dot with title tooltip */}
+        {/* API status dot with title tooltip and live region */}
         <div
+          role="status"
+          aria-live="polite"
           className={`h-2 w-2 rounded-full ${apiConnected ? "bg-emerald-500" : "bg-amber-500"}`}
           title={apiConnected ? "API connected" : "Using sample data"}
           aria-label={apiConnected ? "API connected" : "API disconnected — using sample data"}
         />
 
-        {/* Settings icon (display-only, no click handler) */}
-        <div className="hidden md:flex items-center text-slate-500">
-          <Settings className="h-4 w-4" aria-label="Settings" />
+        {/* Settings icon (display-only, decorative - hidden from screen readers) */}
+        <div className="hidden md:flex items-center text-slate-500" aria-hidden="true">
+          <Settings className="h-4 w-4" />
         </div>
       </div>
 
