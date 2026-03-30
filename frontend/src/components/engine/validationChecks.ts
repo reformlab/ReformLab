@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 Lucas Vivier
-/** Cross-stage validation check registry for the Engine preflight gate.
+/** Cross-stage validation check registry for the Scenario preflight gate.
  *
  * Each ValidationCheck has an id, label, severity, and fn.
  * EPIC-21 Story 21.5 appends trust-status checks to VALIDATION_CHECKS
@@ -77,7 +77,7 @@ const timeHorizonValidCheck: ValidationCheck = {
   fn: (ctx) => {
     const cfg = ctx.scenario?.engineConfig;
     if (!cfg) {
-      return { passed: false, message: "No engine configuration.", severity: "error" };
+      return { passed: false, message: "No scenario configuration.", severity: "error" };
     }
     const { startYear, endYear } = cfg;
     if (startYear >= endYear) {

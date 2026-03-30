@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 Lucas Vivier
-/** Cross-stage validation gate for Stage 3 (Engine).
+/** Cross-stage validation gate for Stage 3 (Scenario).
  *
  * Renders all registered ValidationCheck results. Sync checks run on every
  * render (useMemo). The async memory preflight check runs only when the user

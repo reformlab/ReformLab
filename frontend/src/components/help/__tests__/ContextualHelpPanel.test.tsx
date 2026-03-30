@@ -23,7 +23,7 @@ describe("ContextualHelpPanel", () => {
 
   it("renders Engine Configuration title for engine stage", () => {
     render(<ContextualHelpPanel activeStage="engine" activeSubView={null} />);
-    expect(screen.getByText("Engine Configuration")).toBeInTheDocument();
+    expect(screen.getByText("Scenario Configuration")).toBeInTheDocument();
   });
 
   it("renders Results Overview title for results stage", () => {

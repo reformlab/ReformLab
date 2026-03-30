@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 Lucas Vivier
-/** EngineStageScreen — Stage 3: Engine Configuration.
+/** EngineStageScreen — Stage 3: Scenario Configuration.
  *
  * Two-column layout: left config form (time horizon, population, seed,
  * investment decisions, discount rate) + right panel (RunSummaryPanel +
@@ -189,7 +189,7 @@ export function EngineStageScreen() {
       <div className="flex flex-1 overflow-auto">
         {/* Left: configuration form */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6 min-w-0">
-          <h2 className="text-xl font-semibold text-slate-900">Engine Configuration</h2>
+          <h2 className="text-xl font-semibold text-slate-900">Scenario Configuration</h2>
 
           {/* Time Horizon */}
           <section className="space-y-3">

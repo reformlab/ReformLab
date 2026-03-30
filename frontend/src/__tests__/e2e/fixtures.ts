@@ -199,11 +199,11 @@ export function createCsvFile(content: string, filename = "test-population.csv")
 }
 
 // ============================================================================
-// Engine configuration fixtures
+// Scenario configuration fixtures
 // ============================================================================
 
 /**
- * Default engine configuration for tests.
+ * Default scenario configuration for tests.
  */
 export const defaultEngineConfig = {
   startYear: 2025,
@@ -215,7 +215,7 @@ export const defaultEngineConfig = {
 };
 
 /**
- * Alternative engine configuration for parameter testing.
+ * Alternative scenario configuration for parameter testing.
  */
 export const alternativeEngineConfig = {
   startYear: 2026,
@@ -227,7 +227,7 @@ export const alternativeEngineConfig = {
 };
 
 /**
- * Engine config with investment decisions enabled (for future testing).
+ * Scenario config with investment decisions enabled (for future testing).
  */
 export const investmentEngineConfig = {
   startYear: 2025,

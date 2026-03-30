@@ -241,7 +241,7 @@ describe("Population Selection Flow", () => {
     await user.type(screen.getByPlaceholderText(/password/i), "secret");
     await user.click(screen.getByRole("button", { name: /enter/i }));
 
-    // Navigate to Engine
+    // Navigate to Scenario
     window.location.hash = "#engine";
     window.dispatchEvent(new HashChangeEvent("hashchange"));
 
@@ -382,7 +382,7 @@ describe("Population Selection Flow", () => {
       expect(window.location.hash).toBe("#population/data-fusion");
     });
 
-    // Navigate to Engine and run
+    // Navigate to Scenario and run
     window.location.hash = "#engine";
     window.dispatchEvent(new HashChangeEvent("hashchange"));
 

@@ -4,7 +4,7 @@
  * Portfolio Editing Flow — end-to-end tests (Story 20.8, Task 20.8.3).
  *
  * Tests the portfolio editing and validation flow:
- * - Edit portfolio → navigate to engine → validation passes → run completes
+ * - Edit portfolio → navigate to scenario → validation passes → run completes
  * - Run metadata includes portfolio_name
  * - Validation blocks run with empty portfolio
  *
@@ -125,10 +125,10 @@ describe("Portfolio Editing Flow", () => {
 
   /**
    * AC-1, Flow 2, Step 1-3:
-   * Edit portfolio and navigate to engine.
+   * Edit portfolio and navigate to scenario.
    *
    * Given: Demo scenario loaded
-   * When: User navigates to Policies, edits portfolio, saves, navigates to Engine
+   * When: User navigates to Policies, edits portfolio, saves, navigates to Scenario
    * Then: Validation passes (portfolio-selected check)
    */
   it("edit portfolio and navigate to engine with validation passing", async () => {
@@ -158,11 +158,11 @@ describe("Portfolio Editing Flow", () => {
       localStorage.setItem(SCENARIO_STORAGE_KEY, JSON.stringify(scenario));
     });
 
-    // Navigate to Engine stage
+    // Navigate to Scenario stage
     window.location.hash = "#engine";
     window.dispatchEvent(new HashChangeEvent("hashchange"));
 
-    // Assert: Engine stage renders
+    // Assert: Scenario stage renders
     await waitFor(() => {
       expect(window.location.hash).toBe("#engine");
     });
@@ -173,7 +173,7 @@ describe("Portfolio Editing Flow", () => {
    * Run completes with updated portfolio.
    *
    * Given: Scenario with portfolio
-   * When: User clicks Run Simulation from Engine
+   * When: User clicks Run Simulation from Scenario
    * Then: Run completes, results reflect portfolio, metadata includes portfolio_name
    */
   it("run completes with updated portfolio and metadata", async () => {
@@ -200,7 +200,7 @@ describe("Portfolio Editing Flow", () => {
     await user.type(screen.getByPlaceholderText(/password/i), "secret");
     await user.click(screen.getByRole("button", { name: /enter/i }));
 
-    // Navigate to Engine
+    // Navigate to Scenario
     window.location.hash = "#engine";
     window.dispatchEvent(new HashChangeEvent("hashchange"));
 
@@ -234,7 +234,7 @@ describe("Portfolio Editing Flow", () => {
    * Validation blocks run with empty portfolio.
    *
    * Given: Scenario without portfolio
-   * When: User navigates to Engine
+   * When: User navigates to Scenario
    * Then: Validation fails with "portfolio-selected" error, Run button disabled
    */
   it("validation blocks run with empty portfolio", async () => {
@@ -263,7 +263,7 @@ describe("Portfolio Editing Flow", () => {
     await user.type(screen.getByPlaceholderText(/password/i), "secret");
     await user.click(screen.getByRole("button", { name: /enter/i }));
 
-    // Wait for Engine stage to load
+    // Wait for Scenario stage to load
     await waitFor(() => {
       expect(window.location.hash).toBe("#engine");
     });

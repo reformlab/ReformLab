@@ -194,13 +194,13 @@ export const HELP_CONTENT: Record<string, HelpEntry> = {
     ],
   },
   "engine": {
-    title: "Engine Configuration",
+    title: "Scenario Configuration",
     summary: "Assemble your scenario: bind portfolio and population, configure time horizon, seed, and investment-decision model. Cross-stage validation must pass before running.",
     tips: [
       "Set Start and End year — the 'N-year projection' label updates automatically. Max 50 years.",
       "Investment decisions expand inline when enabled — logit model and taste parameters appear without leaving the stage.",
       "The right panel shows a live validation checklist — all red checks must be resolved before Run is enabled.",
-      "Save Scenario persists the full configuration (portfolio + population + engine settings) to your saved list.",
+      "Save Scenario persists the full configuration (portfolio + population + scenario settings) to your saved list.",
       "Clone Scenario creates a copy with '(copy)' appended — useful for sensitivity analysis variants.",
       "The memory preflight check runs when you click Run — it estimates if your population fits in RAM.",
     ],
@@ -228,7 +228,7 @@ export const HELP_CONTENT: Record<string, HelpEntry> = {
     tips: [
       "Click the scenario name in the top bar to switch scenarios, create new, or reset to the demo.",
       "The demo scenario is pre-configured with the Carbon Tax + Dividend template — just click Run.",
-      "Use the nav rail on the left to move between Policies, Population, Engine, and Results stages.",
+      "Use the nav rail on the left to move between Policies, Population, Scenario, and Results stages.",
     ],
   },
   "results/comparison": {

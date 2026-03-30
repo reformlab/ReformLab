@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 Lucas Vivier
-/** Pre-flight scenario summary card for Stage 3 (Engine).
+/** Pre-flight scenario summary card for Stage 3 (Scenario).
  *
  * Compact read-only summary of what will be computed: scenario name, portfolio,
  * population(s), time horizon, investment decisions, seed, and estimated runs.

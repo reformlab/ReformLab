@@ -73,7 +73,7 @@ export interface WorkspaceScenario {
 export const STAGES: { key: StageKey; label: string; activeFor: (StageKey | SubView)[] }[] = [
   { key: "policies",   label: "Policies & Portfolio",    activeFor: ["policies"] },
   { key: "population", label: "Population",              activeFor: ["population", "data-fusion", "population-explorer"] },
-  { key: "engine",     label: "Engine",                  activeFor: ["engine"] },
+  { key: "engine",     label: "Scenario",                activeFor: ["engine"] },
   { key: "results",    label: "Run / Results / Compare", activeFor: ["results", "comparison", "decisions", "runner"] },
 ];
 

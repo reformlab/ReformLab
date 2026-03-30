@@ -174,7 +174,7 @@ describe("EngineStageScreen — Story 20.5", () => {
   describe("AC-1: Engine configuration form", () => {
     it("renders 'Engine Configuration' heading", () => {
       renderScreen();
-      expect(screen.getByRole("heading", { name: /engine configuration/i })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: /scenario configuration/i })).toBeInTheDocument();
     });
 
     it("renders time horizon inputs with values from activeScenario.engineConfig", () => {

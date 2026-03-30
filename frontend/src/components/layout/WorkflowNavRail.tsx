@@ -4,7 +4,7 @@
  * WorkflowNavRail — vertical stepper navigation for the left panel.
  *
  * Displays the four canonical workflow stages (Policies & Portfolio → Population →
- * Engine → Run / Results / Compare) with completion indicators, summary lines,
+ * Scenario → Run / Results / Compare) with completion indicators, summary lines,
  * and connecting lines between steps.
  * Supports a collapsed variant that shows only step indicator icons.
  *

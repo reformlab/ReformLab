@@ -115,7 +115,7 @@ export const populationDimension: ComparisonDimension<{
 };
 
 /**
- * Engine dimension: returns engine config (logit model, discount rate) from metadata.
+ * Scenario dimension: returns scenario config (logit model, discount rate) from metadata.
  * Note: This requires additional metadata to be added to ResultDetailResponse in future stories.
  */
 export const engineDimension: ComparisonDimension<{
@@ -123,8 +123,8 @@ export const engineDimension: ComparisonDimension<{
   discountRate: number;
 }> = {
   id: "engine",
-  label: "Engine",
-  description: "Engine configuration",
+  label: "Scenario",
+  description: "Scenario configuration",
   getValue() {
     // For now, return defaults since engine config is not in ResultDetailResponse yet
     // This will be updated when engine_config is added to result metadata
