@@ -29,7 +29,8 @@ export function ParameterRow({ parameter, value, onChange }: ParameterRowProps) 
     <div className="border-b border-slate-200 p-3 hover:bg-slate-50">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm text-slate-900">{parameter.label}</p>
+          {/* Story 22.2: Denser typography - labels use text-xs instead of text-sm */}
+          <p className="text-xs text-slate-900">{parameter.label}</p>
           <p className="text-xs text-slate-500">
             Baseline <span className="data-mono">{formatValue(parameter, parameter.baseline)}</span>
           </p>

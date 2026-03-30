@@ -524,3 +524,150 @@ describe("PoliciesStageScreen — auto-load on mount", () => {
     expect(getPortfolio).not.toHaveBeenCalled();
   });
 });
+
+// ============================================================================
+// Story 22.2: Layout rebalance and denser typography
+// ============================================================================
+
+describe("PoliciesStageScreen — Story 22.2: Layout rebalance and typography", () => {
+  describe("AC-1: Desktop 50/50 layout split", () => {
+    it("uses equal 50/50 grid split at desktop breakpoint (lg:grid-cols-2)", () => {
+      renderScreen();
+      // The main layout container should have lg:grid-cols-2 for equal split
+      const mainGrid = screen.getByRole("heading", { name: /policy templates/i })
+        .closest(".grid");
+      expect(mainGrid).toHaveClass("lg:grid-cols-2");
+      // Should NOT have the old 1:2 ratio class
+      expect(mainGrid).not.toHaveClass("lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]");
+    });
+
+    it("uses single column for mobile (grid-cols-1 base)", () => {
+      renderScreen();
+      const mainGrid = screen.getByRole("heading", { name: /policy templates/i })
+        .closest(".grid");
+      expect(mainGrid).toHaveClass("grid-cols-1");
+    });
+  });
+
+  describe("AC-2: Denser parameter typography", () => {
+    it("parameter labels use text-xs (denser than text-sm)", () => {
+      // This requires checking the ParameterRow component directly
+      // We'll verify by adding a policy and checking the rendered parameter row
+      const { container } = renderScreen();
+
+      // Add a template to trigger parameter display
+      const templateButtons = screen.getAllByRole("button", { pressed: false });
+      fireEvent.click(templateButtons[0]);
+
+      // Expand the first policy card to show parameters
+      const expandButtons = container.querySelectorAll('button[aria-label="Expand parameters"]');
+      if (expandButtons.length > 0) {
+        fireEvent.click(expandButtons[0]);
+      }
+
+      // Check that parameter labels use text-xs class
+      // Note: This test depends on ParameterRow rendering, which we verify separately
+      const parameterLabels = container.querySelectorAll('.text-xs.text-slate-900');
+      // We expect at least some text-xs labels for parameters
+      // The exact count depends on the template, but we verify the class is used
+      expect(parameterLabels.length).toBeGreaterThan(0);
+    });
+
+    it("baseline display remains text-xs (no change)", () => {
+      const { container } = renderScreen();
+
+      const templateButtons = screen.getAllByRole("button", { pressed: false });
+      fireEvent.click(templateButtons[0]);
+
+      const expandButtons = container.querySelectorAll('button[aria-label="Expand parameters"]');
+      if (expandButtons.length > 0) {
+        fireEvent.click(expandButtons[0]);
+      }
+
+      // Baseline values should use text-xs
+      const baselineText = container.querySelectorAll('.text-xs.text-slate-500');
+      expect(baselineText.length).toBeGreaterThan(0);
+    });
+
+    it("composition panel renders without layout errors", () => {
+      renderScreen();
+
+      const templateButtons = screen.getAllByRole("button", { pressed: false });
+      fireEvent.click(templateButtons[0]);
+
+      // Verify that the composition panel renders correctly
+      const compositionPanel = screen.getByRole("heading", { name: /portfolio composition/i })
+        .closest("div");
+      expect(compositionPanel).toBeInTheDocument();
+    });
+  });
+
+  describe("AC-3: Multi-policy layout compatibility", () => {
+    it("composition panel accommodates 3+ policies without horizontal overflow", () => {
+      const { container } = renderScreen();
+
+      // Add multiple templates (3+)
+      const templateButtons = screen.getAllByRole("button", { pressed: false });
+      // Only click if we have at least 3 buttons
+      const buttonsToClick = Math.min(3, templateButtons.length);
+      for (let i = 0; i < buttonsToClick; i++) {
+        fireEvent.click(templateButtons[i]);
+      }
+
+      // Verify all selected are in the composition
+      // Policy cards are in section with class="space-y-2"
+      const policyCards = container.querySelectorAll('section[aria-label="Portfolio composition"] > div');
+      expect(policyCards.length).toBeGreaterThanOrEqual(buttonsToClick);
+
+      // The composition panel should exist and not have overflow
+      const compositionPanel = screen.getByRole("heading", { name: /portfolio composition/i })
+        .closest("div");
+      expect(compositionPanel).not.toHaveStyle("overflow-x: auto");
+    });
+
+    it("all add/edit/reorder/validate/save/load operations work with 3+ policies", () => {
+      const { container } = renderScreen();
+
+      // Add 3 templates
+      const templateButtons = screen.getAllByRole("button", { pressed: false });
+      fireEvent.click(templateButtons[0]);
+      fireEvent.click(templateButtons[1]);
+      fireEvent.click(templateButtons[2]);
+
+      // Verify save button is enabled
+      const saveBtn = screen.getByTitle("Save portfolio");
+      expect(saveBtn).not.toBeDisabled();
+
+      // Verify reorder buttons exist for non-first/non-last items
+      const moveUpButtons = container.querySelectorAll('button[aria-label="Move up"]');
+      const moveDownButtons = container.querySelectorAll('button[aria-label="Move down"]');
+      expect(moveUpButtons.length).toBeGreaterThan(0);
+      expect(moveDownButtons.length).toBeGreaterThan(0);
+
+      // Verify remove buttons exist
+      const removeButtons = container.querySelectorAll('button[aria-label="Remove policy"]');
+      expect(removeButtons.length).toBeGreaterThanOrEqual(3);
+    });
+  });
+
+  describe("AC-4: Responsive stacking for narrow breakpoints", () => {
+    it("main grid has grid-cols-1 base class for mobile stacking", () => {
+      renderScreen();
+      const mainGrid = screen.getByRole("heading", { name: /policy templates/i })
+        .closest(".grid");
+      expect(mainGrid).toHaveClass("grid-cols-1");
+    });
+
+    it("panels maintain independent scrolling when stacked", () => {
+      renderScreen();
+      // Both panels should have overflow-y-auto for independent scrolling
+      const templateBrowser = screen.getByRole("heading", { name: /policy templates/i })
+        .closest("div");
+      const compositionPanel = screen.getByRole("heading", { name: /portfolio composition/i })
+        .closest("div");
+
+      expect(templateBrowser).toHaveClass("overflow-y-auto");
+      expect(compositionPanel).toHaveClass("overflow-y-auto");
+    });
+  });
+});

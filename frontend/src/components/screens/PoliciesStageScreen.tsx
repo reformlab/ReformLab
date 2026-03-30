@@ -543,8 +543,8 @@ export function PoliciesStageScreen() {
         </div>
       ) : null}
 
-      {/* Main two-column layout (AC-1) */}
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-3 flex-1 min-h-0">
+      {/* Main two-column layout (AC-1) - Story 22.2: 50/50 equal split */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 flex-1 min-h-0">
         {/* Left: Template browser */}
         <div className="rounded-lg border border-slate-200 bg-white p-3 overflow-y-auto">
           <h2 className="text-sm font-semibold text-slate-900 mb-2">Policy Templates</h2>

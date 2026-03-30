@@ -112,4 +112,32 @@ describe("ParameterRow", () => {
     expect(screen.getByText("5%")).toBeInTheDocument();
     expect(screen.getByText("-10%")).toBeInTheDocument();
   });
+
+  // Story 22.2: Denser parameter typography
+  describe("Story 22.2: Typography density", () => {
+    it("parameter label uses text-xs (denser than text-sm)", () => {
+      const { container } = render(<ParameterRow parameter={sliderParam} value={44} onChange={vi.fn()} />);
+
+      // Parameter label should use text-xs class
+      const label = container.querySelector('.text-xs.text-slate-900');
+      expect(label).toBeInTheDocument();
+      expect(label?.textContent).toBe("Carbon tax rate");
+    });
+
+    it("baseline display remains text-xs (no change)", () => {
+      const { container } = render(<ParameterRow parameter={sliderParam} value={44} onChange={vi.fn()} />);
+
+      // Baseline text should use text-xs class
+      const baseline = container.querySelector('.text-xs.text-slate-500');
+      expect(baseline).toBeInTheDocument();
+    });
+
+    it("value display uses text-sm font-medium (legibility maintained)", () => {
+      const { container } = render(<ParameterRow parameter={sliderParam} value={44} onChange={vi.fn()} />);
+
+      // Value should be text-sm font-medium (or text-sm with data-mono class)
+      const valueElement = container.querySelector('.text-sm');
+      expect(valueElement).toBeInTheDocument();
+    });
+  });
 });
