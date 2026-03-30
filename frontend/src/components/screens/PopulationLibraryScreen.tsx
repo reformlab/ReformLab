@@ -199,11 +199,10 @@ export function PopulationLibraryScreen({
   onBuildNew,
 }: PopulationLibraryScreenProps) {
   // Story 22.4: Ensure Quick Test Population is always displayed first
-  const sortedPopulations = [...populations].sort((a, b) => {
-    if (a.id === QUICK_TEST_POPULATION_ID) return -1;
-    if (b.id === QUICK_TEST_POPULATION_ID) return 1;
-    return 0; // Maintain original order for other populations
-  });
+  // Use explicit filtering and spreading for guaranteed stable ordering
+  const quickTestPop = populations.find((p) => p.id === QUICK_TEST_POPULATION_ID);
+  const otherPops = populations.filter((p) => p.id !== QUICK_TEST_POPULATION_ID);
+  const sortedPopulations = quickTestPop ? [quickTestPop, ...otherPops] : populations;
 
   const selectedPopulation = populations.find((p) => p.id === selectedPopulationId);
 

@@ -273,6 +273,12 @@ describe("WorkflowNavRail - Population sub-steps (Story 22.4)", () => {
     expect(explorerButton).toHaveClass("cursor-not-allowed", "opacity-50");
   });
 
+  it("Explorer sub-step shows tooltip when disabled", () => {
+    render(<WorkflowNavRail {...baseProps({ activeStage: "population", explorerPopulationId: null })} />);
+    const explorerButton = screen.getByTestId("substep-population-explorer");
+    expect(explorerButton).toHaveAttribute("title", "Select a population to explore");
+  });
+
   it("Explorer sub-step is NOT disabled when explorerPopulationId is set", () => {
     render(<WorkflowNavRail {...baseProps({ activeStage: "population", explorerPopulationId: "fr-synthetic-2024" })} />);
     const explorerButton = screen.getByTestId("substep-population-explorer");

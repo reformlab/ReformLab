@@ -46,6 +46,21 @@ export function usePopulations() {
   // Story 21.2 / AC6: Use PopulationLibraryItem directly from API
   // Mock data fallback with minimal evidence fields
   const mockWithEvidence: PopulationLibraryItem[] = [
+    // Story 22.4: Quick Test Population for fast demos and smoke tests
+    {
+      id: "quick-test-population",
+      name: "Quick Test Population",
+      households: 100,
+      source: "Built-in demo data",
+      year: 2026,
+      origin: "built-in",
+      canonical_origin: "synthetic-public",
+      access_mode: "bundled",
+      trust_status: "demo-only",
+      is_synthetic: true,
+      column_count: 8,
+      created_date: "2026-01-01T00:00:00Z",
+    },
     {
       id: "mock-population",
       name: "Mock Population",

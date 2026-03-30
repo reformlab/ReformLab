@@ -144,14 +144,15 @@ describe("PopulationLibraryScreen - Quick Test Population (Story 22.4)", () => {
       },
     ];
 
-    render(<PopulationLibraryScreen {...baseProps({ populations })} />);
+    const { container } = render(<PopulationLibraryScreen {...baseProps({ populations })} />);
 
-    // Get all population cards
-    const cards = screen.getAllByText(/rows/);
-    // First card should be Quick Test Population (100 rows)
-    expect(cards[0]).toHaveTextContent("100 rows");
-    // Second card should be France Synthetic (100,000 rows)
-    expect(cards[1]).toHaveTextContent("100,000 rows");
+    // Get all population cards by finding elements with "rows" text (each card shows row count)
+    const allCards = screen.getAllByText(/rows/);
+
+    // The first card should be Quick Test Population (100 rows)
+    expect(allCards[0]).toHaveTextContent("100 rows");
+    // The second card should be France Synthetic (100,000 rows)
+    expect(allCards[1]).toHaveTextContent("100,000 rows");
   });
 
   it("Quick Test Population is selectable and works with scenario flow", async () => {

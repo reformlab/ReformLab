@@ -147,14 +147,16 @@ interface SubStepIndicatorProps {
   disabled: boolean;
   onClick: () => void;
   testId: string;
+  disabledTooltip?: string; // Story 22.4: Tooltip text for disabled state
 }
 
-function SubStepIndicator({ label, active, disabled, onClick, testId }: SubStepIndicatorProps) {
+function SubStepIndicator({ label, active, disabled, onClick, testId, disabledTooltip }: SubStepIndicatorProps) {
   return (
     <button
       type="button"
       data-testid={testId}
       aria-disabled={disabled ? "true" : undefined}
+      title={disabled ? disabledTooltip : undefined}
       onClick={disabled ? undefined : onClick}
       className={cn(
         "flex items-center gap-2 rounded px-2 py-1 text-xs transition-colors",
@@ -268,6 +270,7 @@ export function WorkflowNavRail({
                             label={subStep.label}
                             active={isActive}
                             disabled={isDisabled}
+                            disabledTooltip={isDisabled ? "Select a population to explore" : undefined}
                             onClick={() => { navigateTo("population", subStep.subView); }}
                             testId={`substep-population-${subStep.key}`}
                           />

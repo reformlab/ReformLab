@@ -1529,4 +1529,13 @@ records:
   provider: claude-subprocess
   created_at: '2026-03-30T15:50:58.568903+00:00'
   workflow_id: dev-story
-updated_at: '2026-03-30T15:50:58.633624+00:00'
+- record_id: bb72082f-b67c-4b1f-8c58-f9963196141a
+  path: eval-22-4-synthesizer-20260330T160032Z.yaml
+  epic: 22
+  story: '4'
+  role: synthesizer
+  role_id: null
+  provider: claude-subprocess
+  created_at: '2026-03-30T16:00:32.507188+00:00'
+  workflow_id: code-review-synthesis
+updated_at: '2026-03-30T16:00:32.568265+00:00'
