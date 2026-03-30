@@ -249,7 +249,7 @@ describe("Analyst Journey — cross-screen navigation", () => {
       window.dispatchEvent(new HashChangeEvent("hashchange"));
 
       await waitFor(() => {
-        expect(screen.getAllByText("Engine Configuration").length).toBeGreaterThanOrEqual(1);
+        expect(screen.getAllByText("Scenario Configuration").length).toBeGreaterThanOrEqual(1);
       });
     });
   });
@@ -454,7 +454,7 @@ describe("Analyst Journey — cross-screen navigation", () => {
 
       // Returning user restores engine stage
       await waitFor(() => {
-        expect(screen.getAllByText("Engine Configuration").length).toBeGreaterThanOrEqual(1);
+        expect(screen.getAllByText("Scenario Configuration").length).toBeGreaterThanOrEqual(1);
       });
       expect(window.location.hash).toBe("#engine");
     });
@@ -586,8 +586,8 @@ describe("Analyst Journey — cross-screen navigation", () => {
   // Story 20.5 tests
   // ===========================================================================
 
-  describe("Story 20.5 — Engine Configuration Stage", () => {
-    it("navigates to #engine and shows Engine Configuration heading (AC-1)", async () => {
+  describe("Story 20.5 — Scenario Configuration Stage", () => {
+    it("navigates to #engine and shows Scenario Configuration heading (AC-1)", async () => {
       const user = userEvent.setup();
       renderApp();
       await authenticate(user);
@@ -596,7 +596,7 @@ describe("Analyst Journey — cross-screen navigation", () => {
       window.dispatchEvent(new HashChangeEvent("hashchange"));
 
       await waitFor(() => {
-        expect(screen.getAllByText("Engine Configuration").length).toBeGreaterThanOrEqual(1);
+        expect(screen.getAllByText("Scenario Configuration").length).toBeGreaterThanOrEqual(1);
       });
     });
 
@@ -623,7 +623,7 @@ describe("Analyst Journey — cross-screen navigation", () => {
       window.dispatchEvent(new HashChangeEvent("hashchange"));
 
       await waitFor(() => {
-        expect(screen.getAllByText("Engine Configuration").length).toBeGreaterThanOrEqual(1);
+        expect(screen.getAllByText("Scenario Configuration").length).toBeGreaterThanOrEqual(1);
       });
 
       // Run Simulation button should be disabled (no portfolio on demo scenario)
@@ -660,7 +660,7 @@ describe("Analyst Journey — cross-screen navigation", () => {
       await authenticate(user);
 
       await waitFor(() => {
-        expect(screen.getAllByText("Engine Configuration").length).toBeGreaterThanOrEqual(1);
+        expect(screen.getAllByText("Scenario Configuration").length).toBeGreaterThanOrEqual(1);
       });
 
       // Run Simulation button should be enabled (all sync error checks pass)

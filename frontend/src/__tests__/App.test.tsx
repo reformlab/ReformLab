@@ -95,7 +95,7 @@ describe("App", () => {
     // Stage labels appear in both TopBar and WorkflowNavRail — verify at least one exists
     expect(screen.getAllByText("Policies & Portfolio").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Population").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Engine").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Scenario").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Run / Results / Compare").length).toBeGreaterThanOrEqual(1);
   });
 

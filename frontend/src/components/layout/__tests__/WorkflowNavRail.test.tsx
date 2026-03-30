@@ -4,7 +4,7 @@
  * Tests for WorkflowNavRail component (Story 20.1, AC-1).
  *
  * Validates the four canonical stages:
- *   Policies & Portfolio → Population → Engine → Run / Results / Compare
+ *   Policies & Portfolio → Population → Scenario → Run / Results / Compare
  *
  * AC-1: nav rail with stage indicators and connecting lines
  * AC-2: completion indicators (checkmark=emerald, active=blue, pending=slate)
@@ -48,7 +48,7 @@ describe("WorkflowNavRail - stage rendering", () => {
     render(<WorkflowNavRail {...baseProps()} />);
     expect(screen.getByText("Policies & Portfolio")).toBeInTheDocument();
     expect(screen.getByText("Population")).toBeInTheDocument();
-    expect(screen.getByText("Engine")).toBeInTheDocument();
+    expect(screen.getByText("Scenario")).toBeInTheDocument();
     expect(screen.getByText("Run / Results / Compare")).toBeInTheDocument();
   });
 });
@@ -175,10 +175,10 @@ describe("WorkflowNavRail - navigation", () => {
     expect(navigateTo).toHaveBeenCalledWith("population");
   });
 
-  it("calls navigateTo with engine when Engine stage is clicked", async () => {
+  it("calls navigateTo with engine when Scenario stage is clicked", async () => {
     const navigateTo = vi.fn();
     render(<WorkflowNavRail {...baseProps({ navigateTo })} />);
-    await userEvent.click(screen.getByRole("button", { name: /^engine$/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^scenario$/i }));
     expect(navigateTo).toHaveBeenCalledWith("engine");
   });
 
@@ -199,7 +199,7 @@ describe("WorkflowNavRail - collapsed state", () => {
     render(<WorkflowNavRail {...baseProps({ collapsed: true })} />);
     expect(screen.queryByText("Policies & Portfolio")).not.toBeInTheDocument();
     expect(screen.queryByText("Population")).not.toBeInTheDocument();
-    expect(screen.queryByText("Engine")).not.toBeInTheDocument();
+    expect(screen.queryByText("Scenario")).not.toBeInTheDocument();
     expect(screen.queryByText("Run / Results / Compare")).not.toBeInTheDocument();
   });
 
