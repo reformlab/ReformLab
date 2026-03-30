@@ -11,8 +11,8 @@ Tests cover:
 
 from __future__ import annotations
 
-import pytest
 import pyarrow as pa
+import pytest
 
 from reformlab.data import create_structural_asset
 from reformlab.data.synthetic_catalog import (

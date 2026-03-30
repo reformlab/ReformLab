@@ -58,6 +58,16 @@ REQUIRED_JSON_FIELDS = (
     "integrity_hash",
 )
 
+# Optional JSON fields that can be missing (have defaults in dataclass)
+OPTIONAL_JSON_FIELDS = (
+    "exogenous_series",  # Story 21.6 / AC4
+    "taste_parameters",  # Story 21.7 / AC8
+    "evidence_assets",  # Story 21.8 / AC5
+    "calibration_assets",  # Story 21.8 / AC5
+    "validation_assets",  # Story 21.8 / AC5
+    "evidence_summary",  # Story 21.8 / AC5
+)
+
 
 class AssumptionEntry(TypedDict):
     """Structured assumption entry for manifest capture.
@@ -117,7 +127,17 @@ class RunManifest:
         step_pipeline: Ordered step names executed.
         parent_manifest_id: Parent manifest UUID for lineage (empty string for root).
         child_manifests: Mapping of year to child manifest UUID for lineage.
+        exogenous_series: Optional tuple of exogenous series names used (empty tuple if none).
+        taste_parameters: Optional taste parameters dict for discrete choice models (empty dict if none).
+        evidence_assets: List of evidence asset descriptors used (empty list if none).
+        calibration_assets: List of calibration target descriptors used (empty list if none).
+        validation_assets: List of validation benchmark descriptors used (empty list if none).
+        evidence_summary: High-level evidence provenance summary (empty dict if none).
         integrity_hash: SHA-256 hash of entire manifest content (excluding this field).
+
+    Story 21.6 / AC4: Added exogenous_series field for manifest recording.
+    Story 21.7 / AC8: Added taste_parameters field for governance provenance.
+    Story 21.8 / AC5: Added evidence_assets, calibration_assets, validation_assets, evidence_summary.
     """
 
     manifest_id: str
@@ -136,6 +156,12 @@ class RunManifest:
     step_pipeline: list[str] = field(default_factory=list)
     parent_manifest_id: str = ""
     child_manifests: dict[int, str] = field(default_factory=dict)
+    exogenous_series: tuple[str, ...] = ()  # Story 21.6 / AC4
+    taste_parameters: dict[str, Any] = field(default_factory=dict)  # Story 21.7 / AC8
+    evidence_assets: list[dict[str, Any]] = field(default_factory=list)  # Story 21.8 / AC5
+    calibration_assets: list[dict[str, Any]] = field(default_factory=list)  # Story 21.8 / AC5
+    validation_assets: list[dict[str, Any]] = field(default_factory=list)  # Story 21.8 / AC5
+    evidence_summary: dict[str, Any] = field(default_factory=dict)  # Story 21.8 / AC5
     integrity_hash: str = ""
 
     def __post_init__(self) -> None:
@@ -354,6 +380,11 @@ class RunManifest:
         object.__setattr__(self, "warnings", list(self.warnings))
         object.__setattr__(self, "step_pipeline", list(self.step_pipeline))
         object.__setattr__(self, "child_manifests", dict(self.child_manifests))
+        # Story 21.8 / AC5: Deep copy evidence fields for immutability
+        object.__setattr__(self, "evidence_assets", deepcopy(self.evidence_assets))
+        object.__setattr__(self, "calibration_assets", deepcopy(self.calibration_assets))
+        object.__setattr__(self, "validation_assets", deepcopy(self.validation_assets))
+        object.__setattr__(self, "evidence_summary", dict(self.evidence_summary))
 
     def to_json(self) -> str:
         """Serialize manifest to canonical JSON.
@@ -362,11 +393,25 @@ class RunManifest:
         encoding. Serializing the same manifest on different machines produces
         byte-equivalent output.
 
+        Story 21.8 / AC5: Omits empty evidence lists from serialization for
+        compact storage. Empty evidence_assets, calibration_assets, and
+        validation_assets lists are excluded from JSON output.
+
         Returns:
             Canonical JSON string representation.
         """
         # Convert frozen dataclass to dict
         manifest_dict = asdict(self)
+
+        # Story 21.8 / AC5: Omit empty evidence lists for compact storage
+        if not manifest_dict.get("evidence_assets"):
+            manifest_dict.pop("evidence_assets", None)
+        if not manifest_dict.get("calibration_assets"):
+            manifest_dict.pop("calibration_assets", None)
+        if not manifest_dict.get("validation_assets"):
+            manifest_dict.pop("validation_assets", None)
+        if not manifest_dict.get("evidence_summary"):
+            manifest_dict.pop("evidence_summary", None)
 
         # Canonical serialization: sorted keys, no indent, stable separators
         return json.dumps(manifest_dict, sort_keys=True, separators=(",", ":"))
@@ -402,7 +447,9 @@ class RunManifest:
                 "Missing required manifest fields: " + ", ".join(sorted(missing_fields))
             )
 
-        unknown_fields = sorted(set(data) - set(REQUIRED_JSON_FIELDS))
+        # Allow optional fields in JSON
+        allowed_fields = set(REQUIRED_JSON_FIELDS) | set(OPTIONAL_JSON_FIELDS)
+        unknown_fields = sorted(set(data) - allowed_fields)
         if unknown_fields:
             raise ManifestValidationError(
                 "Unknown manifest fields: " + ", ".join(unknown_fields)
@@ -442,6 +489,12 @@ class RunManifest:
                 step_pipeline=data["step_pipeline"],
                 parent_manifest_id=data["parent_manifest_id"],
                 child_manifests=child_manifests,
+                exogenous_series=tuple(data.get("exogenous_series", [])),  # Story 21.6 / AC4
+                taste_parameters=data.get("taste_parameters", {}),  # Story 21.7 / AC8
+                evidence_assets=data.get("evidence_assets", []),  # Story 21.8 / AC5
+                calibration_assets=data.get("calibration_assets", []),  # Story 21.8 / AC5
+                validation_assets=data.get("validation_assets", []),  # Story 21.8 / AC5
+                evidence_summary=data.get("evidence_summary", {}),  # Story 21.8 / AC5
                 integrity_hash=data["integrity_hash"],
             )
         except (TypeError, KeyError) as e:
@@ -518,6 +571,12 @@ class RunManifest:
             step_pipeline=self.step_pipeline,
             parent_manifest_id=self.parent_manifest_id,
             child_manifests=self.child_manifests,
+            exogenous_series=self.exogenous_series,  # Story 21.6 / AC4
+            taste_parameters=self.taste_parameters,  # Story 21.7 / AC8
+            evidence_assets=self.evidence_assets,  # Story 21.8 / AC5
+            calibration_assets=self.calibration_assets,  # Story 21.8 / AC5
+            validation_assets=self.validation_assets,  # Story 21.8 / AC5
+            evidence_summary=self.evidence_summary,  # Story 21.8 / AC5
             integrity_hash=computed_hash,
         )
 

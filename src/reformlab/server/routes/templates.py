@@ -16,7 +16,7 @@ from reformlab.server.models import (
     TemplateDetailResponse,
     TemplateListItem,
 )
-from reformlab.templates.exceptions import TemplateError
+from reformlab.templates.exceptions import ScenarioError, TemplateError
 from reformlab.templates.registry import RegistryError
 
 logger = logging.getLogger(__name__)
@@ -103,7 +103,7 @@ def _load_builtin_packs() -> list[TemplateListItem]:
             try:
                 template = load_scenario_template(yaml_file)
                 items.append(_template_to_list_item(yaml_file.stem, template))
-            except Exception:
+            except (TemplateError, ScenarioError, OSError):
                 logger.warning("Failed to load pack template '%s', skipping", yaml_file)
 
     return items
@@ -124,7 +124,7 @@ def _load_builtin_template(name: str) -> Any | None:
         if yaml_file.exists():
             try:
                 return load_scenario_template(yaml_file)
-            except Exception:
+            except (TemplateError, ScenarioError, OSError):
                 return None
     return None
 

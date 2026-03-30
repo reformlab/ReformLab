@@ -14,6 +14,8 @@ import logging
 from dataclasses import replace
 from typing import TYPE_CHECKING
 
+import pyarrow as pa
+
 from reformlab.discrete_choice.errors import DiscreteChoiceError
 from reformlab.discrete_choice.expansion import expand_population
 from reformlab.discrete_choice.reshape import reshape_to_cost_matrix
@@ -234,11 +236,60 @@ class DiscreteChoiceStep:
             expanded_n,
         )
 
+        # Story 21.6 / AC5: Inject exogenous fuel prices before adapter computation
+        fuel_price_metadata = None
+        if hasattr(domain, "config") and hasattr(
+            domain.config, "fuel_price_series"
+        ):
+            fuel_price_series = domain.config.fuel_price_series
+            if fuel_price_series and "exogenous_context" in state.data:
+                try:
+                    exogenous_context = state.data["exogenous_context"]
+                    fuel_price = exogenous_context.get_value(fuel_price_series, year)
+
+                    # Inject fuel price into expanded population
+                    # Add new column to each entity table in the expanded population
+                    from reformlab.computation.types import PopulationData
+
+                    injected_tables = {}
+                    for table_name, table in expansion.population.tables.items():
+                        # Add fuel_price column with constant value for all rows
+                        n_rows = table.num_rows
+                        new_col = pa.array([fuel_price] * n_rows, type=pa.float64())
+                        injected_tables[table_name] = table.append_column(
+                            "fuel_price", new_col
+                        )
+
+                    # Create new PopulationData and ExpansionResult with injected fuel prices
+                    modified_population = PopulationData(tables=injected_tables)
+                    expansion = replace(expansion, population=modified_population)
+
+                    fuel_price_metadata = {
+                        "source": f"exogenous:{fuel_price_series}",
+                        "value": fuel_price,
+                        "unit": "EUR/litre",
+                    }
+
+                    logger.debug(
+                        "year=%d step_name=%s fuel_price=%s source=%s event=fuel_price_injected",
+                        year,
+                        self._name,
+                        fuel_price,
+                        fuel_price_series,
+                    )
+                except Exception as exc:
+                    # Log error but continue with default fuel price
+                    logger.warning(
+                        "year=%d step_name=%s fuel_price_series=%s injection failed: %s",
+                        year,
+                        self._name,
+                        fuel_price_series,
+                        exc,
+                    )
+
         # Phase 2: Compute via adapter (single batch call)
         # Skip adapter call for empty population (AC-3)
         if n == 0:
-            import pyarrow as pa
-
             from reformlab.discrete_choice.types import CostMatrix
 
             empty_columns = {
@@ -336,6 +387,10 @@ class DiscreteChoiceStep:
             extended_metadata["eligibility_filter_description"] = (
                 eligibility_info.filter_description
             )
+
+        # Story 21.6 / AC5: Record fuel price metadata
+        if fuel_price_metadata is not None:
+            extended_metadata["vehicle_fuel_cost"] = fuel_price_metadata
 
         new_data[DISCRETE_CHOICE_METADATA_KEY] = extended_metadata
 

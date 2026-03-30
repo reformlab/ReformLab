@@ -1806,6 +1806,12 @@ def load_calibration_asset(asset_id: str) -> CalibrationAsset:
         If the asset folder does not exist, required files are missing,
         or validation fails.
     """
+    # Security: Validate asset_id to prevent path traversal attacks
+    if "/" in asset_id or "\\" in asset_id or ".." in asset_id:
+        raise EvidenceAssetError(
+            f"Calibration asset_id contains invalid path characters: {asset_id!r}"
+        )
+
     asset_path = _CALIBRATION_ASSETS_BASE_PATH / asset_id
 
     # Check asset folder exists
@@ -1817,6 +1823,19 @@ def load_calibration_asset(asset_id: str) -> CalibrationAsset:
         raise EvidenceAssetError(
             f"Calibration asset path is not a directory: {asset_path}"
         )
+
+    # Security: Resolve path and verify it's within base path (prevent symlink attacks)
+    try:
+        resolved_path = asset_path.resolve()
+        base_resolved = _CALIBRATION_ASSETS_BASE_PATH.resolve()
+        if not str(resolved_path).startswith(str(base_resolved)):
+            raise EvidenceAssetError(
+                f"Calibration asset path is outside base directory: {asset_path}"
+            )
+    except OSError as exc:
+        raise EvidenceAssetError(
+            f"Failed to resolve calibration asset path: {exc}"
+        ) from exc
 
     # Load descriptor.json
     descriptor_path = asset_path / "descriptor.json"
@@ -1847,6 +1866,12 @@ def load_calibration_asset(asset_id: str) -> CalibrationAsset:
         raise EvidenceAssetError(
             f"Failed to read calibration asset metadata.json: {exc}"
         ) from exc
+
+    # Validate metadata.json structure
+    if not isinstance(metadata, dict):
+        raise EvidenceAssetError(
+            f"Calibration asset metadata.json must be an object, got {type(metadata).__name__}"
+        )
 
     # Structure: nested descriptor with metadata fields at top level
     asset_data = {"descriptor": descriptor_data, **metadata}
@@ -1887,6 +1912,12 @@ def load_validation_asset(asset_id: str) -> ValidationAsset:
         If the asset folder does not exist, required files are missing,
         or validation fails.
     """
+    # Security: Validate asset_id to prevent path traversal attacks
+    if "/" in asset_id or "\\" in asset_id or ".." in asset_id:
+        raise EvidenceAssetError(
+            f"Validation asset_id contains invalid path characters: {asset_id!r}"
+        )
+
     asset_path = _VALIDATION_ASSETS_BASE_PATH / asset_id
 
     # Check asset folder exists
@@ -1898,6 +1929,19 @@ def load_validation_asset(asset_id: str) -> ValidationAsset:
         raise EvidenceAssetError(
             f"Validation asset path is not a directory: {asset_path}"
         )
+
+    # Security: Resolve path and verify it's within base path (prevent symlink attacks)
+    try:
+        resolved_path = asset_path.resolve()
+        base_resolved = _VALIDATION_ASSETS_BASE_PATH.resolve()
+        if not str(resolved_path).startswith(str(base_resolved)):
+            raise EvidenceAssetError(
+                f"Validation asset path is outside base directory: {asset_path}"
+            )
+    except OSError as exc:
+        raise EvidenceAssetError(
+            f"Failed to resolve validation asset path: {exc}"
+        ) from exc
 
     # Load descriptor.json
     descriptor_path = asset_path / "descriptor.json"
@@ -1928,6 +1972,12 @@ def load_validation_asset(asset_id: str) -> ValidationAsset:
         raise EvidenceAssetError(
             f"Failed to read validation asset metadata.json: {exc}"
         ) from exc
+
+    # Validate metadata.json structure
+    if not isinstance(metadata, dict):
+        raise EvidenceAssetError(
+            f"Validation asset metadata.json must be an object, got {type(metadata).__name__}"
+        )
 
     # Structure: nested descriptor with metadata fields at top level
     asset_data = {"descriptor": descriptor_data, **metadata}

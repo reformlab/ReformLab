@@ -5,6 +5,11 @@
 # - Loading a baseline carbon tax scenario from the registry
 # - Running a 10-year projection
 # - Generating distributional indicators by income decile
+# - Evidence model with explicit origin, access_mode, and trust_status
+#
+# Evidence source reference:
+# See _bmad-output/planning-artifacts/evidence-source-matrix-v1-2026-03-27.md
+# for full asset metadata including provenance, licenses, and limitations.
 
 $schema: "./schema/workflow.schema.json"
 version: "1.0"
@@ -14,6 +19,29 @@ description: "Analyze distributional impact of a flat carbon tax policy"
 data_sources:
   population: "synthetic_french_2024"
   emission_factors: "default"
+
+# Evidence metadata (Story 21.8 / AC1)
+# Classifies data sources by origin, access_mode, and trust_status per the
+# evidence model taxonomy. Each asset_id corresponds to an entry in the
+# evidence source matrix.
+evidence_metadata:
+  population:
+    asset_id: "fr-synthetic-2024"
+    name: "French Synthetic Population 2024"
+    origin: "synthetic-public"
+    access_mode: "bundled"
+    trust_status: "exploratory"
+    data_class: "structural"
+    note: "100k synthetic households for demo/exploratory analysis"
+  emission_factors:
+    asset_id: "ademe-carbon-factors-2024"
+    name: "Base Carbone® ADEME 2024"
+    origin: "open-official"
+    access_mode: "bundled"
+    trust_status: "production-safe"
+    data_class: "exogenous"
+    provider: "ademe"
+    note: "Emission factors for carbon footprint assessment"
 
 scenarios:
   - baseline: "carbon_tax_flat_44"

@@ -376,6 +376,9 @@ export interface ResultDetailResponse extends ResultListItem {
   indicators: Record<string, unknown> | null;
   columns: string[] | null;
   column_count: number | null;
+  // Story 21.6 / AC6: Exogenous series fields for comparison dimension
+  exogenous_series_hash: string | null;
+  exogenous_series_names: string[] | null;
 }
 
 // ============================================================================
@@ -636,4 +639,89 @@ export interface PopulationComparisonResponse {
       trust_status: string;
     };
   };
+}
+
+// ============================================================================
+// Exogenous asset types — Story 21.6
+// ============================================================================
+
+export type DataAssetOrigin =
+  | "open-official"
+  | "open-third-party"
+  | "proprietary";
+
+export type DataAssetAccessMode = "bundled" | "fetched" | "deferred-user-connector";
+
+export type DataAssetTrustStatus =
+  | "production-safe"
+  | "exploratory"
+  | "deprecated"
+  | "demo-only"
+  | "validation-pending"
+  | "not-for-public-inference";
+
+export type InterpolationMethod = "linear" | "step" | "none";
+
+export interface ExogenousAssetRequest {
+  name: string;
+  description: string;
+  origin: DataAssetOrigin;
+  access_mode: DataAssetAccessMode;
+  trust_status: DataAssetTrustStatus;
+  source_url?: string;
+  license?: string;
+  version?: string;
+  geographic_coverage?: string[];
+  years?: number[];
+  intended_use?: string;
+  redistribution_allowed?: boolean;
+  redistribution_notes?: string;
+  update_cadence?: string;
+  quality_notes?: string;
+  references?: string[];
+  unit: string;
+  values: Record<string, number>; // Year (string key) → value mapping
+  frequency?: string;
+  source?: string;
+  vintage?: string;
+  interpolation_method?: InterpolationMethod;
+  aggregation_method?: string;
+  revision_policy?: string;
+}
+
+export interface ExogenousAssetResponse {
+  // Descriptor fields
+  asset_id: string;
+  name: string;
+  description: string;
+  data_class: "exogenous";
+  origin: DataAssetOrigin;
+  access_mode: DataAssetAccessMode;
+  trust_status: DataAssetTrustStatus;
+  source_url: string;
+  license: string;
+  version: string;
+  geographic_coverage: string[];
+  years: number[];
+  intended_use: string;
+  redistribution_allowed: boolean;
+  redistribution_notes: string;
+  update_cadence: string;
+  quality_notes: string;
+  references: string[];
+  // Exogenous-specific fields
+  unit: string;
+  values: Record<number, number>; // Year → value mapping
+  frequency: string;
+  source: string;
+  vintage: string;
+  interpolation_method: string;
+  aggregation_method: string;
+  revision_policy: string;
+}
+
+export interface ExogenousFilters {
+  origin?: DataAssetOrigin;
+  unit?: string;
+  source?: string;
 }

@@ -23,6 +23,7 @@ from reformlab.server.auth import AuthMiddleware
 from reformlab.server.auth import router as auth_router
 from reformlab.server.routes.data_fusion import router as data_fusion_router
 from reformlab.server.routes.decisions import router as decisions_router
+from reformlab.server.routes.exogenous import router as exogenous_router
 from reformlab.server.routes.exports import router as exports_router
 from reformlab.server.routes.indicators import comparison_router
 from reformlab.server.routes.indicators import router as indicators_router
@@ -94,6 +95,7 @@ def create_app() -> FastAPI:
     app.include_router(templates_router, prefix="/api/templates")
     app.include_router(populations_router, prefix="/api/populations")
     app.include_router(data_fusion_router, prefix="/api/data-fusion", tags=["data-fusion"])
+    app.include_router(exogenous_router, prefix="/api/exogenous", tags=["exogenous"])
     app.include_router(portfolios_router, prefix="/api/portfolios", tags=["portfolios"])
     app.include_router(results_router, prefix="/api/results", tags=["results"])
     app.include_router(decisions_router, prefix="/api/decisions", tags=["decisions"])

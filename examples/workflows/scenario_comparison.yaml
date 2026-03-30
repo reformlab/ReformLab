@@ -5,6 +5,11 @@
 # - Loading baseline and reform scenarios from the registry
 # - Running a side-by-side comparison
 # - Generating comparison tables and distributional indicators
+# - Evidence model with explicit origin, access_mode, and trust_status
+#
+# Evidence source reference:
+# See _bmad-output/planning-artifacts/evidence-source-matrix-v1-2026-03-27.md
+# for full asset metadata including provenance, licenses, and limitations.
 
 $schema: "./schema/workflow.schema.json"
 version: "1.0"
@@ -14,6 +19,24 @@ description: "Compare baseline carbon tax with progressive dividend redistributi
 data_sources:
   population: "synthetic_french_2024"
   emission_factors: "default"
+
+# Evidence metadata (Story 21.8 / AC1)
+evidence_metadata:
+  population:
+    asset_id: "fr-synthetic-2024"
+    name: "French Synthetic Population 2024"
+    origin: "synthetic-public"
+    access_mode: "bundled"
+    trust_status: "exploratory"
+    data_class: "structural"
+  emission_factors:
+    asset_id: "ademe-carbon-factors-2024"
+    name: "Base Carbone® ADEME 2024"
+    origin: "open-official"
+    access_mode: "bundled"
+    trust_status: "production-safe"
+    data_class: "exogenous"
+    provider: "ademe"
 
 scenarios:
   - baseline: "carbon_tax_flat_44"

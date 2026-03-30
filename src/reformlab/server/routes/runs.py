@@ -20,18 +20,18 @@ from reformlab.server.dependencies import (
     get_result_cache,
     get_result_store,
 )
-
-if TYPE_CHECKING:
-    from reformlab.computation.adapter import ComputationAdapter
-    from reformlab.interfaces.api import SimulationResult
-    from reformlab.server.result_store import ResultStore
-    from reformlab.templates.registry import ScenarioRegistry
 from reformlab.server.models import (
     MemoryCheckRequest,
     MemoryCheckResponse,
     RunRequest,
     RunResponse,
 )
+
+if TYPE_CHECKING:
+    from reformlab.computation.adapter import ComputationAdapter
+    from reformlab.interfaces.api import SimulationResult
+    from reformlab.server.result_store import ResultStore
+    from reformlab.templates.registry import ScenarioRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +114,7 @@ async def run_simulation(
                 end_year=body.end_year,
                 population_path=population_path,
                 seed=body.seed,
+                exogenous_series=body.exogenous_series,  # Story 21.6 / AC2
             )
             run_config = RunConfig(scenario=scenario_config, seed=body.seed)
             result = run_scenario(run_config, adapter=adapter)
@@ -123,6 +124,17 @@ async def run_simulation(
         row_count = result.panel_output.table.num_rows if result.panel_output else 0
     finally:
         finished_at = datetime.now(timezone.utc).isoformat()
+        # Story 21.6 / AC6: Extract exogenous series info from manifest
+        exog_hash = None
+        exog_names = None
+        if result and result.manifest.exogenous_series:
+            exog_names = list(result.manifest.exogenous_series)
+            # Compute hash from sorted series names
+            import hashlib
+
+            hash_input = "|".join(sorted(exog_names))
+            exog_hash = hashlib.sha256(hash_input.encode("utf-8")).hexdigest()
+
         try:
             run_kind = "portfolio" if body.portfolio_name else "scenario"
             store.save_metadata(
@@ -147,6 +159,9 @@ async def run_simulation(
                     status=status,
                     portfolio_policy_count=portfolio_policy_count,
                     portfolio_resolution_strategy=portfolio_resolution_strategy,
+                    # Story 21.6 / AC6: Exogenous series fields
+                    exogenous_series_hash=exog_hash,
+                    exogenous_series_names=exog_names,
                 ),
             )
         except Exception:
@@ -173,6 +188,20 @@ async def run_simulation(
 
     years = sorted(result.yearly_states.keys())
 
+    # Story 21.8 / AC7: Generate trust warnings for exploratory data
+    trust_warnings: list[str] = []
+    if result.manifest.evidence_assets:
+        exploratory_assets = [
+            asset.get("name", asset.get("asset_id", "unknown"))
+            for asset in result.manifest.evidence_assets
+            if asset.get("trust_status") in ("exploratory", "demo-only", "validation-pending")
+        ]
+        if exploratory_assets:
+            trust_warnings.append(
+                f"Run uses exploratory data sources: {', '.join(exploratory_assets)}. "
+                "Results should not be used for production decision support."
+            )
+
     return RunResponse(
         run_id=run_id,
         success=result.success,
@@ -180,6 +209,7 @@ async def run_simulation(
         years=years,
         row_count=row_count,
         manifest_id=result.manifest.manifest_id,
+        trust_warnings=trust_warnings,
     )
 
 

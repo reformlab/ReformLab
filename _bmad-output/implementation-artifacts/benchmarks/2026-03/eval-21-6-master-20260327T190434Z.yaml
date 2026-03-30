@@ -1,0 +1,51 @@
+record_id: 7a56dffd-aab4-4ee3-91cf-f326dce4925d
+created_at: '2026-03-27T19:04:34.998061+00:00'
+workflow:
+  id: create-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 21
+  story_num: 6
+  title: Story 21.6
+  complexity_flags: {}
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: master
+  role_id: null
+  session_id: 96d475c1-800f-4f89-939e-f377f1dd4504
+execution:
+  start_time: '2026-03-27T19:01:37.897756Z'
+  end_time: '2026-03-27T19:04:34.979117Z'
+  duration_ms: 177081
+  input_tokens: 0
+  output_tokens: 0
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 4126
+  heading_count: 6
+  list_depth_max: 1
+  code_block_count: 0
+  sections_detected:
+  - 'Story 21.6: Implement ExogenousTimeSeries and ExogenousContext for Scenario Execution'
+  - 'Story 21.6: Implement ExogenousTimeSeries and ExogenousContext for Scenario Execution'
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 506e497cd05f
+findings: null
+reasoning: null
+linguistic: null
+quality: null
+consensus: null
+ground_truth: null
+custom: null

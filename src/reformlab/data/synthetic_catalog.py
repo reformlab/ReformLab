@@ -13,10 +13,11 @@ and trust_status="exploratory" (or other appropriate trust status).
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import cast
 
 import pyarrow as pa
 
-from reformlab.data import (
+from reformlab.data.assets import (
     StructuralAsset,
     create_structural_asset,
 )
@@ -135,7 +136,7 @@ class SyntheticAssetRegistry:
             If an asset with the same asset_id is already registered.
         """
         asset_id = asset.descriptor.asset_id
-        assets = object.__getattribute__(self, "_assets")
+        assets = cast(dict[str, StructuralAsset], object.__getattribute__(self, "_assets"))
         if asset_id in assets:
             raise ValueError(
                 f"Asset {asset_id!r} is already registered in the synthetic "
@@ -156,7 +157,7 @@ class SyntheticAssetRegistry:
         StructuralAsset | None
             The registered asset, or None if not found.
         """
-        assets = object.__getattribute__(self, "_assets")
+        assets = cast(dict[str, StructuralAsset], object.__getattribute__(self, "_assets"))
         return assets.get(asset_id)
 
     def list_all(self) -> tuple[StructuralAsset, ...]:
@@ -168,6 +169,6 @@ class SyntheticAssetRegistry:
             A tuple of all registered assets. Returns a copy to prevent
             external mutation of the registry.
         """
-        assets = object.__getattribute__(self, "_assets")
+        assets = cast(dict[str, StructuralAsset], object.__getattribute__(self, "_assets"))
         # Create a new tuple each call to ensure we don't return the same object
         return tuple(dict(assets).values())

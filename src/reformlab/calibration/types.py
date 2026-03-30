@@ -34,6 +34,25 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# ============================== Story 21.7: Diagnostics Types ==============================
+
+
+@dataclass(frozen=True)
+class ParameterDiagnostics:
+    """Diagnostics for a single calibrated parameter.
+
+    Story 21.7 / AC-5, AC-6.
+    """
+
+    optimized_value: float
+    initial_value: float
+    absolute_change: float
+    relative_change_pct: float
+    at_lower_bound: bool
+    at_upper_bound: bool
+    gradient_component: float | None
+
+
 # ============================== Target Dataclass ==============================
 
 
@@ -233,11 +252,11 @@ class FitMetrics:
 class CalibrationResult:
     """Result of a calibration optimization run.
 
-    Contains the optimized β coefficient, diagnostics, and per-target
+    Contains the optimized taste parameters, diagnostics, and per-target
     rate comparisons for governance and audit purposes.
 
     Attributes:
-        optimized_parameters: TasteParameters with the calibrated beta_cost.
+        optimized_parameters: TasteParameters with the calibrated parameters.
         domain: The calibrated decision domain.
         objective_type: ``'mse'`` or ``'log_likelihood'``.
         objective_value: Final objective function value at the optimized point.
@@ -248,6 +267,15 @@ class CalibrationResult:
         method: scipy optimizer method used (e.g., ``'L-BFGS-B'``).
         rate_comparisons: Per-target observed vs simulated rate comparisons.
         all_within_tolerance: True if all rate_comparisons are within_tolerance.
+        parameter_diagnostics: Per-parameter convergence diagnostics
+            (Story 21.7 / AC-5, AC-6).
+        convergence_warnings: Messages for parameters hitting bounds
+            or failed convergence (Story 21.7 / AC-6).
+        identifiability_flags: Warnings for low sensitivity or high
+            correlation (Story 21.7 / AC-6).
+
+    Story 15.2 / FR52 — CalibrationEngine with objective function optimization.
+    Story 21.7 / AC-5, AC-6 — Extended with diagnostics for vector optimization.
     """
 
     optimized_parameters: TasteParameters
@@ -260,13 +288,32 @@ class CalibrationResult:
     method: str
     rate_comparisons: tuple[RateComparison, ...]
     all_within_tolerance: bool
+    parameter_diagnostics: dict[str, ParameterDiagnostics] = field(default_factory=dict)
+    convergence_warnings: list[str] = field(default_factory=list)
+    identifiability_flags: dict[str, str] = field(default_factory=dict)
 
     def to_governance_entry(self, *, source_label: str = "calibration_engine") -> dict[str, Any]:
         """Return an AssumptionEntry-compatible dict for governance manifests.
 
         Given a CalibrationResult, when called, returns a dict compatible
         with the governance manifest format (Story 15.4).
+
+        Story 21.7 / AC-8: Extended with parameter_diagnostics, convergence_warnings,
+        and identifiability_flags.
         """
+        # Build parameter diagnostics summary
+        diagnostics_summary = {}
+        for param_name, diag in self.parameter_diagnostics.items():
+            diagnostics_summary[param_name] = {
+                "optimized_value": diag.optimized_value,
+                "initial_value": diag.initial_value,
+                "absolute_change": diag.absolute_change,
+                "relative_change_pct": diag.relative_change_pct,
+                "at_lower_bound": diag.at_lower_bound,
+                "at_upper_bound": diag.at_upper_bound,
+                "gradient_component": diag.gradient_component,
+            }
+
         return {
             "key": "calibration_result",
             "value": {
@@ -280,6 +327,11 @@ class CalibrationResult:
                 "method": self.method,
                 "all_within_tolerance": self.all_within_tolerance,
                 "n_targets": len(self.rate_comparisons),
+                # Story 21.7 / AC-8: Extended fields
+                "parameter_diagnostics": diagnostics_summary,
+                "convergence_warnings": self.convergence_warnings,
+                "identifiability_flags": self.identifiability_flags,
+                "taste_parameters": self.optimized_parameters.to_governance_entry()["value"],
             },
             "source": source_label,
             "is_default": False,
@@ -296,28 +348,55 @@ class CalibrationConfig:
         cost_matrix: Pre-computed N×M CostMatrix for the domain.
         from_states: Length-N PyArrow array of household origin states.
         domain: Decision domain to calibrate (e.g., ``'vehicle'``).
-        initial_beta: Starting β_cost value for the optimizer.
+        target_parameters: Full TasteParameters instance with ASCs and betas.
+            If None and initial_beta is provided, creates legacy TasteParameters.
+        initial_values: Initial value for each parameter in calibrate set.
+        bounds: (lower, upper) bounds for each parameter in calibrate set.
+        initial_beta: DEPRECATED — Legacy single starting β_cost value.
+            Use initial_values with target_parameters instead.
         objective_type: ``'mse'`` or ``'log_likelihood'``.
         method: scipy optimizer method (e.g., ``'L-BFGS-B'``, ``'Nelder-Mead'``).
         max_iterations: Maximum optimizer iterations.
         tolerance: Optimizer convergence tolerance (ftol).
-        beta_bounds: (lower, upper) bounds on beta_cost; both exclusive ends.
+        beta_bounds: DEPRECATED — Legacy (lower, upper) bounds on beta_cost.
+            Use bounds with target_parameters instead.
         rate_tolerance: Maximum acceptable |simulated - observed| per target.
+
+    Story 15.2 / FR52 — CalibrationEngine with objective function optimization.
+    Story 21.7 / AC-4 — Extended for vector optimization with generalized TasteParameters.
     """
 
     targets: CalibrationTargetSet
     cost_matrix: CostMatrix
     from_states: pa.Array
     domain: str
-    initial_beta: float = -0.01
+    target_parameters: TasteParameters | None = None
+    initial_values: dict[str, float] = field(default_factory=dict)
+    bounds: dict[str, tuple[float, float]] = field(default_factory=dict)
+    initial_beta: float = -0.01  # DEPRECATED: Use initial_values with target_parameters
     objective_type: str = "mse"
     method: str = "L-BFGS-B"
     max_iterations: int = 100
     tolerance: float = 1e-8
-    beta_bounds: tuple[float, float] = (-1.0, 0.0)
+    beta_bounds: tuple[float, float] = (-1.0, 0.0)  # DEPRECATED: Use bounds with target_parameters
     rate_tolerance: float = 0.05
 
+    @property
+    def is_legacy_mode(self) -> bool:
+        """True if using deprecated scalar fields (initial_values/bounds are empty)."""
+        return not self.initial_values and not self.bounds
+
     def __post_init__(self) -> None:
+        # Handle backward compatibility: if target_parameters is None, create legacy TasteParameters
+        if self.target_parameters is None:
+            # Create legacy TasteParameters for backward compatibility
+            from reformlab.discrete_choice.types import TasteParameters
+            object.__setattr__(
+                self, "target_parameters",
+                TasteParameters.from_beta_cost(self.initial_beta)
+            )
+
+        # Validate objective_type
         if self.objective_type not in ("mse", "log_likelihood"):
             raise CalibrationOptimizationError(
                 f"objective_type={self.objective_type!r} must be 'mse' or 'log_likelihood'"
@@ -325,10 +404,6 @@ class CalibrationConfig:
         if self.max_iterations <= 0:
             raise CalibrationOptimizationError(
                 f"max_iterations={self.max_iterations!r} must be > 0"
-            )
-        if self.beta_bounds[0] >= self.beta_bounds[1]:
-            raise CalibrationOptimizationError(
-                f"beta_bounds={self.beta_bounds!r}: lower bound must be < upper bound"
             )
         if self.rate_tolerance <= 0.0:
             raise CalibrationOptimizationError(
@@ -339,6 +414,49 @@ class CalibrationConfig:
                 f"from_states length ({len(self.from_states)}) must equal "
                 f"cost_matrix.n_households ({self.cost_matrix.n_households})"
             )
+
+        # Validate beta_bounds
+        if self.beta_bounds[0] >= self.beta_bounds[1]:
+            raise CalibrationOptimizationError(
+                f"beta_bounds={self.beta_bounds!r}: lower bound must be < upper bound"
+            )
+
+        # Validate legacy vs generalized mode (AC-4)
+        if self.is_legacy_mode:
+            # Legacy mode: using deprecated scalar fields
+            # After __post_init__, target_parameters is always set
+            assert self.target_parameters is not None  # for mypy
+            if not self.target_parameters.is_legacy_mode:
+                raise CalibrationOptimizationError(
+                    "target_parameters must be in legacy mode when using "
+                    "legacy calibration fields (initial_values/bounds are empty)"
+                )
+        else:
+            # Generalized mode: using new dict fields
+            assert self.target_parameters is not None  # for mypy
+            if self.target_parameters.is_legacy_mode:
+                raise CalibrationOptimizationError(
+                    "target_parameters must not be in legacy mode when using "
+                    "generalized calibration fields (initial_values/bounds provided)"
+                )
+            # Validate initial_values and bounds
+            if self.initial_values:
+                invalid_keys = set(self.initial_values.keys()) - self.target_parameters.calibrate
+                if invalid_keys:
+                    raise CalibrationOptimizationError(
+                        f"initial_values keys {sorted(invalid_keys)} are not in target_parameters.calibrate"
+                    )
+            if self.bounds:
+                invalid_keys = set(self.bounds.keys()) - self.target_parameters.calibrate
+                if invalid_keys:
+                    raise CalibrationOptimizationError(
+                        f"bounds keys {sorted(invalid_keys)} are not in target_parameters.calibrate"
+                    )
+                for param, (lower, upper) in self.bounds.items():
+                    if lower >= upper:
+                        raise CalibrationOptimizationError(
+                            f"bounds for '{param}': lower bound {lower} must be < upper bound {upper}"
+                        )
 
 
 # ============================== Story 15.3: Holdout Validation Types ==============================

@@ -7,6 +7,7 @@ expansion, and updates household state after choice draws. Integrates with
 the vintage tracking subsystem for new vehicle purchase cohorts.
 
 Story 14-3: Implement Vehicle Investment Decision Domain (FR47/FR50).
+Story 21.7 / AC-7: Extended for generalized taste parameters support.
 """
 
 from __future__ import annotations
@@ -25,7 +26,7 @@ from reformlab.discrete_choice.domain_utils import (
 from reformlab.discrete_choice.errors import DiscreteChoiceError
 from reformlab.discrete_choice.logit import DISCRETE_CHOICE_RESULT_KEY
 from reformlab.discrete_choice.step import DISCRETE_CHOICE_METADATA_KEY
-from reformlab.discrete_choice.types import Alternative
+from reformlab.discrete_choice.types import Alternative, TasteParameters
 
 if TYPE_CHECKING:
     from reformlab.orchestrator.types import YearState
@@ -39,6 +40,7 @@ __all__ = [
     "VehicleStateUpdateStep",
     "apply_choices_to_population",
     "default_vehicle_domain_config",
+    "create_vehicle_config_with_taste_parameters",
 ]
 
 
@@ -56,12 +58,36 @@ class VehicleDomainConfig:
         cost_column: Column name for cost metric in computation results.
         entity_key: Entity key in PopulationData.tables (default: "menage").
         non_purchase_ids: Alternative IDs that do not create vintage entries.
+        fuel_price_series: Series name for exogenous fuel prices (Story 21.6 / AC5).
+        fuel_price_default: Default fuel price when no exogenous series (EUR/litre).
+        taste_parameters: TasteParameters with ASCs and betas. If None, uses legacy
+            TasteParameters.from_beta_cost(-0.01) for backward compatibility (Story 21.7 / AC-7).
+
+    Story 14-3: Implement Vehicle Investment Decision Domain (FR47/FR50).
+    Story 21.6 / AC5: Added exogenous fuel price support.
+    Story 21.7 / AC-7: Added taste_parameters field for generalized taste parameters.
     """
 
     alternatives: tuple[Alternative, ...]
     cost_column: str = "total_vehicle_cost"
     entity_key: str = "menage"
     non_purchase_ids: frozenset[str] = frozenset({"keep_current", "buy_no_vehicle"})
+    fuel_price_series: str | None = None  # Story 21.6 / AC5
+    fuel_price_default: float = 1.55  # EUR/litre, Story 21.6 / AC5
+    taste_parameters: TasteParameters | None = None  # Story 21.7 / AC-7
+
+    @property
+    def effective_taste_parameters(self) -> TasteParameters:
+        """Return the effective taste parameters for this config.
+
+        Returns config.taste_parameters if provided, otherwise returns
+        legacy TasteParameters.from_beta_cost(-0.01) for backward compatibility.
+
+        Story 21.7 / AC-7.
+        """
+        if self.taste_parameters is not None:
+            return self.taste_parameters
+        return TasteParameters.from_beta_cost(-0.01)
 
 
 def default_vehicle_domain_config() -> VehicleDomainConfig:
@@ -69,6 +95,10 @@ def default_vehicle_domain_config() -> VehicleDomainConfig:
 
     Returns:
         VehicleDomainConfig with 6 alternatives per AC-2.
+        Uses legacy taste parameters (TasteParameters.from_beta_cost(-0.01)).
+
+    Story 14-3: Implement Vehicle Investment Decision Domain (FR47/FR50).
+    Story 21.7 / AC-7: Returns config with taste_parameters=None (uses legacy mode).
     """
     return VehicleDomainConfig(
         alternatives=(
@@ -123,6 +153,84 @@ def default_vehicle_domain_config() -> VehicleDomainConfig:
                 },
             ),
         ),
+    )
+
+
+def create_vehicle_config_with_taste_parameters(
+    asc: dict[str, float],
+    betas: dict[str, float],
+    calibrate: set[str] | frozenset[str],
+    fixed: set[str] | frozenset[str] = frozenset(),
+    reference_alternative: str = "keep_current",
+) -> VehicleDomainConfig:
+    """Factory creating VehicleDomainConfig with generalized taste parameters.
+
+    Validates that ASC keys match vehicle alternative IDs and creates a
+    TasteParameters with the provided ASCs, betas, calibrate, and fixed sets.
+
+    Args:
+        asc: Per-alternative constants (keys must match alternative IDs).
+        betas: Named taste coefficients (e.g., {"cost": -0.01, "emissions": -0.05}).
+        calibrate: Parameter names to optimize.
+        fixed: Parameter names held constant (literature values).
+        reference_alternative: Alternative whose ASC is normalized to zero.
+
+    Returns:
+        VehicleDomainConfig with generalized taste parameters.
+
+    Raises:
+        DiscreteChoiceError: If ASC keys don't match vehicle alternatives or
+            if validation fails.
+
+    Story 21.7 / AC-7.
+    """
+    # Get default config to extract alternatives
+    default_config = default_vehicle_domain_config()
+    alternative_ids = {alt.id for alt in default_config.alternatives}
+
+    # Validate ASC keys match alternative IDs
+    unknown_alts = set(asc.keys()) - alternative_ids
+    if unknown_alts:
+        raise DiscreteChoiceError(
+            f"Unknown alternative IDs in ASC: {sorted(unknown_alts)}. "
+            f"Expected one of {sorted(alternative_ids)}"
+        )
+
+    # Validate reference_alternative exists
+    if reference_alternative not in alternative_ids:
+        raise DiscreteChoiceError(
+            f"reference_alternative '{reference_alternative}' not found. "
+            f"Expected one of {sorted(alternative_ids)}"
+        )
+
+    # Ensure reference_alternative has ASC=0.0
+    asc_with_ref = dict(asc)
+    asc_with_ref[reference_alternative] = 0.0
+
+    # Validate at least one beta is provided
+    if not betas:
+        raise DiscreteChoiceError(
+            "At least one beta coefficient must be provided"
+        )
+
+    # Create TasteParameters
+    taste_params = TasteParameters(
+        beta_cost=0.0,  # unused in generalized mode
+        asc=asc_with_ref,
+        betas=betas,
+        calibrate=frozenset(calibrate),
+        fixed=frozenset(fixed),
+        reference_alternative=reference_alternative,
+    )
+
+    return VehicleDomainConfig(
+        alternatives=default_config.alternatives,
+        cost_column=default_config.cost_column,
+        entity_key=default_config.entity_key,
+        non_purchase_ids=default_config.non_purchase_ids,
+        fuel_price_series=default_config.fuel_price_series,
+        fuel_price_default=default_config.fuel_price_default,
+        taste_parameters=taste_params,
     )
 
 
@@ -402,6 +510,18 @@ class VehicleStateUpdateStep:
         extended_metadata["vehicle_n_switchers"] = n_switchers
         extended_metadata["vehicle_n_keepers"] = n_keepers
         extended_metadata["vehicle_per_alternative_counts"] = per_alt_counts
+
+        # Story 21.7 / AC-7: Record taste parameter info
+        taste_params = self._domain.config.effective_taste_parameters
+        extended_metadata["vehicle_taste_parameters_is_legacy_mode"] = taste_params.is_legacy_mode
+        extended_metadata["vehicle_taste_parameters_asc_count"] = len(taste_params.asc)
+        extended_metadata["vehicle_taste_parameters_beta_count"] = len(taste_params.betas)
+        extended_metadata["vehicle_taste_parameters_calibrated"] = sorted(taste_params.calibrate)
+        extended_metadata["vehicle_taste_parameters_fixed"] = sorted(taste_params.fixed)
+        extended_metadata["vehicle_taste_parameters_reference_alternative"] = (
+            taste_params.reference_alternative
+        )
+
         new_data[DISCRETE_CHOICE_METADATA_KEY] = extended_metadata
 
         logger.info(

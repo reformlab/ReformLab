@@ -38,6 +38,7 @@ from reformlab.data.emission_factors import (
     build_emission_factor_index,
 )
 from reformlab.data.errors import EvidenceAssetError
+from reformlab.data.exogenous_loader import load_exogenous_asset
 from reformlab.data.pipeline import (
     DatasetManifest,
     DatasetRegistry,
@@ -91,6 +92,7 @@ __all__ = [
     "hash_file",
     "load_calibration_asset",
     "load_dataset",
+    "load_exogenous_asset",
     "load_population_folder",
     "load_validation_asset",
     "save_synthetic_population",

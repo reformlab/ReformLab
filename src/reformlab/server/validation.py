@@ -351,6 +351,176 @@ def _check_memory_preflight(request: PreflightRequest) -> ValidationCheckResult:
         )
 
 
+def _check_trust_status(request: PreflightRequest) -> ValidationCheckResult:
+    """Preflight check for evidence asset trust status.
+
+    Story 21.5: Evaluates trust status of all scenario assets (exogenous series)
+    and warns if any are non-production-safe. Warning-severity only — never blocks.
+    """
+    from reformlab.data.exogenous_loader import load_exogenous_asset
+    from reformlab.data.trust_rules import (
+        TrustCheckResult,
+        check_asset_trust,
+        summarize_trust_warnings,
+    )
+
+    engine_config = request.scenario.get("engineConfig", {})
+
+    if not isinstance(engine_config, dict):
+        return ValidationCheckResult(
+            id="trust-status",
+            label="Evidence trust status",
+            passed=True,
+            severity="warning",
+            message="Engine configuration missing — cannot verify trust status",
+        )
+
+    exogenous_series = engine_config.get("exogenousSeries")
+    if not exogenous_series or not isinstance(exogenous_series, list):
+        return ValidationCheckResult(
+            id="trust-status",
+            label="Evidence trust status",
+            passed=True,
+            severity="warning",
+            message="No exogenous series configured — nothing to check",
+        )
+
+    trust_results: list[TrustCheckResult] = []
+    for series_name in exogenous_series:
+        if not isinstance(series_name, str):
+            continue
+        try:
+            asset = load_exogenous_asset(series_name)
+            trust_results.append(check_asset_trust(asset.descriptor))
+        except Exception:
+            logger.debug("Could not load asset '%s' for trust check", series_name)
+
+    if not trust_results:
+        return ValidationCheckResult(
+            id="trust-status",
+            label="Evidence trust status",
+            passed=True,
+            severity="warning",
+            message="Could not verify trust status — no assets loaded",
+        )
+
+    summary = summarize_trust_warnings(tuple(trust_results))
+
+    if summary is not None:
+        return ValidationCheckResult(
+            id="trust-status",
+            label="Evidence trust status",
+            passed=False,
+            severity="warning",
+            message=summary,
+        )
+
+    return ValidationCheckResult(
+        id="trust-status",
+        label="Evidence trust status",
+        passed=True,
+        severity="warning",
+        message="All evidence assets are production-safe",
+    )
+
+
+def _check_exogenous_coverage(request: PreflightRequest) -> ValidationCheckResult:
+    """Preflight check for exogenous time series coverage.
+
+    Story 21.6 / AC3: Validates that exogenous series (if specified) have
+    coverage for the scenario's year range.
+
+    This check only executes if exogenous series are specified in the
+    scenario configuration. Scenarios without exogenous inputs pass
+    automatically (backward compatibility).
+    """
+    from reformlab.data.exogenous_loader import load_exogenous_asset
+    from reformlab.orchestrator.exogenous import ExogenousContext
+
+    engine_config = request.scenario.get("engineConfig", {})
+
+    if not isinstance(engine_config, dict):
+        return ValidationCheckResult(
+            id="exogenous-coverage",
+            label="Exogenous series coverage",
+            passed=True,
+            severity="warning",
+            message="Engine configuration missing - cannot validate exogenous coverage",
+        )
+
+    # Check if exogenous series are specified
+    exogenous_series = engine_config.get("exogenousSeries")
+    if not exogenous_series:
+        # No exogenous series configured - check passes
+        return ValidationCheckResult(
+            id="exogenous-coverage",
+            label="Exogenous series coverage",
+            passed=True,
+            severity="warning",
+            message="No exogenous series configured",
+        )
+
+    if not isinstance(exogenous_series, list):
+        return ValidationCheckResult(
+            id="exogenous-coverage",
+            label="Exogenous series coverage",
+            passed=False,
+            severity="error",
+            message="exogenousSeries must be a list of series names",
+        )
+
+    # Get year range
+    start_year = engine_config.get("startYear")
+    end_year = engine_config.get("endYear")
+
+    if not isinstance(start_year, int) or not isinstance(end_year, int):
+        return ValidationCheckResult(
+            id="exogenous-coverage",
+            label="Exogenous series coverage",
+            passed=False,
+            severity="error",
+            message="Cannot validate exogenous coverage: startYear and endYear required",
+        )
+
+    # Load assets and validate actual coverage
+    try:
+        assets = []
+        for series_name in exogenous_series:
+            if not isinstance(series_name, str):
+                return ValidationCheckResult(
+                    id="exogenous-coverage",
+                    label="Exogenous series coverage",
+                    passed=False,
+                    severity="error",
+                    message=f"Invalid series name: {series_name!r} (must be string)",
+                )
+            assets.append(load_exogenous_asset(series_name))
+
+        context = ExogenousContext.from_assets(tuple(assets))
+        context.validate_coverage(start_year, end_year)
+
+        series_count = len(exogenous_series)
+        series_list = ", ".join(exogenous_series[:3])  # Show first 3
+        if series_count > 3:
+            series_list += f", ... ({series_count} total)"
+
+        return ValidationCheckResult(
+            id="exogenous-coverage",
+            label="Exogenous series coverage",
+            passed=True,
+            severity="warning",
+            message=f"All {series_count} series have coverage {start_year}-{end_year} ({series_list})",
+        )
+    except Exception as exc:
+        return ValidationCheckResult(
+            id="exogenous-coverage",
+            label="Exogenous series coverage",
+            passed=False,
+            severity="error",
+            message=f"Coverage validation failed: {exc}",
+        )
+
+
 # =============================================================================
 # Register built-in checks at import time
 # =============================================================================
@@ -388,6 +558,18 @@ def _register_builtin_checks() -> None:
             label="Memory requirements",
             severity="error",
             check_fn=_check_memory_preflight,
+        ),
+        ValidationCheck(
+            check_id="exogenous-coverage",
+            label="Exogenous series coverage",
+            severity="error",  # Changed to error since we now do actual validation
+            check_fn=_check_exogenous_coverage,
+        ),
+        ValidationCheck(
+            check_id="trust-status",
+            label="Evidence trust status",
+            severity="warning",
+            check_fn=_check_trust_status,
         ),
     ]
 

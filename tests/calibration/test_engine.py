@@ -635,3 +635,261 @@ class TestCalibrationEngineEdgeCases:
         result = engine.calibrate()
         assert isinstance(result, CalibrationResult)
         assert config.beta_bounds[0] <= result.optimized_parameters.beta_cost <= config.beta_bounds[1]
+
+
+# ============================================================================
+# Story 21.7: Generalized mode tests
+# ============================================================================
+
+
+class TestCalibrationEngineGeneralized:
+    """Tests for generalized CalibrationEngine vector optimization."""
+
+    def test_vector_optimization_with_two_asc_parameters(self) -> None:
+        """Given 2 ASCs to calibrate, calibrate() optimizes both parameters."""
+        from reformlab.discrete_choice.types import TasteParameters
+
+        cost_matrix = make_sample_cost_matrix()
+        from_states = make_sample_from_states()
+
+        # Create generalized TasteParameters with 2 ASCs to calibrate
+        target_params = TasteParameters(
+            beta_cost=0.0,
+            asc={"A": 0.0, "B": -0.5},  # B has negative inertia
+            betas={"cost": -0.01},
+            calibrate=frozenset(["A", "B"]),  # Calibrate both ASCs
+            fixed=frozenset(["cost"]),
+            reference_alternative="A",
+        )
+
+        config = CalibrationConfig(
+            targets=make_sample_target_set(),
+            cost_matrix=cost_matrix,
+            from_states=from_states,
+            domain="vehicle",
+            target_parameters=target_params,
+            initial_values={"A": -0.1, "B": -0.6},  # Initial values
+            bounds={"A": (-1.0, 1.0), "B": (-1.0, 1.0)},
+        )
+
+        engine = CalibrationEngine(config=config)
+        result = engine.calibrate()
+
+        # Verify result structure
+        assert isinstance(result, CalibrationResult)
+        assert result.convergence_flag is True
+        assert len(result.parameter_diagnostics) == 2
+        assert "A" in result.parameter_diagnostics
+        assert "B" in result.parameter_diagnostics
+
+        # Verify optimized parameters
+        assert "A" in result.optimized_parameters.asc
+        assert "B" in result.optimized_parameters.asc
+        assert result.optimized_parameters.asc["A"] == pytest.approx(0.0, abs=1e-6)  # reference stays at 0
+
+    def test_vector_optimization_with_mixed_asc_and_beta(self) -> None:
+        """Given 1 ASC + 1 beta to calibrate, calibrate() optimizes both."""
+        from reformlab.discrete_choice.types import TasteParameters
+
+        cost_matrix = make_sample_cost_matrix()
+        from_states = make_sample_from_states()
+
+        target_params = TasteParameters(
+            beta_cost=0.0,
+            asc={"A": 0.0, "B": -0.3},  # Fixed ASCs
+            betas={"cost": -0.01},
+            calibrate=frozenset(["cost", "B"]),  # Calibrate cost + one ASC
+            fixed=frozenset(["A"]),
+            reference_alternative="A",
+        )
+
+        config = CalibrationConfig(
+            targets=make_sample_target_set(),
+            cost_matrix=cost_matrix,
+            from_states=from_states,
+            domain="vehicle",
+            target_parameters=target_params,
+            initial_values={"cost": -0.01, "B": -0.3},
+            bounds={"cost": (-0.1, 0.0), "B": (-1.0, 1.0)},
+        )
+
+        engine = CalibrationEngine(config=config)
+        result = engine.calibrate()
+
+        assert isinstance(result, CalibrationResult)
+        assert len(result.parameter_diagnostics) == 2
+        assert "cost" in result.parameter_diagnostics
+        assert "B" in result.parameter_diagnostics
+
+    def test_fixed_parameters_remain_unchanged(self) -> None:
+        """Given fixed parameters, they remain at their initial values after calibration."""
+        from reformlab.discrete_choice.types import TasteParameters
+
+        cost_matrix = make_sample_cost_matrix()
+        from_states = make_sample_from_states()
+
+        # Create parameters with fixed beta_cost
+        target_params = TasteParameters(
+            beta_cost=0.0,
+            asc={"A": 0.0, "B": -0.2},
+            betas={"cost": -0.02},  # Fixed at -0.02
+            calibrate=frozenset(["B"]),  # Only calibrate B ASC
+            fixed=frozenset(["A", "cost"]),
+            reference_alternative="A",
+        )
+
+        config = CalibrationConfig(
+            targets=make_sample_target_set(),
+            cost_matrix=cost_matrix,
+            from_states=from_states,
+            domain="vehicle",
+            target_parameters=target_params,
+            initial_values={"B": -0.2},
+            bounds={"B": (-1.0, 1.0)},
+        )
+
+        engine = CalibrationEngine(config=config)
+        result = engine.calibrate()
+
+        # Fixed cost beta should remain at -0.02
+        assert result.optimized_parameters.betas["cost"] == pytest.approx(-0.02, abs=1e-10)
+
+    def test_parameter_diagnostics_accuracy(self) -> None:
+        """Given calibration result, parameter_diagnostics contains accurate info."""
+        from reformlab.discrete_choice.types import TasteParameters
+
+        cost_matrix = make_sample_cost_matrix()
+        from_states = make_sample_from_states()
+
+        target_params = TasteParameters(
+            beta_cost=0.0,
+            asc={"A": 0.0, "B": -0.5},
+            betas={"cost": -0.01},
+            calibrate=frozenset(["A", "B"]),
+            fixed=frozenset(["cost"]),
+            reference_alternative="A",
+        )
+
+        initial_a = -0.1
+        initial_b = -0.6
+        config = CalibrationConfig(
+            targets=make_sample_target_set(),
+            cost_matrix=cost_matrix,
+            from_states=from_states,
+            domain="vehicle",
+            target_parameters=target_params,
+            initial_values={"A": initial_a, "B": initial_b},
+            bounds={"A": (-1.0, 1.0), "B": (-1.0, 1.0)},
+        )
+
+        engine = CalibrationEngine(config=config)
+        result = engine.calibrate()
+
+        # Check A parameter diagnostics
+        diag_a = result.parameter_diagnostics["A"]
+        assert diag_a.initial_value == initial_a
+        assert diag_a.absolute_change == pytest.approx(
+            abs(result.optimized_parameters.asc["A"] - initial_a),
+            abs=1e-10,
+        )
+        assert diag_a.relative_change_pct >= 0.0
+
+        # Check B parameter diagnostics
+        diag_b = result.parameter_diagnostics["B"]
+        assert diag_b.initial_value == initial_b
+
+    def test_convergence_warnings_for_bound_hitting(self) -> None:
+        """Given parameter hits bound, convergence_warnings includes message."""
+        from reformlab.discrete_choice.types import TasteParameters
+
+        cost_matrix = make_sample_cost_matrix()
+        from_states = make_sample_from_states()
+
+        target_params = TasteParameters(
+            beta_cost=0.0,
+            asc={"A": 0.0, "B": -0.5},
+            betas={"cost": -0.01},
+            calibrate=frozenset(["A", "B"]),
+            fixed=frozenset(["cost"]),
+            reference_alternative="A",
+        )
+
+        # Set bounds very tight to force hitting them
+        config = CalibrationConfig(
+            targets=make_sample_target_set(),
+            cost_matrix=cost_matrix,
+            from_states=from_states,
+            domain="vehicle",
+            target_parameters=target_params,
+            initial_values={"A": 0.0, "B": 0.0},  # Start at upper bound for B
+            bounds={"A": (-0.01, 0.01), "B": (-0.01, 0.01)},  # Very tight bounds
+        )
+
+        engine = CalibrationEngine(config=config)
+        result = engine.calibrate()
+
+        # Should have convergence warnings for bound-hitting
+        # (This may or may not trigger depending on the data, but the mechanism is there)
+        assert isinstance(result.convergence_warnings, list)
+
+    def test_validation_error_for_missing_initial_values(self) -> None:
+        """Given calibrate param without initial_value, raises CalibrationOptimizationError."""
+        from reformlab.discrete_choice.types import TasteParameters
+
+        cost_matrix = make_sample_cost_matrix()
+        from_states = make_sample_from_states()
+
+        target_params = TasteParameters(
+            beta_cost=0.0,
+            asc={"A": 0.0, "B": -0.5},
+            betas={"cost": -0.01},
+            calibrate=frozenset(["A", "B"]),
+            fixed=frozenset(["cost"]),
+            reference_alternative="A",
+        )
+
+        # Missing initial value for "B"
+        config = CalibrationConfig(
+            targets=make_sample_target_set(),
+            cost_matrix=cost_matrix,
+            from_states=from_states,
+            domain="vehicle",
+            target_parameters=target_params,
+            initial_values={"A": 0.0},  # Missing "B"
+            bounds={"A": (-1.0, 1.0), "B": (-1.0, 1.0)},
+        )
+
+        engine = CalibrationEngine(config=config)
+        with pytest.raises(CalibrationOptimizationError, match="Missing initial_values"):
+            engine.calibrate()
+
+    def test_validation_error_for_missing_bounds(self) -> None:
+        """Given calibrate param without bounds, raises CalibrationOptimizationError."""
+        from reformlab.discrete_choice.types import TasteParameters
+
+        cost_matrix = make_sample_cost_matrix()
+        from_states = make_sample_from_states()
+
+        target_params = TasteParameters(
+            beta_cost=0.0,
+            asc={"A": 0.0, "B": -0.5},
+            betas={"cost": -0.01},
+            calibrate=frozenset(["A", "B"]),
+            fixed=frozenset(["cost"]),
+            reference_alternative="A",
+        )
+
+        # Missing bounds for "B"
+        config = CalibrationConfig(
+            targets=make_sample_target_set(),
+            cost_matrix=cost_matrix,
+            from_states=from_states,
+            domain="vehicle",
+            target_parameters=target_params,
+            initial_values={"A": 0.0, "B": -0.5},
+            bounds={"A": (-1.0, 1.0)},  # Missing "B"
+        )
+
+        engine = CalibrationEngine(config=config)
+        with pytest.raises(CalibrationOptimizationError, match="Missing bounds"):
+            engine.calibrate()

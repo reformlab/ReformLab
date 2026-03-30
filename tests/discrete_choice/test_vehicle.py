@@ -981,3 +981,224 @@ class TestVehiclePipelineIntegration:
         updated_pop = state.data["population_data"]
         assert isinstance(updated_pop, PopulationData)
         assert updated_pop.tables["menage"].num_rows == 3
+
+
+# ============================================================================
+# Story 21.7: Generalized taste parameter tests
+# ============================================================================
+
+
+class TestVehicleDomainConfigGeneralized:
+    """Tests for VehicleDomainConfig with generalized taste parameters (Story 21.7 / AC-7)."""
+
+    def test_default_config_has_no_taste_parameters(self) -> None:
+        """Given default config, taste_parameters is None (uses legacy mode)."""
+        from reformlab.discrete_choice.vehicle import default_vehicle_domain_config
+
+        config = default_vehicle_domain_config()
+        assert config.taste_parameters is None
+
+    def test_effective_taste_parameters_returns_legacy_for_none(self) -> None:
+        """Given config with taste_parameters=None, effective_taste_parameters returns legacy."""
+        from reformlab.discrete_choice.vehicle import default_vehicle_domain_config
+
+        config = default_vehicle_domain_config()
+        taste_params = config.effective_taste_parameters
+
+        assert taste_params.is_legacy_mode is True
+        assert taste_params.beta_cost == -0.01
+
+    def test_effective_taste_parameters_returns_provided(self) -> None:
+        """Given config with taste_parameters, effective_taste_parameters returns it."""
+        from reformlab.discrete_choice.types import TasteParameters
+        from reformlab.discrete_choice.vehicle import VehicleDomainConfig
+
+        taste_params = TasteParameters(
+            beta_cost=0.0,
+            asc={"keep_current": 0.0, "buy_ev": -0.5},
+            betas={"cost": -0.01},
+            calibrate=frozenset(["buy_ev"]),
+            fixed=frozenset(["keep_current", "cost"]),
+            reference_alternative="keep_current",
+        )
+
+        config = VehicleDomainConfig(
+            alternatives=default_vehicle_domain_config().alternatives,
+            taste_parameters=taste_params,
+        )
+
+        effective = config.effective_taste_parameters
+        assert effective is taste_params
+        assert effective.is_legacy_mode is False
+
+    def test_create_vehicle_config_with_taste_parameters_valid(self) -> None:
+        """Given valid inputs, factory creates config with generalized taste parameters."""
+        from reformlab.discrete_choice.vehicle import create_vehicle_config_with_taste_parameters
+
+        config = create_vehicle_config_with_taste_parameters(
+            asc={"keep_current": 0.0, "buy_ev": -0.5, "buy_petrol": -0.3},
+            betas={"cost": -0.01},
+            calibrate={"buy_ev"},
+            fixed={"cost", "keep_current", "buy_petrol"},
+            reference_alternative="keep_current",
+        )
+
+        assert config.taste_parameters is not None
+        assert config.taste_parameters.is_legacy_mode is False
+        assert len(config.taste_parameters.asc) == 3
+        assert config.taste_parameters.asc["keep_current"] == 0.0
+
+    def test_create_vehicle_config_with_unknown_asc_raises(self) -> None:
+        """Given ASC with unknown alternative ID, factory raises DiscreteChoiceError."""
+        from reformlab.discrete_choice.errors import DiscreteChoiceError
+        from reformlab.discrete_choice.vehicle import create_vehicle_config_with_taste_parameters
+
+        with pytest.raises(DiscreteChoiceError, match="Unknown alternative"):
+            create_vehicle_config_with_taste_parameters(
+                asc={"unknown_alt": 0.0},
+                betas={"cost": -0.01},
+                calibrate={"cost"},
+            )
+
+    def test_create_vehicle_config_with_unknown_reference_raises(self) -> None:
+        """Given unknown reference_alternative, factory raises DiscreteChoiceError."""
+        from reformlab.discrete_choice.errors import DiscreteChoiceError
+        from reformlab.discrete_choice.vehicle import create_vehicle_config_with_taste_parameters
+
+        with pytest.raises(DiscreteChoiceError, match="not found"):
+            create_vehicle_config_with_taste_parameters(
+                asc={"keep_current": 0.0},
+                betas={"cost": -0.01},
+                calibrate={"cost"},
+                reference_alternative="unknown_alt",
+            )
+
+    def test_create_vehicle_config_with_empty_betas_raises(self) -> None:
+        """Given empty betas, factory raises DiscreteChoiceError."""
+        from reformlab.discrete_choice.errors import DiscreteChoiceError
+        from reformlab.discrete_choice.vehicle import create_vehicle_config_with_taste_parameters
+
+        with pytest.raises(DiscreteChoiceError, match="At least one beta"):
+            create_vehicle_config_with_taste_parameters(
+                asc={"keep_current": 0.0},
+                betas={},
+                calibrate=set(),
+            )
+
+
+class TestTasteParametersGovernanceEntry:
+    """Tests for TasteParameters.to_governance_entry() (Story 21.7 / AC-8)."""
+
+    def test_legacy_mode_governance_entry_structure(self) -> None:
+        """Given legacy mode TasteParameters, governance entry has correct structure."""
+        from reformlab.discrete_choice.types import TasteParameters
+
+        taste_params = TasteParameters.from_beta_cost(-0.01)
+        entry = taste_params.to_governance_entry()
+
+        assert entry["key"] == "taste_parameters"
+        assert entry["source"] == "taste_parameters"
+        assert entry["is_default"] is False
+        assert entry["value"]["is_legacy_mode"] is True
+        assert entry["value"]["asc_names"] == []
+        assert entry["value"]["beta_names"] == ["cost"]
+        assert entry["value"]["n_calibrated"] == 1
+        assert entry["value"]["n_fixed"] == 0
+
+    def test_generalized_mode_governance_entry_structure(self) -> None:
+        """Given generalized mode TasteParameters, governance entry includes all fields."""
+        from reformlab.discrete_choice.types import TasteParameters
+
+        taste_params = TasteParameters(
+            beta_cost=0.0,
+            asc={"keep_current": 0.0, "buy_ev": -0.5},
+            betas={"cost": -0.01, "emissions": -0.05},
+            calibrate=frozenset(["buy_ev", "cost"]),
+            fixed=frozenset(["keep_current", "emissions"]),
+            reference_alternative="keep_current",
+            literature_sources={"emissions": "Dargay & Gately 1999"},
+        )
+        entry = taste_params.to_governance_entry()
+
+        assert entry["key"] == "taste_parameters"
+        assert entry["value"]["is_legacy_mode"] is False
+        assert set(entry["value"]["asc_names"]) == {"keep_current", "buy_ev"}
+        assert set(entry["value"]["beta_names"]) == {"cost", "emissions"}
+        assert "buy_ev" in entry["value"]["calibrated_asc_names"]
+        assert "cost" in entry["value"]["calibrated_beta_names"]
+        assert entry["value"]["reference_alternative"] == "keep_current"
+        assert entry["value"]["literature_sources"]["emissions"] == "Dargay & Gately 1999"
+
+    def test_governance_entry_custom_source_label(self) -> None:
+        """Given custom source_label, governance entry uses it."""
+        from reformlab.discrete_choice.types import TasteParameters
+
+        taste_params = TasteParameters.from_beta_cost(-0.01)
+        entry = taste_params.to_governance_entry(source_label="my_custom_source")
+
+        assert entry["source"] == "my_custom_source"
+
+
+class TestCalibrationResultGovernanceEntry:
+    """Tests for CalibrationResult.to_governance_entry() with diagnostics (Story 21.7 / AC-8)."""
+
+    def test_governance_entry_includes_diagnostics(self) -> None:
+        """Given CalibrationResult with diagnostics, governance entry includes them."""
+        from reformlab.calibration.types import (
+            CalibrationResult,
+            ParameterDiagnostics,
+            RateComparison,
+        )
+        from reformlab.discrete_choice.types import TasteParameters
+
+        taste_params = TasteParameters.from_beta_cost(-0.05)
+        param_diags = {
+            "beta_cost": ParameterDiagnostics(
+                optimized_value=-0.048,
+                initial_value=-0.05,
+                absolute_change=0.002,
+                relative_change_pct=4.0,
+                at_lower_bound=False,
+                at_upper_bound=False,
+                gradient_component=0.001,
+            )
+        }
+
+        rate_comparisons = (
+            RateComparison(
+                from_state="petrol",
+                to_state="buy_ev",
+                observed_rate=0.03,
+                simulated_rate=0.035,
+                absolute_error=0.005,
+                within_tolerance=True,
+            ),
+        )
+
+        result = CalibrationResult(
+            optimized_parameters=taste_params,
+            domain="vehicle",
+            objective_type="mse",
+            objective_value=0.001,
+            convergence_flag=True,
+            iterations=50,
+            gradient_norm=0.001,
+            method="L-BFGS-B",
+            rate_comparisons=rate_comparisons,
+            all_within_tolerance=True,
+            parameter_diagnostics=param_diags,
+            convergence_warnings=[],
+            identifiability_flags={},
+        )
+
+        entry = result.to_governance_entry()
+
+        assert entry["key"] == "calibration_result"
+        assert "parameter_diagnostics" in entry["value"]
+        assert "beta_cost" in entry["value"]["parameter_diagnostics"]
+        diag_entry = entry["value"]["parameter_diagnostics"]["beta_cost"]
+        assert diag_entry["optimized_value"] == -0.048
+        assert diag_entry["at_lower_bound"] is False
+        assert entry["value"]["convergence_warnings"] == []
+        assert entry["value"]["identifiability_flags"] == {}
+        assert "taste_parameters" in entry["value"]

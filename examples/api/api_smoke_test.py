@@ -7,6 +7,7 @@ Flow:
 4) Baseline + reform runs
 5) Indicator + comparison
 6) CSV + Parquet export
+7) Evidence model verification (Story 21.8 / AC4)
 """
 
 from __future__ import annotations
@@ -352,6 +353,56 @@ def main() -> int:
     if "attachment" not in parquet_headers.get("content-disposition", "").lower():
         raise SmokeTestError("Parquet export succeeded but did not return attachment headers")
     print("[smoke] parquet export ok")
+
+    # 7) Evidence model verification (Story 21.8 / AC4)
+    # Test population listing includes evidence fields
+    _, populations_data, _ = _request(
+        method="GET",
+        base_url=base_url,
+        path="/api/populations",
+        timeout=timeout,
+        token=token,
+    )
+    populations = populations_data.get("populations", [])
+    if not isinstance(populations, list):
+        raise SmokeTestError("Invalid populations payload shape")
+    # Check that ALL populations include evidence fields (Story 21.8 / AC4)
+    for i, pop in enumerate(populations):
+        if not isinstance(pop, dict):
+            raise SmokeTestError(f"Population entry {i} must be an object")
+        # Verify evidence fields are present
+        for evidence_field in ("origin", "access_mode", "trust_status"):
+            if evidence_field not in pop:
+                raise SmokeTestError(
+                    f"Population {i} missing evidence field '{evidence_field}'"
+                )
+    print(f"[smoke] population listing evidence fields ok ({len(populations)} checked)")
+
+    # Test result endpoint includes evidence metadata (if run completed successfully)
+    if not degraded_mode:
+        _, result_detail_data, _ = _request(
+            method="GET",
+            base_url=base_url,
+            path=f"/api/results/{baseline_run_id}",
+            timeout=timeout,
+            token=token,
+        )
+        # Check for evidence_assets field (may be empty list)
+        # Note: This field is populated from the manifest when available
+        if "evidence_assets" not in result_detail_data:
+            raise SmokeTestError(
+                "Result detail missing 'evidence_assets' field"
+            )
+        evidence_assets = result_detail_data.get("evidence_assets", [])
+        if not isinstance(evidence_assets, list):
+            raise SmokeTestError("evidence_assets must be a list")
+        print("[smoke] result evidence metadata ok")
+
+        # Note: AC4 preflight trust-status validation checks and 403 trust-status
+        # violation tests are deferred - these require dedicated engine validation
+        # endpoints that are not yet implemented. The smoke test verifies evidence
+        # fields are present in API responses; full trust-status rule enforcement
+        # testing is in tests/regression/test_evidence_model.py.
 
     print("[smoke] all checks passed")
     return 0

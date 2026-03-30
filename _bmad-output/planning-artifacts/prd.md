@@ -16,13 +16,12 @@ stepsCompleted:
   - step-11-polish
   - step-12-complete
 inputDocuments:
-  - _bmad-output/planning-artifacts/product-brief-ReformLab-2026-02-23.md
   - _bmad-output/planning-artifacts/research/domain-generic-microsimulation-frameworks-research-2026-02-23.md
   - _bmad-output/planning-artifacts/research/technical-entity-graph-data-modeling-and-vectorized-simulation-engines-research-2026-02-23.md
   - _bmad-output/brainstorming/brainstorming-session-2026-02-23.md
 workflowType: 'prd'
 documentCounts:
-  briefs: 1
+  briefs: 0
   research: 2
   brainstorming: 1
   projectDocs: 0
