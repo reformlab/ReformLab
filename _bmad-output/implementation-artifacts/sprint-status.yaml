@@ -213,3 +213,13 @@ development_status:
   21-8-wire-the-flagship-scenario-docs-and-regression-coverage-to-the-new-evidence-model: 
     review
   epic-21-retrospective: optional
+  # Epic 22
+  epic-22: backlog
+  22-1-shell-branding-external-links-and-scenario-entry-relocation: backlog
+  22-2-policies-stage-layout-rebalance-and-denser-parameter-typography: backlog
+  22-3-deterministic-portfolio-and-scenario-auto-naming: backlog
+  22-4-population-sub-steps-and-quick-test-population: backlog
+  22-5-user-facing-engine-to-scenario-rename-across-shell-and-stage-copy: backlog
+  22-6-guided-investment-decision-wizard-inside-the-scenario-stage: backlog
+  22-7-mobile-demo-viability-pass-across-shell-and-core-stages: backlog
+  epic-22-retrospective: optional
