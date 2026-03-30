@@ -44,6 +44,47 @@ The ReformLab GUI organizes policy analysis into four stages:
 
 Programmatic access via Python API for batch simulations and custom analysis workflows.
 
+## Evidence Model
+
+ReformLab uses a trust-governed evidence model that classifies all data sources by origin, access mode, trust status, and data class. This ensures transparency about what data can be used for decision support and what limitations apply.
+
+### Classification Axes
+
+- **Origin**: Where the data comes from
+  - `open-official`: Openly usable official or institutional data (INSEE, Eurostat, ADEME)
+  - `synthetic-public`: Public synthetic datasets from trusted producers
+  - `synthetic-internal`: Internally generated synthetic assets (future phase)
+  - `restricted`: Access-controlled data (future phase)
+
+- **Access Mode**: How ReformLab obtains the data
+  - `bundled`: Distributed with the product or repository
+  - `fetched`: Obtained automatically from public sources
+  - `deferred-user-connector`: User-provided data connector (future phase)
+
+- **Trust Status**: What can be claimed about the data
+  - `production-safe`: Validated for decision-support use
+  - `exploratory`: Suitable for exploration and prototyping, not decision support
+  - `demo-only`: Example data, not for analysis
+  - `validation-pending`: Requires validation dossier before production use
+  - `not-for-public-inference`: Internal use only
+
+- **Data Class**: The role of the data in the evidence taxonomy
+  - `structural`: Define who or what is modeled (households, firms, places)
+  - `exogenous`: Observed/projected context inputs (prices, rates, costs)
+  - `calibration`: Fit the model to observed reality
+  - `validation`: Test the model against independent observations
+
+### Current-Phase Scope
+
+The current phase supports **open official data** and **public synthetic data**. Restricted data access and internal synthetic generation are reserved for future phases. All datasets are documented in the [evidence source matrix](_bmad-output/planning-artifacts/evidence-source-matrix-v1-2026-03-27.md).
+
+### Evidence Governance
+
+- Calibration targets and validation benchmarks are stored separately (calibration data is excluded from validation tests)
+- Scenario manifests include evidence provenance for reproducibility
+- Trust status warnings appear when exploratory data is used for decision support
+- All evidence descriptors include license and redistribution information
+
 ## Architecture
 
 **Backend:** Data Layer → Scenario Templates → Dynamic Orchestrator → Indicators → Governance → FastAPI

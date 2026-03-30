@@ -62,6 +62,10 @@ REQUIRED_JSON_FIELDS = (
 OPTIONAL_JSON_FIELDS = (
     "exogenous_series",  # Story 21.6 / AC4
     "taste_parameters",  # Story 21.7 / AC8
+    "evidence_assets",  # Story 21.8 / AC5
+    "calibration_assets",  # Story 21.8 / AC5
+    "validation_assets",  # Story 21.8 / AC5
+    "evidence_summary",  # Story 21.8 / AC5
 )
 
 
@@ -125,10 +129,15 @@ class RunManifest:
         child_manifests: Mapping of year to child manifest UUID for lineage.
         exogenous_series: Optional tuple of exogenous series names used (empty tuple if none).
         taste_parameters: Optional taste parameters dict for discrete choice models (empty dict if none).
+        evidence_assets: List of evidence asset descriptors used (empty list if none).
+        calibration_assets: List of calibration target descriptors used (empty list if none).
+        validation_assets: List of validation benchmark descriptors used (empty list if none).
+        evidence_summary: High-level evidence provenance summary (empty dict if none).
         integrity_hash: SHA-256 hash of entire manifest content (excluding this field).
 
     Story 21.6 / AC4: Added exogenous_series field for manifest recording.
     Story 21.7 / AC8: Added taste_parameters field for governance provenance.
+    Story 21.8 / AC5: Added evidence_assets, calibration_assets, validation_assets, evidence_summary.
     """
 
     manifest_id: str
@@ -149,6 +158,10 @@ class RunManifest:
     child_manifests: dict[int, str] = field(default_factory=dict)
     exogenous_series: tuple[str, ...] = ()  # Story 21.6 / AC4
     taste_parameters: dict[str, Any] = field(default_factory=dict)  # Story 21.7 / AC8
+    evidence_assets: list[dict[str, Any]] = field(default_factory=list)  # Story 21.8 / AC5
+    calibration_assets: list[dict[str, Any]] = field(default_factory=list)  # Story 21.8 / AC5
+    validation_assets: list[dict[str, Any]] = field(default_factory=list)  # Story 21.8 / AC5
+    evidence_summary: dict[str, Any] = field(default_factory=dict)  # Story 21.8 / AC5
     integrity_hash: str = ""
 
     def __post_init__(self) -> None:
@@ -367,6 +380,11 @@ class RunManifest:
         object.__setattr__(self, "warnings", list(self.warnings))
         object.__setattr__(self, "step_pipeline", list(self.step_pipeline))
         object.__setattr__(self, "child_manifests", dict(self.child_manifests))
+        # Story 21.8 / AC5: Deep copy evidence fields for immutability
+        object.__setattr__(self, "evidence_assets", deepcopy(self.evidence_assets))
+        object.__setattr__(self, "calibration_assets", deepcopy(self.calibration_assets))
+        object.__setattr__(self, "validation_assets", deepcopy(self.validation_assets))
+        object.__setattr__(self, "evidence_summary", dict(self.evidence_summary))
 
     def to_json(self) -> str:
         """Serialize manifest to canonical JSON.
@@ -459,6 +477,10 @@ class RunManifest:
                 child_manifests=child_manifests,
                 exogenous_series=tuple(data.get("exogenous_series", [])),  # Story 21.6 / AC4
                 taste_parameters=data.get("taste_parameters", {}),  # Story 21.7 / AC8
+                evidence_assets=data.get("evidence_assets", []),  # Story 21.8 / AC5
+                calibration_assets=data.get("calibration_assets", []),  # Story 21.8 / AC5
+                validation_assets=data.get("validation_assets", []),  # Story 21.8 / AC5
+                evidence_summary=data.get("evidence_summary", {}),  # Story 21.8 / AC5
                 integrity_hash=data["integrity_hash"],
             )
         except (TypeError, KeyError) as e:
@@ -537,6 +559,10 @@ class RunManifest:
             child_manifests=self.child_manifests,
             exogenous_series=self.exogenous_series,  # Story 21.6 / AC4
             taste_parameters=self.taste_parameters,  # Story 21.7 / AC8
+            evidence_assets=self.evidence_assets,  # Story 21.8 / AC5
+            calibration_assets=self.calibration_assets,  # Story 21.8 / AC5
+            validation_assets=self.validation_assets,  # Story 21.8 / AC5
+            evidence_summary=self.evidence_summary,  # Story 21.8 / AC5
             integrity_hash=computed_hash,
         )
 

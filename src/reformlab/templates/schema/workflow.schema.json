@@ -40,6 +40,101 @@
       },
       "additionalProperties": false
     },
+    "evidence_metadata": {
+      "type": "object",
+      "description": "Evidence model metadata for data sources (Story 21.8 / AC1). Classifies data sources by origin, access_mode, trust_status, and data_class.",
+      "properties": {
+        "population": {
+          "type": "object",
+          "description": "Evidence metadata for population data source.",
+          "properties": {
+            "asset_id": {
+              "type": "string",
+              "description": "Unique identifier for the asset (e.g., 'fr-synthetic-2024')."
+            },
+            "name": {
+              "type": "string",
+              "description": "Human-readable name of the asset."
+            },
+            "origin": {
+              "type": "string",
+              "enum": ["open-official", "synthetic-public", "synthetic-internal", "restricted"],
+              "description": "Where the asset comes from."
+            },
+            "access_mode": {
+              "type": "string",
+              "enum": ["bundled", "fetched", "deferred-user-connector"],
+              "description": "How ReformLab obtains the asset."
+            },
+            "trust_status": {
+              "type": "string",
+              "enum": ["production-safe", "exploratory", "demo-only", "validation-pending", "not-for-public-inference"],
+              "description": "What can be claimed about the asset."
+            },
+            "data_class": {
+              "type": "string",
+              "enum": ["structural", "exogenous", "calibration", "validation"],
+              "description": "The role of the data in the evidence taxonomy."
+            },
+            "note": {
+              "type": "string",
+              "description": "Optional notes about the data source."
+            },
+            "provider": {
+              "type": "string",
+              "description": "Data provider identifier (e.g., 'insee', 'ademe')."
+            }
+          },
+          "required": ["asset_id", "name", "origin", "access_mode", "trust_status", "data_class"],
+          "additionalProperties": false
+        },
+        "emission_factors": {
+          "type": "object",
+          "description": "Evidence metadata for emission factors data source.",
+          "properties": {
+            "asset_id": {
+              "type": "string",
+              "description": "Unique identifier for the asset."
+            },
+            "name": {
+              "type": "string",
+              "description": "Human-readable name of the asset."
+            },
+            "origin": {
+              "type": "string",
+              "enum": ["open-official", "synthetic-public", "synthetic-internal", "restricted"],
+              "description": "Where the asset comes from."
+            },
+            "access_mode": {
+              "type": "string",
+              "enum": ["bundled", "fetched", "deferred-user-connector"],
+              "description": "How ReformLab obtains the asset."
+            },
+            "trust_status": {
+              "type": "string",
+              "enum": ["production-safe", "exploratory", "demo-only", "validation-pending", "not-for-public-inference"],
+              "description": "What can be claimed about the asset."
+            },
+            "data_class": {
+              "type": "string",
+              "enum": ["structural", "exogenous", "calibration", "validation"],
+              "description": "The role of the data in the evidence taxonomy."
+            },
+            "provider": {
+              "type": "string",
+              "description": "Data provider identifier."
+            },
+            "note": {
+              "type": "string",
+              "description": "Optional notes about the data source."
+            }
+          },
+          "required": ["asset_id", "name", "origin", "access_mode", "trust_status", "data_class"],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
     "scenarios": {
       "type": "array",
       "minItems": 1,

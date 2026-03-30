@@ -7,6 +7,7 @@ Flow:
 4) Baseline + reform runs
 5) Indicator + comparison
 6) CSV + Parquet export
+7) Evidence model verification (Story 21.8 / AC4)
 """
 
 from __future__ import annotations
@@ -352,6 +353,73 @@ def main() -> int:
     if "attachment" not in parquet_headers.get("content-disposition", "").lower():
         raise SmokeTestError("Parquet export succeeded but did not return attachment headers")
     print("[smoke] parquet export ok")
+
+    # 7) Evidence model verification (Story 21.8 / AC4)
+    # Test population listing includes evidence fields
+    _, populations_data, _ = _request(
+        method="GET",
+        base_url=base_url,
+        path="/api/populations",
+        timeout=timeout,
+        token=token,
+    )
+    populations = populations_data.get("populations", [])
+    if not isinstance(populations, list):
+        raise SmokeTestError("Invalid populations payload shape")
+    # Check that populations include evidence fields (if any populations exist)
+    if populations:
+        first_pop = populations[0]
+        if not isinstance(first_pop, dict):
+            raise SmokeTestError("Population entry must be an object")
+        # Verify evidence fields are present (Story 21.8 / AC4)
+        for evidence_field in ("origin", "access_mode", "trust_status"):
+            if evidence_field not in first_pop:
+                raise SmokeTestError(
+                    f"Population listing missing evidence field '{evidence_field}'"
+                )
+    print("[smoke] population listing evidence fields ok")
+
+    # Test result endpoint includes evidence metadata (if run completed successfully)
+    if not degraded_mode:
+        _, result_detail_data, _ = _request(
+            method="GET",
+            base_url=base_url,
+            path=f"/api/results/{baseline_run_id}",
+            timeout=timeout,
+            token=token,
+        )
+        # Check for evidence_assets field (may be empty list)
+        if "evidence_assets" not in result_detail_data:
+            raise SmokeTestError(
+                "Result detail missing 'evidence_assets' field"
+            )
+        evidence_assets = result_detail_data.get("evidence_assets", [])
+        if not isinstance(evidence_assets, list):
+            raise SmokeTestError("evidence_assets must be a list")
+        print("[smoke] result evidence metadata ok")
+
+        # Test 422 error response format for evidence validation failures
+        # Attempt to create a run with invalid evidence metadata
+        invalid_run_body = run_body_baseline.copy()
+        invalid_run_body["evidence_assets"] = [{"asset_id": 123}]  # Invalid: should be string
+        _, error_data, _ = _request(
+            method="POST",
+            base_url=base_url,
+            path="/api/runs",
+            timeout=timeout,
+            token=token,
+            body=invalid_run_body,
+            expected_statuses=(422,),
+        )
+        # Verify error response follows {"what", "why", "fix"} format
+        if not isinstance(error_data, dict):
+            raise SmokeTestError("422 error response must be an object")
+        for error_field in ("what", "why", "fix"):
+            if error_field not in error_data:
+                raise SmokeTestError(
+                    f"422 error response missing '{error_field}' field"
+                )
+        print("[smoke] 422 evidence validation error format ok")
 
     print("[smoke] all checks passed")
     return 0

@@ -32,7 +32,7 @@ from reformlab.population import (
 )
 from reformlab.computation.ingestion import DataSchema
 from reformlab.computation.types import PopulationData
-from reformlab.data.descriptor import DatasetDescriptor
+from reformlab.data.descriptor import DataAssetDescriptor, DatasetDescriptor
 from reformlab.data.pipeline import DataSourceMetadata, DatasetManifest
 from reformlab.population.loaders.base import CacheStatus, DataSourceLoader, SourceConfig
 from reformlab.population.methods.base import IPFConstraint
@@ -48,6 +48,7 @@ FIXTURES_DIR = PROJECT_ROOT / "tests" / "fixtures" / "populations" / "sources"
 OUTPUT_DIR = PROJECT_ROOT / "data" / "populations"
 OUTPUT_CSV = OUTPUT_DIR / "french-household-example-2024.csv"
 SUMMARY_FILE = OUTPUT_DIR / "french-household-example-summary.txt"
+EVIDENCE_MANIFEST_FILE = OUTPUT_DIR / "french-household-example-evidence-manifest.json"
 
 logger = logging.getLogger("reformlab.examples.french_household")
 
@@ -448,6 +449,156 @@ def _load_energy_source() -> tuple[_FixtureLoader, SourceConfig]:
 
 
 # ====================================================================
+# Evidence descriptors (Story 21.8 / AC2)
+# ====================================================================
+
+
+def _create_evidence_descriptors() -> list[DataAssetDescriptor]:
+    """Create evidence asset descriptors for all data sources.
+
+    Returns a list of DataAssetDescriptor instances documenting the
+    provenance, classification, and trust status of each data source
+    used in the pipeline.
+
+    See _bmad-output/planning-artifacts/evidence-source-matrix-v1-2026-03-27.md
+    for the complete evidence taxonomy.
+    """
+    descriptors = [
+        # INSEE Filosofi income data
+        DataAssetDescriptor(
+            asset_id="insee-fideli-2021",
+            name="Fidéli (Données de cadrage)",
+            description="INSEE Fidéli 2021 provides French demographic and income "
+            "data at commune level (median income, deciles)",
+            data_class="structural",
+            origin="open-official",
+            access_mode="fetched",
+            trust_status="production-safe",
+            source_url="https://www.insee.fr/fr/statistiques/fichier/4808649/FIDELI_2019.zip",
+            license="Open License",
+            version="2021",
+            geographic_coverage=("FR",),
+            years=(2021,),
+            intended_use="Structural household income distribution for policy analysis",
+            redistribution_allowed=True,
+            redistribution_notes="INSEE data requires attribution; derivative works must "
+            "cite INSEE as source",
+            update_cadence="annual",
+            quality_notes="Commune-level data; household counts are fiscal households "
+            "(foyers fiscaux), not all households",
+            references=("https://www.insee.fr/fr/statistiques/4808649",),
+        ),
+        # Eurostat household energy data
+        DataAssetDescriptor(
+            asset_id="eurostat-silc-2022",
+            name="EU-SILC Survey Data",
+            description="European Union Statistics on Income and Living Conditions, "
+            "household composition and energy consumption patterns",
+            data_class="structural",
+            origin="open-official",
+            access_mode="fetched",
+            trust_status="production-safe",
+            source_url="https://ec.europa.eu/eurostat/web/income-and-living-conditions/data",
+            license="CC-BY-4.0",
+            version="2022",
+            geographic_coverage=("EU",),
+            years=(2022,),
+            intended_use="Housing and energy consumption patterns for household modeling",
+            redistribution_allowed=True,
+            update_cadence="annual",
+            quality_notes="Microdata access requires application; aggregates used here "
+            "are public domain",
+            references=(
+                "https://ec.europa.eu/eurostat/web/income-and-living-conditions/data",
+                "https://ec.europa.eu/eurostat/databrowser/view/ilc_lvho09/default/table",
+            ),
+        ),
+        # SDES vehicle fleet data
+        DataAssetDescriptor(
+            asset_id="sdes-vehicles-2023",
+            name="SDES Vehicle Fleet Composition",
+            description="French vehicle fleet statistics by fuel type, region, and age "
+            "from Service des données et études statistiques (SDES)",
+            data_class="structural",
+            origin="open-official",
+            access_mode="fetched",
+            trust_status="production-safe",
+            source_url="https://www.statistiques.developpement-durable.gouv.fr/",
+            license="Open License",
+            version="2023",
+            geographic_coverage=("FR",),
+            years=(2023,),
+            intended_use="Vehicle ownership and fleet composition for transport modeling",
+            redistribution_allowed=True,
+            update_cadence="annual",
+            quality_notes="Regional aggregates; national-level data more complete than "
+            "department-level",
+            references=(
+                "https://www.statistiques.developpement-durable.gouv.fr/"
+                "transports/mobilite/parc-vehicules",
+            ),
+        ),
+        # ADEME emission factors
+        DataAssetDescriptor(
+            asset_id="ademe-carbon-factors-2024",
+            name="Base Carbone® ADEME",
+            description="ADEME Base Carbone emission factors for carbon footprint "
+            "assessment (heating fuels, electricity, transport)",
+            data_class="exogenous",
+            origin="open-official",
+            access_mode="fetched",
+            trust_status="production-safe",
+            source_url="https://bilans-ges.ademe.fr/",
+            license="Open License",
+            version="2024",
+            geographic_coverage=("FR",),
+            years=(2024,),
+            intended_use="Carbon emission factors for energy consumption and transport",
+            redistribution_allowed=True,
+            redistribution_notes="Base Carbone is a registered trademark of ADEME; "
+            "attribution required",
+            update_cadence="annual",
+            quality_notes="Factors updated annually; version tracking required for "
+            "reproducibility",
+            references=(
+                "https://bilans-ges.ademe.fr/",
+                "https://www.ademe.fr/",
+            ),
+        ),
+    ]
+    return descriptors
+
+
+def _write_evidence_manifest(
+    descriptors: list[DataAssetDescriptor],
+    output_path: Path,
+) -> None:
+    """Write evidence manifest JSON file documenting all data sources.
+
+    Args:
+        descriptors: List of DataAssetDescriptor instances for all sources.
+        output_path: Path where evidence_manifest.json should be written.
+    """
+    import json
+    from datetime import UTC, datetime
+
+    manifest = {
+        "format_version": "1.0",
+        "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
+        "pipeline_name": "french_household_example",
+        "evidence_assets": [d.to_json() for d in descriptors],
+        "assumptions": [
+            "Fixtures used for demo purposes replace full institutional datasets",
+            "Regional vehicle fleet targets use simplified 12-region sample",
+            "Heating type stratification assumes independence from income",
+        ],
+    }
+
+    output_path.write_text(json.dumps(manifest, indent=2) + "\n")
+    logger.info("evidence manifest written path=%s assets=%d", output_path, len(descriptors))
+
+
+# ====================================================================
 # Pipeline construction and execution
 # ====================================================================
 
@@ -546,8 +697,18 @@ def validate_population(table: pa.Table) -> None:
         )
 
 
-def write_summary(table: pa.Table, summary_path: Path) -> None:
-    """Write population summary statistics to a text file."""
+def write_summary(
+    table: pa.Table,
+    summary_path: Path,
+    evidence_descriptors: list[DataAssetDescriptor] | None = None,
+) -> None:
+    """Write population summary statistics to a text file.
+
+    Args:
+        table: Generated population table.
+        summary_path: Path where summary file should be written.
+        evidence_descriptors: Optional list of evidence descriptors for documentation.
+    """
     lines = [
         "French Household Example Population Summary",
         "==========================================",
@@ -568,6 +729,26 @@ def write_summary(table: pa.Table, summary_path: Path) -> None:
         elif pa.types.is_string(col.type):
             unique = col.unique().to_pylist()
             lines.append(f"  {col_name}: {len(unique)} unique values: {unique[:10]}")
+
+    # Evidence classification (Story 21.8 / AC2)
+    if evidence_descriptors:
+        lines.extend([
+            "",
+            "Evidence Sources:",
+            "=================",
+        ])
+        for desc in evidence_descriptors:
+            lines.extend([
+                f"",
+                f"Asset: {desc.asset_id}",
+                f"  Name: {desc.name}",
+                f"  Origin: {desc.origin}",
+                f"  Access Mode: {desc.access_mode}",
+                f"  Trust Status: {desc.trust_status}",
+                f"  Data Class: {desc.data_class}",
+                f"  Provider: {desc.asset_id.split('-')[0] if '-' in desc.asset_id else 'unknown'}",
+                f"  License: {desc.license or 'Not specified'}",
+            ])
 
     summary_path.write_text("\n".join(lines) + "\n")
     logger.info("summary written path=%s", summary_path)
@@ -605,7 +786,13 @@ def main() -> None:
     pcsv.write_csv(result.table, OUTPUT_CSV)
     logger.info("Population exported path=%s", OUTPUT_CSV)
 
-    write_summary(result.table, SUMMARY_FILE)
+    # Create evidence descriptors and write manifest (Story 21.8 / AC2)
+    evidence_descriptors = _create_evidence_descriptors()
+    _write_evidence_manifest(evidence_descriptors, EVIDENCE_MANIFEST_FILE)
+    logger.info("Evidence manifest written path=%s", EVIDENCE_MANIFEST_FILE)
+
+    # Write summary with evidence classification
+    write_summary(result.table, SUMMARY_FILE, evidence_descriptors)
 
     # Governance entries
     entries = result.assumption_chain.to_governance_entries(
@@ -624,6 +811,7 @@ def main() -> None:
 
     print(f"\nDone! Population saved to {OUTPUT_CSV}")
     print(f"Summary saved to {SUMMARY_FILE}")
+    print(f"Evidence manifest saved to {EVIDENCE_MANIFEST_FILE}")
 
 
 if __name__ == "__main__":
