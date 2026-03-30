@@ -328,131 +328,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     persistStage(activeStage);
   }, [activeStage, isAuthenticated]);
 
-  // Story 22.3: Auto-update scenario name when portfolio or population context changes
-  // Only applies if the scenario name hasn't been manually edited and it's not the demo scenario
-  useEffect(() => {
-    if (!activeScenario) return; // Null guard - no active scenario to update
-
-    const demoId = DEMO_SCENARIO_ID;
-    const isManuallyEdited = manuallyEditedScenarioNames.has(activeScenario.id);
-    const isDemo = activeScenario.id === demoId;
-
-    // Skip auto-update if name was manually edited (unless it's the demo scenario)
-    if (isManuallyEdited && !isDemo) return;
-
-    // Generate suggested name from current context
-    const suggestedName = generateScenarioSuggestion(
-      selectedPortfolioName,
-      selectedPopulationId,
-      populations,
-      templates,
-      [], // Composition not available in AppContext
-    );
-
-    // Only update if the suggested name differs from the current name
-    if (suggestedName !== activeScenario.name) {
-      setActiveScenario((prev) =>
-        prev ? { ...prev, name: suggestedName } : null
-      );
-    }
-  }, [
-    activeScenario?.portfolioName,
-    activeScenario?.populationIds,
-    activeScenario?.id,
-    selectedPortfolioName,
-    selectedPopulationId,
-    populations,
-    templates,
-    manuallyEditedScenarioNames,
-  ]);
-
-  // ============================================================================
-  // Scenario entry flow actions — (Story 20.2, AC-3)
-  // ============================================================================
-
-  const saveCurrentScenario = useCallback(() => {
-    if (!activeScenario) return;
-    saveScenarioToList(activeScenario);
-    refreshSavedScenarios();
-    toast.success("Scenario saved");
-  }, [activeScenario, refreshSavedScenarios]);
-
-  const loadSavedScenario = useCallback((id: string) => {
-    const list = getSavedScenarios();
-    const found = list.find((s) => s.id === id);
-    if (found) {
-      setActiveScenario(found);
-      // Sync legacy selectors so startRun() uses the loaded scenario's values
-      if (found.policyType) setSelectedTemplateId(found.policyType);
-      if (found.populationIds.length > 0) setSelectedPopulationId(found.populationIds[0]);
-      navigateTo("policies");
-    }
-  }, [navigateTo]);
-
-  const resetToDemo = useCallback(() => {
-    setActiveScenario(createDemoScenario());
-    setSelectedTemplateId(DEMO_TEMPLATE_ID);
-    setSelectedPopulationId(DEMO_POPULATION_ID);
-    navigateTo("results", "runner");
-    toast.info("Demo scenario loaded");
-  }, [navigateTo]);
-
-  const createNewScenario = useCallback((templateId?: string) => {
-    // Story 22.3: Generate scenario name from current context
-    const suggestedName = generateScenarioSuggestion(
-      selectedPortfolioName,
-      selectedPopulationId,
-      populations,
-      templates,
-      [], // Composition not available in AppContext; portfolioName is used instead
-    );
-
-    const newScenario: WorkspaceScenario = {
-      id: crypto.randomUUID(),
-      name: suggestedName,
-      version: "1.0",
-      status: "draft",
-      isBaseline: false,
-      baselineRef: null,
-      portfolioName: null,
-      populationIds: selectedPopulationId ? [selectedPopulationId] : [],
-      engineConfig: { startYear: 2025, endYear: 2030, seed: null, investmentDecisionsEnabled: false, logitModel: null, discountRate: 0.03 },
-      policyType: templateId ?? null,
-      lastRunId: null,
-    };
-    setActiveScenario(newScenario);
-    if (templateId) {
-      setSelectedTemplateId(templateId);
-    }
-    navigateTo("policies");
-  }, [navigateTo, selectedPortfolioName, selectedPopulationId, populations, templates]);
-
-  const cloneCurrentScenario = useCallback(() => {
-    if (!activeScenario) return;
-
-    // Story 22.3: Use collision handling for clone names
-    const existingNames = new Set(savedScenarios.map((s) => s.name));
-    const cloneName = generateScenarioCloneName(activeScenario.name, existingNames);
-
-    const cloned: WorkspaceScenario = {
-      ...activeScenario,
-      id: crypto.randomUUID(),
-      name: cloneName,
-    };
-    setActiveScenario(cloned);
-
-    // Story 22.3: Mark cloned name as manually edited (cloned name is "manual" by definition)
-    setManuallyEditedScenarioNames((prev) => {
-      const updated = new Set(prev);
-      updated.add(cloned.id);
-      // Persist to localStorage
-      saveManuallyEditedNames(updated);
-      return updated;
-    });
-
-    toast.success("Scenario cloned");
-  }, [activeScenario, savedScenarios]);
-
   // ============================================================================
   // Data hooks
   // ============================================================================
@@ -573,6 +448,140 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }
   }, [isAuthenticated, populationsLoading, templatesLoading, populationsMock, templatesMock]);
+
+  // Story 22.3: Auto-update scenario name when portfolio or population context changes
+  // Only applies if the scenario name hasn't been manually edited and it's not the demo scenario
+  useEffect(() => {
+    if (!activeScenario) return; // Null guard - no active scenario to update
+
+    const demoId = DEMO_SCENARIO_ID;
+    const isManuallyEdited = manuallyEditedScenarioNames.has(activeScenario.id);
+    const isDemo = activeScenario.id === demoId;
+
+    // Skip auto-update if name was manually edited (unless it's the demo scenario)
+    if (isManuallyEdited && !isDemo) return;
+
+    // Generate suggested name from current context
+    const suggestedName = generateScenarioSuggestion(
+      selectedPortfolioName,
+      selectedPopulationId,
+      populations,
+      templates,
+      [], // Composition not available in AppContext
+    );
+
+    // Only update if the suggested name differs from the current name
+    if (suggestedName !== activeScenario.name) {
+      setActiveScenario((prev) =>
+        prev ? { ...prev, name: suggestedName } : null
+      );
+    }
+  }, [
+    activeScenario?.portfolioName,
+    activeScenario?.populationIds,
+    activeScenario?.id,
+    selectedPortfolioName,
+    selectedPopulationId,
+    populations,
+    templates,
+    manuallyEditedScenarioNames,
+  ]);
+
+  // ============================================================================
+  // Scenario entry flow actions — (Story 20.2, AC-3)
+  // ============================================================================
+
+  const saveCurrentScenario = useCallback(() => {
+    if (!activeScenario) return;
+    saveScenarioToList(activeScenario);
+    refreshSavedScenarios();
+    toast.success("Scenario saved");
+  }, [activeScenario, refreshSavedScenarios]);
+
+  const loadSavedScenario = useCallback((id: string) => {
+    const list = getSavedScenarios();
+    const found = list.find((s) => s.id === id);
+    if (found) {
+      setActiveScenario(found);
+      // Sync legacy selectors so startRun() uses the loaded scenario's values
+      if (found.policyType) setSelectedTemplateId(found.policyType);
+      if (found.populationIds.length > 0) setSelectedPopulationId(found.populationIds[0]);
+      navigateTo("policies");
+    }
+  }, [navigateTo]);
+
+  const resetToDemo = useCallback(() => {
+    setActiveScenario(createDemoScenario());
+    setSelectedTemplateId(DEMO_TEMPLATE_ID);
+    setSelectedPopulationId(DEMO_POPULATION_ID);
+    navigateTo("results", "runner");
+    toast.info("Demo scenario loaded");
+  }, [navigateTo]);
+
+  const createNewScenario = useCallback((templateId?: string) => {
+    // Story 22.3: Generate scenario name from current context
+    const suggestedName = generateScenarioSuggestion(
+      selectedPortfolioName,
+      selectedPopulationId,
+      populations,
+      templates,
+      [], // Composition not available in AppContext; portfolioName is used instead
+    );
+
+    const newScenario: WorkspaceScenario = {
+      id: crypto.randomUUID(),
+      name: suggestedName,
+      version: "1.0",
+      status: "draft",
+      isBaseline: false,
+      baselineRef: null,
+      portfolioName: null,
+      populationIds: selectedPopulationId ? [selectedPopulationId] : [],
+      engineConfig: {
+        startYear: 2025,
+        endYear: 2030,
+        seed: null,
+        investmentDecisionsEnabled: false,
+        logitModel: null,
+        discountRate: 0.03,
+        tasteParameters: null,  // Story 22.6
+        calibrationState: "not_configured",  // Story 22.6
+      },
+      policyType: templateId ?? null,
+      lastRunId: null,
+    };
+    setActiveScenario(newScenario);
+    if (templateId) {
+      setSelectedTemplateId(templateId);
+    }
+    navigateTo("policies");
+  }, [navigateTo, selectedPortfolioName, selectedPopulationId, populations, templates]);
+
+  const cloneCurrentScenario = useCallback(() => {
+    if (!activeScenario) return;
+
+    // Story 22.3: Use collision handling for clone names
+    const existingNames = new Set(savedScenarios.map((s) => s.name));
+    const cloneName = generateScenarioCloneName(activeScenario.name, existingNames);
+
+    const cloned: WorkspaceScenario = {
+      ...activeScenario,
+      id: crypto.randomUUID(),
+      name: cloneName,
+    };
+    setActiveScenario(cloned);
+
+    // Story 22.3: Mark cloned name as manually edited (cloned name is "manual" by definition)
+    setManuallyEditedScenarioNames((prev) => {
+      const updated = new Set(prev);
+      updated.add(cloned.id);
+      // Persist to localStorage
+      saveManuallyEditedNames(updated);
+      return updated;
+    });
+
+    toast.success("Scenario cloned");
+  }, [activeScenario, savedScenarios]);
 
   const selectTemplate = useCallback((id: string) => {
     setSelectedTemplateId(id);

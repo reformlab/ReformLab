@@ -20,6 +20,7 @@ vi.mock("@/api/runs", () => ({
 import { checkMemory } from "@/api/runs";
 import { ValidationGate } from "../ValidationGate";
 import type { ValidationContext } from "../validationChecks";
+import { DEFAULT_TASTE_PARAMETERS } from "@/types/workspace";
 
 // ============================================================================
 // Helpers
@@ -136,6 +137,8 @@ describe("ValidationGate — Story 20.5", () => {
             ...makeContext().scenario!.engineConfig,
             investmentDecisionsEnabled: true,
             logitModel: "multinomial_logit" as const,
+            tasteParameters: DEFAULT_TASTE_PARAMETERS,  // Story 22.6: satisfy new validation checks
+            calibrationState: "not_configured",
           },
         },
       });

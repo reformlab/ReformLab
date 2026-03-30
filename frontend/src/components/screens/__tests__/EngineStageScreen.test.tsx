@@ -49,6 +49,7 @@ import { useAppState } from "@/contexts/AppContext";
 import { EngineStageScreen } from "@/components/screens/EngineStageScreen";
 import type { WorkspaceScenario } from "@/types/workspace";
 import type { GenerationResult } from "@/api/types";
+import { DEFAULT_TASTE_PARAMETERS } from "@/types/workspace";
 
 // ============================================================================
 // Helpers
@@ -71,6 +72,8 @@ function makeScenario(overrides: Partial<WorkspaceScenario> = {}): WorkspaceScen
       investmentDecisionsEnabled: false,
       logitModel: null,
       discountRate: 0.03,
+      tasteParameters: DEFAULT_TASTE_PARAMETERS,  // Story 22.6
+      calibrationState: "not_configured",  // Story 22.6
     },
     policyType: "carbon-tax",
     lastRunId: null,
@@ -193,7 +196,16 @@ describe("EngineStageScreen — Story 20.5", () => {
     it("shows 'End year must be after start year' error when startYear >= endYear", () => {
       renderScreen({
         activeScenario: makeScenario({
-          engineConfig: { startYear: 2030, endYear: 2025, seed: null, investmentDecisionsEnabled: false, logitModel: null, discountRate: 0.03 },
+          engineConfig: {
+            startYear: 2030,
+            endYear: 2025,
+            seed: null,
+            investmentDecisionsEnabled: false,
+            logitModel: null,
+            discountRate: 0.03,
+            tasteParameters: DEFAULT_TASTE_PARAMETERS,
+            calibrationState: "not_configured",
+          },
         }),
       });
       expect(screen.getByText(/end year must be after start year/i)).toBeInTheDocument();
@@ -248,7 +260,7 @@ describe("EngineStageScreen — Story 20.5", () => {
       });
     });
 
-    it("investment decisions toggle shows accordion when clicked", async () => {
+    it("investment decisions toggle shows wizard when clicked", async () => {
       renderScreen();
       // The Switch component renders as a checkbox input with the aria-label
       const toggle = screen.getByRole("checkbox", { name: /toggle investment decisions/i });
@@ -261,18 +273,10 @@ describe("EngineStageScreen — Story 20.5", () => {
       });
     });
 
-    it("when accordion visible, logit model dropdown renders with 3 options", async () => {
-      renderScreen({
-        activeScenario: makeScenario({
-          engineConfig: { startYear: 2025, endYear: 2030, seed: null, investmentDecisionsEnabled: true, logitModel: "multinomial_logit", discountRate: 0.03 },
-        }),
-      });
-      await waitFor(() => {
-        expect(screen.getByRole("combobox", { name: /logit model/i })).toBeInTheDocument();
-      });
-      expect(screen.getByRole("option", { name: /multinomial logit/i })).toBeInTheDocument();
-      expect(screen.getByRole("option", { name: /nested logit/i })).toBeInTheDocument();
-      expect(screen.getByRole("option", { name: /mixed logit/i })).toBeInTheDocument();
+    it("wizard renders Enable Investment Decisions text", () => {
+      renderScreen();
+      // The wizard should render the "Enable Investment Decisions" heading
+      expect(screen.getByText("Enable Investment Decisions")).toBeInTheDocument();
     });
   });
 

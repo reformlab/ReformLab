@@ -108,6 +108,63 @@ const investmentDecisionsCalibratedCheck: ValidationCheck = {
   },
 };
 
+// Story 22.6: Logit model required when investment decisions enabled
+const logitModelRequiredCheck: ValidationCheck = {
+  id: "logit-model-required",
+  label: "Logit model selected",
+  severity: "error",
+  fn: (ctx) => {
+    const enabled = ctx.scenario?.engineConfig.investmentDecisionsEnabled ?? false;
+    if (!enabled) {
+      return { passed: true, message: "", severity: "error" };
+    }
+    const hasModel = ctx.scenario?.engineConfig.logitModel !== null;
+    if (!hasModel) {
+      return {
+        passed: false,
+        message: "Investment decisions require a logit model to be selected.",
+        severity: "error",
+      };
+    }
+    return { passed: true, message: "", severity: "error" };
+  },
+};
+
+// Story 22.6: Taste parameters required when investment decisions enabled
+const tasteParametersRequiredCheck: ValidationCheck = {
+  id: "taste-parameters-required",
+  label: "Taste parameters configured",
+  severity: "error",
+  fn: (ctx) => {
+    const enabled = ctx.scenario?.engineConfig.investmentDecisionsEnabled ?? false;
+    if (!enabled) {
+      return { passed: true, message: "", severity: "error" };
+    }
+    const params = ctx.scenario?.engineConfig.tasteParameters;
+    if (!params) {
+      return {
+        passed: false,
+        message: "Investment decisions require taste parameters to be configured.",
+        severity: "error",
+      };
+    }
+    // Check all required fields exist and are within valid bounds
+    const { priceSensitivity, rangeAnxiety, envPreference } = params;
+    const hasPriceSensitivity = typeof priceSensitivity === "number" && priceSensitivity >= -5 && priceSensitivity <= 0;
+    const hasRangeAnxiety = typeof rangeAnxiety === "number" && rangeAnxiety >= -3 && rangeAnxiety <= 0;
+    const hasEnvPreference = typeof envPreference === "number" && envPreference >= 0 && envPreference <= 3;
+
+    if (!hasPriceSensitivity || !hasRangeAnxiety || !hasEnvPreference) {
+      return {
+        passed: false,
+        message: "Investment decisions require taste parameters to be configured.",
+        severity: "error",
+      };
+    }
+    return { passed: true, message: "", severity: "error" };
+  },
+};
+
 const memoryPreflightCheck: ValidationCheck = {
   id: "memory-preflight",
   label: "Memory preflight",
@@ -142,6 +199,8 @@ export const VALIDATION_CHECKS: ValidationCheck[] = [
   portfolioSelectedCheck,
   populationSelectedCheck,
   timeHorizonValidCheck,
+  logitModelRequiredCheck,  // Story 22.6
+  tasteParametersRequiredCheck,  // Story 22.6
   investmentDecisionsCalibratedCheck,
   memoryPreflightCheck,
 ];
@@ -151,6 +210,8 @@ export {
   portfolioSelectedCheck,
   populationSelectedCheck,
   timeHorizonValidCheck,
+  logitModelRequiredCheck,  // Story 22.6
+  tasteParametersRequiredCheck,  // Story 22.6
   investmentDecisionsCalibratedCheck,
   memoryPreflightCheck,
 };

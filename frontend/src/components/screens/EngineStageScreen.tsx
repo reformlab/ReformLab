@@ -18,7 +18,7 @@ import { Separator } from "@/components/ui/separator";
 import { useAppState } from "@/contexts/AppContext";
 import { RunSummaryPanel } from "@/components/engine/RunSummaryPanel";
 import { ValidationGate } from "@/components/engine/ValidationGate";
-import { InvestmentDecisionsAccordion } from "@/components/engine/InvestmentDecisionsAccordion";
+import { InvestmentDecisionsWizard } from "@/components/engine/InvestmentDecisionsWizard";
 import type { EngineConfig } from "@/types/workspace";
 
 // ============================================================================
@@ -331,9 +331,9 @@ export function EngineStageScreen() {
 
           {/* Investment Decisions */}
           <section className="space-y-3">
-            <InvestmentDecisionsAccordion
-              config={engineConfig}
-              onEngineConfigChange={updateEngineConfig}
+            <InvestmentDecisionsWizard
+              engineConfig={engineConfig}
+              onUpdateEngineConfig={updateEngineConfig}
             />
           </section>
 

@@ -10,6 +10,7 @@
  */
 
 import type { WorkspaceScenario } from "@/types/workspace";
+import { DEFAULT_TASTE_PARAMETERS } from "@/types/workspace";
 
 // ============================================================================
 // Constants
@@ -45,6 +46,8 @@ export function createDemoScenario(): WorkspaceScenario {
       investmentDecisionsEnabled: false,
       logitModel: null,
       discountRate: 0.03,
+      tasteParameters: DEFAULT_TASTE_PARAMETERS,  // Story 22.6
+      calibrationState: "not_configured",  // Story 22.6
     },
     policyType: "carbon-tax",
     lastRunId: null,

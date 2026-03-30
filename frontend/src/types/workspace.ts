@@ -42,6 +42,25 @@ export const POPULATION_SUB_STEPS = [
 // Known values at this revision: "draft" | "ready" | "running" | "completed" | "failed"
 export type ScenarioStatus = string;
 
+// ============================================================================
+// Investment decisions types — Story 22.6
+// ============================================================================
+
+export interface TasteParameters {
+  priceSensitivity: number;  // [-5, 0], default -1.5
+  rangeAnxiety: number;      // [-3, 0], default -0.8
+  envPreference: number;     // [0, 3], default 0.5
+}
+
+export type CalibrationState = "not_configured" | "in_progress" | "completed";
+
+// Default taste parameters for new scenarios and migration
+export const DEFAULT_TASTE_PARAMETERS: TasteParameters = {
+  priceSensitivity: -1.5,
+  rangeAnxiety: -0.8,
+  envPreference: 0.5,
+};
+
 export interface EngineConfig {
   startYear: number;
   endYear: number;
@@ -49,6 +68,8 @@ export interface EngineConfig {
   investmentDecisionsEnabled: boolean;
   logitModel: "multinomial_logit" | "nested_logit" | "mixed_logit" | null;
   discountRate: number;  // fractional: 0.03 = 3%
+  tasteParameters?: TasteParameters | null;  // Optional for backward compatibility
+  calibrationState: CalibrationState;  // Story 22.6
 }
 
 export interface WorkspaceScenario {

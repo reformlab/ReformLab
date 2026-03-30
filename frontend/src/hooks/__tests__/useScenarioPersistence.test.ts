@@ -16,6 +16,7 @@ import {
   useScenarioPersistence,
 } from "@/hooks/useScenarioPersistence";
 import type { WorkspaceScenario } from "@/types/workspace";
+import { DEFAULT_TASTE_PARAMETERS } from "@/types/workspace";
 
 // ============================================================================
 // Helpers
@@ -31,7 +32,16 @@ function makeScenario(overrides: Partial<WorkspaceScenario> = {}): WorkspaceScen
     baselineRef: null,
     portfolioName: null,
     populationIds: ["fr-synthetic-2024"],
-    engineConfig: { startYear: 2025, endYear: 2030, seed: 42, investmentDecisionsEnabled: false, logitModel: null, discountRate: 0.03 },
+    engineConfig: {
+      startYear: 2025,
+      endYear: 2030,
+      seed: 42,
+      investmentDecisionsEnabled: false,
+      logitModel: null,
+      discountRate: 0.03,
+      tasteParameters: DEFAULT_TASTE_PARAMETERS,  // Story 22.6
+      calibrationState: "not_configured",  // Story 22.6
+    },
     policyType: "carbon-tax",
     lastRunId: null,
     ...overrides,
@@ -84,7 +94,18 @@ describe("saveScenario / loadScenario", () => {
 
   it("preserves engineConfig fields in round-trip", () => {
     const { saveScenario, loadScenario } = getHook();
-    const scenario = makeScenario({ engineConfig: { startYear: 2026, endYear: 2035, seed: 99, investmentDecisionsEnabled: true, logitModel: "multinomial_logit", discountRate: 0.05 } });
+    const scenario = makeScenario({
+      engineConfig: {
+        startYear: 2026,
+        endYear: 2035,
+        seed: 99,
+        investmentDecisionsEnabled: true,
+        logitModel: "multinomial_logit",
+        discountRate: 0.05,
+        tasteParameters: DEFAULT_TASTE_PARAMETERS,  // Story 22.6
+        calibrationState: "not_configured",  // Story 22.6
+      },
+    });
     saveScenario(scenario);
     const loaded = loadScenario();
     expect(loaded?.engineConfig.seed).toBe(99);

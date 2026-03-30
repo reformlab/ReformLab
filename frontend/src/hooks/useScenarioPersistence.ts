@@ -16,7 +16,7 @@
  */
 
 import type { StageKey, WorkspaceScenario } from "@/types/workspace";
-import { isValidStage } from "@/types/workspace";
+import { isValidStage, DEFAULT_TASTE_PARAMETERS } from "@/types/workspace";
 
 // ============================================================================
 // localStorage key constants (exported for test access)
@@ -47,7 +47,19 @@ export function loadScenario(): WorkspaceScenario | null {
   try {
     const raw = localStorage.getItem(SCENARIO_STORAGE_KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as WorkspaceScenario;
+    const parsed = JSON.parse(raw) as WorkspaceScenario;
+
+    // Story 22.6: Migration logic for legacy scenarios
+    // If tasteParameters is missing, set to default values
+    if (parsed.engineConfig && parsed.engineConfig.tasteParameters === undefined) {
+      parsed.engineConfig.tasteParameters = DEFAULT_TASTE_PARAMETERS;
+    }
+    // If calibrationState is missing, set to "not_configured"
+    if (parsed.engineConfig && parsed.engineConfig.calibrationState === undefined) {
+      parsed.engineConfig.calibrationState = "not_configured";
+    }
+
+    return parsed;
   } catch {
     return null;
   }
@@ -87,7 +99,18 @@ export function getSavedScenarios(): WorkspaceScenario[] {
   try {
     const raw = localStorage.getItem(SAVED_SCENARIOS_KEY);
     if (!raw) return [];
-    return JSON.parse(raw) as WorkspaceScenario[];
+    const parsed = JSON.parse(raw) as WorkspaceScenario[];
+
+    // Story 22.6: Migration logic for legacy scenarios
+    return parsed.map((scenario) => {
+      if (scenario.engineConfig && scenario.engineConfig.tasteParameters === undefined) {
+        scenario.engineConfig.tasteParameters = DEFAULT_TASTE_PARAMETERS;
+      }
+      if (scenario.engineConfig && scenario.engineConfig.calibrationState === undefined) {
+        scenario.engineConfig.calibrationState = "not_configured";
+      }
+      return scenario;
+    });
   } catch {
     return [];
   }
