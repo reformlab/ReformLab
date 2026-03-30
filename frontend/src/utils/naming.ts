@@ -39,6 +39,11 @@ import type { CompositionEntry } from "@/components/simulation/PortfolioComposit
  * @returns A slugified string suitable for portfolio names
  */
 export function slugify(name: string): string {
+  // Early return for empty or whitespace-only input
+  if (!name || !name.trim()) {
+    return "";
+  }
+
   return (
     name
       // Normalize unicode (convert accented chars to base + combining chars)
@@ -130,9 +135,11 @@ export function generatePortfolioSuggestion(
 export function getPopulationShortName(population: Population): string {
   let name = population.name;
 
-  // Remove "France " prefix
-  if (name.startsWith("France ")) {
-    name = name.slice(7);
+  // Remove "France " prefix (case-insensitive)
+  if (name.toLowerCase().startsWith("france ")) {
+    // Find the actual index of "France " (respecting original case)
+    const franceIndex = name.toLowerCase().indexOf("france ");
+    name = name.slice(franceIndex + 7);
   }
 
   // Add "FR " prefix if not already prefixed with "FR " or "EU "

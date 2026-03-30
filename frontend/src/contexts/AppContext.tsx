@@ -55,15 +55,12 @@ import {
   saveScenarioToList,
   getManuallyEditedNames,
   saveManuallyEditedNames,
-  addManuallyEditedName,
-  removeManuallyEditedName,
 } from "@/hooks/useScenarioPersistence";
-import { createDemoScenario, DEMO_TEMPLATE_ID, DEMO_POPULATION_ID } from "@/data/demo-scenario";
+import { createDemoScenario, DEMO_SCENARIO_ID, DEMO_TEMPLATE_ID, DEMO_POPULATION_ID } from "@/data/demo-scenario";
 import {
   generateScenarioSuggestion,
   generateScenarioCloneName,
 } from "@/utils/naming";
-import type { CompositionEntry } from "@/components/simulation/PortfolioCompositionPanel";
 
 // ============================================================================
 // Context types
@@ -247,7 +244,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Story 22.3: Track manual edits to the name field
       if (field === "name" && current.id) {
         // Don't mark demo scenario as manually edited (should always get auto-updates)
-        if (current.id !== createDemoScenario().id) {
+        if (current.id !== DEMO_SCENARIO_ID) {
           setManuallyEditedScenarioNames((prev) => {
             const updated = new Set(prev);
             updated.add(current.id);
@@ -336,7 +333,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!activeScenario) return; // Null guard - no active scenario to update
 
-    const demoId = createDemoScenario().id;
+    const demoId = DEMO_SCENARIO_ID;
     const isManuallyEdited = manuallyEditedScenarioNames.has(activeScenario.id);
     const isDemo = activeScenario.id === demoId;
 
