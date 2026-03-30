@@ -1574,4 +1574,13 @@ records:
   provider: claude-subprocess
   created_at: '2026-03-30T16:23:59.104957+00:00'
   workflow_id: code-review-synthesis
-updated_at: '2026-03-30T16:23:59.233666+00:00'
+- record_id: 9aac35a6-37d2-4214-819b-41bf1c91ac9a
+  path: eval-22-6-master-20260330T162513Z.yaml
+  epic: 22
+  story: 6
+  role: master
+  role_id: null
+  provider: claude-subprocess
+  created_at: '2026-03-30T16:25:13.631917+00:00'
+  workflow_id: create-story
+updated_at: '2026-03-30T16:25:13.696579+00:00'
