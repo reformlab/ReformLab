@@ -1658,8 +1658,9 @@ class TestAssetLoadFunctionsStory21_5:
 
     def test_load_calibration_asset_success(self, tmp_path) -> None:
         """Given valid asset folder, when loading, then returns CalibrationAsset."""
-        import reformlab.data.assets as assets_module
         import json
+
+        import reformlab.data.assets as assets_module
 
         original_path = assets_module._CALIBRATION_ASSETS_BASE_PATH
         assets_module._CALIBRATION_ASSETS_BASE_PATH = tmp_path
@@ -1705,8 +1706,9 @@ class TestAssetLoadFunctionsStory21_5:
 
     def test_load_validation_asset_success(self, tmp_path) -> None:
         """Given valid asset folder, when loading, then returns ValidationAsset."""
-        import reformlab.data.assets as assets_module
         import json
+
+        import reformlab.data.assets as assets_module
 
         original_path = assets_module._VALIDATION_ASSETS_BASE_PATH
         assets_module._VALIDATION_ASSETS_BASE_PATH = tmp_path
