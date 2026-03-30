@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 Lucas Vivier
 /**
- * TopBar — 48px application top bar showing current stage and utility icons.
+ * TopBar — 48px application top bar showing brand, scenario controls, and utility icons.
  *
- * Left: logo · scenario name (clickable) · Save button · separator · stage label.
- * Right: docs link, GitHub, API status dot, Settings — all Lucide line-style.
+ * Story 22.1 — AC-1: Brand block with logo + "ReformLab" wordmark.
+ * Story 22.1 — AC-2: Docs and GitHub links open in new tab with security attributes.
+ * Story 22.1 — AC-3: Scenario controls in center-left container with visual separation.
+ * Story 22.1 — AC-4: Narrow screens hide secondary utilities; brand block always visible.
+ * Story 22.1 — AC-5: Wordmark uses Inter semibold (600) with slate-700 (#334155).
  *
- * Story 20.1 — AC-1.
+ * Story 20.1 — AC-1: TopBar shows current stage.
  * Story 20.2 — AC-3: scenario name opens ScenarioEntryDialog; Save button persists scenario.
  */
 
@@ -27,40 +30,67 @@ export function TopBar() {
 
   return (
     <div className="flex h-12 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4">
-      {/* Logo + scenario name + separator + stage label */}
-      <div className="flex items-center gap-2.5">
-        <img src="/logo.svg" alt="ReformLab" className="h-6 w-auto" />
+      {/* Brand block (logo + wordmark) · Scenario controls · Stage label */}
+      <div className="flex items-center gap-x-4">
+        {/* Brand block: logo + wordmark */}
+        <div className="flex items-center gap-2">
+          <img src="/logo.svg" alt="ReformLab" className="h-6 w-auto" />
+          <span className="text-sm font-semibold text-slate-700">ReformLab</span>
+        </div>
 
-        {/* Scenario name (clickable) */}
-        <button
-          type="button"
-          className="text-sm text-slate-500 truncate max-w-48 hover:text-slate-700 transition-colors"
-          aria-label="Switch scenario"
-          onClick={() => setScenarioDialogOpen(true)}
-        >
-          {activeScenario?.name ?? "No scenario"}
-        </button>
+        {/* Scenario controls: name (clickable) + Save button */}
+        <div className="flex items-center gap-2">
+          {/* Scenario name (clickable) */}
+          <button
+            type="button"
+            className="text-sm text-slate-500 truncate max-w-48 hover:text-slate-700 transition-colors"
+            aria-label="Switch scenario"
+            onClick={() => setScenarioDialogOpen(true)}
+          >
+            {activeScenario?.name ?? "No scenario"}
+          </button>
 
-        {/* Save scenario button */}
-        <button
-          type="button"
-          className="text-slate-500 hover:text-slate-700 transition-colors disabled:opacity-40 disabled:pointer-events-none"
-          aria-label="Save scenario"
-          disabled={!activeScenario}
-          onClick={saveCurrentScenario}
-        >
-          <Save className="h-4 w-4" />
-        </button>
+          {/* Save scenario button */}
+          <button
+            type="button"
+            className="text-slate-500 hover:text-slate-700 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+            aria-label="Save scenario"
+            disabled={!activeScenario}
+            onClick={saveCurrentScenario}
+          >
+            <Save className="h-4 w-4" />
+          </button>
+        </div>
 
         <Separator orientation="vertical" className="h-5 mx-1" />
 
+        {/* Stage label */}
         <span className="text-lg font-semibold text-slate-900">{currentStageLabel}</span>
       </div>
 
-      {/* Utility icons */}
+      {/* Utility icons: docs, GitHub, API status, Settings */}
       <div className="flex items-center gap-3">
-        <BookOpen className="h-4 w-4 text-slate-500" aria-label="Documentation" />
-        <Github className="h-4 w-4 text-slate-500" aria-label="GitHub" />
+        {/* Documentation link */}
+        <a
+          href="https://reform-lab.eu"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Open documentation at reform-lab.eu"
+          className="hidden md:flex items-center text-slate-500 hover:text-slate-700 transition-colors"
+        >
+          <BookOpen className="h-4 w-4" />
+        </a>
+
+        {/* GitHub link */}
+        <a
+          href="https://github.com/lucasvivier/reformlab"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="View source code on GitHub"
+          className="hidden md:flex items-center text-slate-500 hover:text-slate-700 transition-colors"
+        >
+          <Github className="h-4 w-4" />
+        </a>
 
         {/* API status dot with title tooltip */}
         <div
@@ -69,7 +99,10 @@ export function TopBar() {
           aria-label={apiConnected ? "API connected" : "API disconnected — using sample data"}
         />
 
-        <Settings className="h-4 w-4 text-slate-500" aria-label="Settings" />
+        {/* Settings icon (display-only, no click handler) */}
+        <div className="hidden md:flex items-center text-slate-500">
+          <Settings className="h-4 w-4" aria-label="Settings" />
+        </div>
       </div>
 
       {/* Scenario entry dialog */}

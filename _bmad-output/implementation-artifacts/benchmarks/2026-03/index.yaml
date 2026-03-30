@@ -1403,4 +1403,22 @@ records:
   provider: claude-subprocess
   created_at: '2026-03-30T14:09:30.722549+00:00'
   workflow_id: create-story
-updated_at: '2026-03-30T14:09:30.784839+00:00'
+- record_id: 774d4b11-c8d7-4a5f-9fee-42d562a23618
+  path: eval-22-1-synthesizer-20260330T141518Z.yaml
+  epic: 22
+  story: 1
+  role: synthesizer
+  role_id: null
+  provider: claude-subprocess
+  created_at: '2026-03-30T14:15:18.019165+00:00'
+  workflow_id: validate-story-synthesis
+- record_id: a1c4be83-d57d-487e-b0ef-a97f87e91892
+  path: eval-22-1-master-20260330T142011Z.yaml
+  epic: 22
+  story: 1
+  role: master
+  role_id: null
+  provider: claude-subprocess
+  created_at: '2026-03-30T14:20:11.063712+00:00'
+  workflow_id: dev-story
+updated_at: '2026-03-30T14:20:11.125986+00:00'
