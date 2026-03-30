@@ -501,6 +501,90 @@ class TestEvidenceManifestPopulation:
             "Integrity hashes should differ when evidence_assets differ"
         )
 
+    def test_run_manifest_omits_empty_evidence_lists_from_json(
+        self,
+    ) -> None:
+        """Verify RunManifest.to_json() omits empty evidence lists.
+
+        Story 21.8 / AC5: Manifest serialization excludes empty evidence_assets,
+        calibration_assets, validation_assets, and evidence_summary for compact
+        storage (internal representation for hashing always uses consistent
+        structure).
+        """
+        # Create manifest with all empty evidence fields
+        manifest = RunManifest(
+            manifest_id="test-empty-evidence",
+            created_at="2026-03-30T10:00:00Z",
+            engine_version="0.1.0",
+            openfisca_version="44.0.0",
+            adapter_version="0.1.0",
+            scenario_version="1.0",
+            evidence_assets=[],  # Empty - should be omitted
+            calibration_assets=[],  # Empty - should be omitted
+            validation_assets=[],  # Empty - should be omitted
+            evidence_summary={},  # Empty - should be omitted
+        )
+
+        # Serialize to JSON
+        manifest_json = manifest.to_json()
+        manifest_dict = json.loads(manifest_json)
+
+        # Verify empty evidence fields are omitted from JSON
+        assert "evidence_assets" not in manifest_dict, (
+            "Empty evidence_assets should be omitted from JSON"
+        )
+        assert "calibration_assets" not in manifest_dict, (
+            "Empty calibration_assets should be omitted from JSON"
+        )
+        assert "validation_assets" not in manifest_dict, (
+            "Empty validation_assets should be omitted from JSON"
+        )
+        assert "evidence_summary" not in manifest_dict, (
+            "Empty evidence_summary should be omitted from JSON"
+        )
+
+    def test_run_manifest_includes_non_empty_evidence_lists_in_json(
+        self,
+        example_evidence_descriptors: list[DataAssetDescriptor],
+    ) -> None:
+        """Verify RunManifest.to_json() includes non-empty evidence lists.
+
+        Story 21.8 / AC5: Non-empty evidence fields should be included in JSON.
+        """
+        evidence_assets = [d.to_json() for d in example_evidence_descriptors]
+        calibration_assets = [
+            d.to_json() for d in example_evidence_descriptors if d.data_class == "calibration"
+        ]
+
+        manifest = RunManifest(
+            manifest_id="test-non-empty-evidence",
+            created_at="2026-03-30T10:00:00Z",
+            engine_version="0.1.0",
+            openfisca_version="44.0.0",
+            adapter_version="0.1.0",
+            scenario_version="1.0",
+            evidence_assets=evidence_assets,
+            calibration_assets=calibration_assets,
+        )
+
+        # Serialize to JSON
+        manifest_json = manifest.to_json()
+        manifest_dict = json.loads(manifest_json)
+
+        # Verify non-empty evidence fields are included in JSON
+        assert "evidence_assets" in manifest_dict, (
+            "Non-empty evidence_assets should be included in JSON"
+        )
+        assert len(manifest_dict["evidence_assets"]) == len(evidence_assets)
+
+        assert "calibration_assets" in manifest_dict, (
+            "Non-empty calibration_assets should be included in JSON"
+        )
+        assert len(manifest_dict["calibration_assets"]) == len(calibration_assets)
+
+        # validation_assets should be omitted (empty)
+        assert "validation_assets" not in manifest_dict
+
 
 # ============================================================================
 # TestDocumentationCoherence (Story 21.8 / AC8)

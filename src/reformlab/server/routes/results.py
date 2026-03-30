@@ -78,6 +78,11 @@ def _metadata_to_detail(
         # Build a lightweight indicator summary (field names only for now)
         indicators = {"columns": columns, "row_count": table.num_rows}
 
+    # Story 21.8 / AC4: Populate evidence_assets from manifest
+    evidence_assets: list[dict[str, Any]] | None = None
+    if sim_result is not None and sim_result.manifest.evidence_assets:
+        evidence_assets = sim_result.manifest.evidence_assets
+
     return ResultDetailResponse(
         run_id=meta.run_id,
         timestamp=meta.timestamp,
@@ -103,6 +108,8 @@ def _metadata_to_detail(
         # Story 21.6 / AC6: Exogenous series fields for comparison dimension
         exogenous_series_hash=meta.exogenous_series_hash,
         exogenous_series_names=meta.exogenous_series_names,
+        # Story 21.8 / AC4: Evidence assets from manifest
+        evidence_assets=evidence_assets,
     )
 
 

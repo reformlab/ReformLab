@@ -96,6 +96,8 @@ class RunResponse(BaseModel):
     years: list[int]
     row_count: int
     manifest_id: str
+    # Story 21.8 / AC7: Trust warnings for exploratory data usage
+    trust_warnings: list[str] = []
 
 
 class MemoryCheckResponse(BaseModel):
@@ -458,6 +460,8 @@ class ResultDetailResponse(BaseModel):
     # Story 21.6 / AC6: Exogenous series fields for comparison dimension
     exogenous_series_hash: str | None = None
     exogenous_series_names: list[str] | None = None
+    # Story 21.8 / AC4: Evidence assets from manifest (populated from RunManifest)
+    evidence_assets: list[dict[str, Any]] | None = None
     # Populated only when data_available is True:
     indicators: dict[str, Any] | None = None
     columns: list[str] | None = None

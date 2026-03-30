@@ -188,6 +188,20 @@ async def run_simulation(
 
     years = sorted(result.yearly_states.keys())
 
+    # Story 21.8 / AC7: Generate trust warnings for exploratory data
+    trust_warnings: list[str] = []
+    if result.manifest.evidence_assets:
+        exploratory_assets = [
+            asset.get("name", asset.get("asset_id", "unknown"))
+            for asset in result.manifest.evidence_assets
+            if asset.get("trust_status") in ("exploratory", "demo-only", "validation-pending")
+        ]
+        if exploratory_assets:
+            trust_warnings.append(
+                f"Run uses exploratory data sources: {', '.join(exploratory_assets)}. "
+                "Results should not be used for production decision support."
+            )
+
     return RunResponse(
         run_id=run_id,
         success=result.success,
@@ -195,6 +209,7 @@ async def run_simulation(
         years=years,
         row_count=row_count,
         manifest_id=result.manifest.manifest_id,
+        trust_warnings=trust_warnings,
     )
 
 

@@ -393,11 +393,25 @@ class RunManifest:
         encoding. Serializing the same manifest on different machines produces
         byte-equivalent output.
 
+        Story 21.8 / AC5: Omits empty evidence lists from serialization for
+        compact storage. Empty evidence_assets, calibration_assets, and
+        validation_assets lists are excluded from JSON output.
+
         Returns:
             Canonical JSON string representation.
         """
         # Convert frozen dataclass to dict
         manifest_dict = asdict(self)
+
+        # Story 21.8 / AC5: Omit empty evidence lists for compact storage
+        if not manifest_dict.get("evidence_assets"):
+            manifest_dict.pop("evidence_assets", None)
+        if not manifest_dict.get("calibration_assets"):
+            manifest_dict.pop("calibration_assets", None)
+        if not manifest_dict.get("validation_assets"):
+            manifest_dict.pop("validation_assets", None)
+        if not manifest_dict.get("evidence_summary"):
+            manifest_dict.pop("evidence_summary", None)
 
         # Canonical serialization: sorted keys, no indent, stable separators
         return json.dumps(manifest_dict, sort_keys=True, separators=(",", ":"))

@@ -21,6 +21,10 @@ import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.csv as pcsv
 
+from reformlab.computation.ingestion import DataSchema
+from reformlab.computation.types import PopulationData
+from reformlab.data.descriptor import DataAssetDescriptor, DatasetDescriptor
+from reformlab.data.pipeline import DatasetManifest, DataSourceMetadata
 from reformlab.population import (
     ConditionalSamplingMethod,
     IPFMergeMethod,
@@ -30,10 +34,6 @@ from reformlab.population import (
     PopulationValidator,
     UniformMergeMethod,
 )
-from reformlab.computation.ingestion import DataSchema
-from reformlab.computation.types import PopulationData
-from reformlab.data.descriptor import DataAssetDescriptor, DatasetDescriptor
-from reformlab.data.pipeline import DataSourceMetadata, DatasetManifest
 from reformlab.population.loaders.base import CacheStatus, DataSourceLoader, SourceConfig
 from reformlab.population.methods.base import IPFConstraint
 
@@ -739,7 +739,7 @@ def write_summary(
         ])
         for desc in evidence_descriptors:
             lines.extend([
-                f"",
+                "",
                 f"Asset: {desc.asset_id}",
                 f"  Name: {desc.name}",
                 f"  Origin: {desc.origin}",
