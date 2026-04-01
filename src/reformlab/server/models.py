@@ -39,6 +39,8 @@ class RunRequest(BaseModel):
     portfolio_name: str | None = None  # set for portfolio runs
     policy_type: str | None = None  # for metadata recording
     exogenous_series: list[str] | None = None  # Story 21.6 / AC2: exogenous series names for scenario
+    # Story 23.1 / AC-1, AC-2: Runtime mode with live default
+    runtime_mode: Literal["live", "replay"] = "live"
 
 
 class MemoryCheckRequest(BaseModel):
@@ -98,6 +100,8 @@ class RunResponse(BaseModel):
     manifest_id: str
     # Story 21.8 / AC7: Trust warnings for exploratory data usage
     trust_warnings: list[str] = []
+    # Story 23.1 / AC-4: Runtime mode of the executed run
+    runtime_mode: Literal["live", "replay"] = "live"
 
 
 class MemoryCheckResponse(BaseModel):
@@ -462,6 +466,8 @@ class ResultDetailResponse(BaseModel):
     exogenous_series_names: list[str] | None = None
     # Story 21.8 / AC4: Evidence assets from manifest (populated from RunManifest)
     evidence_assets: list[dict[str, Any]] | None = None
+    # Story 23.1 / AC-4: Runtime mode from manifest
+    runtime_mode: Literal["live", "replay"] = "live"
     # Populated only when data_available is True:
     indicators: dict[str, Any] | None = None
     columns: list[str] | None = None

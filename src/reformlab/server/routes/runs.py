@@ -9,7 +9,7 @@ import os
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, cast
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -116,7 +116,12 @@ async def run_simulation(
                 seed=body.seed,
                 exogenous_series=body.exogenous_series,  # Story 21.6 / AC2
             )
-            run_config = RunConfig(scenario=scenario_config, seed=body.seed)
+            # Story 23.1 / AC-1, AC-2: Pass runtime_mode from request to RunConfig
+            run_config = RunConfig(
+                scenario=scenario_config,
+                seed=body.seed,
+                runtime_mode=body.runtime_mode,
+            )
             result = run_scenario(run_config, adapter=adapter)
 
         cache.store(run_id, result)
@@ -137,6 +142,8 @@ async def run_simulation(
 
         try:
             run_kind = "portfolio" if body.portfolio_name else "scenario"
+            # Story 23.1 / AC-4: Extract runtime_mode from manifest
+            runtime_mode_from_manifest = result.manifest.runtime_mode if result else "live"
             store.save_metadata(
                 run_id,
                 ResultMetadata(
@@ -154,6 +161,8 @@ async def run_simulation(
                     manifest_id=result.manifest.manifest_id if result else "",
                     scenario_id=result.scenario_id if result else "",
                     adapter_version=result.manifest.adapter_version if result else "unknown",
+                    # Story 23.1 / AC-4: Runtime mode from manifest
+                    runtime_mode=runtime_mode_from_manifest,
                     started_at=started_at,
                     finished_at=finished_at,
                     status=status,
@@ -210,6 +219,8 @@ async def run_simulation(
         row_count=row_count,
         manifest_id=result.manifest.manifest_id,
         trust_warnings=trust_warnings,
+        # Story 23.1 / AC-4: Runtime mode from manifest
+        runtime_mode=cast(Literal["live", "replay"], result.manifest.runtime_mode),
     )
 
 

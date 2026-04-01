@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import pyarrow as pa
+
+# Story 23.1 / AC-1, AC-2: Runtime mode literal type
+RuntimeMode = Literal["live", "replay"]
 
 if TYPE_CHECKING:
     from reformlab.templates.schema import PolicyParameters

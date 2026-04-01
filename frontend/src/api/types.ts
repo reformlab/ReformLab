@@ -20,6 +20,8 @@ export interface RunRequest {
   population_id?: string | null;
   seed?: number | null;
   baseline_id?: string | null;
+  // Story 23.1 / AC-3: Optional runtime mode (defaults to "live" on backend)
+  runtime_mode?: "live" | "replay";
 }
 
 export interface MemoryCheckRequest {
@@ -76,6 +78,8 @@ export interface RunResponse {
   years: number[];
   row_count: number;
   manifest_id: string;
+  // Story 23.1 / AC-4: Runtime mode of the executed run
+  runtime_mode: "live" | "replay";
 }
 
 export interface MemoryCheckResponse {
@@ -379,6 +383,8 @@ export interface ResultDetailResponse extends ResultListItem {
   // Story 21.6 / AC6: Exogenous series fields for comparison dimension
   exogenous_series_hash: string | null;
   exogenous_series_names: string[] | null;
+  // Story 23.1 / AC-4: Runtime mode from manifest
+  runtime_mode: "live" | "replay";
 }
 
 // ============================================================================

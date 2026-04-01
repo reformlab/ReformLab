@@ -44,6 +44,7 @@ from reformlab.computation.types import (
     OutputFields,
     PolicyConfig,
     PopulationData,
+    RuntimeMode,
     deserialize_policy,
     serialize_policy,
 )
@@ -70,6 +71,7 @@ __all__ = [
     "QualityCheckResult",
     "QualityIssue",
     "RangeRule",
+    "RuntimeMode",
     "TypeMismatch",
     "apply_input_mapping",
     "apply_output_mapping",

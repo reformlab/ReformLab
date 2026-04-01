@@ -1,0 +1,136 @@
+record_id: b77efe14-0690-4ffe-b52d-a1e7819fdb50
+created_at: '2026-04-01T21:31:16.757910+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 23
+  story_num: 1
+  title: Story 23.1
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: true
+    has_security_impact: false
+    requires_migration: true
+evaluator:
+  provider: codex
+  model: gpt-5.3-codex
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-04-01T21:28:34.723699Z'
+  end_time: '2026-04-01T21:30:54.439699Z'
+  duration_ms: 139716
+  input_tokens: 0
+  output_tokens: 4448
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 17792
+  heading_count: 40
+  list_depth_max: 3
+  code_block_count: 6
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 12.8'
+  - 🎯 Ruthless Story Validation 23.1
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 12.8 → REJECT'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Runtime Ownership Contradiction
+  - 2. Replay Invocation Contract Missing
+  - 3. Legacy Persistence Migration Is Underspecified
+  - 4. Default-Live Semantics Can Be Accidentally Defeated
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Define Replay Eligibility Rules
+  - 2. Expand API Surface Coverage
+  - 3. Add Non-Goals Section
+  - 4. Add Negative-Path ACs
+  - 5. Clarify Mode Precedence Rules
+  - 6. Add Data Upgrade Acceptance Test
+  - 7. Tie AC-3 to Explicit Serialization Targets
+  - ✨ Optimizations (Nice to Have)
+  - 1. Add Runtime-Mode Propagation Sequence Diagram
+  - 2. Define Canonical RuntimeMode Type Ownership
+  - 3. Add OpenAPI Contract Snapshot Test
+  - 4. Add “Done Means” Checklist
+  - 🤖 LLM Optimization Improvements
+  - '1. Remove Misleading `type: ignore` Examples'
+  - 2. Compress Repetitive Task Lines Into Outcome Blocks
+  - 3. Promote Hard Constraints to Top-Level Guardrails
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 501c0ee344e6
+findings:
+  total_count: 18
+  by_severity:
+    critical: 4
+    major: 6
+    minor: 7
+    nit: 1
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 5
+    completeness: 5
+    clarity: 5
+    testability: 3
+  has_fix_count: 18
+  has_location_count: 18
+  has_evidence_count: 16
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 7
+  confidence_phrases_count: 5
+linguistic:
+  avg_sentence_length: 17.76
+  vocabulary_richness: 0.3054054054054054
+  flesch_reading_ease: -19.55133248802821
+  vague_terms_count: 1
+  formality_score: 0.7
+  sentiment: neutral
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.94
+  evidence_quality: 0.89
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: true
+    has_security_impact: false
+    requires_migration: true

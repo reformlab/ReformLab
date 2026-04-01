@@ -78,6 +78,8 @@ class ResultMetadata:
     # Story 21.6 / AC6: Exogenous series fields for comparison dimension
     exogenous_series_hash: str | None = None  # SHA-256 hash of exogenous series
     exogenous_series_names: list[str] | None = None  # Series names for display
+    # Story 23.1 / AC-4: Runtime mode from manifest ("live" or "replay")
+    runtime_mode: str = "live"  # "live" | "replay"
 
 
 # ---------------------------------------------------------------------------
@@ -437,6 +439,8 @@ def _dict_to_metadata(data: dict[str, object]) -> ResultMetadata:
     raw_template = data.get("template_name")
     raw_policy_type = data.get("policy_type")
     raw_portfolio = data.get("portfolio_name")
+    # Story 23.1 / AC-3: Extract runtime_mode with "live" fallback for legacy data
+    raw_runtime_mode = data.get("runtime_mode", "live")
     return ResultMetadata(
         run_id=str(data["run_id"]),
         timestamp=str(data["timestamp"]),
@@ -455,6 +459,7 @@ def _dict_to_metadata(data: dict[str, object]) -> ResultMetadata:
         template_name=str(raw_template) if raw_template is not None else None,
         policy_type=str(raw_policy_type) if raw_policy_type is not None else None,
         portfolio_name=str(raw_portfolio) if raw_portfolio is not None else None,
+        runtime_mode=str(raw_runtime_mode),
     )
 
 
@@ -473,6 +478,8 @@ def _make_minimal_manifest(metadata: ResultMetadata) -> RunManifest:
 
     Used as a fallback when manifest.json is missing or corrupt (e.g.,
     runs from before Story 17.7 or partial disk artifacts).
+
+    Story 23.1 / AC-3: Include runtime_mode from metadata (defaults to "live").
     """
     from reformlab.governance.manifest import RunManifest
 
@@ -485,4 +492,5 @@ def _make_minimal_manifest(metadata: ResultMetadata) -> RunManifest:
         openfisca_version="unknown",
         adapter_version=adapter_version,
         scenario_version="unknown",
+        runtime_mode=metadata.runtime_mode,  # Story 23.1 / AC-3
     )

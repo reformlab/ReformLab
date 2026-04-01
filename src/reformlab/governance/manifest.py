@@ -66,6 +66,7 @@ OPTIONAL_JSON_FIELDS = (
     "calibration_assets",  # Story 21.8 / AC5
     "validation_assets",  # Story 21.8 / AC5
     "evidence_summary",  # Story 21.8 / AC5
+    "runtime_mode",  # Story 23.1 / AC-4: Runtime mode (live or explicit replay)
 )
 
 
@@ -133,11 +134,13 @@ class RunManifest:
         calibration_assets: List of calibration target descriptors used (empty list if none).
         validation_assets: List of validation benchmark descriptors used (empty list if none).
         evidence_summary: High-level evidence provenance summary (empty dict if none).
+        runtime_mode: Execution path mode ("live" or "replay"). Story 23.1 / AC-4. Defaults to "live".
         integrity_hash: SHA-256 hash of entire manifest content (excluding this field).
 
     Story 21.6 / AC4: Added exogenous_series field for manifest recording.
     Story 21.7 / AC8: Added taste_parameters field for governance provenance.
     Story 21.8 / AC5: Added evidence_assets, calibration_assets, validation_assets, evidence_summary.
+    Story 23.1 / AC-4: Added runtime_mode field for execution path recording.
     """
 
     manifest_id: str
@@ -162,6 +165,8 @@ class RunManifest:
     calibration_assets: list[dict[str, Any]] = field(default_factory=list)  # Story 21.8 / AC5
     validation_assets: list[dict[str, Any]] = field(default_factory=list)  # Story 21.8 / AC5
     evidence_summary: dict[str, Any] = field(default_factory=dict)  # Story 21.8 / AC5
+    # Story 23.1 / AC-4: Runtime mode (live or explicit replay)
+    runtime_mode: str = "live"  # "live" | "replay"
     integrity_hash: str = ""
 
     def __post_init__(self) -> None:
@@ -472,6 +477,15 @@ class RunManifest:
                         f"to int year: {conv_err}"
                     ) from conv_err
 
+            # Story 23.1 / AC-4: Extract runtime_mode with default "live" for backward compatibility
+            runtime_mode_raw = data.get("runtime_mode", "live")
+            # Validate runtime_mode value if present
+            if runtime_mode_raw not in ("live", "replay"):
+                raise ManifestValidationError(
+                    f"Invalid runtime_mode value: {runtime_mode_raw!r}. "
+                    "Must be 'live' or 'replay'."
+                )
+
             return cls(
                 manifest_id=data["manifest_id"],
                 created_at=data["created_at"],
@@ -495,6 +509,7 @@ class RunManifest:
                 calibration_assets=data.get("calibration_assets", []),  # Story 21.8 / AC5
                 validation_assets=data.get("validation_assets", []),  # Story 21.8 / AC5
                 evidence_summary=data.get("evidence_summary", {}),  # Story 21.8 / AC5
+                runtime_mode=runtime_mode_raw,  # Story 23.1 / AC-4
                 integrity_hash=data["integrity_hash"],
             )
         except (TypeError, KeyError) as e:
@@ -577,6 +592,7 @@ class RunManifest:
             calibration_assets=self.calibration_assets,  # Story 21.8 / AC5
             validation_assets=self.validation_assets,  # Story 21.8 / AC5
             evidence_summary=self.evidence_summary,  # Story 21.8 / AC5
+            runtime_mode=self.runtime_mode,  # Story 23.1 / AC-4
             integrity_hash=computed_hash,
         )
 

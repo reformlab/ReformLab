@@ -24,7 +24,7 @@ import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import yaml
 
@@ -79,11 +79,16 @@ class RunConfig:
         scenario: Scenario configuration (as object, dict, or YAML path).
         output_dir: Optional directory for output files.
         seed: Optional random seed (overrides scenario seed if provided).
+        runtime_mode: Execution path mode (live or replay). Story 23.1 / AC-1, AC-2.
+            Defaults to "live". Separate from simulation_mode (owned by ScenarioConfig).
     """
 
     scenario: ScenarioConfig | Path | dict[str, Any]
     output_dir: Path | None = None
     seed: int | None = None
+    # Story 23.1 / AC-1, AC-2: Runtime mode with live default
+    # Story 23.1 / AC-3: runtime_mode is separate from simulation_mode (annual/horizon_step)
+    runtime_mode: Literal["live", "replay"] = "live"
 
 
 @dataclass(frozen=True)
@@ -1676,6 +1681,8 @@ def _run_direct_scenario(
         child_manifests=child_manifests,
         data_hashes=_coerce_hash_map(workflow_result.metadata.get("data_hashes")),
         output_hashes=_coerce_hash_map(workflow_result.metadata.get("output_hashes")),
+        # Story 23.1 / AC-1: Direct scenario path uses default live mode
+        runtime_mode="live",
     )
 
     return SimulationResult(
@@ -1869,6 +1876,8 @@ def _execute_orchestration(
         child_manifests=child_manifests,
         data_hashes=_coerce_hash_map(workflow_result.metadata.get("data_hashes")),
         output_hashes=_coerce_hash_map(workflow_result.metadata.get("output_hashes")),
+        # Story 23.1 / AC-4: Runtime mode from RunConfig
+        runtime_mode=run_config.runtime_mode,
     )
 
     # Package result

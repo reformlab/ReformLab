@@ -27,7 +27,7 @@ so that Scenario, run requests, run metadata, and manifests can unambiguously di
   - [ ] Create `RuntimeMode` literal type in `src/reformlab/computation/types.py` (`"live"` | `"replay"`)
   - [ ] Add `runtime_mode: RuntimeMode` field to `RunRequest` in `src/reformlab/server/models.py` with default `"live"`
   - [ ] Add `runtime_mode: RuntimeMode` field to `RunResponse` in `src/reformlab/server/models.py`
-  - [ ] Add `runtime_mode: RuntimeMode` field to `ScenarioConfig` and `RunConfig` in `src/reformlab/interfaces/api.py`
+  - [ ] Add `runtime_mode: RuntimeMode` field to `RunConfig` in `src/reformlab/interfaces/api.py` (NOT ScenarioConfig — architecture §5.9 assigns runtime_mode to Run, not Scenario)
   - [ ] Document that `runtime_mode` is separate from `simulation_mode` (which is `annual` or `horizon_step`)
 
 - [ ] **Backend: Record runtime mode in RunManifest** (AC: 4)
@@ -44,10 +44,10 @@ so that Scenario, run requests, run metadata, and manifests can unambiguously di
   - [ ] Update `ResultDetailResponse` in `src/reformlab/server/models.py` to include `runtime_mode` field
 
 - [ ] **Frontend: Add runtime-mode type to API contracts** (AC: 3, 4, 5)
-  - [ ] Add `runtime_mode: "live" | "replay"` to `RunRequest` interface in `frontend/src/api/types.ts`
+  - [ ] Add `runtime_mode?: "live" | "replay"` to `RunRequest` interface in `frontend/src/api/types.ts` (optional — omit to let backend default apply)
   - [ ] Add `runtime_mode: "live" | "replay"` to `RunResponse` interface in `frontend/src/api/types.ts`
   - [ ] Add `runtime_mode: "live" | "replay"` to `ResultDetailResponse` interface in `frontend/src/api/types.ts`
-  - [ ] Ensure frontend defaults to `"live"` for new run requests (implicit default, no UI selector)
+  - [ ] Ensure frontend does NOT send `runtime_mode` for standard run requests (rely on backend default; no UI selector)
 
 - [ ] **Tests: Contract serialization tests** (AC: 3, 4)
   - [ ] Add `test_runtime_mode_serialization()` in `tests/server/test_api.py` for request/response round-trip
@@ -58,7 +58,9 @@ so that Scenario, run requests, run metadata, and manifests can unambiguously di
 - [ ] **Tests: Migration compatibility tests** (AC: 3)
   - [ ] Add `test_legacy_request_without_runtime_mode_defaults_to_live()` in `tests/server/test_api.py`
   - [ ] Add `test_legacy_manifest_deserialization_without_runtime_mode()` in `tests/governance/test_manifest.py`
+  - [ ] Add `test_manifest_from_json_with_invalid_runtime_mode_raises()` in `tests/governance/test_manifest.py`
   - [ ] Add `test_result_metadata_without_runtime_mode_fallback()` in `tests/server/test_api.py`
+  - [ ] Add `test_legacy_load_then_save_preserves_runtime_mode()` in `tests/server/test_result_store.py`
 
 ## Dev Notes
 
@@ -77,6 +79,15 @@ From `_bmad-output/planning-artifacts/architecture.md` (Section 5.9 - Server):
 - Replay remains available only via explicit demo/manual paths
 - Frontend should NOT add a runtime selector in this story (AC-5)
 
+### Non-Goals (Out of Scope)
+
+This story defines the contract only. The following are explicitly out of scope:
+
+- **Replay invocation mechanism:** How replay paths are triggered (endpoint, flag, UI action) is deferred to Story 23.4
+- **Live execution engine:** Actually executing against live OpenFisca is Stories 23.2–23.3
+- **Orchestrator behavior changes:** The orchestrator remains runtime-agnostic; branching on `runtime_mode` happens at the server/interfaces layer
+- **Frontend UI changes:** No new components, screens, or selectors
+
 ### Source Tree Components
 
 **Backend files to modify:**
@@ -86,7 +97,7 @@ From `_bmad-output/planning-artifacts/architecture.md` (Section 5.9 - Server):
 | `src/reformlab/computation/types.py` | Add `RuntimeMode` literal type | `RuntimeMode = Literal["live", "replay"]` |
 | `src/reformlab/server/models.py` | Pydantic request/response models | Add `runtime_mode` field to `RunRequest`, `RunResponse`, `ResultDetailResponse` |
 | `src/reformlab/governance/manifest.py` | Immutable run manifest | Add `runtime_mode` field; update `to_json()` / `from_json()` |
-| `src/reformlab/interfaces/api.py` | Python API config types | Add `runtime_mode` to `ScenarioConfig`, `RunConfig`; propagate to manifest |
+| `src/reformlab/interfaces/api.py` | Python API config types | Add `runtime_mode` to `RunConfig` only (NOT ScenarioConfig); propagate to manifest |
 | `src/reformlab/server/routes/runs.py` | Execution route handler | Read `runtime_mode` from request; pass through to `run_scenario()` |
 | `src/reformlab/server/result_store.py` | Result metadata persistence | Add `runtime_mode` to `ResultMetadata` dataclass |
 
@@ -135,7 +146,7 @@ class RunRequest(BaseModel):
     policy_type: str | None = None
     exogenous_series: list[str] | None = None
     # Story 23.1 / AC-1, AC-2: Runtime mode with live default
-    runtime_mode: RuntimeMode = "live"  # type: ignore[valid-type]
+    runtime_mode: Literal["live", "replay"] = "live"
 ```
 
 **3. RunManifest Extension**
@@ -147,7 +158,7 @@ class RunRequest(BaseModel):
 class RunManifest:
     # ... existing fields ...
     # Story 23.1 / AC-4: Runtime mode (live or explicit replay)
-    runtime_mode: RuntimeMode = "live"  # type: ignore[valid-type]
+    runtime_mode: str = "live"  # "live" | "replay"
     integrity_hash: str = ""
 ```
 
@@ -160,7 +171,11 @@ Add `runtime_mode` to `REQUIRED_JSON_FIELDS` (or `OPTIONAL_JSON_FIELDS` with a d
 For backwards compatibility with existing manifests and requests:
 
 - `RunRequest.runtime_mode` defaults to `"live"` when not provided
-- `RunManifest.from_json()` should handle missing `runtime_mode` gracefully (default to `"live"`)
+- Add `runtime_mode` to `OPTIONAL_JSON_FIELDS` in `manifest.py` (not `REQUIRED_JSON_FIELDS`) so legacy manifests without this field load without error
+- `RunManifest.from_json()` should handle missing `runtime_mode` gracefully using `data.get("runtime_mode", "live")`, defaulting to `"live"`
+- Update `_dict_to_metadata()` in `result_store.py` to extract `runtime_mode` with a `"live"` fallback: `data.get("runtime_mode", "live")`
+- Update `_make_minimal_manifest()` in `result_store.py` to include `runtime_mode="live"`
+- `from_json()` MUST validate `runtime_mode` values if present: invalid values (not "live" or "replay") raise `ManifestValidationError`
 - Add tests for legacy deserialization paths
 
 **6. No Frontend Runtime Selector (AC-5)**
@@ -188,7 +203,7 @@ class TestRuntimeModeContract:
         """RunRequest accepts explicit replay mode."""
         request = RunRequest(
             template_name="carbon_tax",
-            runtime_mode="replay"  # type: ignore[valid-type]
+            runtime_mode="replay"
         )
         assert request.runtime_mode == "replay"
 
@@ -197,7 +212,7 @@ class TestRuntimeModeContract:
         with pytest.raises(ValidationError):
             RunRequest(
                 template_name="carbon_tax",
-                runtime_mode="invalid"  # type: ignore[valid-type]
+                runtime_mode="invalid"
             )
 ```
 
@@ -295,22 +310,7 @@ None created during story generation.
 
 ### File List
 
-**Primary files to create/modify:**
-
-1. `src/reformlab/computation/types.py` — Add `RuntimeMode` literal type
-2. `src/reformlab/server/models.py` — Add `runtime_mode` to Pydantic models
-3. `src/reformlab/governance/manifest.py` — Add `runtime_mode` to `RunManifest`
-4. `src/reformlab/interfaces/api.py` — Add `runtime_mode` to config types
-5. `src/reformlab/server/routes/runs.py` — Handle `runtime_mode` in execution route
-6. `src/reformlab/server/result_store.py` — Add `runtime_mode` to `ResultMetadata`
-7. `frontend/src/api/types.ts` — Add `runtime_mode` to TypeScript interfaces
-
-**Test files to modify:**
-
-1. `tests/governance/test_manifest.py` — Add runtime mode contract tests
-2. `tests/governance/conftest.py` — Update fixtures
-3. `tests/server/test_api.py` — Add API contract tests
-4. `tests/server/conftest.py` — Add test fixtures
+*See Source Tree Components table above for primary and test files.*
 
 **Planning artifacts referenced:**
 

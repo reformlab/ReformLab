@@ -19,6 +19,7 @@ def minimal_manifest() -> RunManifest:
         openfisca_version="40.0.0",
         adapter_version="1.0.0",
         scenario_version="v1.0",
+        runtime_mode="live",  # Story 23.1 / AC-4
     )
 
 
@@ -37,6 +38,7 @@ def parent_manifest() -> RunManifest:
             2025: "22345678-1234-1234-1234-123456789abc",
             2026: "32345678-1234-1234-1234-123456789abc",
         },
+        runtime_mode="live",  # Story 23.1 / AC-4
     )
 
 
@@ -52,6 +54,7 @@ def child_manifest() -> RunManifest:
         scenario_version="v1.0",
         parent_manifest_id="12345678-1234-1234-1234-123456789abc",
         child_manifests={},
+        runtime_mode="live",  # Story 23.1 / AC-4
     )
 
 
