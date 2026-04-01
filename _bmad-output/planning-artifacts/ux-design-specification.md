@@ -1,9 +1,9 @@
 ---
 stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 lastStep: 14
-revision: 3.0
-revisionDate: 2026-03-30
-revisionScope: "Information architecture restructuring plus shell refinement, scenario naming, population sub-navigation, investment-decision guidance, and mobile demo viability"
+revision: 4.1
+revisionDate: 2026-04-01
+revisionScope: "Stage 1 redesign: three policy types (Tax/Subsidy/Transfer), API-driven categories with formula help, duplicate policies, create-from-scratch flow, editable parameter groups, policy set save/load independent from scenario. Plus April 1 consistency: five-stage workspace, inherited primary population, separate runtime and simulation modes, live-default execution, surfaced-pack availability guidance"
 inputDocuments:
   - _bmad-output/planning-artifacts/research/technical-entity-graph-data-modeling-and-vectorized-simulation-engines-research-2026-02-23.md
   - _bmad-output/planning-artifacts/research/domain-generic-microsimulation-frameworks-research-2026-02-23.md
@@ -32,6 +32,30 @@ UX scope now assumes:
 Revision 3.0 keeps the Revision 2 four-stage architecture but tightens the product around actual use: stronger brand presence, clearer scenario controls, denser policy editing, explicit population sub-steps, user-facing `Scenario` terminology in place of `Engine`, a guided investment-decision flow, a quick test population, and demo-grade phone usability.
 
 Task-level implementation detail for these changes lives in `_bmad-output/implementation-artifacts/ux-revision-3-implementation-spec.md`.
+
+## Revision 4.1 Update (2026-04-01)
+
+Revision 4.1 redesigns Stage 1 and makes the canonical UX consistent with April 1 workspace and runtime decisions:
+
+**Stage 1 — Policies redesign:**
+
+- Stage renamed from "Policies & Portfolio" to **Policies**. "Portfolio" removed from all user-facing copy; internal concept is now **Policy Set**.
+- Three fundamental policy types: **Tax** (amber), **Subsidy** (emerald), **Transfer** (blue). Rebate = Subsidy. Feebate = policy set of Tax + Subsidy.
+- **API-driven categories** (not hardcoded): each category maps to population columns (e.g., `carbon_emissions` → `emissions_co2`). Categories fetched from `GET /api/categories`.
+- **Formula help** per category via help icon: shows how the policy applies (e.g., `emissions_co2 × tax_rate`). Content from API.
+- **Duplicate policies allowed**: same template can be added multiple times with different parameters.
+- **"+ Add Policy" flow**: from template (pre-filled) or from scratch (pick type + category → default parameter groups).
+- **Editable parameter groups**: defaults per type (Mechanism / Eligibility / Schedule / Redistribution), user can rename/add/move/delete.
+- **Policy sets saved independently from scenarios** — reusable across scenarios.
+- **Cross-stage validation**: policy categories checked against population columns.
+
+**Workspace and runtime:**
+
+- the workspace is now a five-stage flow: `Policies`, `Population`, `Investment Decisions`, `Scenario`, `Run / Results / Compare`,
+- the primary population is selected in `Population` and shown as inherited context in `Scenario`,
+- `simulation_mode` belongs to the scenario definition and remains distinct from `runtime_mode`,
+- normal web execution defaults to live OpenFisca, while replay remains available only through explicit demo or manual flows,
+- surfaced policy packs must show clear live-availability status without introducing any runtime or engine selector in the first slice.
 
 ## Executive Summary
 
@@ -550,9 +574,9 @@ flowchart TD
 **Key UX decisions:**
 
 - **No empty state, ever.** The workspace opens on a valid scenario, not an unconfigured shell. The Run button works immediately.
-- **The demo scenario IS the tutorial.** By exploring the pre-seeded scenario, the analyst learns what the portfolio, population, and engine stages contain without having to complete them first.
+- **The demo scenario IS the tutorial.** By exploring the pre-seeded scenario, the analyst learns what the policy, population, decision, and scenario stages contain without having to complete them first.
 - **First chart is the hook.** Everything before the first chart is automatic. Everything after is the analyst's curiosity driving exploration.
-- **The four-stage IA remains visible.** Even though the first launch opens on Stage 4, the analyst can move backward into Stages 1-3 to inspect or edit the scenario that produced the result.
+- **The stage-based IA remains visible.** Even though the first launch opens on the run/results surface, the analyst can move backward into the earlier stages to inspect or edit the scenario that produced the result.
 - **Gentle discovery:** The lineage drill-down and scenario comparison are discoverable (clickable chart elements, visible "Compare" action) but not pushed. The analyst finds them when they're ready.
 
 ### Journey 3: Scenario Workspace
@@ -910,7 +934,7 @@ Components not available in Shadcn/ui, designed specifically for ReformLab's dom
 
 #### ModelConfigStepper (Retired after Revision 2.0)
 
-**Purpose:** Historical progress indicator for the original four-step model configuration journey. Retained here for reference only; the active shell now uses the four-stage nav rail defined in Revision 2.0.
+**Purpose:** Historical progress indicator for the original four-step model configuration journey. Retained here for reference only; the active shell now uses the five-stage nav rail defined by the current canonical revisions.
 
 **Anatomy:**
 
@@ -1244,56 +1268,60 @@ This is the industry standard for professional web applications. It covers the a
 
 > **This revision supersedes:** the User Journey Flows section (Journey 1: Model Configuration flow and any Journey 2 interpretation that conflicts with stage-based onboarding), the original component sequencing tied to `ScenarioCard`, `ModelConfigStepper`, and the pre-revision shell layout, and the Navigation & Panel Management section. Where older sections use pre-revision terminology, the canonical object model below takes precedence.
 >
-> **Motivation:** The original information architecture mixed concerns within a single "Configuration" stage — population selection, policy template selection, parameter editing, and validation all lived together. User testing revealed this creates confusion: the link between Portfolio and Policy was unclear, Population appeared in two places (Data Fusion and Configuration), calibration was missing, and the Configuration screen felt like a grab-bag. This revision restructures the GUI into four stages aligned with the analyst's natural mental model.
+> **Motivation:** The original information architecture mixed concerns within a single "Configuration" stage — population selection, policy template selection, parameter editing, and validation all lived together. User testing revealed this creates confusion: the link between Portfolio and Policy was unclear, Population appeared in two places (Data Fusion and Configuration), calibration was missing, and the Configuration screen felt like a grab-bag. Revision 2 introduced the initial stage-based model; the current canonical model is the five-stage flow defined in Revision 4.1.
 
-### Revision: Four-Stage Information Architecture
+### Revision: Stage-Based Information Architecture
 
-The workspace now follows a four-stage linear workflow. Each stage represents one complete category of decision. Stages are navigable in any order (not a blocking wizard) but the natural flow is sequential.
+The workspace now follows a five-stage linear workflow. Each stage represents one complete category of decision. Stages are navigable in any order (not a blocking wizard) but the natural flow is sequential.
 
 ```
-Stage 1: POLICIES & PORTFOLIO
+Stage 1: POLICIES
   └─ "What policies am I testing?"
 
 Stage 2: POPULATION
   └─ "Who does this affect?"
 
-Stage 3: ENGINE
-  └─ "How should the computation behave?"
+Stage 3: INVESTMENT DECISIONS
+  └─ "What optional household behavior should be modeled?"
 
-Stage 4: RUN / RESULTS / COMPARE
+Stage 4: SCENARIO
+  └─ "How should this scenario execute?"
+
+Stage 5: RUN / RESULTS / COMPARE
   └─ "What happened?"
 ```
 
 ### Revision: Canonical Object Model
 
-The four-stage shell organizes one underlying analysis model. The canonical workflow artifacts are:
+The five-stage shell organizes one underlying analysis model. The canonical workflow artifacts are:
 
 | Artifact | Definition | Created/edited in | Notes |
 |---|---|---|---|
-| **Portfolio** | Reusable bundle of one or more policy templates plus their parameter schedules | Stage 1 | A single policy is a portfolio of one |
+| **Policy Set** | Reusable bundle of one or more policies plus their parameter schedules, independent from scenarios | Stage 1 | A single policy is a valid policy set; save/load decoupled from scenario |
 | **Population** | Reusable dataset selected, generated, or uploaded for analysis | Stage 2 | Populations remain inspectable outside any one run |
-| **Scenario** | Versioned analysis definition combining a portfolio, selected population set, engine configuration, mappings, and metadata | Stages 1-3 | This is the primary save/clone/reform-as-delta object |
-| **Run** | Execution of one scenario version for one population or one row of a run matrix | Stage 4 | Runs produce manifests, results, lineage, and exports |
-| **Comparison** | View over two or more completed runs | Stage 4 | Comparisons are derived views, not first-class saved configs |
+| **Scenario** | Versioned analysis definition combining a policy set, selected population set, simulation configuration, mappings, and metadata | Stages 1-4 | This is the primary save/clone/reform-as-delta object |
+| **Run** | Execution of one scenario version for one population or one row of a run matrix | Stage 5 | Runs produce manifests, results, lineage, and exports |
+| **Comparison** | View over two or more completed runs | Stage 5 | Comparisons are derived views, not first-class saved configs |
 
 **Authoritative relationships:**
 
-- A scenario references exactly one portfolio version and one or more population selections.
-- A scenario owns engine settings such as time horizon, calibration choices, and other execution controls.
+- A scenario references exactly one policy set version and one or more population selections.
+- A scenario owns simulation settings such as `simulation_mode`, horizon controls, sensitivity-population choices, and other execution controls.
+- Run metadata owns `runtime_mode` and keeps that contract separate from `simulation_mode`.
 - A run is never edited directly. To change results, the user edits or clones the scenario and executes a new run.
 - Reform-as-delta applies at the scenario level: a reform scenario stores sparse overrides relative to a baseline scenario version.
-- Zero-configuration onboarding uses a pre-seeded demo scenario that already has valid Stage 1-3 selections.
+- Zero-configuration onboarding uses a pre-seeded demo scenario that already has valid Stage 1-4 selections.
 
-**Why four stages instead of the previous mixed model:**
+**Why the staged model instead of the previous mixed model:**
 
 | Previous structure | Problem | New structure |
 |---|---|---|
 | Configuration → Population step | Population also in Data Fusion — duplicated | Stage 2: Population (single place) |
-| Configuration → Policy Template step | Disconnected from Portfolio | Stage 1: Policies & Portfolio (unified) |
-| Configuration → Parameters step | Mixed policy params with engine params | Stage 1 for policy params, Stage 3 for engine params |
+| Configuration → Policy Template step | Disconnected from Policy Set | Stage 1: Policies (unified) |
+| Configuration → Parameters step | Mixed policy params with execution params | Stage 1 for policy params, Stage 3 for decisions, Stage 4 for scenario execution controls |
 | Configuration → Validation step | Validated everything at once | Validation is per-stage (each stage validates its own completeness) |
-| Portfolio Designer (separate screen) | Users couldn't see policies inside portfolio | Stage 1 makes Portfolio = collection of policies, visible and editable inline |
-| No projection-controls home | Vintage handling, uprating, and execution settings had no clear home | Stage 3: Engine → Projection Assumptions + execution controls |
+| Portfolio Designer (separate screen) | Users couldn't see policies inside portfolio | Stage 1 makes Policy Set = collection of policies, visible and editable inline |
+| No execution-controls home | Horizon, validation, and runtime summary had no clear home | Stage 4: Scenario → execution controls + validation |
 
 ### Revision: Application Shell & Navigation
 
@@ -1328,16 +1356,17 @@ The four-stage shell organizes one underlying analysis model. The canonical work
 - **Collapsed state:** `bg-slate-100`, icon-only rail
 - **Top element:** Logo mark (bimodal dot histogram, Slate 700 + Emerald 500), max 24px height
 - **Below logo:** Wordmark "ReformLab" in Inter semibold, `text-slate-700` — visible when expanded, hidden when collapsed
-- **Stage indicators:** Four numbered circles with connecting lines (existing `WorkflowNavRail` pattern), updated labels:
+- **Stage indicators:** Five numbered circles with connecting lines (existing `WorkflowNavRail` pattern), updated labels:
   1. Policies
   2. Population
-  3. Engine
-  4. Results
+  3. Investment Decisions
+  4. Scenario
+  5. Results
 - **Stage indicator states:**
   - Active: `bg-blue-500 text-white`
   - Complete: `bg-emerald-500 text-white` with check icon
   - Incomplete: `border-2 border-slate-300 bg-white text-slate-500`
-- **Summary lines** below each stage label (when expanded): e.g., "3 policies in portfolio", "45k records", "2025–2035"
+- **Summary lines** below each stage label (when expanded): e.g., "3 policies", "45k records", "2025–2035"
 - **No scenario cards in sidebar** — scenarios are managed within their respective stages
 
 #### Top Bar
@@ -1369,63 +1398,204 @@ Per `_bmad-output/branding/visual-identity-guide.md`:
 | Numbers in IBM Plex Mono | All data values use `font-mono font-medium` |
 | Colors from palette only | Removed all `indigo-*` classes; using only slate/blue/emerald/amber/red/violet |
 
-### Revision: Stage 1 — Policies & Portfolio
+### Revision: Stage 1 — Policies
 
-**Purpose:** Define what policies to test. A Portfolio is a named bundle of one or more policies. A single policy is a portfolio of one.
+**Purpose:** Define what policies to test. A Policy Set is a reusable bundle of one or more policies. A single policy is a valid policy set.
+
+> **Supersedes:** The Revision 2 "Policies & Portfolio" section. The word "Portfolio" is removed from all user-facing product copy. The internal concept is now **Policy Set**. All references to "portfolio" in earlier sections should be read as "policy set".
+
+#### Three Fundamental Policy Types
+
+Every policy has exactly one type. Types are exhaustive — there is no "other" type.
+
+| Type | Color | Badge classes | What it does | Examples |
+|------|-------|--------------|-------------|---------|
+| **Tax** | Amber | `bg-amber-100 text-amber-800` | Takes money from households | Carbon tax, energy tax, vehicle malus, pollution levy |
+| **Subsidy** | Emerald | `bg-emerald-100 text-emerald-800` | Gives money/value to households | Energy efficiency grant, vehicle bonus, renovation aid, appliance rebate |
+| **Transfer** | Blue | `bg-blue-100 text-blue-800` | Redistributes between households | Carbon dividend, energy poverty aid, climate cheque, means-tested allowance |
+
+**Rebate** is a form of Subsidy (purchase-triggered). No separate type needed.
+
+**Feebate** (e.g., vehicle bonus-malus) is a Policy Set of two policies: one Tax + one Subsidy. A feebate template creates two separate, individually editable policies in the composition panel.
+
+#### API-Driven Categories
+
+Categories are **not hardcoded in the frontend**. They come from the API and represent the population column(s) a policy operates on. The API endpoint `GET /api/categories` returns:
+
+```json
+[
+  {
+    "id": "carbon_emissions",
+    "label": "Carbon Emissions",
+    "columns": ["emissions_co2"],
+    "compatible_types": ["tax", "subsidy", "transfer"],
+    "formula_explanation": "emissions_co2 × tax_rate",
+    "description": "Applies to household CO₂ emissions (tonnes/year)"
+  },
+  {
+    "id": "energy_consumption",
+    "label": "Energy Consumption",
+    "columns": ["energy_kwh", "energy_cost"],
+    "compatible_types": ["tax", "subsidy", "transfer"],
+    "formula_explanation": "energy_kwh × rate_per_kwh",
+    "description": "Applies to household energy consumption"
+  },
+  {
+    "id": "vehicle_emissions",
+    "label": "Vehicle Emissions",
+    "columns": ["vehicle_co2", "vehicle_type"],
+    "compatible_types": ["tax", "subsidy"],
+    "formula_explanation": "vehicle_co2 × malus_rate",
+    "description": "Applies to vehicle emission levels"
+  },
+  {
+    "id": "housing",
+    "label": "Housing",
+    "columns": ["housing_type", "housing_efficiency"],
+    "compatible_types": ["subsidy", "transfer"],
+    "formula_explanation": "renovation_cost × subsidy_rate",
+    "description": "Applies to housing characteristics and efficiency"
+  },
+  {
+    "id": "income",
+    "label": "Income",
+    "columns": ["disposable_income", "decile"],
+    "compatible_types": ["transfer"],
+    "formula_explanation": "max(0, ceiling − disposable_income)",
+    "description": "Applies to household income for means-tested transfers"
+  }
+]
+```
+
+**Every policy must have at least one category.** The category determines:
+- Which population columns the policy reads
+- Which formula structure is applied
+- Cross-stage validation: if the population doesn't have the required columns, a warning is shown
+
+#### Category Help / Formula Explanation
+
+Each policy card displays a **help icon** (CircleHelp from Lucide) next to the category badge. Tapping it reveals an inline explanation:
+
+```
+┌─────────────────────────────────────────────┐
+│ ℹ Carbon Emissions                          │
+│                                             │
+│ How it works:                               │
+│   emissions_co2 × tax_rate = tax_amount     │
+│                                             │
+│ Applies to the CO₂ emissions column in      │
+│ your population data (tonnes/year).         │
+│                                             │
+│ Required columns: emissions_co2             │
+└─────────────────────────────────────────────┘
+```
+
+This uses a Popover (existing Shadcn component), not a modal. The `formula_explanation` and `description` fields come directly from the API.
 
 #### Information Architecture
 
 ```
-Stage 1: POLICIES & PORTFOLIO
+Stage 1: POLICIES
 │
-├─ Policy Template Browser
-│   ├─ Available templates (carbon tax, subsidy, etc.)
-│   ├─ Search / filter by category
-│   ├─ Template card: name, description, parameter count, category badge
-│   └─ Click to add to current portfolio
+├─ Policy Browser (left panel)
+│   ├─ "+ Add Policy" primary button (opens add-policy flow)
+│   ├─ Template catalog: grouped by category, filterable
+│   │   ├─ Template card: name, type badge, category badge, live-availability badge, description, param count
+│   │   ├─ Click "Add" button on card → adds instance to composition
+│   │   └─ Same template can be added multiple times (duplicates allowed)
+│   └─ Search / filter by type, category, or keyword
 │
-├─ Portfolio Composition (inline, not a separate screen)
-│   ├─ List of policies in the portfolio
-│   ├─ Per-policy: expand to edit parameters (sliders, numeric inputs, toggles)
-│   ├─ Drag to reorder (execution priority)
-│   ├─ Conflict detection (inline amber warnings)
-│   └─ Year schedule per policy (start year, end year, phase-in)
+├─ Add Policy Flow (triggered by "+ Add Policy" or template card)
+│   ├─ Two paths:
+│   │   ├─ From Template: select template → pre-filled parameters added to composition
+│   │   └─ From Scratch: pick type (Tax/Subsidy/Transfer) → pick category → get default parameter groups
+│   └─ Composite templates (e.g., feebate) add multiple policies at once
 │
-├─ Portfolio Actions
-│   ├─ Save portfolio (name + description)
-│   ├─ Load saved portfolio
-│   ├─ Clone portfolio
+├─ Policy Composition (right panel, inline)
+│   ├─ Ordered list of policies
+│   ├─ Per-policy card:
+│   │   ├─ Header: name, type badge, category badge + help icon
+│   │   ├─ Summary line (key values at a glance, e.g., "€44/tCO₂, 3yr phase-in")
+│   │   ├─ Expand to edit parameters (grouped by parameter group)
+│   │   ├─ Parameter groups: collapsible sections (Mechanism / Eligibility / Schedule / Redistribution)
+│   │   ├─ Groups are editable: rename, add new, move parameters between, delete empty
+│   │   └─ Year schedule editor (start year, end year, phase-in)
+│   ├─ Reorder with up/down arrow buttons
+│   ├─ Remove individual policies
+│   └─ Conflict detection (inline amber warnings)
+│
+├─ Policy Set Actions
+│   ├─ Save policy set (name + description) — independent from scenario
+│   ├─ Load saved policy set
+│   ├─ Clone policy set
 │   └─ Clear / start over
 │
 └─ Validation
-    ├─ Per-policy: required parameters filled, ranges valid
+    ├─ Per-policy: required parameters filled, ranges valid, category assigned
     ├─ Cross-policy: conflict detection with resolution strategy selector
-    └─ Green checkmark when portfolio is valid and ready
+    ├─ Cross-stage: category columns vs. population columns compatibility
+    └─ Green checkmark when policy set is valid and ready
 ```
+
+#### Default Parameter Groups
+
+When creating a policy (from template or from scratch), default parameter groups are assigned based on the policy type:
+
+| Group | Default for types | Purpose |
+|-------|-------------------|---------|
+| **Mechanism** | All (Tax, Subsidy, Transfer) | Core rates and amounts — the primary lever |
+| **Eligibility** | All | Thresholds, exemptions, means tests — who qualifies |
+| **Schedule** | All | Phase-in periods, year trajectories — when/how it ramps |
+| **Redistribution** | Tax (optional for Subsidy, Transfer) | Revenue allocation — where the money goes |
+
+Groups are **editable by the user**: rename, add new groups, move parameters between groups, delete empty groups. This is not exposed by default — an "Edit groups" toggle or gear icon reveals the group management controls.
+
+The **primary parameter** (the rate/amount in the Mechanism group) is always visible in the policy card header as a summary line, even when the card is collapsed.
 
 #### Key Design Decisions
 
-- **Portfolio IS the policy step.** There is no separate "Portfolio Designer" screen. The user builds the portfolio inline as they add and configure policies.
-- **Policy parameters live with their policy.** Expanding a policy card reveals its parameter editors. No separate "Parameters" step.
-- **Template browser uses cards**, not a dropdown. Each card shows enough information to choose without clicking into it.
-- **Conflict detection is inline and non-blocking.** Amber warnings show which policies conflict on which parameters. The user can set a resolution strategy (sum, first wins, last wins, max) or fix manually.
-- **Single policy = portfolio of one.** The UI doesn't distinguish. If the user adds only one policy, it's still called a portfolio internally but the UI doesn't force naming.
+- **Stage is named "Policies"**, not "Policies & Portfolio". The collection of policies is internally called a "Policy Set" but the user sees "Policies" as the stage name.
+- **Policy types are a closed set of three**: Tax, Subsidy, Transfer. No "other" or "custom type".
+- **Categories come from the API**, not hardcoded. The frontend fetches and displays them. Categories determine which population columns are used.
+- **Surfaced packs must show truthful availability.** Cards and detail panels display live availability using catalog metadata such as `Live ready` or `Unavailable for live execution`, plus a short reason when unavailable.
+- **Formula help is always available** via a help icon per category. The explanation comes from the API.
+- **Duplicates are allowed.** The same template can be added multiple times with different parameters (e.g., two carbon taxes at different rates).
+- **"+ Add Policy" is the primary action**, not toggling templates. Templates are a catalog to add from.
+- **Two creation paths**: from template (pre-filled) or from scratch (pick type + category, get default groups).
+- **Composite templates** (feebate, tax+dividend) create multiple policies in one action. Each resulting policy is independently editable.
+- **Parameter groups are editable** but start with sensible defaults per type.
+- **Policy sets are saved independently from scenarios.** A policy set can be loaded into any scenario.
+- **Policy parameters live with their policy.** Expanding a policy card reveals grouped parameter editors.
+- **Conflict detection is inline and non-blocking.** Amber warnings with resolution strategy selector.
 
 #### User Flow
 
 ```mermaid
 flowchart TD
-    A[Stage 1: Policies & Portfolio] --> B[Browse policy templates]
-    B --> C[Add template to portfolio]
-    C --> D[Expand policy → edit parameters]
-    D --> E{More policies?}
-    E -->|Yes| B
-    E -->|No| F[Review portfolio composition]
-    F --> G{Conflicts?}
-    G -->|Yes| H[Set resolution strategy per conflict]
-    H --> F
-    G -->|No| I[Portfolio valid ✓ → proceed to Stage 2]
+    A[Stage 1: Policies] --> B{Add policy}
+    B -->|From template| C[Browse template catalog]
+    B -->|From scratch| D[Pick type + category]
+    C --> E[Add to composition]
+    D --> F[Get default parameter groups]
+    F --> E
+    E --> G[Expand policy → edit parameters by group]
+    G --> H{More policies?}
+    H -->|Yes| B
+    H -->|No| I[Review composition]
+    I --> J{Conflicts?}
+    J -->|Yes| K[Set resolution strategy]
+    K --> I
+    J -->|No| L[Policy set valid ✓ → proceed to Stage 2]
 ```
+
+#### Cross-Stage Validation (Policies × Population)
+
+When both Stage 1 and Stage 2 are configured, the system validates that the population dataset has the columns required by the selected policies' categories. Warnings appear in both stages:
+
+- **In Stage 1:** "⚠ Your population is missing column `vehicle_co2` — Vehicle Emissions policies won't have data."
+- **In Stage 2:** "⚠ Selected policies require columns: `emissions_co2`, `vehicle_co2`. Current population is missing: `vehicle_co2`."
+
+These are warnings, not blockers — the user can proceed, but the simulation will skip policies that lack data.
 
 ### Revision: Stage 2 — Population
 
@@ -1552,99 +1722,129 @@ For a categorical column `region` cross-tabbed with `tenure_type`:
 
 Colors: Slate 400 for first category, Blue 500 for second. Chart palette from the visual identity guide.
 
-### Revision: Stage 3 — Engine
+### Revision: Stage 3 — Investment Decisions
 
-**Purpose:** Configure computation parameters — how the simulation engine behaves. This stage is the assembly point: it references the portfolio from Stage 1 and populations from Stage 2, and adds projection, mapping, and execution controls aligned with the OpenFisca-first MVP.
+**Purpose:** Configure optional household decision behavior in a dedicated workspace. This stage is skipped in the happy path when decision behavior is disabled.
 
 #### Information Architecture
 
 ```
-Stage 3: ENGINE
+Stage 3: INVESTMENT DECISIONS
 │
-├─ Time Horizon
-│   ├─ Start year (numeric input, e.g., 2025)
-│   ├─ End year (numeric input, e.g., 2035)
-│   └─ Display: "11-year projection"
+├─ Decision Enablement
+│   ├─ Toggle: Enable investment decisions
+│   └─ Summary copy explaining this is optional
 │
-├─ Population Selection
-│   ├─ Primary population: dropdown from Stage 2 library
-│   ├─ [+ Add population for sensitivity] — secondary affordance (link, not button)
-│   │   └─ Adds a second dropdown for an additional population
-│   └─ Display: "Running against: FR-2023-SILC" or "Running against: 2 populations"
+├─ Model Selection
+│   ├─ Domain selector (vehicle / heating / renovation where supported)
+│   ├─ Model choice / profile
+│   └─ Calibration status summary
 │
-├─ Projection Assumptions [advanced accordion]
-│   └─ When expanded:
-│       ├─ Uprating/indexation source (dropdown: template default, CPI series, custom series)
-│       ├─ Vintage handling (dropdown: carry-forward, scheduled rebase, custom rule)
-│       ├─ Optional behavioral response profile (dropdown: none, template default, custom elasticity pack)
-│       └─ Assumption status indicator (using defaults / customized)
+├─ Parameters
+│   ├─ Taste / cost assumptions
+│   ├─ Eligibility or availability constraints
+│   └─ Review-ready parameter summaries
 │
-├─ Other Engine Parameters
-│   ├─ Discount rate (slider + numeric, default 3% where relevant)
-│   ├─ Execution mode (segmented control: Fast preview / Full run)
-│   └─ Cache policy / reuse prior baseline results
+└─ Validation
+    ├─ Unsupported decision domains fail clearly
+    ├─ Missing calibration or required parameters are surfaced clearly
+    └─ User can continue directly to Scenario when decisions are disabled
+```
+
+#### Key Design Decisions
+
+- **Dedicated stage, not nested subsection.** Investment decisions are no longer configured inside `Scenario`.
+- **Optional by default.** The default path remains simple; analysts can skip directly to `Scenario` when decision behavior is off.
+- **Scenario consumes, not edits.** The later `Scenario` stage summarizes enabled decision behavior but does not own detailed editing.
+
+### Revision: Stage 4 — Scenario
+
+**Purpose:** Configure how the selected policy set and inherited population will execute. This stage owns scenario-level execution semantics, simulation-mode controls, optional sensitivity populations, run validation, and final readiness before execution.
+
+#### Information Architecture
+
+```
+Stage 4: SCENARIO
+│
+├─ Inherited Population Context
+│   ├─ Primary population summary from Stage 2
+│   ├─ Source class badge: Built-in / Generated / Uploaded
+│   └─ Optional [+ Add population for sensitivity]
+│
+├─ Simulation Mode
+│   ├─ `Annual` — iterative yearly execution with intermediate-year outputs
+│   └─ `X-Year Step` — one modeled step over X years with endpoint outputs
+│
+├─ Horizon & Execution Controls
+│   ├─ Start year / end year for annual mode
+│   ├─ Horizon-step size for `X-Year Step` mode
+│   ├─ Seed and related execution controls
+│   ├─ Discount rate and advanced execution controls where relevant
+│   └─ Cache / reuse controls where supported
+│
+├─ Runtime Summary
+│   ├─ Runtime: `Live OpenFisca` shown as the default web path
+│   ├─ Explicit replay/demo badge only when the user entered a replay flow
+│   └─ No user-facing runtime selector in the standard path
 │
 ├─ Run Summary
-│   ├─ Scenario: "{scenario_name}" (baseline or reform)
-│   ├─ Portfolio: "{portfolio_name}" (N policies)
-│   ├─ Population(s): list with row counts
-│   ├─ Time horizon: start–end (N years)
-│   ├─ Projection assumptions: defaults/customized
-│   ├─ Execution mode: preview/full
+│   ├─ Scenario: "{scenario_name}"
+│   ├─ Policy set: "{policy_set_name}" (N policies)
+│   ├─ Primary population and optional sensitivity populations
+│   ├─ Simulation mode and horizon summary
+│   ├─ Decision-behavior summary from Stage 3
 │   ├─ Total runs: Scenario × Populations = N runs
 │   └─ Estimated computation time (if available)
 │
 └─ Validation
-    ├─ Portfolio must be valid (green check from Stage 1)
-    ├─ At least one population selected
-    ├─ Selected population schema satisfies the active portfolio/template requirements
+    ├─ Policy set must be valid
+    ├─ At least one executable population is attached
+    ├─ Selected population schema satisfies active policy requirements
     ├─ Required OpenFisca/project field mappings resolve cleanly
-    ├─ Policy year schedules fit within the selected time horizon
-    ├─ Start year < end year
+    ├─ Policy year schedules fit the chosen simulation mode and horizon
     ├─ Draft population imports must be fully mapped before execution
-    ├─ If advanced assumptions are customized: required series/rules resolve cleanly
-    ├─ Memory/runtime preflight passes for the selected run matrix
+    ├─ Runtime preflight passes for the selected matrix
+    ├─ Unsupported live-only or replay-only combinations fail clearly
     └─ All checks pass → "Ready to Run" primary button enabled
 ```
 
 #### Key Design Decisions
 
-- **Multi-population is a secondary affordance.** The default shows a single population dropdown. "+ Add population for sensitivity" is a text link, not a prominent button. This keeps the happy path clean.
-- **Projection assumptions are advanced, not mandatory.** The default path uses template defaults. Analysts only open this section when they need to inspect or override uprating, vintage, or behavioral response assumptions.
-- **Engine scope stays aligned with the MVP.** This stage handles projection and execution controls for OpenFisca-based policy runs; full structural choice-model calibration is out of scope for this revision.
-- **Run Summary is a pre-flight checklist.** Before pressing Run, the analyst sees a compact summary of everything that will be computed. This is the "confidence checkpoint" from the original spec, relocated to Stage 3.
-- **Scenario is assembled here as a first-class object.** Saving or cloning at this point creates a versioned scenario tying together the current portfolio, selected populations, and engine configuration.
-- **Cross-stage validation happens here.** Stage 3 is the integration gate where portfolio requirements, population schema, mappings, schedules, and runtime preflight are checked together before execution.
-- **Run matrix is computed automatically.** 1 scenario × N populations = N runs. The UI shows this clearly: "2 runs will be executed."
+- **Primary population is inherited, not reselected.** Stage 2 owns primary selection; Stage 4 shows that context and only adds optional sensitivity populations.
+- **`simulation_mode` and `runtime_mode` are distinct concepts.** `Scenario` owns `simulation_mode` (`annual` or `horizon_step`). Runtime remains `live` by default for standard web runs and only changes to `replay` in explicit replay/demo flows.
+- **No engine selector in the first slice.** Analysts should understand execution truthfully from summary copy and badges, not from a new control they must choose.
+- **Run Summary is a pre-flight checklist.** Before pressing Run, the analyst sees the policy set, inherited population context, simulation mode, runtime summary, and validation state in one place.
+- **Scenario is assembled here as a first-class object.** Saving or cloning here persists the policy set reference, inherited populations, simulation settings, mappings, and metadata.
+- **Cross-stage validation happens here.** Stage 4 is the integration gate where policy requirements, population schema, mappings, decision settings, schedules, and runtime preflight are checked together before execution.
 
 #### User Flow
 
 ```mermaid
 flowchart TD
-    A[Stage 3: Engine] --> B[Set time horizon]
-    B --> C[Select population]
-    C --> D{Add more populations?}
-    D -->|Yes| E[+ Add population]
-    E --> C
-    D -->|No| F{Override advanced assumptions?}
-    F -->|Yes| G[Expand advanced assumptions]
-    G --> H[Adjust uprating / vintage / optional behavioral profile]
-    H --> I[Review run summary]
-    F -->|No| I
+    A[Stage 4: Scenario] --> B[Review inherited primary population]
+    B --> C{Add sensitivity population?}
+    C -->|Yes| D[+ Add population]
+    D --> E[Choose simulation mode]
+    C -->|No| E
+    E --> F{Annual or X-Year Step?}
+    F -->|Annual| G[Set start/end years]
+    F -->|X-Year Step| H[Set horizon-step size]
+    G --> I[Review runtime and run summary]
+    H --> I
     I --> J{All checks pass?}
-    J -->|Yes| K[Run Simulation → Stage 4]
+    J -->|Yes| K[Run Simulation → Stage 5]
     J -->|No| L[Show failing checks with links to fix]
     L --> A
 ```
 
-### Revision: Stage 4 — Run / Results / Compare
+### Revision: Stage 5 — Run / Results / Compare
 
 **Purpose:** Execute simulations, view results, compare across runs.
 
 #### Information Architecture
 
 ```
-Stage 4: RUN / RESULTS / COMPARE
+Stage 5: RUN / RESULTS / COMPARE
 │
 ├─ Run Queue
 │   ├─ List of queued runs (Scenario × Population matrix)
@@ -1674,10 +1874,10 @@ Stage 4: RUN / RESULTS / COMPARE
 
 #### Key Design Decisions
 
-- **Run Queue handles the multi-population matrix.** If the user selected 2 populations in Stage 3, they see 2 runs queued. Each run is independently cancellable.
-- **Results and Comparison are sub-views within Stage 4**, not separate stages. The nav rail shows Stage 4 as active for all three.
-- **Scenario remains the durable analysis object.** Stage 4 executes scenario versions and compares their runs; it does not replace the scenario registry.
-- **The core loop lives here.** Quick parameter tweaks cycle between the owning scenario context and Stage 4; stale results stay visible until reruns complete, so the analyst never loses orientation.
+- **Run Queue handles the multi-population matrix.** If the user selected 2 populations in Stage 4, they see 2 runs queued. Each run is independently cancellable.
+- **Results and Comparison are sub-views within Stage 5**, not separate stages. The nav rail shows Stage 5 as active for all three.
+- **Scenario remains the durable analysis object.** Stage 5 executes scenario versions and compares their runs; it does not replace the scenario registry.
+- **The core loop lives here.** Quick parameter tweaks cycle between the owning scenario context and Stage 5; stale results stay visible until reruns complete, so the analyst never loses orientation.
 
 ### Revision: Updated Component Strategy
 
@@ -1685,12 +1885,12 @@ Stage 4: RUN / RESULTS / COMPARE
 
 | Component | Reason |
 |---|---|
-| `ConfigurationScreen` | Replaced by Stage 1 (Policies) + Stage 3 (Engine). Its children are redistributed. |
-| `ModelConfigStepper` (4-step: Population/Policy/Parameters/Validation) | Replaced by 4-stage nav rail. Each stage has its own internal validation. |
+| `ConfigurationScreen` | Replaced by the staged workspace. Its children are redistributed across Policies, Population, Investment Decisions, and Scenario. |
+| `ModelConfigStepper` (4-step: Population/Policy/Parameters/Validation) | Replaced by the 5-stage nav rail. Each stage has its own internal validation. |
 | `PopulationSelectionScreen` (inside Configuration) | Moved to Stage 2 Population Library. |
 | `TemplateSelectionScreen` (inside Configuration) | Absorbed into Stage 1 Policy Template Browser. |
-| `ParameterEditingScreen` (inside Configuration) | Policy parameters absorbed into Stage 1 (inline per-policy editing). Engine parameters in Stage 3. |
-| `AssumptionsReviewScreen` (inside Configuration) | Run Summary in Stage 3 serves this purpose. |
+| `ParameterEditingScreen` (inside Configuration) | Policy parameters absorbed into Stage 1. Decision behavior lives in Stage 3 and scenario execution controls live in Stage 4. |
+| `AssumptionsReviewScreen` (inside Configuration) | Run Summary in Stage 4 serves this purpose. |
 | `ScenarioCard` (left-panel selector) | Replaced by stage-local scenario registry/compare pickers such as `ScenarioSummaryCard`. |
 | Gradient header box in `App.tsx` | Replaced by TopBar component. |
 
@@ -1699,7 +1899,7 @@ Stage 4: RUN / RESULTS / COMPARE
 | Component | Location | Purpose |
 |---|---|---|
 | `TopBar` | `components/layout/TopBar.tsx` | 48px slim top bar: stage name + utility icons |
-| `PoliciesAndPortfolioScreen` | `components/screens/PoliciesAndPortfolioScreen.tsx` | Stage 1: template browser + inline portfolio composition |
+| `PoliciesStageScreen` | `components/screens/PoliciesStageScreen.tsx` | Stage 1: policy browser + inline policy composition with API-driven categories |
 | `PopulationLibraryScreen` | `components/screens/PopulationLibraryScreen.tsx` | Stage 2: population list with preview/profile/upload actions |
 | `PopulationDataTable` | `components/population/PopulationDataTable.tsx` | TanStack Table for paginated, sortable, filterable population data |
 | `PopulationProfiler` | `components/population/PopulationProfiler.tsx` | Visual column profiler: histograms, value counts, cross-tabs, stats |
@@ -1718,10 +1918,10 @@ App
 ├─ WorkspaceLayout
 │   ├─ Sidebar (WorkflowNavRail — 4 stages + logo)
 │   ├─ MainContent
-│   │   ├─ PoliciesAndPortfolioScreen (Stage 1)
-│   │   │   ├─ PortfolioTemplateBrowser
-│   │   │   ├─ PortfolioCompositionPanel (inline)
-│   │   │   └─ Conflict validation
+│   │   ├─ PoliciesStageScreen (Stage 1)
+│   │   │   ├─ PolicyBrowser (template catalog + "Add Policy" flow)
+│   │   │   ├─ PolicyCompositionPanel (inline, grouped parameters)
+│   │   │   └─ Conflict validation + cross-stage category warnings
 │   │   ├─ PopulationLibraryScreen (Stage 2)
 │   │   │   ├─ Population list with action buttons
 │   │   │   ├─ DataFusionWorkbench (existing)
@@ -1766,14 +1966,20 @@ const STAGES = [
     activeFor: ["population", "data-fusion", "population-explorer"],
   },
   {
-    key: "engine",
-    label: "Engine",
-    targetMode: "engine",
-    activeFor: ["engine"],
+    key: "investment-decisions",
+    label: "Investment Decisions",
+    targetMode: "investment-decisions",
+    activeFor: ["investment-decisions"],
+  },
+  {
+    key: "scenario",
+    label: "Scenario",
+    targetMode: "scenario",
+    activeFor: ["scenario"],
   },
   {
     key: "results",
-    label: "Results",
+    label: "Run / Results / Compare",
     targetMode: "results",
     activeFor: ["results", "comparison", "decisions", "runner"],
   },
@@ -1793,17 +1999,19 @@ flowchart TD
     D --> F[Resume at last active stage]
     E --> G{Needs edits?}
     F --> G
-    G -->|Policies| H[Stage 1: edit portfolio]
+    G -->|Policies| H[Stage 1: edit policy set]
     G -->|Population| I[Stage 2: inspect/select population]
-    G -->|Engine| J[Stage 3: tune engine + validate]
-    G -->|No edits| K[Run scenario]
+    G -->|Investment Decisions| J[Stage 3: decision behavior]
+    G -->|Scenario| K[Stage 4: configure scenario + validate]
+    G -->|No edits| L[Run scenario]
     H --> J
-    I --> J
-    J --> L{All integration checks pass?}
-    L -->|Yes| K
-    L -->|No| M[Fix linked issues in relevant stage]
-    M --> H
-    K --> N[Stage 4: queue, results, compare]
+    I --> K
+    J --> K
+    K --> M{All integration checks pass?}
+    M -->|Yes| L
+    M -->|No| N[Fix linked issues in relevant stage]
+    N --> H
+    L --> O[Stage 5: queue, results, compare]
 ```
 
 ### Revision: Implementation Priority
@@ -1811,13 +2019,14 @@ flowchart TD
 **Epic: GUI Restructuring** — suggested story order:
 
 1. **Shell & TopBar** — Replace gradient header with slim top bar. Add logo mark to sidebar. Apply brand compliance fixes (remove gradients, shadows, indigo colors, add square corners to panels).
-2. **Nav Rail Update** — Update WorkflowNavRail to 4 new stages. Wire stage/sub-view routing.
-3. **Stage 1: Policies & Portfolio** — Unify TemplateSelectionScreen + ParameterEditingScreen + PortfolioDesignerScreen into one inline flow.
+2. **Nav Rail Update** — Update WorkflowNavRail to 5 stages. Wire stage/sub-view routing.
+3. **Stage 1: Policies** — Unify TemplateSelectionScreen + ParameterEditingScreen + PortfolioDesignerScreen into one inline flow. Revision 4 adds three policy types, API-driven categories, and create-from-scratch flow.
 4. **Stage 2: Population Library** — Population list with preview/edit/delete actions. Upload flow with import report and mapping triage.
 5. **Stage 2: Population Data Explorer** — TanStack Table for paginated data. Visual profiler with histograms, value counts, cross-tabs. Summary tab.
-6. **Stage 3: Engine** — Time horizon, population selection, scenario save/clone, integration validation, projection assumptions, and execution controls.
-7. **Stage 4: Run Queue** — Multi-run queue for scenario × population matrix.
-8. **Cleanup** — Retire ConfigurationScreen, ModelConfigStepper, old ScenarioCard sidebar usage, and unused screens. Remove dead code.
+6. **Stage 3: Investment Decisions** — Optional decision-behavior enablement, model selection, parameters, and review.
+7. **Stage 4: Scenario** — Inherited primary population, simulation mode, horizon settings, scenario save/clone, runtime summary, and integration validation.
+8. **Stage 5: Run Queue** — Multi-run queue for scenario × population matrix.
+9. **Cleanup** — Retire ConfigurationScreen, ModelConfigStepper, old ScenarioCard sidebar usage, and unused screens. Remove dead code.
 
 ## Revision 3.0 — Interaction Fit, Naming, and Mobile Demo Viability (2026-03-30)
 
@@ -1830,7 +2039,7 @@ flowchart TD
 Revision 3 does not change the top-level workflow:
 
 ```
-Stage 1: POLICIES & PORTFOLIO
+Stage 1: POLICIES
 Stage 2: POPULATION
 Stage 3: SCENARIO
 Stage 4: RUN / RESULTS / COMPARE
@@ -1838,9 +2047,10 @@ Stage 4: RUN / RESULTS / COMPARE
 
 The change is interpretive, not structural:
 
+- Stage 1 is now **Policies** (not "Policies & Portfolio"). See Revision 4 below.
 - Stage 3 is now presented to users as **Scenario**, not **Engine**.
 - Internal route keys and type names may remain `engine` in code if that keeps the refactor low-risk.
-- The object model still distinguishes **Portfolio** from **Scenario**.
+- The object model still distinguishes **Policy Set** from **Scenario**.
 
 ### Revision: Application Shell And Scenario Controls
 
@@ -1867,22 +2077,24 @@ Revision 2 treated the logo as sidebar chrome and the top bar as a pure stage he
 
 #### Updated Navigation Guidance
 
-- The top-level nav remains the four-stage workflow.
+- The top-level nav remains the five-stage workflow.
 - When Population is active, the nav pattern should expose stage-local sub-steps:
   - `Library`
   - `Build`
   - `Explorer`
 - These are sub-steps, not additional top-level stages.
 
-### Revision: Stage 1 — Policies & Portfolio
+### Revision: Stage 1 — Policies
 
-Revision 2 established inline policy composition. Revision 3 adds stronger layout and naming guidance.
+> **Supersedes:** Revision 3 "Policies & Portfolio" layout and naming guidance. Revision 4 redesign above is now canonical for Stage 1.
+
+Revision 3 layout and density guidance still applies to the Revision 4 structure:
 
 #### Updated Layout Guidance
 
 - On desktop, Stage 1 uses a deliberate **50/50 split** between:
-  - policy template browsing,
-  - portfolio composition and editing.
+  - policy browser (left panel),
+  - policy composition and editing (right panel).
 - This split should feel like one workbench, not a primary panel plus a cramped sidebar.
 - On phone, the panels stack vertically.
 
@@ -1891,10 +2103,12 @@ Revision 2 established inline policy composition. Revision 3 adds stronger layou
 - Parameter controls should become slightly denser than the current default.
 - Parameter labels may use `text-xs`; editable values remain comfortably legible.
 - Section headings and validation states should still anchor the eye.
+- Within a policy card, the **primary parameter summary** (e.g., "€44/tCO₂") is always visible in the collapsed header.
+- Parameter groups use collapsible sections — only the active group is expanded by default.
 
-#### Updated Portfolio Naming Guidance
+#### Updated Policy Set Naming Guidance
 
-- The save flow should pre-fill a deterministic suggested portfolio name derived from the selected policy templates.
+- The save flow should pre-fill a deterministic suggested policy set name derived from the selected policy types and categories.
 - The system may keep updating the suggestion only until the user manually edits it.
 - Once edited manually, the name is user-owned and must not be overwritten.
 
@@ -1921,24 +2135,22 @@ Revision 2 made Population a complete data workspace. Revision 3 clarifies wayfi
 
 ### Revision: Stage 3 — Scenario
 
-The third stage is now named **Scenario** in all user-facing product copy.
+This Revision 3 subsection is retained for history but superseded by the Revision 4.1 five-stage model.
 
 #### Updated Scope
 
-This stage still owns:
+This earlier Revision 3 section is superseded by the April 1 stage split:
 
-- time horizon,
-- population sensitivity selection,
-- investment decisions,
-- discount rate and related advanced controls,
-- save/clone actions,
-- cross-stage validation before execution.
+- Stage 3 is now **Investment Decisions** and owns optional decision-behavior enablement, model selection, parameter editing, calibration status, and review.
+- Stage 4 is now **Scenario** and owns simulation mode, horizon settings, inherited primary population context, optional sensitivity populations, save/clone actions, and cross-stage validation before execution.
+- Primary population selection remains owned by `Population`.
+- Investment decisions are summarized in `Scenario` but not edited there.
 
 #### Updated Naming Guidance
 
 - New scenarios should not default to `New Scenario`.
 - Scenario names should be suggested deterministically from current context, preferring:
-  - portfolio name,
+  - policy set name,
   - primary population name,
   - simple fallback phrasing when full context is not yet available.
 - The system may refine an auto-generated name until the user manually edits it.
@@ -1946,14 +2158,14 @@ This stage still owns:
 
 #### Updated Investment Decision Guidance
 
-Revision 2 described an advanced accordion. Revision 3 replaces that interaction with a guided Scenario-stage flow:
+Investment decisions no longer live inside the Scenario stage. The guided flow remains:
 
 1. `Enable`
 2. `Model`
 3. `Parameters`
 4. `Review`
 
-This remains an advanced and optional feature. The default path through Scenario must still be simple when investment decisions are disabled.
+This remains optional, but it is now handled in the dedicated `Investment Decisions` stage before Scenario validation.
 
 ### Revision: Updated Nav Rail Labels
 
@@ -1963,7 +2175,7 @@ Revision 3 user-facing labels are:
 const STAGES = [
   {
     key: "policies",
-    label: "Policies & Portfolio",
+    label: "Policies",
     activeFor: ["policies"],
   },
   {
@@ -1972,9 +2184,14 @@ const STAGES = [
     activeFor: ["population", "data-fusion", "population-explorer"],
   },
   {
-    key: "engine",
+    key: "investment-decisions",
+    label: "Investment Decisions",
+    activeFor: ["investment-decisions"],
+  },
+  {
+    key: "scenario",
     label: "Scenario",
-    activeFor: ["engine"],
+    activeFor: ["scenario"],
   },
   {
     key: "results",
