@@ -459,7 +459,7 @@ Year 2026: state₁ → [ComputationStep] → [DiscreteChoiceStep] → [VintageS
 | `/api/indicators/{type}` | `POST /` compute indicators |
 | `/api/comparison` | `POST /` baseline vs reform, `POST /portfolios` multi-run |
 | `/api/scenarios` | `GET /`, `GET /{name}`, `POST /`, `POST /{name}/clone` |
-| `/api/templates` | `GET /`, `GET /{name}` |
+| `/api/templates` | `GET /`, `GET /{name}`, `GET /categories` |
 | `/api/portfolios` | `GET /`, `POST /`, `PUT /{name}`, `POST /validate` |
 | `/api/populations` | `GET /`, `GET /{id}/preview`, `GET /{id}/profile`, `GET /{id}/crosstab`, `POST /upload` |
 | `/api/data-fusion` | `GET /sources/{provider}`, `POST /generate` |
@@ -467,7 +467,11 @@ Year 2026: state₁ → [ComputationStep] → [DiscreteChoiceStep] → [VintageS
 | `/api/exports` | `POST /` CSV export |
 | `/api/decisions` | `GET /` decision audit trail |
 
-**Canonical analysis objects:** `Portfolio` stores reusable policy bundles. `Scenario` stores the versioned combination of portfolio, selected population(s), engine configuration, mappings, and metadata. `Run` executes one scenario version, potentially as a scenario-by-population matrix when multiple populations are selected.
+**Canonical analysis objects:** `Portfolio` stores reusable policy bundles. `Scenario` stores the versioned combination of portfolio, selected population(s), simulation configuration, mappings, and metadata. `Run` executes one scenario version, potentially as a scenario-by-population matrix when multiple populations are selected.
+
+**Mode ownership is explicit:** `Scenario` owns `simulation_mode` (`annual` or `horizon_step`) plus horizon settings and inherited population references. `Run` and its manifest own `runtime_mode` (`live` or explicit `replay`). These fields are intentionally separate: simulation behavior is not the same thing as live-vs-replay execution path.
+
+**Population ownership is split by stage, not by object:** Stage 2 writes the primary population selection into the durable scenario object. The later Scenario stage consumes and displays that inherited context, and may add optional sensitivity populations without forcing primary-population reselection.
 
 **Dependency injection:** Three global singletons — `ResultCache` (LRU), `ResultStore` (disk), `ComputationAdapter` (backend) — initialized lazily and overridable in tests.
 
@@ -477,16 +481,19 @@ Year 2026: state₁ → [ComputationStep] → [DiscreteChoiceStep] → [VintageS
 
 **Architecture:** React 19 SPA with centralized state (`AppContext`), typed API client, and Shadcn/Radix component library.
 
-**Interaction model:** The GUI is a four-stage shell over the same scenario registry and run model exposed by the API:
+**Interaction model:** The GUI is a five-stage shell over the same scenario registry and run model exposed by the API:
 
 | Stage | Purpose | Primary frontend surfaces |
 | ----- | ------- | ------------------------- |
-| Policies & Portfolio | Build or edit reusable policy bundles | `PoliciesAndPortfolioScreen`, template browser, inline portfolio composition |
+| Policies | Build or edit reusable policy bundles and surface truthful catalog availability | `PoliciesAndPortfolioScreen`, template browser, inline policy-set composition |
 | Population | Select, generate, upload, and inspect populations | `PopulationLibraryScreen`, `DataFusionWorkbench`, population explorer/profiler |
-| Engine | Bind portfolio + population(s) into a scenario, configure projection/execution settings, run integration validation | `EngineScreen`, projection assumptions accordion, run summary, validation gate |
+| Investment Decisions | Configure optional household decision behavior in a dedicated stage | `InvestmentDecisionsScreen`, model selector, parameter editor, calibration summary |
+| Scenario | Configure simulation mode, horizon settings, inherited population context, optional sensitivity population, and validation | `ScenarioScreen`, run summary, validation gate |
 | Run / Results / Compare | Execute runs, inspect results, compare completed runs, export outputs | `RunQueuePanel`, results view, comparison dashboard, run manifest viewer |
 
-**Scenario semantics in the GUI:** Users may enter through a pre-seeded demo scenario or an existing saved scenario. Stage 1-3 edit the scenario definition; Stage 4 executes and compares runs produced from that scenario. Browser routes map to stage/sub-view state rather than to the older sequence of full-screen setup pages.
+**Scenario semantics in the GUI:** Users may enter through a pre-seeded demo scenario or an existing saved scenario. Stages 1-4 edit the scenario definition; Stage 5 executes and compares runs produced from that scenario. Browser routes map to stage/sub-view state rather than to the older sequence of full-screen setup pages.
+
+**Runtime semantics in the GUI:** Standard web execution defaults to live OpenFisca. Replay remains available only through explicit demo or manual flows and is reflected in run metadata and manifest surfaces. The first slice does not add a user-facing runtime or engine selector to the standard Scenario flow.
 
 **State management:** Single `AppContext` manages data fetching, stage navigation, selected scenario, population/profile inspection state, and run execution. Typed hooks in `useApi.ts` handle individual data domains with loading/error/mock-fallback patterns.
 
