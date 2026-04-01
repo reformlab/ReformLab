@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 import os
 from collections import OrderedDict
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -120,7 +121,7 @@ def _create_adapter() -> ComputationAdapter:
     try:
         from reformlab.computation.openfisca_adapter import OpenFiscaAdapter
 
-        data_dir = os.environ.get("REFORMLAB_DATA_DIR", "data")
+        data_dir = _resolve_adapter_data_dir()
         logger.info("Using OpenFiscaAdapter, data_dir=%s", data_dir)
         return OpenFiscaAdapter(data_dir)
     except ImportError:
@@ -128,3 +129,23 @@ def _create_adapter() -> ComputationAdapter:
 
         logger.info("OpenFisca not available — using MockAdapter")
         return MockAdapter()
+
+
+def _resolve_adapter_data_dir() -> Path:
+    """Resolve the server-side OpenFisca data directory.
+
+    Precedence:
+    1. ``REFORMLAB_OPENFISCA_DATA_DIR`` when explicitly provided.
+    2. ``<REFORMLAB_DATA_DIR>/openfisca`` when that subdirectory exists.
+    3. ``REFORMLAB_DATA_DIR`` (or ``data`` by default) for backward compatibility.
+    """
+    explicit_dir = os.environ.get("REFORMLAB_OPENFISCA_DATA_DIR")
+    if explicit_dir:
+        return Path(explicit_dir)
+
+    base_dir = Path(os.environ.get("REFORMLAB_DATA_DIR", "data"))
+    nested_dir = base_dir / "openfisca"
+    if nested_dir.is_dir():
+        return nested_dir
+
+    return base_dir
