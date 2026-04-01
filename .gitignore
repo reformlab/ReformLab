@@ -38,6 +38,9 @@ yarn-error.log*
 # === Claude Code ===
 .claude/settings.local.json
 
+# === Grant Applications ===
+_bmad-output/grant-applications/
+
 # === BMAD Framework & Outputs ===
 # Keep BMAD assets versioned for branch portability.
 # Ignore only local runtime/cache noise.
