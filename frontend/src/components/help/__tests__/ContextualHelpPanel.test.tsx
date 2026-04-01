@@ -46,6 +46,11 @@ describe("ContextualHelpPanel", () => {
     expect(screen.getByText("Behavioral Decisions")).toBeInTheDocument();
   });
 
+  it("renders Population Builder title for population/data-fusion sub-view", () => {
+    render(<ContextualHelpPanel activeStage="population" activeSubView="data-fusion" />);
+    expect(screen.getByText("Population Builder")).toBeInTheDocument();
+  });
+
   it("falls back to policies for unrecognized stage", () => {
     render(<ContextualHelpPanel activeStage={"unknown" as never} activeSubView={null} />);
     expect(screen.getByText("Policies & Portfolio")).toBeInTheDocument();

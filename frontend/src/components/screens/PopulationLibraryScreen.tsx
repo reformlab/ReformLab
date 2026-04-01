@@ -9,9 +9,22 @@
  * Story 20.4 — AC-1, AC-5, AC-6.
  */
 
-import { Eye, BarChart3, CheckCircle2, Trash2, Pencil, Upload, Plus, Zap } from "lucide-react";
+import { useState } from "react";
+import {
+  Eye,
+  BarChart3,
+  CheckCircle2,
+  Trash2,
+  Pencil,
+  Upload,
+  Plus,
+  Zap,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { OriginBadge } from "@/components/population/OriginBadge";
 import { TrustStatusBadge } from "@/components/population/TrustStatusBadge";
 import { SyntheticBadge } from "@/components/population/SyntheticBadge";
@@ -24,6 +37,7 @@ import { QUICK_TEST_POPULATION_ID } from "@/data/quick-test-population";
 
 export interface PopulationLibraryScreenProps {
   populations: PopulationLibraryItem[];
+  populationPreviewMeta?: Record<string, { totalRows: number; columns: string[] }>;
   selectedPopulationId: string;
   loading: boolean;
   onPreview: (id: string) => void;
@@ -40,6 +54,7 @@ export interface PopulationLibraryScreenProps {
 
 interface PopulationCardProps {
   population: PopulationLibraryItem;
+  previewMeta?: { totalRows: number; columns: string[] };
   isSelected: boolean;
   onPreview: () => void;
   onExplore: () => void;
@@ -50,6 +65,7 @@ interface PopulationCardProps {
 
 function PopulationCard({
   population,
+  previewMeta,
   isSelected,
   onPreview,
   onExplore,
@@ -59,6 +75,10 @@ function PopulationCard({
 }: PopulationCardProps) {
   // Story 22.4: Special treatment for Quick Test Population
   const isQuickTest = population.id === QUICK_TEST_POPULATION_ID;
+  const [inspectOpen, setInspectOpen] = useState(false);
+  const totalRows = previewMeta?.totalRows ?? population.households;
+  const columnNames = previewMeta?.columns ?? [];
+  const hasSchemaPreview = columnNames.length > 0;
 
   return (
     <div
@@ -108,7 +128,7 @@ function PopulationCard({
       {/* Metadata */}
       <div className="flex flex-col gap-0.5">
         <span className="text-xs text-slate-500">
-          {population.households.toLocaleString()} rows · {population.column_count} cols
+          {totalRows.toLocaleString()} rows · {population.column_count} cols
         </span>
         {population.year > 0 && (
           <span className="text-xs text-slate-400">{population.year}</span>
@@ -146,6 +166,17 @@ function PopulationCard({
         </Button>
         <Button
           size="sm"
+          variant="ghost"
+          className="h-7 gap-1 px-2 text-xs"
+          onClick={() => { setInspectOpen((open) => !open); }}
+          title="Inspect row count and columns"
+          aria-expanded={inspectOpen}
+        >
+          {inspectOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+          Inspect
+        </Button>
+        <Button
+          size="sm"
           variant={isSelected ? "default" : "ghost"}
           className="h-7 gap-1 px-2 text-xs"
           onClick={onSelect}
@@ -179,6 +210,33 @@ function PopulationCard({
           </Button>
         )}
       </div>
+
+      <Collapsible open={inspectOpen} onOpenChange={setInspectOpen}>
+        <CollapsibleContent className="space-y-2 rounded-md border border-slate-200 bg-slate-50 p-3">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-semibold text-slate-700">Dataset snapshot</p>
+            <span className="text-xs text-slate-500">
+              {totalRows.toLocaleString()} rows · {population.column_count} columns
+            </span>
+          </div>
+          {hasSchemaPreview ? (
+            <div className="flex max-h-28 flex-wrap gap-1 overflow-y-auto pr-1">
+              {columnNames.map((column) => (
+                <span
+                  key={column}
+                  className="rounded-full border border-slate-200 bg-white px-2 py-0.5 font-mono text-[11px] text-slate-600"
+                >
+                  {column}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-500">
+              Column metadata is not available for this dataset yet. Use Preview for sample rows or Explore for the full table.
+            </p>
+          )}
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 }
@@ -189,6 +247,7 @@ function PopulationCard({
 
 export function PopulationLibraryScreen({
   populations,
+  populationPreviewMeta = {},
   selectedPopulationId,
   loading,
   onPreview,
@@ -244,6 +303,7 @@ export function PopulationLibraryScreen({
               <PopulationCard
                 key={pop.id}
                 population={pop}
+                previewMeta={populationPreviewMeta[pop.id]}
                 isSelected={pop.id === selectedPopulationId}
                 onPreview={() => { onPreview(pop.id); }}
                 onExplore={() => { onExplore(pop.id); }}

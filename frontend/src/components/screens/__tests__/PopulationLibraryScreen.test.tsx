@@ -222,6 +222,48 @@ describe("PopulationLibraryScreen - population card interactions", () => {
     const selectedButtons = screen.getAllByText("Selected");
     expect(selectedButtons.length).toBe(1);
   });
+
+  it("shows corrected row counts and columns inside Inspect panel when preview metadata is available", async () => {
+    const user = userEvent.setup();
+    render(
+      <PopulationLibraryScreen
+        {...baseProps({
+          populations: [
+            {
+              id: "fr-synthetic-2024",
+              name: "France Synthetic 2024",
+              households: 0,
+              source: "INSEE marginals",
+              year: 2024,
+              origin: "built-in",
+              canonical_origin: "synthetic-public",
+              access_mode: "bundled",
+              trust_status: "production-safe",
+              is_synthetic: true,
+              column_count: 3,
+              created_date: "2024-01-01T00:00:00Z",
+            },
+          ],
+          populationPreviewMeta: {
+            "fr-synthetic-2024": {
+              totalRows: 100_000,
+              columns: ["household_id", "income", "region"],
+            },
+          },
+        })}
+      />,
+    );
+
+    expect(screen.getByText("100,000 rows · 3 cols")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /inspect/i }));
+
+    expect(screen.getByText("Dataset snapshot")).toBeInTheDocument();
+    expect(screen.getByText("100,000 rows · 3 columns")).toBeInTheDocument();
+    expect(screen.getByText("household_id")).toBeInTheDocument();
+    expect(screen.getByText("income")).toBeInTheDocument();
+    expect(screen.getByText("region")).toBeInTheDocument();
+  });
 });
 
 // ============================================================================

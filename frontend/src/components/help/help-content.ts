@@ -10,14 +10,15 @@ export interface HelpEntry {
 }
 
 export const HELP_CONTENT: Record<string, HelpEntry> = {
-  "data-fusion": {
+  "population/data-fusion": {
     title: "Population Builder",
     summary: "Create a synthetic population by selecting and merging data from multiple statistical sources.",
     tips: [
       "Select at least two data sources from the available providers to begin",
+      "Use Inspect columns on any source card to verify row counts and available fields before selecting it",
       "Overlapping variables (shared across sources) enable statistical matching for higher-quality fusion",
       "The merge method determines how records are combined — conditional sampling preserves correlations best",
-      "Preview the generated population to verify demographic distributions before proceeding",
+      "Preview the generated population to verify record counts and merged columns before proceeding",
     ],
     concepts: [
       { term: "Data Fusion", definition: "Combining records from multiple data sources into a unified population dataset using statistical matching." },
@@ -167,6 +168,7 @@ export const HELP_CONTENT: Record<string, HelpEntry> = {
     title: "Population Library",
     summary: "Browse, preview, explore, and select household population datasets. Upload custom CSV/Parquet files or build a new fused population.",
     tips: [
+      "Click Inspect on a card to confirm row counts and scan the available columns before opening anything else",
       "Click Preview (eye icon) for a quick 100-row scan before committing — closes on Escape or backdrop click",
       "Click Explore (chart icon) to open the Full Data Explorer with Table, Profile, and Summary tabs",
       "Click Select to link a population to your active scenario — a checkmark appears on the card",

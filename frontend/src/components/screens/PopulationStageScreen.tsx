@@ -13,7 +13,7 @@
  * Story 20.4 — AC-1 through AC-6.
  */
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 
 import { useAppState } from "@/contexts/AppContext";
@@ -23,7 +23,7 @@ import { PopulationQuickPreview } from "@/components/population/PopulationQuickP
 import { PopulationExplorer } from "@/components/population/PopulationExplorer";
 import { PopulationUploadZone } from "@/components/population/PopulationUploadZone";
 import type { PopulationLibraryItem } from "@/api/types";
-import { deletePopulation } from "@/api/populations";
+import { deletePopulation, getPopulationPreview } from "@/api/populations";
 
 // ============================================================================
 // Helpers
@@ -81,6 +81,10 @@ export function PopulationStageScreen({ onExplorerPopulationChange }: Population
   const [explorerPopulationId, setExplorerPopulationId] = useState<string | null>(null);
   const [uploadedPopulations, setUploadedPopulations] = useState<PopulationLibraryItem[]>(() => _uploadedPopulationsCache);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [populationPreviewMeta, setPopulationPreviewMeta] = useState<
+    Record<string, { totalRows: number; columns: string[] }>
+  >({});
+  const requestedPreviewMetaRef = useRef<Set<string>>(new Set());
 
   // Merge all population sources
   const mergedPopulations = useMemo((): PopulationLibraryItem[] => {
@@ -107,6 +111,70 @@ export function PopulationStageScreen({ onExplorerPopulationChange }: Population
 
     return [...builtIn, ...generated, ...uploadedPopulations];
   }, [populations, dataFusionResult, uploadedPopulations]);
+
+  useEffect(() => {
+    const localMeta: Record<string, { totalRows: number; columns: string[] }> = {};
+
+    if (dataFusionResult) {
+      localMeta["data-fusion-result"] = {
+        totalRows: dataFusionResult.summary.record_count,
+        columns: dataFusionResult.summary.columns,
+      };
+    }
+
+    if (Object.keys(localMeta).length > 0) {
+      setPopulationPreviewMeta((prev) => ({ ...prev, ...localMeta }));
+    }
+
+    const populationsToFetch = mergedPopulations.filter(
+      (population) =>
+        population.id !== "data-fusion-result" &&
+        !requestedPreviewMetaRef.current.has(population.id),
+    );
+
+    if (populationsToFetch.length === 0) {
+      return;
+    }
+
+    populationsToFetch.forEach((population) => {
+      requestedPreviewMetaRef.current.add(population.id);
+    });
+
+    let cancelled = false;
+
+    void Promise.allSettled(
+      populationsToFetch.map(async (population) => {
+        const preview = await getPopulationPreview(population.id, { limit: 1 });
+        return [
+          population.id,
+          {
+            totalRows: preview.total_rows,
+            columns: preview.columns.map((column) => column.name),
+          },
+        ] as const;
+      }),
+    ).then((results) => {
+      if (cancelled) {
+        return;
+      }
+
+      const nextMeta: Record<string, { totalRows: number; columns: string[] }> = {};
+      for (const result of results) {
+        if (result.status === "fulfilled") {
+          const [id, meta] = result.value;
+          nextMeta[id] = meta;
+        }
+      }
+
+      if (Object.keys(nextMeta).length > 0) {
+        setPopulationPreviewMeta((prev) => ({ ...prev, ...nextMeta }));
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mergedPopulations, dataFusionResult]);
 
   // Resolve the preview population name
   const previewPopulationName = useMemo(() => {
@@ -235,6 +303,7 @@ export function PopulationStageScreen({ onExplorerPopulationChange }: Population
     return (
       <PopulationLibraryScreen
         populations={mergedPopulations}
+        populationPreviewMeta={populationPreviewMeta}
         selectedPopulationId={effectiveSelectedId}
         loading={populationsLoading}
         onPreview={handlePreview}
