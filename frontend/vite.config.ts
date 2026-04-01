@@ -22,7 +22,7 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: "./src/test/setup.ts",
-    css: true,
+    css: false,
     globals: true,
     testTimeout: 120000, // E2E tests need longer timeout (2 minutes)
     hookTimeout: 30000, // Test hooks timeout (30 seconds)
