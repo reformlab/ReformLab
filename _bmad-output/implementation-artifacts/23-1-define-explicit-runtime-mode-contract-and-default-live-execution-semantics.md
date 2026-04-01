@@ -318,3 +318,16 @@ None created during story generation.
 2. `_bmad-output/planning-artifacts/architecture.md` — Section 5.9 (Server mode ownership)
 3. `_bmad-output/planning-artifacts/sprint-change-proposal-2026-04-01.md` — Sprint context
 4. `_bmad-output/project-context.md` — Project rules and patterns
+
+## Senior Developer Review (AI)
+
+### Review: 2026-04-01
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 9.1 → REJECT
+- **Issues Found:** 6
+- **Issues Fixed:** 4
+- **Action Items Created:** 2
+
+#### Review Follow-ups (AI)
+- [ ] [AI-Review] MEDIUM: Move runtime_mode tests to correct locations per project structure (tests/server/test_api.py, tests/governance/test_manifest.py) — tests/computation/test_runtime_mode.py imports from multiple subsystems (tests/computation/test_runtime_mode.py)
+- [ ] [AI-Review] LOW: Story 22.7 mobile UI changes mixed into Story 23.1 commit — separate into own branch/PR (frontend/src/components/layout/MobileStageSwitcher.tsx, frontend/src/__tests__/mobile-viewport.test.tsx)

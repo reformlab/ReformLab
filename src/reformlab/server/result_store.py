@@ -79,7 +79,7 @@ class ResultMetadata:
     exogenous_series_hash: str | None = None  # SHA-256 hash of exogenous series
     exogenous_series_names: list[str] | None = None  # Series names for display
     # Story 23.1 / AC-4: Runtime mode from manifest ("live" or "replay")
-    runtime_mode: str = "live"  # "live" | "replay"
+    runtime_mode: str = "live"
 
 
 # ---------------------------------------------------------------------------

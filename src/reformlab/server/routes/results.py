@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import io
 import logging
-from typing import Any
+from typing import Any, Literal, cast
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -110,6 +110,11 @@ def _metadata_to_detail(
         exogenous_series_names=meta.exogenous_series_names,
         # Story 21.8 / AC4: Evidence assets from manifest
         evidence_assets=evidence_assets,
+        # Story 23.1 / AC-4: Runtime mode from metadata
+        runtime_mode=cast(
+            Literal["live", "replay"],
+            meta.runtime_mode if meta.runtime_mode in ("live", "replay") else "live",
+        ),
     )
 
 

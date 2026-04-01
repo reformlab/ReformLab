@@ -166,7 +166,7 @@ class RunManifest:
     validation_assets: list[dict[str, Any]] = field(default_factory=list)  # Story 21.8 / AC5
     evidence_summary: dict[str, Any] = field(default_factory=dict)  # Story 21.8 / AC5
     # Story 23.1 / AC-4: Runtime mode (live or explicit replay)
-    runtime_mode: str = "live"  # "live" | "replay"
+    runtime_mode: str = "live"
     integrity_hash: str = ""
 
     def __post_init__(self) -> None:
@@ -210,6 +210,13 @@ class RunManifest:
             raise ManifestValidationError(
                 f"Invalid integrity_hash: expected 64 hex characters, "
                 f"got {self.integrity_hash!r}"
+            )
+
+        # Story 23.1 / AC-4: Validate runtime_mode value
+        if self.runtime_mode not in ("live", "replay"):
+            raise ManifestValidationError(
+                f"Invalid runtime_mode: expected 'live' or 'replay', "
+                f"got {self.runtime_mode!r}"
             )
 
         # Validate parent_manifest_id format if present (AC-2)

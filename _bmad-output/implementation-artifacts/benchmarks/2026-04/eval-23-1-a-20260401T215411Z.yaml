@@ -1,0 +1,118 @@
+record_id: c50331bf-8c23-4df5-8d13-11687a71ca37
+created_at: '2026-04-01T21:54:11.690898+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 23
+  story_num: '1'
+  title: Story 23.1
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-04-01T21:49:40.953768Z'
+  end_time: '2026-04-01T21:50:51.911768Z'
+  duration_ms: 70958
+  input_tokens: 0
+  output_tokens: 2415
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 9662
+  heading_count: 18
+  list_depth_max: 2
+  code_block_count: 3
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: 22.0'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes & Readability
+  - ⚡ Performance & Scalability
+  - 🐛 Correctness & Safety
+  - 🔧 Maintainability Issues
+  - 🚨 Critical Issues Summary
+  - 1. Git Diff Scope Violation (CRITICAL)
+  - 2. Missing Required Tests (CRITICAL)
+  - 3. Portfolio Run Bug (CRITICAL)
+  - src/reformlab/server/routes/runs.py:302
+  - 'MISSING: runtime_mode=body.runtime_mode'
+  - 4. Type Safety Violation (CRITICAL)
+  - src/reformlab/governance/manifest.py:169
+  - 5. AC-5 Violation (CRITICAL)
+  - Recommended Actions
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 4d3bab249cab
+findings:
+  total_count: 23
+  by_severity:
+    critical: 6
+    major: 5
+    minor: 0
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 13
+    completeness: 7
+    clarity: 2
+    testability: 1
+  has_fix_count: 23
+  has_location_count: 23
+  has_evidence_count: 23
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 0
+  confidence_phrases_count: 1
+linguistic:
+  avg_sentence_length: 69.61111111111111
+  vocabulary_richness: 0.3200319233838787
+  flesch_reading_ease: 10.064372694416761
+  vague_terms_count: 1
+  formality_score: 0.75
+  sentiment: negative
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 1.0
+  evidence_quality: 1.0
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 4
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

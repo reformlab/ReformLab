@@ -299,7 +299,7 @@ def _run_portfolio(
         population_path=population_path,
         seed=body.seed,
     )
-    run_config = RunConfig(scenario=scenario_config, seed=body.seed)
+    run_config = RunConfig(scenario=scenario_config, seed=body.seed, runtime_mode=body.runtime_mode)
 
     sim_result = run_scenario(
         run_config,
