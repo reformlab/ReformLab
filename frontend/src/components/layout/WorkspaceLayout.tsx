@@ -1,5 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 Lucas Vivier
+/**
+ * WorkspaceLayout — responsive three-panel layout with mobile support.
+ *
+ * Story 22.7 — AC-4: Mobile layouts stack vertically, hide side panels.
+ * - Desktop (lg+): ResizablePanelGroup with left/main/right panels
+ * - Mobile (< lg): Single column layout with main content only
+ */
+
 import type { ReactNode } from "react";
 
 import {
@@ -28,7 +36,16 @@ export function WorkspaceLayout({
   return (
     <div className="flex flex-1 flex-col overflow-hidden rounded-none border border-slate-200 bg-white">
       {topBar ? <div className="shrink-0">{topBar}</div> : null}
-      <div className="min-h-0 flex-1">
+
+      {/* Story 22.7: Mobile layout - single column, main content only */}
+      <div className="flex lg:hidden flex-col flex-1 overflow-hidden">
+        <main className="flex-1 overflow-auto">
+          {mainPanel}
+        </main>
+      </div>
+
+      {/* Story 22.7: Desktop layout - resizable three-panel layout */}
+      <div className="hidden lg:flex min-h-0 flex-1">
         <ResizablePanelGroup direction="horizontal" className="h-full">
           <ResizablePanel
             defaultSize={22}

@@ -17,6 +17,7 @@ import { PoliciesStageScreen } from "@/components/screens/PoliciesStageScreen";
 import { PopulationStageScreen } from "@/components/screens/PopulationStageScreen";
 import { EngineStageScreen } from "@/components/screens/EngineStageScreen";
 import { WorkflowNavRail } from "@/components/layout/WorkflowNavRail";
+import { MobileStageSwitcher } from "@/components/layout/MobileStageSwitcher";
 import { Toaster } from "@/components/ui/sonner";
 import { ContextualHelpPanel } from "@/components/help/ContextualHelpPanel";
 import { useAppState } from "@/contexts/AppContext";
@@ -56,12 +57,14 @@ function Workspace() {
   // Story 22.4: Track explorer population ID from PopulationStageScreen
   const [explorerPopulationId, setExplorerPopulationId] = useState<string | null>(null);
 
-  // Layout effects
+  // Layout effects — Story 22.7: Mobile breakpoint at 768px (md)
   useEffect(() => {
     const onResize = () => {
       const width = window.innerWidth;
-      setIsNarrow(width < 1024);
-      if (width < 1024) {
+      // Story 22.7: Align isNarrow with md breakpoint (768px)
+      // Panels will be fully hidden on mobile via WorkspaceLayout responsive classes
+      setIsNarrow(width < 768);
+      if (width < 768) {
         setLeftCollapsed(true);
         setRightCollapsed(true);
       }
@@ -213,11 +216,8 @@ function Workspace() {
 
   return (
     <div className="flex h-screen flex-col">
-      {window.innerWidth < 1280 ? (
-        <div className="shrink-0 border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
-          ReformLab is designed for desktop use. Please use a laptop or desktop browser (&gt;= 1280px).
-        </div>
-      ) : null}
+      {/* Story 22.7: Mobile stage switcher - shown only on mobile (< lg breakpoint) */}
+      <MobileStageSwitcher activeStage={activeStage} navigateTo={navigateTo} />
 
       <WorkspaceLayout
         topBar={<TopBar />}

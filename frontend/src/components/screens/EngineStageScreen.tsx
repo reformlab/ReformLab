@@ -186,7 +186,8 @@ export function EngineStageScreen() {
       </div>
 
       {/* ─── Body ────────────────────────────────────────────────────────── */}
-      <div className="flex flex-1 overflow-auto">
+      {/* Story 22.7: Stack vertically on mobile, side-by-side on desktop */}
+      <div className="flex flex-1 overflow-auto flex-col lg:flex-row">
         {/* Left: configuration form */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6 min-w-0">
           <h2 className="text-xl font-semibold text-slate-900">Scenario Configuration</h2>
@@ -371,7 +372,8 @@ export function EngineStageScreen() {
         </div>
 
         {/* Right: summary + validation */}
-        <div className="w-80 flex-shrink-0 border-l border-slate-200 p-4 space-y-4 overflow-y-auto bg-slate-50">
+        {/* Story 22.7: Full width on mobile, fixed width on desktop */}
+        <div className="w-full lg:w-80 flex-shrink-0 border-l border-slate-200 p-4 space-y-4 overflow-y-auto bg-slate-50">
           <RunSummaryPanel
             scenario={activeScenario}
             populations={populations}
