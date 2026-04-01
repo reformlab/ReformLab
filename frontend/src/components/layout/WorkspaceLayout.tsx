@@ -21,6 +21,7 @@ interface WorkspaceLayoutProps {
   mainPanel: ReactNode;
   rightPanel: ReactNode;
   topBar?: ReactNode;
+  mobileStageSwitcher?: ReactNode;
   leftCollapsed: boolean;
   rightCollapsed: boolean;
 }
@@ -30,6 +31,7 @@ export function WorkspaceLayout({
   mainPanel,
   rightPanel,
   topBar,
+  mobileStageSwitcher,
   leftCollapsed,
   rightCollapsed,
 }: WorkspaceLayoutProps) {
@@ -38,6 +40,7 @@ export function WorkspaceLayout({
       {topBar ? <div className="shrink-0">{topBar}</div> : null}
 
       {/* Story 22.7: Mobile layout - single column, main content only */}
+      {mobileStageSwitcher}
       <div className="flex lg:hidden flex-col flex-1 overflow-hidden">
         <main className="flex-1 overflow-auto">
           {mainPanel}

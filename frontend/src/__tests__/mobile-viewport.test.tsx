@@ -124,15 +124,18 @@ describe("Mobile Viewport — Story 22.7", () => {
       await user.click(screen.getByRole("button", { name: /enter/i }));
 
       await waitFor(() => {
-        // AC-1: No horizontal overflow on body/html elements
-        const htmlElement = document.documentElement;
-        expect(htmlElement.style.overflowX).not.toBe("auto");
-        expect(htmlElement.style.overflowX).not.toBe("scroll");
+        // AC-1: Verify responsive layout classes prevent horizontal overflow
+        // Check that WorkspaceLayout renders mobile layout (lg:hidden) and hides desktop panels (hidden lg:flex)
+        const layoutContainer = document.querySelector(".flex.flex-1.flex-col.overflow-hidden");
+        expect(layoutContainer).toBeTruthy();
 
-        // Check for horizontal overflow indicators on body
-        const bodyElement = document.body;
-        expect(bodyElement.style.overflowX).not.toBe("auto");
-        expect(bodyElement.style.overflowX).not.toBe("scroll");
+        // Mobile layout div should have lg:hidden class
+        const mobileLayout = layoutContainer?.querySelector(".lg\\:hidden");
+        expect(mobileLayout).toBeTruthy();
+
+        // Desktop layout div should have hidden lg:flex classes
+        const desktopLayout = layoutContainer?.querySelector(".hidden.lg\\:flex");
+        expect(desktopLayout).toBeTruthy();
       });
     });
   });

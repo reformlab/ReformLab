@@ -76,10 +76,40 @@ describe("Mobile Layout Tests — Story 22.7", () => {
   });
 
   describe("AC-4: Stage-specific responsive behavior", () => {
-    it("should have toolbar actions that don't overflow on mobile", () => {
-      // This test verifies the overall app is functional at mobile widths
-      // Full integration is tested in mobile-viewport.test.tsx
-      expect(true).toBe(true);
+    it("should use mobile-first grid classes on population library", () => {
+      const mockPopulations: PopulationLibraryItem[] = [
+        {
+          id: "test-1",
+          name: "Test Population 1",
+          households: 1000,
+          column_count: 10,
+          origin: "built-in",
+          canonical_origin: "official",
+          trust_status: "canonical",
+          is_synthetic: false,
+          year: 2022,
+        },
+      ];
+
+      const { container } = render(
+        <PopulationLibraryScreen
+          populations={mockPopulations}
+          selectedPopulationId="test-1"
+          loading={false}
+          onPreview={vi.fn()}
+          onExplore={vi.fn()}
+          onSelect={vi.fn()}
+          onDelete={vi.fn()}
+          onUpload={vi.fn()}
+          onBuildNew={vi.fn()}
+        />,
+      );
+
+      // Story 22.7: Verify mobile-first grid breakpoint classes
+      const grid = container.querySelector(".grid");
+      expect(grid).toBeTruthy();
+      expect(grid!.className).toContain("grid-cols-1");
+      expect(grid!.className).toContain("sm:grid-cols-2");
     });
   });
 });

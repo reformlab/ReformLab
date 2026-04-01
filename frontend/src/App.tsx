@@ -57,14 +57,13 @@ function Workspace() {
   // Story 22.4: Track explorer population ID from PopulationStageScreen
   const [explorerPopulationId, setExplorerPopulationId] = useState<string | null>(null);
 
-  // Layout effects — Story 22.7: Mobile breakpoint at 768px (md)
+  // Layout effects — Story 22.7: Mobile breakpoint at 1024px (lg), matching WorkspaceLayout CSS
   useEffect(() => {
     const onResize = () => {
       const width = window.innerWidth;
-      // Story 22.7: Align isNarrow with md breakpoint (768px)
-      // Panels will be fully hidden on mobile via WorkspaceLayout responsive classes
-      setIsNarrow(width < 768);
-      if (width < 768) {
+      // Story 22.7: Align isNarrow with lg breakpoint (1024px) to match WorkspaceLayout's lg:hidden/lg:flex
+      setIsNarrow(width < 1024);
+      if (width < 1024) {
         setLeftCollapsed(true);
         setRightCollapsed(true);
       }
@@ -216,11 +215,9 @@ function Workspace() {
 
   return (
     <div className="flex h-screen flex-col">
-      {/* Story 22.7: Mobile stage switcher - shown only on mobile (< lg breakpoint) */}
-      <MobileStageSwitcher activeStage={activeStage} navigateTo={navigateTo} />
-
       <WorkspaceLayout
         topBar={<TopBar />}
+        mobileStageSwitcher={<MobileStageSwitcher activeStage={activeStage} navigateTo={navigateTo} />}
         leftCollapsed={leftCollapsed}
         rightCollapsed={rightCollapsed}
         leftPanel={
