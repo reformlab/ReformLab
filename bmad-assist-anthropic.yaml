@@ -1,0 +1,140 @@
+# =============================================================================
+# bmad-assist Anthropic configuration for ReformLab
+# =============================================================================
+
+# --- Project identity ---
+project_name: ReformLab
+user_name: Lucas
+communication_language: English       # Language the agent uses to talk to you
+document_output_language: English      # Language used in generated artifacts (stories, reviews)
+user_skill_level: intermediate         # Adjusts explanation verbosity (beginner/intermediate/expert)
+
+# --- External paths ---
+# Point bmad-assist to planning-artifacts where epics.md lives,
+# instead of docs/ which is a stale copy.
+paths:
+  project_knowledge: _bmad-output/planning-artifacts
+
+# --- Tool guard ---
+# Safety limits to prevent runaway agent sessions from burning too many API calls.
+tool_guard:
+  max_total_calls: 400                 # Hard cap on total tool calls per phase execution
+  max_interactions_per_file: 25        # Max read/write operations on a single file
+  max_calls_per_minute: 150            # Rate limit to avoid API throttling
+
+# --- Timeouts (seconds) ---
+# Max wall-clock time per phase. If the agent (or compiler) exceeds this, the
+# process is killed and retried up to `retries` times.
+timeouts:
+  default: 600                         # 10 min — fallback for phases without explicit timeout
+  retries: 2                           # Number of retry attempts after a timeout or crash
+  create_story: 1200                   # 20 min — story spec generation (large context, one-shot)
+  dev_story: 3600                      # 60 min — implementation (includes compiler + coding + tests)
+  code_review_synthesis: 900           # 15 min — merging multiple reviewer outputs
+
+# --- Providers ---
+# Default LLM backends. "master" is used for phases without an explicit phase_models
+# entry. "helper" is used for lightweight internal tasks (metrics extraction, etc.).
+providers:
+  master:
+    provider: claude                   # Native Claude provider (SDK with CLI fallback)
+    model: sonnet
+
+  helper:
+    provider: claude
+    model: sonnet                      # Keep helper on Sonnet for consistent Anthropic-only routing
+
+# --- Per-phase model assignment ---
+# Override which model runs each phase. Phases not listed here fall back to
+# the "master" provider above.
+phase_models:
+
+  # Story creation: Sonnet is usually enough for drafting and planning work
+  create_story:
+    provider: claude
+    model: sonnet
+
+  # Implementation: keep routine coding on Sonnet for speed/cost balance
+  dev_story:
+    provider: claude
+    model: sonnet
+
+  # Validation: keep Codex as the second reviewer, with Opus handling synthesis
+  validate_story:
+    - provider: claude
+      model: sonnet
+    - provider: codex
+      model: gpt-5.3-codex
+      reasoning_effort: high
+  validate_story_synthesis:
+    provider: claude
+    model: opus
+
+  # Code review: keep Codex as the second reviewer, with Opus synthesizing fixes
+  code_review:
+    - provider: claude
+      model: sonnet
+    - provider: codex
+      model: gpt-5.3-codex
+      reasoning_effort: high
+  code_review_synthesis:
+    provider: claude
+    model: opus
+
+  # Retrospective: runs after each epic completes
+  retrospective:
+    provider: claude
+    model: sonnet
+
+# --- Compiler configuration ---
+# The compiler assembles the final prompt sent to the agent by packing in source
+# code files and strategic docs. Budgets control how many tokens of source context
+# are included. Larger budgets = more context for the agent but risk overwhelming
+# the compiler or exceeding model limits.
+compiler:
+  source_context:
+    budgets:
+      create_story: 120000             # Large — needs full codebase view to write good specs
+      validate_story: 15000            # Small — validators only need the story + key files
+      validate_story_synthesis: 15000  # Small — synthesizer works from validator outputs
+      dev_story: 35000                 # Medium — agent can read additional files on demand
+      code_review: 40000               # Medium — reviewers need enough code to spot issues
+      code_review_synthesis: 40000     # Medium — synthesizer merges review findings
+      default: 40000                   # Fallback for unlisted phases
+
+  # Strategic context: high-level project docs included in every prompt
+  strategic_context:
+    budget: 20000                      # Max tokens for strategic docs total
+    tree_budget: 0                     # Tokens for project file tree (0 = disabled)
+    defaults:
+      include: [project-context]       # Which docs to include by default
+      main_only: true                  # Only include from main branch (not feature branches)
+    create_story:
+      include: [project-context]       # Story creation gets project context
+    dev_story:
+      include: [project-context]       # Dev gets project context (can read arch docs on demand)
+    code_review:
+      include: [project-context]       # Reviewers get project context
+
+# --- Phase execution loop ---
+# Defines the sequence of phases for each story, and what runs when an epic ends.
+loop:
+  story:
+    - create_story                     # 1. Generate story spec from backlog
+    - validate_story                   # 2. Two reviewers validate the spec in parallel
+    - validate_story_synthesis         # 3. Synthesizer merges reviews, applies fixes
+    - dev_story                        # 4. Agent implements the story (code + tests)
+    - code_review                      # 5. Two reviewers review the implementation
+    - code_review_synthesis            # 6. Synthesizer merges reviews, agent applies fixes
+  epic_teardown:
+    - retrospective                    # Runs once after all stories in an epic complete
+
+# --- Optional features (all disabled) ---
+testarch:
+  enabled: false                       # Test architecture analysis (TEA framework)
+
+deep_verify:
+  enabled: false                       # Deep verification of implementation against ACs
+
+security_agent:
+  enabled: false                       # Security-focused review pass
