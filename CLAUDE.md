@@ -41,8 +41,8 @@ _bmad-output/
 - `_bmad-output/planning-artifacts/prd.md` — Product requirements
 - `_bmad-output/planning-artifacts/architecture.md` — Technical architecture
 - `_bmad-output/planning-artifacts/ux-design-specification.md` — UX design
-- `_bmad-output/planning-artifacts/phase-1-implementation-backlog-2026-02-25.md` — Epics and stories
-- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-25.md` — OpenFisca pivot
+- `_bmad-output/planning-artifacts/epics.md` — Epics, stories, and acceptance criteria
+- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-04-01.md` — Latest change proposal
 
 ## Current Status
 
