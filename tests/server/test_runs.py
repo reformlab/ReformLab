@@ -367,3 +367,276 @@ class TestPortfolioExecution:
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
+
+
+# ---------------------------------------------------------------------------
+# Story 23.2: Unified population resolver integration tests
+# ---------------------------------------------------------------------------
+
+
+def _make_client_with_resolver(
+    tmp_store: ResultStore,
+    monkeypatch: pytest.MonkeyPatch,
+    data_dir: Path,
+    uploaded_dir: Path,
+) -> tuple[TestClient, dict[str, str]]:
+    """Create a TestClient with injected store, adapter, and population resolver."""
+    import reformlab.server.dependencies as deps
+    from reformlab.server.population_resolver import PopulationResolver
+
+    monkeypatch.setattr(deps, "_adapter", MockAdapter())
+    monkeypatch.setattr(deps, "_result_store", tmp_store)
+    # Inject resolver pointing at our temp directories
+    monkeypatch.setattr(deps, "_population_resolver", PopulationResolver(data_dir, uploaded_dir))
+
+    from reformlab.server.app import create_app
+    from reformlab.server.dependencies import get_result_store
+
+    app = create_app()
+    app.dependency_overrides[get_result_store] = lambda: tmp_store
+    client = TestClient(app)
+
+    login = client.post("/api/auth/login", json={"password": "test-password-123"})
+    headers = {"Authorization": f"Bearer {login.json()['token']}"}
+    return client, headers
+
+
+class TestRunWithBundledPopulation:
+    """Story 23.2 / AC-1: Bundled populations are resolved and executable."""
+
+    def test_run_with_bundled_population_succeeds(
+        self, tmp_store: ResultStore, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        data_dir = tmp_path / "populations"
+        data_dir.mkdir()
+        (data_dir / "fr-synthetic-2024.csv").write_text(
+            "household_id,income\n1,50000\n", encoding="utf-8"
+        )
+        uploaded_dir = tmp_path / "uploaded"
+        uploaded_dir.mkdir()
+
+        client, headers = _make_client_with_resolver(
+            tmp_store, monkeypatch, data_dir, uploaded_dir
+        )
+        response = client.post(
+            "/api/runs",
+            headers=headers,
+            json={
+                **_SIMPLE_RUN_BODY,
+                "population_id": "fr-synthetic-2024",
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        # AC-5: population_source in response
+        assert data["population_source"] == "bundled"
+
+    def test_bundled_population_source_persisted_in_metadata(
+        self, tmp_store: ResultStore, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        data_dir = tmp_path / "populations"
+        data_dir.mkdir()
+        (data_dir / "test-bundled.csv").write_text(
+            "household_id,income\n1,50000\n", encoding="utf-8"
+        )
+        uploaded_dir = tmp_path / "uploaded"
+        uploaded_dir.mkdir()
+
+        client, headers = _make_client_with_resolver(
+            tmp_store, monkeypatch, data_dir, uploaded_dir
+        )
+        client.post(
+            "/api/runs",
+            headers=headers,
+            json={**_SIMPLE_RUN_BODY, "population_id": "test-bundled"},
+        )
+
+        results = tmp_store.list_results()
+        assert len(results) == 1
+        assert results[0].population_source == "bundled"
+
+
+class TestRunWithUploadedPopulation:
+    """Story 23.2 / AC-2: Uploaded populations are resolved and executable."""
+
+    def test_run_with_uploaded_population_succeeds(
+        self, tmp_store: ResultStore, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        data_dir = tmp_path / "populations"
+        data_dir.mkdir()
+        uploaded_dir = tmp_path / "uploaded"
+        uploaded_dir.mkdir()
+        (uploaded_dir / "my-upload.csv").write_text(
+            "household_id,income\n2,60000\n", encoding="utf-8"
+        )
+
+        client, headers = _make_client_with_resolver(
+            tmp_store, monkeypatch, data_dir, uploaded_dir
+        )
+        response = client.post(
+            "/api/runs",
+            headers=headers,
+            json={**_SIMPLE_RUN_BODY, "population_id": "my-upload"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["population_source"] == "uploaded"
+
+    def test_uploaded_population_source_persisted_in_metadata(
+        self, tmp_store: ResultStore, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        data_dir = tmp_path / "populations"
+        data_dir.mkdir()
+        uploaded_dir = tmp_path / "uploaded"
+        uploaded_dir.mkdir()
+        (uploaded_dir / "my-upload.csv").write_text(
+            "household_id,income\n2,60000\n", encoding="utf-8"
+        )
+
+        client, headers = _make_client_with_resolver(
+            tmp_store, monkeypatch, data_dir, uploaded_dir
+        )
+        client.post(
+            "/api/runs",
+            headers=headers,
+            json={**_SIMPLE_RUN_BODY, "population_id": "my-upload"},
+        )
+
+        results = tmp_store.list_results()
+        assert len(results) == 1
+        assert results[0].population_source == "uploaded"
+
+
+class TestRunWithGeneratedPopulation:
+    """Story 23.2 / AC-3: Generated populations are resolved and executable."""
+
+    def test_run_with_generated_population_succeeds(
+        self, tmp_store: ResultStore, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        import json as json_lib
+
+        data_dir = tmp_path / "populations"
+        data_dir.mkdir()
+        (data_dir / "gen-pop-2024.csv").write_text(
+            "household_id,income\n3,70000\n", encoding="utf-8"
+        )
+        (data_dir / "gen-pop-2024.manifest.json").write_text(
+            json_lib.dumps({"seed": 42, "method": "uniform"}), encoding="utf-8"
+        )
+        uploaded_dir = tmp_path / "uploaded"
+        uploaded_dir.mkdir()
+
+        client, headers = _make_client_with_resolver(
+            tmp_store, monkeypatch, data_dir, uploaded_dir
+        )
+        response = client.post(
+            "/api/runs",
+            headers=headers,
+            json={**_SIMPLE_RUN_BODY, "population_id": "gen-pop-2024"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["population_source"] == "generated"
+
+    def test_generated_population_source_persisted_in_metadata(
+        self, tmp_store: ResultStore, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        import json as json_lib
+
+        data_dir = tmp_path / "populations"
+        data_dir.mkdir()
+        (data_dir / "gen-pop.csv").write_text(
+            "household_id,income\n3,70000\n", encoding="utf-8"
+        )
+        (data_dir / "gen-pop.manifest.json").write_text(
+            json_lib.dumps({"seed": 42}), encoding="utf-8"
+        )
+        uploaded_dir = tmp_path / "uploaded"
+        uploaded_dir.mkdir()
+
+        client, headers = _make_client_with_resolver(
+            tmp_store, monkeypatch, data_dir, uploaded_dir
+        )
+        client.post(
+            "/api/runs",
+            headers=headers,
+            json={**_SIMPLE_RUN_BODY, "population_id": "gen-pop"},
+        )
+
+        results = tmp_store.list_results()
+        assert len(results) == 1
+        assert results[0].population_source == "generated"
+
+
+class TestRunWithMissingPopulation:
+    """Story 23.2 / AC-4: Missing population blocks run with clear error."""
+
+    def test_run_with_missing_population_returns_404(
+        self, tmp_store: ResultStore, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        data_dir = tmp_path / "populations"
+        data_dir.mkdir()
+        uploaded_dir = tmp_path / "uploaded"
+        uploaded_dir.mkdir()
+
+        client, headers = _make_client_with_resolver(
+            tmp_store, monkeypatch, data_dir, uploaded_dir
+        )
+        response = client.post(
+            "/api/runs",
+            headers=headers,
+            json={**_SIMPLE_RUN_BODY, "population_id": "nonexistent-pop"},
+        )
+
+        assert response.status_code == 404
+        detail = response.json()["detail"]
+        assert "what" in detail
+        assert "why" in detail
+        assert "fix" in detail
+        assert "nonexistent-pop" in detail["what"]
+
+    def test_run_without_population_id_succeeds(
+        self, client_with_store: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """No population_id → population_source is None, run still works."""
+        response = client_with_store.post(
+            "/api/runs",
+            headers=auth_headers,
+            json=_SIMPLE_RUN_BODY,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["population_source"] is None
+
+
+class TestRunResponseIncludesPopulationSource:
+    """Story 23.2 / AC-5: Run response and metadata include population_source."""
+
+    def test_no_population_id_gives_null_source(
+        self, client_with_store: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        response = client_with_store.post(
+            "/api/runs",
+            headers=auth_headers,
+            json=_SIMPLE_RUN_BODY,
+        )
+        assert response.status_code == 200
+        assert response.json()["population_source"] is None
+
+    def test_population_source_field_present_in_response(
+        self, client_with_store: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        response = client_with_store.post(
+            "/api/runs",
+            headers=auth_headers,
+            json=_SIMPLE_RUN_BODY,
+        )
+        assert response.status_code == 200
+        assert "population_source" in response.json()

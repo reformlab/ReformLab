@@ -80,6 +80,8 @@ class ResultMetadata:
     exogenous_series_names: list[str] | None = None  # Series names for display
     # Story 23.1 / AC-4: Runtime mode from manifest ("live" or "replay")
     runtime_mode: str = "live"
+    # Story 23.2 / AC-5: Population source classification from resolver
+    population_source: str | None = None  # "bundled" | "uploaded" | "generated"
 
 
 # ---------------------------------------------------------------------------
@@ -441,6 +443,8 @@ def _dict_to_metadata(data: dict[str, object]) -> ResultMetadata:
     raw_portfolio = data.get("portfolio_name")
     # Story 23.1 / AC-3: Extract runtime_mode with "live" fallback for legacy data
     raw_runtime_mode = data.get("runtime_mode", "live")
+    # Story 23.2 / AC-5: Extract population_source with None fallback for legacy data
+    raw_population_source = data.get("population_source")
     return ResultMetadata(
         run_id=str(data["run_id"]),
         timestamp=str(data["timestamp"]),
@@ -460,6 +464,7 @@ def _dict_to_metadata(data: dict[str, object]) -> ResultMetadata:
         policy_type=str(raw_policy_type) if raw_policy_type is not None else None,
         portfolio_name=str(raw_portfolio) if raw_portfolio is not None else None,
         runtime_mode=str(raw_runtime_mode),
+        population_source=str(raw_population_source) if raw_population_source is not None else None,
     )
 
 

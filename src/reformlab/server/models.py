@@ -102,6 +102,8 @@ class RunResponse(BaseModel):
     trust_warnings: list[str] = []
     # Story 23.1 / AC-4: Runtime mode of the executed run
     runtime_mode: Literal["live", "replay"] = "live"
+    # Story 23.2 / AC-5: Population source classification from resolver
+    population_source: Literal["bundled", "uploaded", "generated"] | None = None
 
 
 class MemoryCheckResponse(BaseModel):
@@ -468,6 +470,8 @@ class ResultDetailResponse(BaseModel):
     evidence_assets: list[dict[str, Any]] | None = None
     # Story 23.1 / AC-4: Runtime mode from manifest
     runtime_mode: Literal["live", "replay"] = "live"
+    # Story 23.2 / AC-5: Population source classification from resolver
+    population_source: Literal["bundled", "uploaded", "generated"] | None = None
     # Populated only when data_available is True:
     indicators: dict[str, Any] | None = None
     columns: list[str] | None = None

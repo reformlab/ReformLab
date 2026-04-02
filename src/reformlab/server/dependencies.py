@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from reformlab.computation.adapter import ComputationAdapter
     from reformlab.interfaces.api import SimulationResult
+    from reformlab.server.population_resolver import PopulationResolver
     from reformlab.server.result_store import ResultStore
     from reformlab.templates.registry import ScenarioRegistry
 
@@ -77,6 +78,7 @@ _result_cache = ResultCache(max_size=10)
 _adapter: ComputationAdapter | None = None
 _result_store: ResultStore | None = None
 _registry: ScenarioRegistry | None = None
+_population_resolver: PopulationResolver | None = None
 
 
 def get_result_cache() -> ResultCache:
@@ -102,6 +104,28 @@ def get_registry() -> ScenarioRegistry:
 
         _registry = ScenarioRegistry()
     return _registry
+
+
+def get_population_resolver() -> PopulationResolver:
+    """Return the global population resolver (lazy-initialized).
+
+    Reads directory paths from environment variables:
+    - ``REFORMLAB_DATA_DIR`` (default: ``data``) — bundled populations
+    - ``REFORMLAB_UPLOADED_POPULATIONS_DIR`` (default: ``~/.reformlab/uploaded-populations``)
+    """
+    global _population_resolver  # noqa: PLW0603
+    if _population_resolver is None:
+        from reformlab.server.population_resolver import PopulationResolver
+
+        data_dir = Path(os.environ.get("REFORMLAB_DATA_DIR", "data")) / "populations"
+        uploaded_dir = Path(
+            os.environ.get(
+                "REFORMLAB_UPLOADED_POPULATIONS_DIR",
+                "~/.reformlab/uploaded-populations",
+            )
+        ).expanduser()
+        _population_resolver = PopulationResolver(data_dir, uploaded_dir)
+    return _population_resolver
 
 
 def get_adapter() -> ComputationAdapter:

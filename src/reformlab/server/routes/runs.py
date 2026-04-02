@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import logging
-import os
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -16,6 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from reformlab.server.dependencies import (
     ResultCache,
     get_adapter,
+    get_population_resolver,
     get_registry,
     get_result_cache,
     get_result_store,
@@ -36,22 +36,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-
-def _resolve_population_path(population_id: str | None) -> Path | None:
-    """Resolve a population_id to a file path by scanning the data directory."""
-    if not population_id:
-        return None
-
-    data_dir = Path(os.environ.get("REFORMLAB_DATA_DIR", "data")) / "populations"
-    if not data_dir.exists():
-        return None
-
-    for path in data_dir.iterdir():
-        if path.stem == population_id and path.suffix.lower() in {".csv", ".parquet"}:
-            return path
-
-    return None
 
 
 @router.post("", response_model=RunResponse)
@@ -86,8 +70,25 @@ async def run_simulation(
             },
         )
 
+    from reformlab.server.population_resolver import PopulationResolutionError
+
     adapter = get_adapter()
-    population_path = _resolve_population_path(body.population_id)
+    resolver = get_population_resolver()
+
+    # Story 23.2 / AC-1, AC-2, AC-3, AC-4: Unified population resolver
+    population_path: Path | None = None
+    population_source: str | None = None
+    if body.population_id:
+        try:
+            resolved = resolver.resolve(body.population_id)
+            population_path = resolved.data_path
+            population_source = resolved.source
+        except PopulationResolutionError as exc:
+            raise HTTPException(
+                status_code=404,
+                detail=exc.args[0],  # Already {"what", "why", "fix"} format
+            ) from exc
+
     template_name = body.template_name or ""
 
     run_id = str(uuid.uuid4())
@@ -171,6 +172,8 @@ async def run_simulation(
                     # Story 21.6 / AC6: Exogenous series fields
                     exogenous_series_hash=exog_hash,
                     exogenous_series_names=exog_names,
+                    # Story 23.2 / AC-5: Population source from resolver
+                    population_source=population_source,
                 ),
             )
         except Exception:
@@ -221,6 +224,10 @@ async def run_simulation(
         trust_warnings=trust_warnings,
         # Story 23.1 / AC-4: Runtime mode from manifest
         runtime_mode=cast(Literal["live", "replay"], result.manifest.runtime_mode),
+        # Story 23.2 / AC-5: Population source from resolver
+        population_source=cast(
+            "Literal['bundled', 'uploaded', 'generated'] | None", population_source
+        ),
     )
 
 
