@@ -56,8 +56,8 @@ phase_models:
   # Story creation: use the same stable GLM-backed Sonnet config as implementation
   create_story:
     provider: claude-subprocess        # Runs Claude CLI as a subprocess
-    model: sonnet
-    model_name: glm-4.7                # Display name shown in logs instead of "sonnet"
+    model: opus
+    model_name: glm-5.1               # Display name shown in logs instead of "sonnet"
     settings: ~/.claude/glm.json       # Claude CLI settings file (permissions, allowed tools, etc.)
 
   # Implementation: uses Sonnet via GLM settings for coding (reads files on demand)

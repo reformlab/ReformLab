@@ -1,5 +1,5 @@
 # =============================================================================
-# bmad-assist configuration for ReformLab
+# bmad-assist Anthropic configuration for ReformLab
 # =============================================================================
 
 # --- Project identity ---
@@ -37,72 +37,54 @@ timeouts:
 # entry. "helper" is used for lightweight internal tasks (metrics extraction, etc.).
 providers:
   master:
-    provider: claude-subprocess        # Runs Claude CLI as a subprocess
+    provider: claude                   # Native Claude provider (SDK with CLI fallback)
     model: sonnet
-    model_name: glm-4.7                # Display name shown in logs instead of "sonnet"
-    settings: ~/.claude/glm.json       # Claude CLI settings file (permissions, allowed tools, etc.)
 
   helper:
-    provider: claude-subprocess
-    model: haiku                       # Lightweight helper work, routed to GLM via settings
-    model_name: glm-4.7
-    settings: ~/.claude/glm.json
+    provider: claude
+    model: sonnet                      # Keep helper on Sonnet for consistent Anthropic-only routing
 
 # --- Per-phase model assignment ---
 # Override which model runs each phase. Phases not listed here fall back to
 # the "master" provider above.
 phase_models:
 
-  # Story creation: use the same stable GLM-backed Sonnet config as implementation
+  # Story creation: Sonnet is usually enough for drafting and planning work
   create_story:
-    provider: claude-subprocess        # Runs Claude CLI as a subprocess
-    model: sonnet
-    model_name: glm-4.7                # Display name shown in logs instead of "sonnet"
-    settings: ~/.claude/glm.json       # Claude CLI settings file (permissions, allowed tools, etc.)
+    provider: claude
+    model: opus
 
-  # Implementation: uses Sonnet via GLM settings for coding (reads files on demand)
+  # Implementation: keep routine coding on Sonnet for speed/cost balance
   dev_story:
-    provider: claude-subprocess
+    provider: claude
     model: sonnet
-    model_name: glm-4.7
-    settings: ~/.claude/glm.json
 
-  # Validation: pair Sonnet breadth with Codex depth, then merge with Sonnet
+  # Validation: keep Codex as the second reviewer, with Opus handling synthesis
   validate_story:
-    - provider: claude-subprocess
-      model: sonnet                    # Validation reviewer stays on GLM 4.7
-      model_name: glm-4.7
-      settings: ~/.claude/glm.json
+    - provider: claude
+      model: sonnet
     - provider: codex
-      model: gpt-5.3-codex             # Second reviewer with deep reasoning
+      model: gpt-5.3-codex
       reasoning_effort: high
   validate_story_synthesis:
-    provider: claude-subprocess        # Runs Claude CLI as a subprocess
+    provider: claude
     model: opus
-    model_name: glm-5.1                # Only synthesis phases use GLM 5.1
-    settings: ~/.claude/glm.json       # Claude CLI settings file (permissions, allowed tools, etc.)
 
-  # Code review: same stable Sonnet + Codex reviewer pairing as validation
+  # Code review: keep Codex as the second reviewer, with Opus synthesizing fixes
   code_review:
-    - provider: claude-subprocess
+    - provider: claude
       model: sonnet
-      model_name: glm-4.7
-      settings: ~/.claude/glm.json
     - provider: codex
       model: gpt-5.3-codex
       reasoning_effort: high
   code_review_synthesis:
-    provider: claude-subprocess        # Runs Claude CLI as a subprocess
+    provider: claude
     model: opus
-    model_name: glm-5.1                # Only synthesis phases use GLM 5.1
-    settings: ~/.claude/glm.json       # Claude CLI settings file (permissions, allowed tools, etc.)
 
   # Retrospective: runs after each epic completes
   retrospective:
-    provider: claude-subprocess
+    provider: claude
     model: sonnet
-    model_name: glm-4.7
-    settings: ~/.claude/glm.json
 
 # --- Compiler configuration ---
 # The compiler assembles the final prompt sent to the agent by packing in source

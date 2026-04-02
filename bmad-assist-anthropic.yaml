@@ -52,7 +52,7 @@ phase_models:
   # Story creation: Sonnet is usually enough for drafting and planning work
   create_story:
     provider: claude
-    model: sonnet
+    model: opus
 
   # Implementation: keep routine coding on Sonnet for speed/cost balance
   dev_story:
