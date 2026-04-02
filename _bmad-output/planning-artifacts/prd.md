@@ -72,7 +72,7 @@ Built by a domain expert with AI-assisted execution, the immediate objective is 
 
 | Dimension | Value |
 |-----------|-------|
-| **Project Type** | OpenFisca-centered policy analysis product (Python + notebook + no-code UI) |
+| **Project Type** | OpenFisca-centered policy analysis product (Web GUI + Python library + notebooks) |
 | **Domain** | Environmental and distributional policy simulation |
 | **Complexity** | High — multi-source data engineering, dynamic orchestration, reproducibility governance, multi-persona UX |
 | **Project Context** | Greenfield product layer on top of mature open-source core |
@@ -152,13 +152,15 @@ Since ReformLab is an open-source project, "business" success means adoption, cr
 - Fully automated report authoring pipeline
 - Advanced policy-rule authoring beyond template-driven workflows
 
-### Current Program State Update (2026-03-24)
+### Current Program State Update (2026-04-02)
 
 The project is now beyond the original Phase 1 MVP boundary used earlier in this PRD.
 
 - Population-generation workflows, portfolio composition, richer GUI flows, and behavioral-model scaffolding are now part of the active product baseline or current planning surface.
 - The phase tables below should be read as the original sequencing rationale, not as a statement that these capabilities are out of scope for the current product.
 - When this PRD conflicts with the current UX specification or architecture on post-Phase-1 scope, the newer product-state documents take precedence.
+
+**Delivery mode update:** The primary product interface is now a **web GUI** (React 19 SPA + FastAPI backend), deployed at `app.reformlab.fr` / `api.reformlab.fr`. The Python library (`pip install reformlab`) and YAML configuration remain first-class interfaces for researchers and power users. The original user journeys below were written for the library; the web GUI now serves as the primary entry point for policy analysts (Sophie) and the citizen-facing vision (Claire).
 
 ### Originally Post-MVP Features (Historical Roadmap Context)
 
@@ -394,13 +396,14 @@ Innovation-related risks and fallbacks are tracked in **Product Scope → Risk M
 
 ### Project-Type Overview
 
-ReformLab is a Python library distributed via PyPI (`pip install reformlab`) with a heavier default install that includes all analytical and visualization dependencies out of the box. The framework exposes two complementary interfaces: YAML configuration for policy analysts and a full Python API for researchers working in Jupyter notebooks. No IDE integration or language server needed — this is a scientific computing library, not a developer productivity tool.
+ReformLab is delivered as a **web application** (React 19 SPA + FastAPI backend) for analysts and as a **Python library** distributed via PyPI (`pip install reformlab`) for researchers. The web GUI is the primary product interface; the Python library and YAML configuration are first-class power-user workflows. No IDE integration or language server needed — this is a policy analysis product, not a developer productivity tool.
 
 ### Installation & Distribution
 
-- **Primary distribution:** PyPI via `pip install reformlab` — single command, all dependencies included
+- **Primary delivery:** Web application (React 19 + FastAPI), deployed via Docker (Kamal 2) to `app.reformlab.fr` / `api.reformlab.fr`
+- **Library distribution:** PyPI via `pip install reformlab` — single command, all analytical dependencies included
 - **Python version:** Latest stable Python (3.13+). No backward compatibility burden — users in this domain typically manage their own environments
-- **Dependency philosophy:** Batteries-included default install. MVP ships core + analytics + visualization (NumPy, pandas/Polars, matplotlib, PyArrow). Report-templating dependencies (Jinja2, python-docx) are introduced with Phase 2 report generation.
+- **Dependency philosophy:** The web product uses FastAPI, PyArrow, React, TypeScript, Tailwind, Recharts. The Python library includes core + analytics + visualization (PyArrow, matplotlib). Report-templating dependencies (Jinja2, python-docx) are introduced with Phase 2 report generation.
 - **Conda:** Future consideration, not MVP priority. Many researchers use conda environments but pip-in-conda works fine
 - **Standalone executable:** Feasible via PyInstaller/Nuitka if needed for government environments without Python — post-MVP consideration
 
@@ -441,7 +444,7 @@ ReformLab is a Python library distributed via PyPI (`pip install reformlab`) wit
 | Carbon tax tutorial | Step-by-step walkthrough of the MVP model | Sophie, Marco |
 | YAML reference | Complete schema documentation for policy-as-code | Sophie |
 | Python API reference | Auto-generated from docstrings | Marco |
-| Entity graph guide | How to define entities, relationships, and attributes | Marco, advanced Sophie |
+| OpenFisca integration guide | How data flows between OpenFisca and ReformLab layers | Marco, advanced Sophie |
 | Assumptions guide | How assumption logging works, how to swap assumptions | All |
 | Example notebooks | 4-5 carbon tax redistribution scenarios as runnable notebooks | All |
 
@@ -555,7 +558,7 @@ ReformLab is a Python library distributed via PyPI (`pip install reformlab`) wit
 
 - FR36: Analyst can download and cache public datasets from institutional sources (INSEE, Eurostat, ADEME, SDES).
 - FR37: Analyst can browse available datasets and select which to include in a population.
-- FR38: System provides a library of statistical methods for merging datasets that do not share the same sample (uniform distribution, IPF, conditional sampling, statistical matching).
+- FR38: System provides an extensible library of statistical methods for merging datasets that do not share the same sample. Initial methods: uniform distribution, IPF, conditional sampling. Additional methods (e.g. statistical matching) to be added as the population layer matures.
 - FR39: Analyst can choose which merge method to apply at each dataset join, with plain-language explanation of the assumption.
 - FR40: System produces a complete synthetic population with household-level attributes sufficient for policy simulation (income, household composition, housing, vehicle, heating, energy, geography).
 - FR41: Every merge, imputation, and extrapolation is recorded as an explicit assumption in the governance layer.

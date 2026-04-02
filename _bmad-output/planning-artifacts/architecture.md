@@ -139,21 +139,21 @@ class ComputationAdapter(Protocol):
 | -------- | ------- | ------- |
 | `ComputationAdapter` | `compute()`, `version()` | Orchestrator → tax-benefit engine |
 | `OrchestratorStep` | `name`, `execute(year, state)` | Orchestrator → pluggable pipeline steps |
-| `DataSourceLoader` | `load()` | Population → institutional data sources |
+| `DataSourceLoader` | `download()`, `status()`, `descriptor()` | Population → institutional data sources |
 | `MergeMethod` | `merge()` | Population → statistical fusion methods |
 
 ### 3.3 Frozen Dataclasses — Immutability by Default
 
 **Problem:** Mutable state causes bugs that are hard to trace, especially in multi-year simulations where the same data passes through many steps.
 
-**Solution:** Every domain type uses `@dataclass(frozen=True)`. Once created, an object cannot be modified. You create new objects instead.
+**Solution:** All input and configuration types use `@dataclass(frozen=True)`. Once created, an object cannot be modified. You create new objects instead. Result types (e.g. `OrchestratorResult`) are mutable since they are built incrementally.
 
 ```python
 @dataclass(frozen=True)
 class YearState:
     year: int
     data: dict[str, Any]
-    seed: int
+    seed: int | None = None
     metadata: dict[str, Any]
 ```
 
@@ -171,7 +171,7 @@ class YearState:
 - `ComputationResult.output_fields` — tax-benefit computation output
 - `PanelOutput.table` — household-by-year panel (main simulation output)
 - `CostMatrix.table` — discrete choice cost matrix
-- `IndicatorResult.data` — indicator computation output
+- `IndicatorResult.indicators` — typed indicator sequences (`DecileIndicators`, `RegionIndicators`, etc.)
 
 ### 3.5 Manifest-First Governance
 
@@ -398,7 +398,7 @@ Year 2026: state₁ → [ComputationStep] → [DiscreteChoiceStep] → [VintageS
 
 **Purpose:** Generate realistic household populations by fusing institutional data sources.
 
-**Data sources (4 loaders):**
+**Data sources (5 loaders):**
 
 | Loader | Source | Data |
 | ------ | ------ | ---- |
@@ -406,6 +406,7 @@ Year 2026: state₁ → [ComputationStep] → [DiscreteChoiceStep] → [VintageS
 | `EurostatLoader` | EU statistics | Cross-country data |
 | `ADEMELoader` | Energy/environment agency | Energy consumption, emissions |
 | `SDESLoader` | Transport statistics | Vehicle ownership, mobility |
+| `EuSilcLoader` | EU-SILC survey | Harmonized income and living conditions |
 
 **Merge methods (3 strategies):**
 
@@ -451,10 +452,11 @@ Year 2026: state₁ → [ComputationStep] → [DiscreteChoiceStep] → [VintageS
 
 **Purpose:** HTTP facade over the Python API. Thin layer — no business logic in routes.
 
-**API surface (11 route modules, 20+ endpoints):**
+**API surface (14 route modules):**
 
 | Route prefix | Key endpoints |
 | ------------ | ------------- |
+| `/api/auth` | Authentication |
 | `/api/runs` | `POST /` execute, `POST /memory-check` preflight |
 | `/api/indicators/{type}` | `POST /` compute indicators |
 | `/api/comparison` | `POST /` baseline vs reform, `POST /portfolios` multi-run |
@@ -463,9 +465,11 @@ Year 2026: state₁ → [ComputationStep] → [DiscreteChoiceStep] → [VintageS
 | `/api/portfolios` | `GET /`, `POST /`, `PUT /{name}`, `POST /validate` |
 | `/api/populations` | `GET /`, `GET /{id}/preview`, `GET /{id}/profile`, `GET /{id}/crosstab`, `POST /upload` |
 | `/api/data-fusion` | `GET /sources/{provider}`, `POST /generate` |
+| `/api/exogenous` | Exogenous time series data |
 | `/api/results` | `GET /` list saved results |
 | `/api/exports` | `POST /` CSV export |
 | `/api/decisions` | `GET /` decision audit trail |
+| `/api/validation` | Preflight validation checks |
 
 **Canonical analysis objects:** `Portfolio` stores reusable policy bundles. `Scenario` stores the versioned combination of portfolio, selected population(s), simulation configuration, mappings, and metadata. `Run` executes one scenario version, potentially as a scenario-by-population matrix when multiple populations are selected.
 
@@ -481,17 +485,18 @@ Year 2026: state₁ → [ComputationStep] → [DiscreteChoiceStep] → [VintageS
 
 **Architecture:** React 19 SPA with centralized state (`AppContext`), typed API client, and Shadcn/Radix component library.
 
-**Interaction model:** The GUI is a five-stage shell over the same scenario registry and run model exposed by the API:
+**Interaction model:** The GUI is a four-stage shell (with sub-views) over the same scenario registry and run model exposed by the API. Stage keys are defined in `frontend/src/types/workspace.ts`.
 
-| Stage | Purpose | Primary frontend surfaces |
-| ----- | ------- | ------------------------- |
-| Policies | Build or edit reusable policy bundles and surface truthful catalog availability | `PoliciesAndPortfolioScreen`, template browser, inline policy-set composition |
-| Population | Select, generate, upload, and inspect populations | `PopulationLibraryScreen`, `DataFusionWorkbench`, population explorer/profiler |
-| Investment Decisions | Configure optional household decision behavior in a dedicated stage | `InvestmentDecisionsScreen`, model selector, parameter editor, calibration summary |
-| Scenario | Configure simulation mode, horizon settings, inherited population context, optional sensitivity population, and validation | `ScenarioScreen`, run summary, validation gate |
-| Run / Results / Compare | Execute runs, inspect results, compare completed runs, export outputs | `RunQueuePanel`, results view, comparison dashboard, run manifest viewer |
+| Stage (key) | Label | Purpose | Sub-views | Primary frontend surfaces |
+| ----------- | ----- | ------- | --------- | ------------------------- |
+| `policies` | Policies & Portfolio | Build or edit reusable policy bundles and surface truthful catalog availability | — | `PoliciesStageScreen`, template browser, inline policy-set composition |
+| `population` | Population | Select, generate, upload, and inspect populations | `data-fusion`, `population-explorer` | `PopulationLibraryScreen`, `DataFusionWorkbench`, population explorer/profiler |
+| `engine` | Scenario | Configure simulation mode, horizon settings, investment decisions, inherited population context, optional sensitivity population, and validation | `decisions` | `EngineStageScreen`, `InvestmentDecisionsWizard`, `ValidationGate`, run summary |
+| `results` | Run / Results / Compare | Execute runs, inspect results, compare completed runs, export outputs | `runner`, `comparison` | `SimulationRunnerScreen`, `ResultsOverviewScreen`, `ComparisonDashboardScreen` |
 
-**Scenario semantics in the GUI:** Users may enter through a pre-seeded demo scenario or an existing saved scenario. Stages 1-4 edit the scenario definition; Stage 5 executes and compares runs produced from that scenario. Browser routes map to stage/sub-view state rather than to the older sequence of full-screen setup pages.
+Note: The stage key `engine` refers to the simulation/execution configuration scope. The user-facing label is "Scenario" because this stage configures the full execution context (engine settings, horizon, investment decisions, validation). The broader concept of a "scenario" (policy + population + engine + parameters) spans all stages and is represented by the `WorkspaceScenario` type.
+
+**Scenario semantics in the GUI:** Users may enter through a pre-seeded demo scenario or an existing saved scenario. Stages 1-3 edit the scenario definition; Stage 4 executes and compares runs produced from that scenario. Browser routes map to stage/sub-view state rather than to the older sequence of full-screen setup pages.
 
 **Runtime semantics in the GUI:** Standard web execution defaults to live OpenFisca. Replay remains available only through explicit demo or manual flows and is reflected in run metadata and manifest surfaces. The first slice does not add a user-facing runtime or engine selector to the standard Scenario flow.
 
@@ -520,7 +525,7 @@ Year 2026: state₁ → [ComputationStep] → [DiscreteChoiceStep] → [VintageS
 | Plotting | matplotlib | 3.8+ | Notebook visualizations |
 | Linting | ruff | 0.15+ | Fast Python linter |
 | Type checking | mypy | 1.19+ | Strict mode enabled |
-| Testing | pytest | 8.3+ | 3,143 tests, 80%+ coverage |
+| Testing | pytest | 8.3+ | 11,000+ tests, 80%+ coverage |
 | Notebooks | nbmake | 1.4+ | Notebook execution tests |
 
 ### Frontend
@@ -561,7 +566,7 @@ Run these before marking any work as done:
 # Backend
 uv run ruff check src/ tests/     # Lint (0 errors required)
 uv run mypy src/                   # Type check (strict mode)
-uv run pytest tests/               # 3,143 tests
+uv run pytest tests/               # 11,000+ tests
 
 # Frontend
 npm run typecheck                  # TypeScript check

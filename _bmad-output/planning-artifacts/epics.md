@@ -17,7 +17,6 @@ inputDocuments:
 source_documents:
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/architecture.md
-  - _bmad-output/planning-artifacts/phase-1-implementation-backlog-2026-02-25.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-03-02.md
   - _bmad-output/planning-artifacts/phase-2-design-note-discrete-choice-household-decisions.md
   - _bmad-output/implementation-artifacts/sprint-status.yaml
@@ -28,6 +27,17 @@ source_documents:
 # Epics and Stories
 
 Single source of truth for all epics and stories across the project. For detailed dev notes, subtask checklists, and agent records, see individual story files in `_bmad-output/implementation-artifacts/`.
+
+## Phase 1 Exit Criteria
+
+Phase 1 is complete when all are true:
+
+1. All `P0` stories are done.
+2. 10-year deterministic run with vintage tracking passes regression tests.
+3. Core indicators and comparison outputs are available via API and GUI.
+4. Full manifest + lineage is emitted for every run.
+5. Performance and reproducibility NFR checks pass for benchmark fixtures.
+6. At least one external pilot user runs the workflow and confirms credibility.
 
 ## Epic Index
 
@@ -52,10 +62,10 @@ Single source of truth for all epics and stories across the project. For detaile
 | EPIC-17 | GUI Showcase Product | 2 | done | 8 |
 | EPIC-18 | UX Polish & Aesthetic Overhaul | 2 | done | 8 |
 | EPIC-19 | Public Documentation Site | 3 | done | 6 |
-| EPIC-20 | Stage-Based Scenario Workspace Alignment | 3 | backlog | 8 |
-| EPIC-21 | Trust-Governed Open + Synthetic Evidence Foundation | 3 | backlog | 8 |
-| EPIC-22 | UX Revision 3 Workspace Fit and Mobile Demo Viability | 3 | backlog | 7 |
-| EPIC-23 | Live OpenFisca Runtime and Executable Population Alignment | 3 | backlog | 6 |
+| EPIC-20 | Stage-Based Scenario Workspace Alignment | 3 | done | 8 |
+| EPIC-21 | Trust-Governed Open + Synthetic Evidence Foundation | 3 | done | 8 |
+| EPIC-22 | UX Revision 3 Workspace Fit and Mobile Demo Viability | 3 | done | 7 |
+| EPIC-23 | Live OpenFisca Runtime and Executable Population Alignment | 3 | in-progress | 6 |
 | EPIC-24 | Live Policy Catalog Activation and Domain-to-OpenFisca Translation | 3 | backlog | 5 |
 
 ## Conventions
