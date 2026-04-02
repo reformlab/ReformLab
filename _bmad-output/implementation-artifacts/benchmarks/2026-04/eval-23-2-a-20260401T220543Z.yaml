@@ -1,0 +1,140 @@
+record_id: 250069fe-bb56-407b-91af-ad83bccaa9c1
+created_at: '2026-04-01T22:05:43.264088+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 23
+  story_num: 2
+  title: Story 23.2
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-04-01T22:02:46.164566Z'
+  end_time: '2026-04-01T22:04:24.240566Z'
+  duration_ms: 98076
+  input_tokens: 0
+  output_tokens: 5774
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 23097
+  heading_count: 44
+  list_depth_max: 3
+  code_block_count: 17
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 19.0'
+  - 🎯 Ruthless Story Validation 23.2
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 19.0 → REJECT'
+  - 🚨 Critical Issues (Must Fix)
+  - '1. Breaking Terminology Change: "bundled" vs "built-in"'
+  - 2. Missing ResultMetadata Migration Strategy
+  - 'In _dict_to_metadata(), after line 443 (runtime_mode extraction):'
+  - '3. Constructor Signature Mismatch: generated_dir Parameter'
+  - 4. Missing populations.py Refactoring Task
+  - 5. Missing _run_portfolio Integration Details
+  - 6. Missing Frontend Types Update
+  - 7. No Edge Case Error Handling
+  - 8. Integration Test Dependency Override Pattern Missing
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Add Literal Type to Shared Types Module
+  - 2. Performance Guidance for row_count Field
+  - 3. Add population_source to RunRequest for Traceability
+  - 4. Document Folder-Based Population Metadata Field
+  - 5. Add Cache Invalidation Guidance
+  - 6. Add Duplicate ID Resolution Behavior Test
+  - ✨ Optimizations (Nice to Have)
+  - 1. Lazy Available IDs Listing
+  - 2. Manifest Schema Versioning
+  - 3. Add PopulationResolver.list() Method
+  - 🤖 LLM Optimization Improvements
+  - 1. Eliminate Constructor Parameter Confusion
+  - 2. Consolidate Type Definition Guidance
+  - 3. Remove Redundant Implementation Example
+  - 4. Merge Duplicate Error Response Example
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 1637f76e6b26
+findings:
+  total_count: 21
+  by_severity:
+    critical: 8
+    major: 6
+    minor: 3
+    nit: 4
+  by_category:
+    security: 0
+    performance: 2
+    correctness: 10
+    completeness: 7
+    clarity: 0
+    testability: 2
+  has_fix_count: 21
+  has_location_count: 16
+  has_evidence_count: 20
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 5
+  confidence_phrases_count: 1
+linguistic:
+  avg_sentence_length: 31.359550561797754
+  vocabulary_richness: 0.2719455392332497
+  flesch_reading_ease: 3.1746550859674016
+  vague_terms_count: 0
+  formality_score: 0.75
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.76
+  evidence_quality: 0.95
+  follows_template: true
+  internal_consistency: 0.95
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true

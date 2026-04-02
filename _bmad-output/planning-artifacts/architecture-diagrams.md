@@ -3,7 +3,7 @@ title: ReformLab Architecture Diagrams
 description: Three complementary Mermaid diagrams covering layered architecture, class/interface structure, and orchestrator runtime flow
 author: Paige (Tech Writer)
 date: 2026-02-25
-source: architecture.md, prd.md, phase-1-implementation-backlog-2026-02-25.md
+source: architecture.md, prd.md, epics.md
 ---
 
 # ReformLab Architecture Diagrams
