@@ -24,8 +24,10 @@ from typing import Any, Literal
 
 logger = logging.getLogger(__name__)
 
-# Supported data file extensions (mirrors populations.py)
-_DATA_EXTENSIONS = frozenset({".csv", ".parquet"})
+# Supported data file extensions, ordered by preference (Parquet first for
+# performance; CSV as fallback).  A tuple guarantees deterministic resolution
+# order regardless of PYTHONHASHSEED — required by the project determinism rule.
+_DATA_EXTENSIONS: tuple[str, ...] = (".parquet", ".csv")
 
 # Canonical source type
 PopulationSource = Literal["bundled", "uploaded", "generated"]
@@ -138,6 +140,18 @@ class PopulationResolver:
         Raises:
             PopulationResolutionError: If not found in any source.
         """
+        # Guard against path traversal and empty/invalid IDs
+        if (
+            not population_id
+            or "/" in population_id
+            or "\\" in population_id
+            or ".." in population_id
+        ):
+            raise PopulationResolutionError(
+                population_id,
+                reason=f"Population ID '{population_id}' contains invalid characters",
+            )
+
         # 1. Data dir: bundled or generated (manifest sidecar distinguishes)
         resolved = self._resolve_bundled(population_id)
         if resolved is not None:
@@ -251,7 +265,15 @@ class PopulationResolver:
         if not data_file:
             return None
 
-        data_path = folder_path / data_file
+        data_path = (folder_path / data_file).resolve()
+        # Ensure data_file stays within the folder (prevent traversal via descriptor)
+        if not data_path.is_relative_to(folder_path.resolve()):
+            logger.warning(
+                "event=folder_descriptor_traversal population_id=%s data_file=%s",
+                population_id,
+                data_file,
+            )
+            return None
         if not data_path.exists():
             return None
 

@@ -115,6 +115,13 @@ def _metadata_to_detail(
             Literal["live", "replay"],
             meta.runtime_mode if meta.runtime_mode in ("live", "replay") else "live",
         ),
+        # Story 23.2 / AC-5: Population source classification from resolver
+        population_source=cast(
+            "Literal['bundled', 'uploaded', 'generated'] | None",
+            meta.population_source
+            if meta.population_source in ("bundled", "uploaded", "generated")
+            else None,
+        ),
     )
 
 

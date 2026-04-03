@@ -651,3 +651,18 @@ None.
 ### Change Log
 
 - Story 23.2 implemented (Date: 2026-04-02)
+- Code review synthesis fixes applied (Date: 2026-04-03)
+
+## Senior Developer Review (AI)
+
+### Review: 2026-04-03
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 7.4 → Changes Requested
+- **Issues Found:** 6
+- **Issues Fixed:** 3
+- **Action Items Created:** 3
+
+#### Review Follow-ups (AI)
+- [ ] [AI-Review] MEDIUM: Migrate `_find_population_file` and `_get_population_origin` from `populations.py` to use `PopulationResolver` to eliminate duplicate resolution logic (`src/reformlab/server/routes/populations.py`)
+- [ ] [AI-Review] LOW: Strengthen `test_error_includes_available_ids` to assert all expected IDs ("uploaded", "generated", "folder-pop") are present, not just "bundled" (`tests/server/test_population_resolver.py`)
+- [ ] [AI-Review] LOW: Add integration test for `GET /api/results/{run_id}` verifying `population_source` field is returned correctly (`tests/server/test_results.py`)
