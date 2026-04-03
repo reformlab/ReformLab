@@ -37,11 +37,11 @@ timeouts:
 # entry. "helper" is used for lightweight internal tasks (metrics extraction, etc.).
 providers:
   master:
-    provider: claude                   # Native Claude provider (SDK with CLI fallback)
+    provider: claude-subprocess        # Claude CLI subprocess provider
     model: sonnet
 
   helper:
-    provider: claude
+    provider: claude-subprocess
     model: sonnet                      # Keep helper on Sonnet for consistent Anthropic-only routing
 
 # --- Per-phase model assignment ---
@@ -51,39 +51,39 @@ phase_models:
 
   # Story creation: Sonnet is usually enough for drafting and planning work
   create_story:
-    provider: claude
+    provider: claude-subprocess
     model: opus
 
   # Implementation: keep routine coding on Sonnet for speed/cost balance
   dev_story:
-    provider: claude
+    provider: claude-subprocess
     model: sonnet
 
   # Validation: keep Codex as the second reviewer, with Opus handling synthesis
   validate_story:
-    - provider: claude
+    - provider: claude-subprocess
       model: sonnet
     - provider: codex
       model: gpt-5.3-codex
       reasoning_effort: high
   validate_story_synthesis:
-    provider: claude
+    provider: claude-subprocess
     model: opus
 
   # Code review: keep Codex as the second reviewer, with Opus synthesizing fixes
   code_review:
-    - provider: claude
+    - provider: claude-subprocess
       model: sonnet
     - provider: codex
       model: gpt-5.3-codex
       reasoning_effort: high
   code_review_synthesis:
-    provider: claude
+    provider: claude-subprocess
     model: opus
 
   # Retrospective: runs after each epic completes
   retrospective:
-    provider: claude
+    provider: claude-subprocess
     model: sonnet
 
 # --- Compiler configuration ---
