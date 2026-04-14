@@ -1,0 +1,126 @@
+record_id: cd6bfcae-d28a-4040-8769-6e3f11cfdb3b
+created_at: '2026-04-14T11:43:35.853319+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 23
+  story_num: '3'
+  title: Story 23.3
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: sonnet
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-04-14T11:36:27.928833Z'
+  end_time: '2026-04-14T11:41:21.380833Z'
+  duration_ms: 293452
+  input_tokens: 0
+  output_tokens: 4317
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 17269
+  heading_count: 26
+  list_depth_max: 3
+  code_block_count: 14
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: **7.7**'
+  - 🏛️ Architectural Sins
+  - 1. `mapping_applied` Is Always Equal to `normalized` — Two Constants, One Value
+  - '"For simplicity, we assume any normalizer means mapping is part of the flow"'
+  - 2. `normalizer` Typed `Callable[[Any], pa.Table]` — Story Spec Contradicts Implementation
+  - 🐛 Correctness & Safety
+  - '3. 🔴 CRITICAL BUG: Normalizer''s `_ensure_household_id_column` Silently Bypasses `configured_household_id_field`'
+  - panel.py:86
+  - e.g., "menage_id" if metadata["household_id_field"] = "menage_id"
+  - 4. AC-4 Validation Logic Contradicts the AC Text
+  - result_normalizer.py:138-141
+  - 5. AC-5 Replay Mode Not Covered for Direct Scenario Path
+  - api.py — _run_direct_scenario
+  - 6. `normalize_entity_tables` Dead Parameter
+  - 🎭 Lying / Weak Tests
+  - 7. `test_with_explicit_mapping_config` Tests Nothing Meaningful
+  - 8. `test_panel_metadata_records_normalization` Uses Deliberately Weak Assertion
+  - 9. Misleading Docstring Is a Maintenance Trap
+  - 🔧 Suggested Fixes
+  - 1. Remove `_ensure_household_id_column` from `normalize_computation_result`
+  - 2. Fix `normalizer` Type Annotation in `panel.py`
+  - 3. Remove Dead `mapping_config` Parameter from `normalize_entity_tables`
+  - 4. Strengthen `test_with_explicit_mapping_config`
+  - Summary for Lucas
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 977a7ac923e4
+findings:
+  total_count: 10
+  by_severity:
+    critical: 1
+    major: 5
+    minor: 4
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 5
+    completeness: 2
+    clarity: 1
+    testability: 2
+  has_fix_count: 10
+  has_location_count: 10
+  has_evidence_count: 9
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 1
+  confidence_phrases_count: 7
+linguistic:
+  avg_sentence_length: 24.974358974358974
+  vocabulary_richness: 0.3069815195071869
+  flesch_reading_ease: 2.424347826086972
+  vague_terms_count: 0
+  formality_score: 0.7
+  sentiment: mixed
+quality:
+  actionable_ratio: 0.9
+  specificity_score: 1.0
+  evidence_quality: 0.9
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 8
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

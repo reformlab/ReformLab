@@ -22,7 +22,7 @@ from __future__ import annotations
 import pyarrow as pa
 import pytest
 
-from reformlab.computation.mapping import MappingConfig
+from reformlab.computation.mapping import FieldMapping, MappingConfig
 from reformlab.computation.result_normalizer import (
     _DEFAULT_OUTPUT_MAPPING,
     _MINIMUM_REQUIRED_COLUMNS,
@@ -112,18 +112,21 @@ class TestNormalizeComputationResult:
         assert result.column("unknown_field_2").to_pylist() == [10, 20, 30]
 
     def test_with_explicit_mapping_config(self) -> None:
-        """Uses MappingConfig when provided."""
-        # Create a custom MappingConfig
+        """Uses MappingConfig when provided, overriding default mapping."""
         mapping_config = MappingConfig(
-            mappings=(),
+            mappings=(
+                FieldMapping(
+                    openfisca_name="custom_openfisca_var",
+                    project_name="income",
+                    direction="output",
+                    pa_type=pa.float64(),
+                ),
+            ),
         )
 
-        # Since we're testing the path, we'll use a result with a required column
-        # to pass validation
         table = pa.table({
             "household_id": pa.array([1, 2, 3], type=pa.int64()),
-            "income": pa.array([50000.0, 60000.0, 70000.0]),  # Required column
-            "custom_field": pa.array([10, 20, 30]),
+            "custom_openfisca_var": pa.array([50000.0, 60000.0, 70000.0]),
         })
         comp_result = ComputationResult(
             output_fields=table,
@@ -131,10 +134,11 @@ class TestNormalizeComputationResult:
             period=2025,
         )
 
-        # With empty mapping, should pass through unchanged
         result = normalize_computation_result(comp_result, mapping_config=mapping_config)
+        # MappingConfig renamed the column
         assert "income" in result.column_names
-        assert "custom_field" in result.column_names
+        assert "custom_openfisca_var" not in result.column_names
+        assert result.column("income").to_pylist() == [50000.0, 60000.0, 70000.0]
 
     def test_without_mapping_uses_defaults(self) -> None:
         """Uses _DEFAULT_OUTPUT_MAPPING."""
@@ -204,8 +208,36 @@ class TestNormalizeComputationResult:
         result = normalize_computation_result(comp_result, mapping_config=None)
         assert "income" in result.column_names
 
-    def test_ensures_household_id_column(self) -> None:
-        """Ensures household_id column exists (delegates to _ensure_household_id_column pattern)."""
+    def test_raises_on_duplicate_column_collision(self) -> None:
+        """NormalizationError when default mapping produces duplicate column names.
+
+        E.g., table has both 'income' and 'salaire_net' (which maps to 'income').
+        """
+        table = pa.table({
+            "household_id": pa.array([1, 2, 3], type=pa.int64()),
+            "income": pa.array([50000.0, 60000.0, 70000.0]),
+            "salaire_net": pa.array([45000.0, 55000.0, 65000.0]),
+        })
+        comp_result = ComputationResult(
+            output_fields=table,
+            adapter_version="test-1.0.0",
+            period=2025,
+        )
+
+        with pytest.raises(NormalizationError) as exc_info:
+            normalize_computation_result(comp_result, mapping_config=None)
+
+        error = exc_info.value
+        assert "duplicate" in error.why.lower()
+        assert "income" in error.why
+
+    def test_does_not_add_household_id(self) -> None:
+        """Normalizer does NOT add household_id — that is the panel builder's job.
+
+        The panel builder's _ensure_household_id_column handles configured field
+        mapping (e.g., menage_id → household_id). Adding it in the normalizer
+        would bypass the configured field and silently produce wrong fallback IDs.
+        """
         # Table without household_id but with person_id
         table = pa.table({
             "person_id": pa.array([100, 200, 300], type=pa.int64()),
@@ -218,9 +250,10 @@ class TestNormalizeComputationResult:
         )
 
         result = normalize_computation_result(comp_result, mapping_config=None)
-        assert "household_id" in result.column_names
-        # person_id values should become household_id
-        assert result.column("household_id").to_pylist() == [100, 200, 300]
+        # Normalizer should NOT add household_id
+        assert "household_id" not in result.column_names
+        # person_id should still be present (untouched)
+        assert "person_id" in result.column_names
 
     def test_default_mapping_constants(self) -> None:
         """Verify _DEFAULT_OUTPUT_MAPPING contains expected mappings."""
@@ -234,8 +267,11 @@ class TestNormalizeComputationResult:
         assert _DEFAULT_OUTPUT_MAPPING.get("taxe_carbone") == "carbon_tax"
 
     def test_minimum_required_columns_constant(self) -> None:
-        """Verify _MINIMUM_REQUIRED_COLUMNS contains expected columns."""
-        assert "household_id" in _MINIMUM_REQUIRED_COLUMNS
+        """Verify _MINIMUM_REQUIRED_COLUMNS contains expected indicator columns.
+
+        household_id is excluded because the panel builder guarantees it via fallback.
+        """
+        assert "household_id" not in _MINIMUM_REQUIRED_COLUMNS
         assert "income" in _MINIMUM_REQUIRED_COLUMNS
         assert "disposable_income" in _MINIMUM_REQUIRED_COLUMNS
         assert "carbon_tax" in _MINIMUM_REQUIRED_COLUMNS
@@ -305,7 +341,7 @@ class TestNormalizeEntityTables:
             period=2025,
         )
 
-        result = normalize_entity_tables(comp_result, mapping_config=None)
+        result = normalize_entity_tables(comp_result)
 
         # Stub returns output_fields directly
         assert result is table

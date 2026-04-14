@@ -57,7 +57,7 @@ phase_models:
   create_story:
     provider: claude-subprocess        # Runs Claude CLI as a subprocess
     model: opus
-    model_name: glm-5.1               # Display name shown in logs instead of "sonnet"
+    model_name: glm-4.7               # Display name shown in logs instead of "sonnet"
     settings: ~/.claude/glm.json       # Claude CLI settings file (permissions, allowed tools, etc.)
 
   # Implementation: uses Sonnet via GLM settings for coding (reads files on demand)
@@ -76,9 +76,7 @@ phase_models:
       reasoning_effort: high
   validate_story_synthesis:
     provider: claude-subprocess        # Runs Claude CLI as a subprocess
-    model: opus
-    model_name: glm-5.1                # Only synthesis phases use GLM 5.1
-    settings: ~/.claude/glm.json       # Claude CLI settings file (permissions, allowed tools, etc.)
+    model: sonnet
 
   # Code review: same stable Sonnet + Codex reviewer pairing as validation
   code_review:
@@ -89,9 +87,7 @@ phase_models:
       reasoning_effort: high
   code_review_synthesis:
     provider: claude-subprocess        # Runs Claude CLI as a subprocess
-    model: opus
-    model_name: glm-5.1                # Only synthesis phases use GLM 5.1
-    settings: ~/.claude/glm.json       # Claude CLI settings file (permissions, allowed tools, etc.)
+    model: sonnet
 
   # Retrospective: runs after each epic completes
   retrospective:

@@ -1,6 +1,6 @@
 # Story 23.3: Normalize live OpenFisca results into the stable app-facing output schema
 
-Status: complete
+Status: review
 
 ## Story
 
@@ -412,6 +412,21 @@ None. All acceptance criteria were met without requiring debug sessions.
   - Updated `MockAdapter` default output to include required columns (`household_id`, `income`, `disposable_income`, `carbon_tax`)
   - This ensures existing tests pass with normalization enabled in live mode
   - The default output now matches the expected app-facing schema (English names)
+
+- **Code Review Fixes (2026-04-14)**:
+  - Removed `_ensure_household_id_column` call from normalizer — was silently overriding `configured_household_id_field` from orchestrator metadata (CRITICAL bug)
+  - Fixed `mapping_applied` to reflect actual column rename delta (was always equal to `normalized`)
+  - Removed `household_id` from `_MINIMUM_REQUIRED_COLUMNS` — guaranteed by panel builder fallback, not normalizer concern
+  - Removed dead `mapping_config` parameter from `normalize_entity_tables` stub
+  - Strengthened `test_with_explicit_mapping_config` to verify actual column renaming
+  - Fixed `test_panel_metadata_records_normalization` to assert `mapping_applied=False` for identity normalizer
+  - Added collision guard test for duplicate column names after default mapping
+  - Added 4 integration tests exercising live normalization path through panel builder with raw French columns
+  - Updated normalizer docstring to clarify household_id is panel builder's responsibility
+
+### Change Log
+
+- **2026-04-14**: Addressed code review findings — 10 items resolved across correctness, architecture, and test quality
 
 ### File List
 

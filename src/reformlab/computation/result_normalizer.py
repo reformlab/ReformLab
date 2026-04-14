@@ -54,10 +54,12 @@ _DEFAULT_OUTPUT_MAPPING: dict[str, str] = {
     "taxe_carbone": "carbon_tax",
 }
 
-# Minimum required columns for normalization to succeed.
+# Minimum required indicator columns for normalization to succeed.
 # At least one of these must be present after normalization.
+# household_id is excluded because the panel builder guarantees it via fallback;
+# this set validates that meaningful data columns survived the mapping.
 _MINIMUM_REQUIRED_COLUMNS: frozenset[str] = frozenset({
-    "household_id", "income", "disposable_income", "carbon_tax",
+    "income", "disposable_income", "carbon_tax",
 })
 
 
@@ -88,28 +90,6 @@ class NormalizationError(Exception):
 # ============================================================================
 
 
-def _ensure_household_id_column(table: pa.Table) -> pa.Table:
-    """Ensure table has a stable household_id column for panel joins.
-
-    This is a local copy of the function from panel.py to avoid circular imports.
-    The implementation is identical to maintain consistency.
-
-    Args:
-        table: PyArrow table to ensure household_id in.
-
-    Returns:
-        Table with household_id column added if needed.
-    """
-    if "household_id" in table.column_names:
-        return table
-
-    if "person_id" in table.column_names:
-        return table.append_column("household_id", table.column("person_id"))
-
-    # Fallback: create deterministic row index
-    fallback_ids = pa.array(range(table.num_rows), type=pa.int64())
-    return table.append_column("household_id", fallback_ids)
-
 
 def _apply_default_mapping(table: pa.Table) -> pa.Table:
     """Apply default OpenFisca-to-project mapping to a table.
@@ -122,6 +102,9 @@ def _apply_default_mapping(table: pa.Table) -> pa.Table:
 
     Returns:
         Table with renamed columns.
+
+    Raises:
+        NormalizationError: If renaming would produce duplicate column names.
     """
     rename_map: dict[str, str] = {}
     for col_name in table.column_names:
@@ -136,6 +119,29 @@ def _apply_default_mapping(table: pa.Table) -> pa.Table:
         rename_map.get(name, name)
         for name in table.column_names
     ]
+
+    # Guard against duplicate column names after rename
+    seen: set[str] = set()
+    for name in new_names:
+        if name in seen:
+            conflicting_sources = [
+                old for old, new in rename_map.items() if new == name
+            ]
+            existing_col = name
+            raise NormalizationError(
+                what="Output normalization failed",
+                why=(
+                    f"Column rename produces duplicate '{name}'. "
+                    f"Sources: existing column '{existing_col}' + "
+                    f"renamed column(s) {conflicting_sources}."
+                ),
+                fix=(
+                    "Remove the conflicting column from the adapter output, "
+                    "or provide a MappingConfig that resolves the collision."
+                ),
+            )
+        seen.add(name)
+
     return table.rename_columns(new_names)
 
 
@@ -148,8 +154,8 @@ def normalize_computation_result(
     If mapping_config is provided, uses apply_output_mapping from mapping.py.
     If no mapping_config, applies _DEFAULT_OUTPUT_MAPPING.
 
-    Ensures household_id column exists. Validates that at least one column
-    from _MINIMUM_REQUIRED_COLUMNS (excluding household_id fallback) is present.
+    Validates that at least one column from _MINIMUM_REQUIRED_COLUMNS is present.
+    Does NOT add household_id — that is the panel builder's responsibility.
 
     Args:
         comp_result: ComputationResult to normalize.
@@ -171,13 +177,10 @@ def normalize_computation_result(
     else:
         table = _apply_default_mapping(table)
 
-    # Validate minimum required columns BEFORE adding household_id fallback
-    # We check for meaningful data columns (income, disposable_income, carbon_tax)
-    # not just household_id, which might be added as a fallback.
+    # Validate minimum required columns: at least one indicator column must
+    # survive normalization for downstream compatibility.
     table_columns = set(table.column_names)
-    # Exclude household_id from validation if it would be added as fallback
-    meaningful_required = _MINIMUM_REQUIRED_COLUMNS - {"household_id"}
-    matching_required = table_columns & meaningful_required
+    matching_required = table_columns & _MINIMUM_REQUIRED_COLUMNS
 
     if not matching_required:
         available = sorted(table_columns)
@@ -196,8 +199,10 @@ def normalize_computation_result(
             ),
         )
 
-    # Ensure household_id column exists (after validation)
-    table = _ensure_household_id_column(table)
+    # Note: household_id column is ensured by PanelOutput.from_orchestrator_result()
+    # AFTER normalization, which also handles configured_household_id_field.
+    # Do NOT call _ensure_household_id_column here — doing so would bypass
+    # the configured field mapping in panel.py.
 
     return table
 
@@ -223,10 +228,7 @@ def create_live_normalizer(
     return _normalizer
 
 
-def normalize_entity_tables(
-    comp_result: ComputationResult,
-    mapping_config: MappingConfig | None = None,
-) -> pa.Table:
+def normalize_entity_tables(comp_result: ComputationResult) -> pa.Table:
     """Normalize multi-entity output tables to household-level.
 
     TODO: multi-entity merge to household-level (future story)
@@ -236,7 +238,6 @@ def normalize_entity_tables(
 
     Args:
         comp_result: ComputationResult with entity_tables.
-        mapping_config: Optional explicit mapping configuration.
 
     Returns:
         Currently returns output_fields directly (no aggregation yet).

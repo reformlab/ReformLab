@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import pyarrow as pa
 
+from reformlab.computation.result_normalizer import create_live_normalizer
 from reformlab.computation.types import ComputationResult
 from reformlab.indicators import (
     compute_distributional_indicators,
@@ -215,3 +216,159 @@ class TestComparisonWithMixedRuntimeModes:
 
         # Should also succeed
         assert result2 is not None
+
+
+def _make_orchestrator_result(
+    table: pa.Table,
+    start_year: int,
+    end_year: int,
+    metadata: dict[str, object] | None = None,
+) -> OrchestratorResult:
+    """Build an OrchestratorResult from a table template, without building PanelOutput."""
+    yearly_states: dict[int, YearState] = {}
+    for year in range(start_year, end_year + 1):
+        arrays = {}
+        for col_name in table.column_names:
+            col = table.column(col_name)
+            if pa.types.is_float64(col.type):
+                base_values = col.to_pylist()
+                year_values = [v + (year - start_year) * 1000 for v in base_values]
+                arrays[col_name] = pa.array(year_values, type=pa.float64())
+            elif pa.types.is_int64(col.type):
+                arrays[col_name] = col
+            else:
+                arrays[col_name] = col
+
+        comp_result = ComputationResult(
+            output_fields=pa.table(arrays),
+            adapter_version="test-1.0.0",
+            period=year,
+        )
+        yearly_states[year] = YearState(
+            year=year,
+            data={COMPUTATION_RESULT_KEY: comp_result},
+            seed=42,
+            metadata={},
+        )
+
+    return OrchestratorResult(
+        success=True,
+        yearly_states=yearly_states,
+        errors=[],
+        failed_year=None,
+        metadata={
+            "start_year": start_year,
+            "end_year": end_year,
+            "seed": 42,
+            "step_pipeline": ["computation"],
+            **(metadata or {}),
+        },
+    )
+
+
+class TestLiveNormalizationThroughPanelBuilder:
+    """Integration tests exercising create_live_normalizer through PanelOutput.
+
+    These tests use raw French column names (as OpenFisca would produce) and
+    verify the full path: normalizer factory → panel builder → indicators.
+    """
+
+    def test_french_columns_normalized_through_panel_builder(self) -> None:
+        """Raw French OpenFisca output is normalized by live normalizer in panel builder."""
+        french_table = pa.table({
+            "menage_id": pa.array([1, 2, 3, 4, 5], type=pa.int64()),
+            "salaire_net": pa.array([40000.0, 50000.0, 60000.0, 70000.0, 80000.0]),
+            "revenu_disponible": pa.array([36000.0, 45000.0, 54000.0, 63000.0, 72000.0]),
+            "taxe_carbone": pa.array([100.0, 200.0, 300.0, 400.0, 500.0]),
+        })
+        orch_result = _make_orchestrator_result(french_table, 2025, 2025)
+
+        normalizer = create_live_normalizer(mapping_config=None)
+        panel = PanelOutput.from_orchestrator_result(orch_result, normalizer=normalizer)
+
+        # Columns should be English after normalization
+        assert "income" in panel.table.column_names
+        assert "disposable_income" in panel.table.column_names
+        assert "carbon_tax" in panel.table.column_names
+        # French names should be gone
+        assert "salaire_net" not in panel.table.column_names
+        assert "revenu_disponible" not in panel.table.column_names
+        assert "taxe_carbone" not in panel.table.column_names
+        # Metadata should reflect actual mapping
+        assert panel.metadata["normalized"] is True
+        assert panel.metadata["mapping_applied"] is True
+
+    def test_live_panel_works_with_indicators(self) -> None:
+        """Indicators accept panels built from French columns via live normalizer."""
+        french_table = pa.table({
+            "household_id": pa.array(
+                [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], type=pa.int64()
+            ),
+            "salaire_net": pa.array([
+                20000.0, 30000.0, 40000.0, 50000.0, 60000.0,
+                70000.0, 80000.0, 90000.0, 100000.0, 110000.0,
+            ]),
+            "revenu_disponible": pa.array([
+                18000.0, 27000.0, 36000.0, 45000.0, 54000.0,
+                63000.0, 72000.0, 81000.0, 90000.0, 99000.0,
+            ]),
+            "taxe_carbone": pa.array([
+                50.0, 100.0, 150.0, 200.0, 250.0,
+                300.0, 350.0, 400.0, 450.0, 500.0,
+            ]),
+        })
+        orch_result = _make_orchestrator_result(french_table, 2025, 2025)
+
+        normalizer = create_live_normalizer(mapping_config=None)
+        panel = PanelOutput.from_orchestrator_result(orch_result, normalizer=normalizer)
+
+        # Distributional indicators should work with normalized output
+        dist_result = compute_distributional_indicators(
+            panel, config=DistributionalConfig(income_field="income", by_year=False)
+        )
+        assert dist_result is not None
+
+        # Fiscal indicators should work with normalized output
+        fiscal_result = compute_fiscal_indicators(
+            panel,
+            config=FiscalConfig(
+                revenue_fields=["carbon_tax"], cost_fields=[], by_year=False
+            ),
+        )
+        assert fiscal_result is not None
+
+    def test_replay_panel_metadata_correctness(self) -> None:
+        """Replay mode (no normalizer) records correct metadata."""
+        english_table = pa.table({
+            "household_id": pa.array([1, 2, 3], type=pa.int64()),
+            "income": pa.array([50000.0, 60000.0, 70000.0]),
+            "disposable_income": pa.array([45000.0, 54000.0, 63000.0]),
+        })
+        orch_result = _make_orchestrator_result(english_table, 2025, 2025)
+
+        # No normalizer = replay mode
+        panel = PanelOutput.from_orchestrator_result(orch_result, normalizer=None)
+
+        assert panel.metadata["normalized"] is False
+        assert panel.metadata["mapping_applied"] is False
+
+    def test_configured_household_id_field_respected_with_normalizer(self) -> None:
+        """When metadata specifies household_id_field, panel builder uses it after normalization."""
+        french_table = pa.table({
+            "menage_id": pa.array([10, 20, 30], type=pa.int64()),
+            "salaire_net": pa.array([40000.0, 50000.0, 60000.0]),
+        })
+        orch_result = _make_orchestrator_result(
+            french_table,
+            2025,
+            2025,
+            metadata={"household_id_field": "menage_id"},
+        )
+
+        normalizer = create_live_normalizer(mapping_config=None)
+        panel = PanelOutput.from_orchestrator_result(orch_result, normalizer=normalizer)
+
+        # household_id should come from menage_id column, not row index fallback
+        assert "household_id" in panel.table.column_names
+        hh_ids = panel.table.column("household_id").to_pylist()
+        assert hh_ids == [10, 20, 30]

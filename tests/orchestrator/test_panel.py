@@ -686,9 +686,8 @@ class TestPanelBuilderWithNormalizer:
         assert "normalized" in panel.metadata
         assert panel.metadata["normalized"] is True
         assert "mapping_applied" in panel.metadata
-        # For identity normalizer, we don't apply a mapping
-        # This might be False or True depending on implementation
-        assert isinstance(panel.metadata["mapping_applied"], bool)
+        # Identity normalizer does not rename columns, so mapping_applied is False
+        assert panel.metadata["mapping_applied"] is False
 
     def test_no_normalizer_preserves_current_behavior(self) -> None:
         """Without normalizer, behavior is unchanged (regression)."""

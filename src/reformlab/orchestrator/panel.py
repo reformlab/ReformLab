@@ -31,6 +31,7 @@ from reformlab.orchestrator.computation_step import COMPUTATION_RESULT_KEY
 from reformlab.orchestrator.runner import SEED_LOG_KEY, STEP_EXECUTION_LOG_KEY
 
 if TYPE_CHECKING:
+    from reformlab.computation.types import ComputationResult
     from reformlab.discrete_choice.decision_record import DecisionRecord
     from reformlab.orchestrator.types import OrchestratorResult
 
@@ -65,7 +66,7 @@ class PanelOutput:
     def from_orchestrator_result(
         cls,
         result: OrchestratorResult,
-        normalizer: Callable[[Any], pa.Table] | None = None,
+        normalizer: Callable[[ComputationResult], pa.Table] | None = None,
     ) -> PanelOutput:
         """Create a PanelOutput from an OrchestratorResult.
 
@@ -91,9 +92,7 @@ class PanelOutput:
 
         # Determine if normalization was applied
         normalized = normalizer is not None
-        # For identity normalizer (no actual renaming), mapping_applied may be false
-        # but for simplicity, we assume any normalizer means mapping is part of the flow
-        mapping_applied = normalized
+        mapping_applied = False  # Set to True only if columns actually change
 
         # Process years in sorted order for deterministic output
         for year in sorted(result.yearly_states.keys()):
@@ -106,7 +105,10 @@ class PanelOutput:
 
             # Apply normalization if provided
             if normalizer is not None:
+                original_columns = set(comp_result.output_fields.column_names)
                 output_table = normalizer(comp_result)
+                if set(output_table.column_names) != original_columns:
+                    mapping_applied = True
             else:
                 output_table = comp_result.output_fields
 
