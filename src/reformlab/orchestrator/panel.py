@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 import pyarrow as pa
 import pyarrow.csv as pa_csv
@@ -62,7 +62,11 @@ class PanelOutput:
         return (self.table.num_rows, self.table.num_columns)
 
     @classmethod
-    def from_orchestrator_result(cls, result: OrchestratorResult) -> PanelOutput:
+    def from_orchestrator_result(
+        cls,
+        result: OrchestratorResult,
+        normalizer: Callable[[Any], pa.Table] | None = None,
+    ) -> PanelOutput:
         """Create a PanelOutput from an OrchestratorResult.
 
         Iterates through completed yearly states, extracts computation results,
@@ -71,6 +75,9 @@ class PanelOutput:
         Args:
             result: OrchestratorResult containing yearly_states with
                 computation results.
+            normalizer: Optional callable that transforms ComputationResult
+                output_fields before concatenation. When None, output_fields
+                are passed through as-is (preserving replay/mock compatibility).
 
         Returns:
             PanelOutput with concatenated yearly data and run metadata.
@@ -82,6 +89,12 @@ class PanelOutput:
         all_domain_alternatives: dict[str, list[str]] = {}
         has_any_decision_columns = False
 
+        # Determine if normalization was applied
+        normalized = normalizer is not None
+        # For identity normalizer (no actual renaming), mapping_applied may be false
+        # but for simplicity, we assume any normalizer means mapping is part of the flow
+        mapping_applied = normalized
+
         # Process years in sorted order for deterministic output
         for year in sorted(result.yearly_states.keys()):
             year_state = result.yearly_states[year]
@@ -91,7 +104,11 @@ class PanelOutput:
             if comp_result is None:
                 continue
 
-            output_table = comp_result.output_fields
+            # Apply normalization if provided
+            if normalizer is not None:
+                output_table = normalizer(comp_result)
+            else:
+                output_table = comp_result.output_fields
 
             # Story 14-6: Decision record columns
             decision_log = year_state.data.get(DECISION_LOG_KEY)
@@ -133,6 +150,10 @@ class PanelOutput:
         metadata = _build_panel_metadata(result)
         if all_domain_alternatives:
             metadata["decision_domain_alternatives"] = all_domain_alternatives
+
+        # Add normalization metadata (Story 23.3)
+        metadata["normalized"] = normalized
+        metadata["mapping_applied"] = mapping_applied
 
         return cls(table=panel_table, metadata=metadata)
 

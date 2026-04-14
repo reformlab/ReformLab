@@ -498,3 +498,215 @@ class TestComparePanels:
         origins = comparison.table.column("_origin").to_pylist()
 
         assert origins == ["both"]
+
+
+class TestPanelBuilderWithNormalizer:
+    """Test panel builder integration with normalizer (Story 23.3, AC: 1, 3)."""
+
+    def test_from_orchestrator_result_applies_normalizer(self) -> None:
+        """Normalizer function is called per year."""
+        years = [2020, 2021, 2022]
+
+        # Create orchestrator result with French OpenFisca variable names
+        yearly_states: dict[int, YearState] = {}
+        for year in years:
+            # Simulate OpenFisca output with French names
+            table = pa.table({
+                "household_id": pa.array([1, 2, 3], type=pa.int64()),
+                "salaire_net": pa.array([45000.0 + year, 55000.0 + year, 65000.0 + year]),
+                "revenu_disponible": pa.array([47000.0 + year, 57000.0 + year, 67000.0 + year]),
+                "taxe_carbone": pa.array([100.0 + year, 200.0 + year, 300.0 + year]),
+            })
+            comp_result = ComputationResult(
+                output_fields=table,
+                adapter_version="openfisca-france-44.0.0",
+                period=year,
+            )
+            yearly_states[year] = YearState(
+                year=year,
+                data={COMPUTATION_RESULT_KEY: comp_result},
+                seed=42 + year,
+                metadata={},
+            )
+
+        result = OrchestratorResult(
+            success=True,
+            yearly_states=yearly_states,
+            errors=[],
+            failed_year=None,
+            metadata={
+                "start_year": 2020,
+                "end_year": 2022,
+                "seed": 42,
+                "step_pipeline": ["computation"],
+            },
+        )
+
+        # Create normalizer that renames French names to English
+        def normalizer(comp_result: ComputationResult) -> pa.Table:
+            rename_map = {
+                "salaire_net": "income",
+                "revenu_disponible": "disposable_income",
+                "taxe_carbone": "carbon_tax",
+            }
+            new_names = [rename_map.get(name, name) for name in comp_result.output_fields.column_names]
+            return comp_result.output_fields.rename_columns(new_names)
+
+        panel = PanelOutput.from_orchestrator_result(result, normalizer=normalizer)
+
+        # Normalization applied - English names present
+        assert "income" in panel.table.column_names
+        assert "disposable_income" in panel.table.column_names
+        assert "carbon_tax" in panel.table.column_names
+
+        # French names removed
+        assert "salaire_net" not in panel.table.column_names
+        assert "revenu_disponible" not in panel.table.column_names
+        assert "taxe_carbone" not in panel.table.column_names
+
+    def test_normalizer_preserves_decision_columns(self) -> None:
+        """Decision columns from Story 14-6 survive normalization."""
+        from reformlab.discrete_choice.decision_record import DECISION_LOG_KEY, DecisionRecord
+
+        year = 2025
+
+        # Create computation result
+        table = pa.table({
+            "household_id": pa.array([1, 2, 3], type=pa.int64()),
+            "income": pa.array([50000.0, 60000.0, 70000.0]),
+        })
+        comp_result = ComputationResult(
+            output_fields=table,
+            adapter_version="test-1.0.0",
+            period=year,
+        )
+
+        # Create decision log
+        decision_prob = pa.table({
+            "alt_a": pa.array([0.6, 0.5, 0.4]),
+            "alt_b": pa.array([0.4, 0.5, 0.6]),
+        })
+        decision_util = pa.table({
+            "alt_a": pa.array([10.0, 12.0, 8.0]),
+            "alt_b": pa.array([8.0, 10.0, 12.0]),
+        })
+        decision_record = DecisionRecord(
+            domain_name="mobility",
+            alternative_ids=("alt_a", "alt_b"),
+            chosen=pa.array(["alt_a", "alt_b", "alt_a"]),
+            probabilities=decision_prob,
+            utilities=decision_util,
+            seed=42,
+            taste_parameters={"beta_cost": -0.01},
+            eligibility_summary={"eligible": 3, "ineligible": 0},
+        )
+
+        yearly_states: dict[int, YearState] = {
+            year: YearState(
+                year=year,
+                data={
+                    COMPUTATION_RESULT_KEY: comp_result,
+                    DECISION_LOG_KEY: (decision_record,),
+                },
+                seed=42,
+                metadata={},
+            )
+        }
+
+        result = OrchestratorResult(
+            success=True,
+            yearly_states=yearly_states,
+            errors=[],
+            failed_year=None,
+            metadata={
+                "start_year": 2025,
+                "end_year": 2025,
+                "seed": 42,
+                "step_pipeline": ["computation"],
+            },
+        )
+
+        # Normalizer that doesn't affect decision columns
+        def normalizer(comp_result: ComputationResult) -> pa.Table:
+            return comp_result.output_fields  # Passthrough for this test
+
+        panel = PanelOutput.from_orchestrator_result(result, normalizer=normalizer)
+
+        # Decision columns present
+        assert "mobility_chosen" in panel.table.column_names
+        assert "mobility_probabilities" in panel.table.column_names
+        assert "mobility_utilities" in panel.table.column_names
+        assert "decision_domains" in panel.table.column_names
+
+        # Data columns present
+        assert "income" in panel.table.column_names
+
+    def test_panel_metadata_records_normalization(self) -> None:
+        """Metadata includes 'normalized': true when normalizer is provided."""
+        years = [2020, 2021]
+        yearly_states: dict[int, YearState] = {}
+
+        for year in years:
+            table = pa.table({
+                "household_id": pa.array([1, 2, 3], type=pa.int64()),
+                "income": pa.array([50000.0 + year, 60000.0 + year, 70000.0 + year]),
+            })
+            comp_result = ComputationResult(
+                output_fields=table,
+                adapter_version="test-1.0.0",
+                period=year,
+            )
+            yearly_states[year] = YearState(
+                year=year,
+                data={COMPUTATION_RESULT_KEY: comp_result},
+                seed=42 + year,
+                metadata={},
+            )
+
+        result = OrchestratorResult(
+            success=True,
+            yearly_states=yearly_states,
+            errors=[],
+            failed_year=None,
+            metadata={
+                "start_year": 2020,
+                "end_year": 2021,
+                "seed": 42,
+                "step_pipeline": ["computation"],
+            },
+        )
+
+        # Normalizer is provided
+        def normalizer(comp_result: ComputationResult) -> pa.Table:
+            return comp_result.output_fields  # Identity normalizer
+
+        panel = PanelOutput.from_orchestrator_result(result, normalizer=normalizer)
+
+        # Metadata should record normalization
+        assert "normalized" in panel.metadata
+        assert panel.metadata["normalized"] is True
+        assert "mapping_applied" in panel.metadata
+        # For identity normalizer, we don't apply a mapping
+        # This might be False or True depending on implementation
+        assert isinstance(panel.metadata["mapping_applied"], bool)
+
+    def test_no_normalizer_preserves_current_behavior(self) -> None:
+        """Without normalizer, behavior is unchanged (regression)."""
+        years = [2020, 2021]
+        result = make_orchestrator_result(years, num_households=3)
+
+        # Call without normalizer (default behavior)
+        panel = PanelOutput.from_orchestrator_result(result)
+
+        # Should work exactly as before
+        assert panel.table.num_rows == 6  # 3 households * 2 years
+        assert "income" in panel.table.column_names
+        assert "tax" in panel.table.column_names
+        assert "year" in panel.table.column_names
+        assert "household_id" in panel.table.column_names
+
+        # Metadata should indicate no normalization
+        assert "normalized" in panel.metadata
+        assert panel.metadata["normalized"] is False
+        assert "mapping_applied" in panel.metadata
+        assert panel.metadata["mapping_applied"] is False

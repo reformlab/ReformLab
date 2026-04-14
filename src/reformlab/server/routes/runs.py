@@ -106,8 +106,11 @@ async def run_simulation(
                 adapter=adapter,
                 registry=registry,
                 population_path=population_path,
+                population_id=body.population_id,  # Story 23.3 / AC-2
+                population_source=population_source,  # Story 23.3 / AC-2
             )
         else:
+            # Story 23.3 / AC-2: Pass population_id and population_source from resolver
             scenario_config = ScenarioConfig(
                 template_name=template_name,
                 policy=body.policy,
@@ -116,6 +119,8 @@ async def run_simulation(
                 population_path=population_path,
                 seed=body.seed,
                 exogenous_series=body.exogenous_series,  # Story 21.6 / AC2
+                population_id=body.population_id,  # Story 23.3 / AC-2
+                population_source=population_source,  # Story 23.3 / AC-2
             )
             # Story 23.1 / AC-1, AC-2: Pass runtime_mode from request to RunConfig
             run_config = RunConfig(
@@ -236,6 +241,8 @@ def _run_portfolio(
     adapter: ComputationAdapter,
     registry: ScenarioRegistry,
     population_path: Path | None,
+    population_id: str | None,  # Story 23.3 / AC-2
+    population_source: str | None,  # Story 23.3 / AC-2
 ) -> tuple[SimulationResult, int, str]:
     """Load a portfolio from the registry and execute via PortfolioComputationStep.
 
@@ -298,6 +305,7 @@ def _run_portfolio(
 
     first_policy_dict = serialize_policy(first_policy.policy)
 
+    # Story 23.3 / AC-2: Pass population_id and population_source
     scenario_config = ScenarioConfig(
         template_name=template_name,
         policy=first_policy_dict,
@@ -305,6 +313,8 @@ def _run_portfolio(
         end_year=body.end_year,
         population_path=population_path,
         seed=body.seed,
+        population_id=population_id,  # Story 23.3 / AC-2
+        population_source=population_source,  # Story 23.3 / AC-2
     )
     run_config = RunConfig(scenario=scenario_config, seed=body.seed, runtime_mode=body.runtime_mode)
 

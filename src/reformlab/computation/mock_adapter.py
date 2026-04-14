@@ -47,7 +47,14 @@ class MockAdapter:
         compute_fn: ComputeFn | None = None,
     ) -> None:
         self._version = version_string
-        self._default_output = default_output or pa.table({"result": pa.array([0.0])})
+        # Default output uses English schema names to match app-facing expectations
+        # (as if already normalized, which is correct for mock/replay mode)
+        self._default_output = default_output or pa.table({
+            "household_id": pa.array([1], type=pa.int64()),
+            "income": pa.array([50000.0]),
+            "disposable_income": pa.array([45000.0]),
+            "carbon_tax": pa.array([100.0]),
+        })
         self._default_metadata = default_metadata or {}
         self._compute_fn = compute_fn
         self.call_log: list[dict[str, Any]] = []

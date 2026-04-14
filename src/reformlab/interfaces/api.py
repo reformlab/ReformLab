@@ -59,6 +59,10 @@ class ScenarioConfig:
         baseline_id: Optional baseline scenario ID for reform scenarios.
         exogenous_series: Optional list of exogenous series names for scenario.
             Story 21.6 / AC2.
+        population_id: Optional population identifier for provenance tracking.
+            Story 23.3 / AC-2.
+        population_source: Optional population source (bundled/uploaded/generated).
+            Story 23.3 / AC-2.
     """
 
     template_name: str
@@ -69,6 +73,8 @@ class ScenarioConfig:
     seed: int | None = None
     baseline_id: str | None = None
     exogenous_series: list[str] | None = None  # Story 21.6 / AC2
+    population_id: str | None = None  # Story 23.3 / AC-2
+    population_source: str | None = None  # Story 23.3 / AC-2
 
 
 @dataclass(frozen=True)
@@ -1652,7 +1658,19 @@ def _run_direct_scenario(
         failed_step=failed_step,
         metadata=dict(workflow_result.metadata),
     )
-    panel_output = PanelOutput.from_orchestrator_result(orchestrator_result)
+
+    # Story 23.3: Direct scenario path uses default live mode with normalization
+    from reformlab.computation.result_normalizer import (
+        MAPPING_APPLIED_KEY,
+        NORMALIZED_KEY,
+        create_live_normalizer,
+    )
+
+    normalizer = create_live_normalizer(mapping_config=None)
+    panel_output = PanelOutput.from_orchestrator_result(
+        orchestrator_result,
+        normalizer=normalizer,
+    )
 
     parent_manifest_id = workflow_result.metadata.get("parent_manifest_id", "")
     if not isinstance(parent_manifest_id, str):
@@ -1685,13 +1703,21 @@ def _run_direct_scenario(
         runtime_mode="live",
     )
 
+    # Story 23.3: Include normalization metadata in result metadata
+    result_metadata = dict(workflow_result.metadata)
+    result_metadata.update({
+        NORMALIZED_KEY: True,
+        MAPPING_APPLIED_KEY: True,
+        "runtime_mode": "live",
+    })
+
     return SimulationResult(
         success=workflow_result.success,
         scenario_id=execution_name,
         yearly_states=yearly_states,
         panel_output=panel_output if workflow_result.success else None,
         manifest=manifest,
-        metadata=workflow_result.metadata,
+        metadata=result_metadata,
     )
 
 
@@ -1740,6 +1766,11 @@ def _execute_orchestration(
     from datetime import datetime, timezone
 
     from reformlab import __version__
+    from reformlab.computation.result_normalizer import (
+        MAPPING_APPLIED_KEY,
+        NORMALIZED_KEY,
+        create_live_normalizer,
+    )
     from reformlab.computation.types import PolicyConfig, deserialize_policy, serialize_policy
     from reformlab.governance.manifest import RunManifest
     from reformlab.orchestrator.computation_step import ComputationStep
@@ -1847,7 +1878,28 @@ def _execute_orchestration(
         failed_step=failed_step,
         metadata=dict(workflow_result.metadata),
     )
-    panel_output = PanelOutput.from_orchestrator_result(orchestrator_result)
+
+    # Story 23.3: Build normalizer based on runtime mode
+    if run_config.runtime_mode == "live":
+        normalizer = create_live_normalizer(mapping_config=None)
+        extra_metadata = {
+            NORMALIZED_KEY: True,
+            MAPPING_APPLIED_KEY: True,
+            "runtime_mode": "live",
+        }
+    else:
+        # replay mode: already uses app-facing names
+        normalizer = None
+        extra_metadata = {
+            NORMALIZED_KEY: False,
+            MAPPING_APPLIED_KEY: False,
+            "runtime_mode": "replay",
+        }
+
+    panel_output = PanelOutput.from_orchestrator_result(
+        orchestrator_result,
+        normalizer=normalizer,
+    )
 
     parent_manifest_id = workflow_result.metadata.get("parent_manifest_id", "")
     if not isinstance(parent_manifest_id, str):
@@ -1880,14 +1932,23 @@ def _execute_orchestration(
         runtime_mode=run_config.runtime_mode,
     )
 
-    # Package result
+    # Package result with normalization metadata (Story 23.3)
+    result_metadata = dict(workflow_result.metadata)
+    result_metadata.update(extra_metadata)
+
+    # Include population provenance from ScenarioConfig (Story 23.3 / AC-2)
+    if scenario.population_id is not None:
+        result_metadata["population_id"] = scenario.population_id
+    if scenario.population_source is not None:
+        result_metadata["population_source"] = scenario.population_source
+
     return SimulationResult(
         success=workflow_result.success,
         scenario_id=scenario.template_name,
         yearly_states=yearly_states,
         panel_output=panel_output if workflow_result.success else None,
         manifest=manifest,
-        metadata=workflow_result.metadata,
+        metadata=result_metadata,
     )
 
 
