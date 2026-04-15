@@ -18,7 +18,7 @@ The **dynamic orchestrator is the core product** — not a computation engine. O
 
 ## Key Decisions
 
-- **OpenFisca-first**: No custom policy engine, formula compiler, or entity graph engine. See `sprint-change-proposal-2026-02-25.md` for the strategic pivot rationale.
+- **OpenFisca-first**: No custom policy engine, formula compiler, or entity graph engine.
 - **Open-data-first**: Works out of the box with public data (synthetic populations, emission factors). Custom data optional.
 - **Adapter pattern**: Computation backends can be swapped without changing orchestration layer.
 - **France/Europe first**: Initial focus on French household carbon-tax and redistribution scenarios, with European data sources (INSEE, Eurostat, EU-SILC).
@@ -26,14 +26,14 @@ The **dynamic orchestrator is the core product** — not a computation engine. O
 ## Project Structure
 
 ```
-src/                    — Application code (not yet created)
-tests/                  — Tests (not yet created)
+src/                    — Application code
+tests/                  — Tests
 docs/                   — Project documentation
+frontend/               — React 19 / TypeScript frontend
 _bmad/                  — BMAD framework (do not edit manually)
 _bmad-output/
-  planning-artifacts/   — PRD, architecture, UX, backlog, research
-  implementation-artifacts/ — Sprint/story artifacts (during dev)
-  brainstorming/        — Brainstorming sessions
+  planning-artifacts/   — PRD, architecture, UX, active epics
+  implementation-artifacts/ — Active sprint/story artifacts
 ```
 
 ## Planning Artifacts (read these for full context)
@@ -41,12 +41,11 @@ _bmad-output/
 - `_bmad-output/planning-artifacts/prd.md` — Product requirements
 - `_bmad-output/planning-artifacts/architecture.md` — Technical architecture
 - `_bmad-output/planning-artifacts/ux-design-specification.md` — UX design
-- `_bmad-output/planning-artifacts/epics.md` — Epics, stories, and acceptance criteria
-- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-04-01.md` — Latest change proposal
+- `_bmad-output/planning-artifacts/epics/` — Active epics (23, 24); epics 1–22 archived in git history
 
 ## Current Status
 
-Phase 3 (Solutioning) nearly complete. Next step: Implementation Readiness Check, then Sprint Planning and development.
+Epic 23 in progress (stories 23.1–23.3 done, 23.4–23.6 backlog). Epic 24 in backlog.
 
 ## Conventions
 
