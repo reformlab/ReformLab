@@ -1,6 +1,6 @@
 # Story 23.3: Normalize live OpenFisca results into the stable app-facing output schema
 
-Status: review
+Status: done
 
 ## Story
 
@@ -122,6 +122,12 @@ This task covers both the Python API layer (normalizer construction) and the ser
   - [x] `TestComparisonWithMixedRuntimeModes`:
     - `test_compare_live_vs_replay_results()` — both produce comparable panels
     - `test_no_runtime_branching_in_indicators()` — indicator code does not check runtime_mode
+
+### Review Findings
+
+- [x] [Review][Patch] Normalization failures still return a 500-class `SimulationError` instead of the validation-style normalization payload [src/reformlab/interfaces/api.py:1676]
+- [x] [Review][Defer] `apply_output_mapping()` still has no collision guard on the `MappingConfig` path [src/reformlab/computation/mapping.py:277] — deferred, pre-existing
+- [x] [Review][Defer] `pa.concat_tables()` without `promote_options` can still fail when non-decision yearly schemas differ [src/reformlab/orchestrator/panel.py:150] — deferred, pre-existing
 
 ## Dev Notes
 

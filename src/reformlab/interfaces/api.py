@@ -933,6 +933,8 @@ def run_scenario(
         )
     except ConfigurationError:
         raise
+    except SimulationError:
+        raise
     except Exception as exc:
         # Extract context from OrchestratorError if available
         from reformlab.orchestrator.errors import OrchestratorError
@@ -1495,7 +1497,7 @@ def _run_direct_scenario(
     from reformlab import __version__
     from reformlab.computation.types import PolicyConfig, serialize_policy
     from reformlab.governance.manifest import RunManifest
-    from reformlab.interfaces.errors import ConfigurationError
+    from reformlab.interfaces.errors import ConfigurationError, SimulationError
     from reformlab.orchestrator.computation_step import ComputationStep
     from reformlab.orchestrator.panel import PanelOutput
     from reformlab.orchestrator.runner import OrchestratorRunner
@@ -1663,14 +1665,23 @@ def _run_direct_scenario(
     from reformlab.computation.result_normalizer import (
         MAPPING_APPLIED_KEY,
         NORMALIZED_KEY,
+        NormalizationError,
         create_live_normalizer,
     )
 
     normalizer = create_live_normalizer(mapping_config=None)
-    panel_output = PanelOutput.from_orchestrator_result(
-        orchestrator_result,
-        normalizer=normalizer,
-    )
+    try:
+        panel_output = PanelOutput.from_orchestrator_result(
+            orchestrator_result,
+            normalizer=normalizer,
+        )
+    except NormalizationError as exc:
+        raise SimulationError(
+            exc.what,
+            cause=exc,
+            fix=exc.fix,
+            status_code=422,
+        ) from exc
 
     parent_manifest_id = workflow_result.metadata.get("parent_manifest_id", "")
     if not isinstance(parent_manifest_id, str):
@@ -1707,7 +1718,7 @@ def _run_direct_scenario(
     result_metadata = dict(workflow_result.metadata)
     result_metadata.update({
         NORMALIZED_KEY: True,
-        MAPPING_APPLIED_KEY: True,
+        MAPPING_APPLIED_KEY: panel_output.metadata.get("mapping_applied", True),
         "runtime_mode": "live",
     })
 
@@ -1769,10 +1780,12 @@ def _execute_orchestration(
     from reformlab.computation.result_normalizer import (
         MAPPING_APPLIED_KEY,
         NORMALIZED_KEY,
+        NormalizationError,
         create_live_normalizer,
     )
     from reformlab.computation.types import PolicyConfig, deserialize_policy, serialize_policy
     from reformlab.governance.manifest import RunManifest
+    from reformlab.interfaces.errors import SimulationError
     from reformlab.orchestrator.computation_step import ComputationStep
     from reformlab.orchestrator.panel import PanelOutput
     from reformlab.orchestrator.runner import OrchestratorRunner
@@ -1882,24 +1895,28 @@ def _execute_orchestration(
     # Story 23.3: Build normalizer based on runtime mode
     if run_config.runtime_mode == "live":
         normalizer = create_live_normalizer(mapping_config=None)
-        extra_metadata = {
-            NORMALIZED_KEY: True,
-            MAPPING_APPLIED_KEY: True,
-            "runtime_mode": "live",
-        }
     else:
         # replay mode: already uses app-facing names
         normalizer = None
-        extra_metadata = {
-            NORMALIZED_KEY: False,
-            MAPPING_APPLIED_KEY: False,
-            "runtime_mode": "replay",
-        }
 
-    panel_output = PanelOutput.from_orchestrator_result(
-        orchestrator_result,
-        normalizer=normalizer,
-    )
+    try:
+        panel_output = PanelOutput.from_orchestrator_result(
+            orchestrator_result,
+            normalizer=normalizer,
+        )
+    except NormalizationError as exc:
+        raise SimulationError(
+            exc.what,
+            cause=exc,
+            fix=exc.fix,
+            status_code=422,
+        ) from exc
+
+    extra_metadata = {
+        NORMALIZED_KEY: panel_output.metadata.get("normalized", normalizer is not None),
+        MAPPING_APPLIED_KEY: panel_output.metadata.get("mapping_applied", False),
+        "runtime_mode": run_config.runtime_mode,
+    }
 
     parent_manifest_id = workflow_result.metadata.get("parent_manifest_id", "")
     if not isinstance(parent_manifest_id, str):

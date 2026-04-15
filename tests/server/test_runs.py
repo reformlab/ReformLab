@@ -213,6 +213,60 @@ class TestRunMetadataAutoSaveFailurePath:
         assert results[0].started_at != ""
         assert results[0].finished_at != ""
 
+    def test_normalization_error_returns_422_with_structured_payload(
+        self,
+        tmp_store: ResultStore,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Normalization failures should surface as structured 422 responses."""
+        import reformlab.server.dependencies as deps
+        from reformlab.computation.result_normalizer import NormalizationError
+        from reformlab.interfaces.errors import SimulationError
+
+        monkeypatch.setattr(deps, "_adapter", MockAdapter())
+        monkeypatch.setattr(deps, "_result_store", tmp_store)
+
+        def failing_sim(*args: object, **kwargs: object) -> None:
+            cause = NormalizationError(
+                what="Output normalization failed",
+                why="No canonical indicator columns survived normalization",
+                fix="Provide a mapping that produces at least one required output column",
+            )
+            raise SimulationError(
+                cause.what,
+                cause=cause,
+                fix=cause.fix,
+                status_code=422,
+            )
+
+        monkeypatch.setattr("reformlab.interfaces.api.run_scenario", failing_sim)
+
+        from reformlab.server.app import create_app
+        from reformlab.server.dependencies import get_result_store
+
+        app = create_app()
+        app.dependency_overrides[get_result_store] = lambda: tmp_store
+
+        with TestClient(app, raise_server_exceptions=False) as client:
+            login_response = client.post("/api/auth/login", json={"password": "test-password-123"})
+            token = login_response.json()["token"]
+            headers = {"Authorization": f"Bearer {token}"}
+
+            response = client.post("/api/runs", headers=headers, json=_SIMPLE_RUN_BODY)
+
+        assert response.status_code == 422
+        assert response.json() == {
+            "error": "Normalization error",
+            "what": "Output normalization failed",
+            "why": "No canonical indicator columns survived normalization",
+            "fix": "Provide a mapping that produces at least one required output column",
+            "status_code": 422,
+        }
+
+        results = tmp_store.list_results()
+        assert len(results) == 1
+        assert results[0].status == "failed"
+
 
 class TestRunMetadataSaveFailureDoesNotMaskRunResult:
     """If metadata save fails, the run response must still be returned."""

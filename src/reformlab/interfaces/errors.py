@@ -66,6 +66,7 @@ class SimulationError(Exception):
         message: Description of the execution failure.
         cause: Optional underlying exception that caused the failure.
         fix: Optional actionable guidance on how to resolve the error.
+        status_code: HTTP-style status associated with the error.
         partial_states: Optional partial states from orchestrator failures.
     """
 
@@ -75,11 +76,13 @@ class SimulationError(Exception):
         *,
         cause: Exception | None = None,
         fix: str | None = None,
+        status_code: int = 500,
         partial_states: dict[int, Any] | None = None,
     ) -> None:
         self.message = message
         self.cause = cause
         self.fix = fix
+        self.status_code = status_code
         self.partial_states = partial_states or {}
         super().__init__(message)
 

@@ -25,6 +25,7 @@ import pyarrow as pa
 import pyarrow.csv as pa_csv
 import pyarrow.parquet as pq
 
+from reformlab.computation.result_normalizer import MAPPING_APPLIED_KEY, NORMALIZED_KEY
 from reformlab.discrete_choice.decision_record import DECISION_LOG_KEY
 from reformlab.discrete_choice.errors import DiscreteChoiceError
 from reformlab.orchestrator.computation_step import COMPUTATION_RESULT_KEY
@@ -154,8 +155,8 @@ class PanelOutput:
             metadata["decision_domain_alternatives"] = all_domain_alternatives
 
         # Add normalization metadata (Story 23.3)
-        metadata["normalized"] = normalized
-        metadata["mapping_applied"] = mapping_applied
+        metadata[NORMALIZED_KEY] = normalized
+        metadata[MAPPING_APPLIED_KEY] = mapping_applied
 
         return cls(table=panel_table, metadata=metadata)
 

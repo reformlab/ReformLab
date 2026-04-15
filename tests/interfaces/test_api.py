@@ -1357,6 +1357,7 @@ class TestErrorHandling:
 
         assert error.message == "Simulation failed"
         assert error.cause is cause
+        assert error.status_code == 500
         assert "Simulation failed" in str(error)
 
     def test_no_bare_value_errors_from_api(self) -> None:

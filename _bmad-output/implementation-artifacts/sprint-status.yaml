@@ -16,7 +16,7 @@ development_status:
   23-2-make-bundled-uploaded-and-generated-populations-executable-through-a-unified-population-resolver:
     done
   23-3-normalize-live-openfisca-results-into-the-stable-app-facing-output-schema:
-    review
+    done
   23-4-switch-web-runs-to-live-openfisca-by-default-and-isolate-replay-mode-to-explicit-paths:
     backlog
   23-5-extend-preflight-manifests-and-result-metadata-with-runtime-and-population-provenance:

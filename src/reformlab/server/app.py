@@ -156,14 +156,33 @@ def _register_exception_handlers(app: FastAPI) -> None:
     async def simulation_error_handler(
         request: object, exc: SimulationError
     ) -> JSONResponse:
+        status_code = exc.status_code
+        cause = exc.cause
+        what = exc.message
+        why = str(cause) if cause else "Unknown cause"
+        fix = exc.fix or "Check server logs for details"
+        error = "Simulation error"
+
+        if status_code == 422:
+            error = "Normalization error"
+            cause_what = getattr(cause, "what", None)
+            cause_why = getattr(cause, "why", None)
+            cause_fix = getattr(cause, "fix", None)
+            if isinstance(cause_what, str):
+                what = cause_what
+            if isinstance(cause_why, str):
+                why = cause_why
+            if isinstance(cause_fix, str):
+                fix = cause_fix
+
         return JSONResponse(
-            status_code=500,
+            status_code=status_code,
             content={
-                "error": "Simulation error",
-                "what": exc.message,
-                "why": str(exc.cause) if exc.cause else "Unknown cause",
-                "fix": exc.fix or "Check server logs for details",
-                "status_code": 500,
+                "error": error,
+                "what": what,
+                "why": why,
+                "fix": fix,
+                "status_code": status_code,
             },
         )
 
