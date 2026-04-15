@@ -41,7 +41,7 @@ _bmad-output/
 - `_bmad-output/planning-artifacts/prd.md` — Product requirements
 - `_bmad-output/planning-artifacts/architecture.md` — Technical architecture
 - `_bmad-output/planning-artifacts/ux-design-specification.md` — UX design
-- `_bmad-output/planning-artifacts/epics/` — Active epics (23, 24); epics 1–22 archived in git history
+- `_bmad-output/planning-artifacts/epics.md` — Active epics (23, 24); epics 1–22 archived in git history
 
 ## Current Status
 
