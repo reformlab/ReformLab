@@ -1,6 +1,6 @@
 # Story 23.4: Switch web runs to live OpenFisca by default and isolate replay mode to explicit paths
 
-Status: completed
+Status: done
 
 ## Story
 
@@ -388,6 +388,18 @@ def _initialize_default_adapter(run_config: RunConfig) -> ComputationAdapter:
 - Test patterns: `tests/server/conftest.py`, `tests/server/test_runs.py`
 - Project context: `_bmad-output/project-context.md` — adapter isolation, frozen dataclasses, PyArrow-first
 - UX-DR1: `_bmad-output/planning-artifacts/ux-design-specification.md` — no frontend engine selector in first slice
+
+### Review Findings
+
+- [x] [Review][Patch] Replay 422 handler was dead code — `_create_replay_adapter()` now validates `data_dir` exists and contains files [dependencies.py:206-209, runs.py:78-94] — fixed
+- [x] [Review][Patch] Portfolio replay test was a no-op (always 404) — rewritten to test 422 on empty data dir [test_runs.py] — fixed
+- [x] [Review][Patch] Missing test: `test_replay_mode_manifest_is_separate_from_live` — added [test_runs.py] — fixed
+- [x] [Review][Patch] Missing test: fallback guard positive mismatch detection — added `test_guard_fires_on_runtime_mode_mismatch` [test_live_default_runs.py] — fixed
+- [x] [Review][Patch] Fallback guard false-positive when `runtime_mode` key missing from metadata — added `None` guard [runs.py:156] — fixed
+- [x] [Review][Patch] `get_adapter()` called before replay check causing unnecessary live adapter init — moved after branch [runs.py:75-97] — fixed
+- [x] [Review][Defer] Broad `except Exception` in replay fallback silently swallows programming errors [dependencies.py:159-163] — deferred, pre-existing
+- [x] [Review][Defer] Env var case/whitespace sensitivity in REFORMLAB_RUNTIME_MODE [dependencies.py:145-148] — deferred, pre-existing
+- [x] [Review][Defer] `_run_direct_scenario` hardcodes `runtime_mode='live'` in metadata [api.py:1722] — deferred, out of story scope
 
 ## Dev Agent Record
 

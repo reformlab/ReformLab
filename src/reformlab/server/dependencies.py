@@ -198,10 +198,15 @@ def _create_replay_adapter() -> ComputationAdapter:
     """Create the precomputed OpenFiscaAdapter for explicit replay mode.
 
     Story 23.4: Replay adapter reads precomputed CSV/Parquet files.
+    Raises FileNotFoundError eagerly when data_dir is missing or empty.
     """
     from reformlab.computation.openfisca_adapter import OpenFiscaAdapter
 
     data_dir = _resolve_adapter_data_dir()
+    if not data_dir.is_dir():
+        raise FileNotFoundError(f"Replay data directory does not exist: {data_dir}")
+    if not any(data_dir.glob("*.csv")) and not any(data_dir.glob("*.parquet")):
+        raise FileNotFoundError(f"No precomputed data files (CSV/Parquet) in {data_dir}")
     return OpenFiscaAdapter(data_dir)
 
 

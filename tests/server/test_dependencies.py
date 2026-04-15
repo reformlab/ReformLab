@@ -170,9 +170,13 @@ class TestCreateReplayAdapter:
         """_create_replay_adapter() creates OpenFiscaAdapter with resolved data_dir."""
         import reformlab.server.dependencies as deps
 
-        # Set up temp data directory
+        # Set up temp data directory with a precomputed file
         data_dir = tmp_path / "openfisca"
         data_dir.mkdir()
+        (data_dir / "2025.csv").write_text(
+            "household_id,income_tax,carbon_tax\n1,1000,50\n",
+            encoding="utf-8",
+        )
         monkeypatch.setenv("REFORMLAB_OPENFISCA_DATA_DIR", str(data_dir))
         # Clear cached adapter singleton
         monkeypatch.setattr(deps, "_adapter", None)

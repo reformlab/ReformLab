@@ -206,18 +206,16 @@ class TestReplayExecutionIsExplicit:
         login = client.post("/api/auth/login", json={"password": "test-password-123"})
         headers = {"Authorization": f"Bearer {login.json()['token']}"}
 
-        # Note: This test verifies the error handling path, but since
-        # _create_replay_adapter() succeeds and the error occurs during
-        # execution, we get 500 instead of 422. The 422 path
-        # is tested in the fallback tests in test_dependencies.py
         response = client.post(
             "/api/runs",
             headers=headers,
             json={**_SIMPLE_RUN_BODY, "runtime_mode": "replay"},
         )
-        # Expect 500 since error occurs during execution, not during adapter creation
-        # The 422 path is covered by the dependencies tests
-        assert response.status_code == 500
+        # _create_replay_adapter() now validates data_dir eagerly,
+        # so the 422 handler in runs.py catches FileNotFoundError.
+        assert response.status_code == 422
+        detail = response.json()["detail"]
+        assert detail["what"] == "Replay mode unavailable"
 
 
 # ---------------------------------------------------------------------------
@@ -362,3 +360,38 @@ class TestNoSilentDowngrade:
 
         # Guard should NOT have fired (no ERROR log about mismatch)
         assert "runtime_mode_mismatch" not in caplog.text
+
+    def test_guard_fires_on_runtime_mode_mismatch(
+        self,
+        client_with_store: TestClient,
+        auth_headers: dict[str, str],
+        caplog: pytest.LogCaptureFixture,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Guard logs ERROR when result runtime_mode differs from request."""
+        from reformlab.interfaces import api as api_module
+
+        caplog.set_level(logging.ERROR, logger="reformlab.server.routes.runs")
+
+        # Patch run_scenario to return a result with mismatched runtime_mode
+        original_run_scenario = api_module.run_scenario
+
+        def patched_run_scenario(*args: object, **kwargs: object) -> object:
+            result = original_run_scenario(*args, **kwargs)
+            # Inject a mismatched runtime_mode into metadata
+            result.metadata["runtime_mode"] = "replay"
+            return result
+
+        monkeypatch.setattr(api_module, "run_scenario", patched_run_scenario)
+
+        response = client_with_store.post(
+            "/api/runs",
+            headers=auth_headers,
+            json={**_SIMPLE_RUN_BODY, "runtime_mode": "live"},
+        )
+        assert response.status_code == 200
+
+        # Guard SHOULD have fired
+        assert "runtime_mode_mismatch" in caplog.text
+        assert "requested=live" in caplog.text
+        assert "actual=replay" in caplog.text

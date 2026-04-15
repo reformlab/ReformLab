@@ -748,18 +748,14 @@ class TestReplayModeIsolation:
         self,
         tmp_store: ResultStore,
         monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
     ) -> None:
-        """Portfolio run with runtime_mode='replay' uses replay adapter."""
+        """Portfolio run with runtime_mode='replay' returns 422 when data is missing."""
         import reformlab.server.dependencies as deps
 
-        # Set up temporary data directory with precomputed file
-        data_dir = tmp_store._base_dir / "openfisca"
+        # Point to empty data directory — replay adapter should fail eagerly
+        data_dir = tmp_path / "openfisca-empty"
         data_dir.mkdir()
-        # Create a dummy precomputed file
-        (data_dir / "2025.csv").write_text(
-            "household_id,income_tax,carbon_tax\n3,3000,70\n",
-            encoding="utf-8",
-        )
         monkeypatch.setenv("REFORMLAB_OPENFISCA_DATA_DIR", str(data_dir))
         monkeypatch.setattr(deps, "_adapter", None)
         monkeypatch.setattr(deps, "_result_store", tmp_store)
@@ -778,13 +774,73 @@ class TestReplayModeIsolation:
             "/api/runs",
             headers=headers,
             json={
-                "portfolio_name": "test-portfolio",
+                "template_name": "carbon_tax",
+                "policy": {"rate_schedule": {"2025": 44}},
                 "start_year": 2025,
                 "end_year": 2025,
                 "runtime_mode": "replay",
             },
         )
-        # Portfolio may not exist (404), but if it does, the runtime_mode
-        # should be respected if it succeeds
-        if response.status_code == 200:
-            assert response.json()["runtime_mode"] == "replay"
+        # Replay adapter validates data dir eagerly — expect 422
+        assert response.status_code == 422
+        assert response.json()["detail"]["what"] == "Replay mode unavailable"
+
+    def test_replay_mode_manifest_is_separate_from_live(
+        self,
+        tmp_store: ResultStore,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Replay and live manifests have distinct runtime_mode values."""
+        import json
+
+        import reformlab.server.dependencies as deps
+
+        # Set up precomputed data for replay
+        data_dir = tmp_path / "openfisca"
+        data_dir.mkdir()
+        (data_dir / "2025.csv").write_text(
+            "household_id,income_tax,carbon_tax\n1,1000,50\n",
+            encoding="utf-8",
+        )
+        monkeypatch.setenv("REFORMLAB_OPENFISCA_DATA_DIR", str(data_dir))
+        monkeypatch.setattr(deps, "_adapter", MockAdapter())
+        monkeypatch.setattr(deps, "_result_store", tmp_store)
+
+        from reformlab.server.app import create_app
+        from reformlab.server.dependencies import get_result_store
+
+        app = create_app()
+        app.dependency_overrides[get_result_store] = lambda: tmp_store
+        client = TestClient(app)
+
+        login = client.post("/api/auth/login", json={"password": "test-password-123"})
+        headers = {"Authorization": f"Bearer {login.json()['token']}"}
+
+        # Live run
+        live_resp = client.post(
+            "/api/runs",
+            headers=headers,
+            json=_SIMPLE_RUN_BODY,
+        )
+        assert live_resp.status_code == 200
+        live_id = live_resp.json()["run_id"]
+
+        # Replay run
+        replay_resp = client.post(
+            "/api/runs",
+            headers=headers,
+            json={**_SIMPLE_RUN_BODY, "runtime_mode": "replay"},
+        )
+        assert replay_resp.status_code == 200
+        replay_id = replay_resp.json()["run_id"]
+
+        # Verify manifests have distinct runtime_mode
+        live_manifest = json.loads(
+            (tmp_store._base_dir / live_id / "manifest.json").read_text()
+        )
+        replay_manifest = json.loads(
+            (tmp_store._base_dir / replay_id / "manifest.json").read_text()
+        )
+        assert live_manifest["runtime_mode"] == "live"
+        assert replay_manifest["runtime_mode"] == "replay"

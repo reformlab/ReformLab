@@ -72,8 +72,6 @@ async def run_simulation(
 
     from reformlab.server.population_resolver import PopulationResolutionError
 
-    adapter = get_adapter()
-
     # Story 23.4 / AC-2: Replay mode creates its own precomputed adapter
     if body.runtime_mode == "replay":
         try:
@@ -92,8 +90,9 @@ async def run_simulation(
                     ),
                 },
             ) from exc
-    # Story 23.4 / AC-1: When runtime_mode is "live" (default),
-    # use global adapter which is now OpenFiscaApiAdapter by default
+    else:
+        # Story 23.4 / AC-1: Default live adapter via global singleton
+        adapter = get_adapter()
 
     resolver = get_population_resolver()
 
@@ -153,11 +152,12 @@ async def run_simulation(
             result = run_scenario(run_config, adapter=adapter)
 
         # Story 23.4 / AC-4: Guard against silent runtime mode downgrade
-        if result and result.metadata.get("runtime_mode") != body.runtime_mode:
+        actual_mode = result.metadata.get("runtime_mode") if result else None
+        if result and actual_mode is not None and actual_mode != body.runtime_mode:
             logger.error(
                 "event=runtime_mode_mismatch requested=%s actual=%s run_id=%s",
                 body.runtime_mode,
-                result.metadata.get("runtime_mode"),
+                actual_mode,
                 run_id,
             )
 
