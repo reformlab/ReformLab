@@ -54,6 +54,12 @@ _DEFAULT_OUTPUT_MAPPING: dict[str, str] = {
     "taxe_carbone": "carbon_tax",
 }
 
+# OpenFisca variable names to request from the live adapter.
+# These are the keys of _DEFAULT_OUTPUT_MAPPING — the French variable names
+# that OpenFisca-France produces and that the normalizer maps to English.
+# Story 23.4: Default output variables for live OpenFisca execution.
+_DEFAULT_LIVE_OUTPUT_VARIABLES: tuple[str, ...] = tuple(_DEFAULT_OUTPUT_MAPPING.keys())
+
 # Minimum required indicator columns for normalization to succeed.
 # At least one of these must be present after normalization.
 # household_id is excluded because the panel builder guarantees it via fallback;

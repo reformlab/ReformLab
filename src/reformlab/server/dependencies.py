@@ -137,22 +137,72 @@ def get_adapter() -> ComputationAdapter:
 
 
 def _create_adapter() -> ComputationAdapter:
-    """Create the default computation adapter.
+    """Create the default computation adapter based on REFORMLAB_RUNTIME_MODE.
 
-    Uses MockAdapter in dev if OpenFisca is not available,
-    otherwise uses OpenFiscaAdapter.
+    Story 23.4: Defaults to live OpenFiscaApiAdapter, supports replay mode
+    via REFORMLAB_RUNTIME_MODE env var, falls back to MockAdapter for dev.
     """
-    try:
-        from reformlab.computation.openfisca_adapter import OpenFiscaAdapter
+    runtime_mode = os.environ.get("REFORMLAB_RUNTIME_MODE", "live")
+    if runtime_mode not in ("live", "replay"):
+        logger.warning("Invalid REFORMLAB_RUNTIME_MODE=%s, defaulting to 'live'", runtime_mode)
+        runtime_mode = "live"
 
-        data_dir = _resolve_adapter_data_dir()
-        logger.info("Using OpenFiscaAdapter, data_dir=%s", data_dir)
-        return OpenFiscaAdapter(data_dir)
+    if runtime_mode == "replay":
+        try:
+            logger.info("Using replay adapter (REFORMLAB_RUNTIME_MODE=replay)")
+            return _create_replay_adapter()
+        except (FileNotFoundError, OSError):
+            from reformlab.computation.mock_adapter import MockAdapter
+
+            logger.warning("Replay adapter failed (precomputed data not found), using MockAdapter")
+            return MockAdapter()
+        except Exception:
+            from reformlab.computation.mock_adapter import MockAdapter
+
+            logger.warning("Replay adapter failed, using MockAdapter")
+            return MockAdapter()
+
+    # Default: live mode
+    try:
+        adapter = _create_live_adapter()
+        logger.info("Using live OpenFiscaApiAdapter (default)")
+        return adapter
     except ImportError:
         from reformlab.computation.mock_adapter import MockAdapter
 
-        logger.info("OpenFisca not available — using MockAdapter")
+        logger.info("OpenFisca not installed — using MockAdapter (dev mode)")
         return MockAdapter()
+    except (OSError, RuntimeError) as exc:
+        from reformlab.computation.mock_adapter import MockAdapter
+
+        logger.warning("Live adapter init failed (%s) — using MockAdapter", exc)
+        return MockAdapter()
+
+
+def _create_live_adapter() -> ComputationAdapter:
+    """Create the live OpenFiscaApiAdapter for default web execution.
+
+    Story 23.4: Live adapter uses OpenFiscaApiAdapter with default
+    output variables matching the normalizer's mapping.
+    """
+    from reformlab.computation.openfisca_api_adapter import OpenFiscaApiAdapter
+    from reformlab.computation.result_normalizer import _DEFAULT_LIVE_OUTPUT_VARIABLES
+
+    return OpenFiscaApiAdapter(
+        country_package="openfisca_france",
+        output_variables=_DEFAULT_LIVE_OUTPUT_VARIABLES,
+    )
+
+
+def _create_replay_adapter() -> ComputationAdapter:
+    """Create the precomputed OpenFiscaAdapter for explicit replay mode.
+
+    Story 23.4: Replay adapter reads precomputed CSV/Parquet files.
+    """
+    from reformlab.computation.openfisca_adapter import OpenFiscaAdapter
+
+    data_dir = _resolve_adapter_data_dir()
+    return OpenFiscaAdapter(data_dir)
 
 
 def _resolve_adapter_data_dir() -> Path:

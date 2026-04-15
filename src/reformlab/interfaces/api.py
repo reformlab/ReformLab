@@ -1733,19 +1733,36 @@ def _run_direct_scenario(
 
 
 def _initialize_default_adapter_for_direct() -> ComputationAdapter:
-    """Create a default adapter for direct-scenario execution."""
+    """Create a default adapter for direct-scenario execution.
+
+    Story 23.4: Prefers live OpenFiscaApiAdapter, falls back to
+    SimpleCarbonTaxAdapter for demo scenarios when OpenFisca is not installed.
+    """
     from reformlab.interfaces.errors import ConfigurationError
 
+    # Story 23.4: Try live adapter first
     try:
-        from reformlab.computation.openfisca_adapter import OpenFiscaAdapter
+        from reformlab.computation.openfisca_api_adapter import OpenFiscaApiAdapter
+        from reformlab.computation.result_normalizer import (
+            _DEFAULT_LIVE_OUTPUT_VARIABLES,
+        )
 
-        return OpenFiscaAdapter(data_dir=Path("data"))
+        return OpenFiscaApiAdapter(
+            country_package="openfisca_france",
+            output_variables=_DEFAULT_LIVE_OUTPUT_VARIABLES,
+        )
+    except ImportError:
+        # OpenFisca not installed — use demo adapter for quickstart scenarios
+        return SimpleCarbonTaxAdapter()
     except Exception as exc:
         raise ConfigurationError(
             field_path="adapter",
-            expected="ComputationAdapter",
+            expected="initializable live OpenFisca adapter",
             actual=str(exc),
-            fix="Provide an adapter argument, e.g. adapter=create_quickstart_adapter(carbon_tax_rate=44.6)",
+            fix=(
+                "Ensure OpenFisca is properly installed, or pass "
+                "adapter=create_quickstart_adapter(carbon_tax_rate=44.6) explicitly"
+            ),
         ) from exc
 
 
@@ -1970,21 +1987,52 @@ def _execute_orchestration(
 
 
 def _initialize_default_adapter(run_config: RunConfig) -> ComputationAdapter:
-    """Create the default OpenFisca adapter when one is not provided."""
+    """Create the default adapter when one is not provided.
+
+    Story 23.4: Prefers live OpenFiscaApiAdapter, uses replay adapter
+    when explicitly requested.
+    """
     from reformlab.interfaces.errors import ConfigurationError
 
-    data_dir = _resolve_openfisca_data_dir(run_config)
-    try:
-        from reformlab.computation.openfisca_adapter import OpenFiscaAdapter
+    if run_config.runtime_mode == "live":
+        # Story 23.4 / AC-1: Live mode prefers OpenFiscaApiAdapter
+        try:
+            from reformlab.computation.openfisca_api_adapter import OpenFiscaApiAdapter
+            from reformlab.computation.result_normalizer import (
+                _DEFAULT_LIVE_OUTPUT_VARIABLES,
+            )
 
-        return OpenFiscaAdapter(data_dir=data_dir)
-    except Exception as exc:
-        raise ConfigurationError(
-            field_path="adapter",
-            expected="initializable OpenFisca adapter",
-            actual=str(data_dir),
-            fix=f"Ensure OpenFisca is properly installed and data_dir={data_dir} is valid",
-        ) from exc
+            return OpenFiscaApiAdapter(
+                country_package="openfisca_france",
+                output_variables=_DEFAULT_LIVE_OUTPUT_VARIABLES,
+            )
+        except ImportError:
+            # OpenFisca not installed — use demo adapter
+            return SimpleCarbonTaxAdapter()
+        except Exception as exc:
+            raise ConfigurationError(
+                field_path="adapter",
+                expected="initializable live OpenFisca adapter",
+                actual=str(exc),
+                fix=(
+                    "Ensure OpenFisca is properly installed, or pass "
+                    "adapter=SimpleCarbonTaxAdapter() explicitly"
+                ),
+            ) from exc
+    else:
+        # Replay mode: precomputed file adapter
+        data_dir = _resolve_openfisca_data_dir(run_config)
+        try:
+            from reformlab.computation.openfisca_adapter import OpenFiscaAdapter
+
+            return OpenFiscaAdapter(data_dir=data_dir)
+        except Exception as exc:
+            raise ConfigurationError(
+                field_path="adapter",
+                expected="initializable replay adapter with data_dir",
+                actual=str(data_dir),
+                fix=f"Ensure precomputed data files exist in {data_dir}",
+            ) from exc
 
 
 def _resolve_openfisca_data_dir(run_config: RunConfig) -> Path:

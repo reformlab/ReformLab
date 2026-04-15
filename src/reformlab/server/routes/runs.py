@@ -73,6 +73,28 @@ async def run_simulation(
     from reformlab.server.population_resolver import PopulationResolutionError
 
     adapter = get_adapter()
+
+    # Story 23.4 / AC-2: Replay mode creates its own precomputed adapter
+    if body.runtime_mode == "replay":
+        try:
+            from reformlab.server.dependencies import _create_replay_adapter
+
+            adapter = _create_replay_adapter()
+        except (FileNotFoundError, ValueError, OSError) as exc:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "what": "Replay mode unavailable",
+                    "why": f"No precomputed output files found: {str(exc)}",
+                    "fix": (
+                        "Run in live mode (default) or ensure "
+                        "precomputed data files exist in the data directory"
+                    ),
+                },
+            ) from exc
+    # Story 23.4 / AC-1: When runtime_mode is "live" (default),
+    # use global adapter which is now OpenFiscaApiAdapter by default
+
     resolver = get_population_resolver()
 
     # Story 23.2 / AC-1, AC-2, AC-3, AC-4: Unified population resolver
@@ -129,6 +151,15 @@ async def run_simulation(
                 runtime_mode=body.runtime_mode,
             )
             result = run_scenario(run_config, adapter=adapter)
+
+        # Story 23.4 / AC-4: Guard against silent runtime mode downgrade
+        if result and result.metadata.get("runtime_mode") != body.runtime_mode:
+            logger.error(
+                "event=runtime_mode_mismatch requested=%s actual=%s run_id=%s",
+                body.runtime_mode,
+                result.metadata.get("runtime_mode"),
+                run_id,
+            )
 
         cache.store(run_id, result)
         status = "completed" if result.success else "failed"

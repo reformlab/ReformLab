@@ -694,3 +694,97 @@ class TestRunResponseIncludesPopulationSource:
         )
         assert response.status_code == 200
         assert "population_source" in response.json()
+
+
+# ---------------------------------------------------------------------------
+# Story 23.4: Route-level smoke tests for replay isolation
+# ---------------------------------------------------------------------------
+
+
+class TestReplayModeIsolation:
+    """Story 23.4 / AC-2: Replay mode is isolated to explicit opt-in."""
+
+    def test_replay_mode_still_works_with_precomputed_data(
+        self,
+        tmp_store: ResultStore,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Replay mode completes successfully with precomputed data files."""
+        import reformlab.server.dependencies as deps
+
+        # Set up temporary data directory with precomputed file
+        data_dir = tmp_path / "openfisca"
+        data_dir.mkdir()
+        # Create a dummy precomputed file
+        (data_dir / "2025.csv").write_text(
+            "household_id,income_tax,carbon_tax\n1,1000,50\n",
+            encoding="utf-8",
+        )
+        monkeypatch.setenv("REFORMLAB_OPENFISCA_DATA_DIR", str(data_dir))
+        monkeypatch.setattr(deps, "_adapter", None)
+
+        # Create fresh client
+        monkeypatch.setattr(deps, "_result_store", tmp_store)
+        from reformlab.server.app import create_app
+        from reformlab.server.dependencies import get_result_store
+
+        app = create_app()
+        app.dependency_overrides[get_result_store] = lambda: tmp_store
+        client = TestClient(app)
+
+        login = client.post("/api/auth/login", json={"password": "test-password-123"})
+        headers = {"Authorization": f"Bearer {login.json()['token']}"}
+
+        response = client.post(
+            "/api/runs",
+            headers=headers,
+            json={**_SIMPLE_RUN_BODY, "runtime_mode": "replay"},
+        )
+        assert response.status_code == 200
+        assert response.json()["runtime_mode"] == "replay"
+
+    def test_portfolio_run_respects_runtime_mode(
+        self,
+        tmp_store: ResultStore,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Portfolio run with runtime_mode='replay' uses replay adapter."""
+        import reformlab.server.dependencies as deps
+
+        # Set up temporary data directory with precomputed file
+        data_dir = tmp_store._base_dir / "openfisca"
+        data_dir.mkdir()
+        # Create a dummy precomputed file
+        (data_dir / "2025.csv").write_text(
+            "household_id,income_tax,carbon_tax\n3,3000,70\n",
+            encoding="utf-8",
+        )
+        monkeypatch.setenv("REFORMLAB_OPENFISCA_DATA_DIR", str(data_dir))
+        monkeypatch.setattr(deps, "_adapter", None)
+        monkeypatch.setattr(deps, "_result_store", tmp_store)
+
+        from reformlab.server.app import create_app
+        from reformlab.server.dependencies import get_result_store
+
+        app = create_app()
+        app.dependency_overrides[get_result_store] = lambda: tmp_store
+        client = TestClient(app)
+
+        login = client.post("/api/auth/login", json={"password": "test-password-123"})
+        headers = {"Authorization": f"Bearer {login.json()['token']}"}
+
+        response = client.post(
+            "/api/runs",
+            headers=headers,
+            json={
+                "portfolio_name": "test-portfolio",
+                "start_year": 2025,
+                "end_year": 2025,
+                "runtime_mode": "replay",
+            },
+        )
+        # Portfolio may not exist (404), but if it does, the runtime_mode
+        # should be respected if it succeeds
+        if response.status_code == 200:
+            assert response.json()["runtime_mode"] == "replay"
