@@ -57,7 +57,7 @@ phase_models:
   create_story:
     provider: claude-subprocess        # Runs Claude CLI as a subprocess
     model: opus
-    model_name: glm-4.7               # Display name shown in logs instead of "sonnet"
+    model_name: glm-5.1               # Display name shown in logs instead of "sonnet"
     settings: ~/.claude/glm.json       # Claude CLI settings file (permissions, allowed tools, etc.)
 
   # Implementation: uses Sonnet via GLM settings for coding (reads files on demand)
@@ -71,23 +71,31 @@ phase_models:
   validate_story:
     - provider: claude-subprocess
       model: sonnet                    # Validation reviewer stays on GLM 4.7
+      model_name: glm-4.7
+      settings: ~/.claude/glm.json
     - provider: codex
       model: gpt-5.3-codex             # Second reviewer with deep reasoning
       reasoning_effort: high
   validate_story_synthesis:
     provider: claude-subprocess        # Runs Claude CLI as a subprocess
     model: sonnet
+    model_name: glm-4.7
+    settings: ~/.claude/glm.json
 
   # Code review: same stable Sonnet + Codex reviewer pairing as validation
   code_review:
     - provider: claude-subprocess
       model: sonnet
+      model_name: glm-4.7
+      settings: ~/.claude/glm.json
     - provider: codex
       model: gpt-5.3-codex
       reasoning_effort: high
   code_review_synthesis:
     provider: claude-subprocess        # Runs Claude CLI as a subprocess
     model: sonnet
+    model_name: glm-4.7
+    settings: ~/.claude/glm.json
 
   # Retrospective: runs after each epic completes
   retrospective:
@@ -104,13 +112,13 @@ phase_models:
 compiler:
   source_context:
     budgets:
-      create_story: 120000             # Large — needs full codebase view to write good specs
+      create_story: 55000              # Agent has tool access to read files on demand
       validate_story: 15000            # Small — validators only need the story + key files
       validate_story_synthesis: 15000  # Small — synthesizer works from validator outputs
-      dev_story: 35000                 # Medium — agent can read additional files on demand
-      code_review: 40000               # Medium — reviewers need enough code to spot issues
-      code_review_synthesis: 40000     # Medium — synthesizer merges review findings
-      default: 40000                   # Fallback for unlisted phases
+      dev_story: 20000                 # Agent reads additional files on demand via tools
+      code_review: 18000               # Reviewers can read files on demand; diff is primary input
+      code_review_synthesis: 18000     # Synthesizer works from review outputs + selective reads
+      default: 20000                   # Fallback for unlisted phases
 
   # Strategic context: high-level project docs included in every prompt
   strategic_context:
