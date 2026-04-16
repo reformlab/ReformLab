@@ -1,0 +1,144 @@
+record_id: 81b67397-542d-40a9-bb58-e39e2a544c3a
+created_at: '2026-04-16T10:45:19.842665+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 23
+  story_num: 6
+  title: Story 23.6
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-04-16T10:16:31.935537Z'
+  end_time: '2026-04-16T10:44:35.874537Z'
+  duration_ms: 1683939
+  input_tokens: 0
+  output_tokens: 9047
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 36191
+  heading_count: 48
+  list_depth_max: 2
+  code_block_count: 8
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 25.5'
+  - 🎯 Ruthless Story Validation 23.6
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Wrong Comparison API Endpoint Reference
+  - 2. Missing Portfolio Comparison Regression Test
+  - 3. Unrealistic 5 SP Estimate for Declared Scope
+  - 4. No Error Scenario Coverage Tests
+  - 5. Generated Population Test Is Underspecified
+  - 6. Documentation Test Only Checks File Existence
+  - 7. Test Data Assumptions Not Validated
+  - 8. Missing Preflight Integration Tests
+  - 9. Acceptance Criteria Are Self-Referential and Circular
+  - 10. Vague Test Methods and Invariants
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Missing Export API Endpoint References
+  - 2. Missing Multi-Indicator Test Coverage
+  - 3. Documentation Structure Guidance Missing
+  - 4. Missing Workflow Regression Test for Scenario Save/Load
+  - 5. Test Fixture Pattern Inconsistency with Story 23.5
+  - 6. Missing Error Handling Tests for Comparison/Export
+  - 7. Documentation Troubleshooting Depth Missing
+  - 8. Missing Integration Test for Result Cache/Store Interaction
+  - ✨ Optimizations (Nice to Have)
+  - 1. Use Test Parameterization for Shared Logic
+  - 2. Add Smoke Test Execution Time Limits
+  - 3. Document Test Execution Order Dependencies
+  - 4. Reference Existing Test Utilities
+  - 🤖 LLM Optimization Improvements
+  - 1. Remove Redundant Task Repetition
+  - 2. Consolidate Implementation Notes
+  - 3. Make Test Classes and Methods Reference-Ready
+  - 4. Simplify Documentation Structure Description
+  - 5. Remove Duplicate Task Summaries
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 645424b66690
+findings:
+  total_count: 27
+  by_severity:
+    critical: 10
+    major: 8
+    minor: 4
+    nit: 5
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 5
+    completeness: 14
+    clarity: 5
+    testability: 3
+  has_fix_count: 27
+  has_location_count: 10
+  has_evidence_count: 8
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 8
+  confidence_phrases_count: 6
+linguistic:
+  avg_sentence_length: 30.80128205128205
+  vocabulary_richness: 0.19854318418314257
+  flesch_reading_ease: 14.12683350081744
+  vague_terms_count: 4
+  formality_score: 0.7
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.37
+  evidence_quality: 0.3
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
