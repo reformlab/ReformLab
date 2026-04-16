@@ -7,7 +7,7 @@ project_name: ReformLab
 user_name: Lucas
 communication_language: English       # Language the agent uses to talk to you
 document_output_language: English      # Language used in generated artifacts (stories, reviews)
-user_skill_level: intermediate         # Adjusts explanation verbosity (beginner/intermediate/expert)
+user_skill_level: expert         # Adjusts explanation verbosity (beginner/intermediate/expert)
 
 # --- External paths ---
 # Point bmad-assist to planning-artifacts where epics.md lives,
@@ -19,7 +19,7 @@ paths:
 # Safety limits to prevent runaway agent sessions from burning too many API calls.
 tool_guard:
   max_total_calls: 400                 # Hard cap on total tool calls per phase execution
-  max_interactions_per_file: 25        # Max read/write operations on a single file
+  max_interactions_per_file: 35        # Max read/write operations on a single file
   max_calls_per_minute: 150            # Rate limit to avoid API throttling
 
 # --- Timeouts (seconds) ---
@@ -56,8 +56,8 @@ phase_models:
   # Story creation: use the same stable GLM-backed Sonnet config as implementation
   create_story:
     provider: claude-subprocess        # Runs Claude CLI as a subprocess
-    model: opus
-    model_name: glm-5.1               # Display name shown in logs instead of "sonnet"
+    model: sonnet
+    model_name: glm-4.7              # Display name shown in logs instead of "sonnet"
     settings: ~/.claude/glm.json       # Claude CLI settings file (permissions, allowed tools, etc.)
 
   # Implementation: uses Sonnet via GLM settings for coding (reads files on demand)
@@ -117,7 +117,7 @@ compiler:
       validate_story_synthesis: 10000  # Small — synthesizer works from validator outputs
       dev_story: 20000                 # Agent reads additional files on demand via tools
       code_review: 18000               # Reviewers can read files on demand; diff is primary input
-      code_review_synthesis: 18000     # Synthesizer works from review outputs + selective reads
+      code_review_synthesis: 10000     # Synthesizer works from review outputs + selective reads
       default: 20000                   # Fallback for unlisted phases
 
   # Strategic context: high-level project docs included in every prompt
