@@ -114,7 +114,7 @@ async def run_checks(request: PreflightRequest) -> PreflightResponse:
     error_checks = [r for r in results if r.severity == "error"]
     passed = all(r.passed for r in error_checks)
 
-    # Collect warnings from non-passing warning-severity checks
+    # Collect warnings from warning-severity checks that actively report a caveat.
     warnings = [r.message for r in results if r.severity == "warning" and not r.passed]
 
     return PreflightResponse(
@@ -583,6 +583,8 @@ def _check_population_executable(request: PreflightRequest) -> ValidationCheckRe
             message="No population selected — run will use default data",
         )
 
+    import pyarrow as pa
+    import pyarrow.csv as pa_csv
     import pyarrow.parquet as pq
 
     from reformlab.server.dependencies import get_population_resolver
@@ -600,8 +602,27 @@ def _check_population_executable(request: PreflightRequest) -> ValidationCheckRe
         #   - carbon_tax: carbon tax liability (needed for policy scenarios)
         required_columns = {"household_id", "income", "disposable_income", "carbon_tax"}
         try:
-            # Read only schema, not full data (for performance)
-            schema = pq.read_schema(resolved.data_path)
+            suffixes = tuple(part.lower() for part in resolved.data_path.suffixes)
+            if suffixes[-2:] == (".csv", ".gz") or suffixes[-1:] == (".csv",):
+                reader = pa_csv.open_csv(resolved.data_path)
+                try:
+                    schema = reader.schema
+                finally:
+                    reader.close()
+            elif suffixes[-1:] in ((".parquet",), (".pq",)):
+                # Read only schema, not full data (for performance)
+                schema = pq.read_schema(resolved.data_path)
+            else:
+                return ValidationCheckResult(
+                    id="population-executable",
+                    label="Population executable",
+                    passed=False,
+                    severity="error",
+                    message=(
+                        f"Population '{request.population_id}' uses unsupported file format: "
+                        f"{resolved.data_path.suffix or '(none)'}"
+                    ),
+                )
             existing_columns = set(schema.names)
             missing_columns = required_columns - existing_columns
 
@@ -617,7 +638,7 @@ def _check_population_executable(request: PreflightRequest) -> ValidationCheckRe
                         f"Missing required columns: {missing_str}"
                     ),
                 )
-        except (FileNotFoundError, OSError) as e:
+        except (FileNotFoundError, OSError, pa.ArrowException) as e:
             return ValidationCheckResult(
                 id="population-executable",
                 label="Population executable",
@@ -661,27 +682,27 @@ def _check_runtime_info(request: PreflightRequest) -> ValidationCheckResult:
     from reformlab.computation.mock_adapter import MockAdapter
     from reformlab.server.dependencies import get_adapter
 
+    if request.runtime_mode == "replay":
+        return ValidationCheckResult(
+            id="runtime-info",
+            label="Runtime status",
+            passed=False,  # Warning, not error
+            severity="warning",
+            message="Using replay mode — results come from precomputed outputs",
+        )
+
     adapter = get_adapter()
 
     if isinstance(adapter, MockAdapter):
         return ValidationCheckResult(
             id="runtime-info",
             label="Runtime status",
-            passed=True,  # Warning, not error
+            passed=False,  # Warning, not error
             severity="warning",
             message=(
                 "Running with MockAdapter — results use synthetic data, "
                 "not live OpenFisca computation. Install OpenFisca for live runs."
             ),
-        )
-
-    if request.runtime_mode == "replay":
-        return ValidationCheckResult(
-            id="runtime-info",
-            label="Runtime status",
-            passed=True,
-            severity="warning",
-            message="Using replay mode — results come from precomputed outputs",
         )
 
     # Live mode with real adapter: clean pass, no false warnings

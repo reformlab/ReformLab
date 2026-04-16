@@ -1523,3 +1523,63 @@ class TestRunScenarioWithSteps:
         assert result.success
         state = result.yearly_states[2025]
         assert "vintage_vehicle" not in state.data
+
+
+class TestRuntimePopulationProvenance:
+    """Regression tests for Story 23.5 runtime and population provenance."""
+
+    def test_config_run_manifest_records_population_provenance(self) -> None:
+        """RunConfig/ScenarioConfig callers get population provenance in the manifest."""
+        from reformlab import RunConfig, ScenarioConfig, run_scenario
+
+        config = RunConfig(
+            scenario=ScenarioConfig(
+                template_name="carbon-tax",
+                policy={"rate_schedule": {2025: 50.0}},
+                start_year=2025,
+                end_year=2025,
+                population_id="fr-synthetic-2024",
+                population_source="bundled",
+            ),
+            seed=42,
+        )
+
+        result = run_scenario(config, adapter=MockAdapter())
+
+        assert result.manifest.population_id == "fr-synthetic-2024"
+        assert result.manifest.population_source == "bundled"
+
+    def test_direct_scenario_runtime_mode_argument_is_forwarded(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Direct typed scenario runs receive the public runtime_mode argument."""
+        import reformlab.interfaces.api as api
+        from reformlab.templates.schema import (
+            BaselineScenario,
+            CarbonTaxParameters,
+            PolicyType,
+            YearSchedule,
+        )
+
+        captured: dict[str, Any] = {}
+
+        def fake_direct_scenario(*args: Any, **kwargs: Any) -> None:
+            captured["runtime_mode"] = kwargs.get("runtime_mode")
+            raise RuntimeError("stop after capture")
+
+        monkeypatch.setattr(api, "_run_direct_scenario", fake_direct_scenario)
+        scenario = BaselineScenario(
+            name="runtime-forwarding",
+            policy_type=PolicyType.CARBON_TAX,
+            year_schedule=YearSchedule(2025, 2025),
+            policy=CarbonTaxParameters(rate_schedule={2025: 50.0}),
+        )
+
+        with pytest.raises(RuntimeError, match="stop after capture"):
+            api.run_scenario(
+                scenario,
+                population=object(),  # type: ignore[arg-type]
+                runtime_mode="replay",
+            )
+
+        assert captured["runtime_mode"] == "replay"

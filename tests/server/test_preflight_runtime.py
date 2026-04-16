@@ -11,6 +11,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
+from reformlab.computation.mock_adapter import MockAdapter
 from reformlab.server.models import PreflightRequest
 
 # =============================================================================
@@ -101,6 +104,39 @@ class TestRuntimeSupportCheck:
 class TestPopulationExecutableCheck:
     """Tests for population-executable validation check (Story 23.5 / AC-1, AC-4)."""
 
+    def test_valid_csv_population_passes(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """CSV populations with the minimum live schema pass preflight."""
+        import reformlab.server.dependencies as deps
+        from reformlab.server.population_resolver import PopulationResolver
+        from reformlab.server.validation import _check_population_executable
+
+        data_dir = tmp_path / "populations"
+        uploaded_dir = tmp_path / "uploaded"
+        data_dir.mkdir()
+        uploaded_dir.mkdir()
+        (data_dir / "csv-pop.csv").write_text(
+            "household_id,income,disposable_income,carbon_tax\n"
+            "1,50000,45000,50\n",
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(
+            deps,
+            "_population_resolver",
+            PopulationResolver(data_dir, uploaded_dir),
+        )
+
+        request = PreflightRequest(
+            scenario={"portfolioName": "test-portfolio"},
+            population_id="csv-pop",
+        )
+        result = _check_population_executable(request)
+
+        assert result.id == "population-executable"
+        assert result.passed is True
+        assert "resolved" in result.message
+
     def test_valid_bundled_population_passes(self) -> None:
         """Existing bundled population resolves and passes check."""
         from reformlab.server.validation import _check_population_executable
@@ -174,13 +210,12 @@ class TestPopulationExecutableCheck:
 class TestRuntimeInfoWarning:
     """Tests for runtime-info warning check (Story 23.5 / AC-6, AC-7)."""
 
-    def test_mock_adapter_emits_warning(self) -> None:
+    def test_mock_adapter_emits_warning(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """MockAdapter produces non-blocking warning in warnings[]."""
+        import reformlab.server.dependencies as deps
         from reformlab.server.validation import _check_runtime_info
 
-        # Clear any existing adapter to force MockAdapter creation
-        # This test verifies that when MockAdapter is in use,
-        # a warning severity check result is produced
+        monkeypatch.setattr(deps, "_adapter", MockAdapter())
         request = PreflightRequest(
             scenario={"portfolioName": "test-portfolio"},
             population_id="fr-synthetic-2024",
@@ -189,13 +224,31 @@ class TestRuntimeInfoWarning:
         result = _check_runtime_info(request)
 
         assert result.id == "runtime-info"
-        assert result.passed is True  # Warning, not error
+        assert result.passed is False  # Warning, not error
         assert result.severity == "warning"
+        assert "MockAdapter" in result.message
 
-        # Message should indicate MockAdapter usage
-        if "MockAdapter" in str(result.message) or "synthetic data" in str(result.message):
-            # MockAdapter is detected and warning is emitted
-            pass
+    def test_mock_adapter_warning_reaches_warnings_array(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """MockAdapter caveat is visible in the aggregated preflight warnings[]."""
+        import asyncio
+
+        import reformlab.server.dependencies as deps
+        from reformlab.server.validation import run_checks
+
+        monkeypatch.setattr(deps, "_adapter", MockAdapter())
+        request = PreflightRequest(
+            scenario={
+                "portfolioName": "test-portfolio",
+                "populationIds": ["fr-synthetic-2024"],
+                "engineConfig": {"startYear": 2025, "endYear": 2026},
+            },
+            runtime_mode="live",
+        )
+        response = asyncio.run(run_checks(request))
+
+        assert any("MockAdapter" in warning for warning in response.warnings)
 
     def test_live_adapter_no_warning(self) -> None:
         """Real live adapter produces no warnings (AC-7)."""
@@ -227,7 +280,7 @@ class TestRuntimeInfoWarning:
         result = _check_runtime_info(request)
 
         assert result.id == "runtime-info"
-        assert result.passed is True
+        assert result.passed is False
         assert result.severity == "warning"
         # Message should indicate replay mode without implying substitution
         assert "replay" in result.message.lower()
@@ -263,29 +316,36 @@ class TestRuntimeInfoWarning:
 class TestPopulationSchemaCompatibility:
     """Tests for population schema compatibility validation (Story 23.5 / AC-4)."""
 
-    def test_schema_incompatible_population_fails(self) -> None:
+    def test_schema_incompatible_population_fails(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Population with incompatible schema produces clear validation error identifying missing fields."""
-        # The actual _check_population_executable function validates schema
-        # by reading Parquet schema and checking for required columns.
-        # This test verifies the schema validation logic is in place.
+        import reformlab.server.dependencies as deps
+        from reformlab.server.population_resolver import PopulationResolver
+        from reformlab.server.validation import _check_population_executable
 
-        # Required columns for live execution (minimum viable schema):
-        #   - household_id: entity identifier
-        #   - income: pre-tax household income
-        #   - disposable_income: post-tax household income (needed for redistribution)
-        #   - carbon_tax: carbon tax liability (needed for policy scenarios)
-        required_columns = {"household_id", "income", "disposable_income", "carbon_tax"}
+        data_dir = tmp_path / "populations"
+        uploaded_dir = tmp_path / "uploaded"
+        data_dir.mkdir()
+        uploaded_dir.mkdir()
+        (data_dir / "bad-schema.csv").write_text(
+            "household_id,income\n1,50000\n",
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(
+            deps,
+            "_population_resolver",
+            PopulationResolver(data_dir, uploaded_dir),
+        )
 
-        # Test that a population missing required columns would fail schema validation
-        # The actual implementation uses pq.read_schema() to check column presence
-        # This test verifies the validation logic structure
+        request = PreflightRequest(
+            scenario={"portfolioName": "test-portfolio"},
+            population_id="bad-schema",
+        )
+        result = _check_population_executable(request)
 
-        # Simulate schema with missing columns
-        existing_columns = {"household_id", "income"}  # Missing disposable_income, carbon_tax
-        missing_columns = required_columns - existing_columns
-        assert missing_columns == {"disposable_income", "carbon_tax"}
-
-        # The check should produce a clear error message identifying missing columns
-        assert "Missing required columns" in "Missing required columns: disposable_income, carbon_tax"
-        assert "disposable_income" in "Missing required columns: disposable_income, carbon_tax"
-        assert "carbon_tax" in "Missing required columns: disposable_income, carbon_tax"
+        assert result.id == "population-executable"
+        assert result.passed is False
+        assert "Missing required columns" in result.message
+        assert "disposable_income" in result.message
+        assert "carbon_tax" in result.message

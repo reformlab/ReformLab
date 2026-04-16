@@ -1,6 +1,6 @@
 # Story 23.5: Extend preflight, manifests, and result metadata with runtime and population provenance
 
-Status: review
+Status: done
 
 ## Story
 
@@ -122,6 +122,13 @@ so that I can trust the run outputs, understand exactly how each result was prod
   - [x] `TestPopulationSchemaCompatibility`:
     - `test_schema_incompatible_population_fails()` — population with incompatible schema (e.g., missing required columns) produces clear validation error identifying the missing fields
   - [x] Note: Full schema validation at preflight time is lightweight (column-name check via PyArrow schema read). Deep validation happens at execution time via the normalizer (Story 23.3). The preflight check just verifies the file is readable and has the minimum expected structure.
+
+### Review Findings
+
+- [x] [Review][Patch] Population preflight rejects valid CSV populations and can raise an unstructured Arrow error [src/reformlab/server/validation.py:586]
+- [x] [Review][Patch] Runtime-info warnings never reach the preflight `warnings[]` response [src/reformlab/server/validation.py:117]
+- [x] [Review][Patch] Public direct-scenario `runtime_mode` argument is not forwarded and can mislabel execution provenance [src/reformlab/interfaces/api.py:876]
+- [x] [Review][Patch] Config-based Python API manifests omit `population_id` and `population_source` outside the HTTP route [src/reformlab/interfaces/api.py:1956]
 
 ## Dev Notes
 

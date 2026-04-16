@@ -20,7 +20,7 @@ development_status:
   23-4-switch-web-runs-to-live-openfisca-by-default-and-isolate-replay-mode-to-explicit-paths: 
     done
   23-5-extend-preflight-manifests-and-result-metadata-with-runtime-and-population-provenance:
-    review
+    done
   23-6-add-regression-coverage-and-operator-docs-for-live-default-runs-and-replay-smoke-flows: 
     backlog
   epic-23-retrospective: optional

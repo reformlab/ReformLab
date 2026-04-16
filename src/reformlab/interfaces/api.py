@@ -883,6 +883,7 @@ def run_scenario(
             initial_state=initial_state,
             skip_memory_check=skip_memory_check,
             baseline=baseline,
+            runtime_mode=runtime_mode,
         )
 
     # Step 1: Normalize config to RunConfig
@@ -1598,12 +1599,19 @@ def _run_direct_scenario(
         "policy": serialized_policy,
     }
 
+    runtime_mode_value: Literal["live", "replay"] = runtime_mode or "live"
+    adapter_to_use = (
+        adapter
+        if adapter is not None
+        else _initialize_default_adapter_for_direct(runtime_mode_value)
+    )
+
     # Create orchestrator runner
     assert not isinstance(population, Path)  # resolved above
     runner = OrchestratorRunner(
         step_pipeline=(
             ComputationStep(
-                adapter=adapter if adapter is not None else _initialize_default_adapter_for_direct(),
+                adapter=adapter_to_use,
                 population=population,
                 policy=policy,
             ),
@@ -1665,7 +1673,7 @@ def _run_direct_scenario(
         metadata=dict(workflow_result.metadata),
     )
 
-    # Story 23.3: Direct scenario path uses default live mode with normalization
+    # Story 23.3: Direct scenario path uses live normalization only for live mode.
     from reformlab.computation.result_normalizer import (
         MAPPING_APPLIED_KEY,
         NORMALIZED_KEY,
@@ -1673,7 +1681,11 @@ def _run_direct_scenario(
         create_live_normalizer,
     )
 
-    normalizer = create_live_normalizer(mapping_config=None)
+    normalizer = (
+        create_live_normalizer(mapping_config=None)
+        if runtime_mode_value == "live"
+        else None
+    )
     try:
         panel_output = PanelOutput.from_orchestrator_result(
             orchestrator_result,
@@ -1695,7 +1707,7 @@ def _run_direct_scenario(
         workflow_result.metadata.get("child_manifests"),
     )
 
-    adapter_version = _safe_adapter_version(adapter) if adapter else "unknown"
+    adapter_version = _safe_adapter_version(adapter_to_use)
 
     manifest = RunManifest(
         manifest_id=parent_manifest_id or "direct-run",
@@ -1715,7 +1727,7 @@ def _run_direct_scenario(
         data_hashes=_coerce_hash_map(workflow_result.metadata.get("data_hashes")),
         output_hashes=_coerce_hash_map(workflow_result.metadata.get("output_hashes")),
         # Story 23.5 / AC-2: Runtime mode from parameter, defaulting to "live" for backward compatibility
-        runtime_mode=runtime_mode or "live",
+        runtime_mode=runtime_mode_value,
         # Story 23.5 / AC-2: Population provenance from ScenarioConfig (if available)
         population_id=getattr(scenario, "population_id", None) or "",
         population_source=getattr(scenario, "population_source", None) or "",
@@ -1727,7 +1739,7 @@ def _run_direct_scenario(
         NORMALIZED_KEY: True,
         MAPPING_APPLIED_KEY: panel_output.metadata.get("mapping_applied", True),
         # Story 23.5 / AC-2: Runtime mode from parameter, defaulting to "live" for backward compatibility
-        "runtime_mode": runtime_mode or "live",
+        "runtime_mode": runtime_mode_value,
     })
 
     return SimulationResult(
@@ -1740,13 +1752,29 @@ def _run_direct_scenario(
     )
 
 
-def _initialize_default_adapter_for_direct() -> ComputationAdapter:
+def _initialize_default_adapter_for_direct(
+    runtime_mode: Literal["live", "replay"] = "live",
+) -> ComputationAdapter:
     """Create a default adapter for direct-scenario execution.
 
     Story 23.4: Prefers live OpenFiscaApiAdapter, falls back to
     SimpleCarbonTaxAdapter for demo scenarios when OpenFisca is not installed.
     """
     from reformlab.interfaces.errors import ConfigurationError
+
+    if runtime_mode == "replay":
+        data_dir = Path(os.environ.get("REFORMLAB_OPENFISCA_DATA_DIR", "data/openfisca"))
+        try:
+            from reformlab.computation.openfisca_adapter import OpenFiscaAdapter
+
+            return OpenFiscaAdapter(data_dir=data_dir)
+        except Exception as exc:
+            raise ConfigurationError(
+                field_path="adapter",
+                expected="initializable replay adapter with data_dir",
+                actual=str(data_dir),
+                fix=f"Ensure precomputed data files exist in {data_dir}",
+            ) from exc
 
     # Story 23.4: Try live adapter first
     try:
@@ -1972,6 +2000,9 @@ def _execute_orchestration(
         output_hashes=_coerce_hash_map(workflow_result.metadata.get("output_hashes")),
         # Story 23.1 / AC-4: Runtime mode from RunConfig
         runtime_mode=run_config.runtime_mode,
+        # Story 23.5 / AC-2: Population provenance from ScenarioConfig
+        population_id=scenario.population_id or "",
+        population_source=scenario.population_source or "",
     )
 
     # Package result with normalization metadata (Story 23.3)
