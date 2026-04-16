@@ -752,6 +752,8 @@ class PreflightRequest(BaseModel):
     scenario: dict[str, Any]  # WorkspaceScenario serialized as dict
     population_id: str | None = None
     template_name: str | None = None
+    # Story 23.5 / AC-1, AC-4: Runtime mode for validation
+    runtime_mode: Literal["live", "replay"] = "live"
 
 
 class ValidationCheckResult(BaseModel):

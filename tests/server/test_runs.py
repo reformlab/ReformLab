@@ -844,3 +844,230 @@ class TestReplayModeIsolation:
         )
         assert live_manifest["runtime_mode"] == "live"
         assert replay_manifest["runtime_mode"] == "replay"
+
+# =============================================================================
+# Story 23.5: Manifest and metadata provenance tests
+# =============================================================================
+
+
+class TestManifestPopulationProvenance:
+    """Tests for manifest population provenance fields (Story 23.5 / AC-2)."""
+
+    def test_manifest_records_population_id(
+        self, tmp_store: ResultStore, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """After a run with population_id, manifest.json on disk contains the population_id."""
+        import json
+
+        data_dir = tmp_path / "populations"
+        data_dir.mkdir()
+        (data_dir / "fr-synthetic-2024.csv").write_text(
+            "household_id,income\n1,50000\n", encoding="utf-8"
+        )
+        uploaded_dir = tmp_path / "uploaded"
+        uploaded_dir.mkdir()
+
+        client, headers = _make_client_with_resolver(
+            tmp_store, monkeypatch, data_dir, uploaded_dir
+        )
+
+        response = client.post(
+            "/api/runs",
+            headers=headers,
+            json={**_SIMPLE_RUN_BODY, "population_id": "fr-synthetic-2024"},
+        )
+        assert response.status_code == 200
+        run_id = response.json()["run_id"]
+
+        manifest_path = tmp_store._base_dir / run_id / "manifest.json"
+        assert manifest_path.exists()
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        assert manifest.get("population_id") == "fr-synthetic-2024"
+
+    def test_manifest_records_population_source(
+        self, tmp_store: ResultStore, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """After a run, manifest.json contains population_source."""
+        import json
+
+        data_dir = tmp_path / "populations"
+        data_dir.mkdir()
+        (data_dir / "fr-synthetic-2024.csv").write_text(
+            "household_id,income\n1,50000\n", encoding="utf-8"
+        )
+        uploaded_dir = tmp_path / "uploaded"
+        uploaded_dir.mkdir()
+
+        client, headers = _make_client_with_resolver(
+            tmp_store, monkeypatch, data_dir, uploaded_dir
+        )
+
+        response = client.post(
+            "/api/runs",
+            headers=headers,
+            json={**_SIMPLE_RUN_BODY, "population_id": "fr-synthetic-2024"},
+        )
+        assert response.status_code == 200
+        run_id = response.json()["run_id"]
+
+        manifest_path = tmp_store._base_dir / run_id / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        assert manifest.get("population_source") == "bundled"
+
+    def test_manifest_records_runtime_mode(
+        self, tmp_store: ResultStore, client_with_store: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """Manifest.json contains runtime_mode (Story 23.1 / AC-4, Story 23.5 / AC-2)."""
+        import json
+
+        response = client_with_store.post(
+            "/api/runs",
+            headers=auth_headers,
+            json={**_SIMPLE_RUN_BODY, "runtime_mode": "live"},
+        )
+        assert response.status_code == 200
+        run_id = response.json()["run_id"]
+
+        manifest_path = tmp_store._base_dir / run_id / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        assert manifest.get("runtime_mode") == "live"
+
+    def test_manifest_without_population_has_empty_fields(
+        self, tmp_store: ResultStore, client_with_store: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """Run without population_id has empty string population_id and population_source."""
+        import json
+
+        response = client_with_store.post(
+            "/api/runs",
+            headers=auth_headers,
+            json=_SIMPLE_RUN_BODY,
+        )
+        assert response.status_code == 200
+        run_id = response.json()["run_id"]
+
+        manifest_path = tmp_store._base_dir / run_id / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        assert manifest.get("population_id") == ""
+        assert manifest.get("population_source") == ""
+
+
+class TestMetadataPopulationProvenance:
+    """Tests for metadata population provenance (Story 23.5 / AC-3)."""
+
+    def test_metadata_population_source_matches_resolver(
+        self, tmp_store: ResultStore, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """ResultMetadata.population_source matches what the resolver returned."""
+        data_dir = tmp_path / "populations"
+        data_dir.mkdir()
+        (data_dir / "fr-synthetic-2024.csv").write_text(
+            "household_id,income\n1,50000\n", encoding="utf-8"
+        )
+        uploaded_dir = tmp_path / "uploaded"
+        uploaded_dir.mkdir()
+
+        client, headers = _make_client_with_resolver(
+            tmp_store, monkeypatch, data_dir, uploaded_dir
+        )
+
+        response = client.post(
+            "/api/runs",
+            headers=headers,
+            json={**_SIMPLE_RUN_BODY, "population_id": "fr-synthetic-2024"},
+        )
+        assert response.status_code == 200
+        run_id = response.json()["run_id"]
+
+        metadata = tmp_store.get_metadata(run_id)
+        assert metadata is not None
+        assert metadata.population_source == "bundled"
+
+    def test_metadata_runtime_mode_matches_manifest(
+        self, tmp_store: ResultStore, client_with_store: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """ResultMetadata.runtime_mode matches manifest.runtime_mode."""
+        import json
+
+        response = client_with_store.post(
+            "/api/runs",
+            headers=auth_headers,
+            json={**_SIMPLE_RUN_BODY, "runtime_mode": "live"},
+        )
+        assert response.status_code == 200
+        run_id = response.json()["run_id"]
+
+        metadata = tmp_store.get_metadata(run_id)
+        assert metadata is not None
+
+        manifest_path = tmp_store._base_dir / run_id / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        assert metadata.runtime_mode == manifest.get("runtime_mode")
+
+
+class TestManifestBackwardCompatibility:
+    """Tests for manifest backward compatibility (Story 23.5 / AC-5)."""
+
+    def test_from_json_handles_missing_population_fields(self) -> None:
+        """Loading an old manifest without population_id/population_source defaults to empty strings."""
+        from reformlab.governance.manifest import RunManifest
+
+        old_manifest_json = """{
+            "manifest_id": "test-manifest-123",
+            "created_at": "2025-01-01T00:00:00Z",
+            "engine_version": "1.0.0",
+            "openfisca_version": "44.0.0",
+            "adapter_version": "mock-1.0.0",
+            "scenario_version": "1.0",
+            "data_hashes": {},
+            "output_hashes": {},
+            "seeds": {},
+            "policy": {},
+            "assumptions": [],
+            "mappings": [],
+            "warnings": [],
+            "step_pipeline": [],
+            "parent_manifest_id": "",
+            "child_manifests": {},
+            "runtime_mode": "live",
+            "integrity_hash": ""
+        }"""
+
+        manifest = RunManifest.from_json(old_manifest_json)
+        assert manifest.population_id == ""
+        assert manifest.population_source == ""
+        assert manifest.runtime_mode == "live"
+
+    def test_old_manifest_round_trip(self) -> None:
+        """Load old manifest → from_json() → to_json() → verify new fields are included."""
+        import json
+
+        from reformlab.governance.manifest import RunManifest
+
+        old_manifest_json = """{
+            "manifest_id": "test-manifest-123",
+            "created_at": "2025-01-01T00:00:00Z",
+            "engine_version": "1.0.0",
+            "openfisca_version": "44.0.0",
+            "adapter_version": "mock-1.0.0",
+            "scenario_version": "1.0",
+            "data_hashes": {},
+            "output_hashes": {},
+            "seeds": {},
+            "policy": {},
+            "assumptions": [],
+            "mappings": [],
+            "warnings": [],
+            "step_pipeline": [],
+            "parent_manifest_id": "",
+            "child_manifests": {},
+            "runtime_mode": "live",
+            "integrity_hash": ""
+        }"""
+
+        manifest = RunManifest.from_json(old_manifest_json)
+        round_trip_json = manifest.to_json()
+        parsed = json.loads(round_trip_json)
+        assert parsed.get("population_id") == ""
+        assert parsed.get("population_source") == ""
+        assert parsed.get("runtime_mode") == "live"

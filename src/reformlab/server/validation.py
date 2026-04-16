@@ -522,6 +522,179 @@ def _check_exogenous_coverage(request: PreflightRequest) -> ValidationCheckResul
 
 
 # =============================================================================
+# Story 23.5: Runtime and population validation checks
+# =============================================================================
+
+
+def _check_runtime_support(request: PreflightRequest) -> ValidationCheckResult:
+    """Story 23.5 / AC-1: Validate runtime mode is available.
+
+    Live always passes; replay requires precomputed data.
+    """
+    runtime_mode = request.runtime_mode  # New field on PreflightRequest
+
+    if runtime_mode == "replay":
+        # Verify precomputed data exists
+        try:
+            from reformlab.server.dependencies import _create_replay_adapter
+            _create_replay_adapter()  # Raises if no data files
+        except (FileNotFoundError, ValueError, OSError):
+            return ValidationCheckResult(
+                id="runtime-support",
+                label="Runtime support",
+                passed=False,
+                severity="error",
+                message=(
+                    "Replay mode requires precomputed output files, "
+                    "but none were found in the data directory. "
+                    "Run in live mode (default) or ensure precomputed data exists."
+                ),
+            )
+        return ValidationCheckResult(
+            id="runtime-support",
+            label="Runtime support",
+            passed=True,
+            severity="error",
+            message="Replay mode available with precomputed data",
+        )
+
+    # Default: live mode always supported
+    return ValidationCheckResult(
+        id="runtime-support",
+        label="Runtime support",
+        passed=True,
+        severity="error",
+        message="Live execution mode (default)",
+    )
+
+
+def _check_population_executable(request: PreflightRequest) -> ValidationCheckResult:
+    """Story 23.5 / AC-1, AC-4: Validate population is executable.
+
+    Validates that the selected population_id resolves to an executable dataset
+    and has minimum required columns for live execution.
+    """
+    if not request.population_id:
+        return ValidationCheckResult(
+            id="population-executable",
+            label="Population executable",
+            passed=True,
+            severity="error",
+            message="No population selected — run will use default data",
+        )
+
+    import pyarrow.parquet as pq
+
+    from reformlab.server.dependencies import get_population_resolver
+    from reformlab.server.population_resolver import PopulationResolutionError
+
+    resolver = get_population_resolver()
+    try:
+        resolved = resolver.resolve(request.population_id)
+
+        # AC-4: Lightweight schema validation — check for minimum required columns
+        # Required columns for live execution (minimum viable schema):
+        #   - household_id: entity identifier
+        #   - income: pre-tax household income
+        #   - disposable_income: post-tax household income (needed for redistribution)
+        #   - carbon_tax: carbon tax liability (needed for policy scenarios)
+        required_columns = {"household_id", "income", "disposable_income", "carbon_tax"}
+        try:
+            # Read only schema, not full data (for performance)
+            schema = pq.read_schema(resolved.data_path)
+            existing_columns = set(schema.names)
+            missing_columns = required_columns - existing_columns
+
+            if missing_columns:
+                missing_str = ", ".join(sorted(missing_columns))
+                return ValidationCheckResult(
+                    id="population-executable",
+                    label="Population executable",
+                    passed=False,
+                    severity="error",
+                    message=(
+                        f"Population '{request.population_id}' is incompatible with live execution. "
+                        f"Missing required columns: {missing_str}"
+                    ),
+                )
+        except (FileNotFoundError, OSError) as e:
+            return ValidationCheckResult(
+                id="population-executable",
+                label="Population executable",
+                passed=False,
+                severity="error",
+                message=(
+                    f"Population '{request.population_id}' cannot be read: {e}"
+                ),
+            )
+
+        return ValidationCheckResult(
+            id="population-executable",
+            label="Population executable",
+            passed=True,
+            severity="error",
+            message=(
+                f"Population '{request.population_id}' resolved "
+                f"({resolved.source}, {resolved.row_count or '?'} rows)"
+            ),
+        )
+    except PopulationResolutionError as exc:
+        available = getattr(exc, "available_ids", [])
+        available_str = ", ".join(available[:5]) if available else "none"
+        return ValidationCheckResult(
+            id="population-executable",
+            label="Population executable",
+            passed=False,
+            severity="error",
+            message=(
+                f"Population '{request.population_id}' cannot be resolved. "
+                f"Available populations: {available_str}"
+            ),
+        )
+
+
+def _check_runtime_info(request: PreflightRequest) -> ValidationCheckResult:
+    """Story 23.5 / AC-6, AC-7: Informational runtime status.
+
+    Returns warning-severity check results in warnings[].
+    """
+    from reformlab.computation.mock_adapter import MockAdapter
+    from reformlab.server.dependencies import get_adapter
+
+    adapter = get_adapter()
+
+    if isinstance(adapter, MockAdapter):
+        return ValidationCheckResult(
+            id="runtime-info",
+            label="Runtime status",
+            passed=True,  # Warning, not error
+            severity="warning",
+            message=(
+                "Running with MockAdapter — results use synthetic data, "
+                "not live OpenFisca computation. Install OpenFisca for live runs."
+            ),
+        )
+
+    if request.runtime_mode == "replay":
+        return ValidationCheckResult(
+            id="runtime-info",
+            label="Runtime status",
+            passed=True,
+            severity="warning",
+            message="Using replay mode — results come from precomputed outputs",
+        )
+
+    # Live mode with real adapter: clean pass, no false warnings
+    return ValidationCheckResult(
+        id="runtime-info",
+        label="Runtime status",
+        passed=True,
+        severity="warning",
+        message="Live OpenFisca execution",
+    )
+
+
+# =============================================================================
 # Register built-in checks at import time
 # =============================================================================
 
@@ -570,6 +743,25 @@ def _register_builtin_checks() -> None:
             label="Evidence trust status",
             severity="warning",
             check_fn=_check_trust_status,
+        ),
+        # Story 23.5 / AC-1, AC-4, AC-6, AC-7: Runtime and population validation checks
+        ValidationCheck(
+            check_id="runtime-support",
+            label="Runtime support",
+            severity="error",
+            check_fn=_check_runtime_support,
+        ),
+        ValidationCheck(
+            check_id="population-executable",
+            label="Population executable",
+            severity="error",
+            check_fn=_check_population_executable,
+        ),
+        ValidationCheck(
+            check_id="runtime-info",
+            label="Runtime status",
+            severity="warning",
+            check_fn=_check_runtime_info,
         ),
     ]
 

@@ -1,0 +1,135 @@
+record_id: 6ce4eba8-b184-4634-9628-05ad377b8b52
+created_at: '2026-04-15T21:16:49.019575+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 23
+  story_num: 5
+  title: Story 23.5
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: codex
+  model: gpt-5.3-codex
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-04-15T21:11:14.077087Z'
+  end_time: '2026-04-15T21:15:46.090087Z'
+  duration_ms: 272013
+  input_tokens: 0
+  output_tokens: 4021
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 16087
+  heading_count: 39
+  list_depth_max: 3
+  code_block_count: 8
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 13.3'
+  - 🎯 Ruthless Story Validation 23.5
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 13.3 → REJECT'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Undefined Live Population Schema Contract
+  - 2. Preflight Input Contract Mismatch (`population_id` vs `scenario.populationIds`)
+  - 3. Runtime Warning Logic Cannot Surface as Written
+  - 4. Manifest Provenance Update Plan Risks Inconsistent Artifacts
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 5. Add `population_id` to AC3 Explicitly
+  - 6. Clarify Runtime-Support Semantics Under Env Overrides
+  - 7. Specify Multi-Population Preflight Behavior
+  - 8. Promote Backward Compatibility to Acceptance Criteria
+  - 9. Require Error Payload Style Consistency in Preflight Failures
+  - 10. Add Explicit Consistency Test Across `RunResponse`, `ResultMetadata`, and `manifest.json`
+  - ✨ Optimizations (Nice to Have)
+  - 11. Reuse Existing Population Contract Constants
+  - 12. Keep Schema Validation Lightweight by Construction
+  - 13. Avoid Class-Name Based Adapter Detection
+  - 🤖 LLM Optimization Improvements
+  - 14. Remove Contradictory Validation Guidance
+  - 15. Replace “already done since Story 23.3” Task Bullets with Explicit “Verify” Bullets
+  - 16. Define Warning-Surface Contract in One Place
+  - 17. Make Population Target Selection Deterministic
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 7ad082517546
+findings:
+  total_count: 17
+  by_severity:
+    critical: 4
+    major: 6
+    minor: 7
+    nit: 0
+  by_category:
+    security: 0
+    performance: 1
+    correctness: 4
+    completeness: 5
+    clarity: 6
+    testability: 1
+  has_fix_count: 17
+  has_location_count: 10
+  has_evidence_count: 15
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 6
+  confidence_phrases_count: 4
+linguistic:
+  avg_sentence_length: 16.26890756302521
+  vocabulary_richness: 0.36673553719008267
+  flesch_reading_ease: 4.405598452780623
+  vague_terms_count: 2
+  formality_score: 0.72
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.82
+  evidence_quality: 0.88
+  follows_template: true
+  internal_consistency: 0.94
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false

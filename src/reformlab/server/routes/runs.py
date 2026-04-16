@@ -161,6 +161,25 @@ async def run_simulation(
                 run_id,
             )
 
+        # Story 23.5 / AC-2: Add population provenance to manifest
+        # The manifest is created inside run_scenario() and lacks population fields.
+        # We need to update the manifest before saving to disk and cache.
+        from dataclasses import replace as _dc_replace
+
+        if result is not None:
+            # Update manifest with population_id and population_source
+            updated_manifest = _dc_replace(
+                result.manifest,
+                population_id=body.population_id or "",
+                population_source=population_source or "",
+            )
+            # Create a new SimulationResult with the updated manifest
+            # This ensures cache, disk, and response all have identical provenance
+            result = _dc_replace(
+                result,
+                manifest=updated_manifest,
+            )
+
         cache.store(run_id, result)
         status = "completed" if result.success else "failed"
         row_count = result.panel_output.table.num_rows if result.panel_output else 0
@@ -225,6 +244,7 @@ async def run_simulation(
                 logger.exception("event=panel_save_failed run_id=%s", run_id)
         if result is not None:
             try:
+                # Story 23.5 / AC-2: Save the updated manifest with population provenance
                 store.save_manifest(run_id, result.manifest.to_json())
             except Exception:
                 logger.exception("event=manifest_save_failed run_id=%s", run_id)

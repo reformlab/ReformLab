@@ -67,6 +67,8 @@ OPTIONAL_JSON_FIELDS = (
     "validation_assets",  # Story 21.8 / AC5
     "evidence_summary",  # Story 21.8 / AC5
     "runtime_mode",  # Story 23.1 / AC-4: Runtime mode (live or explicit replay)
+    "population_id",  # Story 23.5 / AC-2: Population identifier
+    "population_source",  # Story 23.5 / AC-2: Population source (bundled/uploaded/generated)
 )
 
 
@@ -134,13 +136,19 @@ class RunManifest:
         calibration_assets: List of calibration target descriptors used (empty list if none).
         validation_assets: List of validation benchmark descriptors used (empty list if none).
         evidence_summary: High-level evidence provenance summary (empty dict if none).
-        runtime_mode: Execution path mode ("live" or "replay"). Story 23.1 / AC-4. Defaults to "live".
+        runtime_mode: Execution path mode ("live" or "replay"). Story 23.1 / AC-4.
+            Defaults to "live".
+        population_id: Population identifier used for execution (empty string for runs
+            without a population). Story 23.5 / AC-2.
+        population_source: Population source classification ("bundled" | "uploaded" |
+            "generated" | ""). Story 23.5 / AC-2.
         integrity_hash: SHA-256 hash of entire manifest content (excluding this field).
 
     Story 21.6 / AC4: Added exogenous_series field for manifest recording.
     Story 21.7 / AC8: Added taste_parameters field for governance provenance.
     Story 21.8 / AC5: Added evidence_assets, calibration_assets, validation_assets, evidence_summary.
     Story 23.1 / AC-4: Added runtime_mode field for execution path recording.
+    Story 23.5 / AC-2: Added population_id and population_source fields for population provenance.
     """
 
     manifest_id: str
@@ -167,6 +175,9 @@ class RunManifest:
     evidence_summary: dict[str, Any] = field(default_factory=dict)  # Story 21.8 / AC5
     # Story 23.1 / AC-4: Runtime mode (live or explicit replay)
     runtime_mode: str = "live"
+    # Story 23.5 / AC-2: Population provenance for audit and comparison flows
+    population_id: str = ""  # empty when run has no population
+    population_source: str = ""  # "bundled" | "uploaded" | "generated" | ""
     integrity_hash: str = ""
 
     def __post_init__(self) -> None:
@@ -218,6 +229,15 @@ class RunManifest:
                 f"Invalid runtime_mode: expected 'live' or 'replay', "
                 f"got {self.runtime_mode!r}"
             )
+
+        # Story 23.5 / AC-2: Validate population provenance when present
+        if self.population_id:
+            valid_sources = ("bundled", "uploaded", "generated")
+            if self.population_source not in valid_sources:
+                raise ManifestValidationError(
+                    f"Invalid population_source: expected one of {valid_sources}, "
+                    f"got {self.population_source!r}"
+                )
 
         # Validate parent_manifest_id format if present (AC-2)
         if self.parent_manifest_id and not UUID_PATTERN.match(self.parent_manifest_id):
@@ -493,6 +513,10 @@ class RunManifest:
                     "Must be 'live' or 'replay'."
                 )
 
+            # Story 23.5 / AC-5: Population provenance with backward-compatible defaults
+            population_id = data.get("population_id", "")
+            population_source = data.get("population_source", "")
+
             return cls(
                 manifest_id=data["manifest_id"],
                 created_at=data["created_at"],
@@ -517,6 +541,9 @@ class RunManifest:
                 validation_assets=data.get("validation_assets", []),  # Story 21.8 / AC5
                 evidence_summary=data.get("evidence_summary", {}),  # Story 21.8 / AC5
                 runtime_mode=runtime_mode_raw,  # Story 23.1 / AC-4
+                # Story 23.5 / AC-5: Population provenance with defaults for backward compatibility
+                population_id=population_id,
+                population_source=population_source,
                 integrity_hash=data["integrity_hash"],
             )
         except (TypeError, KeyError) as e:
@@ -600,6 +627,9 @@ class RunManifest:
             validation_assets=self.validation_assets,  # Story 21.8 / AC5
             evidence_summary=self.evidence_summary,  # Story 21.8 / AC5
             runtime_mode=self.runtime_mode,  # Story 23.1 / AC-4
+            # Story 23.5 / AC-2: Population provenance
+            population_id=self.population_id,
+            population_source=self.population_source,
             integrity_hash=computed_hash,
         )
 

@@ -780,6 +780,8 @@ def run_scenario(
     initial_state: dict[str, Any] | None = None,
     skip_memory_check: bool = False,
     baseline: BaselineScenario | None = None,
+    # Story 23.5 / AC-2: Runtime mode for provenance tracking
+    runtime_mode: Literal["live", "replay"] | None = None,
 ) -> SimulationResult:
     """Run a complete simulation scenario.
 
@@ -1486,6 +1488,8 @@ def _run_direct_scenario(
     initial_state: dict[str, Any] | None,
     skip_memory_check: bool,
     baseline: BaselineScenario | None = None,
+    # Story 23.5 / AC-2: Runtime mode for provenance tracking
+    runtime_mode: Literal["live", "replay"] | None = None,
 ) -> SimulationResult:
     """Execute a typed scenario directly without config wrappers.
 
@@ -1710,8 +1714,11 @@ def _run_direct_scenario(
         child_manifests=child_manifests,
         data_hashes=_coerce_hash_map(workflow_result.metadata.get("data_hashes")),
         output_hashes=_coerce_hash_map(workflow_result.metadata.get("output_hashes")),
-        # Story 23.1 / AC-1: Direct scenario path uses default live mode
-        runtime_mode="live",
+        # Story 23.5 / AC-2: Runtime mode from parameter, defaulting to "live" for backward compatibility
+        runtime_mode=runtime_mode or "live",
+        # Story 23.5 / AC-2: Population provenance from ScenarioConfig (if available)
+        population_id=getattr(scenario, "population_id", None) or "",
+        population_source=getattr(scenario, "population_source", None) or "",
     )
 
     # Story 23.3: Include normalization metadata in result metadata
@@ -1719,7 +1726,8 @@ def _run_direct_scenario(
     result_metadata.update({
         NORMALIZED_KEY: True,
         MAPPING_APPLIED_KEY: panel_output.metadata.get("mapping_applied", True),
-        "runtime_mode": "live",
+        # Story 23.5 / AC-2: Runtime mode from parameter, defaulting to "live" for backward compatibility
+        "runtime_mode": runtime_mode or "live",
     })
 
     return SimulationResult(
