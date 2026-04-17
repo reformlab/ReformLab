@@ -1,18 +1,20 @@
-current_epic: 23
-current_story: '23.6'
-current_phase: dev_story
+current_epic: 24
+current_story: '24.1'
+current_phase: create_story
 completed_stories:
 - '23.1'
 - '23.2'
 - '23.3'
 - '23.4'
 - '23.5'
-completed_epics: []
+- '23.6'
+completed_epics:
+- 23
 started_at: '2026-03-01T16:24:33.601834'
-updated_at: '2026-04-16T10:49:03.691318'
-story_started_at: '2026-04-16T10:39:42+02:00'
-phase_started_at: '2026-04-16T10:49:03.691318'
-epic_started_at: '2026-04-01T21:26:20.246072'
+updated_at: '2026-04-17T00:00:00.000000'
+story_started_at: '2026-04-17T00:00:00+02:00'
+phase_started_at: '2026-04-17T00:00:00.000000'
+epic_started_at: '2026-04-17T00:00:00.000000'
 project_started_at: '2026-03-01T16:24:33.836467'
 anomalies: []
 testarch_preflight: null

@@ -45,7 +45,7 @@ _bmad-output/
 
 ## Current Status
 
-Epic 23 in progress (stories 23.1–23.3 done, 23.4–23.6 backlog). Epic 24 in backlog.
+Epic 23 done (stories 23.1–23.6 complete). Epic 24 in progress (story 24.1 next).
 
 ## Conventions
 
