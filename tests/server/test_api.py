@@ -478,3 +478,169 @@ class TestTemplateDetail:
         assert response.status_code == 404
         detail = response.json()["detail"]
         assert set(detail.keys()) >= {"what", "why", "fix"}
+
+
+class TestCatalogWithRuntimeAvailability:
+    """AC-1: Catalog listing includes all templates with runtime availability metadata."""
+
+    def test_all_packs_appear_in_catalog(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """All 12 existing built-in packs appear in catalog listing (8 visible + 4 hidden)."""
+        response = client.get("/api/templates", headers=auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert "templates" in data
+        templates = data["templates"]
+
+        # Check for all expected template IDs
+        template_ids = {t["id"] for t in templates}
+        visible_packs = {
+            "carbon-tax-flat-lump-sum-dividend",
+            "carbon-tax-flat-no-redistribution",
+            "carbon-tax-flat-progressive-dividend",
+            "carbon-tax-progressive-no-redistribution",
+            "carbon-tax-progressive-progressive-dividend",
+            "subsidy-energy-retrofit",
+            "rebate-progressive-income",
+            "feebate-vehicle-emissions",
+        }
+        hidden_packs = {
+            "vehicle-malus-flat-rate",
+            "vehicle-malus-french-2026",
+            "energy-poverty-cheque-energie",
+            "energy-poverty-generous",
+        }
+
+        for pack_id in visible_packs | hidden_packs:
+            assert pack_id in template_ids, f"Missing template: {pack_id}"
+
+    def test_visible_packs_have_live_ready_status(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """Visible packs have runtime_availability: 'live_ready'."""
+        response = client.get("/api/templates", headers=auth_headers)
+        assert response.status_code == 200
+        templates = response.json()["templates"]
+
+        visible_pack_ids = {
+            "carbon-tax-flat-lump-sum-dividend",
+            "carbon-tax-flat-no-redistribution",
+            "carbon-tax-flat-progressive-dividend",
+            "carbon-tax-progressive-no-redistribution",
+            "carbon-tax-progressive-progressive-dividend",
+            "subsidy-energy-retrofit",
+            "rebate-progressive-income",
+            "feebate-vehicle-emissions",
+        }
+
+        for template in templates:
+            if template["id"] in visible_pack_ids:
+                assert (
+                    template["runtime_availability"] == "live_ready"
+                ), f"{template['id']} should be live_ready"
+
+    def test_hidden_packs_have_live_unavailable_status(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """Hidden packs have runtime_availability: 'live_unavailable' with reason."""
+        response = client.get("/api/templates", headers=auth_headers)
+        assert response.status_code == 200
+        templates = response.json()["templates"]
+
+        hidden_pack_ids = {
+            "vehicle-malus-flat-rate",
+            "vehicle-malus-french-2026",
+            "energy-poverty-cheque-energie",
+            "energy-poverty-generous",
+        }
+
+        for template in templates:
+            if template["id"] in hidden_pack_ids:
+                assert (
+                    template["runtime_availability"] == "live_unavailable"
+                ), f"{template['id']} should be live_unavailable"
+                assert (
+                    template["availability_reason"]
+                    == "Domain translation pending - see Story 24.2"
+                ), f"{template['id']} should have availability_reason"
+
+    def test_template_detail_includes_runtime_availability(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """Template detail endpoint includes runtime availability metadata."""
+        # Test a visible template
+        response = client.get(
+            "/api/templates/carbon-tax-flat-lump-sum-dividend",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "runtime_availability" in data
+        assert data["runtime_availability"] == "live_ready"
+        assert "availability_reason" in data
+        assert data["availability_reason"] is None
+
+        # Test a hidden template
+        response = client.get(
+            "/api/templates/vehicle-malus-flat-rate",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "runtime_availability" in data
+        assert data["runtime_availability"] == "live_unavailable"
+        assert "availability_reason" in data
+        assert (
+            data["availability_reason"] == "Domain translation pending - see Story 24.2"
+        )
+
+    def test_custom_template_has_runtime_availability(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """Custom templates created via API have live_unavailable status."""
+        response = client.post(
+            "/api/templates/custom",
+            headers=auth_headers,
+            json={
+                "name": "test_custom_policy_24_1",
+                "description": "Test custom template for Story 24.1",
+                "parameters": [
+                    {"name": "rate", "type": "float", "default": 0.0, "unit": "EUR/t"}
+                ],
+            },
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert "runtime_availability" in data
+        assert data["runtime_availability"] == "live_unavailable"
+        assert "availability_reason" in data
+        assert data["availability_reason"] is None
+
+    def test_stable_identifiers_preserved(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """Existing pack identifiers remain stable after catalog expansion."""
+        response = client.get("/api/templates", headers=auth_headers)
+        assert response.status_code == 200
+        templates = response.json()["templates"]
+
+        # Verify all expected IDs are present (user-saved scenarios may add more)
+        expected_ids = {
+            "carbon-tax-flat-lump-sum-dividend",
+            "carbon-tax-flat-no-redistribution",
+            "carbon-tax-flat-progressive-dividend",
+            "carbon-tax-progressive-no-redistribution",
+            "carbon-tax-progressive-progressive-dividend",
+            "subsidy-energy-retrofit",
+            "rebate-progressive-income",
+            "feebate-vehicle-emissions",
+            "vehicle-malus-flat-rate",
+            "vehicle-malus-french-2026",
+            "energy-poverty-cheque-energie",
+            "energy-poverty-generous",
+        }
+
+        template_ids = {t["id"] for t in templates}
+        # Check that all expected IDs are present
+        assert expected_ids.issubset(template_ids), f"Missing expected templates: {expected_ids - template_ids}"

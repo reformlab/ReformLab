@@ -19,6 +19,9 @@ from reformlab.data import (  # type: ignore[attr-defined]
     DataAssetTrustStatus,
 )
 
+# Story 24.1 / AC-1: Runtime availability literal type
+RuntimeAvailability = Literal["live_ready", "live_unavailable"]
+
 # ---------------------------------------------------------------------------
 # Request models
 # ---------------------------------------------------------------------------
@@ -139,6 +142,9 @@ class TemplateListItem(BaseModel):
     description: str
     parameter_groups: list[str]
     is_custom: bool = False
+    # Story 24.1 / AC-1: Runtime availability metadata
+    runtime_availability: RuntimeAvailability = "live_unavailable"
+    availability_reason: str | None = None
 
 
 class TemplateDetailResponse(TemplateListItem):
@@ -171,6 +177,9 @@ class CustomTemplateResponse(BaseModel):
     description: str
     parameter_count: int
     is_custom: bool = True
+    # Story 24.1 / AC-1: Runtime availability metadata for custom templates
+    runtime_availability: RuntimeAvailability = "live_unavailable"
+    availability_reason: str | None = None
 
 
 class PopulationItem(BaseModel):

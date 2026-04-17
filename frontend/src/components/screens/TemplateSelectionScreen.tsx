@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Plus, Trash2, X } from "lucide-react";
+import { CheckCircle2, Plus, Trash2, X, AlertCircle } from "lucide-react";
 import { SelectionGrid } from "@/components/simulation/SelectionGrid";
 import type { Template } from "@/data/mock-data";
 import { createCustomTemplate } from "@/api/templates";
@@ -203,11 +203,32 @@ export function TemplateSelectionScreen({
         renderCard={(template, selected) => (
           <Card className={selected ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white"}>
             <CardHeader>
-              <div className="flex items-center gap-2">
-                <CardTitle>{template.name}</CardTitle>
+              <div className="flex items-center gap-2 flex-wrap">
+                <CardTitle className="mr-2">{template.name}</CardTitle>
                 {template.is_custom && (
                   <Badge variant="outline" className="text-xs bg-violet-50 text-violet-700 border-violet-200">
                     custom
+                  </Badge>
+                )}
+                {/* Story 24.1 / AC-1, #2: Runtime availability indicator */}
+                {template.runtime_availability && (
+                  <Badge
+                    variant="outline"
+                    className={`text-xs ${
+                      template.runtime_availability === "live_ready"
+                        ? "bg-green-50 text-green-700 border-green-200"
+                        : "bg-amber-50 text-amber-700 border-amber-200"
+                    }`}
+                  >
+                    {template.runtime_availability === "live_ready" ? (
+                      <>
+                        <CheckCircle2 className="h-3 w-3 mr-1 inline" /> Ready
+                      </>
+                    ) : (
+                      <>
+                        <AlertCircle className="h-3 w-3 mr-1 inline" /> Unavailable
+                      </>
+                    )}
                   </Badge>
                 )}
               </div>
@@ -217,6 +238,14 @@ export function TemplateSelectionScreen({
               <p className="data-mono mt-1 text-xs text-slate-500">
                 {template.parameterCount} parameters
               </p>
+              {/* Story 24.1 / AC-2: Display availability reason for unavailable templates */}
+              {template.runtime_availability === "live_unavailable" && template.availability_reason && (
+                <div className="mt-2 p-2 bg-amber-50 rounded border border-amber-200">
+                  <p className="text-xs text-amber-800">
+                    {template.availability_reason}
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

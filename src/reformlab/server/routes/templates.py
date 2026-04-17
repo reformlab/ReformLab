@@ -13,6 +13,7 @@ from fastapi import APIRouter, HTTPException
 from reformlab.server.models import (
     CreateCustomTemplateRequest,
     CustomTemplateResponse,
+    RuntimeAvailability,
     TemplateDetailResponse,
     TemplateListItem,
 )
@@ -23,8 +24,48 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# Story 24.1 / AC-1: Live-ready policy types (from Epic 23)
+LIVE_READY_TYPES = {"carbon_tax", "subsidy", "rebate", "feebate"}
+# Story 24.1 / AC-2: Hidden pack types with pending domain translation
+HIDDEN_PACK_TYPES = {"vehicle_malus", "energy_poverty_aid"}
+
+
 # Module-level singleton to avoid re-scanning on every request
 _registry: Any = None
+
+
+def _classify_runtime_availability(
+    policy_type: str,
+    is_builtin: bool,
+    is_custom_type: bool,
+) -> tuple[RuntimeAvailability, str | None]:
+    """Classify runtime availability for a template based on its origin and type.
+
+    Story 24.1 / AC-1, #2: Determines live_ready vs live_unavailable status.
+
+    Args:
+        policy_type: The policy type name (e.g., "carbon_tax").
+        is_builtin: True if loaded from built-in YAML packs.
+        is_custom_type: True if registered as a CustomPolicyType.
+
+    Returns:
+        Tuple of (runtime_availability, availability_reason).
+    """
+    # Non-built-in templates: user-saved scenarios or user-created custom types
+    if not is_builtin:
+        return "live_unavailable", None
+
+    # Built-in hidden packs pending domain translation (Story 24.2)
+    # These are CustomPolicyTypes that are shipped with the package
+    if policy_type in HIDDEN_PACK_TYPES:
+        return "live_unavailable", "Domain translation pending - see Story 24.2"
+
+    # Built-in templates with live translation (Epic 23)
+    if policy_type in LIVE_READY_TYPES:
+        return "live_ready", None
+
+    # Fallback for unknown built-in types (safe default)
+    return "live_unavailable", None
 
 
 def _get_registry() -> Any:
@@ -37,13 +78,22 @@ def _get_registry() -> Any:
     return _registry
 
 
-def _template_to_list_item(name: str, template: Any) -> TemplateListItem:
+def _template_to_list_item(
+    name: str,
+    template: Any,
+    is_builtin: bool = False,
+) -> TemplateListItem:
     """Convert a domain template to a TemplateListItem."""
     from reformlab.templates.schema import CustomPolicyType
 
     pt = template.policy_type
     policy_type = pt.value if hasattr(pt, "value") else str(pt)
     is_custom = isinstance(pt, CustomPolicyType)
+
+    # Story 24.1 / AC-1: Classify runtime availability
+    runtime_availability, availability_reason = _classify_runtime_availability(
+        policy_type, is_builtin, is_custom
+    )
 
     # Count policy fields
     params = template.policy
@@ -64,12 +114,17 @@ def _template_to_list_item(name: str, template: Any) -> TemplateListItem:
         description=getattr(template, "description", ""),
         parameter_groups=param_groups,
         is_custom=is_custom,
+        runtime_availability=runtime_availability,
+        availability_reason=availability_reason,
     )
 
 
-def _template_to_detail(name: str, template: Any) -> TemplateDetailResponse:
+def _template_to_detail(
+    name: str, template: Any, is_builtin: bool = False
+) -> TemplateDetailResponse:
     """Convert a domain template to a TemplateDetailResponse."""
-    list_item = _template_to_list_item(name, template)
+    # Story 24.1 / AC-1: Pass is_builtin for correct availability classification
+    list_item = _template_to_list_item(name, template, is_builtin=is_builtin)
 
     # Extract default policy as dict
     params = template.policy
@@ -102,7 +157,10 @@ def _load_builtin_packs() -> list[TemplateListItem]:
         for yaml_file in sorted(pack_dir.glob("*.yaml")):
             try:
                 template = load_scenario_template(yaml_file)
-                items.append(_template_to_list_item(yaml_file.stem, template))
+                # Story 24.1 / AC-1: Built-in templates have is_builtin=True
+                items.append(
+                    _template_to_list_item(yaml_file.stem, template, is_builtin=True)
+                )
             except (TemplateError, ScenarioError, OSError):
                 logger.warning("Failed to load pack template '%s', skipping", yaml_file)
 
@@ -148,7 +206,8 @@ async def list_templates() -> dict[str, list[TemplateListItem]]:
             continue
         try:
             template = registry.get(name)
-            items.append(_template_to_list_item(name, template))
+            # Story 24.1 / AC-1: User-saved scenarios have is_builtin=False
+            items.append(_template_to_list_item(name, template, is_builtin=False))
             seen_names.add(name)
         except (KeyError, FileNotFoundError, ValueError, AttributeError, RegistryError):
             logger.warning("Failed to load template '%s', skipping", name)
@@ -164,6 +223,8 @@ async def list_templates() -> dict[str, list[TemplateListItem]]:
         if hasattr(params_class, "__dataclass_fields__"):
             param_count = len(params_class.__dataclass_fields__)
             param_groups = list(params_class.__dataclass_fields__.keys())
+        # Story 24.1 / AC-1: Custom type registrations have is_builtin=False
+        # Runtime availability is live_unavailable by default (set in TemplateListItem)
         items.append(
             TemplateListItem(
                 id=type_name,
@@ -186,14 +247,16 @@ async def get_template(name: str) -> TemplateDetailResponse:
     registry = _get_registry()
     try:
         template = registry.get(name)
-        return _template_to_detail(name, template)
+        # Story 24.1 / AC-1: User-saved scenarios have is_builtin=False
+        return _template_to_detail(name, template, is_builtin=False)
     except (KeyError, FileNotFoundError, ValueError, RegistryError):
         pass
 
     # 2. Try built-in template packs (YAML files)
     template = _load_builtin_template(name)
     if template is not None:
-        return _template_to_detail(name, template)
+        # Story 24.1 / AC-1: Built-in templates have is_builtin=True
+        return _template_to_detail(name, template, is_builtin=True)
 
     # 3. Try in-memory custom registrations
     from reformlab.templates.schema import list_custom_registrations
@@ -207,6 +270,10 @@ async def get_template(name: str) -> TemplateDetailResponse:
         if hasattr(params_class, "__dataclass_fields__"):
             param_count = len(params_class.__dataclass_fields__)
             param_groups = list(params_class.__dataclass_fields__.keys())
+        # Story 24.1 / AC-1: Custom registrations have live_unavailable status
+        runtime_availability, availability_reason = _classify_runtime_availability(
+            name, is_builtin=False, is_custom_type=True
+        )
         return TemplateDetailResponse(
             id=name,
             name=name,
@@ -215,6 +282,8 @@ async def get_template(name: str) -> TemplateDetailResponse:
             description="",
             parameter_groups=param_groups,
             is_custom=True,
+            runtime_availability=runtime_availability,
+            availability_reason=availability_reason,
             default_policy=default_policy,
         )
 

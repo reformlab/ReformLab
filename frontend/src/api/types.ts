@@ -8,6 +8,9 @@ import type { ReactNode } from "react";
 // Request types
 // ============================================================================
 
+// Story 24.1 / AC-1: Runtime availability literal type
+export type RuntimeAvailability = "live_ready" | "live_unavailable";
+
 export interface LoginRequest {
   password: string;
 }
@@ -115,6 +118,9 @@ export interface TemplateListItem {
   description: string;
   parameter_groups: string[];
   is_custom: boolean;
+  // Story 24.1 / AC-1: Runtime availability metadata
+  runtime_availability: RuntimeAvailability;
+  availability_reason: string | null;
 }
 
 export interface TemplateDetailResponse extends TemplateListItem {
@@ -141,6 +147,9 @@ export interface CustomTemplateResponse {
   description: string;
   parameter_count: number;
   is_custom: boolean;
+  // Story 24.1 / AC-1: Runtime availability metadata for custom templates
+  runtime_availability: RuntimeAvailability;
+  availability_reason: string | null;
 }
 
 export interface PopulationItem {
