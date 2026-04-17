@@ -97,6 +97,7 @@ class TestBundledPopulationLiveExecution:
         client_with_store: TestClient,
         auth_headers: dict[str, str],
         data_dir: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """POST /api/runs with bundled population and runtime_mode='live' returns 200."""
         # Create test bundled population
@@ -114,8 +115,7 @@ class TestBundledPopulationLiveExecution:
         uploaded_dir = data_dir / "uploaded"
         uploaded_dir.mkdir()
         resolver = PopulationResolver(data_dir, uploaded_dir)
-        monkeypatch_obj = pytest.MonkeyPatch()
-        monkeypatch_obj.setattr(deps, "_population_resolver", resolver)
+        monkeypatch.setattr(deps, "_population_resolver", resolver)
 
         run_body = {
             **_SIMPLE_RUN_BODY,
@@ -133,14 +133,13 @@ class TestBundledPopulationLiveExecution:
         assert data["population_source"] == "bundled"
         assert "run_id" in data
 
-        monkeypatch_obj.undo()
-
     def test_bundled_population_manifest_records_provenance(
         self,
         client_with_store: TestClient,
         auth_headers: dict[str, str],
         data_dir: Path,
         tmp_store: ResultStore,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """manifest.json contains runtime_mode='live', population_id matches, population_source='bundled'."""
         # Create test bundled population
@@ -156,8 +155,7 @@ class TestBundledPopulationLiveExecution:
         uploaded_dir = data_dir / "uploaded"
         uploaded_dir.mkdir()
         resolver = PopulationResolver(data_dir, uploaded_dir)
-        monkeypatch_obj = pytest.MonkeyPatch()
-        monkeypatch_obj.setattr(deps, "_population_resolver", resolver)
+        monkeypatch.setattr(deps, "_population_resolver", resolver)
 
         run_body = {
             **_SIMPLE_RUN_BODY,
@@ -181,14 +179,13 @@ class TestBundledPopulationLiveExecution:
         assert manifest_content.get("population_id") == "manifest-test-pop"
         assert manifest_content.get("population_source") == "bundled"
 
-        monkeypatch_obj.undo()
-
     def test_bundled_population_metadata_matches_manifest(
         self,
         client_with_store: TestClient,
         auth_headers: dict[str, str],
         data_dir: Path,
         tmp_store: ResultStore,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """ResultMetadata.runtime_mode and population_source match manifest values."""
         # Create test bundled population
@@ -204,8 +201,7 @@ class TestBundledPopulationLiveExecution:
         uploaded_dir = data_dir / "uploaded"
         uploaded_dir.mkdir()
         resolver = PopulationResolver(data_dir, uploaded_dir)
-        monkeypatch_obj = pytest.MonkeyPatch()
-        monkeypatch_obj.setattr(deps, "_population_resolver", resolver)
+        monkeypatch.setattr(deps, "_population_resolver", resolver)
 
         run_body = {
             **_SIMPLE_RUN_BODY,
@@ -230,8 +226,6 @@ class TestBundledPopulationLiveExecution:
         assert metadata.runtime_mode == manifest_content.get("runtime_mode")
         assert metadata.population_source == manifest_content.get("population_source")
         assert metadata.population_id == manifest_content.get("population_id")
-
-        monkeypatch_obj.undo()
 
     def test_bundled_population_not_found_returns_error(
         self,
@@ -270,6 +264,7 @@ class TestUploadedPopulationLiveExecution:
         client_with_store: TestClient,
         auth_headers: dict[str, str],
         data_dir: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Create uploaded CSV and run live execution successfully."""
         # Create uploaded directory and population
@@ -286,8 +281,7 @@ class TestUploadedPopulationLiveExecution:
         from reformlab.server.population_resolver import PopulationResolver
 
         resolver = PopulationResolver(data_dir, uploaded_dir)
-        monkeypatch_obj = pytest.MonkeyPatch()
-        monkeypatch_obj.setattr(deps, "_population_resolver", resolver)
+        monkeypatch.setattr(deps, "_population_resolver", resolver)
 
         run_body = {
             **_SIMPLE_RUN_BODY,
@@ -304,14 +298,13 @@ class TestUploadedPopulationLiveExecution:
         assert data["population_source"] == "uploaded"
         assert data["runtime_mode"] == "live"
 
-        monkeypatch_obj.undo()
-
     def test_uploaded_population_manifest_records_source(
         self,
         client_with_store: TestClient,
         auth_headers: dict[str, str],
         data_dir: Path,
         tmp_store: ResultStore,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """manifest.json contains population_source='uploaded' and correct population_id."""
         # Create uploaded directory and population
@@ -327,8 +320,7 @@ class TestUploadedPopulationLiveExecution:
         from reformlab.server.population_resolver import PopulationResolver
 
         resolver = PopulationResolver(data_dir, uploaded_dir)
-        monkeypatch_obj = pytest.MonkeyPatch()
-        monkeypatch_obj.setattr(deps, "_population_resolver", resolver)
+        monkeypatch.setattr(deps, "_population_resolver", resolver)
 
         run_body = {
             **_SIMPLE_RUN_BODY,
@@ -350,13 +342,12 @@ class TestUploadedPopulationLiveExecution:
         assert manifest_content.get("population_source") == "uploaded"
         assert manifest_content.get("population_id") == "uploaded-manifest-test"
 
-        monkeypatch_obj.undo()
-
     def test_uploaded_population_schema_validation_passes(
         self,
         client_with_store: TestClient,
         auth_headers: dict[str, str],
         data_dir: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Uploaded population with valid schema passes preflight and executes."""
         # Create uploaded directory and population with all required columns
@@ -374,8 +365,7 @@ class TestUploadedPopulationLiveExecution:
         from reformlab.server.population_resolver import PopulationResolver
 
         resolver = PopulationResolver(data_dir, uploaded_dir)
-        monkeypatch_obj = pytest.MonkeyPatch()
-        monkeypatch_obj.setattr(deps, "_population_resolver", resolver)
+        monkeypatch.setattr(deps, "_population_resolver", resolver)
 
         run_body = {
             **_SIMPLE_RUN_BODY,
@@ -390,8 +380,6 @@ class TestUploadedPopulationLiveExecution:
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
-
-        monkeypatch_obj.undo()
 
     def test_uploaded_population_missing_columns_fails_preflight(
         self,
@@ -444,6 +432,7 @@ class TestGeneratedPopulationLiveExecution:
         client_with_store: TestClient,
         auth_headers: dict[str, str],
         data_dir: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Create generated synthetic population via resolver fixture and run live execution."""
         # Create generated CSV with manifest sidecar
@@ -474,8 +463,7 @@ class TestGeneratedPopulationLiveExecution:
         uploaded_dir = data_dir / "uploaded"
         uploaded_dir.mkdir()
         resolver = PopulationResolver(data_dir, uploaded_dir)
-        monkeypatch_obj = pytest.MonkeyPatch()
-        monkeypatch_obj.setattr(deps, "_population_resolver", resolver)
+        monkeypatch.setattr(deps, "_population_resolver", resolver)
 
         run_body = {
             **_SIMPLE_RUN_BODY,
@@ -492,14 +480,13 @@ class TestGeneratedPopulationLiveExecution:
         assert data["population_source"] == "generated"
         assert data["runtime_mode"] == "live"
 
-        monkeypatch_obj.undo()
-
     def test_generated_population_manifest_records_source(
         self,
         client_with_store: TestClient,
         auth_headers: dict[str, str],
         data_dir: Path,
         tmp_store: ResultStore,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """manifest.json contains population_source='generated' and references generation metadata."""
         # Create generated CSV with manifest sidecar
@@ -528,8 +515,7 @@ class TestGeneratedPopulationLiveExecution:
         uploaded_dir = data_dir / "uploaded"
         uploaded_dir.mkdir()
         resolver = PopulationResolver(data_dir, uploaded_dir)
-        monkeypatch_obj = pytest.MonkeyPatch()
-        monkeypatch_obj.setattr(deps, "_population_resolver", resolver)
+        monkeypatch.setattr(deps, "_population_resolver", resolver)
 
         run_body = {
             **_SIMPLE_RUN_BODY,
@@ -551,14 +537,13 @@ class TestGeneratedPopulationLiveExecution:
         assert manifest_content.get("population_source") == "generated"
         assert manifest_content.get("population_id") == "generated-manifest-test"
 
-        monkeypatch_obj.undo()
-
     def test_generated_population_with_seed_reproducibility(
         self,
         client_with_store: TestClient,
         auth_headers: dict[str, str],
         data_dir: Path,
         tmp_store: ResultStore,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Same seed produces identical panel data (hash/row-level equality, excluding timestamps)."""
         # Create generated CSV with manifest sidecar
@@ -587,8 +572,7 @@ class TestGeneratedPopulationLiveExecution:
         uploaded_dir = data_dir / "uploaded"
         uploaded_dir.mkdir()
         resolver = PopulationResolver(data_dir, uploaded_dir)
-        monkeypatch_obj = pytest.MonkeyPatch()
-        monkeypatch_obj.setattr(deps, "_population_resolver", resolver)
+        monkeypatch.setattr(deps, "_population_resolver", resolver)
 
         run_body = {
             **_SIMPLE_RUN_BODY,
@@ -622,8 +606,6 @@ class TestGeneratedPopulationLiveExecution:
 
         # Seeds should be the same (for the same year)
         assert manifest1.get("seeds") == manifest2.get("seeds")
-
-        monkeypatch_obj.undo()
 
 
 # ---------------------------------------------------------------------------
@@ -882,12 +864,8 @@ class TestIndicatorWorkflowsOnLiveOutputs:
         )
         assert indicator_response.status_code == 200
         data = indicator_response.json()
-        assert "result" in data or "data" in data
-        # Check for expected structure
-        if "data" in data:
-            assert isinstance(data["data"], dict)
-        if "result" in data:
-            assert "deciles" in data["result"] or "data" in data["result"]
+        assert "data" in data
+        assert isinstance(data["data"], dict)
 
     def test_fiscal_indicators_work_with_live_output(
         self,
@@ -921,7 +899,7 @@ class TestIndicatorWorkflowsOnLiveOutputs:
         )
         assert indicator_response.status_code == 200
         data = indicator_response.json()
-        assert "data" in data or "result" in data
+        assert "data" in data
 
     def test_geographic_indicators_work_with_live_output(
         self,
@@ -949,22 +927,16 @@ class TestIndicatorWorkflowsOnLiveOutputs:
         run_id = run_response.json()["run_id"]
 
         # Compute geographic indicators
-        # With MockAdapter, we expect an error (no region data in output)
-        # The important thing is that the endpoint is reachable and validates input
-        try:
-            indicator_response = client_with_store.post(
+        # With MockAdapter output (no region_code column), the geographic indicator
+        # raises ValueError. This is a known limitation: the route does not catch
+        # ValueError from the indicator layer. The test verifies the endpoint is
+        # reachable and raises the expected error for missing region data.
+        with pytest.raises(ValueError, match="region_code"):
+            client_with_store.post(
                 "/api/indicators/geographic",
                 headers=auth_headers,
                 json={"run_id": run_id},
             )
-            # If we get a response (no exception), verify it's not 404
-            assert indicator_response.status_code != 404
-            # Endpoint should handle the request - success or validation error
-            assert indicator_response.status_code in (200, 400, 422, 500)
-        except Exception as e:
-            # If an exception is raised, verify it's due to missing region data
-            # (expected with MockAdapter output)
-            assert "region" in str(e).lower() or "region" in type(e).__name__.lower()
 
     def test_welfare_indicators_require_baseline_and_reform(
         self,
@@ -1013,7 +985,7 @@ class TestIndicatorWorkflowsOnLiveOutputs:
         )
         assert comparison_response.status_code == 200
         data = comparison_response.json()
-        assert "baseline" in data or "data" in data
+        assert "data" in data
 
     def test_indicator_computation_fails_without_panel(
         self,
@@ -1110,7 +1082,7 @@ class TestComparisonWorkflowsOnLiveOutputs:
         )
         assert comparison_response.status_code == 200
         data = comparison_response.json()
-        assert "baseline" in data or "data" in data
+        assert "data" in data
 
     def test_compare_live_vs_replay(
         self,
@@ -1182,9 +1154,10 @@ class TestComparisonWorkflowsOnLiveOutputs:
 
         # Compare live vs replay
         # Due to schema differences (live has normalized columns, replay has raw columns),
-        # this may fail. The important thing is that the endpoint handles the request.
-        try:
-            comparison_response = replay_client.post(
+        # the welfare comparison raises ValueError for missing welfare field.
+        # This is expected: the route does not catch ValueError from the indicator layer.
+        with pytest.raises(ValueError, match="disposable_income"):
+            replay_client.post(
                 "/api/comparison",
                 headers=replay_headers,
                 json={
@@ -1192,17 +1165,6 @@ class TestComparisonWorkflowsOnLiveOutputs:
                     "reform_run_id": replay_id,
                 },
             )
-            # If comparison succeeds, verify structure
-            if comparison_response.status_code == 200:
-                data = comparison_response.json()
-                assert "baseline" in data or "data" in data
-            else:
-                # If comparison fails, it should be a validation error (400/422), not a server error (500)
-                assert comparison_response.status_code in (400, 422)
-        except Exception as e:
-            # Exception is expected due to schema mismatch
-            # Verify it's a schema-related error
-            assert "welfare" in str(e).lower() or "schema" in str(e).lower() or "column" in str(e).lower()
 
     def test_comparison_preserves_runtime_provenance(
         self,
@@ -1504,6 +1466,7 @@ class TestFullWorkflowRegression:
         client_with_store: TestClient,
         auth_headers: dict[str, str],
         data_dir: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Create scenario, select bundled population, run live, compute indicators, export.
 
@@ -1524,8 +1487,7 @@ class TestFullWorkflowRegression:
         uploaded_dir = data_dir / "uploaded"
         uploaded_dir.mkdir()
         resolver = PopulationResolver(data_dir, uploaded_dir)
-        monkeypatch_obj = pytest.MonkeyPatch()
-        monkeypatch_obj.setattr(deps, "_population_resolver", resolver)
+        monkeypatch.setattr(deps, "_population_resolver", resolver)
 
         # Step 1: Create and run scenario
         run_response = client_with_store.post(
@@ -1570,13 +1532,12 @@ class TestFullWorkflowRegression:
         result_data = result_response.json()
         assert result_data.get("runtime_mode") == "live"
 
-        monkeypatch_obj.undo()
-
     def test_end_to_end_workflow_with_uploaded_population(
         self,
         client_with_store: TestClient,
         auth_headers: dict[str, str],
         data_dir: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Upload CSV, create scenario, run live, compare against baseline, verify complete workflow."""
         # Create uploaded population
@@ -1593,8 +1554,7 @@ class TestFullWorkflowRegression:
         from reformlab.server.population_resolver import PopulationResolver
 
         resolver = PopulationResolver(data_dir, uploaded_dir)
-        monkeypatch_obj = pytest.MonkeyPatch()
-        monkeypatch_obj.setattr(deps, "_population_resolver", resolver)
+        monkeypatch.setattr(deps, "_population_resolver", resolver)
 
         # Step 1: Run baseline scenario
         baseline_response = client_with_store.post(
@@ -1654,13 +1614,12 @@ class TestFullWorkflowRegression:
         )
         assert reform_export.status_code == 200
 
-        monkeypatch_obj.undo()
-
     def test_workflow_with_generated_population_and_comparisons(
         self,
         client_with_store: TestClient,
         auth_headers: dict[str, str],
         data_dir: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Generate population, run multiple scenarios, compare results.
 
@@ -1695,8 +1654,7 @@ class TestFullWorkflowRegression:
         uploaded_dir = data_dir / "uploaded"
         uploaded_dir.mkdir()
         resolver = PopulationResolver(data_dir, uploaded_dir)
-        monkeypatch_obj = pytest.MonkeyPatch()
-        monkeypatch_obj.setattr(deps, "_population_resolver", resolver)
+        monkeypatch.setattr(deps, "_population_resolver", resolver)
 
         # Step 1: Run scenario A
         response_a = client_with_store.post(
@@ -1771,6 +1729,4 @@ class TestFullWorkflowRegression:
             json={"run_id": run_id_b},
         )
         assert export_b.status_code == 200
-
-        monkeypatch_obj.undo()
 

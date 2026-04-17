@@ -344,7 +344,7 @@ python3 -c "import pyarrow.parquet as pq; t = pq.read_table('~/.reformlab/result
 
 **Endpoints:**
 - `POST /api/indicators/{type}` with run_id in request body
-- `GET /api/results/{run_id}/export/{format}`
+- `POST /api/exports/csv` or `POST /api/exports/parquet` with run_id in request body
 
 **Verify:**
 - Indicator computation returns 200 with valid result
@@ -357,7 +357,7 @@ curl -X POST -H "Authorization: Bearer <token>" \
   -d '{"run_id": "<run_id>"}' \
   https://api.reformlab.com/api/indicators/distributional
 
-# Test export
+# Test CSV export
 curl -X POST -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"run_id": "<run_id>"}' \
@@ -379,7 +379,7 @@ curl -X POST -H "Authorization: Bearer <token>" \
 | `GET /api/results/{run_id}` | Retrieve run result details |
 | `POST /api/indicators/{type}` | Compute indicators on a run |
 | `POST /api/comparison` | Compare two runs |
-| `GET /api/results/{run_id}/export/{format}` | Export run results as CSV or Parquet |
+| `POST /api/exports/csv` or `POST /api/exports/parquet` | Export run results as CSV or Parquet |
 | `GET /api/populations` | List available populations |
 
 ### Source Files
