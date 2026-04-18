@@ -52,6 +52,11 @@ _DEFAULT_OUTPUT_MAPPING: dict[str, str] = {
     "revenu_brut": "gross_income",
     "prestations_sociales": "social_benefits",
     "taxe_carbone": "carbon_tax",
+    # Story 24.2: Subsidy-family output variable mappings
+    "montant_subvention": "subsidy_amount",
+    "eligible_subvention": "subsidy_eligible",
+    "malus_ecologique": "vehicle_malus",
+    "aide_energie": "energy_poverty_aid",
 }
 
 # OpenFisca variable names to request from the live adapter.

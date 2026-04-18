@@ -1,0 +1,137 @@
+record_id: 32f57795-bd5e-4cd2-8079-fea1c8580650
+created_at: '2026-04-18T10:43:47.189630+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 24
+  story_num: 2
+  title: Story 24.2
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true
+evaluator:
+  provider: codex
+  model: gpt-5.3-codex
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-04-18T10:28:19.105250Z'
+  end_time: '2026-04-18T10:30:37.220250Z'
+  duration_ms: 138115
+  input_tokens: 0
+  output_tokens: 4431
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 17725
+  heading_count: 41
+  list_depth_max: 2
+  code_block_count: 8
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 14.1'
+  - 🎯 Ruthless Story Validation 24.2
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 14.1 → REJECT'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Unresolved OpenFisca Variable Contract
+  - 2. Live Execution vs Adapter Reality Contradiction
+  - 3. Normalization Acceptance Gap
+  - 4. Undefined Generic Request Shape
+  - 5. Schema/Type Contradictions
+  - 6. Test Environment Prerequisites Missing
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 7. Add Supported/Unsupported Feature Matrix
+  - 8. Add Non-Regression AC for Existing Live Policies
+  - 9. Clarify Translation Ownership Boundary
+  - 10. Add Determinism Requirement for Translation
+  - 11. Add Error Payload Contract Examples
+  - 12. Pin Catalog Availability Transition Rules
+  - ✨ Optimizations (Nice to Have)
+  - 13. Split Story for Delivery Safety
+  - 14. Reuse Existing Mapping Configuration Mechanisms
+  - 15. Consolidate Test Plan into Traceability Matrix
+  - 🤖 LLM Optimization Improvements
+  - 16. Replace “candidate variable names” with fixed contract
+  - 17. Remove conflicting adapter file references
+  - 18. Collapse repeated “do not modify adapter” statements
+  - 19. Convert long pseudocode into acceptance-level contract
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 7e91a47d9075
+findings:
+  total_count: 19
+  by_severity:
+    critical: 6
+    major: 6
+    minor: 7
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 6
+    completeness: 6
+    clarity: 4
+    testability: 3
+  has_fix_count: 19
+  has_location_count: 12
+  has_evidence_count: 16
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: false
+  uses_conditionals: true
+  uncertainty_phrases_count: 10
+  confidence_phrases_count: 1
+linguistic:
+  avg_sentence_length: 14.006493506493506
+  vocabulary_richness: 0.3328697264719518
+  flesch_reading_ease: 2.2510005291472055
+  vague_terms_count: 2
+  formality_score: 0.75
+  sentiment: neutral
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.85
+  evidence_quality: 0.9
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true

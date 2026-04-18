@@ -26,9 +26,15 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # Story 24.1 / AC-1: Live-ready policy types (from Epic 23)
-LIVE_READY_TYPES = {"carbon_tax", "subsidy", "rebate", "feebate"}
-# Story 24.1 / AC-2: Hidden pack types with pending domain translation
-HIDDEN_PACK_TYPES = {"vehicle_malus", "energy_poverty_aid"}
+# Story 24.2: Added vehicle_malus and energy_poverty_aid to live-ready types
+LIVE_READY_TYPES = {
+    "carbon_tax",
+    "subsidy",
+    "rebate",
+    "feebate",
+    "vehicle_malus",       # Story 24.2 — now live-ready
+    "energy_poverty_aid",  # Story 24.2 — now live-ready
+}
 
 
 def _classify_runtime_availability(
@@ -50,12 +56,7 @@ def _classify_runtime_availability(
     if not is_builtin:
         return "live_unavailable", None
 
-    # Built-in hidden packs pending domain translation (Story 24.2)
-    # These are CustomPolicyTypes that are shipped with the package
-    if policy_type in HIDDEN_PACK_TYPES:
-        return "live_unavailable", "Domain translation pending - requires variable mapping"
-
-    # Built-in templates with live translation (Epic 23)
+    # Story 24.2: All listed types are now live-ready
     if policy_type in LIVE_READY_TYPES:
         return "live_ready", None
 
@@ -208,8 +209,13 @@ async def list_templates() -> dict[str, list[TemplateListItem]]:
         if hasattr(params_class, "__dataclass_fields__"):
             param_count = len(params_class.__dataclass_fields__)
             param_groups = list(params_class.__dataclass_fields__.keys())
-        # Story 24.1 / AC-1: Custom type registrations have is_builtin=False
-        # Runtime availability is live_unavailable by default (set in TemplateListItem)
+        # Story 24.2: Built-in custom types (vehicle_malus, energy_poverty_aid)
+        # are shipped with the package and should be classified as built-in
+        # for runtime availability purposes.
+        is_builtin_custom = type_name in LIVE_READY_TYPES
+        runtime_availability, availability_reason = _classify_runtime_availability(
+            type_name, is_builtin=is_builtin_custom
+        )
         items.append(
             TemplateListItem(
                 id=type_name,
@@ -219,6 +225,8 @@ async def list_templates() -> dict[str, list[TemplateListItem]]:
                 description="",
                 parameter_groups=param_groups,
                 is_custom=True,
+                runtime_availability=runtime_availability,
+                availability_reason=availability_reason,
             )
         )
 

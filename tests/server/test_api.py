@@ -540,15 +540,15 @@ class TestCatalogWithRuntimeAvailability:
                     template["runtime_availability"] == "live_ready"
                 ), f"{template['id']} should be live_ready"
 
-    def test_hidden_packs_have_live_unavailable_status(
+    def test_subsidy_family_packs_are_live_ready(
         self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
-        """Hidden packs have runtime_availability: 'live_unavailable' with reason."""
+        """Story 24.2: Subsidy-family packs are now live_ready after translation."""
         response = client.get("/api/templates", headers=auth_headers)
         assert response.status_code == 200
         templates = response.json()["templates"]
 
-        hidden_pack_ids = {
+        subsidy_family_pack_ids = {
             "vehicle-malus-flat-rate",
             "vehicle-malus-french-2026",
             "energy-poverty-cheque-energie",
@@ -556,14 +556,13 @@ class TestCatalogWithRuntimeAvailability:
         }
 
         for template in templates:
-            if template["id"] in hidden_pack_ids:
+            if template["id"] in subsidy_family_pack_ids:
                 assert (
-                    template["runtime_availability"] == "live_unavailable"
-                ), f"{template['id']} should be live_unavailable"
+                    template["runtime_availability"] == "live_ready"
+                ), f"{template['id']} should be live_ready after Story 24.2"
                 assert (
-                    template["availability_reason"]
-                    == "Domain translation pending - requires variable mapping"
-                ), f"{template['id']} should have availability_reason"
+                    template["availability_reason"] is None
+                ), f"{template['id']} should have no availability_reason"
 
     def test_template_detail_includes_runtime_availability(
         self, client: TestClient, auth_headers: dict[str, str]
@@ -581,7 +580,7 @@ class TestCatalogWithRuntimeAvailability:
         assert "availability_reason" in data
         assert data["availability_reason"] is None
 
-        # Test a hidden template
+        # Story 24.2: Vehicle malus is now live_ready after translation
         response = client.get(
             "/api/templates/vehicle-malus-flat-rate",
             headers=auth_headers,
@@ -589,11 +588,9 @@ class TestCatalogWithRuntimeAvailability:
         assert response.status_code == 200
         data = response.json()
         assert "runtime_availability" in data
-        assert data["runtime_availability"] == "live_unavailable"
+        assert data["runtime_availability"] == "live_ready"
         assert "availability_reason" in data
-        assert (
-            data["availability_reason"] == "Domain translation pending - requires variable mapping"
-        )
+        assert data["availability_reason"] is None
 
     def test_custom_template_has_runtime_availability(
         self, client: TestClient, auth_headers: dict[str, str]
