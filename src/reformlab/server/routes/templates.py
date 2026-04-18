@@ -19,6 +19,7 @@ from reformlab.server.models import (
     TemplateListItem,
 )
 from reformlab.templates.exceptions import ScenarioError, TemplateError
+from reformlab.templates.portfolios.exceptions import PortfolioValidationError
 from reformlab.templates.registry import RegistryError
 
 logger = logging.getLogger(__name__)
@@ -195,7 +196,14 @@ async def list_templates() -> dict[str, list[TemplateListItem]]:
             # Story 24.1 / AC-1: User-saved scenarios have is_builtin=False
             items.append(_template_to_list_item(name, template, is_builtin=False))
             seen_names.add(name)
-        except (KeyError, FileNotFoundError, ValueError, AttributeError, RegistryError):
+        except (
+            KeyError,
+            FileNotFoundError,
+            ValueError,
+            AttributeError,
+            RegistryError,
+            PortfolioValidationError,
+        ):
             logger.warning("Failed to load template '%s', skipping", name)
 
     # 3. In-memory custom registrations not already listed
@@ -245,7 +253,7 @@ async def get_template(name: str) -> TemplateDetailResponse:
         template = registry.get(name)
         # Story 24.1 / AC-1: User-saved scenarios have is_builtin=False
         return _template_to_detail(name, template, is_builtin=False)
-    except (KeyError, FileNotFoundError, ValueError, RegistryError):
+    except (KeyError, FileNotFoundError, ValueError, RegistryError, PortfolioValidationError):
         pass
 
     # 2. Try built-in template packs (YAML files)

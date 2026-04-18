@@ -8,9 +8,10 @@ the server layer creates parallel Pydantic models for wire format translation.
 
 from __future__ import annotations
 
-from typing import Any, Literal
+import re
+from typing import Any, Literal, Self
 
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, computed_field, field_validator, model_validator
 
 # Story 21.2 / AC7: Import canonical evidence literal types from reformlab.data
 from reformlab.data import (  # type: ignore[attr-defined]
@@ -21,6 +22,22 @@ from reformlab.data import (  # type: ignore[attr-defined]
 
 # Story 24.1 / AC-1: Runtime availability literal type
 RuntimeAvailability = Literal["live_ready", "live_unavailable"]
+
+_SAFE_IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")
+_MIN_RUN_YEAR = 1900
+_MAX_RUN_YEAR = 2100
+
+
+def _validate_safe_identifier(value: str | None, field_name: str) -> str | None:
+    """Reject empty or path-like identifiers before they reach filesystem-backed stores."""
+    if value is None:
+        return None
+    if not _SAFE_IDENTIFIER_RE.fullmatch(value) or ".." in value:
+        raise ValueError(
+            f"{field_name} must contain only letters, digits, dots, underscores, "
+            "or hyphens, and must not contain path traversal segments"
+        )
+    return value
 
 # ---------------------------------------------------------------------------
 # Request models
@@ -44,6 +61,26 @@ class RunRequest(BaseModel):
     exogenous_series: list[str] | None = None  # Story 21.6 / AC2: exogenous series names for scenario
     # Story 23.1 / AC-1, AC-2: Runtime mode with live default
     runtime_mode: Literal["live", "replay"] = "live"
+
+    @field_validator("population_id")
+    @classmethod
+    def _validate_population_id(cls, value: str | None) -> str | None:
+        return _validate_safe_identifier(value, "population_id")
+
+    @field_validator("start_year", "end_year")
+    @classmethod
+    def _validate_run_year_bounds(cls, value: int) -> int:
+        if value < _MIN_RUN_YEAR or value > _MAX_RUN_YEAR:
+            raise ValueError(
+                f"year must be between {_MIN_RUN_YEAR} and {_MAX_RUN_YEAR}"
+            )
+        return value
+
+    @model_validator(mode="after")
+    def _validate_run_year_order(self) -> Self:
+        if self.start_year > self.end_year:
+            raise ValueError("start_year must be less than or equal to end_year")
+        return self
 
 
 class MemoryCheckRequest(BaseModel):
@@ -69,6 +106,13 @@ class ComparisonRequest(BaseModel):
 
 class ExportRequest(BaseModel):
     run_id: str
+
+    @field_validator("run_id")
+    @classmethod
+    def _validate_run_id(cls, value: str) -> str:
+        validated = _validate_safe_identifier(value, "run_id")
+        assert validated is not None
+        return validated
 
 
 class CreateScenarioRequest(BaseModel):

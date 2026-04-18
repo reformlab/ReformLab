@@ -76,6 +76,51 @@ class TestAuthRoutes:
             tokens.add(response.json()["token"])
         assert len(tokens) == 3  # All unique
 
+    def test_login_rate_limit_blocks_sixth_failed_attempt(
+        self, client: TestClient
+    ) -> None:
+        from reformlab.server.auth import _active_sessions, _login_attempts
+
+        _active_sessions.clear()
+        _login_attempts.clear()
+        try:
+            for _ in range(5):
+                response = client.post(
+                    "/api/auth/login",
+                    json={"password": "wrong"},
+                )
+                assert response.status_code == 401
+
+            response = client.post(
+                "/api/auth/login",
+                json={"password": "wrong"},
+            )
+            assert response.status_code == 429
+        finally:
+            _active_sessions.clear()
+            _login_attempts.clear()
+
+    def test_auth_pruning_removes_expired_state(self) -> None:
+        from reformlab.server import auth
+
+        now = 1_000_000.0
+        auth._active_sessions.clear()
+        auth._login_attempts.clear()
+        try:
+            auth._active_sessions["expired"] = now - auth.SESSION_TTL_SECONDS - 1
+            auth._active_sessions["fresh"] = now
+            auth._login_attempts["old-ip"] = [now - auth._RATE_LIMIT_WINDOW - 1]
+            auth._login_attempts["fresh-ip"] = [now]
+
+            auth._prune_expired_sessions(now)
+            auth._prune_login_attempts(now)
+
+            assert set(auth._active_sessions) == {"fresh"}
+            assert set(auth._login_attempts) == {"fresh-ip"}
+        finally:
+            auth._active_sessions.clear()
+            auth._login_attempts.clear()
+
 
 class TestTemplateRoutes:
     """AC-1: Template listing and selection."""

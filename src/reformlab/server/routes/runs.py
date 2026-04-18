@@ -56,63 +56,13 @@ async def run_simulation(
     - ``template_name`` provided → existing single-policy path
     - Both provided → 422 error
     """
-    from reformlab.interfaces.api import RunConfig, ScenarioConfig, run_scenario
-    from reformlab.server.result_store import ResultMetadata
-
-    # Mutual exclusion: portfolio_name XOR template_name
-    if body.portfolio_name and body.template_name:
-        raise HTTPException(
-            status_code=422,
-            detail={
-                "what": "Ambiguous run request",
-                "why": "Both portfolio_name and template_name provided",
-                "fix": "Specify portfolio_name or template_name, not both",
-            },
-        )
+    _validate_run_dispatch(body)
 
     if body.portfolio_name and body.runtime_mode == "live":
         _ensure_portfolio_live_ready(body.portfolio_name, registry)
 
-    from reformlab.server.population_resolver import PopulationResolutionError
-
-    # Story 23.4 / AC-2: Replay mode creates its own precomputed adapter
-    if body.runtime_mode == "replay":
-        try:
-            from reformlab.server.dependencies import _create_replay_adapter
-
-            adapter = _create_replay_adapter()
-        except (FileNotFoundError, ValueError, OSError) as exc:
-            raise HTTPException(
-                status_code=422,
-                detail={
-                    "what": "Replay mode unavailable",
-                    "why": f"No precomputed output files found: {str(exc)}",
-                    "fix": (
-                        "Run in live mode (default) or ensure "
-                        "precomputed data files exist in the data directory"
-                    ),
-                },
-            ) from exc
-    else:
-        # Story 23.4 / AC-1: Default live adapter via global singleton
-        adapter = get_adapter()
-
-    resolver = get_population_resolver()
-
-    # Story 23.2 / AC-1, AC-2, AC-3, AC-4: Unified population resolver
-    population_path: Path | None = None
-    population_source: str | None = None
-    if body.population_id:
-        try:
-            resolved = resolver.resolve(body.population_id)
-            population_path = resolved.data_path
-            population_source = resolved.source
-        except PopulationResolutionError as exc:
-            raise HTTPException(
-                status_code=404,
-                detail=exc.args[0],  # Already {"what", "why", "fix"} format
-            ) from exc
-
+    adapter = _select_adapter(body)
+    population_path, population_source = _resolve_population(body.population_id)
     template_name = body.template_name or ""
 
     run_id = str(uuid.uuid4())
@@ -134,153 +84,282 @@ async def run_simulation(
                 population_source=population_source,  # Story 23.3 / AC-2
             )
         else:
-            # Story 23.3 / AC-2: Pass population_id and population_source from resolver
-            scenario_config = ScenarioConfig(
+            result = _run_single_scenario(
+                body=body,
+                adapter=adapter,
                 template_name=template_name,
-                policy=body.policy,
-                start_year=body.start_year,
-                end_year=body.end_year,
                 population_path=population_path,
-                seed=body.seed,
-                exogenous_series=body.exogenous_series,  # Story 21.6 / AC2
-                population_id=body.population_id,  # Story 23.3 / AC-2
-                population_source=population_source,  # Story 23.3 / AC-2
-            )
-            # Story 23.1 / AC-1, AC-2: Pass runtime_mode from request to RunConfig
-            run_config = RunConfig(
-                scenario=scenario_config,
-                seed=body.seed,
-                runtime_mode=body.runtime_mode,
-            )
-            result = run_scenario(run_config, adapter=adapter)
-
-        # Story 23.4 / AC-4: Guard against silent runtime mode downgrade
-        actual_mode = result.metadata.get("runtime_mode") if result else None
-        if result and actual_mode is not None and actual_mode != body.runtime_mode:
-            logger.error(
-                "event=runtime_mode_mismatch requested=%s actual=%s run_id=%s",
-                body.runtime_mode,
-                actual_mode,
-                run_id,
+                population_source=population_source,
             )
 
-        # Story 23.5 / AC-2: Add population provenance to manifest
-        # The manifest is created inside run_scenario() and lacks population fields.
-        # We need to update the manifest before saving to disk and cache.
-        from dataclasses import replace as _dc_replace
-
-        if result is not None:
-            # Update manifest with population_id and population_source
-            updated_manifest = _dc_replace(
-                result.manifest,
-                population_id=body.population_id or "",
-                population_source=population_source or "",
-            )
-            # Create a new SimulationResult with the updated manifest
-            # This ensures cache, disk, and response all have identical provenance
-            result = _dc_replace(
-                result,
-                manifest=updated_manifest,
-            )
+        _log_runtime_mode_mismatch(result, body.runtime_mode, run_id)
+        result = _with_population_provenance(
+            result,
+            population_id=body.population_id,
+            population_source=population_source,
+        )
 
         cache.store(run_id, result)
         status = "completed" if result.success else "failed"
         row_count = result.panel_output.table.num_rows if result.panel_output else 0
     finally:
         finished_at = datetime.now(timezone.utc).isoformat()
-        # Story 21.6 / AC6: Extract exogenous series info from manifest
-        exog_hash = None
-        exog_names = None
-        if result and result.manifest.exogenous_series:
-            exog_names = list(result.manifest.exogenous_series)
-            # Compute hash from sorted series names
-            import hashlib
-
-            hash_input = "|".join(sorted(exog_names))
-            exog_hash = hashlib.sha256(hash_input.encode("utf-8")).hexdigest()
-
-        try:
-            run_kind = "portfolio" if body.portfolio_name else "scenario"
-            # Story 23.1 / AC-4: Extract runtime_mode from manifest
-            runtime_mode_from_manifest = result.manifest.runtime_mode if result else "live"
-            store.save_metadata(
-                run_id,
-                ResultMetadata(
-                    run_id=run_id,
-                    timestamp=started_at,
-                    run_kind=run_kind,
-                    template_name=template_name or None,
-                    policy_type=body.policy_type,
-                    portfolio_name=body.portfolio_name,
-                    start_year=body.start_year,
-                    end_year=body.end_year,
-                    population_id=body.population_id,
-                    seed=body.seed,
-                    row_count=row_count,
-                    manifest_id=result.manifest.manifest_id if result else "",
-                    scenario_id=result.scenario_id if result else "",
-                    adapter_version=result.manifest.adapter_version if result else "unknown",
-                    # Story 23.1 / AC-4: Runtime mode from manifest
-                    runtime_mode=runtime_mode_from_manifest,
-                    started_at=started_at,
-                    finished_at=finished_at,
-                    status=status,
-                    portfolio_policy_count=portfolio_policy_count,
-                    portfolio_resolution_strategy=portfolio_resolution_strategy,
-                    # Story 21.6 / AC6: Exogenous series fields
-                    exogenous_series_hash=exog_hash,
-                    exogenous_series_names=exog_names,
-                    # Story 23.2 / AC-5: Population source from resolver
-                    population_source=population_source,
-                ),
-            )
-        except Exception:
-            logger.exception("event=metadata_save_failed run_id=%s", run_id)
-            # Do not propagate — metadata save failure should not mask run result
-
-        # Persist panel and manifest to disk (Story 17.7 — AC-1, AC-2)
-        # Each save is independent; failure must NOT propagate or mask run result.
-        if result is not None and result.panel_output is not None:
-            try:
-                store.save_panel(run_id, result.panel_output)
-            except Exception:
-                logger.exception("event=panel_save_failed run_id=%s", run_id)
-        if result is not None:
-            try:
-                # Story 23.5 / AC-2: Save the updated manifest with population provenance
-                store.save_manifest(run_id, result.manifest.to_json())
-            except Exception:
-                logger.exception("event=manifest_save_failed run_id=%s", run_id)
+        _persist_run_outputs(
+            store=store,
+            body=body,
+            run_id=run_id,
+            started_at=started_at,
+            finished_at=finished_at,
+            template_name=template_name,
+            result=result,
+            status=status,
+            row_count=row_count,
+            population_source=population_source,
+            portfolio_policy_count=portfolio_policy_count,
+            portfolio_resolution_strategy=portfolio_resolution_strategy,
+        )
 
     if result is None:
         # Re-raise will have already propagated; this branch is unreachable
         # but satisfies type checker
         raise RuntimeError("Simulation failed with no result")  # pragma: no cover
 
-    years = sorted(result.yearly_states.keys())
+    return _build_run_response(run_id, result, row_count, population_source)
 
-    # Story 21.8 / AC7: Generate trust warnings for exploratory data
-    trust_warnings: list[str] = []
-    if result.manifest.evidence_assets:
-        exploratory_assets = [
-            asset.get("name", asset.get("asset_id", "unknown"))
-            for asset in result.manifest.evidence_assets
-            if asset.get("trust_status") in ("exploratory", "demo-only", "validation-pending")
-        ]
-        if exploratory_assets:
-            trust_warnings.append(
-                f"Run uses exploratory data sources: {', '.join(exploratory_assets)}. "
-                "Results should not be used for production decision support."
-            )
 
+def _validate_run_dispatch(body: RunRequest) -> None:
+    """Validate request fields that depend on route-level dispatch semantics."""
+    if body.portfolio_name and body.template_name:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "what": "Ambiguous run request",
+                "why": "Both portfolio_name and template_name provided",
+                "fix": "Specify portfolio_name or template_name, not both",
+            },
+        )
+
+
+def _select_adapter(body: RunRequest) -> ComputationAdapter:
+    """Select the computation adapter for live or replay execution."""
+    if body.runtime_mode != "replay":
+        # Story 23.4 / AC-1: Default live adapter via global singleton
+        return get_adapter()
+
+    # Story 23.4 / AC-2: Replay mode creates its own precomputed adapter
+    try:
+        from reformlab.server.dependencies import _create_replay_adapter
+
+        return _create_replay_adapter()
+    except (FileNotFoundError, ValueError, OSError) as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "what": "Replay mode unavailable",
+                "why": f"No precomputed output files found: {str(exc)}",
+                "fix": (
+                    "Run in live mode (default) or ensure "
+                    "precomputed data files exist in the data directory"
+                ),
+            },
+        ) from exc
+
+
+def _resolve_population(population_id: str | None) -> tuple[Path | None, str | None]:
+    """Resolve a request population ID into an executable data path and source."""
+    if not population_id:
+        return None, None
+
+    from reformlab.server.population_resolver import PopulationResolutionError
+
+    resolver = get_population_resolver()
+    try:
+        resolved = resolver.resolve(population_id)
+    except PopulationResolutionError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=exc.args[0],  # Already {"what", "why", "fix"} format
+        ) from exc
+    return resolved.data_path, resolved.source
+
+
+def _run_single_scenario(
+    *,
+    body: RunRequest,
+    adapter: ComputationAdapter,
+    template_name: str,
+    population_path: Path | None,
+    population_source: str | None,
+) -> SimulationResult:
+    """Execute the single-policy scenario path."""
+    from reformlab.interfaces.api import RunConfig, ScenarioConfig, run_scenario
+
+    scenario_config = ScenarioConfig(
+        template_name=template_name,
+        policy=body.policy,
+        start_year=body.start_year,
+        end_year=body.end_year,
+        population_path=population_path,
+        seed=body.seed,
+        exogenous_series=body.exogenous_series,  # Story 21.6 / AC2
+        population_id=body.population_id,  # Story 23.3 / AC-2
+        population_source=population_source,  # Story 23.3 / AC-2
+    )
+    run_config = RunConfig(
+        scenario=scenario_config,
+        seed=body.seed,
+        runtime_mode=body.runtime_mode,
+    )
+    return run_scenario(run_config, adapter=adapter)
+
+
+def _log_runtime_mode_mismatch(
+    result: SimulationResult,
+    requested_mode: Literal["live", "replay"],
+    run_id: str,
+) -> None:
+    """Log when execution silently downgraded or changed runtime mode."""
+    actual_mode = result.metadata.get("runtime_mode")
+    if actual_mode is not None and actual_mode != requested_mode:
+        logger.error(
+            "event=runtime_mode_mismatch requested=%s actual=%s run_id=%s",
+            requested_mode,
+            actual_mode,
+            run_id,
+        )
+
+
+def _with_population_provenance(
+    result: SimulationResult,
+    *,
+    population_id: str | None,
+    population_source: str | None,
+) -> SimulationResult:
+    """Patch population provenance into the manifest before cache/disk writes."""
+    from dataclasses import replace as _dc_replace
+
+    updated_manifest = _dc_replace(
+        result.manifest,
+        population_id=population_id or "",
+        population_source=population_source or "",
+    )
+    return _dc_replace(result, manifest=updated_manifest)
+
+
+def _exogenous_series_summary(
+    result: SimulationResult | None,
+) -> tuple[str | None, list[str] | None]:
+    """Return deterministic exogenous-series hash fields for run metadata."""
+    if result is None or not result.manifest.exogenous_series:
+        return None, None
+
+    import hashlib
+
+    exog_names = list(result.manifest.exogenous_series)
+    hash_input = "|".join(sorted(exog_names))
+    exog_hash = hashlib.sha256(hash_input.encode("utf-8")).hexdigest()
+    return exog_hash, exog_names
+
+
+def _persist_run_outputs(
+    *,
+    store: ResultStore,
+    body: RunRequest,
+    run_id: str,
+    started_at: str,
+    finished_at: str,
+    template_name: str,
+    result: SimulationResult | None,
+    status: str,
+    row_count: int,
+    population_source: str | None,
+    portfolio_policy_count: int | None,
+    portfolio_resolution_strategy: str | None,
+) -> None:
+    """Persist run metadata and available artifacts without masking execution errors."""
+    from reformlab.server.result_store import ResultMetadata
+
+    exog_hash, exog_names = _exogenous_series_summary(result)
+
+    try:
+        run_kind = "portfolio" if body.portfolio_name else "scenario"
+        runtime_mode = result.manifest.runtime_mode if result else "live"
+        store.save_metadata(
+            run_id,
+            ResultMetadata(
+                run_id=run_id,
+                timestamp=started_at,
+                run_kind=run_kind,
+                template_name=template_name or None,
+                policy_type=body.policy_type,
+                portfolio_name=body.portfolio_name,
+                start_year=body.start_year,
+                end_year=body.end_year,
+                population_id=body.population_id,
+                seed=body.seed,
+                row_count=row_count,
+                manifest_id=result.manifest.manifest_id if result else "",
+                scenario_id=result.scenario_id if result else "",
+                adapter_version=result.manifest.adapter_version if result else "unknown",
+                runtime_mode=runtime_mode,
+                started_at=started_at,
+                finished_at=finished_at,
+                status=status,
+                portfolio_policy_count=portfolio_policy_count,
+                portfolio_resolution_strategy=portfolio_resolution_strategy,
+                exogenous_series_hash=exog_hash,
+                exogenous_series_names=exog_names,
+                population_source=population_source,
+            ),
+        )
+    except Exception:
+        logger.exception("event=metadata_save_failed run_id=%s", run_id)
+
+    if result is not None and result.panel_output is not None:
+        try:
+            store.save_panel(run_id, result.panel_output)
+        except Exception:
+            logger.exception("event=panel_save_failed run_id=%s", run_id)
+    if result is not None:
+        try:
+            store.save_manifest(run_id, result.manifest.to_json())
+        except Exception:
+            logger.exception("event=manifest_save_failed run_id=%s", run_id)
+
+
+def _trust_warnings(result: SimulationResult) -> list[str]:
+    """Generate trust warnings for exploratory evidence assets."""
+    if not result.manifest.evidence_assets:
+        return []
+
+    exploratory_assets = [
+        asset.get("name", asset.get("asset_id", "unknown"))
+        for asset in result.manifest.evidence_assets
+        if asset.get("trust_status") in ("exploratory", "demo-only", "validation-pending")
+    ]
+    if not exploratory_assets:
+        return []
+    return [
+        f"Run uses exploratory data sources: {', '.join(exploratory_assets)}. "
+        "Results should not be used for production decision support."
+    ]
+
+
+def _build_run_response(
+    run_id: str,
+    result: SimulationResult,
+    row_count: int,
+    population_source: str | None,
+) -> RunResponse:
+    """Build the stable API response for a completed run."""
     return RunResponse(
         run_id=run_id,
         success=result.success,
         scenario_id=result.scenario_id,
-        years=years,
+        years=sorted(result.yearly_states.keys()),
         row_count=row_count,
         manifest_id=result.manifest.manifest_id,
-        trust_warnings=trust_warnings,
+        trust_warnings=_trust_warnings(result),
         # Story 23.1 / AC-4: Runtime mode from manifest
         runtime_mode=cast(Literal["live", "replay"], result.manifest.runtime_mode),
         # Story 23.2 / AC-5: Population source from resolver
@@ -434,11 +513,23 @@ async def memory_check(body: MemoryCheckRequest) -> MemoryCheckResponse:
     """Pre-flight memory estimation for a simulation configuration."""
     from reformlab.interfaces.api import ScenarioConfig, check_memory_requirements
 
+    # Resolve population path from population_id so memory estimate uses
+    # the actual row count instead of the 100k default.
+    population_path = None
+    if body.population_id:
+        try:
+            resolver = get_population_resolver()
+            resolved = resolver.resolve(body.population_id)
+            population_path = resolved.data_path
+        except Exception:
+            pass  # Fall back to default estimate
+
     scenario_config = ScenarioConfig(
         template_name=body.template_name,
         policy=body.policy,
         start_year=body.start_year,
         end_year=body.end_year,
+        population_path=population_path,
     )
 
     result = check_memory_requirements(scenario_config)

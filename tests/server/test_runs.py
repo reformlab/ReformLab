@@ -109,6 +109,37 @@ class TestRunResponseShape:
         uuid.UUID(run_id)
 
 
+class TestRunRequestValidation:
+    """Run request boundary validation."""
+
+    def test_rejects_reversed_year_range(
+        self, client_with_store: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        body = dict(_SIMPLE_RUN_BODY)
+        body["start_year"] = 2030
+        body["end_year"] = 2025
+
+        response = client_with_store.post(
+            "/api/runs",
+            headers=auth_headers,
+            json=body,
+        )
+        assert response.status_code == 422
+
+    def test_rejects_path_like_population_id(
+        self, client_with_store: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        body = dict(_SIMPLE_RUN_BODY)
+        body["population_id"] = "../outside"
+
+        response = client_with_store.post(
+            "/api/runs",
+            headers=auth_headers,
+            json=body,
+        )
+        assert response.status_code == 422
+
+
 # ---------------------------------------------------------------------------
 # Metadata auto-save on success
 # ---------------------------------------------------------------------------
