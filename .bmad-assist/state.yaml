@@ -16,9 +16,9 @@ completed_stories:
 completed_epics:
 - 23
 started_at: '2026-03-01T16:24:33.601834'
-updated_at: '2026-04-18T20:53:05+02:00'
+updated_at: '2026-04-18T19:49:53.160666'
 story_started_at: '2026-04-18T17:24:50.312344'
-phase_started_at: '2026-04-18T20:53:05+02:00'
+phase_started_at: '2026-04-18T19:49:53.160666'
 epic_started_at: '2026-04-01T21:26:20.246072'
 project_started_at: '2026-03-01T16:24:33.836467'
 anomalies: []
