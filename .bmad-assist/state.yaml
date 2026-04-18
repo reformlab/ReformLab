@@ -1,6 +1,6 @@
 current_epic: 24
 current_story: '24.5'
-current_phase: retrospective
+current_phase: null
 completed_stories:
 - '23.1'
 - '23.2'
@@ -15,10 +15,11 @@ completed_stories:
 - '24.5'
 completed_epics:
 - 23
+- 24
 started_at: '2026-03-01T16:24:33.601834'
-updated_at: '2026-04-18T19:49:53.160666'
+updated_at: '2026-04-18T19:50:33.146171'
 story_started_at: '2026-04-18T17:24:50.312344'
-phase_started_at: '2026-04-18T19:49:53.160666'
+phase_started_at: null
 epic_started_at: '2026-04-01T21:26:20.246072'
 project_started_at: '2026-03-01T16:24:33.836467'
 anomalies: []
