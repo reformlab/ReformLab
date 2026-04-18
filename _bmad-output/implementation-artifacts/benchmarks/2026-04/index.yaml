@@ -44,4 +44,13 @@ records:
   provider: claude-subprocess
   created_at: '2026-04-17T13:47:54.580677+00:00'
   workflow_id: dev-story
-updated_at: '2026-04-17T13:47:54.624291+00:00'
+- record_id: f55f3ee7-805d-4c1c-b8e1-0e12aee94802
+  path: eval-24-2-master-20260418T102732Z.yaml
+  epic: 24
+  story: 2
+  role: master
+  role_id: null
+  provider: claude-subprocess
+  created_at: '2026-04-18T10:27:32.381105+00:00'
+  workflow_id: create-story
+updated_at: '2026-04-18T10:27:32.385642+00:00'
