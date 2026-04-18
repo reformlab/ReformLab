@@ -266,9 +266,12 @@ async def get_template(name: str) -> TemplateDetailResponse:
         if hasattr(params_class, "__dataclass_fields__"):
             param_count = len(params_class.__dataclass_fields__)
             param_groups = list(params_class.__dataclass_fields__.keys())
-        # Story 24.1 / AC-1: Custom registrations have live_unavailable status
+        # Story 24.2: Built-in custom types (vehicle_malus, energy_poverty_aid)
+        # are shipped with the package and should be classified as built-in
+        # for runtime availability purposes.
+        is_builtin_custom = name in LIVE_READY_TYPES
         runtime_availability, availability_reason = _classify_runtime_availability(
-            name, is_builtin=False
+            name, is_builtin=is_builtin_custom
         )
         return TemplateDetailResponse(
             id=name,

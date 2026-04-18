@@ -166,6 +166,13 @@ def _translate_vehicle_malus_policy(
             fix="Ensure the policy is a VehicleMalusParameters instance",
         )
 
+    if not policy.rate_schedule:
+        raise TranslationError(
+            what=f"Translation failed for template '{template_name}'",
+            why="rate_schedule is required for vehicle_malus translation but is empty",
+            fix="Add at least one year entry to rate_schedule (e.g. {2025: 50.0})",
+        )
+
     if policy.emission_threshold < 0:
         raise TranslationError(
             what=f"Translation failed for template '{template_name}'",
@@ -206,6 +213,13 @@ def _translate_energy_poverty_aid_policy(
             what=f"Translation failed for template '{template_name}'",
             why=f"Expected EnergyPovertyAidParameters, got {type(policy).__name__}",
             fix="Ensure the policy is an EnergyPovertyAidParameters instance",
+        )
+
+    if not policy.rate_schedule:
+        raise TranslationError(
+            what=f"Translation failed for template '{template_name}'",
+            why="rate_schedule is required for energy_poverty_aid translation but is empty",
+            fix="Add at least one year entry to rate_schedule (e.g. {2025: 150.0})",
         )
 
     if policy.income_ceiling <= 0:
