@@ -89,6 +89,13 @@ so that I can discover, configure, and execute these policies through the standa
 - [x] [AI-Review] HIGH: Add cross-browser consistency verification task to ensure all template browsers use same labels and colors
 - [x] [AI-Review] MEDIUM: Clarify expected type label and color values in acceptance criteria and dev notes
 - [x] [Validation-Synthesis] Applied fixes from validation synthesis: type format contract, mock data completeness, cross-component verification checklist
+- [x] [Code-Review] MEDIUM: Add missing `rebate` template to mock-data.ts for non-regression coverage
+- [x] [Code-Review] MEDIUM: Fix redundant dual-format OR condition in PortfolioCompositionPanel
+- [x] [Code-Review] MEDIUM: Fix lying label tests — assert type badge element specifically, not just text
+- [x] [Code-Review] LOW: Fix overly-specific availability_reason assertion to check DOM element instead of text
+- [ ] [AI-Review] MEDIUM: Centralize TYPE_LABELS/TYPE_COLORS into shared module to eliminate duplication across PortfolioTemplateBrowser and PortfolioCompositionPanel (frontend/src/components/simulation/)
+- [ ] [AI-Review] MEDIUM: Add template_id to portfolio API contract and use it for stable portfolio load (PoliciesStageScreen.tsx:254)
+- [ ] [AI-Review] LOW: Centralize policy type normalization `.replace(/-/g, "_")` into shared utility function (PoliciesStageScreen.tsx:210,254,317)
 
 ## Dev Notes
 
@@ -618,6 +625,16 @@ Story created with comprehensive developer context:
 - Non-regression verified: existing packs (carbon_tax, subsidy, rebate, feebate) display correctly with proper labels and colors
 - Added color selection rationale and backend template IDs reference
 
+**Code Review Synthesis (2026-04-18):**
+- Added missing `rebate` mock template ("Energy Rebate") for non-regression TYPE_LABELS/TYPE_COLORS coverage
+- Fixed redundant dual-format OR condition in PortfolioCompositionPanel line 246 — replaced with `.replace(/-/g, "_")` normalization
+- Fixed lying label tests in PortfolioTemplateBrowser.test.tsx — now assert type badge element (`.bg-rose-100.text-rose-800`) specifically instead of matching text that could come from template name
+- Fixed lying label tests in PoliciesStageScreen.test.tsx — same approach, assert badge CSS class element
+- Fixed overly-specific availability_reason test — now checks for absence of amber reason container element instead of specific text string
+- All 61 tests pass after fixes (PortfolioTemplateBrowser: 16, PortfolioCompositionPanel: 8, PoliciesStageScreen: 37)
+- TypeScript typecheck passes clean
+- Pre-existing lint warnings (10 errors in useScenarioPersistence.test.ts) and pre-existing test failures (7 frontend files, 9 backend tests) confirmed unrelated to this story
+
 ### File List
 
 **Story file created:**
@@ -625,10 +642,10 @@ Story created with comprehensive developer context:
 
 **Files modified (implementation):**
 - `frontend/src/components/simulation/PortfolioTemplateBrowser.tsx` — Added TYPE_LABELS and TYPE_COLORS with dual-format keys and surfaced types
-- `frontend/src/components/simulation/PortfolioCompositionPanel.tsx` — Added surfaced types (vehicle_malus, energy_poverty_aid) for consistency
-- `frontend/src/data/mock-data.ts` — Added runtime_availability/availability_reason to existing templates + 4 surfaced pack templates
-- `frontend/src/components/simulation/__tests__/PortfolioTemplateBrowser.test.tsx` — Added 9 Story 24.4 tests
-- `frontend/src/components/screens/__tests__/PoliciesStageScreen.test.tsx` — Added 6 Story 24.4 tests
+- `frontend/src/components/simulation/PortfolioCompositionPanel.tsx` — Added surfaced types (vehicle_malus, energy_poverty_aid) for consistency; fixed redundant dual-format OR condition
+- `frontend/src/data/mock-data.ts` — Added runtime_availability/availability_reason to existing templates + 4 surfaced pack templates + rebate template
+- `frontend/src/components/simulation/__tests__/PortfolioTemplateBrowser.test.tsx` — Added 9 Story 24.4 tests; fixed lying label assertions to target badge elements
+- `frontend/src/components/screens/__tests__/PoliciesStageScreen.test.tsx` — Added 6 Story 24.4 tests; fixed lying label assertions to target badge elements
 - `_bmad-output/implementation-artifacts/24-4-surface-live-capable-policy-packs-in-workspace-catalog-flows-without-runtime-specific-ux.md` — Updated task checkboxes, status, and completion notes
 
 **Files verified (no changes needed):**
@@ -636,4 +653,13 @@ Story created with comprehensive developer context:
 - `frontend/src/components/screens/TemplateSelectionScreen.tsx` — Does not use TYPE_LABELS/TYPE_COLORS (checked)
 - `frontend/src/components/screens/PortfolioDesignerScreen.tsx` — Deprecated, inactive (checked)
 - `frontend/src/api/types.ts` — Already has RuntimeAvailability type (Story 24.1)
+
+## Senior Developer Review (AI)
+
+### Review: 2026-04-18
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 11.1 → REJECT
+- **Issues Found:** 10
+- **Issues Fixed:** 7
+- **Action Items Created:** 3
 

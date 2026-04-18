@@ -151,6 +151,18 @@ export const mockTemplates: Template[] = [
     runtime_availability: "live_ready",
     availability_reason: null,
   },
+  // Story 24.4: Non-regression — rebate template for TYPE_LABELS/TYPE_COLORS coverage
+  {
+    id: "rebate-energy",
+    name: "Energy Rebate",
+    type: "rebate",
+    parameterCount: 6,
+    description: "Direct rebate for energy-efficient purchases and renovations",
+    parameterGroups: ["Redistribution", "Thresholds"],
+    is_custom: false,
+    runtime_availability: "live_ready",
+    availability_reason: null,
+  },
   // Story 24.4: Surfaced pack templates - Vehicle Malus
   {
     id: "vehicle-malus-flat-rate",

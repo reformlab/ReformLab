@@ -243,7 +243,7 @@ export function PortfolioCompositionPanel({
                         ),
                       );
                     }}
-                    unit={template?.type === "carbon_tax" || template?.type === "carbon-tax" ? "€/tonne" : "€"}
+                    unit={template?.type.replace(/-/g, "_") === "carbon_tax" ? "€/tonne" : "€"}
                   />
                 </div>
                 {/* ParameterRow editing (when schemas available) */}

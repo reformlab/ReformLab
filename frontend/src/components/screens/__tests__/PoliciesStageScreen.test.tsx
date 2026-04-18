@@ -927,8 +927,10 @@ describe("Story 24.4: Portfolio with Surfaced Policies", () => {
       const vehicleButton = templateButtons.find((btn) => btn.textContent?.includes("Vehicle Malus"));
       fireEvent.click(vehicleButton!);
 
-      // Check that "Vehicle Malus" type label appears in composition
-      expect(screen.getAllByText("Vehicle Malus").length).toBeGreaterThan(0);
+      // Check that "Vehicle Malus" type label appears in composition panel (rose badge)
+      const typeBadge = container.querySelector('.bg-rose-100.text-rose-800');
+      expect(typeBadge).toBeInTheDocument();
+      expect(typeBadge).toHaveTextContent("Vehicle Malus");
     });
 
     it("should show correct type label 'Energy Poverty Aid' for energy_poverty_aid policy in composition", () => {
@@ -953,7 +955,10 @@ describe("Story 24.4: Portfolio with Surfaced Policies", () => {
       const energyButton = templateButtons.find((btn) => btn.textContent?.includes("Energy Poverty Aid"));
       fireEvent.click(energyButton!);
 
-      expect(screen.getAllByText("Energy Poverty Aid").length).toBeGreaterThan(0);
+      // Check that "Energy Poverty Aid" type label appears in composition panel (cyan badge)
+      const typeBadge = container.querySelector('.bg-cyan-100.text-cyan-800');
+      expect(typeBadge).toBeInTheDocument();
+      expect(typeBadge).toHaveTextContent("Energy Poverty Aid");
     });
   });
 });

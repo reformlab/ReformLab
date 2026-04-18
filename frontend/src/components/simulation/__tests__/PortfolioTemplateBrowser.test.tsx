@@ -125,7 +125,7 @@ describe("Story 24.4: Surfaced Policy Packs", () => {
         availability_reason: null,
       };
 
-      render(
+      const { container } = render(
         <PortfolioTemplateBrowser
           templates={[vehicleMalusTemplate]}
           selectedIds={[]}
@@ -133,7 +133,10 @@ describe("Story 24.4: Surfaced Policy Packs", () => {
         />,
       );
 
-      expect(screen.getAllByText("Vehicle Malus").length).toBeGreaterThan(0);
+      // Assert the type badge element specifically (rose-colored span), not just text
+      const typeBadge = container.querySelector('.bg-rose-100.text-rose-800');
+      expect(typeBadge).toBeInTheDocument();
+      expect(typeBadge).toHaveTextContent("Vehicle Malus");
     });
 
     it("should display 'Energy Poverty Aid' label for energy_poverty_aid type (AC-1)", () => {
@@ -149,7 +152,7 @@ describe("Story 24.4: Surfaced Policy Packs", () => {
         availability_reason: null,
       };
 
-      render(
+      const { container } = render(
         <PortfolioTemplateBrowser
           templates={[energyAidTemplate]}
           selectedIds={[]}
@@ -157,7 +160,10 @@ describe("Story 24.4: Surfaced Policy Packs", () => {
         />,
       );
 
-      expect(screen.getAllByText("Energy Poverty Aid").length).toBeGreaterThan(0);
+      // Assert the type badge element specifically (cyan-colored span), not just text
+      const typeBadge = container.querySelector('.bg-cyan-100.text-cyan-800');
+      expect(typeBadge).toBeInTheDocument();
+      expect(typeBadge).toHaveTextContent("Energy Poverty Aid");
     });
 
     it("should display correct label for underscore-format carbon_tax type (dual-format support)", () => {
@@ -300,7 +306,7 @@ describe("Story 24.4: Surfaced Policy Packs", () => {
         availability_reason: null,
       };
 
-      render(
+      const { container } = render(
         <PortfolioTemplateBrowser
           templates={[vehicleMalusTemplate]}
           selectedIds={[]}
@@ -308,8 +314,9 @@ describe("Story 24.4: Surfaced Policy Packs", () => {
         />,
       );
 
-      // Should not show any availability reason text
-      expect(screen.queryByText(/Domain translation pending/)).not.toBeInTheDocument();
+      // Should not render any availability reason container (amber background div)
+      const reasonBox = container.querySelector('.bg-amber-50.rounded.border');
+      expect(reasonBox).not.toBeInTheDocument();
     });
   });
 
