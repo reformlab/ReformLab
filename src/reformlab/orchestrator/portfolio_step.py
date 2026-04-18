@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import replace
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import pyarrow as pa
 
@@ -267,6 +267,7 @@ class PortfolioComputationStep:
         "_adapter",
         "_population",
         "_portfolio",
+        "_runtime_mode",
         "_name",
         "_depends_on",
         "_description",
@@ -277,6 +278,7 @@ class PortfolioComputationStep:
         adapter: ComputationAdapter,
         population: PopulationData,
         portfolio: PolicyPortfolio,
+        runtime_mode: Literal["live", "replay"] = "live",
         name: str = "portfolio_computation",
         depends_on: tuple[str, ...] = (),
         description: str | None = None,
@@ -298,6 +300,7 @@ class PortfolioComputationStep:
         self._adapter = adapter
         self._population = population
         self._portfolio = portfolio
+        self._runtime_mode = runtime_mode
         self._name = name
         self._depends_on = depends_on
         self._description = (
@@ -364,32 +367,35 @@ class PortfolioComputationStep:
             policy_name = policy_cfg.name or policy_cfg.policy_type.value
             policy_type_value = policy_cfg.policy_type.value
 
-            # Story 24.3: Translate domain policy for live execution
-            try:
-                translated_policy = translate_policy(
-                    policy_cfg.policy, f"{self._portfolio.name}[{i}]"
-                )
-                translated_cfg = replace(policy_cfg, policy=translated_policy)
-                comp_policy = _to_computation_policy(translated_cfg)
-            except TranslationError as exc:
-                logger.error(
-                    "event=portfolio_translation_error year=%d "
-                    "policy_index=%d policy_type=%s adapter_version=%s what=%s",
-                    year,
-                    i,
-                    policy_type_value,
-                    adapter_version,
-                    exc.what,
-                )
-                raise PortfolioComputationStepError(
-                    f"Translation failed: {exc.what}",
-                    year=year,
-                    adapter_version=adapter_version,
-                    policy_index=i,
-                    policy_name=policy_name,
-                    policy_type=policy_type_value,
-                    original_error=exc,
-                ) from exc
+            if self._runtime_mode == "replay":
+                comp_policy = _to_computation_policy(policy_cfg)
+            else:
+                # Story 24.3: Translate domain policy for live execution.
+                try:
+                    translated_policy = translate_policy(
+                        policy_cfg.policy, f"{self._portfolio.name}[{i}]"
+                    )
+                    translated_cfg = replace(policy_cfg, policy=translated_policy)
+                    comp_policy = _to_computation_policy(translated_cfg)
+                except TranslationError as exc:
+                    logger.error(
+                        "event=portfolio_translation_error year=%d "
+                        "policy_index=%d policy_type=%s adapter_version=%s what=%s",
+                        year,
+                        i,
+                        policy_type_value,
+                        adapter_version,
+                        exc.what,
+                    )
+                    raise PortfolioComputationStepError(
+                        f"Translation failed: {exc.what}",
+                        year=year,
+                        adapter_version=adapter_version,
+                        policy_index=i,
+                        policy_name=policy_name,
+                        policy_type=policy_type_value,
+                        original_error=exc,
+                    ) from exc
 
             try:
                 result = self._adapter.compute(

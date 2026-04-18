@@ -77,14 +77,16 @@ Rebates applied to eligible households or entities.
 
 **Key Fields:**
 - `rate_schedule`: Dict mapping years to rebate amounts
-- `eligible_categories`: Tuple of categories eligible for rebates
+- `rebate_type`: Rebate distribution type (e.g. `lump_sum`, `progressive_dividend`)
+- `income_weights`: Dict mapping decile names to weight multipliers for progressive distribution
 
 **Example:**
 ```yaml
 policy_type: rebate
 rate_schedule:
   2025: 1000.0
-eligible_categories: [electric_vehicle]
+rebate_type: lump_sum
+income_weights: {}
 ```
 
 ### Feebate (`feebate`)
@@ -95,22 +97,18 @@ Combined fee and rebate system with income thresholds.
 
 **Key Fields:**
 - `rate_schedule`: Dict mapping years to base rates
-- `threshold`: Income threshold for fee vs rebate eligibility
-- `rebates`: Dict mapping income brackets to rebate amounts
-- `maluses`: Dict mapping income brackets to fee amounts
+- `pivot_point`: Income pivot point for fee vs rebate eligibility
+- `fee_rate`: Fee rate applied above pivot point
+- `rebate_rate`: Rebate rate applied below pivot point
 
 **Example:**
 ```yaml
 policy_type: feebate
 rate_schedule:
   2025: 50.0
-threshold: 50000.0
-rebates:
-  0: 1000.0
-  50000: 500.0
-maluses:
-  50000: 200.0
-  100000: 500.0
+pivot_point: 50000.0
+fee_rate: 200.0
+rebate_rate: 500.0
 ```
 
 ### Vehicle Malus (`vehicle_malus`)

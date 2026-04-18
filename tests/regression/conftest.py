@@ -25,10 +25,6 @@ if TYPE_CHECKING:
     from reformlab.templates.schema import SubsidyParameters
     from reformlab.templates.vehicle_malus.compute import VehicleMalusParameters
 
-# Reuse existing fixtures from template subsystems
-from tests.templates.subsidy.conftest import sample_population as subsidy_sample_population
-from tests.templates.vehicle_malus.conftest import sample_population as vehicle_malus_sample_population
-
 
 # ---------------------------------------------------------------------------
 # Surfaced Pack Policy Fixtures
@@ -155,20 +151,41 @@ def assert_surfaced_pack_columns_present(result: Any, policy_types: tuple[str, .
 
     Story 24.5 / AC-1, #4: Provides reusable helper for future pack expansion.
     """
-    column_names = result.column_names if hasattr(result, "column_names") else result.keys()
+    if hasattr(result, "column_names"):
+        column_names = list(result.column_names)
+    elif isinstance(result, dict) and isinstance(result.get("columns"), list):
+        column_names = [str(column) for column in result["columns"]]
+    else:
+        column_names = list(result.keys())
+
+    expected_columns = {
+        "subsidy": ("subsidy", "subsidy_amount"),
+        "vehicle_malus": ("vehicle_malus", "malus_amount"),
+        "energy_poverty_aid": ("energy_poverty_aid", "aid_amount"),
+    }
+
+    def matches_policy_type(column_name: str, policy_type: str) -> bool:
+        candidates = expected_columns.get(policy_type, (policy_type,))
+        if column_name in candidates:
+            return True
+
+        prefix = f"{policy_type}_"
+        if not column_name.startswith(prefix):
+            return False
+
+        remainder = column_name[len(prefix):]
+        parts = remainder.split("_", 1)
+        if parts[0].isdigit() and len(parts) == 2:
+            remainder = parts[1]
+        return remainder in candidates
 
     missing = []
     for policy_type in policy_types:
-        # Check for exact match first
-        if policy_type in column_names:
-            continue
-
-        # Check for prefixed variants (portfolio output pattern)
-        found = any(col.endswith(f"_{policy_type}") or col == policy_type for col in column_names)
+        found = any(matches_policy_type(col, policy_type) for col in column_names)
         if not found:
             missing.append(policy_type)
 
-    assert not missing, f"Missing surfaced pack columns: {missing}. Available columns: {list(column_names)}"
+    assert not missing, f"Missing surfaced pack columns: {missing}. Available columns: {column_names}"
 
 
 def assert_live_ready_metadata(template: dict[str, Any], policy_type: str) -> None:
@@ -211,12 +228,70 @@ def _set_test_password(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("REFORMLAB_PASSWORD", "test-password-123")
 
 
+def _surfaced_pack_output(population: Any, policy: Any, period: int) -> pa.Table:
+    """Return deterministic adapter output with surfaced pack columns."""
+    table = population.primary_table
+    row_count = table.num_rows or 3
+    household_ids = (
+        table.column("household_id")
+        if table.num_rows and "household_id" in table.column_names
+        else pa.array(range(1, row_count + 1), type=pa.int64())
+    )
+    incomes = (
+        table.column("income")
+        if table.num_rows and "income" in table.column_names
+        else pa.array([20000.0 + i * 1000.0 for i in range(row_count)], type=pa.float64())
+    )
+    output = {
+        "household_id": household_ids,
+        "year": pa.array([period] * row_count, type=pa.int64()),
+        "income": incomes,
+        "disposable_income": pa.array([19000.0 + i * 1000.0 for i in range(row_count)], type=pa.float64()),
+        "carbon_tax": pa.array([100.0 + i for i in range(row_count)], type=pa.float64()),
+    }
+
+    policy_name = getattr(policy, "name", "")
+    if "subsidy" in policy_name:
+        output["subsidy_amount"] = pa.array([500.0] * row_count, type=pa.float64())
+    elif "vehicle_malus" in policy_name or "malus" in policy_name:
+        output["vehicle_malus"] = pa.array([0.0, 600.0, 1200.0][:row_count], type=pa.float64())
+    elif "energy_poverty_aid" in policy_name or "energy" in policy_name:
+        output["energy_poverty_aid"] = pa.array([150.0] * row_count, type=pa.float64())
+
+    return pa.table(output)
+
+
 @pytest.fixture()
-def client() -> TestClient:
-    """Create a FastAPI test client."""
+def tmp_store(tmp_path: Path) -> Any:
+    """ResultStore backed by tmp_path."""
+    from reformlab.server.result_store import ResultStore
+
+    return ResultStore(base_dir=tmp_path / "results")
+
+
+@pytest.fixture()
+def client(tmp_path: Path, tmp_store: Any, monkeypatch: pytest.MonkeyPatch) -> TestClient:
+    """Create a FastAPI test client with isolated store, registry, and adapter."""
+    import reformlab.server.dependencies as deps
+    from reformlab.computation.mock_adapter import MockAdapter
+    from reformlab.server.dependencies import ResultCache, get_registry, get_result_cache, get_result_store
+    from reformlab.templates.registry import ScenarioRegistry
+
+    registry = ScenarioRegistry(registry_path=tmp_path / "registry")
+    adapter = MockAdapter(compute_fn=_surfaced_pack_output)
+
+    monkeypatch.setattr(deps, "_adapter", adapter)
+    monkeypatch.setattr(deps, "_result_store", tmp_store)
+    monkeypatch.setattr(deps, "_result_cache", ResultCache(max_size=20))
+    monkeypatch.setattr(deps, "_registry", registry)
+    monkeypatch.setenv("REFORMLAB_ENV", "dev")
+
     from reformlab.server.app import create_app
 
     app = create_app()
+    app.dependency_overrides[get_result_store] = lambda: tmp_store
+    app.dependency_overrides[get_result_cache] = lambda: deps._result_cache
+    app.dependency_overrides[get_registry] = lambda: registry
     return TestClient(app)
 
 

@@ -6,12 +6,12 @@ Story 24.5 / AC-2: Verifies that surfaced subsidy-family packs execute
 successfully through the live path.
 
 Flow:
-1) OpenAPI availability
+1) Health check
 2) Auth login
 3) Catalog verification (surfaced types present)
 4) Portfolio creation with surfaced packs
-5) Portfolio execution
-6) Result verification
+5) Baseline and portfolio execution
+6) Result and comparison verification
 
 Exits with code 0 on success, non-zero on failure.
 """
@@ -106,14 +106,14 @@ def main() -> int:
 
     print(f"[surfaced-packs-smoke] base_url={base_url}")
 
-    # 1) OpenAPI
+    # 1) Health check
     _request(
         method="GET",
         base_url=base_url,
-        path="/api/openapi.json",
+        path="/api/health",
         timeout=timeout,
     )
-    print("[surfaced-packs-smoke] openapi ok")
+    print("[surfaced-packs-smoke] health ok")
 
     # 2) Login
     _, login_data, _ = _request(
@@ -178,7 +178,7 @@ def main() -> int:
             {
                 "name": "energy-poverty",
                 "policy_type": "energy_poverty_aid",  # Subsidy-family pack
-                "rate_schedule": {"2026": "150"},
+                "rate_schedule": {"2025": "150"},
                 "exemptions": [],
                 "thresholds": [],
                 "covered_categories": [],
@@ -186,6 +186,18 @@ def main() -> int:
                     "income_ceiling": 11000.0,
                     "energy_share_threshold": 0.10,
                     "base_aid_amount": 100.0,
+                },
+            },
+            {
+                "name": "vehicle-malus",
+                "policy_type": "vehicle_malus",
+                "rate_schedule": {"2025": "50"},
+                "exemptions": [],
+                "thresholds": [],
+                "covered_categories": [],
+                "extra_params": {
+                    "emission_threshold": 118.0,
+                    "malus_rate_per_gkm": 50.0,
                 },
             },
         ],
@@ -212,15 +224,100 @@ def main() -> int:
         token=token,
     )
 
-    # Verify surfaced pack policy is present
+    # Verify surfaced pack policies are present
     policies = portfolio_detail.get("policies", [])
     epa_policy = next((p for p in policies if p.get("policy_type") == "energy_poverty_aid"), None)
     if epa_policy is None:
         raise SmokeTestError("Energy poverty aid policy not found in loaded portfolio")
+    vehicle_policy = next((p for p in policies if p.get("policy_type") == "vehicle_malus"), None)
+    if vehicle_policy is None:
+        raise SmokeTestError("Vehicle malus policy not found in loaded portfolio")
 
     print("[surfaced-packs-smoke] portfolio load ok")
 
-    # 6) Cleanup
+    # 6) Execute baseline and surfaced pack portfolio through the live path
+    _, baseline_run, _ = _request(
+        method="POST",
+        base_url=base_url,
+        path="/api/runs",
+        timeout=timeout,
+        token=token,
+        body={
+            "template_name": "carbon_tax",
+            "policy": {"rate_schedule": {"2025": 44.6}},
+            "start_year": 2025,
+            "end_year": 2025,
+            "runtime_mode": "live",
+        },
+    )
+    baseline_run_id = baseline_run.get("run_id")
+    if not isinstance(baseline_run_id, str) or not baseline_run_id:
+        raise SmokeTestError("Baseline run succeeded but no run_id was returned")
+    print(f"[surfaced-packs-smoke] baseline execution ok: {baseline_run_id}")
+
+    _, portfolio_run, _ = _request(
+        method="POST",
+        base_url=base_url,
+        path="/api/runs",
+        timeout=timeout,
+        token=token,
+        body={
+            "portfolio_name": portfolio_name,
+            "start_year": 2025,
+            "end_year": 2025,
+            "runtime_mode": "live",
+        },
+    )
+    portfolio_run_id = portfolio_run.get("run_id")
+    if not isinstance(portfolio_run_id, str) or not portfolio_run_id:
+        raise SmokeTestError("Portfolio run succeeded but no run_id was returned")
+    print(f"[surfaced-packs-smoke] surfaced portfolio execution ok: {portfolio_run_id}")
+
+    _, result_data, _ = _request(
+        method="GET",
+        base_url=base_url,
+        path=f"/api/results/{portfolio_run_id}",
+        timeout=timeout,
+        token=token,
+    )
+    columns = result_data.get("columns") or []
+    if not isinstance(columns, list):
+        raise SmokeTestError("Result detail returned invalid columns payload")
+    missing_columns = [
+        marker for marker in ("energy_poverty_aid", "vehicle_malus")
+        if not any(marker in str(column) for column in columns)
+    ]
+    if missing_columns:
+        raise SmokeTestError(
+            f"Portfolio result missing surfaced columns {missing_columns}; columns={columns}"
+        )
+    print("[surfaced-packs-smoke] result columns ok")
+
+    _request(
+        method="POST",
+        base_url=base_url,
+        path="/api/comparison",
+        timeout=timeout,
+        token=token,
+        body={
+            "baseline_run_id": baseline_run_id,
+            "reform_run_id": portfolio_run_id,
+            "welfare_field": "disposable_income",
+            "threshold": 0,
+        },
+    )
+    print("[surfaced-packs-smoke] comparison ok")
+
+    # 7) Cleanup
+    for run_id in (baseline_run_id, portfolio_run_id):
+        _request(
+            method="DELETE",
+            base_url=base_url,
+            path=f"/api/results/{run_id}",
+            timeout=timeout,
+            token=token,
+            expected_statuses=(204,),
+        )
     _request(
         method="DELETE",
         base_url=base_url,

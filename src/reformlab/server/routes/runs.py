@@ -70,6 +70,9 @@ async def run_simulation(
             },
         )
 
+    if body.portfolio_name and body.runtime_mode == "live":
+        _ensure_portfolio_live_ready(body.portfolio_name, registry)
+
     from reformlab.server.population_resolver import PopulationResolutionError
 
     # Story 23.4 / AC-2: Replay mode creates its own precomputed adapter
@@ -287,6 +290,54 @@ async def run_simulation(
     )
 
 
+def _ensure_portfolio_live_ready(
+    portfolio_name: str,
+    registry: ScenarioRegistry,
+) -> None:
+    """Reject live portfolio runs containing replay-only policy types."""
+    from reformlab.server.routes.templates import LIVE_READY_TYPES
+    from reformlab.templates.portfolios.portfolio import PolicyPortfolio
+    from reformlab.templates.registry import RegistryError, ScenarioNotFoundError
+
+    try:
+        entry = registry.get(portfolio_name)
+    except (KeyError, ScenarioNotFoundError, RegistryError):
+        return
+
+    if not isinstance(entry, PolicyPortfolio):
+        return
+
+    unavailable: list[str] = []
+    for index, policy_cfg in enumerate(entry.policies):
+        if policy_cfg.policy_type is None:
+            policy_name = policy_cfg.name or f"policy_{index}"
+            unavailable.append(
+                f"policy[{index}] '{policy_name}' (missing policy_type)"
+            )
+            continue
+
+        policy_type = policy_cfg.policy_type.value
+        if policy_type not in LIVE_READY_TYPES:
+            policy_name = policy_cfg.name or policy_type
+            unavailable.append(f"policy[{index}] '{policy_name}' ({policy_type})")
+
+    if unavailable:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "what": "Portfolio contains policies unavailable for live execution",
+                "why": (
+                    f"Portfolio '{portfolio_name}' contains policies unavailable "
+                    f"for live execution: {', '.join(unavailable)}"
+                ),
+                "fix": (
+                    "Use runtime_mode='replay' or remove replay-only policies. "
+                    f"Live-ready policy types: {', '.join(sorted(LIVE_READY_TYPES))}"
+                ),
+            },
+        )
+
+
 def _run_portfolio(
     body: RunRequest,
     adapter: ComputationAdapter,
@@ -343,6 +394,7 @@ def _run_portfolio(
         adapter=adapter,
         population=population,
         portfolio=entry,
+        runtime_mode=body.runtime_mode,
     )
 
     # Use the first policy's type as the template_name for the scenario config.

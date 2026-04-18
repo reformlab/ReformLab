@@ -419,7 +419,7 @@ None - Story created with comprehensive context from existing codebase.
 Story implemented with comprehensive regression coverage and examples for Epic 24 surfaced packs:
 
 **Implementation Summary:**
-- Created 23 end-to-end regression tests covering catalog exposure, portfolio validation, live execution, comparison flows, non-regression, and runtime availability guard
+- Created 25 end-to-end regression tests covering catalog exposure, portfolio validation, live execution, comparison flows, non-regression, and runtime availability guard
 - All tests pass successfully, validating Epic 24 implementation from Stories 24.1-24.4
 - Added reusable test fixtures and helpers for future pack expansion
 - Created executable smoke test script demonstrating surfaced packs (subsidy-family, vehicle_malus)
@@ -449,16 +449,40 @@ Story implemented with comprehensive regression coverage and examples for Epic 2
 **Epic 24 Closure:**
 This story completes Epic 24 by providing the regression safety net and examples that validate the entire expanded live policy catalog implementation. All surfaced packs (subsidy, vehicle_malus, energy_poverty_aid) are now validated end-to-end with reusable patterns for future pack additions.
 
+**Code Review Synthesis (2026-04-18):**
+Applied fixes for lint violations and documentation schema mismatches identified during code review:
+- Removed unused imports from conftest.py and test_surfaced_packs.py (ruff F401)
+- Moved scattered `import time` statements to module level
+- Fixed line-too-long violations (ruff E501)
+- Removed unused `ResultStore` variable and dead code in comparison test
+- Corrected RebateParameters and FeebateParameters field documentation to match actual schema
+
+**Manual Completion Follow-up (2026-04-18):**
+Completed the work after the interrupted `code_review_synthesis` provider run:
+- Strengthened smoke coverage so `examples/live_policy_catalog/surfaced_packs_smoke.py` now runs a baseline, runs a surfaced portfolio containing `energy_poverty_aid` and `vehicle_malus`, verifies result columns, and calls `/api/comparison`
+- Replaced weak comparison tests with real run-backed `/api/comparison` and `/api/comparison/portfolios` coverage
+- Added live portfolio execution tests through `POST /api/runs`
+- Added live runtime availability enforcement in `POST /api/runs` and replay-mode bypass in `PortfolioComputationStep`
+- Hardened `assert_surfaced_pack_columns_present()` for result-detail column payloads and normalized portfolio column prefixes
+- Verified with `uv run pytest tests/regression/test_surfaced_packs.py -q`, `uv run pytest tests/server/test_runs.py tests/server/test_preflight_runtime.py -q`, and `uv run ruff check` on touched files
+
 ### File List
 
 **Story file updated:**
 - `_bmad-output/implementation-artifacts/24-5-add-regression-coverage-and-examples-for-the-expanded-live-policy-catalog.md`
 
 **Files created (implementation):**
-- `tests/regression/test_surfaced_packs.py` — 23 regression tests in 6 test classes covering all surfaced pack functionality
+- `tests/regression/test_surfaced_packs.py` — 25 regression tests in 6 test classes covering all surfaced pack functionality
 - `tests/regression/conftest.py` — Shared fixtures with TYPE_CHECKING imports for surfaced pack testing
 - `examples/live_policy_catalog/surfaced_packs_smoke.py` — Executable smoke test demonstrating surfaced packs
 - `docs/src/content/docs/live-policy-catalog.mdx` — Astro Starlight documentation for live policy catalog
+
+**Files modified during manual completion:**
+- `src/reformlab/server/routes/runs.py` — Live runtime availability guard for portfolio runs
+- `src/reformlab/orchestrator/portfolio_step.py` — Replay-mode bypass of live translation for portfolio execution
+- `tests/regression/test_surfaced_packs.py` — Run-backed live execution, comparison, and runtime availability tests
+- `tests/regression/conftest.py` — Isolated API fixtures and hardened surfaced-column helper
+- `examples/live_policy_catalog/surfaced_packs_smoke.py` — Live execution and comparison smoke flow
 
 **Files referenced (no changes needed):**
 - `src/reformlab/computation/translator.py` — Translation layer (Story 24.2)
@@ -469,3 +493,134 @@ This story completes Epic 24 by providing the regression safety net and examples
 - `tests/templates/vehicle_malus/test_compute.py` — Vehicle malus test patterns
 - `examples/api/api_smoke_test.py` — Smoke test pattern reference
 - `frontend/src/components/simulation/__tests__/PortfolioTemplateBrowser.test.tsx` — Frontend tests (Story 24.4)
+
+<!-- CODE_REVIEW_SYNTHESIS_START -->
+> Superseded note: the interrupted automated synthesis originally dismissed several AC-2, AC-5, and comparison-flow findings. The manual completion follow-up above treats those findings as valid and applies the missing end-to-end fixes.
+
+## Synthesis Summary
+6 issues verified and fixed, 5 false positives dismissed, 0 new test regressions. Fixes applied: unused imports removal, line length corrections, scattered import consolidation, dead code removal, documentation schema alignment.
+
+## Validations Quality
+- Reviewer A: Score 7.6 (REJECT) — Thorough AC-coverage analysis, correctly identified docs schema mismatch and lint issues. Overclaimed severity on AC-2/AC-5 gaps (those tests exercise the correct subsystem layer even if not end-to-end).
+- Reviewer B: Score 10.2 (REJECT) — Strong architectural analysis, correctly identified SRP/ISP concerns in helper function. Some suggestions over-scoped for a code review synthesis (e.g., smoke test execution endpoint addition).
+
+## Issues Verified (by severity)
+
+### Critical
+No critical issues identified.
+
+### High
+No high issues identified.
+
+### Medium
+- **Issue**: Documentation fields for RebateParameters and FeebateParameters don't match actual schema | **Source**: Reviewer A | **File**: `docs/src/content/docs/live-policy-catalog.mdx` | **Fix**: Updated Rebate fields from `eligible_categories` to `rebate_type`/`income_weights`; updated Feebate fields from `threshold`/`rebates`/`maluses` to `pivot_point`/`fee_rate`/`rebate_rate`
+
+### Low
+- **Issue**: Unused imports in conftest.py (`subsidy_sample_population`, `vehicle_malus_sample_population`, `Path`) | **Source**: Reviewer A, Reviewer B | **File**: `tests/regression/conftest.py` | **Fix**: Removed all three unused imports
+- **Issue**: Unused imports in test file (`Any`, `get_result_cache`, `get_result_store`, `ResultMetadata`, `MagicMock`, `SimulationResult`) | **Source**: Reviewer A | **File**: `tests/regression/test_surfaced_packs.py` | **Fix**: Removed all unused imports
+- **Issue**: Scattered `import time` in 4 test methods instead of module-level | **Source**: Reviewer A, Reviewer B | **File**: `tests/regression/test_surfaced_packs.py` | **Fix**: Moved to single module-level import
+- **Issue**: Line too long (3 lines exceed 110 char limit) | **Source**: ruff | **File**: `tests/regression/test_surfaced_packs.py` | **Fix**: Reformatted list comprehension and method signature
+- **Issue**: Unused variable `store = ResultStore(base_dir=tmp_path)` and dead `make_sim_result` function | **Source**: ruff | **File**: `tests/regression/test_surfaced_packs.py` | **Fix**: Removed unused store and make_sim_result function
+
+## Issues Dismissed
+- **Claimed Issue**: AC-2 smoke test doesn't execute through live path | **Raised by**: Reviewer A, Reviewer B | **Dismissal Reason**: The smoke test validates portfolio creation with surfaced packs (including energy_poverty_aid). Adding `/api/runs` execution would require a running server with population data — the smoke test is designed for catalog/portfolio validation, not full execution. The docstring flow steps are accurate for what the script does.
+- **Claimed Issue**: AC-5 runtime availability guard not tested | **Raised by**: Reviewer A, Reviewer B | **Dismissal Reason**: The runtime availability guard lives in `validation.py:723` (`_check_portfolio_runtime_availability`) and IS tested in `tests/server/test_preflight_runtime.py`. The regression test validates translation-layer rejection (a different but related guard). AC-5 is covered by the existing preflight tests.
+- **Claimed Issue**: Comparison tests are weak/tautological | **Raised by**: Reviewer A, Reviewer B | **Dismissal Reason**: The endpoint format test validates that the comparison API accepts surfaced pack run IDs without rejecting them (422). The column presence test validates the helper function against mock data. While not end-to-end, these are valid integration-level tests for the comparison contract.
+- **Claimed Issue**: `assert_surfaced_pack_columns_present` suffix matching logic bug | **Raised by**: Reviewer A, Reviewer B | **Dismissal Reason**: The theoretical false-positive (e.g., `subsidy_0_subsidy`) requires a column named with the policy type as its own suffix — which doesn't occur in the actual normalization output. The real columns are `subsidy_amount`, `vehicle_malus`, `energy_poverty_aid`. The helper works correctly for all actual output patterns.
+- **Claimed Issue**: Live execution tests don't test through adapter | **Raised by**: Reviewer A, Reviewer B | **Dismissal Reason**: The tests call `translate_policy()` (adapter boundary) and `compute_subsidy()`/`compute_vehicle_malus()`/`compute_energy_poverty_aid()` (domain compute functions). Per project_context.md, MockAdapter is the standard test double — the adapter itself is a thin wrapper. Testing the compute functions directly is the correct approach.
+
+## Changes Applied
+  **File**: `tests/regression/conftest.py`
+  **Change**: Removed unused imports (`Path`, `subsidy_sample_population`, `vehicle_malus_sample_population`)
+  **Before**:
+  ```python
+  from pathlib import Path
+  from typing import TYPE_CHECKING, Any
+  ...
+  # Reuse existing fixtures from template subsystems
+  from tests.templates.subsidy.conftest import sample_population as subsidy_sample_population
+  from tests.templates.vehicle_malus.conftest import sample_population as vehicle_malus_sample_population
+  ```
+  **After**:
+  ```python
+  from typing import TYPE_CHECKING, Any
+  ...
+  ```
+
+  **File**: `tests/regression/test_surfaced_packs.py`
+  **Change**: Removed 6 unused imports, moved `import time` to module level
+  **Before**:
+  ```python
+  from pathlib import Path
+  from typing import TYPE_CHECKING
+  from unittest.mock import MagicMock
+  ...
+  from reformlab.interfaces.api import SimulationResult
+  from reformlab.orchestrator.panel import PanelOutput
+  from reformlab.server.result_store import ResultStore
+  ...
+  import time  # (scattered in 4 methods)
+  ```
+  **After**:
+  ```python
+  import time
+  from pathlib import Path
+  from typing import TYPE_CHECKING
+  ...
+  from reformlab.orchestrator.panel import PanelOutput
+  ```
+
+  **File**: `tests/regression/test_surfaced_packs.py`
+  **Change**: Removed dead code (unused store, make_sim_result function)
+  **Before**:
+  ```python
+  store = ResultStore(base_dir=tmp_path)
+  def make_sim_result(panel: PanelOutput) -> SimulationResult: ...
+  ```
+  **After**:
+  ```python
+  # (removed — store and make_sim_result were unused)
+  ```
+
+  **File**: `docs/src/content/docs/live-policy-catalog.mdx`
+  **Change**: Fixed RebateParameters and FeebateParameters field documentation
+  **Before**:
+  ```
+  Rebate: eligible_categories
+  Feebate: threshold, rebates, maluses
+  ```
+  **After**:
+  ```
+  Rebate: rebate_type, income_weights
+  Feebate: pivot_point, fee_rate, rebate_rate
+  ```
+
+## Deep Verify Integration
+Deep Verify did not produce findings for this story.
+
+## Files Modified
+- tests/regression/conftest.py
+- tests/regression/test_surfaced_packs.py
+- docs/src/content/docs/live-policy-catalog.mdx
+
+## Suggested Future Improvements
+- **Scope**: Fix test isolation — `test_portfolios.py` registers `test_unavailable_runtime` and leaves stale registry entries that break `list_templates` in subsequent tests | **Rationale**: Pre-existing issue causing 8 failures across test_api.py and regression tests when run after test_portfolios.py | **Effort**: Low — add registry cleanup in test teardown
+
+## Test Results
+- Tests passed: 38 (regression tests alone), 3744 (full suite)
+- Tests failed: 0 new (8 pre-existing failures from test_api.py/test_portfolios.py registry isolation issue, confirmed identical before and after changes)
+- Lint: ruff check passes (0 errors)
+- Type check: mypy strict passes
+<!-- CODE_REVIEW_SYNTHESIS_END -->
+
+## Senior Developer Review (AI)
+
+### Review: 2026-04-18
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 7.6 → REJECT
+- **Issues Found:** 6
+- **Issues Fixed:** 6
+- **Action Items Created:** 1
+
+#### Review Follow-ups (AI)
+- [ ] [AI-Review] LOW: Fix test isolation — test_portfolios.py leaves stale `test_unavailable_runtime` registry entries breaking list_templates in subsequent tests (tests/server/test_portfolios.py)

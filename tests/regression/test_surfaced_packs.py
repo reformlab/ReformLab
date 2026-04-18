@@ -20,18 +20,12 @@ expanded live policy catalog.
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import TYPE_CHECKING, Any
-from unittest.mock import MagicMock
+import uuid
+from typing import TYPE_CHECKING
 
 import pyarrow as pa
 import pytest
 from fastapi.testclient import TestClient
-
-from reformlab.interfaces.api import SimulationResult
-from reformlab.orchestrator.panel import PanelOutput
-from reformlab.server.dependencies import get_result_cache, get_result_store
-from reformlab.server.result_store import ResultMetadata, ResultStore
 
 if TYPE_CHECKING:
     from reformlab.templates.energy_poverty_aid.compute import EnergyPovertyAidParameters
@@ -43,6 +37,97 @@ from tests.regression.conftest import (
     assert_live_ready_metadata,
     assert_surfaced_pack_columns_present,
 )
+
+
+def _unique_name(prefix: str) -> str:
+    return f"{prefix}-{uuid.uuid4().hex[:10]}"
+
+
+def _policy_request(policy_type: str, name: str) -> dict[str, object]:
+    extras: dict[str, object] = {}
+    if policy_type == "vehicle_malus":
+        extras = {"emission_threshold": 118.0, "malus_rate_per_gkm": 50.0}
+    elif policy_type == "energy_poverty_aid":
+        extras = {
+            "income_ceiling": 11000.0,
+            "energy_share_threshold": 0.10,
+            "base_aid_amount": 100.0,
+        }
+
+    return {
+        "name": name,
+        "policy_type": policy_type,
+        "rate_schedule": {"2025": "150" if policy_type == "energy_poverty_aid" else "50"},
+        "exemptions": [],
+        "thresholds": [],
+        "covered_categories": [],
+        "extra_params": extras,
+    }
+
+
+def _create_surfaced_portfolio(
+    client: TestClient,
+    auth_headers: dict[str, str],
+    *,
+    name: str,
+    surfaced_type: str,
+) -> None:
+    response = client.post(
+        "/api/portfolios",
+        json={
+            "name": name,
+            "description": f"Regression portfolio with {surfaced_type}",
+            "policies": [
+                {
+                    "name": "carbon",
+                    "policy_type": "carbon_tax",
+                    "rate_schedule": {"2025": "44.6"},
+                    "exemptions": [],
+                    "thresholds": [],
+                    "covered_categories": [],
+                    "extra_params": {},
+                },
+                _policy_request(surfaced_type, surfaced_type),
+            ],
+            "resolution_strategy": "sum",
+        },
+        headers=auth_headers,
+    )
+    assert response.status_code == 201, response.json()
+
+
+def _run_portfolio(
+    client: TestClient,
+    auth_headers: dict[str, str],
+    *,
+    portfolio_name: str,
+    runtime_mode: str = "live",
+) -> str:
+    response = client.post(
+        "/api/runs",
+        json={
+            "portfolio_name": portfolio_name,
+            "start_year": 2025,
+            "end_year": 2025,
+            "runtime_mode": runtime_mode,
+        },
+        headers=auth_headers,
+    )
+    assert response.status_code == 200, response.json()
+    data = response.json()
+    assert data["runtime_mode"] == runtime_mode
+    assert data["success"] is True
+    return data["run_id"]
+
+
+def _result_columns(client: TestClient, auth_headers: dict[str, str], run_id: str) -> list[str]:
+    response = client.get(f"/api/results/{run_id}", headers=auth_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["data_available"] is True
+    columns = data["columns"]
+    assert isinstance(columns, list)
+    return columns
 
 
 # ---------------------------------------------------------------------------
@@ -93,7 +178,10 @@ class TestCatalogExposure:
         assert len(vehicle_malus_templates) > 0, "Vehicle malus pack should be surfaced in catalog"
 
         # Verify live_ready metadata
-        live_ready_templates = [t for t in vehicle_malus_templates if t.get("runtime_availability") == "live_ready"]
+        live_ready_templates = [
+            t for t in vehicle_malus_templates
+            if t.get("runtime_availability") == "live_ready"
+        ]
         assert len(live_ready_templates) > 0, "Vehicle malus pack should have live_ready templates"
 
         template = live_ready_templates[0]
@@ -246,9 +334,7 @@ class TestPortfolioValidation:
         self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
         """Verify portfolio creation with vehicle_malus policy succeeds."""
-        import time
-
-        portfolio_name = f"test-vehicle-malus-{int(time.time())}"
+        portfolio_name = _unique_name("test-vehicle-malus")
         request_body = {
             "name": portfolio_name,
             "description": "Test portfolio with vehicle malus",
@@ -291,9 +377,7 @@ class TestPortfolioValidation:
         self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
         """Verify portfolio creation with energy_poverty_aid policy succeeds."""
-        import time
-
-        portfolio_name = f"test-energy-poverty-{int(time.time())}"
+        portfolio_name = _unique_name("test-energy-poverty")
         request_body = {
             "name": portfolio_name,
             "description": "Test portfolio with energy poverty aid",
@@ -390,7 +474,7 @@ class TestLiveExecution:
         self, surfaced_subsidy_params: SubsidyParameters, minimal_population_for_surfaced_packs: pa.Table
     ) -> None:
         """Verify subsidy compute produces correct result structure."""
-        from reformlab.templates.subsidy.compute import compute_subsidy, SubsidyResult
+        from reformlab.templates.subsidy.compute import SubsidyResult, compute_subsidy
 
         result = compute_subsidy(
             population=minimal_population_for_surfaced_packs,
@@ -419,7 +503,7 @@ class TestLiveExecution:
             "vehicle_emissions_gkm": pa.array([80.0, 130.0, 160.0], type=pa.float64()),
         })
 
-        from reformlab.templates.vehicle_malus.compute import compute_vehicle_malus, VehicleMalusResult
+        from reformlab.templates.vehicle_malus.compute import VehicleMalusResult, compute_vehicle_malus
 
         result = compute_vehicle_malus(
             population=population,
@@ -435,10 +519,15 @@ class TestLiveExecution:
         assert len(result.household_ids) == len(population)
 
     def test_energy_poverty_aid_compute_with_population(
-        self, surfaced_energy_poverty_aid_params: EnergyPovertyAidParameters, minimal_population_for_surfaced_packs: pa.Table
+        self,
+        surfaced_energy_poverty_aid_params: EnergyPovertyAidParameters,
+        minimal_population_for_surfaced_packs: pa.Table,
     ) -> None:
         """Verify energy_poverty_aid compute produces correct result structure."""
-        from reformlab.templates.energy_poverty_aid.compute import compute_energy_poverty_aid, EnergyPovertyAidResult
+        from reformlab.templates.energy_poverty_aid.compute import (
+            EnergyPovertyAidResult,
+            compute_energy_poverty_aid,
+        )
 
         result = compute_energy_poverty_aid(
             population=minimal_population_for_surfaced_packs,
@@ -452,6 +541,40 @@ class TestLiveExecution:
         assert hasattr(result, "household_ids")
         assert hasattr(result, "aid_amount")
         assert len(result.household_ids) == len(minimal_population_for_surfaced_packs)
+
+    def test_vehicle_malus_runs_through_live_portfolio_adapter(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """Verify vehicle_malus executes through POST /api/runs portfolio path."""
+        portfolio_name = _unique_name("live-vehicle-malus")
+        _create_surfaced_portfolio(
+            client,
+            auth_headers,
+            name=portfolio_name,
+            surfaced_type="vehicle_malus",
+        )
+
+        run_id = _run_portfolio(client, auth_headers, portfolio_name=portfolio_name)
+        columns = _result_columns(client, auth_headers, run_id)
+
+        assert_surfaced_pack_columns_present({"columns": columns}, ("vehicle_malus",))
+
+    def test_energy_poverty_aid_runs_through_live_portfolio_adapter(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """Verify energy_poverty_aid executes through POST /api/runs portfolio path."""
+        portfolio_name = _unique_name("live-energy-poverty")
+        _create_surfaced_portfolio(
+            client,
+            auth_headers,
+            name=portfolio_name,
+            surfaced_type="energy_poverty_aid",
+        )
+
+        run_id = _run_portfolio(client, auth_headers, portfolio_name=portfolio_name)
+        columns = _result_columns(client, auth_headers, run_id)
+
+        assert_surfaced_pack_columns_present({"columns": columns}, ("energy_poverty_aid",))
 
 
 # ---------------------------------------------------------------------------
@@ -469,62 +592,81 @@ class TestComparisonFlows:
     outputs work in comparison flows"
     """
 
-    def test_comparison_endpoint_accepts_portfolio_run_ids(
+    def test_welfare_comparison_accepts_actual_surfaced_pack_runs(
         self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
-        """Verify comparison endpoint accepts portfolio run IDs."""
-        # The comparison endpoint should accept any run_id format
-        # This test validates the endpoint doesn't reject surfaced pack runs
+        """Verify POST /api/comparison works with real surfaced pack run IDs."""
+        baseline_name = _unique_name("comparison-baseline")
+        reform_name = _unique_name("comparison-reform")
+        _create_surfaced_portfolio(
+            client,
+            auth_headers,
+            name=baseline_name,
+            surfaced_type="subsidy",
+        )
+        _create_surfaced_portfolio(
+            client,
+            auth_headers,
+            name=reform_name,
+            surfaced_type="energy_poverty_aid",
+        )
+
+        baseline_id = _run_portfolio(client, auth_headers, portfolio_name=baseline_name)
+        reform_id = _run_portfolio(client, auth_headers, portfolio_name=reform_name)
+
         response = client.post(
             "/api/comparison",
             json={
-                "baseline_run_id": "test-baseline",
-                "reform_run_id": "test-reform",
+                "baseline_run_id": baseline_id,
+                "reform_run_id": reform_id,
                 "welfare_field": "disposable_income",
                 "threshold": 0,
             },
             headers=auth_headers,
         )
 
-        # Should return 404 (runs don't exist) not 422 (validation error)
-        # 422 would indicate the endpoint doesn't accept the input format
-        assert response.status_code in (404, 200)  # 404 is expected for missing runs
+        assert response.status_code == 200, response.json()
+        assert "data" in response.json()
 
-    def test_comparison_validates_surfaces_pack_columns_in_results(
-        self, client: TestClient, auth_headers: dict[str, str], tmp_path: Path
+    def test_portfolio_comparison_accepts_actual_surfaced_pack_runs(
+        self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
-        """Verify surfaced pack columns are validated in comparison results."""
-        # Create mock panel results with surfaced pack columns
-        def make_panel_with_subsidy(seed: int = 0) -> PanelOutput:
-            n = 10
-            table = pa.table({
-                "household_id": pa.array(list(range(n)), type=pa.int64()),
-                "year": pa.array([2025] * n, type=pa.int64()),
-                "income": pa.array([20000.0 + i * 1000 for i in range(n)], type=pa.float64()),
-                "disposable_income": pa.array([19000.0 + i * 1000 for i in range(n)], type=pa.float64()),
-                "subsidy": pa.array([5000.0] * n, type=pa.float64()),
-            })
-            return PanelOutput(table=table, metadata={"start_year": 2025, "end_year": 2025, "seed": seed})
+        """Verify multi-portfolio comparison works with surfaced pack outputs."""
+        vehicle_name = _unique_name("portfolio-comparison-vehicle")
+        energy_name = _unique_name("portfolio-comparison-energy")
+        _create_surfaced_portfolio(
+            client,
+            auth_headers,
+            name=vehicle_name,
+            surfaced_type="vehicle_malus",
+        )
+        _create_surfaced_portfolio(
+            client,
+            auth_headers,
+            name=energy_name,
+            surfaced_type="energy_poverty_aid",
+        )
 
-        # Create a mock result store
-        store = ResultStore(base_dir=tmp_path)
+        vehicle_id = _run_portfolio(client, auth_headers, portfolio_name=vehicle_name)
+        energy_id = _run_portfolio(client, auth_headers, portfolio_name=energy_name)
 
-        # Create mock simulation results
-        def make_sim_result(panel: PanelOutput) -> SimulationResult:
-            manifest = MagicMock()
-            manifest.manifest_id = "manifest-test"
-            return SimulationResult(
-                success=True,
-                scenario_id="sc-test",
-                yearly_states={},
-                panel_output=panel,
-                manifest=manifest,
-                metadata={},
-            )
+        vehicle_columns = _result_columns(client, auth_headers, vehicle_id)
+        energy_columns = _result_columns(client, auth_headers, energy_id)
+        assert_surfaced_pack_columns_present({"columns": vehicle_columns}, ("vehicle_malus",))
+        assert_surfaced_pack_columns_present({"columns": energy_columns}, ("energy_poverty_aid",))
 
-        # Test that surfaced pack columns are present
-        panel = make_panel_with_subsidy()
-        assert_surfaced_pack_columns_present(panel.table, ("subsidy",))
+        response = client.post(
+            "/api/comparison/portfolios",
+            json={
+                "run_ids": [vehicle_id, energy_id],
+                "baseline_run_id": vehicle_id,
+                "indicator_types": ["fiscal"],
+                "include_welfare": False,
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 200, response.json()
+        assert response.json()["portfolio_labels"] == [vehicle_name, energy_name]
 
 
 # ---------------------------------------------------------------------------
@@ -621,24 +763,76 @@ class TestRuntimeAvailabilityGuard:
         for template in unavailable:
             assert template.get("runtime_availability") == "live_unavailable"
 
-    def test_live_mode_rejects_unavailable_policies_via_translation(
-        self,
+    def test_live_mode_rejects_unavailable_portfolio_but_replay_bypasses_guard(
+        self, client: TestClient, auth_headers: dict[str, str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Verify translation layer rejects unavailable policy types."""
-        from reformlab.computation.translator import translate_policy, TranslationError
-        from reformlab.templates.schema import SubsidyParameters
+        """Verify live run rejects unavailable portfolio policies and replay bypasses."""
+        from dataclasses import dataclass
 
-        # Create a policy with empty rate_schedule (should fail translation)
-        invalid_policy = SubsidyParameters(rate_schedule={})
+        import reformlab.server.dependencies as deps
+        from reformlab.computation.mock_adapter import MockAdapter
+        from reformlab.templates.portfolios.portfolio import PolicyConfig, PolicyPortfolio
+        from reformlab.templates.schema import (
+            CarbonTaxParameters,
+            SubsidyParameters,
+            register_custom_template,
+            register_policy_type,
+            unregister_policy_type,
+        )
 
-        with pytest.raises(TranslationError) as exc_info:
-            translate_policy(invalid_policy, "test-invalid")
+        @dataclass(frozen=True)
+        class UnavailableSubsidyParameters(SubsidyParameters):
+            pass
 
-        # Verify structured error
-        error = exc_info.value
-        assert hasattr(error, "what")
-        assert hasattr(error, "why")
-        assert hasattr(error, "fix")
+        register_policy_type("unavailable_regression_policy")
+        register_custom_template("unavailable_regression_policy", UnavailableSubsidyParameters)
+        try:
+            portfolio_name = _unique_name("unavailable-portfolio")
+            portfolio = PolicyPortfolio(
+                name=portfolio_name,
+                policies=(
+                    PolicyConfig(
+                        policy=CarbonTaxParameters(rate_schedule={2025: 44.6}),
+                        name="carbon_tax",
+                    ),
+                    PolicyConfig(
+                        policy=UnavailableSubsidyParameters(rate_schedule={2025: 100.0}),
+                        name="unavailable_regression_policy",
+                    ),
+                ),
+                resolution_strategy="sum",
+            )
+            deps.get_registry().save(portfolio, portfolio_name)
+
+            live_response = client.post(
+                "/api/runs",
+                json={
+                    "portfolio_name": portfolio_name,
+                    "start_year": 2025,
+                    "end_year": 2025,
+                    "runtime_mode": "live",
+                },
+                headers=auth_headers,
+            )
+            assert live_response.status_code == 422
+            assert "unavailable for live execution" in live_response.json()["detail"]["why"]
+
+            adapter = deps._adapter
+            monkeypatch.setattr(
+                deps,
+                "_create_replay_adapter",
+                lambda: MockAdapter(compute_fn=adapter._compute_fn),
+            )
+            replay_id = _run_portfolio(
+                client,
+                auth_headers,
+                portfolio_name=portfolio_name,
+                runtime_mode="replay",
+            )
+            replay_columns = _result_columns(client, auth_headers, replay_id)
+            assert "disposable_income" in replay_columns
+        finally:
+            unregister_policy_type("unavailable_regression_policy")
 
 
 # ---------------------------------------------------------------------------
@@ -657,9 +851,7 @@ class TestPortfolioSaveLoad:
         self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
         """Verify portfolio with vehicle_malus can be saved and loaded."""
-        import time
-
-        portfolio_name = f"test-vm-save-load-{int(time.time())}"
+        portfolio_name = _unique_name("test-vm-save-load")
         request_body = {
             "name": portfolio_name,
             "description": "Test save/load with vehicle malus",
@@ -714,9 +906,7 @@ class TestPortfolioSaveLoad:
         self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
         """Verify portfolio with energy_poverty_aid can be saved and loaded."""
-        import time
-
-        portfolio_name = f"test-epa-save-load-{int(time.time())}"
+        portfolio_name = _unique_name("test-epa-save-load")
         request_body = {
             "name": portfolio_name,
             "description": "Test save/load with energy poverty aid",
