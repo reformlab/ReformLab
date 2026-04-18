@@ -671,3 +671,289 @@ describe("PoliciesStageScreen — Story 22.2: Layout rebalance and typography", 
     });
   });
 });
+
+// ============================================================================
+// Story 24.4: Portfolio with Surfaced Policies
+// ============================================================================
+
+describe("Story 24.4: Portfolio with Surfaced Policies", () => {
+  describe("Portfolio save with surfaced policies (AC-4, AC-7)", () => {
+    it("should save portfolio containing vehicle_malus policy with correct policy_type", async () => {
+      const updateScenarioField = vi.fn();
+      const setSelectedPortfolioName = vi.fn();
+
+      // Add surfaced templates to the mock templates
+      const templatesWithSurfaced = [
+        ...mockTemplates,
+        {
+          id: "vehicle-malus-flat",
+          name: "Vehicle Malus — Flat Rate",
+          type: "vehicle_malus",
+          parameterCount: 4,
+          description: "Flat-rate malus for vehicles",
+          parameterGroups: ["emission_threshold", "malus_rate_per_gkm"],
+          is_custom: true,
+          runtime_availability: "live_ready" as const,
+          availability_reason: null,
+        },
+      ];
+
+      renderScreen({
+        templates: templatesWithSurfaced,
+        updateScenarioField,
+        setSelectedPortfolioName,
+      });
+
+      // Click the vehicle_malus template
+      const templateButtons = screen.getAllByRole("button", { pressed: false });
+      const vehicleButton = templateButtons.find((btn) => btn.textContent?.includes("Vehicle Malus"));
+      expect(vehicleButton).toBeDefined();
+      fireEvent.click(vehicleButton!);
+
+      // Open save dialog
+      fireEvent.click(screen.getByTitle("Save portfolio"));
+
+      const dialog = screen.getByRole("dialog", { name: /save portfolio/i });
+      fireEvent.change(within(dialog).getByLabelText(/portfolio name/i), {
+        target: { value: "vehicle-malus-portfolio" },
+      });
+
+      await act(async () => {
+        fireEvent.click(within(dialog).getByRole("button", { name: /^save$/i }));
+      });
+
+      await waitFor(() => {
+        expect(createPortfolio).toHaveBeenCalledWith(
+          expect.objectContaining({
+            name: "vehicle-malus-portfolio",
+            policies: expect.arrayContaining([
+              expect.objectContaining({
+                policy_type: "vehicle_malus",
+              }),
+            ]),
+          }),
+        );
+      });
+    });
+
+    it("should save portfolio containing energy_poverty_aid policy with correct policy_type", async () => {
+      const updateScenarioField = vi.fn();
+      const setSelectedPortfolioName = vi.fn();
+
+      const templatesWithSurfaced = [
+        ...mockTemplates,
+        {
+          id: "energy-poverty-flat",
+          name: "Energy Poverty Aid — Flat",
+          type: "energy_poverty_aid",
+          parameterCount: 4,
+          description: "Flat energy voucher",
+          parameterGroups: ["income_ceiling", "rate_schedule"],
+          is_custom: true,
+          runtime_availability: "live_ready" as const,
+          availability_reason: null,
+        },
+      ];
+
+      renderScreen({
+        templates: templatesWithSurfaced,
+        updateScenarioField,
+        setSelectedPortfolioName,
+      });
+
+      const templateButtons = screen.getAllByRole("button", { pressed: false });
+      const energyButton = templateButtons.find((btn) => btn.textContent?.includes("Energy Poverty Aid"));
+      expect(energyButton).toBeDefined();
+      fireEvent.click(energyButton!);
+
+      fireEvent.click(screen.getByTitle("Save portfolio"));
+
+      const dialog = screen.getByRole("dialog", { name: /save portfolio/i });
+      fireEvent.change(within(dialog).getByLabelText(/portfolio name/i), {
+        target: { value: "energy-aid-portfolio" },
+      });
+
+      await act(async () => {
+        fireEvent.click(within(dialog).getByRole("button", { name: /^save$/i }));
+      });
+
+      await waitFor(() => {
+        expect(createPortfolio).toHaveBeenCalledWith(
+          expect.objectContaining({
+            policies: expect.arrayContaining([
+              expect.objectContaining({
+                policy_type: "energy_poverty_aid",
+              }),
+            ]),
+          }),
+        );
+      });
+    });
+  });
+
+  describe("Portfolio load with surfaced policies (AC-4, AC-7)", () => {
+    it("should load portfolio containing vehicle_malus policy and display correctly", async () => {
+      const updateScenarioField = vi.fn();
+      const setSelectedPortfolioName = vi.fn();
+
+      vi.mocked(getPortfolio).mockResolvedValue({
+        name: "vehicle-malus-portfolio",
+        description: "Test portfolio with vehicle malus",
+        version_id: "v1",
+        policies: [
+          {
+            name: "Vehicle Malus",
+            policy_type: "vehicle_malus",
+            rate_schedule: {},
+            parameters: {},
+          },
+        ],
+        resolution_strategy: "error",
+        policy_count: 1,
+      });
+
+      const templatesWithSurfaced = [
+        ...mockTemplates,
+        {
+          id: "vehicle-malus-flat",
+          name: "Vehicle Malus — Flat Rate",
+          type: "vehicle_malus",
+          parameterCount: 4,
+          description: "Flat-rate malus for vehicles",
+          parameterGroups: ["emission_threshold", "malus_rate_per_gkm"],
+          is_custom: true,
+          runtime_availability: "live_ready" as const,
+          availability_reason: null,
+        },
+      ];
+
+      renderScreen({
+        portfolios: [makePortfolio("vehicle-malus-portfolio")],
+        templates: templatesWithSurfaced,
+        updateScenarioField,
+        setSelectedPortfolioName,
+      });
+
+      fireEvent.click(screen.getByTitle("Load a saved portfolio"));
+
+      const loadDialog = screen.getByRole("dialog", { name: /load portfolio/i });
+      const portfolioBtn = within(loadDialog).getByRole("button", { name: /vehicle-malus-portfolio/i });
+      await act(async () => {
+        fireEvent.click(portfolioBtn);
+      });
+
+      await waitFor(() => {
+        expect(getPortfolio).toHaveBeenCalledWith("vehicle-malus-portfolio");
+        expect(updateScenarioField).toHaveBeenCalledWith("portfolioName", "vehicle-malus-portfolio");
+      });
+    });
+
+    it("should load portfolio containing energy_poverty_aid policy and display correctly", async () => {
+      const updateScenarioField = vi.fn();
+      const setSelectedPortfolioName = vi.fn();
+
+      vi.mocked(getPortfolio).mockResolvedValue({
+        name: "energy-aid-portfolio",
+        description: "Test portfolio with energy aid",
+        version_id: "v1",
+        policies: [
+          {
+            name: "Energy Poverty Aid",
+            policy_type: "energy_poverty_aid",
+            rate_schedule: {},
+            parameters: {},
+          },
+        ],
+        resolution_strategy: "error",
+        policy_count: 1,
+      });
+
+      const templatesWithSurfaced = [
+        ...mockTemplates,
+        {
+          id: "energy-poverty-flat",
+          name: "Energy Poverty Aid — Flat",
+          type: "energy_poverty_aid",
+          parameterCount: 4,
+          description: "Flat energy voucher",
+          parameterGroups: ["income_ceiling", "rate_schedule"],
+          is_custom: true,
+          runtime_availability: "live_ready" as const,
+          availability_reason: null,
+        },
+      ];
+
+      renderScreen({
+        portfolios: [makePortfolio("energy-aid-portfolio")],
+        templates: templatesWithSurfaced,
+        updateScenarioField,
+        setSelectedPortfolioName,
+      });
+
+      fireEvent.click(screen.getByTitle("Load a saved portfolio"));
+
+      const loadDialog = screen.getByRole("dialog", { name: /load portfolio/i });
+      const portfolioBtn = within(loadDialog).getByRole("button", { name: /energy-aid-portfolio/i });
+      await act(async () => {
+        fireEvent.click(portfolioBtn);
+      });
+
+      await waitFor(() => {
+        expect(getPortfolio).toHaveBeenCalledWith("energy-aid-portfolio");
+      });
+    });
+  });
+
+  describe("Composition panel displays surfaced policies correctly (AC-7)", () => {
+    it("should show correct type label 'Vehicle Malus' for vehicle_malus policy in composition", () => {
+      const templatesWithSurfaced = [
+        ...mockTemplates,
+        {
+          id: "vehicle-malus-flat",
+          name: "Vehicle Malus — Flat Rate",
+          type: "vehicle_malus",
+          parameterCount: 4,
+          description: "Flat-rate malus for vehicles",
+          parameterGroups: ["emission_threshold", "malus_rate_per_gkm"],
+          is_custom: true,
+          runtime_availability: "live_ready" as const,
+          availability_reason: null,
+        },
+      ];
+
+      const { container } = renderScreen({ templates: templatesWithSurfaced });
+
+      const templateButtons = screen.getAllByRole("button", { pressed: false });
+      const vehicleButton = templateButtons.find((btn) => btn.textContent?.includes("Vehicle Malus"));
+      fireEvent.click(vehicleButton!);
+
+      // Check that "Vehicle Malus" type label appears in composition
+      expect(screen.getAllByText("Vehicle Malus").length).toBeGreaterThan(0);
+    });
+
+    it("should show correct type label 'Energy Poverty Aid' for energy_poverty_aid policy in composition", () => {
+      const templatesWithSurfaced = [
+        ...mockTemplates,
+        {
+          id: "energy-poverty-flat",
+          name: "Energy Poverty Aid — Flat",
+          type: "energy_poverty_aid",
+          parameterCount: 4,
+          description: "Flat energy voucher",
+          parameterGroups: ["income_ceiling", "rate_schedule"],
+          is_custom: true,
+          runtime_availability: "live_ready" as const,
+          availability_reason: null,
+        },
+      ];
+
+      const { container } = renderScreen({ templates: templatesWithSurfaced });
+
+      const templateButtons = screen.getAllByRole("button", { pressed: false });
+      const energyButton = templateButtons.find((btn) => btn.textContent?.includes("Energy Poverty Aid"));
+      fireEvent.click(energyButton!);
+
+      expect(screen.getAllByText("Energy Poverty Aid").length).toBeGreaterThan(0);
+    });
+  });
+});

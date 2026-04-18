@@ -103,3 +103,255 @@ describe("PortfolioTemplateBrowser", () => {
     expect(screen.queryByText(/Carbon Tax — Flat Rate/)).not.toBeInTheDocument();
   });
 });
+
+// ============================================================================
+// Story 24.4: Surfaced Policy Packs
+// ============================================================================
+
+describe("Story 24.4: Surfaced Policy Packs", () => {
+  const noop = () => {};
+
+  describe("Policy Type Labels", () => {
+    it("should display 'Vehicle Malus' label for vehicle_malus type (AC-1)", () => {
+      const vehicleMalusTemplate = {
+        id: "vehicle-malus-flat",
+        name: "Vehicle Malus — Flat Rate",
+        type: "vehicle_malus",
+        parameterCount: 4,
+        description: "Flat-rate malus for vehicles exceeding CO2 emissions threshold",
+        parameterGroups: ["emission_threshold", "malus_rate_per_gkm"],
+        is_custom: true,
+        runtime_availability: "live_ready" as const,
+        availability_reason: null,
+      };
+
+      render(
+        <PortfolioTemplateBrowser
+          templates={[vehicleMalusTemplate]}
+          selectedIds={[]}
+          onToggleTemplate={noop}
+        />,
+      );
+
+      expect(screen.getAllByText("Vehicle Malus").length).toBeGreaterThan(0);
+    });
+
+    it("should display 'Energy Poverty Aid' label for energy_poverty_aid type (AC-1)", () => {
+      const energyAidTemplate = {
+        id: "energy-aid-flat",
+        name: "Energy Poverty Aid — Cheque Énergie",
+        type: "energy_poverty_aid",
+        parameterCount: 4,
+        description: "Flat energy voucher for eligible households based on income ceiling",
+        parameterGroups: ["income_ceiling", "rate_schedule"],
+        is_custom: true,
+        runtime_availability: "live_ready" as const,
+        availability_reason: null,
+      };
+
+      render(
+        <PortfolioTemplateBrowser
+          templates={[energyAidTemplate]}
+          selectedIds={[]}
+          onToggleTemplate={noop}
+        />,
+      );
+
+      expect(screen.getAllByText("Energy Poverty Aid").length).toBeGreaterThan(0);
+    });
+
+    it("should display correct label for underscore-format carbon_tax type (dual-format support)", () => {
+      const underscoreTemplate = {
+        id: "carbon-tax-underscore",
+        name: "Carbon Tax — Underscore Type",
+        type: "carbon_tax",
+        parameterCount: 8,
+        description: "Template with underscore format type",
+        parameterGroups: ["Tax Rates"],
+        is_custom: false,
+        runtime_availability: "live_ready" as const,
+        availability_reason: null,
+      };
+
+      render(
+        <PortfolioTemplateBrowser
+          templates={[underscoreTemplate]}
+          selectedIds={[]}
+          onToggleTemplate={noop}
+        />,
+      );
+
+      expect(screen.getAllByText("Carbon Tax").length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("Type Colors", () => {
+    it("should display rose color (bg-rose-100 text-rose-800) for vehicle_malus type (AC-1)", () => {
+      const vehicleMalusTemplate = {
+        id: "vehicle-malus-flat",
+        name: "Vehicle Malus — Flat Rate",
+        type: "vehicle_malus",
+        parameterCount: 4,
+        description: "Flat-rate malus for vehicles exceeding CO2 emissions threshold",
+        parameterGroups: ["emission_threshold", "malus_rate_per_gkm"],
+        is_custom: true,
+        runtime_availability: "live_ready" as const,
+        availability_reason: null,
+      };
+
+      const { container } = render(
+        <PortfolioTemplateBrowser
+          templates={[vehicleMalusTemplate]}
+          selectedIds={[]}
+          onToggleTemplate={noop}
+        />,
+      );
+
+      const badge = container.querySelector('.bg-rose-100.text-rose-800');
+      expect(badge).toBeInTheDocument();
+    });
+
+    it("should display cyan color (bg-cyan-100 text-cyan-800) for energy_poverty_aid type (AC-1)", () => {
+      const energyAidTemplate = {
+        id: "energy-aid-flat",
+        name: "Energy Poverty Aid — Cheque Énergie",
+        type: "energy_poverty_aid",
+        parameterCount: 4,
+        description: "Flat energy voucher for eligible households based on income ceiling",
+        parameterGroups: ["income_ceiling", "rate_schedule"],
+        is_custom: true,
+        runtime_availability: "live_ready" as const,
+        availability_reason: null,
+      };
+
+      const { container } = render(
+        <PortfolioTemplateBrowser
+          templates={[energyAidTemplate]}
+          selectedIds={[]}
+          onToggleTemplate={noop}
+        />,
+      );
+
+      const badge = container.querySelector('.bg-cyan-100.text-cyan-800');
+      expect(badge).toBeInTheDocument();
+    });
+  });
+
+  describe("Runtime Availability Badges", () => {
+    it("should show 'Ready' badge for live_ready surfaced packs (AC-2)", () => {
+      const vehicleMalusTemplate = {
+        id: "vehicle-malus-flat",
+        name: "Vehicle Malus — Flat Rate",
+        type: "vehicle_malus",
+        parameterCount: 4,
+        description: "Flat-rate malus for vehicles exceeding CO2 emissions threshold",
+        parameterGroups: ["emission_threshold", "malus_rate_per_gkm"],
+        is_custom: true,
+        runtime_availability: "live_ready" as const,
+        availability_reason: null,
+      };
+
+      render(
+        <PortfolioTemplateBrowser
+          templates={[vehicleMalusTemplate]}
+          selectedIds={[]}
+          onToggleTemplate={noop}
+        />,
+      );
+
+      expect(screen.getByText("Ready")).toBeInTheDocument();
+    });
+
+    it("should show green styling for 'Ready' badge (bg-green-50 text-green-700 border-green-200) (AC-2)", () => {
+      const vehicleMalusTemplate = {
+        id: "vehicle-malus-flat",
+        name: "Vehicle Malus — Flat Rate",
+        type: "vehicle_malus",
+        parameterCount: 4,
+        description: "Flat-rate malus for vehicles exceeding CO2 emissions threshold",
+        parameterGroups: ["emission_threshold", "malus_rate_per_gkm"],
+        is_custom: true,
+        runtime_availability: "live_ready" as const,
+        availability_reason: null,
+      };
+
+      const { container } = render(
+        <PortfolioTemplateBrowser
+          templates={[vehicleMalusTemplate]}
+          selectedIds={[]}
+          onToggleTemplate={noop}
+        />,
+      );
+
+      const readyBadge = container.querySelector('.bg-green-50.text-green-700.border-green-200');
+      expect(readyBadge).toBeInTheDocument();
+    });
+
+    it("should not show availability_reason for live_ready packs (AC-2)", () => {
+      const vehicleMalusTemplate = {
+        id: "vehicle-malus-flat",
+        name: "Vehicle Malus — Flat Rate",
+        type: "vehicle_malus",
+        parameterCount: 4,
+        description: "Flat-rate malus for vehicles exceeding CO2 emissions threshold",
+        parameterGroups: ["emission_threshold", "malus_rate_per_gkm"],
+        is_custom: true,
+        runtime_availability: "live_ready" as const,
+        availability_reason: null,
+      };
+
+      render(
+        <PortfolioTemplateBrowser
+          templates={[vehicleMalusTemplate]}
+          selectedIds={[]}
+          onToggleTemplate={noop}
+        />,
+      );
+
+      // Should not show any availability reason text
+      expect(screen.queryByText(/Domain translation pending/)).not.toBeInTheDocument();
+    });
+  });
+
+  describe("No Runtime Selector", () => {
+    it("should not display any runtime or engine selector (AC-3)", () => {
+      const surfacedTemplates = [
+        {
+          id: "vehicle-malus-flat",
+          name: "Vehicle Malus — Flat Rate",
+          type: "vehicle_malus",
+          parameterCount: 4,
+          description: "Flat-rate malus for vehicles exceeding CO2 emissions threshold",
+          parameterGroups: ["emission_threshold", "malus_rate_per_gkm"],
+          is_custom: true,
+          runtime_availability: "live_ready" as const,
+          availability_reason: null,
+        },
+        {
+          id: "energy-aid-flat",
+          name: "Energy Poverty Aid — Cheque Énergie",
+          type: "energy_poverty_aid",
+          parameterCount: 4,
+          description: "Flat energy voucher for eligible households",
+          parameterGroups: ["income_ceiling", "rate_schedule"],
+          is_custom: true,
+          runtime_availability: "live_ready" as const,
+          availability_reason: null,
+        },
+      ];
+
+      render(
+        <PortfolioTemplateBrowser
+          templates={surfacedTemplates}
+          selectedIds={[]}
+          onToggleTemplate={noop}
+        />,
+      );
+
+      // Should not have any runtime/engine selector controls
+      expect(screen.queryByText(/runtime/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/engine/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/live|replay/i)).not.toBeInTheDocument();
+    });
+  });
+});
