@@ -14,10 +14,10 @@ so that analysts can create and run portfolios containing these policies with fu
 
 1. Given a portfolio containing surfaced live-capable packs (carbon_tax, subsidy, rebate, feebate, vehicle_malus, energy_poverty_aid), when validated, then compatibility checks behave consistently with existing portfolio rules without errors.
 2. Given a portfolio containing a surfaced subsidy-family pack (subsidy, vehicle_malus, energy_poverty_aid), when executed through the live runtime, then each policy is translated before adapter invocation and produces normalized results.
-3. Given baseline-versus-portfolio comparison, when computed with portfolios containing surfaced policies, then existing comparison surfaces continue to work without pack-specific branching.
-4. Given a portfolio containing any policy marked as `live_unavailable` for runtime execution, when a run is requested, then the system blocks or warns before execution rather than failing deep in the runtime.
-5. Given a portfolio execution containing surfaced subsidy-family policies, when completed, then results include the expected output variables (subsidy_amount, subsidy_eligible, vehicle_malus, energy_poverty_aid) normalized from French to English field names.
-6. Given portfolio execution with surfaced policies, when the panel output is inspected, then the merged table includes all expected columns from each policy with proper prefixing to avoid collisions.
+3. Given baseline-versus-portfolio comparison, when computed with portfolios containing surfaced policies, then the comparison API endpoints return successful responses with normalized output columns for surfaced policy types.
+4. Given a portfolio containing any policy marked as `live_unavailable` for runtime execution, when a run request is submitted with `runtime_mode=live`, then the system blocks with 422 error before execution rather than failing deep in the runtime. For `runtime_mode=replay`, availability checks are bypassed.
+5. Given a portfolio execution containing surfaced subsidy-family policies, when completed, then results include the expected output variables for each policy type present, with French field names normalized to English (e.g., montant_subvention → subsidy_0_subsidy_amount).
+6. Given portfolio execution with surfaced policies, when the panel output is inspected, then the merged table includes all expected columns from each policy with prefixing applied in the order: normalization first, then policy-type+index prefixing (e.g., subsidy_0_subsidy_amount, vehicle_malus_1_vehicle_malus).
 7. Given portfolios with multiple policies of the same type (e.g., two subsidy policies), when executed, then results are properly prefixed with type+index to avoid column name conflicts (existing behavior, non-regression).
 8. Given existing carbon_tax, rebate, and feebate portfolio execution, when run after this story's implementation, then they continue to execute without errors or behavioral changes (non-regression).
 
@@ -32,9 +32,15 @@ so that analysts can create and run portfolios containing these policies with fu
 - [ ] Add runtime availability validation for portfolios (AC: #1, #4)
   - [ ] Create `_check_portfolio_runtime_availability()` validation check function in validation.py
   - [ ] Register the check in `_register_builtin_checks()` with severity "error"
-  - [ ] Check that all policies in portfolio are `live_ready` before execution
+  - [ ] Check that all policies in portfolio are `live_ready` before execution (only for `runtime_mode=live`)
   - [ ] Return actionable error message identifying which policy types are unavailable
   - [ ] Add unit tests for portfolio runtime availability validation
+
+- [ ] Extend portfolio route to handle CustomPolicyType policies (CRITICAL)
+  - [ ] Modify `_build_policy_config()` in routes/portfolios.py to use `get_policy_type()` for CustomPolicyType resolution
+  - [ ] Add parameter class registry lookup for custom types (vehicle_malus, energy_poverty_aid)
+  - [ ] Keep runtime availability check for portfolio creation/update
+  - [ ] Add tests for building vehicle_malus and energy_poverty_aid policies
 
 - [ ] Extend portfolio composition validation for surfaced types (AC: #1)
   - [ ] Verify `validate_compatibility()` works correctly with subsidy-family policy types
@@ -47,19 +53,14 @@ so that analysts can create and run portfolios containing these policies with fu
   - [ ] Add integration tests verifying normalized column names in portfolio output
 
 - [ ] Verify comparison and indicator flows work with surfaced policies (AC: #3)
-  - [ ] Test portfolio comparison with surfaced subsidy-family policies
+  - [ ] Test portfolio comparison API endpoints with surfaced subsidy-family policies
   - [ ] Verify indicator computation produces correct results for portfolios containing surfaced policies
   - [ ] Add integration tests for end-to-end portfolio execution, normalization, and comparison
 
-- [ ] Add non-regression tests (AC: #8)
+- [ ] Add non-regression tests (AC: #7, #8)
   - [ ] Test existing portfolio execution with carbon_tax, rebate, feebate only
   - [ ] Verify no behavioral changes to existing portfolio execution patterns
   - [ ] Test duplicate policy type prefixing behavior is preserved
-
-- [ ] Update portfolio route runtime availability check (AC: #4)
-  - [ ] Update `_build_policy_config()` in routes/portfolios.py to check runtime availability
-  - [ ] Return 422 error when building portfolio with `live_unavailable` policy types
-  - [ ] Add error response tests for unavailable policy types in portfolio creation
 
 ## Dev Notes
 
@@ -67,35 +68,11 @@ so that analysts can create and run portfolios containing these policies with fu
 
 **Key Design Principle:** Portfolio execution must apply the same translation logic as single-policy scenarios. The translation boundary introduced in Story 24.2 must be integrated into `PortfolioComputationStep` so that each policy in a portfolio is validated and translated before being passed to the adapter.
 
-**Portfolio Execution Flow (Current):**
-```
-_run_portfolio() in routes/runs.py
-  → Load portfolio from registry
-  → Create PortfolioComputationStep(adapter, population, portfolio)
-  → Call run_scenario() with portfolio_step as additional step
-    → OrchestratorRunner executes steps:
-      1. ComputationStep (first policy as baseline)
-      2. PortfolioComputationStep (all policies, overwrites COMPUTATION_RESULT_KEY)
-        → For each policy in portfolio:
-          → adapter.compute(population, policy=comp_policy, period=year)
-          → Collect ComputationResult
-        → Merge all results into single table
-```
+**Prerequisite:** Story 24.2 must be merged and stable before starting this story. The translator API and runtime availability classification from Story 24.2 are required dependencies.
 
-**Translation Integration (This Story):**
-```
-PortfolioComputationStep.execute()
-  → For each policy in portfolio:
-    → Translate policy using translate_policy()  ← NEW
-    → Create ComputationPolicyConfig with translated policy
-    → adapter.compute(population, policy=comp_policy, period=year)
-```
+**Current Flow:** `_run_portfolio()` → `PortfolioComputationStep.execute()` → loops over policies calling `adapter.compute()`. No translation.
 
-**Critical Observation:** The translation layer from Story 24.2 is ONLY applied in:
-- `_execute_orchestration()` for single-policy scenarios from ScenarioConfig
-- `_run_direct_scenario()` for BaselineScenario/ReformScenario direct execution
-
-The `PortfolioComputationStep` does NOT apply translation. This story must add that integration.
+**This Story:** Add `translate_policy()` call before `adapter.compute()` in the policy loop. Handle `TranslationError` with `PortfolioComputationStepError`.
 
 ### Translation Integration in PortfolioComputationStep
 
@@ -105,53 +82,29 @@ The `PortfolioComputationStep` does NOT apply translation. This story must add t
 1. Import translation function:
 ```python
 from reformlab.computation.translator import translate_policy, TranslationError
+from dataclasses import replace
 ```
 
 2. Modify `execute()` method to translate each policy before adapter invocation:
 ```python
-# In execute() method, inside the policy iteration loop:
+# In execute() policy loop:
 for i, policy_cfg in enumerate(self._portfolio.policies):
     # Story 24.3: Translate domain policy for live execution
     try:
         translated_policy = translate_policy(policy_cfg.policy, f"{self._portfolio.name}[{i}]")
+        translated_cfg = replace(policy_cfg, policy=translated_policy)
+        comp_policy = _to_computation_policy(translated_cfg)
     except TranslationError as exc:
         raise PortfolioComputationStepError(
-            f"Portfolio computation failed at year {year}, "
-            f"policy[{i}] '{policy_name}' ({policy_type_value}): "
-            f"Translation error: {exc.what}",
-            year=year,
-            adapter_version=adapter_version,
-            policy_index=i,
-            policy_name=policy_name,
-            policy_type=policy_type_value,
+            f"Translation failed: {exc.what}",
+            year=year, adapter_version=adapter_version,
+            policy_index=i, policy_name=policy_name, policy_type=policy_type_value,
             original_error=exc,
         ) from exc
-
-    comp_policy = _to_computation_policy_with_translated(
-        policy_cfg, translated_policy
-    )
     # ... rest of execution
 ```
 
-3. Modify `_to_computation_policy()` to accept translated policy:
-```python
-def _to_computation_policy(
-    policy_config: PortfolioPolicyConfig,
-    translated_policy: Any,  # Story 24.3: Accept translated policy
-) -> ComputationPolicyConfig:
-    """Convert a portfolio PolicyConfig to a computation PolicyConfig.
-
-    Story 24.3: Accepts pre-translated policy from translation layer.
-    """
-    from reformlab.computation.types import PolicyConfig as ComputationPolicyConfig
-
-    # Use translated_policy instead of policy_config.policy
-    return ComputationPolicyConfig(
-        policy=translated_policy,
-        name=policy_config.name or policy_config.policy_type.value,
-        description=f"{policy_config.policy_type.value} policy",
-    )
-```
+**Critical:** Do NOT modify `_to_computation_policy()` signature. Use `dataclasses.replace()` to create a modified config with the translated policy, then pass it through the existing `_to_computation_policy()` function unchanged.
 
 ### Runtime Availability Validation
 
@@ -164,6 +117,9 @@ def _check_portfolio_runtime_availability(request: PreflightRequest) -> Validati
 
     Checks that all policies in the selected portfolio have runtime_availability='live_ready'.
     Blocks execution if any policy is unavailable for live execution.
+
+    NOTE: This check only applies to runtime_mode=live. For runtime_mode=replay,
+    availability is bypassed.
     """
     from reformlab.server.dependencies import get_registry
     from reformlab.templates.portfolios.portfolio import PolicyPortfolio
@@ -203,16 +159,7 @@ def _check_portfolio_runtime_availability(request: PreflightRequest) -> Validati
     # Check runtime availability for each policy
     # Runtime availability is determined by policy type
     # Story 24.2: subsidy, vehicle_malus, energy_poverty_aid are now live_ready
-    from reformlab.templates.schema import PolicyType
-
-    LIVE_READY_TYPES = {
-        "carbon_tax",
-        "subsidy",
-        "rebate",
-        "feebate",
-        "vehicle_malus",  # Story 24.2
-        "energy_poverty_aid",  # Story 24.2
-    }
+    from reformlab.server.routes.templates import LIVE_READY_TYPES
 
     unavailable_policies = []
     for i, policy_cfg in enumerate(entry.policies):
@@ -257,50 +204,101 @@ ValidationCheck(
 ),
 ```
 
-### Portfolio Route Runtime Availability Check
+### Portfolio Route CustomPolicyType Support
 
 **File:** `src/reformlab/server/routes/portfolios.py`
 
-**Modify `_build_policy_config()` to check runtime availability:**
+**CRITICAL:** The current `_build_policy_config()` function only handles PolicyType enum values. It must be extended to handle CustomPolicyType values like `vehicle_malus` and `energy_poverty_aid`.
 
-The function `_build_policy_config()` currently allows any PolicyType enum value. We need to add runtime availability checking for custom policy types.
+**Current Limitation:**
+```python
+try:
+    policy_type = PolicyType(req.policy_type)  # Fails for CustomPolicyType
+except ValueError:
+    raise HTTPException(...)  # Rejects vehicle_malus, energy_poverty_aid
+```
 
-After building the PolicyConfig, add a runtime availability check:
+**Required Extension:**
 ```python
 def _build_policy_config(req: PortfolioPolicyRequest) -> Any:
-    # ... existing code ...
+    """Build a PolicyConfig from a request object.
 
-    policy = params_cls(...)
-    config = PolicyConfig(policy_type=policy_type, policy=policy, name=req.name)
+    Story 24.3: Extended to handle CustomPolicyType for vehicle_malus
+    and energy_poverty_aid policies.
+    """
+    from reformlab.templates.portfolios import PolicyConfig
+    from reformlab.templates.schema import get_policy_type, PolicyParameters
+    from reformlab.templates.packs subsidy import SubsidyParameters  # Example import pattern
 
-    # Story 24.3: Check runtime availability for custom policy types
-    # Built-in types (carbon_tax, subsidy, rebate, feebate) are always live_ready
-    # Custom types need runtime availability check
-    policy_type_str = policy_type.value
-    if policy_type_str not in {"carbon_tax", "subsidy", "rebate", "feebate"}:
-        from reformlab.server.routes.templates import _classify_runtime_availability
-
-        # For custom types, check if they're built-in custom types (live_ready)
-        # Story 24.2: vehicle_malus and energy_poverty_aid are built-in custom types
-        from reformlab.server.routes.templates import LIVE_READY_TYPES
-
-        if policy_type_str not in LIVE_READY_TYPES:
+    # Try PolicyType enum first, then CustomPolicyType
+    try:
+        from reformlab.templates.schema import PolicyType
+        policy_type = PolicyType(req.policy_type)
+    except ValueError:
+        # Fall back to CustomPolicyType
+        try:
+            policy_type = get_policy_type(req.policy_type)
+        except Exception:
             raise HTTPException(
                 status_code=422,
                 detail={
-                    "what": f"Policy type '{policy_type_str}' is not available for live execution",
-                    "why": f"Policy type '{policy_type_str}' is not marked as live_ready for runtime execution",
-                    "fix": f"Use one of the live-ready policy types: {', '.join(sorted(LIVE_READY_TYPES))}",
+                    "what": f"Invalid policy_type: '{req.policy_type}'",
+                    "why": "Policy type not found in built-in or custom registries",
+                    "fix": "Use a valid policy type (carbon_tax, subsidy, rebate, feebate, vehicle_malus, energy_poverty_aid)",
                 },
             )
 
-    return config
+    # Get parameters class from registry
+    # Story 24.2: Custom types have parameter classes registered
+    if isinstance(policy_type, PolicyType):
+        params_cls = _POLICY_TYPE_TO_PARAMS.get(policy_type)
+    else:
+        # CustomPolicyType: look up in parameter registry
+        params_cls = _get_custom_policy_params_class(policy_type.value)
+
+    if params_cls is None:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "what": f"Parameters class not found for policy type: '{req.policy_type}'",
+                "why": "No parameters mapping registered for this policy type",
+                "fix": "Register the parameters class for this custom policy type",
+            },
+        )
+
+    # Validate parameters
+    try:
+        params = params_cls(**req.parameters)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "what": f"Invalid parameters for policy type '{req.policy_type}'",
+                "why": str(exc),
+                "fix": "Check parameters match the expected schema for this policy type",
+            },
+        )
+
+    # Check runtime availability for custom types
+    from reformlab.server.routes.templates import LIVE_READY_TYPES
+    if policy_type.value not in LIVE_READY_TYPES:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "what": f"Policy type '{policy_type.value}' is not available for live execution",
+                "why": f"Policy type '{policy_type.value}' is not marked as live_ready for runtime execution",
+                "fix": f"Use one of the live-ready policy types: {', '.join(sorted(LIVE_READY_TYPES))}",
+            },
+        )
+
+    return PolicyConfig(policy_type=policy_type, policy=params, name=req.name)
 ```
 
-**Note:** The `LIVE_READY_TYPES` constant is defined in `routes/templates.py`. Import it:
-```python
-from reformlab.server.routes.templates import LIVE_READY_TYPES
-```
+**Key Changes:**
+1. Use `get_policy_type()` for CustomPolicyType resolution
+2. Add parameter class registry lookup for custom types
+3. Keep runtime availability check (import `LIVE_READY_TYPES` from `routes/templates.py`)
+4. Handle both PolicyType enum and CustomPolicyType values
 
 ### Portfolio Validation Compatibility
 
@@ -322,10 +320,19 @@ Story 24.2 already added the subsidy-family output variable mappings:
 - `malus_ecologique` → `vehicle_malus`
 - `aide_energie` → `energy_poverty_aid`
 
+**Column Naming Order:**
+1. First, normalize French to English field names
+2. Then, apply policy-type+index prefixing
+
+**Example:** For subsidy policy at index 0:
+- Raw: `montant_subvention`
+- After normalization: `subsidy_amount`
+- After prefixing: `subsidy_0_subsidy_amount`
+
 Portfolio results go through the same normalization path as single-policy results:
 1. `PortfolioComputationStep` produces merged `ComputationResult`
 2. `PanelOutput.from_orchestrator_result()` applies normalization
-3. Each policy's output columns are normalized individually
+3. Each policy's output columns are normalized individually, then prefixed
 
 **Verification needed:** Ensure that portfolio merged results pass through normalization correctly and that all subsidy-family output variables are properly renamed.
 
@@ -363,6 +370,9 @@ class TestPortfolioRuntimeAvailabilityValidation:
 
     def test_unavailable_policy_identified_in_error_message(self):
         """AC: Error message identifies which policy is unavailable."""
+
+    def test_replay_mode_bypasses_availability_check(self):
+        """AC: Runtime mode=replay bypasses availability check."""
 
 class TestPortfolioValidationWithSurfacedTypes:
     """Tests for portfolio validation with surfaced policy types."""
@@ -402,7 +412,7 @@ class TestPortfolioLiveExecution:
         """AC: Portfolio results include subsidy-family output variables."""
 
     def test_portfolio_results_are_normalized_correctly(self):
-        """AC: Portfolio results are normalized with correct column names."""
+        """AC: Portfolio results are normalized with correct column names (normalize then prefix)."""
 
     def test_portfolio_column_prefixing_with_duplicate_types(self):
         """AC: Portfolio with duplicate policy types uses proper prefixing."""
@@ -425,14 +435,17 @@ class TestNonRegression:
     def test_duplicate_policy_type_prefixing_preserved(self):
         """AC: Column prefixing for duplicate policy types is preserved."""
 
-class TestPortfolioRouteRuntimeAvailability:
-    """Tests for portfolio route runtime availability checks."""
+class TestPortfolioRouteCustomPolicyType:
+    """Tests for portfolio route CustomPolicyType support."""
 
-    def test_create_portfolio_with_live_ready_types_succeeds(self):
-        """AC: Portfolio creation with live_ready policy types succeeds."""
+    def test_create_portfolio_with_vehicle_malus_succeeds(self):
+        """AC: Portfolio creation with vehicle_malus (CustomPolicyType) succeeds."""
 
-    def test_create_portfolio_with_unavailable_type_fails(self):
-        """AC: Portfolio creation with unavailable policy type fails with 422."""
+    def test_create_portfolio_with_energy_poverty_aid_succeeds(self):
+        """AC: Portfolio creation with energy_poverty_aid (CustomPolicyType) succeeds."""
+
+    def test_create_portfolio_with_unavailable_custom_type_fails(self):
+        """AC: Portfolio creation with unavailable custom type fails with 422."""
 
     def test_error_message_identifies_unavailable_policy(self):
         """AC: Error message clearly identifies the unavailable policy type."""
@@ -443,19 +456,19 @@ class TestPortfolioRouteRuntimeAvailability:
 **Files to Modify:**
 - `src/reformlab/orchestrator/portfolio_step.py` - Integrate translation into PortfolioComputationStep
 - `src/reformlab/server/validation.py` - Add portfolio runtime availability validation check
-- `src/reformlab/server/routes/portfolios.py` - Add runtime availability check to portfolio creation/update
+- `src/reformlab/server/routes/portfolios.py` - Extend to handle CustomPolicyType and add runtime availability check
 
 **Files to Extend (add tests):**
 - `tests/orchestrator/test_portfolio_step.py` - Add translation integration tests
 - `tests/server/test_validation.py` - Add portfolio runtime availability tests
-- `tests/server/test_portfolios.py` - Add runtime availability error tests
+- `tests/server/test_portfolios.py` - Add CustomPolicyType and runtime availability error tests
 
 **Files to Create:**
 - `tests/server/test_portfolio_execution_integration.py` - End-to-end integration tests for portfolio execution
 
 **Key Dependencies:**
 - Story 24.1: Publish canonical catalog for hidden policy packs
-- Story 24.2: Implement domain-layer live translation for subsidy-style policies
+- Story 24.2: Implement domain-layer live translation for subsidy-style policies (MUST be merged first)
 - Epic 12: Portfolio model and validation framework
 - Epic 13: Additional policy templates and extensibility
 
@@ -472,9 +485,10 @@ class TestPortfolioRouteRuntimeAvailability:
    - Register the validation check
    - Add unit tests for validation check
 
-3. **Phase 3: Portfolio Route Validation** (API consistency)
-   - Add runtime availability check to `_build_policy_config()`
-   - Add API route tests for unavailable policy types
+3. **Phase 3: Portfolio Route CustomPolicyType Support** (API consistency)
+   - Extend `_build_policy_config()` to handle CustomPolicyType
+   - Add parameter class registry lookup for custom types
+   - Add API route tests for CustomPolicyType handling
 
 4. **Phase 4: Integration Testing** (End-to-end verification)
    - Create integration tests for portfolio execution with surfaced policies

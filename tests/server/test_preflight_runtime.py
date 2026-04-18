@@ -349,3 +349,234 @@ class TestPopulationSchemaCompatibility:
         assert "Missing required columns" in result.message
         assert "disposable_income" in result.message
         assert "carbon_tax" in result.message
+
+
+# =============================================================================
+# Story 24.3: Portfolio Runtime Availability Validation
+# =============================================================================
+
+
+class TestPortfolioRuntimeAvailabilityValidation:
+    """Tests for portfolio runtime availability validation (Story 24.3 / AC-1, AC-4)."""
+
+    def test_all_live_ready_policies_pass_validation(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """AC-1, AC-4: Portfolio with all live_ready policies passes runtime availability check."""
+        import reformlab.templates.energy_poverty_aid  # noqa: F401 - ensure types are registered
+        import reformlab.templates.subsidy  # noqa: F401
+        import reformlab.templates.vehicle_malus  # noqa: F401
+        from reformlab.server.dependencies import get_registry
+        from reformlab.server.validation import _check_portfolio_runtime_availability
+        from reformlab.templates.portfolios.portfolio import PolicyPortfolio, PolicyConfig
+        from reformlab.templates.schema import (
+            CarbonTaxParameters,
+            FeebateParameters,
+            SubsidyParameters,
+        )
+        from reformlab.templates.vehicle_malus.compute import VehicleMalusParameters
+
+        # Create a portfolio with all live-ready types
+        portfolio = PolicyPortfolio(
+            name="test-live-ready-portfolio",
+            policies=(
+                PolicyConfig(
+                    policy=CarbonTaxParameters(rate_schedule={2025: 44.6}),
+                    name="carbon_tax",
+                ),
+                PolicyConfig(
+                    policy=SubsidyParameters(rate_schedule={2025: 100.0}),
+                    name="subsidy",
+                ),
+                PolicyConfig(
+                    policy=VehicleMalusParameters(rate_schedule={2025: 100.0}),
+                    name="vehicle_malus",
+                ),
+            ),
+        )
+
+        # Save portfolio to registry
+        registry = get_registry()
+        registry.save(portfolio, "test-live-ready-portfolio")
+
+        request = PreflightRequest(
+            scenario={"portfolioName": "test-live-ready-portfolio"},
+            runtime_mode="live",
+        )
+        result = _check_portfolio_runtime_availability(request)
+
+        assert result.id == "portfolio-runtime-availability"
+        assert result.passed is True
+        assert "3 policies in portfolio are live-ready" in result.message
+
+    def test_unavailable_policy_fails_validation(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """AC-4: Portfolio with unavailable policy type fails validation with error message."""
+        import reformlab.templates.subsidy  # noqa: F401
+        from reformlab.server.dependencies import get_registry
+        from reformlab.server.validation import _check_portfolio_runtime_availability
+        from reformlab.templates.portfolios.portfolio import PolicyConfig, PolicyPortfolio
+        from reformlab.templates.schema import PolicyType, SubsidyParameters
+
+        # Create a custom policy type that is NOT live_ready
+        from reformlab.templates.schema import register_policy_type
+
+        custom_type = register_policy_type("test_unavailable_type")
+
+        # Create a PolicyParameters subclass for testing
+        from dataclasses import dataclass, field
+
+        @dataclass(frozen=True)
+        class TestUnavailableParameters(SubsidyParameters):
+            pass
+
+        from reformlab.templates.schema import register_custom_template
+
+        register_custom_template(custom_type, TestUnavailableParameters)
+
+        # Create a portfolio with unavailable type
+        portfolio = PolicyPortfolio(
+            name="test-unavailable-portfolio",
+            policies=(
+                PolicyConfig(
+                    policy=SubsidyParameters(rate_schedule={2025: 100.0}),
+                    name="subsidy",
+                ),
+                PolicyConfig(
+                    policy=TestUnavailableParameters(rate_schedule={2025: 50.0}),
+                    name="unavailable_policy",
+                ),
+            ),
+        )
+
+        registry = get_registry()
+        registry.save(portfolio, "test-unavailable-portfolio")
+
+        request = PreflightRequest(
+            scenario={"portfolioName": "test-unavailable-portfolio"},
+            runtime_mode="live",
+        )
+        result = _check_portfolio_runtime_availability(request)
+
+        assert result.id == "portfolio-runtime-availability"
+        assert result.passed is False
+        assert "unavailable for live execution" in result.message
+        assert "test_unavailable_type" in result.message
+
+        # Clean up: delete portfolio before unregistering policy type
+        import shutil
+        portfolio_path = registry.path / "test-unavailable-portfolio"
+        if portfolio_path.exists():
+            shutil.rmtree(portfolio_path)
+        from reformlab.templates.schema import unregister_policy_type
+
+        unregister_policy_type("test_unavailable_type")
+
+    def test_no_portfolio_passes_validation(self) -> None:
+        """AC-4: No portfolio selected passes validation (not an error)."""
+        from reformlab.server.validation import _check_portfolio_runtime_availability
+
+        request = PreflightRequest(
+            scenario={},  # No portfolioName
+            runtime_mode="live",
+        )
+        result = _check_portfolio_runtime_availability(request)
+
+        assert result.id == "portfolio-runtime-availability"
+        assert result.passed is True
+        assert "No portfolio selected" in result.message
+
+    def test_non_portfolio_entry_passes(self) -> None:
+        """AC-4: Non-portfolio entry (e.g., scenario template) passes without error."""
+        from reformlab.server.dependencies import get_registry
+        from reformlab.server.validation import _check_portfolio_runtime_availability
+        from reformlab.templates.schema import BaselineScenario, CarbonTaxParameters, YearSchedule
+
+        # Save a scenario template (not a portfolio)
+        template = BaselineScenario(
+            name="test-template",
+            year_schedule=YearSchedule(start_year=2025, end_year=2030),
+            policy=CarbonTaxParameters(rate_schedule={2025: 44.6}),
+        )
+
+        registry = get_registry()
+        registry.save(template, "test-template")
+
+        request = PreflightRequest(
+            scenario={"portfolioName": "test-template"},
+            runtime_mode="live",
+        )
+        result = _check_portfolio_runtime_availability(request)
+
+        # Should pass without error since it's not a portfolio
+        assert result.id == "portfolio-runtime-availability"
+        assert result.passed is True
+        assert "is not a portfolio" in result.message
+
+    def test_multiple_unavailable_policies_listed_in_error(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """AC-4: Error message identifies all unavailable policies."""
+        from reformlab.server.dependencies import get_registry
+        from reformlab.server.validation import _check_portfolio_runtime_availability
+        from reformlab.templates.portfolios.portfolio import PolicyConfig, PolicyPortfolio
+        from reformlab.templates.schema import PolicyType, register_policy_type
+        from reformlab.templates.schema import SubsidyParameters, register_custom_template
+        from dataclasses import dataclass
+
+        # Register two unavailable policy types
+        type1 = register_policy_type("unavailable_type_1")
+        type2 = register_policy_type("unavailable_type_2")
+
+        @dataclass(frozen=True)
+        class UnavailableParams1(SubsidyParameters):
+            pass
+
+        @dataclass(frozen=True)
+        class UnavailableParams2(SubsidyParameters):
+            pass
+
+        register_custom_template(type1, UnavailableParams1)
+        register_custom_template(type2, UnavailableParams2)
+
+        # Create portfolio with multiple unavailable policies
+        portfolio = PolicyPortfolio(
+            name="test-multi-unavailable",
+            policies=(
+                PolicyConfig(
+                    policy=UnavailableParams1(rate_schedule={2025: 50.0}),
+                    name="unavailable_1",
+                ),
+                PolicyConfig(
+                    policy=UnavailableParams2(rate_schedule={2025: 75.0}),
+                    name="unavailable_2",
+                ),
+            ),
+        )
+
+        registry = get_registry()
+        registry.save(portfolio, "test-multi-unavailable")
+
+        request = PreflightRequest(
+            scenario={"portfolioName": "test-multi-unavailable"},
+            runtime_mode="live",
+        )
+        result = _check_portfolio_runtime_availability(request)
+
+        assert result.passed is False
+        assert "unavailable_type_1" in result.message
+        assert "unavailable_type_2" in result.message
+        # Should show policy indices
+        assert "policy[0]" in result.message
+        assert "policy[1]" in result.message
+
+        # Clean up: delete portfolio before unregistering policy types
+        import shutil
+        portfolio_path = registry.path / "test-multi-unavailable"
+        if portfolio_path.exists():
+            shutil.rmtree(portfolio_path)
+        from reformlab.templates.schema import unregister_policy_type
+
+        unregister_policy_type("unavailable_type_1")
+        unregister_policy_type("unavailable_type_2")

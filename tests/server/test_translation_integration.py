@@ -21,10 +21,12 @@ from fastapi.testclient import TestClient
 @pytest.fixture()
 def client() -> Generator[TestClient, Any, None]:
     """TestClient with custom types registered."""
+    from reformlab.server.dependencies import get_registry
     from reformlab.templates.schema import (
         _CUSTOM_PARAMETERS_TO_POLICY_TYPE,
         _CUSTOM_POLICY_TYPES,
     )
+    import shutil
 
     # Save existing registrations so we can restore after test
     saved_types = dict(_CUSTOM_POLICY_TYPES)
@@ -37,6 +39,12 @@ def client() -> Generator[TestClient, Any, None]:
 
     app = create_app()
     yield TestClient(app)
+
+    # Clean up test-template from registry
+    registry = get_registry()
+    test_template_path = registry.path / "test-template"
+    if test_template_path.exists():
+        shutil.rmtree(test_template_path)
 
     # Restore registrations
     _CUSTOM_POLICY_TYPES.clear()

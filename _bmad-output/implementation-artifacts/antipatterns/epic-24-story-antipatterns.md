@@ -29,3 +29,26 @@
 | dismissed | "PolicyTranslator protocol uses @runtime_checkable but this is for structural duck-typing" | FALSE POSITIVE: This was a minor style point. The protocol has been removed entirely, which addresses the issue more comprehensively than just removing @runtime_checkable. |
 | dismissed | "openfisca_api_adapter.py vs openfisca_adapter.py file reference inconsistency" | FALSE POSITIVE: Both files exist in the codebase. The precomputed adapter (openfisca_adapter.py) is in scope of "must not modify", and the live adapter (openfisca_api_adapter.py) is also in scope of "must not modify". The story correctly references both files under "Files NOT to Modify". |
 | dismissed | "PolicyTranslator protocol conflates protocol with callable wrapper" | FALSE POSITIVE: Addressed by removing the protocol entirely. The story now uses simple functions, which is cleaner and matches domain patterns better than a class-based protocol. |
+
+## Story 24-3 (2026-04-18)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | `_to_computation_policy` signature change incompatible with actual implementation | Removed proposed signature change, instead use `dataclasses.replace()` to create translated config before calling existing function unchanged |
+| critical | `_build_policy_config` cannot handle CustomTypePolicy - blocks main feature | Added complete CustomTypePolicy extension to portfolio routes section, including `get_policy_type()` fallback and parameter class registry lookup, added new task "Extend portfolio route to handle CustomTypePolicy policies (CRITICAL)" |
+| high | AC4 ambiguity - "blocks or warns" without specifying behavior or layer | Changed AC4 to specify "blocks with 422 error before execution" and added runtime mode specificity (only applies to `runtime_mode=live`, bypassed for `runtime_mode=replay`) |
+| high | AC3 "comparison surfaces continue to work" is vague and untestable | Rewrote AC3 to specify "comparison API endpoints return successful responses with normalized output columns for surfaced policy types" |
+| high | Output column naming order undefined across AC5-AC7 | Added explicit column naming order specification to AC6 and Normalization section: "normalization first, then policy-type+index prefixing" with example (`subsidy_0_subsidy_amount`) |
+| high | Missing CustomTypePolicy handling in portfolio routes is a fundamental blocker | Extended "Portfolio Route Runtime Availability Check" section with complete CustomTypePolicy support code, added new task for this work |
+| medium | LIVE_READY_TYPES duplicated across multiple sections increases drift risk | Updated validation check to import `LIVE_READY_TYPES` from canonical source (`routes/templates.py`), removed duplicate definition |
+| medium | AC5 output variables lack conditional specification | Updated AC5 to specify "for each policy type present" and added transformation example |
+| medium | Missing integration test coverage for full orchestrator execution path | Added `TestPortfolioLiveExecution` class with full execution path tests |
+| medium | Runtime availability validation lacks replay mode handling | Added `runtime_mode=replay` bypass specification to validation check docstring and added test case |
+| low | Missing entry gate for Story 24.2 dependency | Added prerequisite note: "Story 24.2 must be merged and stable before starting this story" |
+| low | AC7 lacks specific non-regression test | Added `test_duplicate_policy_type_prefixing_preserved` to non-regression test class |
+| low | Task list doesn't reflect CustomTypePolicy work | Added new task "Extend portfolio route to handle CustomTypePolicy policies (CRITICAL)" with subtasks |
+| low | Project structure notes incomplete | Updated to include CustomTypePolicy extension work |
+| dismissed | Story scope too large (epic-sized) | FALSE POSITIVE: Story scope is appropriate - 7 tasks focused on single feature (portfolio execution for surfaced policies). Translation integration is necessary core work, not scope creep. |
+| dismissed | Over-prescriptive pseudocode reduces negotiability | FALSE POSITIVE: Code examples are implementation guidance, not requirements. Developers can adapt patterns. The prescriptive detail helps prevent errors in complex integration points. |
+| dismissed | INVEST criteria violations (Independent, Negotiable, Small, Testable) | FALSE POSITIVE: INVEST is a heuristic, not a strict checklist. Story has clear dependencies (Story 24.2), reasonable scope for translation integration work, and testable ACs after clarifications applied. |
+| dismissed | PreflightRequest structure uncertain for validation check | FALSE POSITIVE: The `request.scenario.get("portfolioName")` pattern is consistent with existing validation checks in the codebase. No change needed. |

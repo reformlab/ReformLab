@@ -93,6 +93,9 @@ def _validate_resolution_strategy(strategy: str) -> None:
 def _build_policy_config(req: PortfolioPolicyRequest) -> Any:
     """Build a PolicyConfig from a request object.
 
+    Story 24.3: Extended to handle CustomPolicyType for vehicle_malus
+    and energy_poverty_aid policies.
+
     Returns a PolicyConfig frozen dataclass.
 
     Raises HTTPException(422) on bad policy_type or unknown parameters.
@@ -100,31 +103,79 @@ def _build_policy_config(req: PortfolioPolicyRequest) -> Any:
     from reformlab.templates.portfolios import PolicyConfig
     from reformlab.templates.schema import (
         CarbonTaxParameters,
+        CustomPolicyType,
         FeebateParameters,
         PolicyParameters,
         PolicyType,
         RebateParameters,
         SubsidyParameters,
+        get_policy_type,
     )
 
+    # Story 24.3: Try PolicyType enum first, then CustomPolicyType
+    policy_type: PolicyType | CustomPolicyType
     try:
         policy_type = PolicyType(req.policy_type)
     except ValueError:
-        raise HTTPException(
-            status_code=422,
-            detail={
-                "what": f"Invalid policy_type: '{req.policy_type}'",
-                "why": f"Must be one of: {[e.value for e in PolicyType]}",
-                "fix": "Use one of: carbon_tax, subsidy, rebate, feebate",
-            },
-        )
+        # Fall back to CustomPolicyType
+        try:
+            policy_type = get_policy_type(req.policy_type)
+        except Exception:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "what": f"Invalid policy_type: '{req.policy_type}'",
+                    "why": "Policy type not found in built-in or custom registries",
+                    "fix": (
+                        "Use a valid policy type: carbon_tax, subsidy, rebate, "
+                        "feebate, vehicle_malus, energy_poverty_aid"
+                    ),
+                },
+            )
 
-    params_cls: type[PolicyParameters] = {
+    # Get parameters class from registry
+    # Story 24.3: Built-in types
+    _POLICY_TYPE_TO_PARAMS: dict[PolicyType, type[PolicyParameters]] = {
         PolicyType.CARBON_TAX: CarbonTaxParameters,
         PolicyType.SUBSIDY: SubsidyParameters,
         PolicyType.REBATE: RebateParameters,
         PolicyType.FEEBATE: FeebateParameters,
-    }.get(policy_type, PolicyParameters)
+    }
+
+    # Story 24.3: Handle CustomPolicyType parameter class lookup
+    params_cls: type[PolicyParameters]
+    if isinstance(policy_type, PolicyType):
+        builtin_params_cls = _POLICY_TYPE_TO_PARAMS.get(policy_type)
+        if builtin_params_cls is None:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "what": f"Parameters class not found for policy type: '{req.policy_type}'",
+                    "why": "No parameters mapping registered for this built-in type",
+                    "fix": "Use one of: carbon_tax, subsidy, rebate, feebate",
+                },
+            )
+        params_cls = builtin_params_cls
+    else:
+        # CustomPolicyType: look up in parameter registry
+        from reformlab.templates.schema import _CUSTOM_PARAMETERS_TO_POLICY_TYPE
+
+        custom_params_cls: type[PolicyParameters] | None = None
+        for cls, pt in _CUSTOM_PARAMETERS_TO_POLICY_TYPE.items():
+            if isinstance(pt, CustomPolicyType) and pt.value == policy_type.value:
+                custom_params_cls = cls
+                break
+
+        if custom_params_cls is None:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "what": f"Parameters class not found for policy type: '{req.policy_type}'",
+                    "why": "No parameters mapping registered for this custom policy type",
+                    "fix": "Register the parameters class for this custom policy type",
+                },
+            )
+        params_cls = custom_params_cls
 
     # Convert string keys to int for rate_schedule
     try:
@@ -155,6 +206,19 @@ def _build_policy_config(req: PortfolioPolicyRequest) -> Any:
         covered_categories=tuple(req.covered_categories),
         **extra,
     )
+
+    # Story 24.3: Check runtime availability for custom types
+    from reformlab.server.routes.templates import LIVE_READY_TYPES
+
+    if policy_type.value not in LIVE_READY_TYPES:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "what": f"Policy type '{policy_type.value}' is not available for live execution",
+                "why": f"Policy type '{policy_type.value}' is not marked as live_ready for runtime execution",
+                "fix": f"Use one of the live-ready policy types: {', '.join(sorted(LIVE_READY_TYPES))}",
+            },
+        )
 
     return PolicyConfig(policy_type=policy_type, policy=policy, name=req.name)
 

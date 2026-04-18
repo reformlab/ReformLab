@@ -165,6 +165,10 @@ def normalize_computation_result(
     If mapping_config is provided, uses apply_output_mapping from mapping.py.
     If no mapping_config, applies _DEFAULT_OUTPUT_MAPPING.
 
+    Story 24.3: For portfolio results (source="portfolio"), normalization is
+    applied per-policy after prefixing. Each prefixed column (e.g., subsidy_0_subsidy_amount)
+    has its base name normalized (e.g., subsidy_amount) and the prefix reapplied.
+
     Validates that at least one column from _MINIMUM_REQUIRED_COLUMNS is present.
     Does NOT add household_id — that is the panel builder's responsibility.
 
@@ -180,8 +184,81 @@ def normalize_computation_result(
     """
     table = comp_result.output_fields
 
-    # Apply mapping
-    if mapping_config is not None:
+    # Story 24.3: Handle portfolio results with prefixed columns
+    is_portfolio = comp_result.metadata.get("source") == "portfolio"
+
+    if is_portfolio:
+        # For portfolio results, normalize each prefixed column individually
+        # Prefix format: {policy_type}_{index}_{column_name} or {policy_type}_{column_name}
+        rename_map: dict[str, str] = {}
+        for col_name in table.column_names:
+            if col_name == "household_id":
+                # Never rename household_id
+                continue
+
+            # Parse the prefixed column name
+            parts = col_name.split("_", 2)  # Split into max 3 parts: prefix, index?, name
+            if len(parts) >= 3 and parts[1].isdigit():
+                # Format: policy_type_index_column_name (e.g., subsidy_0_subsidy_amount)
+                prefix = f"{parts[0]}_{parts[1]}_"
+                base_name = parts[2]
+            elif len(parts) >= 2:
+                # Format: policy_type_column_name (e.g., subsidy_subsidy_amount for first policy)
+                # Check if the second part is a digit (index) or column name
+                if parts[1].isdigit():
+                    # This is actually policy_type_index format with no column name
+                    # Shouldn't happen, but handle gracefully
+                    prefix = f"{parts[0]}_{parts[1]}_"
+                    base_name = parts[1]
+                else:
+                    # Format: policy_type_column_name (first policy with no index)
+                    prefix = f"{parts[0]}_"
+                    base_name = "_".join(parts[1:])
+            else:
+                # No prefix - shouldn't happen in portfolio results
+                prefix = ""
+                base_name = col_name
+
+            # Apply normalization to the base column name
+            if mapping_config is not None:
+                from reformlab.computation.mapping import apply_output_mapping_to_name
+
+                normalized_base = apply_output_mapping_to_name(base_name, mapping_config)
+            else:
+                normalized_base = _DEFAULT_OUTPUT_MAPPING.get(base_name, base_name)
+
+            # Reapply the prefix to get the final normalized column name
+            new_name = f"{prefix}{normalized_base}"
+            if new_name != col_name:
+                rename_map[col_name] = new_name
+
+        if rename_map:
+            new_names = [
+                rename_map.get(name, name)
+                for name in table.column_names
+            ]
+
+            # Guard against duplicate column names after rename
+            seen: set[str] = set()
+            dupes: list[str] = []
+            for new_name in new_names:
+                if new_name in seen:
+                    dupes.append(new_name)
+                seen.add(new_name)
+
+            if dupes:
+                raise NormalizationError(
+                    what="Output normalization failed",
+                    why=(
+                        f"Renaming would produce duplicate column names: {dupes}. "
+                        f"This can happen if policy outputs have conflicting base names "
+                        f"that normalize to the same value."
+                    ),
+                    fix="Check output mapping configuration for conflicting column mappings",
+                )
+
+            table = table.rename_columns(new_names)
+    elif mapping_config is not None:
         from reformlab.computation.mapping import apply_output_mapping
 
         table = apply_output_mapping(table, mapping_config)

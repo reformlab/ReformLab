@@ -287,6 +287,27 @@ def apply_output_mapping(table: pa.Table, config: MappingConfig) -> pa.Table:
     return _rename_table(table, rename_map, type_map)
 
 
+def apply_output_mapping_to_name(
+    openfisca_name: str, config: MappingConfig
+) -> str:
+    """Apply output mapping to a single column name.
+
+    Story 24.3: Helper for normalizing portfolio prefixed columns.
+    Returns the mapped project name, or the original name if not found.
+
+    Args:
+        openfisca_name: OpenFisca variable name to map.
+        config: MappingConfig with output_mappings.
+
+    Returns:
+        Mapped project name, or original name if not in mapping.
+    """
+    for mapping in config.output_mappings:
+        if mapping.openfisca_name == openfisca_name:
+            return mapping.project_name
+    return openfisca_name
+
+
 def apply_input_mapping(table: pa.Table, config: MappingConfig) -> pa.Table:
     """Rename project columns to OpenFisca names (input direction).
 
