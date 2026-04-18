@@ -338,6 +338,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [activeStage, isAuthenticated]);
 
   // ============================================================================
+  // API health check — pings /api/health to determine real connectivity
+  // ============================================================================
+
+  const [apiConnected, setApiConnected] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setApiConnected(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const check = async () => {
+      try {
+        const res = await fetch("/api/health", { method: "GET" });
+        if (!cancelled) setApiConnected(res.ok);
+      } catch {
+        if (!cancelled) setApiConnected(false);
+      }
+    };
+
+    // Check immediately on auth, then every 30s
+    check();
+    const id = setInterval(check, 30_000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [isAuthenticated]);
+
+  // ============================================================================
   // Data hooks
   // ============================================================================
 
@@ -440,9 +469,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (isAuthenticated && !populationsLoading && !templatesLoading) {
       if (populationsMock || templatesMock) {
-        toast.warning("Using sample data — backend API may be unavailable", {
+        toast.warning("Loaded sample data — API returned empty or errored for populations/templates", {
           id: "mock-data-warning",
-          duration: 8000,
+          duration: 10000,
         });
       }
     }
@@ -804,7 +833,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setSelectedComparisonRunIds,
       executionMatrix,
       updateExecutionCell,
-      apiConnected: !populationsMock && !templatesMock,
+      apiConnected,
     }),
     [
       isAuthenticated, authLoading, authenticate, logout,
@@ -825,7 +854,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       selectedPortfolioName, setSelectedPortfolioName,
       selectedComparisonRunIds, setSelectedComparisonRunIds,
       executionMatrix, updateExecutionCell,
-      populationsMock, templatesMock,
+      apiConnected,
     ],
   );
 
