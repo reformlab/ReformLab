@@ -52,3 +52,26 @@
 | dismissed | Over-prescriptive pseudocode reduces negotiability | FALSE POSITIVE: Code examples are implementation guidance, not requirements. Developers can adapt patterns. The prescriptive detail helps prevent errors in complex integration points. |
 | dismissed | INVEST criteria violations (Independent, Negotiable, Small, Testable) | FALSE POSITIVE: INVEST is a heuristic, not a strict checklist. Story has clear dependencies (Story 24.2), reasonable scope for translation integration work, and testable ACs after clarifications applied. |
 | dismissed | PreflightRequest structure uncertain for validation check | FALSE POSITIVE: The `request.scenario.get("portfolioName")` pattern is consistent with existing validation checks in the codebase. No change needed. |
+
+## Story 24-5 (2026-04-18)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | AC4 is non-testable and subjective | Rewrote AC4 to specify concrete deliverable artifacts (fixture module, example test class, smoke test) that enable future pack expansion |
+| critical | AC1 "covers" is too vague and not estimable | Expanded AC1 into specific minimum test counts (at least 2 catalog tests, 2 portfolio tests, 2 execution tests, 2 comparison tests, 3 non-regression tests) |
+| critical | Incorrect column name in example | Changed `assert "malus_amount"` to `assert "vehicle_malus"` with prefix handling to match normalized output contract |
+| critical | Missing negative-path runtime availability tests | Added AC5 explicitly testing live_unavailable blocking (422) and replay mode bypass, plus new "Negative-Path Runtime Availability Tests" section in Dev Notes |
+| high | Smoke test lacks executable contract | Added specific command `python examples/live_policy_catalog/surfaced_packs_smoke.py` with exit code 0 requirement to AC2 and task list |
+| high | Fixture scope completely undefined | Replaced generic fixture task with specific fixtures (surfaced_subsidy_params, surfaced_vehicle_malus_params, surfaced_energy_poverty_aid_params, minimal_population, assert helper) |
+| high | Documentation location ambiguous for Astro site | Added Astro Starlight format requirements with frontmatter, updated target path to `docs/src/content/docs/live-policy-catalog.mdx` |
+| high | Frontend-backend contract task unclear ("type labels") | Clarified task to verify `type` field value (backend) and separated frontend mock verification task with specific file path |
+| medium | No directory structure verification | Added new task "Verify and create required directory structure" as first task, checking tests/regression/, examples/live_policy_catalog/, and docs location |
+| medium | Portfolio CRUD task duplicates existing tests | Clarified task to focus on surfaced pack specifics (CREATE operations for vehicle_malus, energy_poverty_aid) rather than generic CRUD already covered |
+| low | No prerequisite gate in story header | Added "Prerequisites" section requiring Stories 24.3 and 24.4 to be `done` in sprint-status before starting |
+| low | Missing test fixture reuse guidance | Added "Test Fixture Reuse" section with specific import patterns from existing conftest.py files |
+| low | No guidance for optional OpenFisca dependency | Added "Test Execution Strategy" subsection to Non-Regression Requirements with pytest marks and MockAdapter guidance |
+| dismissed | Subsidy `income_ceiling` field is incorrect | FALSE POSITIVE: Field name is correct per source code—`SubsidyParameters` uses `income_ceiling` as shown in translator validation logic (line 77 of translator.py: checks `if policy.income_ceiling <= 0`) |
+| dismissed | Feebate "rebates, maluses" key fields are wrong | FALSE POSITIVE: Fields are valid per `FeebateParameters` schema; validator provided no contradictory evidence |
+| dismissed | Story 24.3 status conflict across artifacts | FALSE POSITIVE: Sprint status file inconsistency is a process issue, not a story specification problem. Added prerequisite check to mitigate |
+| dismissed | Reinvention risk—tests already exist | FALSE POSITIVE: Story explicitly mentions reusing existing fixtures and extending tests for surfaced pack specifics. Added fixture reuse guidance to reinforce this |
+| dismissed | Scope too large (tests + fixtures + docs + smoke) | FALSE POSITIVE: Story is appropriately sized for Epic 24 closure work; all tasks are directly related to regression coverage. Implementation phases provide structure |

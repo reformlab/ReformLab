@@ -1,0 +1,145 @@
+record_id: 2b9ec890-6aeb-4a8b-8642-bb7cc19234fa
+created_at: '2026-04-18T17:30:48.775322+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 24
+  story_num: 5
+  title: Story 24.5
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-04-18T17:26:32.463562Z'
+  end_time: '2026-04-18T17:27:54.559562Z'
+  duration_ms: 82096
+  input_tokens: 0
+  output_tokens: 5336
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 21347
+  heading_count: 49
+  list_depth_max: 3
+  code_block_count: 17
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 1.9'
+  - 🎯 Ruthless Story Validation 24.5
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 1.9 → PASS'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Missing Directory Structure Verification
+  - 2. Test Fixture Scope Undefined
+  - 3. Coverage Targets Not Specified
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Portfolio CRUD Task Duplicates Existing Coverage
+  - 2. Example Smoke Test Missing Portfolio Pattern
+  - Example Configuration Pattern
+  - 3. Documentation Astro Format Requirements
+  - Documentation Requirements (Astro Starlight)
+  - Live Policy Catalog
+  - 4. Fixture Reuse from Existing Tests Not Specified
+  - Test Fixture Reuse
+  - Import existing fixtures for reuse
+  - 5. Frontend Mock Data Verification Scope Undefined
+  - ✨ Optimizations (Nice to Have)
+  - 1. Test Execution Time Consideration
+  - Test Execution Considerations
+  - 2. Example Executable Verification
+  - 3. Documentation Link Verification
+  - 🤖 LLM Optimization Improvements
+  - 1. Verbose Example Pattern Can Be Shortened
+  - Example structure for surfaced pack smoke test
+  - 'Pattern follows examples/api/api_smoke_test.py with these additions:'
+  - '- Verify surfaced types in catalog: "subsidy", "vehicle_malus", "energy_poverty_aid"'
+  - '- Create portfolio with surfaced packs via POST /api/portfolios'
+  - '- Execute portfolio via POST /api/runs (see tests/server/test_portfolios.py)'
+  - '- Verify normalized columns: subsidy_amount, vehicle_malus, energy_poverty_aid'
+  - 2. Surfaced Policy Packs Table Is Redundant
+  - Surfaced Policy Packs
+  - Surfaced Policy Packs
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: bf77972789b1
+findings:
+  total_count: 13
+  by_severity:
+    critical: 3
+    major: 5
+    minor: 3
+    nit: 2
+  by_category:
+    security: 0
+    performance: 1
+    correctness: 2
+    completeness: 6
+    clarity: 4
+    testability: 4
+  has_fix_count: 13
+  has_location_count: 10
+  has_evidence_count: 13
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 14
+  confidence_phrases_count: 4
+linguistic:
+  avg_sentence_length: 30.952380952380953
+  vocabulary_richness: 0.2734615384615385
+  flesch_reading_ease: 2.498065653825307
+  vague_terms_count: 5
+  formality_score: 0.7
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.77
+  evidence_quality: 1.0
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
