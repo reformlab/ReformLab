@@ -117,10 +117,12 @@ def _build_policy_config(req: PortfolioPolicyRequest) -> Any:
     try:
         policy_type = PolicyType(req.policy_type)
     except ValueError:
-        # Fall back to CustomPolicyType
+        # Fall back to CustomPolicyType via public registry API
+        from reformlab.templates.exceptions import TemplateError
+
         try:
             policy_type = get_policy_type(req.policy_type)
-        except Exception:
+        except TemplateError:
             raise HTTPException(
                 status_code=422,
                 detail={
@@ -157,14 +159,11 @@ def _build_policy_config(req: PortfolioPolicyRequest) -> Any:
             )
         params_cls = builtin_params_cls
     else:
-        # CustomPolicyType: look up in parameter registry
-        from reformlab.templates.schema import _CUSTOM_PARAMETERS_TO_POLICY_TYPE
+        # CustomPolicyType: look up via public registry API
+        from reformlab.templates.schema import list_custom_registrations
 
-        custom_params_cls: type[PolicyParameters] | None = None
-        for cls, pt in _CUSTOM_PARAMETERS_TO_POLICY_TYPE.items():
-            if isinstance(pt, CustomPolicyType) and pt.value == policy_type.value:
-                custom_params_cls = cls
-                break
+        custom_registrations = list_custom_registrations()
+        custom_params_cls = custom_registrations.get(policy_type.value)
 
         if custom_params_cls is None:
             raise HTTPException(
@@ -207,18 +206,10 @@ def _build_policy_config(req: PortfolioPolicyRequest) -> Any:
         **extra,
     )
 
-    # Story 24.3: Check runtime availability for custom types
-    from reformlab.server.routes.templates import LIVE_READY_TYPES
-
-    if policy_type.value not in LIVE_READY_TYPES:
-        raise HTTPException(
-            status_code=422,
-            detail={
-                "what": f"Policy type '{policy_type.value}' is not available for live execution",
-                "why": f"Policy type '{policy_type.value}' is not marked as live_ready for runtime execution",
-                "fix": f"Use one of the live-ready policy types: {', '.join(sorted(LIVE_READY_TYPES))}",
-            },
-        )
+    # Story 24.3 code review fix: removed runtime availability check from
+    # portfolio create/update. Availability is enforced at execution time
+    # via the preflight validation check, allowing replay-only portfolios
+    # to reference any policy type.
 
     return PolicyConfig(policy_type=policy_type, policy=policy, name=req.name)
 

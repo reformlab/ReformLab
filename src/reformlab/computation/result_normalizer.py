@@ -188,34 +188,58 @@ def normalize_computation_result(
     is_portfolio = comp_result.metadata.get("source") == "portfolio"
 
     if is_portfolio:
-        # For portfolio results, normalize each prefixed column individually
-        # Prefix format: {policy_type}_{index}_{column_name} or {policy_type}_{column_name}
+        # For portfolio results, normalize each prefixed column individually.
+        # Prefix format (from portfolio_step._merge_policy_results):
+        #   - No prefix (first policy, no duplicate types)
+        #   - {policy_type}_{column_name} (non-first policy, no duplicates)
+        #   - {policy_type}_{index}_{column_name} (any policy when duplicates exist)
+        #
+        # Policy type names may contain underscores (e.g. vehicle_malus,
+        # energy_poverty_aid), so naive split("_", 2) is ambiguous.
+        # We match against known policy type names (longest-first) to
+        # correctly separate prefix from base column name.
+        #
+        # Story 24.3 code review fix: robust prefix parsing for
+        # underscore-containing policy types.
+        # Known policy types sorted longest-first so that multi-word
+        # types (energy_poverty_aid) match before shorter prefixes.
+        _KNOWN_POLICY_TYPES = [
+            "energy_poverty_aid",
+            "vehicle_malus",
+            "carbon_tax",
+            "subsidy",
+            "rebate",
+            "feebate",
+        ]
+
         rename_map: dict[str, str] = {}
         for col_name in table.column_names:
             if col_name == "household_id":
-                # Never rename household_id
                 continue
 
-            # Parse the prefixed column name
-            parts = col_name.split("_", 2)  # Split into max 3 parts: prefix, index?, name
-            if len(parts) >= 3 and parts[1].isdigit():
-                # Format: policy_type_index_column_name (e.g., subsidy_0_subsidy_amount)
-                prefix = f"{parts[0]}_{parts[1]}_"
-                base_name = parts[2]
-            elif len(parts) >= 2:
-                # Format: policy_type_column_name (e.g., subsidy_subsidy_amount for first policy)
-                # Check if the second part is a digit (index) or column name
-                if parts[1].isdigit():
-                    # This is actually policy_type_index format with no column name
-                    # Shouldn't happen, but handle gracefully
-                    prefix = f"{parts[0]}_{parts[1]}_"
-                    base_name = parts[1]
-                else:
-                    # Format: policy_type_column_name (first policy with no index)
-                    prefix = f"{parts[0]}_"
-                    base_name = "_".join(parts[1:])
-            else:
-                # No prefix - shouldn't happen in portfolio results
+            # Try to match a known policy type prefix (longest first)
+            prefix = ""
+            base_name = col_name
+            matched = False
+            for ptype in _KNOWN_POLICY_TYPES:
+                if col_name.startswith(f"{ptype}_"):
+                    remainder = col_name[len(ptype) + 1 :]  # skip past "{ptype}_"
+                    # Check if remainder starts with a digit (index marker)
+                    remainder_parts = remainder.split("_", 1)
+                    if remainder_parts[0].isdigit():
+                        # Format: {type}_{index}_{name}
+                        prefix = f"{ptype}_{remainder_parts[0]}_"
+                        base_name = remainder_parts[1] if len(remainder_parts) > 1 else ""
+                    else:
+                        # Format: {type}_{name} (no index)
+                        prefix = f"{ptype}_"
+                        base_name = remainder
+                    matched = True
+                    break
+
+            if not matched:
+                # No known prefix — first policy with no prefix, or
+                # unrecognized column. Treat entire name as base.
                 prefix = ""
                 base_name = col_name
 

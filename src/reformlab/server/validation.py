@@ -729,6 +729,16 @@ def _check_portfolio_runtime_availability(request: PreflightRequest) -> Validati
     NOTE: This check only applies to runtime_mode=live. For runtime_mode=replay,
     availability is bypassed.
     """
+    # Story 24.3 code review fix: bypass availability check for replay mode
+    if request.runtime_mode == "replay":
+        return ValidationCheckResult(
+            id="portfolio-runtime-availability",
+            label="Portfolio runtime availability",
+            passed=True,
+            severity="error",
+            message="Replay mode: runtime availability bypassed",
+        )
+
     from reformlab.server.dependencies import get_registry
     from reformlab.templates.portfolios.portfolio import PolicyPortfolio
     from reformlab.templates.registry import RegistryError, ScenarioNotFoundError
@@ -772,6 +782,11 @@ def _check_portfolio_runtime_availability(request: PreflightRequest) -> Validati
     unavailable_policies = []
     for i, policy_cfg in enumerate(entry.policies):
         if policy_cfg.policy_type is None:
+            # Story 24.3 code review fix: flag None policy_type as error
+            policy_name = policy_cfg.name or f"policy_{i}"
+            unavailable_policies.append(
+                f"  - policy[{i}]: '{policy_name}' (policy_type is None — malformed portfolio entry)"
+            )
             continue
         policy_type_str = policy_cfg.policy_type.value
         if policy_type_str not in LIVE_READY_TYPES:

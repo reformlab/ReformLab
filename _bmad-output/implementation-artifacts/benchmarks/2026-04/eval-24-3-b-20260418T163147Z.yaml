@@ -1,0 +1,116 @@
+record_id: c9c396a6-b628-4a6e-90fa-f5dedb73af04
+created_at: '2026-04-18T16:31:47.538030+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 24
+  story_num: '3'
+  title: Story 24.3
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-04-18T16:29:08.567779Z'
+  end_time: '2026-04-18T16:30:42.400779Z'
+  duration_ms: 93833
+  input_tokens: 0
+  output_tokens: 4863
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 19452
+  heading_count: 16
+  list_depth_max: 2
+  code_block_count: 5
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: 11.7'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes & Readability
+  - ⚡ Performance & Scalability
+  - 🐛 Correctness & Safety
+  - 🔧 Maintainability Issues
+  - 🛠️ Suggested Fixes
+  - 1. Add runtime_mode check to availability validation
+  - 2. Fix column prefix parsing for underscore-heavy policy types
+  - 3. Move imports to module level in translator
+  - 4. Create missing integration test file
+  - 'SPDX-License-Identifier: AGPL-3.0-or-later'
+  - Copyright 2026 Lucas Vivier
+  - 5. Fix None policy_type handling in validation
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 3442c7e0705d
+findings:
+  total_count: 16
+  by_severity:
+    critical: 3
+    major: 7
+    minor: 6
+    nit: 0
+  by_category:
+    security: 0
+    performance: 2
+    correctness: 5
+    completeness: 4
+    clarity: 2
+    testability: 3
+  has_fix_count: 16
+  has_location_count: 15
+  has_evidence_count: 13
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 2
+  confidence_phrases_count: 0
+linguistic:
+  avg_sentence_length: 169.92307692307693
+  vocabulary_richness: 0.31598008148483475
+  flesch_reading_ease: -6.478557713545257
+  vague_terms_count: 0
+  formality_score: 0.65
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.94
+  evidence_quality: 0.81
+  follows_template: true
+  internal_consistency: 0.95
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 1
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

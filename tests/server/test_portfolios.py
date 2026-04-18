@@ -677,12 +677,21 @@ class TestCustomPolicyTypeSupport:
     def test_error_message_identifies_unavailable_policy(
         self, client: TestClient, auth_headers: dict[str, str], tmp_path: Path
     ) -> None:
-        """AC: Error message clearly identifies the unavailable policy type."""
+        """AC: Error message clearly identifies the unavailable policy type.
+
+        Story 24.3 code review fix: runtime availability is now enforced at
+        preflight time (test_preflight_runtime.py), not at portfolio creation.
+        This test verifies that portfolio creation with a custom type succeeds
+        when the type is properly registered.
+        """
         import os
+        import uuid
 
         os.environ["REFORMLAB_REGISTRY_PATH"] = str(tmp_path)
+        unique_suffix = uuid.uuid4().hex[:8]
+        portfolio_name = f"test-unavail-rt-{unique_suffix}"
         try:
-            # Create a new unavailable type for testing
+            # Create a new custom type for testing
             from reformlab.templates.schema import (
                 PolicyParameters,
                 register_custom_template,
@@ -712,17 +721,16 @@ class TestCustomPolicyTypeSupport:
             }
 
             body = {
-                "name": "test-unavailable-portfolio",
-                "description": "Portfolio with unavailable type",
+                "name": portfolio_name,
+                "description": "Portfolio with custom type",
                 "policies": [_VALID_POLICIES[0], unavailable_policy],
                 "resolution_strategy": "error",
             }
 
+            # Portfolio creation should succeed — runtime availability is
+            # enforced at preflight time, not at portfolio creation
             response = client.post("/api/portfolios", json=body, headers=auth_headers)
-            assert response.status_code == 422
-            detail = response.json()["detail"]
-            assert "not marked as live_ready" in detail["why"] or "not available for live execution" in detail["why"]
-            assert "test_unavailable_runtime" in detail["why"]
+            assert response.status_code == 201
 
             # Clean up
             from reformlab.templates.schema import unregister_policy_type

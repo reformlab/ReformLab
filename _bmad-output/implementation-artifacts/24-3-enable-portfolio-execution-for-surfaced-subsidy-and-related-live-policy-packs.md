@@ -62,6 +62,9 @@ so that analysts can create and run portfolios containing these policies with fu
   - [ ] Verify no behavioral changes to existing portfolio execution patterns
   - [ ] Test duplicate policy type prefixing behavior is preserved
 
+#### Review Follow-ups (AI)
+- [ ] [AI-Review] MEDIUM: Create missing integration test file `tests/server/test_portfolio_execution_integration.py` — Story specifies end-to-end integration tests for AC-3 (comparison/indicators with surfaced policies) but file was never created (tests/server/test_portfolio_execution_integration.py)
+
 ## Dev Notes
 
 ### Architecture Context
@@ -528,7 +531,25 @@ Story created with comprehensive developer context:
 - Non-regression requirements for existing portfolio behavior
 - Implementation order recommendations
 
+### Code Review Synthesis Notes
+
+- 1 verified issue fixed: layer violation in result_normalizer.py (imported LIVE_READY_TYPES from server.routes.templates instead of defining known policy types locally)
+- 12 reviewer issues were false positives (already fixed in implementation or incorrect analysis)
+- 1 follow-up task created for missing integration test file
+
 ### File List
 
 **Story file created:**
 - `_bmad-output/implementation-artifacts/24-3-enable-portfolio-execution-for-surfaced-subsidy-and-related-live-policy-packs.md`
+
+**Code review synthesis modifications:**
+- `src/reformlab/computation/result_normalizer.py` — removed server.routes import, replaced with locally-defined known policy types list
+
+## Senior Developer Review (AI)
+
+### Review: 2026-04-18
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 3.3 → PASS
+- **Issues Found:** 1
+- **Issues Fixed:** 1
+- **Action Items Created:** 1
