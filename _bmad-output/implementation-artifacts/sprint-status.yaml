@@ -26,8 +26,8 @@ development_status:
   epic-23-retrospective: done
   # Epic 24
   epic-24: in-progress
-  24-1-publish-canonical-catalog-and-api-exposure-for-already-modeled-hidden-policy-packs: 
-    in-progress
+  24-1-publish-canonical-catalog-and-api-exposure-for-already-modeled-hidden-policy-packs:
+    review
   24-2-implement-domain-layer-live-translation-for-subsidy-style-policies-without-adapter-interface-changes: 
     backlog
   24-3-enable-portfolio-execution-for-surfaced-subsidy-and-related-live-policy-packs: 

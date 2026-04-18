@@ -1,0 +1,100 @@
+record_id: d5e86bf2-a3b1-4d39-b934-759c8a2eaf46
+created_at: '2026-04-17T13:54:19.014565+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 24
+  story_num: '1'
+  title: Story 24.1
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: true
+    requires_migration: false
+evaluator:
+  provider: codex
+  model: gpt-5.3-codex
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-04-17T13:49:05.426754Z'
+  end_time: '2026-04-17T13:53:28.499754Z'
+  duration_ms: 263073
+  input_tokens: 0
+  output_tokens: 1274
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 5096
+  heading_count: 0
+  list_depth_max: 2
+  code_block_count: 0
+  sections_detected: []
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 25a00889535a
+findings:
+  total_count: 7
+  by_severity:
+    critical: 3
+    major: 3
+    minor: 1
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 2
+    completeness: 2
+    clarity: 2
+    testability: 1
+  has_fix_count: 1
+  has_location_count: 7
+  has_evidence_count: 7
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 2
+  confidence_phrases_count: 0
+linguistic:
+  avg_sentence_length: 22.46875
+  vocabulary_richness: 0.39777468706536856
+  flesch_reading_ease: -43.55441176470586
+  vague_terms_count: 0
+  formality_score: 0.85
+  sentiment: negative
+quality:
+  actionable_ratio: 0.14
+  specificity_score: 0.93
+  evidence_quality: 0.93
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: true
+    requires_migration: false
+  phase: code-review
+  file_count: 11
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

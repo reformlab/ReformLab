@@ -17,10 +17,10 @@ export interface Template {
   parameterCount: number;
   description: string;
   parameterGroups: string[];
-  is_custom?: boolean;
-  // Story 24.1 / AC-1: Runtime availability metadata
-  runtime_availability?: "live_ready" | "live_unavailable";
-  availability_reason?: string | null;
+  is_custom: boolean;
+  // Story 24.1 / AC-1: Runtime availability metadata (required fields)
+  runtime_availability: "live_ready" | "live_unavailable";
+  availability_reason: string | null;
 }
 
 export interface Parameter {

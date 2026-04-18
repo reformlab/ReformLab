@@ -12,10 +12,14 @@ from __future__ import annotations
 import logging
 import re
 import shutil
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 from fastapi import APIRouter, HTTPException
 
+if TYPE_CHECKING:
+    from reformlab.templates.portfolios.portfolio import PolicyPortfolio
+
+from reformlab.server.dependencies import get_registry
 from reformlab.server.models import (
     ClonePortfolioRequest,
     CreatePortfolioRequest,
@@ -244,11 +248,6 @@ def _portfolio_to_detail(name: str, portfolio: Any, version_id: str) -> Portfoli
     )
 
 
-def _get_registry() -> Any:
-    """Return a ScenarioRegistry instance."""
-    from reformlab.templates.registry import ScenarioRegistry
-    return ScenarioRegistry()
-
 
 # ---------------------------------------------------------------------------
 # Routes — NOTE: /validate must be declared before /{name}
@@ -320,12 +319,12 @@ async def validate_portfolio(body: ValidatePortfolioRequest) -> ValidatePortfoli
 @router.get("", response_model=list[PortfolioListItem])
 async def list_portfolios() -> list[PortfolioListItem]:
     """List all saved portfolios."""
-    registry = _get_registry()
+    registry = get_registry()
     names = registry.list_portfolios()
     result = []
     for name in names:
         try:
-            portfolio = registry.get(name)
+            portfolio = cast("PolicyPortfolio", registry.get(name))
             entry = registry.get_entry(name)
             result.append(PortfolioListItem(
                 name=name,
@@ -342,7 +341,7 @@ async def list_portfolios() -> list[PortfolioListItem]:
 @router.get("/{name}", response_model=PortfolioDetailResponse)
 async def get_portfolio(name: str) -> PortfolioDetailResponse:
     """Get portfolio detail including all policies."""
-    registry = _get_registry()
+    registry = get_registry()
     try:
         portfolio = registry.get(name)
     except (KeyError, FileNotFoundError, ValueError, RegistryError) as exc:
@@ -380,7 +379,7 @@ async def create_portfolio(body: CreatePortfolioRequest) -> dict[str, str]:
     """Create and save a new portfolio."""
     _validate_portfolio_name(body.name)
 
-    registry = _get_registry()
+    registry = get_registry()
 
     # Check for name collision
     if registry.exists(body.name):
@@ -410,7 +409,7 @@ async def create_portfolio(body: CreatePortfolioRequest) -> dict[str, str]:
 @router.put("/{name}", response_model=PortfolioDetailResponse)
 async def update_portfolio(name: str, body: UpdatePortfolioRequest) -> PortfolioDetailResponse:
     """Update an existing portfolio's policies/parameters/order."""
-    registry = _get_registry()
+    registry = get_registry()
 
     # Verify portfolio exists and is a portfolio type
     if not registry.exists(name):
@@ -439,7 +438,7 @@ async def update_portfolio(name: str, body: UpdatePortfolioRequest) -> Portfolio
         )
 
     # Get existing to preserve fields not in the update request
-    existing = registry.get(name)
+    existing = cast("PolicyPortfolio", registry.get(name))
 
     resolution_strategy = body.resolution_strategy or existing.resolution_strategy
     description = body.description if body.description is not None else existing.description
@@ -459,7 +458,7 @@ async def update_portfolio(name: str, body: UpdatePortfolioRequest) -> Portfolio
 @router.delete("/{name}", status_code=204)
 async def delete_portfolio(name: str) -> None:
     """Delete a portfolio from the registry."""
-    registry = _get_registry()
+    registry = get_registry()
     entry_path = registry.path / name
 
     if not entry_path.exists():
@@ -497,7 +496,7 @@ async def clone_portfolio(name: str, body: ClonePortfolioRequest) -> PortfolioDe
     """Clone a portfolio with a new name."""
     _validate_portfolio_name(body.new_name)
 
-    registry = _get_registry()
+    registry = get_registry()
 
     # Verify source exists
     if not registry.exists(name):

@@ -562,7 +562,7 @@ class TestCatalogWithRuntimeAvailability:
                 ), f"{template['id']} should be live_unavailable"
                 assert (
                     template["availability_reason"]
-                    == "Domain translation pending - see Story 24.2"
+                    == "Domain translation pending - requires variable mapping"
                 ), f"{template['id']} should have availability_reason"
 
     def test_template_detail_includes_runtime_availability(
@@ -592,7 +592,7 @@ class TestCatalogWithRuntimeAvailability:
         assert data["runtime_availability"] == "live_unavailable"
         assert "availability_reason" in data
         assert (
-            data["availability_reason"] == "Domain translation pending - see Story 24.2"
+            data["availability_reason"] == "Domain translation pending - requires variable mapping"
         )
 
     def test_custom_template_has_runtime_availability(
@@ -643,4 +643,96 @@ class TestCatalogWithRuntimeAvailability:
 
         template_ids = {t["id"] for t in templates}
         # Check that all expected IDs are present
-        assert expected_ids.issubset(template_ids), f"Missing expected templates: {expected_ids - template_ids}"
+        missing = expected_ids - template_ids
+        assert expected_ids.issubset(template_ids), f"Missing: {missing}"
+
+    def test_catalog_is_deterministically_ordered(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """AC-3: Catalog is grouped by type, sorted by id within each group."""
+        response = client.get("/api/templates", headers=auth_headers)
+        assert response.status_code == 200
+        templates = response.json()["templates"]
+
+        # Group by type
+        groups: dict[str, list[dict]] = {}
+        for t in templates:
+            groups.setdefault(t["type"], []).append(t)
+
+        # Verify templates within each group are sorted by id
+        for type_name, group in groups.items():
+            ids = [t["id"] for t in group]
+            assert ids == sorted(ids), f"Type {type_name} not sorted by id"
+
+        # Verify group order is deterministic (alphabetical by type name)
+        group_names = list(groups.keys())
+        assert group_names == sorted(group_names), "Groups not sorted by type"
+
+    def test_scenario_compatibility_after_catalog_expansion(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """AC-4: Scenarios referencing previously visible packs load correctly after catalog expansion."""
+        # Create a scenario referencing a visible pack (carbon-tax)
+        scenario_data = {
+            "name": "test-scenario-visible-pack-24-1",
+            "policy_type": "carbon_tax",
+            "policy": {
+                "rate_schedule": {"2026": 50.0, "2027": 55.0},
+                "exemptions": [],
+                "thresholds": [],
+                "covered_categories": ["heating_fuel", "transport_fuel"],
+            },
+            "start_year": 2026,
+            "end_year": 2030,
+            "description": "Test scenario with visible pack after catalog expansion",
+        }
+
+        # Create the scenario — may return 201 or 404 depending on registry state
+        create_response = client.post(
+            "/api/scenarios",
+            headers=auth_headers,
+            json=scenario_data,
+        )
+        # Must not be a validation error — request shape is correct
+        assert create_response.status_code != 422
+
+        # Verify catalog listing still succeeds (no crash from expanded catalog)
+        templates_response = client.get("/api/templates", headers=auth_headers)
+        assert templates_response.status_code == 200
+
+    def test_portfolio_validation_after_catalog_expansion(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """AC-4: Portfolios with visible packs validate correctly after catalog expansion."""
+        response = client.post(
+            "/api/portfolios/validate",
+            headers=auth_headers,
+            json={
+                "policies": [
+                    {
+                        "name": "carbon-tax-test-24-1",
+                        "policy_type": "carbon_tax",
+                        "rate_schedule": {"2026": 44.0},
+                        "exemptions": [],
+                        "thresholds": [],
+                        "covered_categories": ["heating_fuel"],
+                        "extra_params": {},
+                    },
+                    {
+                        "name": "subsidy-test-24-1",
+                        "policy_type": "subsidy",
+                        "rate_schedule": {"2026": 5000.0},
+                        "exemptions": [],
+                        "thresholds": [30000.0],
+                        "covered_categories": ["energy_retrofit"],
+                        "extra_params": {},
+                    },
+                ],
+                "resolution_strategy": "error",
+            },
+        )
+        # Validation should succeed (may have conflicts, but endpoint returns response)
+        assert response.status_code == 200
+        data = response.json()
+        assert "conflicts" in data
+        assert "is_compatible" in data

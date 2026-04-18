@@ -10,6 +10,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
+from reformlab.server.dependencies import get_registry
 from reformlab.server.models import (
     CreateCustomTemplateRequest,
     CustomTemplateResponse,
@@ -30,14 +31,9 @@ LIVE_READY_TYPES = {"carbon_tax", "subsidy", "rebate", "feebate"}
 HIDDEN_PACK_TYPES = {"vehicle_malus", "energy_poverty_aid"}
 
 
-# Module-level singleton to avoid re-scanning on every request
-_registry: Any = None
-
-
 def _classify_runtime_availability(
     policy_type: str,
     is_builtin: bool,
-    is_custom_type: bool,
 ) -> tuple[RuntimeAvailability, str | None]:
     """Classify runtime availability for a template based on its origin and type.
 
@@ -46,7 +42,6 @@ def _classify_runtime_availability(
     Args:
         policy_type: The policy type name (e.g., "carbon_tax").
         is_builtin: True if loaded from built-in YAML packs.
-        is_custom_type: True if registered as a CustomPolicyType.
 
     Returns:
         Tuple of (runtime_availability, availability_reason).
@@ -58,7 +53,7 @@ def _classify_runtime_availability(
     # Built-in hidden packs pending domain translation (Story 24.2)
     # These are CustomPolicyTypes that are shipped with the package
     if policy_type in HIDDEN_PACK_TYPES:
-        return "live_unavailable", "Domain translation pending - see Story 24.2"
+        return "live_unavailable", "Domain translation pending - requires variable mapping"
 
     # Built-in templates with live translation (Epic 23)
     if policy_type in LIVE_READY_TYPES:
@@ -66,16 +61,6 @@ def _classify_runtime_availability(
 
     # Fallback for unknown built-in types (safe default)
     return "live_unavailable", None
-
-
-def _get_registry() -> Any:
-    """Return a lazily-initialized ScenarioRegistry singleton."""
-    global _registry  # noqa: PLW0603
-    if _registry is None:
-        from reformlab.templates.registry import ScenarioRegistry
-
-        _registry = ScenarioRegistry()
-    return _registry
 
 
 def _template_to_list_item(
@@ -92,7 +77,7 @@ def _template_to_list_item(
 
     # Story 24.1 / AC-1: Classify runtime availability
     runtime_availability, availability_reason = _classify_runtime_availability(
-        policy_type, is_builtin, is_custom
+        policy_type, is_builtin
     )
 
     # Count policy fields
@@ -200,7 +185,7 @@ async def list_templates() -> dict[str, list[TemplateListItem]]:
             seen_names.add(item.id)
 
     # 2. User-saved scenarios from the registry
-    registry = _get_registry()
+    registry = get_registry()
     for name in registry.list_scenarios():
         if name in seen_names:
             continue
@@ -237,6 +222,9 @@ async def list_templates() -> dict[str, list[TemplateListItem]]:
             )
         )
 
+    # Story 24.1 / Code Review: Enforce deterministic ordering (group by type, sort by id)
+    items.sort(key=lambda t: (t.type, t.id))
+
     return {"templates": items}
 
 
@@ -244,7 +232,7 @@ async def list_templates() -> dict[str, list[TemplateListItem]]:
 async def get_template(name: str) -> TemplateDetailResponse:
     """Get a template with full parameter details."""
     # 1. Try the scenario registry (user-saved scenarios)
-    registry = _get_registry()
+    registry = get_registry()
     try:
         template = registry.get(name)
         # Story 24.1 / AC-1: User-saved scenarios have is_builtin=False
@@ -253,10 +241,10 @@ async def get_template(name: str) -> TemplateDetailResponse:
         pass
 
     # 2. Try built-in template packs (YAML files)
-    template = _load_builtin_template(name)
-    if template is not None:
+    builtin_template = _load_builtin_template(name)
+    if builtin_template is not None:
         # Story 24.1 / AC-1: Built-in templates have is_builtin=True
-        return _template_to_detail(name, template, is_builtin=True)
+        return _template_to_detail(name, builtin_template, is_builtin=True)
 
     # 3. Try in-memory custom registrations
     from reformlab.templates.schema import list_custom_registrations
@@ -272,7 +260,7 @@ async def get_template(name: str) -> TemplateDetailResponse:
             param_groups = list(params_class.__dataclass_fields__.keys())
         # Story 24.1 / AC-1: Custom registrations have live_unavailable status
         runtime_availability, availability_reason = _classify_runtime_availability(
-            name, is_builtin=False, is_custom_type=True
+            name, is_builtin=False
         )
         return TemplateDetailResponse(
             id=name,

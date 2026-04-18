@@ -143,6 +143,9 @@ function mapTemplate(item: TemplateListItem): Template {
     description: item.description,
     parameterGroups: item.parameter_groups,
     is_custom: item.is_custom,
+    // Story 24.1 / AC-1: Include runtime availability metadata in mapping
+    runtime_availability: item.runtime_availability,
+    availability_reason: item.availability_reason,
   };
 }
 
