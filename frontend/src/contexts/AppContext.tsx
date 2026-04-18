@@ -24,7 +24,7 @@ import {
 
 import { toast } from "sonner";
 
-import { AuthError } from "@/api/client";
+import { setOnAuthInvalid } from "@/api/client";
 import { login, logout as apiLogout } from "@/api/auth";
 import { getAuthToken, setAuthToken } from "@/api/client";
 import { createScenario as apiCreateScenario, cloneScenario as apiCloneScenario } from "@/api/scenarios";
@@ -175,6 +175,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Auth state
   const [isAuthenticated, setIsAuthenticated] = useState(() => !!getAuthToken());
   const [authLoading, setAuthLoading] = useState(false);
+
+  // Global 401 handler — any apiFetch 401 forces back to password prompt
+  useEffect(() => {
+    setOnAuthInvalid(() => {
+      setIsAuthenticated(false);
+      initializedRef.current = false;
+    });
+    return () => { setOnAuthInvalid(null); };
+  }, []);
 
   const authenticate = useCallback(async (password: string) => {
     setAuthLoading(true);
@@ -418,18 +427,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Fetch data on auth
   useEffect(() => {
     if (isAuthenticated) {
-      refetchPopulations().catch((err) => {
-        if (err instanceof AuthError) {
-          setIsAuthenticated(false);
-          setAuthToken(null);
-        }
-      });
-      refetchTemplates().catch((err) => {
-        if (err instanceof AuthError) {
-          setIsAuthenticated(false);
-          setAuthToken(null);
-        }
-      });
+      refetchPopulations().catch(() => {});
+      refetchTemplates().catch(() => {});
       refetchDataFusionSources().catch(() => {});
       refetchDataFusionMethods().catch(() => {});
       refetchPortfolios().catch(() => {});

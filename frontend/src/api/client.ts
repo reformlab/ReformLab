@@ -6,6 +6,14 @@ import type { ErrorResponse } from "./types";
 
 const AUTH_TOKEN_KEY = "reformlab-auth-token";
 
+/** Callback invoked on any 401 — set by AppContext to trigger re-auth UI. */
+let _onAuthInvalid: (() => void) | null = null;
+
+/** Register a global callback for auth invalidation (called once from AppContext). */
+export function setOnAuthInvalid(cb: (() => void) | null): void {
+  _onAuthInvalid = cb;
+}
+
 /** Retrieve the stored auth token from sessionStorage. */
 export function getAuthToken(): string | null {
   return sessionStorage.getItem(AUTH_TOKEN_KEY);
@@ -68,6 +76,7 @@ export async function apiFetch<T>(
 
   if (response.status === 401) {
     setAuthToken(null);
+    _onAuthInvalid?.();
     throw new AuthError();
   }
 
@@ -128,6 +137,7 @@ export async function apiFetchBlob(
 
   if (response.status === 401) {
     setAuthToken(null);
+    _onAuthInvalid?.();
     throw new AuthError();
   }
 
