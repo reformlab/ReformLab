@@ -49,6 +49,13 @@ logger = logging.getLogger(__name__)
 PORTFOLIO_METADATA_KEY = "portfolio_metadata"
 PORTFOLIO_RESULTS_KEY = "portfolio_results"
 
+_LIVE_TRANSLATED_POLICY_TYPES = frozenset({
+    "subsidy",
+    "vehicle_malus",
+    "energy_poverty_aid",
+})
+_LIVE_PASSTHROUGH_POLICY_TYPES = frozenset({"carbon_tax", "rebate", "feebate"})
+
 
 # ============================================================================
 # Error class
@@ -367,7 +374,7 @@ class PortfolioComputationStep:
             policy_name = policy_cfg.name or policy_cfg.policy_type.value
             policy_type_value = policy_cfg.policy_type.value
 
-            if self._runtime_mode == "replay":
+            if self._runtime_mode == "replay" or _can_skip_live_translation(policy_type_value):
                 comp_policy = _to_computation_policy(policy_cfg)
             else:
                 # Story 24.3: Translate domain policy for live execution.
@@ -519,6 +526,14 @@ def _get_adapter_version(
             adapter_version,
         )
     return adapter_version
+
+
+def _can_skip_live_translation(policy_type_value: str) -> bool:
+    """Return whether live execution can pass policy parameters to the adapter as-is."""
+    return (
+        policy_type_value in _LIVE_PASSTHROUGH_POLICY_TYPES
+        or policy_type_value not in _LIVE_TRANSLATED_POLICY_TYPES
+    )
 
 
 def _validate_policy_type(

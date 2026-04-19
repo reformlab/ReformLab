@@ -53,13 +53,13 @@ def _classify_runtime_availability(
     Returns:
         Tuple of (runtime_availability, availability_reason).
     """
-    # Non-built-in templates: user-saved scenarios or user-created custom types
-    if not is_builtin:
-        return "live_unavailable", None
-
     # Story 24.2: All listed types are now live-ready
     if policy_type in LIVE_READY_TYPES:
         return "live_ready", None
+
+    # Non-built-in templates: user-saved scenarios or user-created custom types
+    if not is_builtin:
+        return "live_unavailable", None
 
     # Fallback for unknown built-in types (safe default)
     return "live_unavailable", None

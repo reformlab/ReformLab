@@ -223,13 +223,13 @@ def _build_portfolio(name: str, description: str, resolution_strategy: str,
     from reformlab.templates.portfolios import PolicyPortfolio
     from reformlab.templates.portfolios.exceptions import PortfolioValidationError
 
-    if len(policies) < 1:
+    if len(policies) < 2:
         raise HTTPException(
             status_code=400,
             detail={
                 "what": "Insufficient policies",
-                "why": f"Portfolio requires at least 1 policy, got {len(policies)}",
-                "fix": "Add at least 1 policy to the portfolio",
+                "why": f"Portfolio requires at least 2 policies, got {len(policies)}",
+                "fix": "Add at least 2 policies to the portfolio",
             },
         )
 
@@ -315,13 +315,13 @@ async def validate_portfolio(body: ValidatePortfolioRequest) -> ValidatePortfoli
     from reformlab.templates.portfolios import validate_compatibility
     from reformlab.templates.portfolios.exceptions import PortfolioValidationError
 
-    if len(body.policies) < 1:
+    if len(body.policies) < 2:
         raise HTTPException(
             status_code=400,
             detail={
                 "what": "Insufficient policies",
-                "why": f"Validation requires at least 1 policy, got {len(body.policies)}",
-                "fix": "Add at least 1 policy before validating",
+                "why": f"Validation requires at least 2 policies, got {len(body.policies)}",
+                "fix": "Add at least 2 policies before validating",
             },
         )
 

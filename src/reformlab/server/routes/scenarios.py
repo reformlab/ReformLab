@@ -56,12 +56,22 @@ def _scenario_to_response(name: str, scenario: Any) -> ScenarioResponse:
     )
 
 
-@router.get("", response_model=dict[str, list[str]])
-async def list_scenarios() -> dict[str, list[str]]:
-    """List all registered scenario names."""
-    from reformlab.interfaces.api import list_scenarios as _list_scenarios
+@router.get("", response_model=dict[str, list[ScenarioResponse]])
+async def list_scenarios() -> dict[str, list[ScenarioResponse]]:
+    """List all registered scenarios with their API response shape."""
+    from reformlab.interfaces.api import (
+        get_scenario as _get_scenario,
+    )
+    from reformlab.interfaces.api import (
+        list_scenarios as _list_scenarios,
+    )
 
-    scenarios = _list_scenarios()
+    scenarios: list[ScenarioResponse] = []
+    for name in _list_scenarios():
+        try:
+            scenarios.append(_scenario_to_response(name, _get_scenario(name)))
+        except (KeyError, FileNotFoundError, ValueError, ConfigurationError) as exc:
+            logger.warning("event=list_scenarios_skip name=%s error=%s", name, str(exc))
     return {"scenarios": scenarios}
 
 
