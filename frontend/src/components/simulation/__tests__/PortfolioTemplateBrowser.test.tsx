@@ -13,7 +13,7 @@ describe("PortfolioTemplateBrowser", () => {
       <PortfolioTemplateBrowser
         templates={mockTemplates}
         selectedIds={[]}
-        onToggleTemplate={noop}
+        onAddTemplate={noop}
         categories={[]}
       />,
     );
@@ -27,7 +27,7 @@ describe("PortfolioTemplateBrowser", () => {
       <PortfolioTemplateBrowser
         templates={mockTemplates}
         selectedIds={[]}
-        onToggleTemplate={noop}
+        onAddTemplate={noop}
         categories={[]}
       />,
     );
@@ -41,7 +41,7 @@ describe("PortfolioTemplateBrowser", () => {
       <PortfolioTemplateBrowser
         templates={mockTemplates}
         selectedIds={[]}
-        onToggleTemplate={noop}
+        onAddTemplate={noop}
         categories={[]}
       />,
     );
@@ -54,7 +54,7 @@ describe("PortfolioTemplateBrowser", () => {
       <PortfolioTemplateBrowser
         templates={mockTemplates}
         selectedIds={[]}
-        onToggleTemplate={noop}
+        onAddTemplate={noop}
         categories={[]}
       />,
     );
@@ -62,35 +62,23 @@ describe("PortfolioTemplateBrowser", () => {
     expect(screen.getAllByText("Carbon Tax").length).toBeGreaterThan(0);
   });
 
-  it("shows selected state for selected template (AC-2)", () => {
-    render(
-      <PortfolioTemplateBrowser
-        templates={mockTemplates}
-        selectedIds={["carbon-tax-flat"]}
-        onToggleTemplate={noop}
-        categories={[]}
-      />,
-    );
+  // Story 25.2: Removed selected state test - no longer uses toggle selection
 
-    const pressedButtons = screen.getAllByRole("button", { pressed: true });
-    expect(pressedButtons.length).toBe(1);
-  });
-
-  it("calls onToggleTemplate with template id when clicked (AC-2)", () => {
-    const onToggle = vi.fn();
+  it("calls onAddTemplate with template id when clicked", () => {
+    const onAdd = vi.fn();
     render(
       <PortfolioTemplateBrowser
         templates={mockTemplates}
         selectedIds={[]}
-        onToggleTemplate={onToggle}
+        onAddTemplate={onAdd}
         categories={[]}
       />,
     );
 
-    const buttons = screen.getAllByRole("button", { pressed: false });
+    const buttons = screen.getAllByRole("button");
     fireEvent.click(buttons[0]);
-    expect(onToggle).toHaveBeenCalledTimes(1);
-    expect(onToggle).toHaveBeenCalledWith(expect.any(String));
+    expect(onAdd).toHaveBeenCalledTimes(1);
+    expect(onAdd).toHaveBeenCalledWith(expect.any(String));
   });
 
   it("filters templates by search query", () => {
@@ -98,7 +86,7 @@ describe("PortfolioTemplateBrowser", () => {
       <PortfolioTemplateBrowser
         templates={mockTemplates}
         selectedIds={[]}
-        onToggleTemplate={noop}
+        onAddTemplate={noop}
         categories={[]}
       />,
     );
@@ -136,7 +124,7 @@ describe("Story 24.4: Surfaced Policy Packs", () => {
         <PortfolioTemplateBrowser
           templates={[vehicleMalusTemplate]}
           selectedIds={[]}
-          onToggleTemplate={noop}
+          onAddTemplate={noop}
           categories={[]}
         />,
       );
@@ -164,7 +152,7 @@ describe("Story 24.4: Surfaced Policy Packs", () => {
         <PortfolioTemplateBrowser
           templates={[energyAidTemplate]}
           selectedIds={[]}
-          onToggleTemplate={noop}
+          onAddTemplate={noop}
           categories={[]}
         />,
       );
@@ -192,7 +180,7 @@ describe("Story 24.4: Surfaced Policy Packs", () => {
         <PortfolioTemplateBrowser
           templates={[underscoreTemplate]}
           selectedIds={[]}
-          onToggleTemplate={noop}
+          onAddTemplate={noop}
           categories={[]}
         />,
       );
@@ -219,7 +207,7 @@ describe("Story 24.4: Surfaced Policy Packs", () => {
         <PortfolioTemplateBrowser
           templates={[vehicleMalusTemplate]}
           selectedIds={[]}
-          onToggleTemplate={noop}
+          onAddTemplate={noop}
           categories={[]}
         />,
       );
@@ -245,7 +233,7 @@ describe("Story 24.4: Surfaced Policy Packs", () => {
         <PortfolioTemplateBrowser
           templates={[energyAidTemplate]}
           selectedIds={[]}
-          onToggleTemplate={noop}
+          onAddTemplate={noop}
           categories={[]}
         />,
       );
@@ -273,7 +261,7 @@ describe("Story 24.4: Surfaced Policy Packs", () => {
         <PortfolioTemplateBrowser
           templates={[vehicleMalusTemplate]}
           selectedIds={[]}
-          onToggleTemplate={noop}
+          onAddTemplate={noop}
           categories={[]}
         />,
       );
@@ -298,7 +286,7 @@ describe("Story 24.4: Surfaced Policy Packs", () => {
         <PortfolioTemplateBrowser
           templates={[vehicleMalusTemplate]}
           selectedIds={[]}
-          onToggleTemplate={noop}
+          onAddTemplate={noop}
           categories={[]}
         />,
       );
@@ -335,7 +323,7 @@ describe("Story 24.4: Surfaced Policy Packs", () => {
         <PortfolioTemplateBrowser
           templates={[vehicleMalusTemplate]}
           selectedIds={[]}
-          onToggleTemplate={noop}
+          onAddTemplate={noop}
           categories={mockCategories}
         />,
       );
@@ -378,7 +366,7 @@ describe("Story 24.4: Surfaced Policy Packs", () => {
         <PortfolioTemplateBrowser
           templates={surfacedTemplates}
           selectedIds={[]}
-          onToggleTemplate={noop}
+          onAddTemplate={noop}
           categories={[]}
         />,
       );

@@ -5,6 +5,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { PortfolioCompositionPanel } from "@/components/simulation/PortfolioCompositionPanel";
 import type { CompositionEntry } from "@/components/simulation/PortfolioCompositionPanel";
 import { mockTemplates } from "@/data/mock-data";
+import type { Category } from "@/api/types";
 
 const baseEntry = (id: string): CompositionEntry => ({
   templateId: id,
@@ -168,5 +169,222 @@ describe("PortfolioCompositionPanel", () => {
     const expandButtons = screen.getAllByLabelText("Expand parameters");
     fireEvent.click(expandButtons[0]);
     expect(screen.getByText("Tax Rate")).toBeInTheDocument();
+  });
+});
+
+// ============================================================================
+// Story 25.2: Category badges and duplicate instances
+// ============================================================================
+
+describe("Story 25.2: PortfolioCompositionPanel", () => {
+  describe("Category badges in composition panel (AC-4)", () => {
+    const mockCategories = [
+      {
+        id: "carbon",
+        label: "Carbon Pricing",
+        columns: ["carbon_tax"],
+        compatible_types: ["carbon_tax"],
+        formula_explanation: "carbon_emissions × rate",
+        description: "Carbon-based pricing policies",
+      },
+    ];
+
+    it("should display category badge when categories prop provided", () => {
+      const templatesWithCategory = [
+        {
+          id: "carbon-tax-with-category",
+          name: "Carbon Tax — With Category",
+          type: "carbon-tax",
+          parameterCount: 4,
+          description: "Carbon tax with category",
+          parameterGroups: ["Tax Rates"],
+          is_custom: false,
+          runtime_availability: "live_ready" as const,
+          availability_reason: null,
+          category_id: "carbon",
+        },
+      ];
+
+      const { container } = render(
+        <PortfolioCompositionPanel
+          templates={templatesWithCategory}
+          composition={[baseEntry("carbon-tax-with-category")]}
+          onReorder={() => {}}
+          onRemove={() => {}}
+          onParameterChange={() => {}}
+          onRateScheduleChange={() => {}}
+          categories={mockCategories}
+        />,
+      );
+
+      // Category badge should appear with neutral slate color
+      const categoryBadge = container.querySelector('.bg-slate-100.text-slate-800');
+      expect(categoryBadge).toBeInTheDocument();
+      expect(categoryBadge).toHaveTextContent("Carbon Pricing");
+    });
+
+    it("should hide category badge when template has no category_id", () => {
+      const templatesWithoutCategory = [
+        {
+          id: "carbon-tax-no-category",
+          name: "Carbon Tax — No Category",
+          type: "carbon-tax",
+          parameterCount: 4,
+          description: "Carbon tax without category",
+          parameterGroups: ["Tax Rates"],
+          is_custom: false,
+          runtime_availability: "live_ready" as const,
+          availability_reason: null,
+        },
+      ];
+
+      const { container } = render(
+        <PortfolioCompositionPanel
+          templates={templatesWithoutCategory}
+          composition={[baseEntry("carbon-tax-no-category")]}
+          onReorder={() => {}}
+          onRemove={() => {}}
+          onParameterChange={() => {}}
+          onRateScheduleChange={() => {}}
+          categories={mockCategories}
+        />,
+      );
+
+      // No category badge should be rendered
+      const categoryBadges = container.querySelectorAll('.bg-slate-100.text-slate-800');
+      expect(categoryBadges.length).toBe(0);
+    });
+
+    it("should hide category badge when categories prop is null", () => {
+      const templatesWithCategory = [
+        {
+          id: "carbon-tax-with-category",
+          name: "Carbon Tax — With Category",
+          type: "carbon-tax",
+          parameterCount: 4,
+          description: "Carbon tax with category",
+          parameterGroups: ["Tax Rates"],
+          is_custom: false,
+          runtime_availability: "live_ready" as const,
+          availability_reason: null,
+          category_id: "carbon",
+        },
+      ];
+
+      const { container } = render(
+        <PortfolioCompositionPanel
+          templates={templatesWithCategory}
+          composition={[baseEntry("carbon-tax-with-category")]}
+          onReorder={() => {}}
+          onRemove={() => {}}
+          onParameterChange={() => {}}
+          onRateScheduleChange={() => {}}
+          categories={null}
+        />,
+      );
+
+      // No category badge should be rendered
+      const categoryBadges = container.querySelectorAll('.bg-slate-100.text-slate-800');
+      expect(categoryBadges.length).toBe(0);
+    });
+
+    it("should show formula help icon when category exists", () => {
+      const templatesWithCategory = [
+        {
+          id: "carbon-tax-with-category",
+          name: "Carbon Tax — With Category",
+          type: "carbon-tax",
+          parameterCount: 4,
+          description: "Carbon tax with category",
+          parameterGroups: ["Tax Rates"],
+          is_custom: false,
+          runtime_availability: "live_ready" as const,
+          availability_reason: null,
+          category_id: "carbon",
+        },
+      ];
+
+      const { container } = render(
+        <PortfolioCompositionPanel
+          templates={templatesWithCategory}
+          composition={[baseEntry("carbon-tax-with-category")]}
+          onReorder={() => {}}
+          onRemove={() => {}}
+          onParameterChange={() => {}}
+          onRateScheduleChange={() => {}}
+          categories={mockCategories}
+        />,
+      );
+
+      // CircleHelp icon should be present
+      const helpIcon = container.querySelector('button[aria-label*="Formula help"]');
+      expect(helpIcon).toBeInTheDocument();
+    });
+  });
+
+  describe("instanceId support (AC-5, AC-6)", () => {
+    it("should support instanceId in CompositionEntry", () => {
+      const entryWithInstanceId: CompositionEntry = {
+        templateId: "carbon-tax-flat",
+        name: "Carbon Tax",
+        parameters: {},
+        rateSchedule: {},
+        instanceId: "carbon-tax-flat-ins0",
+      };
+
+      const { container } = render(
+        <PortfolioCompositionPanel
+          templates={mockTemplates}
+          composition={[entryWithInstanceId]}
+          onReorder={() => {}}
+          onRemove={() => {}}
+          onParameterChange={() => {}}
+          onRateScheduleChange={() => {}}
+        />,
+      );
+
+      // Verify the card is rendered using instanceId
+      const card = container.querySelector('.border-slate-200');
+      expect(card).toBeInTheDocument();
+      expect(container.textContent).toContain("8 params");
+    });
+
+    it("should use instanceId as key when provided", () => {
+      const entriesWithSameTemplate: CompositionEntry[] = [
+        {
+          templateId: "carbon-tax-flat",
+          name: "Carbon Tax 1",
+          parameters: {},
+          rateSchedule: {},
+          instanceId: "carbon-tax-flat-ins0",
+        },
+        {
+          templateId: "carbon-tax-flat",
+          name: "Carbon Tax 2",
+          parameters: {},
+          rateSchedule: {},
+          instanceId: "carbon-tax-flat-ins1",
+        },
+      ];
+
+      const { container } = render(
+        <PortfolioCompositionPanel
+          templates={mockTemplates}
+          composition={entriesWithSameTemplate}
+          onReorder={() => {}}
+          onRemove={() => {}}
+          onParameterChange={() => {}}
+          onRateScheduleChange={() => {}}
+        />,
+      );
+
+      // Both entries should be rendered
+      expect(screen.getByText("Carbon Tax 1")).toBeInTheDocument();
+      expect(screen.getByText("Carbon Tax 2")).toBeInTheDocument();
+
+      // Should have 2 cards
+      const cards = container.querySelectorAll('section[aria-label="Portfolio composition"] > div');
+      expect(cards.length).toBe(2);
+    });
   });
 });

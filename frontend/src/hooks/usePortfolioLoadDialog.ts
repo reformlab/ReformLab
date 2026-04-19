@@ -22,11 +22,12 @@ interface UsePortfolioLoadDialogParams<ResolutionStrategy extends string> {
   defaultResolutionStrategy: ResolutionStrategy;
   loadedPortfolioRef: LoadedPortfolioRef;
   setComposition: (composition: CompositionEntry[]) => void;
-  setSelectedTemplateIds: (ids: string[]) => void;
   setResolutionStrategy: (strategy: ResolutionStrategy) => void;
   setActivePortfolioName: (name: string | null) => void;
   updateScenarioPortfolioName: (name: string | null) => void;
   setSelectedPortfolioName: (name: string | null) => void;
+  // Story 25.2: Setter for nextInstanceId counter
+  setNextInstanceId?: (value: number | ((prev: number) => number)) => void;
 }
 
 export function usePortfolioLoadDialog<ResolutionStrategy extends string>({
@@ -37,21 +38,24 @@ export function usePortfolioLoadDialog<ResolutionStrategy extends string>({
   defaultResolutionStrategy,
   loadedPortfolioRef,
   setComposition,
-  setSelectedTemplateIds,
   setResolutionStrategy,
   setActivePortfolioName,
   updateScenarioPortfolioName,
   setSelectedPortfolioName,
+  setNextInstanceId,
 }: UsePortfolioLoadDialogParams<ResolutionStrategy>) {
   const [loadDialogOpen, setLoadDialogOpen] = useState(false);
 
   const loadPortfolioIntoComposition = useCallback(async (name: string): Promise<boolean> => {
     try {
       const detail = await getPortfolio(name);
-      const entries: CompositionEntry[] = detail.policies.map((policy) => {
+      // Story 25.2: Generate unique instance IDs for each loaded policy
+      const entries: CompositionEntry[] = detail.policies.map((policy, index) => {
         const template = templates.find((tmpl) => tmpl.type.replace(/-/g, "_") === policy.policy_type);
+        const templateId = template?.id ?? policy.policy_type;
         return {
-          templateId: template?.id ?? policy.policy_type,
+          instanceId: `${templateId}-ins${index}`, // Use index for initial load
+          templateId,
           name: policy.name,
           parameters: Object.fromEntries(
             Object.entries(policy.parameters).filter(([, value]) => typeof value === "number"),
@@ -60,7 +64,10 @@ export function usePortfolioLoadDialog<ResolutionStrategy extends string>({
         };
       });
       setComposition(entries);
-      setSelectedTemplateIds(entries.map((entry) => entry.templateId));
+      // Story 25.2: Update nextInstanceId to prevent collisions with loaded items
+      if (setNextInstanceId) {
+        setNextInstanceId(detail.policies.length);
+      }
       setResolutionStrategy(
         validStrategies.includes(detail.resolution_strategy as ResolutionStrategy)
           ? (detail.resolution_strategy as ResolutionStrategy)
@@ -81,7 +88,7 @@ export function usePortfolioLoadDialog<ResolutionStrategy extends string>({
     validStrategies,
     defaultResolutionStrategy,
     setComposition,
-    setSelectedTemplateIds,
+    setNextInstanceId,
     setResolutionStrategy,
     setActivePortfolioName,
   ]);

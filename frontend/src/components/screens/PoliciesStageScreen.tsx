@@ -15,7 +15,7 @@
  * - Nav rail completion via activeScenario.portfolioName (AC-5)
  */
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import {
   Save, FolderOpen, Copy, X, CheckCircle2, AlertTriangle, Trash2,
 } from "lucide-react";
@@ -75,7 +75,8 @@ export function PoliciesStageScreen() {
   // Local composition state
   // ============================================================================
 
-  const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
+  // Story 25.2: Duplicate instance support - use monotonic counter instead of selection toggle
+  const [nextInstanceId, setNextInstanceId] = useState(0);
   const [composition, setComposition] = useState<CompositionEntry[]>([]);
   const [resolutionStrategy, setResolutionStrategy] = useState<ResolutionStrategy>("error");
   const [conflicts, setConflicts] = useState<PortfolioConflict[]>([]);
@@ -99,32 +100,43 @@ export function PoliciesStageScreen() {
     composition.length >= 1 &&
     (composition.length < 2 || conflicts.length === 0 || resolutionStrategy !== "error");
 
-  // ============================================================================
-  // Template selection → composition sync
-  // ============================================================================
+  // Story 25.2: Derive browser highlighting from composition (templateIds in composition)
+  const inCompositionTemplateIds = useMemo(
+    () => composition.map((c) => c.templateId),
+    [composition],
+  );
 
-  useEffect(() => {
-    setComposition((prev) => {
-      const toAdd = selectedTemplateIds
-        .filter((id) => !prev.some((e) => e.templateId === id))
-        .map((id) => {
-          const t = templates.find((tmpl) => tmpl.id === id);
-          return { templateId: id, name: t?.name ?? id, parameters: {}, rateSchedule: {} };
-        });
-      const filtered = prev.filter((e) => selectedTemplateIds.includes(e.templateId));
-      return [...filtered, ...toAdd];
-    });
-  }, [selectedTemplateIds, templates]);
+  // Story 25.2: Count instances per template for browser badges
+  const templateInstanceCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const entry of composition) {
+      counts[entry.templateId] = (counts[entry.templateId] || 0) + 1;
+    }
+    return counts;
+  }, [composition]);
 
   // ============================================================================
   // Composition handlers
   // ============================================================================
 
-  const toggleTemplate = useCallback((id: string) => {
-    setSelectedTemplateIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
-  }, []);
+  // Story 25.2: Add template instance - creates unique instance using monotonic counter
+  const addTemplateInstance = useCallback((templateId: string) => {
+    const t = templates.find((tmpl) => tmpl.id === templateId);
+    if (!t) return;
+
+    const newInstance: CompositionEntry = {
+      instanceId: `${templateId}-ins${nextInstanceId}`, // Guaranteed unique via counter
+      templateId,
+      name: t?.name ?? templateId,
+      parameters: {},
+      rateSchedule: {},
+    };
+
+    setNextInstanceId((prev) => prev + 1);
+    setComposition((prev) => [...prev, newInstance]);
+  }, [templates, nextInstanceId]);
+
+  // Removed: toggleTemplate (replaced by addTemplateInstance for duplicate support)
 
   const handleReorder = useCallback((from: number, to: number) => {
     setComposition((prev) => {
@@ -136,12 +148,8 @@ export function PoliciesStageScreen() {
   }, []);
 
   const handleRemove = useCallback((index: number) => {
-    const removedId = composition[index]?.templateId;
     setComposition((prev) => prev.filter((_, i) => i !== index));
-    if (removedId) {
-      setSelectedTemplateIds((prev) => prev.filter((id) => id !== removedId));
-    }
-  }, [composition]);
+  }, []);
 
   const handleParameterChange = useCallback(
     (index: number, paramId: string, value: number) => {
@@ -269,11 +277,12 @@ export function PoliciesStageScreen() {
     defaultResolutionStrategy: "error",
     loadedPortfolioRef: loadedRef,
     setComposition,
-    setSelectedTemplateIds,
     setResolutionStrategy,
     setActivePortfolioName,
     updateScenarioPortfolioName: (name) => updateScenarioField("portfolioName", name),
     setSelectedPortfolioName,
+    // Story 25.2: Pass nextInstanceId setter for duplicate support
+    setNextInstanceId,
   });
 
   const {
@@ -296,7 +305,6 @@ export function PoliciesStageScreen() {
 
   const handleClear = useCallback(() => {
     setComposition([]);
-    setSelectedTemplateIds([]);
     setConflicts([]);
     setActivePortfolioName(null);
     loadedRef.current = null;
@@ -343,7 +351,7 @@ export function PoliciesStageScreen() {
               {activePortfolioName}
             </span>
           ) : (
-            <span className="text-sm text-slate-400 italic">Unsaved portfolio</span>
+            <span className="text-sm text-slate-400 italic">Unsaved policy set</span>
           )}
           {/* Validity indicator (AC-6) */}
           {composition.length >= 1 ? (
@@ -370,7 +378,7 @@ export function PoliciesStageScreen() {
             variant="outline"
             onClick={openSaveDialog}
             disabled={composition.length < 1}
-            title={composition.length < 1 ? "Add at least 1 policy template" : "Save portfolio"}
+            title={composition.length < 1 ? "Add at least 1 policy template" : "Save policy set"}
           >
             <Save className="mr-1.5 h-3 w-3" />
             Save
@@ -379,7 +387,7 @@ export function PoliciesStageScreen() {
             size="sm"
             variant="outline"
             onClick={openLoadDialog}
-            title="Load a saved portfolio"
+            title="Load a saved policy set"
           >
             <FolderOpen className="mr-1.5 h-3 w-3" />
             Load
@@ -389,7 +397,7 @@ export function PoliciesStageScreen() {
               size="sm"
               variant="outline"
               onClick={() => openCloneDialog(activePortfolioName)}
-              title="Clone active portfolio"
+              title="Clone active policy set"
             >
               <Copy className="mr-1.5 h-3 w-3" />
               Clone
@@ -445,22 +453,23 @@ export function PoliciesStageScreen() {
         {/* Left: Template browser */}
         <div className="rounded-lg border border-slate-200 bg-white p-3 overflow-y-auto min-w-0">
           <h2 className="text-sm font-semibold text-slate-900 mb-2">Policy Templates</h2>
-          {/* Story 25.1 / Task 3.1: Pass categories to PortfolioTemplateBrowser */}
+          {/* Story 25.2: Use add-instance instead of toggle selection; pass highlighting state */}
           <PortfolioTemplateBrowser
             templates={templates}
-            selectedIds={selectedTemplateIds}
-            onToggleTemplate={toggleTemplate}
+            selectedIds={inCompositionTemplateIds}
+            onAddTemplate={addTemplateInstance}
             categories={categories}
+            templateInstanceCounts={templateInstanceCounts}
           />
         </div>
 
         {/* Right: Composition panel */}
         <div className="rounded-lg border border-slate-200 bg-white p-3 overflow-y-auto min-w-0">
-          <h2 className="text-sm font-semibold text-slate-900 mb-2">Portfolio Composition</h2>
+          <h2 className="text-sm font-semibold text-slate-900 mb-2">Policy Set Composition</h2>
           {composition.length === 0 ? (
             <div className="border border-slate-200 bg-slate-50 p-6 text-center mt-2">
               <p className="text-sm text-slate-500">
-                Add at least 1 policy template to compose a portfolio.
+                Add at least 1 policy template to compose a policy set.
               </p>
             </div>
           ) : (
@@ -472,16 +481,17 @@ export function PoliciesStageScreen() {
               onParameterChange={handleParameterChange}
               onRateScheduleChange={handleRateScheduleChange}
               minimumPolicies={1}
+              categories={categories}
             />
           )}
         </div>
       </div>
 
-      {/* Saved portfolios section */}
+      {/* Saved policy sets section */}
       {portfolios.length > 0 ? (
         <div className="rounded-lg border border-slate-200 bg-white p-3">
           <p className="text-xs font-semibold text-slate-700 mb-2">
-            Saved Portfolios ({portfolios.length})
+            Saved Policy Sets ({portfolios.length})
           </p>
           <div className="space-y-1.5">
             {portfolios.map((p) => (
@@ -505,7 +515,7 @@ export function PoliciesStageScreen() {
                   type="button"
                   onClick={() => void handleLoad(p.name)}
                   className="shrink-0 border border-slate-200 p-1 text-blue-500 hover:bg-blue-50"
-                  aria-label={`Load portfolio ${p.name}`}
+                  aria-label={`Load policy set ${p.name}`}
                   title="Load into editor"
                 >
                   <FolderOpen className="h-3 w-3" />
@@ -514,7 +524,7 @@ export function PoliciesStageScreen() {
                   type="button"
                   onClick={() => openCloneDialog(p.name)}
                   className="shrink-0 border border-slate-200 p-1 text-slate-500 hover:bg-slate-50"
-                  aria-label={`Clone portfolio ${p.name}`}
+                  aria-label={`Clone policy set ${p.name}`}
                   title="Clone"
                 >
                   <Copy className="h-3 w-3" />
@@ -523,7 +533,7 @@ export function PoliciesStageScreen() {
                   type="button"
                   onClick={() => void handleDeletePortfolio(p.name)}
                   className="shrink-0 border border-slate-200 p-1 text-red-500 hover:bg-red-50"
-                  aria-label={`Delete portfolio ${p.name}`}
+                  aria-label={`Delete policy set ${p.name}`}
                   title="Delete"
                 >
                   <Trash2 className="h-3 w-3" />
@@ -550,13 +560,13 @@ export function PoliciesStageScreen() {
           />
           <div className="relative z-10 w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-lg">
             <h3 id="save-portfolio-dialog-title" className="text-sm font-semibold text-slate-900 mb-4">
-              Save Portfolio
+              Save Policy Set
             </h3>
 
             <div className="space-y-3">
               <div>
                 <label className="text-xs font-medium text-slate-700 block mb-1" htmlFor="save-portfolio-name">
-                  Portfolio name <span className="text-red-500">*</span>
+                  Policy set name <span className="text-red-500">*</span>
                 </label>
                 <Input
                   id="save-portfolio-name"
@@ -565,7 +575,7 @@ export function PoliciesStageScreen() {
                   onChange={(e) => {
                     handleSaveNameChange(e.target.value);
                   }}
-                  placeholder="my-portfolio-2030"
+                  placeholder="my-policy-set-2030"
                   className={saveNameError ? "border-red-400" : ""}
                   aria-describedby={saveNameError ? "save-name-error" : undefined}
                 />
@@ -587,7 +597,7 @@ export function PoliciesStageScreen() {
                   type="text"
                   value={portfolioSaveDesc}
                   onChange={(e) => setPortfolioSaveDesc(e.target.value)}
-                  placeholder="Brief description of this portfolio"
+                  placeholder="Brief description of this policy set"
                 />
               </div>
 
@@ -640,11 +650,11 @@ export function PoliciesStageScreen() {
           />
           <div className="relative z-10 w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-lg">
             <h3 id="load-portfolio-dialog-title" className="text-sm font-semibold text-slate-900 mb-4">
-              Load Portfolio
+              Load Policy Set
             </h3>
 
             {portfolios.length === 0 ? (
-              <p className="text-sm text-slate-500">No saved portfolios found.</p>
+              <p className="text-sm text-slate-500">No saved policy sets found.</p>
             ) : (
               <div className="space-y-1.5 max-h-64 overflow-y-auto">
                 {portfolios.map((p) => (

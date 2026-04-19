@@ -49,38 +49,39 @@ const TYPE_COLORS: Record<string, string> = {
 interface PortfolioTemplateBrowserProps {
   templates: Template[];
   selectedIds: string[];
-  onToggleTemplate: (templateId: string) => void;
+  // Story 25.2: Changed from toggle to add-instance action
+  onAddTemplate: (templateId: string) => void;
   // Story 25.1 / Task 3.1: Categories prop for grouping and filtering
   categories?: Category[];
+  // Story 25.2: Count of instances per template in composition
+  templateInstanceCounts?: Record<string, number>;
 }
 
 // Helper component to render a single template card
 interface TemplateCardProps {
   template: Template;
-  selected: boolean;
+  inComposition: boolean;
+  instanceCount: number;
   templateCategory: Category | null | undefined;
-  onToggle: () => void;
+  onAdd: () => void;
 }
 
-function TemplateCard({ template, selected, templateCategory, onToggle }: TemplateCardProps) {
+function TemplateCard({ template, inComposition, instanceCount, templateCategory, onAdd }: TemplateCardProps) {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
-      onToggle();
+      onAdd();
     }
   };
   return (
     <div
       role="button"
       tabIndex={0}
-      onClick={onToggle}
+      onClick={onAdd}
       onKeyDown={handleKeyDown}
-      aria-pressed={selected}
       className={cn(
         "w-full border p-3 text-left transition-colors",
-        selected
-          ? "border-blue-500 bg-blue-50"
-          : "border-slate-200 bg-white hover:bg-slate-50",
+        "border-slate-200 bg-white hover:bg-slate-50",
       )}
     >
       <div className="flex items-start justify-between gap-2">
@@ -108,6 +109,12 @@ function TemplateCard({ template, selected, templateCategory, onToggle }: Templa
                     <AlertCircle className="h-3 w-3 mr-1 inline" /> Unavailable
                   </>
                 )}
+              </Badge>
+            )}
+            {/* Story 25.2: Count badge when template is in composition */}
+            {inComposition && (
+              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                Added {instanceCount}×
               </Badge>
             )}
           </div>
@@ -179,14 +186,12 @@ function TemplateCard({ template, selected, templateCategory, onToggle }: Templa
             ))}
           </div>
         </div>
-        <input
-          type="checkbox"
-          readOnly
-          checked={selected}
-          tabIndex={-1}
-          aria-hidden="true"
-          className="mt-0.5 h-4 w-4 shrink-0 accent-blue-500"
-        />
+        {/* Story 25.2: Add button indicator */}
+        <div className="mt-0.5 text-slate-400 hover:text-blue-500">
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+        </div>
       </div>
     </div>
   );
@@ -195,8 +200,9 @@ function TemplateCard({ template, selected, templateCategory, onToggle }: Templa
 export function PortfolioTemplateBrowser({
   templates,
   selectedIds,
-  onToggleTemplate,
+  onAddTemplate,
   categories,
+  templateInstanceCounts = {},
 }: PortfolioTemplateBrowserProps) {
   const [query, setQuery] = useState("");
   // Story 25.1 / Task 3.3: Category filter state
@@ -325,15 +331,17 @@ export function PortfolioTemplateBrowser({
       {!shouldShowGrouped ? (
         <div className="grid gap-2 xl:grid-cols-2">
           {filtered.map((template) => {
-            const selected = selectedIds.includes(template.id);
+            const inComposition = selectedIds.includes(template.id);
+            const instanceCount = templateInstanceCounts[template.id] || 0;
             const templateCategory = template.category_id ? categoryMap.get(template.category_id) : null;
             return (
               <TemplateCard
                 key={template.id}
                 template={template}
-                selected={selected}
+                inComposition={inComposition}
+                instanceCount={instanceCount}
                 templateCategory={templateCategory}
-                onToggle={() => onToggleTemplate(template.id)}
+                onAdd={() => onAddTemplate(template.id)}
               />
             );
           })}
@@ -353,14 +361,17 @@ export function PortfolioTemplateBrowser({
               </p>
               <div className="grid gap-2 xl:grid-cols-2">
                 {items.map((template) => {
-                  const selected = selectedIds.includes(template.id);
+                  const inComposition = selectedIds.includes(template.id);
+                  const instanceCount = templateInstanceCounts[template.id] || 0;
                   const templateCategory = template.category_id ? categoryMap.get(template.category_id) : null;
                   return (
                     <TemplateCard
                       key={template.id}
                       template={template}
-                      selected={selected}
+                      inComposition={inComposition}
+                      instanceCount={instanceCount}
                       templateCategory={templateCategory}
+                      onAdd={() => onAddTemplate(template.id)}
                       onToggle={() => onToggleTemplate(template.id)}
                     />
                   );

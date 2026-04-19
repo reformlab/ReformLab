@@ -10,15 +10,23 @@
  * - ParameterRow editing when expanded
  *
  * Per AC-3, move-up is disabled for first item, move-down for last.
+ *
+ * Story 25.2: Category badges and duplicate instance support.
  */
 
 import { useState } from "react";
-import { ArrowUp, ArrowDown, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import { ArrowUp, ArrowDown, Trash2, ChevronDown, ChevronRight, CircleHelp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { ParameterRow } from "@/components/simulation/ParameterRow";
 import { YearScheduleEditor } from "@/components/simulation/YearScheduleEditor";
 import { cn } from "@/lib/utils";
 import type { Template, Parameter } from "@/data/mock-data";
+import type { Category } from "@/api/types";
 
 const TYPE_COLORS: Record<string, string> = {
   "carbon-tax": "bg-amber-100 text-amber-800",
@@ -48,6 +56,8 @@ export interface CompositionEntry {
   parameters: Record<string, number>;
   /** Year-indexed rate schedule; keys are year strings for JSON wire format. */
   rateSchedule: Record<string, number>;
+  /** Story 25.2: Unique instance ID for duplicate policy support */
+  instanceId?: string;
 }
 
 interface PortfolioCompositionPanelProps {
@@ -64,6 +74,8 @@ interface PortfolioCompositionPanelProps {
    * Defaults to 1.
    */
   minimumPolicies?: number;
+  /** Story 25.2: Categories for category badge display */
+  categories?: Category[] | null;
 }
 
 export function PortfolioCompositionPanel({
@@ -75,6 +87,7 @@ export function PortfolioCompositionPanel({
   onRateScheduleChange,
   parameterSchemas = {},
   minimumPolicies = 1,
+  categories,
 }: PortfolioCompositionPanelProps) {
   const [expandedIndices, setExpandedIndices] = useState<Set<number>>(new Set());
 
@@ -120,9 +133,14 @@ export function PortfolioCompositionPanel({
         const isExpanded = expandedIndices.has(index);
         const schemas = parameterSchemas[entry.templateId] ?? [];
 
+        // Story 25.2: Look up category by template.category_id
+        const category = template?.category_id && categories
+          ? categories.find((c) => c.id === template.category_id)
+          : null;
+
         return (
           <div
-            key={`${entry.templateId}-${index}`}
+            key={entry.instanceId || `${entry.templateId}-${index}`}
             className="border border-slate-200 bg-white"
           >
             {/* Card header */}
@@ -151,6 +169,44 @@ export function PortfolioCompositionPanel({
                       <Badge variant="default" className="text-xs shrink-0">
                         {template.parameterCount} params
                       </Badge>
+                      {/* Story 25.2: Category badge with neutral slate color */}
+                      {category ? (
+                        <>
+                          <span className="inline-flex items-center px-1.5 py-0.5 text-xs font-medium bg-slate-100 text-slate-800">
+                            {category.label}
+                          </span>
+                          {/* Story 25.2: Formula help popover */}
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button
+                                type="button"
+                                className="inline-flex items-center p-0.5 text-slate-500 hover:text-slate-700"
+                                aria-label={`Formula help for ${category.label}`}
+                              >
+                                <CircleHelp className="h-3.5 w-3.5" />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-64 text-xs" side="right">
+                              <div className="space-y-2">
+                                <div>
+                                  <p className="font-medium text-slate-900">Formula</p>
+                                  <p className="text-slate-700 font-mono bg-slate-50 px-1.5 py-0.5 rounded mt-1">
+                                    {category.formula_explanation}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="font-medium text-slate-900">Description</p>
+                                  <p className="text-slate-700">{category.description}</p>
+                                </div>
+                                <div>
+                                  <p className="font-medium text-slate-900">Columns</p>
+                                  <p className="text-slate-700">{category.columns.join(", ")}</p>
+                                </div>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        </>
+                      ) : null}
                     </>
                   ) : null}
                 </div>
