@@ -127,6 +127,20 @@ def _save_portfolio_metadata(registry: Any, name: str, metadata: dict[str, Any])
         logger.warning("event=metadata_save_failed name=%s error=%s", name, str(exc))
 
 
+def _delete_portfolio_metadata(registry: Any, name: str) -> None:
+    """Delete UI-layer metadata for a portfolio.
+
+    Story 25.5: Removes stale metadata when all UI-layer fields are removed.
+    """
+    metadata_path = _get_portfolio_metadata_path(registry, name)
+    if metadata_path.exists():
+        try:
+            metadata_path.unlink()
+            logger.info("event=metadata_deleted name=%s", name)
+        except OSError as exc:
+            logger.warning("event=metadata_delete_failed name=%s error=%s", name, str(exc))
+
+
 def _extract_metadata_from_policies(policies: list[PortfolioPolicyRequest]) -> dict[str, Any]:
     """Extract UI-layer metadata from portfolio policies (Story 25.4).
 
@@ -609,10 +623,13 @@ async def update_portfolio(name: str, body: UpdatePortfolioRequest) -> Portfolio
 
     version_id = registry.save(portfolio, name)
 
-    # Story 25.4: Save UI-layer metadata to sidecar file
+    # Story 25.4/25.5: Save UI-layer metadata to sidecar file
+    # Story 25.5: Delete stale metadata when all UI-layer fields are removed
     metadata = _extract_metadata_from_policies(body.policies)
     if metadata:
         _save_portfolio_metadata(registry, name, metadata)
+    else:
+        _delete_portfolio_metadata(registry, name)
 
     logger.info("event=portfolio_updated name=%s version_id=%s", name, version_id)
     return _portfolio_to_detail(name, portfolio, version_id)

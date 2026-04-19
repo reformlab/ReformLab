@@ -302,7 +302,8 @@ export function PoliciesStageScreen() {
               editableParameterGroups: [
                 ...(entry.editableParameterGroups ?? []),
                 {
-                  id: `group-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                  // Story 25.5: Use deterministic counter instead of Math.random()
+                  id: `group-${instanceCounterRef.current++}`,
                   name: "New Group",
                   parameterIds: [],
                 },

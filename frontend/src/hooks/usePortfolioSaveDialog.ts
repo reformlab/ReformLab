@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { ApiError } from "@/api/client";
-import { createPortfolio } from "@/api/portfolios";
+import { createPortfolio, updatePortfolio } from "@/api/portfolios";
 import type { PortfolioConflict } from "@/api/types";
 import type { CompositionEntry } from "@/components/simulation/PortfolioCompositionPanel";
 import { validatePortfolioName } from "@/components/simulation/portfolioValidation";
@@ -35,9 +35,11 @@ function buildPortfolioPolicies(
 ) {
   return composition.map((entry) => {
     const template = templates.find((tmpl) => tmpl.id === entry.templateId);
+    // Story 25.5: Use entry.policy_type for from-scratch policies; fallback to template.type
+    const policyType = entry.policy_type ?? template?.type ?? "carbon_tax";
     return {
       name: entry.name,
-      policy_type: (template?.type ?? "carbon_tax").replace(/-/g, "_"),
+      policy_type: policyType.replace(/-/g, "_"),
       rate_schedule: entry.rateSchedule,
       exemptions: [],
       thresholds: [],
@@ -110,12 +112,22 @@ export function usePortfolioSaveDialog({
 
     setSaving(true);
     try {
-      await createPortfolio({
+      // Story 25.5: Update existing portfolio if re-saving with same name
+      const isUpdate = portfolioSaveName === loadedPortfolioRef.current;
+      const portfolioData = {
         name: portfolioSaveName,
         description: portfolioSaveDesc,
         policies: buildPortfolioPolicies(composition, templates),
         resolution_strategy: resolutionStrategy,
-      });
+      };
+
+      if (isUpdate) {
+        await updatePortfolio(portfolioSaveName, portfolioData);
+        toast.success(`Policy set '${portfolioSaveName}' updated`);
+      } else {
+        await createPortfolio(portfolioData);
+        toast.success(`Policy set '${portfolioSaveName}' saved`);
+      }
 
       loadedPortfolioRef.current = portfolioSaveName;
       setActivePortfolioName(portfolioSaveName);
@@ -123,7 +135,6 @@ export function usePortfolioSaveDialog({
       setSelectedPortfolioName(portfolioSaveName);
       void refetchPortfolios();
 
-      toast.success(`Policy set '${portfolioSaveName}' saved`);
       setSaveDialogOpen(false);
       setPortfolioSaveName("");
       setPortfolioSaveDesc("");

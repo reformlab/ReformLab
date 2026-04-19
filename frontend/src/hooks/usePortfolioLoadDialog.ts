@@ -85,9 +85,7 @@ export function usePortfolioLoadDialog<ResolutionStrategy extends string>({
           instanceId: `${templateId}-ins${index}`, // Use index for initial load
           templateId,
           name: policy.name,
-          parameters: Object.fromEntries(
-            Object.entries(policy.parameters).filter(([, value]) => typeof value === "number"),
-          ) as Record<string, number>,
+          parameters: policy.parameters as Record<string, number>,
           rateSchedule: policy.rate_schedule,
           // Story 25.3: Restore from-scratch policy fields
           policy_type: policy.policy_type,
