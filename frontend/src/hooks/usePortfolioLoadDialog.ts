@@ -61,6 +61,10 @@ export function usePortfolioLoadDialog<ResolutionStrategy extends string>({
             Object.entries(policy.parameters).filter(([, value]) => typeof value === "number"),
           ) as Record<string, number>,
           rateSchedule: policy.rate_schedule,
+          // Story 25.3: Restore from-scratch policy fields
+          policy_type: policy.policy_type,
+          category_id: policy.category_id,
+          parameter_groups: (policy as any).parameter_groups,
         };
       });
       setComposition(entries);

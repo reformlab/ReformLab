@@ -587,6 +587,11 @@ async def create_blank_policy(body: CreateBlankPolicyRequest) -> BlankPolicyResp
         "ceiling": None,
     }
 
+    # Add Redistribution group defaults for Tax policies (Story 25.3, AC-4)
+    if body.policy_type == "tax":
+        parameters["divisible"] = True
+        parameters["recipients"] = "all"
+
     # Get default parameter groups for the policy type
     parameter_groups = _DEFAULT_PARAMETER_GROUPS.get(body.policy_type, [])
 

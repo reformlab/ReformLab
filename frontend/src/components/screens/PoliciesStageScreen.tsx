@@ -97,6 +97,16 @@ export function PoliciesStageScreen() {
   const [fromScratchDialogOpen, setFromScratchDialogOpen] = useState(false);
   const [autoExpandInstanceId, setAutoExpandInstanceId] = useState<string | null>(null);
 
+  // Story 25.3: Reset autoExpandInstanceId after expansion (prevents re-expanding on reorder)
+  useEffect(() => {
+    if (autoExpandInstanceId !== null) {
+      const timeoutId = setTimeout(() => {
+        setAutoExpandInstanceId(null);
+      }, 100); // Brief delay to allow expansion effect to run
+      return () => clearTimeout(timeoutId);
+    }
+  }, [autoExpandInstanceId]);
+
   // Track the portfolio name currently loaded into the composition panel
   const [activePortfolioName, setActivePortfolioName] = useState<string | null>(null);
 
@@ -165,7 +175,7 @@ export function PoliciesStageScreen() {
         instanceId: `blank-${id}`, // MUST use counter pattern per story spec
         templateId: "", // Empty for from-scratch policies
         name: response.name,
-        parameters: {},
+        parameters: response.parameters as Record<string, number>,
         rateSchedule: response.rate_schedule,
         policy_type: response.policy_type,
         category_id: response.category_id,
@@ -861,7 +871,8 @@ export function PoliciesStageScreen() {
                   setChoiceDialogOpen(false);
                   setFromScratchDialogOpen(true);
                 }}
-                className="w-full text-left border border-slate-200 p-4 hover:bg-slate-50 rounded-lg transition-colors"
+                disabled={!categories || categories.length === 0}
+                className="w-full text-left border border-slate-200 p-4 hover:bg-slate-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="font-medium text-sm text-slate-900">From scratch</div>
                 <div className="text-xs text-slate-600 mt-1">

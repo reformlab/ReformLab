@@ -330,6 +330,7 @@ export interface PortfolioPolicyRequest {
   extra_params: Record<string, unknown>;
   // Story 25.3: Optional fields for from-scratch policies
   category_id?: string;
+  parameter_groups?: string[];
 }
 
 export interface CreatePortfolioRequest {
@@ -373,6 +374,8 @@ export interface PortfolioPolicyItem {
   parameters: Record<string, unknown>;
   // Story 25.3: Optional category_id for from-scratch policies
   category_id?: string;
+  // Story 25.3: Optional parameter_groups for from-scratch policies
+  parameter_groups?: string[];
 }
 
 export interface PortfolioDetailResponse {

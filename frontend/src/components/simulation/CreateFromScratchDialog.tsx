@@ -26,7 +26,7 @@ export type PolicyTypeLabel = "Tax" | "Subsidy" | "Transfer";
 
 interface CreateFromScratchDialogProps {
   categories: Category[] | null;
-  onCreatePolicy: (policyType: PolicyType, categoryId: string) => void;
+  onCreatePolicy: (policyType: PolicyType, categoryId: string) => Promise<void> | void;
   onClose: () => void;
 }
 
@@ -72,13 +72,7 @@ export function CreateFromScratchDialog({
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedType, setSelectedType] = useState<PolicyType | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
-
-  // Reset state when categories change (AC-8: handle category load failure)
-  useEffect(() => {
-    if (categories === null || categories.length === 0) {
-      // Categories failed to load - dialog should handle this gracefully
-    }
-  }, [categories]);
+  const [isCreating, setIsCreating] = useState(false);
 
   // Step 2: Filter categories by compatible_types
   const compatibleCategories = categories
@@ -97,10 +91,15 @@ export function CreateFromScratchDialog({
   }, [selectedType, selectedCategoryId, categories]);
 
   // Step 3: Handle create policy
-  const handleCreate = useCallback(() => {
+  const handleCreate = useCallback(async () => {
     if (selectedType && selectedCategoryId) {
-      onCreatePolicy(selectedType, selectedCategoryId);
-      onClose();
+      setIsCreating(true);
+      try {
+        await onCreatePolicy(selectedType, selectedCategoryId);
+        onClose();
+      } finally {
+        setIsCreating(false);
+      }
     }
   }, [selectedType, selectedCategoryId, onCreatePolicy, onClose]);
 
@@ -119,7 +118,8 @@ export function CreateFromScratchDialog({
   // Step navigation
   const canProceedToStep2 = selectedType !== null &&
     categories !== null &&
-    categories.length > 0;
+    categories.length > 0 &&
+    compatibleCategories.length > 0;
 
   const canProceedToStep3 = selectedType !== null &&
     selectedCategoryId !== null;
@@ -422,9 +422,9 @@ export function CreateFromScratchDialog({
               <Button
                 size="sm"
                 onClick={handleCreate}
-                disabled={!canCreate}
+                disabled={!canCreate || isCreating}
               >
-                Create Policy
+                {isCreating ? "Creating..." : "Create Policy"}
               </Button>
             )}
           </div>

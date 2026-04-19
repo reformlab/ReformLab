@@ -431,7 +431,7 @@ class GeneratePopulationResponse(BaseModel):
 class PortfolioPolicyRequest(BaseModel):
     """A single policy entry in a portfolio create/update request.
 
-    Story 25.3: Added optional policy_type and category_id for from-scratch policies.
+    Story 25.3: Added optional policy_type, category_id, and parameter_groups for from-scratch policies.
     """
 
     model_config = {"from_attributes": True}
@@ -444,6 +444,7 @@ class PortfolioPolicyRequest(BaseModel):
     extra_params: dict[str, Any] = {}
     # Story 25.3: Optional fields for from-scratch policies
     category_id: str | None = None  # Category ID for from-scratch policies
+    parameter_groups: list[str] = []  # Parameter groups for from-scratch policies
 
 
 class CreatePortfolioRequest(BaseModel):
@@ -487,7 +488,7 @@ class ValidatePortfolioResponse(BaseModel):
 
 
 class PortfolioPolicyItem(BaseModel):
-    """Story 25.3: Added optional category_id for from-scratch policies."""
+    """Story 25.3: Added optional category_id and parameter_groups for from-scratch policies."""
 
     model_config = {"from_attributes": True}
     name: str
@@ -495,6 +496,7 @@ class PortfolioPolicyItem(BaseModel):
     rate_schedule: dict[str, float]
     parameters: dict[str, Any]
     category_id: str | None = None  # Story 25.3: Category ID for from-scratch policies
+    parameter_groups: list[str] = []  # Story 25.3: Parameter groups for from-scratch policies
 
 
 class PortfolioDetailResponse(BaseModel):

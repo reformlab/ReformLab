@@ -47,16 +47,6 @@ export interface CompositionEntry {
   parameter_groups?: string[];
 }
 
-export interface CompositionEntry {
-  templateId: string;
-  name: string;
-  parameters: Record<string, number>;
-  /** Year-indexed rate schedule; keys are year strings for JSON wire format. */
-  rateSchedule: Record<string, number>;
-  /** Story 25.2: Unique instance ID for duplicate policy support */
-  instanceId?: string;
-}
-
 interface PortfolioCompositionPanelProps {
   templates: Template[];
   composition: CompositionEntry[];
