@@ -70,9 +70,7 @@ phase_models:
   # Validation: GLM-4.7 + Codex dual reviewers
   validate_story:
     - provider: claude-subprocess
-      model: sonnet                    # First reviewer on GLM-4.7
-      model_name: glm-4.7
-      settings: ~/.claude/glm.json
+      model: sonnet                    # First reviewer 
     - provider: codex
       model: gpt-5.3-codex             # Second reviewer with deep reasoning
       reasoning_effort: high
@@ -85,9 +83,7 @@ phase_models:
   # Code review: GLM-4.7 + Codex dual reviewers, synthesis upgraded to GLM-5-Turbo
   code_review:
     - provider: claude-subprocess
-      model: sonnet                    # First reviewer on GLM-4.7
-      model_name: glm-4.7
-      settings: ~/.claude/glm.json
+      model: sonnet                    # First reviewer
     - provider: codex
       model: gpt-5.3-codex             # Second reviewer with deep reasoning
       reasoning_effort: high
