@@ -39,9 +39,9 @@ import {
   usePortfolios,
   useResults,
 } from "@/hooks/useApi";
-import type { DecileData, Parameter, Population, Scenario, Template, MockDataSource, MockMergeMethod } from "@/data/mock-data";
+import type { DecileData, Parameter, Scenario, Template, MockDataSource, MockMergeMethod } from "@/data/mock-data";
 import { mockDecileData, mockParameters, mockScenarios } from "@/data/mock-data";
-import type { RunResponse, IndicatorResponse, GenerationResult, PortfolioListItem, ResultListItem } from "@/api/types";
+import type { RunResponse, IndicatorResponse, GenerationResult, PortfolioListItem, ResultListItem, PopulationLibraryItem } from "@/api/types";
 import type { StageKey, SubView, WorkspaceScenario } from "@/types/workspace";
 import { isValidStage, isValidSubView } from "@/types/workspace";
 import {
@@ -76,7 +76,7 @@ interface AppState {
   // Stage routing (Story 20.1 — AC-2)
   activeStage: StageKey;
   activeSubView: SubView | null;
-  navigateTo: (stage: StageKey, subView?: SubView) => void;
+  navigateTo: (stage: StageKey, subView?: SubView | null) => void;
 
   // Canonical scenario state (Story 20.1 — AC-3)
   activeScenario: WorkspaceScenario | null;
@@ -92,7 +92,7 @@ interface AppState {
   cloneCurrentScenario: () => void;
 
   // Data
-  populations: Population[];
+  populations: PopulationLibraryItem[];
   templates: Template[];
   parameters: Parameter[];
   parameterValues: Record<string, number>;
@@ -231,7 +231,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
 
-  const navigateTo = useCallback((stage: StageKey, subView?: SubView) => {
+  const navigateTo = useCallback((stage: StageKey, subView?: SubView | null) => {
     const hash = subView ? `${stage}/${subView}` : stage;
     window.location.hash = hash;
     // hashchange event fires automatically, updating state via the listener above

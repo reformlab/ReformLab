@@ -29,7 +29,7 @@ export type SubView =
 export type PopulationSubStep = "library" | "build" | "explorer";
 
 export const POPULATION_SUB_STEPS = [
-  { key: "library" as const, label: "Library", subView: null as const },
+  { key: "library" as const, label: "Library", subView: null },
   { key: "build" as const, label: "Build", subView: "data-fusion" as const },
   { key: "explorer" as const, label: "Explorer", subView: "population-explorer" as const },
 ] as const;
@@ -69,7 +69,7 @@ export interface EngineConfig {
   logitModel: "multinomial_logit" | "nested_logit" | "mixed_logit" | null;
   discountRate: number;  // fractional: 0.03 = 3%
   tasteParameters?: TasteParameters | null;  // Optional for backward compatibility
-  calibrationState: CalibrationState;  // Story 22.6
+  calibrationState?: CalibrationState;  // Story 22.6; optional for persisted legacy scenarios
 }
 
 export interface WorkspaceScenario {

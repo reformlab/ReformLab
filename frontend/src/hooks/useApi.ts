@@ -73,6 +73,7 @@ export function usePopulations() {
       trust_status: "exploratory",
       column_count: 10,
       created_date: null,
+      is_synthetic: true,
     },
   ];
   const [populations, setPopulations] = useState<PopulationLibraryItem[]>(mockWithEvidence);

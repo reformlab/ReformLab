@@ -82,7 +82,7 @@ export interface RunResponse {
   row_count: number;
   manifest_id: string;
   // Story 23.1 / AC-4: Runtime mode of the executed run
-  runtime_mode: "live" | "replay";
+  runtime_mode?: "live" | "replay";
 }
 
 export interface MemoryCheckResponse {
@@ -390,10 +390,10 @@ export interface ResultDetailResponse extends ResultListItem {
   columns: string[] | null;
   column_count: number | null;
   // Story 21.6 / AC6: Exogenous series fields for comparison dimension
-  exogenous_series_hash: string | null;
-  exogenous_series_names: string[] | null;
+  exogenous_series_hash?: string | null;
+  exogenous_series_names?: string[] | null;
   // Story 23.1 / AC-4: Runtime mode from manifest
-  runtime_mode: "live" | "replay";
+  runtime_mode?: "live" | "replay";
 }
 
 // ============================================================================
@@ -514,7 +514,7 @@ export interface PopulationLibraryItem extends PopulationItem {
   column_count: number;
   created_date: string | null;
   // Story 21.4 / AC5: Computed field for easier UI filtering
-  is_synthetic: boolean;
+  is_synthetic?: boolean;
 }
 
 export interface PopulationSummaryData {
