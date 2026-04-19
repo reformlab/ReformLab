@@ -1,0 +1,136 @@
+record_id: 167a76f9-36e8-49b3-bba6-afef6c205d24
+created_at: '2026-04-19T21:19:21.416677+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 25
+  story_num: 5
+  title: Story 25.5
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-04-19T21:16:28.704881Z'
+  end_time: '2026-04-19T21:18:19.866881Z'
+  duration_ms: 111162
+  input_tokens: 0
+  output_tokens: 6839
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 27358
+  heading_count: 40
+  list_depth_max: 3
+  code_block_count: 19
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 18.3'
+  - 🎯 Ruthless Story Validation 25.5
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 18.3 → REJECT'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. AC-1 "version_id" Mismatch
+  - 2. Name Freeze Logic Already Implemented
+  - 3. Scenario Reference Contract Already Exists
+  - 4. localStorage Migration References Non-Existent Legacy Key
+  - 5. Story 25.2 Already Performed Terminology Migration
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Specify Clone Naming Collision Behavior
+  - 2. Clarify AC-2 Name Suggestion Enhancement Scope
+  - 3. Add Comprehensive Terminology Migration Checklist
+  - 4. Specify Backend Alias Route Decision Criteria
+  - 5. Add Policy Set Name Collision Detection to Save Flow
+  - 6. Verify Test File Organization
+  - 7. Add Description Field Specification
+  - 8. Add Clear Action Confirmation Requirement
+  - ✨ Optimizations (Nice to Have)
+  - 1. Reference Existing generatePortfolioCloneName Function
+  - 2. Specify Instance Counter Reset Behavior
+  - 3. Clarify Policy Set Update Behavior
+  - 🤖 LLM Optimization Improvements
+  - 1. Consolidate Scattered Terminology Tasks
+  - 2. Merge Redundant ACs and Tasks
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 2e98aaf861fa
+findings:
+  total_count: 18
+  by_severity:
+    critical: 5
+    major: 8
+    minor: 5
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 5
+    completeness: 6
+    clarity: 7
+    testability: 2
+  has_fix_count: 18
+  has_location_count: 17
+  has_evidence_count: 15
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 23
+  confidence_phrases_count: 2
+linguistic:
+  avg_sentence_length: 27.890625
+  vocabulary_richness: 0.2145658263305322
+  flesch_reading_ease: 9.195080496394468
+  vague_terms_count: 7
+  formality_score: 0.75
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.94
+  evidence_quality: 0.83
+  follows_template: true
+  internal_consistency: 0.95
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false

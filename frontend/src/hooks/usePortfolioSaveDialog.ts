@@ -123,7 +123,7 @@ export function usePortfolioSaveDialog({
       setSelectedPortfolioName(portfolioSaveName);
       void refetchPortfolios();
 
-      toast.success(`Portfolio '${portfolioSaveName}' saved`);
+      toast.success(`Policy set '${portfolioSaveName}' saved`);
       setSaveDialogOpen(false);
       setPortfolioSaveName("");
       setPortfolioSaveDesc("");
