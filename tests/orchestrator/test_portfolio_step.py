@@ -783,9 +783,7 @@ class TestPortfolioTranslationIntegration:
     ) -> None:
         """AC-2: Subsidy policy in portfolio is translated before execution."""
         import reformlab.templates.subsidy  # noqa: F401 - ensure subsidy is loaded
-        from reformlab.computation.translator import translate_policy
-        from reformlab.orchestrator.portfolio_step import _to_computation_policy
-        from reformlab.templates.portfolios.portfolio import PolicyPortfolio, PolicyConfig
+        from reformlab.templates.portfolios.portfolio import PolicyConfig, PolicyPortfolio
         from reformlab.templates.schema import SubsidyParameters
 
         # Create a portfolio with a subsidy policy that has empty rate_schedule
@@ -865,8 +863,8 @@ class TestPortfolioTranslationIntegration:
     ) -> None:
         """AC-2: Energy poverty aid policy in portfolio is translated before execution."""
         import reformlab.templates.energy_poverty_aid  # noqa: F401
-        from reformlab.templates.portfolios.portfolio import PolicyConfig
         from reformlab.templates.energy_poverty_aid.compute import EnergyPovertyAidParameters
+        from reformlab.templates.portfolios.portfolio import PolicyConfig
 
         # Create a portfolio with energy_poverty_aid that has empty rate_schedule
         # This should fail translation validation (the __post_init__ allows empty schedule)
