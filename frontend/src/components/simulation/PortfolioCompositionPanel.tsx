@@ -12,9 +12,10 @@
  * Per AC-3, move-up is disabled for first item, move-down for last.
  *
  * Story 25.2: Category badges and duplicate instance support.
+ * Story 25.3: From-scratch policies with policy_type and category_id fields.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowUp, ArrowDown, Trash2, ChevronDown, ChevronRight, CircleHelp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -24,31 +25,27 @@ import {
 } from "@/components/ui/popover";
 import { ParameterRow } from "@/components/simulation/ParameterRow";
 import { YearScheduleEditor } from "@/components/simulation/YearScheduleEditor";
+// Story 25.3: Import shared type constants
+import { TYPE_COLORS, TYPE_LABELS } from "@/components/simulation/typeConstants";
 import { cn } from "@/lib/utils";
 import type { Template, Parameter } from "@/data/mock-data";
 import type { Category } from "@/api/types";
 
-const TYPE_COLORS: Record<string, string> = {
-  "carbon-tax": "bg-amber-100 text-amber-800",
-  "carbon_tax": "bg-amber-100 text-amber-800",
-  "subsidy": "bg-emerald-100 text-emerald-800",
-  "rebate": "bg-blue-100 text-blue-800",
-  "feebate": "bg-violet-100 text-violet-800",
-  // Story 24.4: Surfaced policy packs
-  "vehicle_malus": "bg-rose-100 text-rose-800",
-  "energy_poverty_aid": "bg-cyan-100 text-cyan-800",
-};
-
-const TYPE_LABELS: Record<string, string> = {
-  "carbon-tax": "Carbon Tax",
-  "carbon_tax": "Carbon Tax",
-  "subsidy": "Subsidy",
-  "rebate": "Rebate",
-  "feebate": "Feebate",
-  // Story 24.4: Surfaced policy packs
-  "vehicle_malus": "Vehicle Malus",
-  "energy_poverty_aid": "Energy Poverty Aid",
-};
+export interface CompositionEntry {
+  templateId: string;
+  name: string;
+  parameters: Record<string, number>;
+  /** Year-indexed rate schedule; keys are year strings for JSON wire format. */
+  rateSchedule: Record<string, number>;
+  /** Story 25.2: Unique instance ID for duplicate policy support */
+  instanceId?: string;
+  /** Story 25.3: Policy type for from-scratch policies (optional, inferred from template for templates) */
+  policy_type?: string;
+  /** Story 25.3: Category ID for from-scratch policies (optional) */
+  category_id?: string;
+  /** Story 25.3: Parameter groups for from-scratch policies */
+  parameter_groups?: string[];
+}
 
 export interface CompositionEntry {
   templateId: string;
@@ -76,6 +73,8 @@ interface PortfolioCompositionPanelProps {
   minimumPolicies?: number;
   /** Story 25.2: Categories for category badge display */
   categories?: Category[] | null;
+  /** Story 25.3: Instance ID to auto-expand on mount (for newly created policies) */
+  autoExpandInstanceId?: string | null;
 }
 
 export function PortfolioCompositionPanel({
@@ -88,8 +87,19 @@ export function PortfolioCompositionPanel({
   parameterSchemas = {},
   minimumPolicies = 1,
   categories,
+  autoExpandInstanceId,
 }: PortfolioCompositionPanelProps) {
   const [expandedIndices, setExpandedIndices] = useState<Set<number>>(new Set());
+
+  // Story 25.3: Auto-expand the newly created policy when autoExpandInstanceId changes
+  useEffect(() => {
+    if (autoExpandInstanceId !== null) {
+      const index = composition.findIndex((c) => c.instanceId === autoExpandInstanceId);
+      if (index !== -1) {
+        setExpandedIndices((prev) => new Set(prev).add(index));
+      }
+    }
+  }, [autoExpandInstanceId, composition]);
 
   const toggleExpanded = (index: number) => {
     setExpandedIndices((prev) => {
@@ -134,9 +144,16 @@ export function PortfolioCompositionPanel({
         const schemas = parameterSchemas[entry.templateId] ?? [];
 
         // Story 25.2: Look up category by template.category_id
-        const category = template?.category_id && categories
-          ? categories.find((c) => c.id === template.category_id)
-          : null;
+        // Story 25.3: For from-scratch policies, use entry.category_id directly
+        const category = entry.category_id && categories
+          ? categories.find((c) => c.id === entry.category_id)
+          : template?.category_id && categories
+            ? categories.find((c) => c.id === template.category_id)
+            : null;
+
+        // Story 25.3: Determine policy type - use entry.policy_type for from-scratch, template.type for templates
+        const policyType = entry.policy_type ?? template?.type;
+        const parameterGroups = entry.parameter_groups ?? [];
 
         return (
           <div
@@ -156,58 +173,61 @@ export function PortfolioCompositionPanel({
                   <p className="text-sm font-medium text-slate-900 truncate">
                     {entry.name || template?.name || entry.templateId}
                   </p>
-                  {template ? (
+                  {/* Story 25.3: Type badge - use policyType variable */}
+                  {policyType ? (
+                    <span
+                      className={cn(
+                        "inline-flex items-center px-1.5 py-0.5 text-xs font-medium shrink-0",
+                        TYPE_COLORS[policyType] ?? "bg-slate-100 text-slate-700",
+                      )}
+                    >
+                      {TYPE_LABELS[policyType] ?? policyType}
+                    </span>
+                  ) : null}
+                  {/* Story 25.3: Parameter count badge - only show for template-based policies */}
+                  {template && (
+                    <Badge variant="default" className="text-xs shrink-0">
+                      {template.parameterCount} params
+                    </Badge>
+                  )}
+                  {/* Story 25.2: Category badge with neutral slate color */}
+                  {/* Story 25.3: Show category badge for both template and from-scratch policies */}
+                  {category ? (
                     <>
-                      <span
-                        className={cn(
-                          "inline-flex items-center px-1.5 py-0.5 text-xs font-medium shrink-0",
-                          TYPE_COLORS[template.type] ?? "bg-slate-100 text-slate-700",
-                        )}
-                      >
-                        {TYPE_LABELS[template.type] ?? template.type}
+                      <span className="inline-flex items-center px-1.5 py-0.5 text-xs font-medium bg-slate-100 text-slate-800">
+                        {category.label}
                       </span>
-                      <Badge variant="default" className="text-xs shrink-0">
-                        {template.parameterCount} params
-                      </Badge>
-                      {/* Story 25.2: Category badge with neutral slate color */}
-                      {category ? (
-                        <>
-                          <span className="inline-flex items-center px-1.5 py-0.5 text-xs font-medium bg-slate-100 text-slate-800">
-                            {category.label}
-                          </span>
-                          {/* Story 25.2: Formula help popover */}
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <button
-                                type="button"
-                                onClick={(e) => e.stopPropagation()}
-                                className="inline-flex items-center p-0.5 text-slate-500 hover:text-slate-700"
-                                aria-label={`Formula help for ${category.label}`}
-                              >
-                                <CircleHelp className="h-3.5 w-3.5" />
-                              </button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-64 text-xs" side="right">
-                              <div className="space-y-2">
-                                <div>
-                                  <p className="font-medium text-slate-900">Formula</p>
-                                  <p className="text-slate-700 font-mono bg-slate-50 px-1.5 py-0.5 rounded mt-1">
-                                    {category.formula_explanation}
-                                  </p>
-                                </div>
-                                <div>
-                                  <p className="font-medium text-slate-900">Description</p>
-                                  <p className="text-slate-700">{category.description}</p>
-                                </div>
-                                <div>
-                                  <p className="font-medium text-slate-900">Columns</p>
-                                  <p className="text-slate-700">{category.columns.join(", ")}</p>
-                                </div>
-                              </div>
-                            </PopoverContent>
-                          </Popover>
-                        </>
-                      ) : null}
+                      {/* Story 25.2: Formula help popover */}
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center p-0.5 text-slate-500 hover:text-slate-700"
+                            aria-label={`Formula help for ${category.label}`}
+                          >
+                            <CircleHelp className="h-3.5 w-3.5" />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-64 text-xs" side="right">
+                          <div className="space-y-2">
+                            <div>
+                              <p className="font-medium text-slate-900">Formula</p>
+                              <p className="text-slate-700 font-mono bg-slate-50 px-1.5 py-0.5 rounded mt-1">
+                                {category.formula_explanation}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="font-medium text-slate-900">Description</p>
+                              <p className="text-slate-700">{category.description}</p>
+                            </div>
+                            <div>
+                              <p className="font-medium text-slate-900">Columns</p>
+                              <p className="text-slate-700">{category.columns.join(", ")}</p>
+                            </div>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                     </>
                   ) : null}
                 </div>
@@ -300,9 +320,60 @@ export function PortfolioCompositionPanel({
                         ),
                       );
                     }}
-                    unit={template?.type.replace(/-/g, "_") === "carbon_tax" ? "€/tonne" : "€"}
+                    unit={policyType?.replace(/-/g, "_") === "carbon_tax" || policyType === "tax" ? "€/tonne" : "€"}
                   />
                 </div>
+
+                {/* Story 25.3: Parameter groups display for from-scratch policies */}
+                {parameterGroups.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-slate-700 mb-2">
+                      Parameter Groups
+                    </p>
+                    <div className="space-y-2">
+                      {parameterGroups.map((group) => (
+                        <div
+                          key={group}
+                          className="border border-slate-200 rounded p-2 bg-slate-50"
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-xs font-medium text-slate-900">{group}</p>
+                            <Badge variant="outline" className="text-xs">
+                              {/* Show parameter count based on group */}
+                              {group === "Mechanism" && "2 params"}
+                              {group === "Eligibility" && "2 params"}
+                              {group === "Schedule" && "0 params"}
+                              {group === "Redistribution" && "2 params"}
+                            </Badge>
+                          </div>
+                          {/* Show placeholder parameter values */}
+                          {group === "Mechanism" && (
+                            <div className="text-xs text-slate-600 space-y-0.5">
+                              <div>rate: <span className="font-mono">0</span></div>
+                              <div>unit: <span className="font-mono">EUR</span></div>
+                            </div>
+                          )}
+                          {group === "Eligibility" && (
+                            <div className="text-xs text-slate-600 space-y-0.5">
+                              <div>threshold: <span className="font-mono">0</span></div>
+                              <div>ceiling: <span className="font-mono">null</span></div>
+                            </div>
+                          )}
+                          {group === "Schedule" && (
+                            <div className="text-xs text-slate-500 italic">No years configured</div>
+                          )}
+                          {group === "Redistribution" && (
+                            <div className="text-xs text-slate-600 space-y-0.5">
+                              <div>divisible: <span className="font-mono">true</span></div>
+                              <div>recipients: <span className="font-mono">all</span></div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* ParameterRow editing (when schemas available) */}
                 {schemas.length > 0 ? (
                   schemas

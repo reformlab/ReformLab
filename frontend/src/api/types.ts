@@ -164,6 +164,21 @@ export interface CustomTemplateResponse {
   availability_reason: string | null;
 }
 
+// Story 25.3: Blank policy creation types for from-scratch flow
+export interface CreateBlankPolicyRequest {
+  policy_type: "tax" | "subsidy" | "transfer"; // lowercase
+  category_id: string;
+}
+
+export interface BlankPolicyResponse {
+  name: string; // Auto-generated: "{Type} — {Category}"
+  policy_type: "tax" | "subsidy" | "transfer";
+  category_id: string;
+  parameters: Record<string, unknown>; // Placeholder parameters with defaults
+  parameter_groups: string[]; // Default groups based on type
+  rate_schedule: Record<string, number>; // Empty year-indexed schedule
+}
+
 export interface PopulationItem {
   id: string;
   name: string;
@@ -313,6 +328,8 @@ export interface PortfolioPolicyRequest {
   thresholds: number[];
   covered_categories: string[];
   extra_params: Record<string, unknown>;
+  // Story 25.3: Optional fields for from-scratch policies
+  category_id?: string;
 }
 
 export interface CreatePortfolioRequest {
@@ -354,6 +371,8 @@ export interface PortfolioPolicyItem {
   policy_type: string;
   rate_schedule: Record<string, number>;
   parameters: Record<string, unknown>;
+  // Story 25.3: Optional category_id for from-scratch policies
+  category_id?: string;
 }
 
 export interface PortfolioDetailResponse {

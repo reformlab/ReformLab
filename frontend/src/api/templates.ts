@@ -4,6 +4,8 @@
 
 import { apiFetch } from "./client";
 import type {
+  BlankPolicyResponse,
+  CreateBlankPolicyRequest,
   CreateCustomTemplateRequest,
   CustomTemplateResponse,
   TemplateDetailResponse,
@@ -41,5 +43,20 @@ export async function createCustomTemplate(
 export async function deleteCustomTemplate(name: string): Promise<void> {
   await apiFetch<void>(`/api/templates/custom/${encodeURIComponent(name)}`, {
     method: "DELETE",
+  });
+}
+
+/** Create a blank policy from scratch — Story 25.3. */
+export async function createBlankPolicy(
+  request: CreateBlankPolicyRequest,
+): Promise<BlankPolicyResponse> {
+  // Normalize policy_type to lowercase for API call
+  const normalizedRequest: CreateBlankPolicyRequest = {
+    policy_type: request.policy_type.toLowerCase() as "tax" | "subsidy" | "transfer",
+    category_id: request.category_id,
+  };
+  return apiFetch<BlankPolicyResponse>("/api/templates/from-scratch", {
+    method: "POST",
+    body: JSON.stringify(normalizedRequest),
   });
 }

@@ -243,6 +243,24 @@ class CustomTemplateResponse(BaseModel):
     availability_reason: str | None = None
 
 
+class CreateBlankPolicyRequest(BaseModel):
+    """Request body for POST /api/templates/from-scratch — Story 25.3."""
+
+    policy_type: str  # "tax" | "subsidy" | "transfer" (lowercase)
+    category_id: str  # e.g., "carbon_emissions", "income"
+
+
+class BlankPolicyResponse(BaseModel):
+    """Response for blank policy creation — Story 25.3."""
+
+    name: str  # Auto-generated: "{Type} — {Category}"
+    policy_type: str  # "tax" | "subsidy" | "transfer"
+    category_id: str  # Category ID
+    parameters: dict[str, Any]  # Placeholder parameters with defaults
+    parameter_groups: list[str]  # Default groups based on type
+    rate_schedule: dict[str, float]  # Empty year-indexed schedule
+
+
 class PopulationItem(BaseModel):
     id: str
     name: str
@@ -411,7 +429,10 @@ class GeneratePopulationResponse(BaseModel):
 
 
 class PortfolioPolicyRequest(BaseModel):
-    """A single policy entry in a portfolio create/update request."""
+    """A single policy entry in a portfolio create/update request.
+
+    Story 25.3: Added optional policy_type and category_id for from-scratch policies.
+    """
 
     model_config = {"from_attributes": True}
     name: str
@@ -421,6 +442,8 @@ class PortfolioPolicyRequest(BaseModel):
     thresholds: list[float] = []
     covered_categories: list[str] = []
     extra_params: dict[str, Any] = {}
+    # Story 25.3: Optional fields for from-scratch policies
+    category_id: str | None = None  # Category ID for from-scratch policies
 
 
 class CreatePortfolioRequest(BaseModel):
@@ -464,11 +487,14 @@ class ValidatePortfolioResponse(BaseModel):
 
 
 class PortfolioPolicyItem(BaseModel):
+    """Story 25.3: Added optional category_id for from-scratch policies."""
+
     model_config = {"from_attributes": True}
     name: str
     policy_type: str
     rate_schedule: dict[str, float]
     parameters: dict[str, Any]
+    category_id: str | None = None  # Story 25.3: Category ID for from-scratch policies
 
 
 class PortfolioDetailResponse(BaseModel):

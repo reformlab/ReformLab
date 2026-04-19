@@ -20,31 +20,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+// Story 25.3: Import shared type constants
+import { TYPE_COLORS, TYPE_LABELS } from "@/components/simulation/typeConstants";
 import { cn } from "@/lib/utils";
 import type { Template } from "@/data/mock-data";
 import type { Category } from "@/api/types";
-
-const TYPE_LABELS: Record<string, string> = {
-  "carbon-tax": "Carbon Tax",
-  "carbon_tax": "Carbon Tax",
-  "subsidy": "Subsidy",
-  "rebate": "Rebate",
-  "feebate": "Feebate",
-  // Story 24.4: Surfaced policy packs (underscore format from API)
-  "vehicle_malus": "Vehicle Malus",
-  "energy_poverty_aid": "Energy Poverty Aid",
-};
-
-const TYPE_COLORS: Record<string, string> = {
-  "carbon-tax": "bg-amber-100 text-amber-800",
-  "carbon_tax": "bg-amber-100 text-amber-800",
-  "subsidy": "bg-emerald-100 text-emerald-800",
-  "rebate": "bg-blue-100 text-blue-800",
-  "feebate": "bg-violet-100 text-violet-800",
-  // Story 24.4: Surfaced policy packs
-  "vehicle_malus": "bg-rose-100 text-rose-800",
-  "energy_poverty_aid": "bg-cyan-100 text-cyan-800",
-};
 
 interface PortfolioTemplateBrowserProps {
   templates: Template[];

@@ -17,7 +17,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import {
-  Save, FolderOpen, Copy, X, CheckCircle2, AlertTriangle, Trash2,
+  Save, FolderOpen, Copy, X, CheckCircle2, AlertTriangle, Trash2, Plus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,8 @@ import { Select } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { PortfolioTemplateBrowser } from "@/components/simulation/PortfolioTemplateBrowser";
 import { PortfolioCompositionPanel } from "@/components/simulation/PortfolioCompositionPanel";
+// Story 25.3: Import CreateFromScratchDialog for from-scratch flow
+import { CreateFromScratchDialog } from "@/components/simulation/CreateFromScratchDialog";
 import type { CompositionEntry } from "@/components/simulation/PortfolioCompositionPanel";
 import { ConflictList } from "@/components/simulation/ConflictList";
 import { ApiError } from "@/api/client";
@@ -36,6 +38,8 @@ import {
 } from "@/api/portfolios";
 // Story 25.1 / Task 3.1: Import listCategories
 import { listCategories } from "@/api/categories";
+// Story 25.3: Import createBlankPolicy for from-scratch flow
+import { createBlankPolicy } from "@/api/templates";
 import { useAppState } from "@/contexts/AppContext";
 import type { PortfolioConflict, Category } from "@/api/types";
 import { usePortfolioSaveDialog } from "@/hooks/usePortfolioSaveDialog";
@@ -85,6 +89,13 @@ export function PoliciesStageScreen() {
 
   // Story 25.1 / Task 3.1: Categories state (null = loading, [] = failed/empty)
   const [categories, setCategories] = useState<Category[] | null>(null);
+
+  // Story 25.3: Choice dialog state for "+ Add Policy" button
+  const [choiceDialogOpen, setChoiceDialogOpen] = useState(false);
+
+  // Story 25.3: From-scratch dialog state
+  const [fromScratchDialogOpen, setFromScratchDialogOpen] = useState(false);
+  const [autoExpandInstanceId, setAutoExpandInstanceId] = useState<string | null>(null);
 
   // Track the portfolio name currently loaded into the composition panel
   const [activePortfolioName, setActivePortfolioName] = useState<string | null>(null);
@@ -136,6 +147,45 @@ export function PoliciesStageScreen() {
 
     setComposition((prev) => [...prev, newInstance]);
   }, [templates]);
+
+  // Story 25.3: Handle blank policy creation from from-scratch flow
+  const handleCreateBlankPolicy = useCallback(async (
+    policyType: "tax" | "subsidy" | "transfer",
+    categoryId: string,
+  ) => {
+    try {
+      const response = await createBlankPolicy({
+        policy_type: policyType,
+        category_id: categoryId,
+      });
+
+      // Create new composition entry from blank policy response
+      const id = instanceCounterRef.current++;
+      const newInstance: CompositionEntry = {
+        instanceId: `blank-${id}`, // MUST use counter pattern per story spec
+        templateId: "", // Empty for from-scratch policies
+        name: response.name,
+        parameters: {},
+        rateSchedule: response.rate_schedule,
+        policy_type: response.policy_type,
+        category_id: response.category_id,
+        parameter_groups: response.parameter_groups,
+      };
+
+      setComposition((prev) => [...prev, newInstance]);
+
+      // Set auto-expand instance ID to expand the newly created policy card
+      setAutoExpandInstanceId(newInstance.instanceId);
+
+      toast.success(`Created "${response.name}" policy from scratch`);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        toast.error(`${err.what} — ${err.why}`, { description: err.fix });
+      } else if (err instanceof Error) {
+        toast.error("Failed to create policy from scratch", { description: err.message });
+      }
+    }
+  }, []);
 
   // Removed: toggleTemplate (replaced by addTemplateInstance for duplicate support)
 
@@ -376,6 +426,17 @@ export function PoliciesStageScreen() {
 
         {/* Action buttons */}
         <div className="flex items-center gap-1.5 flex-wrap">
+          {/* Story 25.3: "+ Add Policy" button with choice dialog */}
+          <Button
+            size="sm"
+            onClick={() => setChoiceDialogOpen(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+            title="Add a policy to your composition"
+          >
+            <Plus className="mr-1.5 h-3 w-3" />
+            Add Policy
+          </Button>
+
           <Button
             size="sm"
             variant="outline"
@@ -485,6 +546,7 @@ export function PoliciesStageScreen() {
               onRateScheduleChange={handleRateScheduleChange}
               minimumPolicies={1}
               categories={categories}
+              autoExpandInstanceId={autoExpandInstanceId}
             />
           )}
         </div>
@@ -751,6 +813,83 @@ export function PoliciesStageScreen() {
             </div>
           </div>
         </div>
+      ) : null}
+
+      {/* Story 25.3: Choice dialog for "+ Add Policy" button */}
+      {choiceDialogOpen ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="add-policy-choice-title"
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          onKeyDown={(e) => { if (e.key === "Escape") setChoiceDialogOpen(false); }}
+          onClick={(e) => { if (e.target === e.currentTarget) setChoiceDialogOpen(false); }}
+        >
+          <div
+            className="absolute inset-0 bg-black/30"
+            aria-hidden="true"
+          />
+          <div className="relative z-10 w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-lg">
+            <h3 id="add-policy-choice-title" className="text-sm font-semibold text-slate-900 mb-4">
+              Add Policy
+            </h3>
+
+            <p className="text-sm text-slate-700 mb-4">
+              How would you like to add a policy to your composition?
+            </p>
+
+            <div className="space-y-3">
+              {/* From template: closes dialog, user clicks template cards */}
+              <button
+                type="button"
+                onClick={() => {
+                  setChoiceDialogOpen(false);
+                  // User can now click template cards directly (existing behavior)
+                }}
+                className="w-full text-left border border-slate-200 p-4 hover:bg-slate-50 rounded-lg transition-colors"
+              >
+                <div className="font-medium text-sm text-slate-900">From template</div>
+                <div className="text-xs text-slate-600 mt-1">
+                  Select from existing policy templates in the browser
+                </div>
+              </button>
+
+              {/* From scratch: opens CreateFromScratchDialog */}
+              <button
+                type="button"
+                onClick={() => {
+                  setChoiceDialogOpen(false);
+                  setFromScratchDialogOpen(true);
+                }}
+                className="w-full text-left border border-slate-200 p-4 hover:bg-slate-50 rounded-lg transition-colors"
+              >
+                <div className="font-medium text-sm text-slate-900">From scratch</div>
+                <div className="text-xs text-slate-600 mt-1">
+                  Create a new policy by selecting type and category
+                </div>
+              </button>
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setChoiceDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Story 25.3: Create from scratch dialog */}
+      {fromScratchDialogOpen ? (
+        <CreateFromScratchDialog
+          categories={categories}
+          onCreatePolicy={handleCreateBlankPolicy}
+          onClose={() => setFromScratchDialogOpen(false)}
+        />
       ) : null}
     </div>
   );
