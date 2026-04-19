@@ -172,6 +172,21 @@ export function PoliciesStageScreen() {
         category_id: categoryId,
       });
 
+      // Story 25.4: Default parameter-to-group assignments for from-scratch policies
+      const DEFAULT_PARAM_ASSIGNMENTS: Record<string, string[]> = {
+        "Mechanism": ["rate", "unit"],
+        "Eligibility": ["threshold", "ceiling", "income_cap"],
+        "Schedule": [], // Uses year schedule editor
+        "Redistribution": ["divisible", "recipients", "income_weights"],
+      };
+
+      // Convert parameter_groups string[] to editable groups structure
+      const editableParameterGroups = response.parameter_groups.map((groupName: string, idx: number) => ({
+        id: `group-${idx}`,
+        name: groupName,
+        parameterIds: DEFAULT_PARAM_ASSIGNMENTS[groupName] ?? [],
+      }));
+
       // Create new composition entry from blank policy response
       const id = instanceCounterRef.current++;
       const newInstance: CompositionEntry = {
@@ -183,6 +198,7 @@ export function PoliciesStageScreen() {
         policy_type: response.policy_type,
         category_id: response.category_id,
         parameter_groups: response.parameter_groups,
+        editableParameterGroups, // Story 25.4: Initialize editable groups
       };
 
       setComposition((prev) => [...prev, newInstance]);
@@ -245,16 +261,35 @@ export function PoliciesStageScreen() {
 
   const handleGroupRename = useCallback((policyIndex: number, groupId: string, newName: string) => {
     setComposition((prev) =>
-      prev.map((entry, i) =>
-        i === policyIndex && entry.editableParameterGroups
-          ? {
-              ...entry,
-              editableParameterGroups: entry.editableParameterGroups.map((g) =>
-                g.id === groupId ? { ...g, name: newName } : g,
-              ),
-            }
-          : entry,
-      ),
+      prev.map((entry, i) => {
+        if (i !== policyIndex || !entry.editableParameterGroups) return entry;
+
+        // Story 25.4 AC-2: Validate group name
+        const trimmedName = newName.trim();
+
+        // Check for empty name
+        if (!trimmedName) {
+          toast.error("Group name cannot be empty");
+          return entry;
+        }
+
+        // Check for duplicate name (exclude current group from check)
+        const existingNames = entry.editableParameterGroups
+          .filter((g) => g.id !== groupId)
+          .map((g) => g.name.trim().toLowerCase());
+
+        if (existingNames.includes(trimmedName.toLowerCase())) {
+          toast.error(`Group "${trimmedName}" already exists`);
+          return entry;
+        }
+
+        return {
+          ...entry,
+          editableParameterGroups: entry.editableParameterGroups.map((g) =>
+            g.id === groupId ? { ...g, name: trimmedName } : g,
+          ),
+        };
+      }),
     );
   }, []);
 
@@ -266,7 +301,11 @@ export function PoliciesStageScreen() {
               ...entry,
               editableParameterGroups: [
                 ...(entry.editableParameterGroups ?? []),
-                { id: `group-${Date.now()}`, name: "New Group", parameterIds: [] },
+                {
+                  id: `group-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                  name: "New Group",
+                  parameterIds: [],
+                },
               ],
             }
           : entry,
@@ -276,14 +315,28 @@ export function PoliciesStageScreen() {
 
   const handleDeleteGroup = useCallback((policyIndex: number, groupId: string) => {
     setComposition((prev) =>
-      prev.map((entry, i) =>
-        i === policyIndex && entry.editableParameterGroups
-          ? {
-              ...entry,
-              editableParameterGroups: entry.editableParameterGroups.filter((g) => g.id !== groupId),
-            }
-          : entry,
-      ),
+      prev.map((entry, i) => {
+        if (i !== policyIndex || !entry.editableParameterGroups) return entry;
+
+        // Story 25.4 AC-5: Cannot delete the last group
+        if (entry.editableParameterGroups.length <= 1) {
+          toast.error("Cannot delete the last group");
+          return entry;
+        }
+
+        const targetGroup = entry.editableParameterGroups.find((g) => g.id === groupId);
+
+        // Story 25.4 AC-5: Cannot delete non-empty group
+        if (targetGroup && targetGroup.parameterIds.length > 0) {
+          toast.error("Remove all parameters before deleting this group");
+          return entry;
+        }
+
+        return {
+          ...entry,
+          editableParameterGroups: entry.editableParameterGroups.filter((g) => g.id !== groupId),
+        };
+      }),
     );
   }, []);
 
@@ -292,21 +345,23 @@ export function PoliciesStageScreen() {
       prev.map((entry, i) => {
         if (i !== policyIndex || !entry.editableParameterGroups) return entry;
 
-        const newGroups = entry.editableParameterGroups.map((group) => {
-          // Remove from source group
+        // First pass: remove from source group
+        const groupsAfterRemoval = entry.editableParameterGroups.map((group) => {
           if (group.id === fromGroupId) {
             return { ...group, parameterIds: group.parameterIds.filter((id) => id !== paramId) };
           }
           return group;
         });
 
-        // Add to target group
-        return newGroups.map((group) => {
+        // Second pass: add to target group and return updated entry
+        const newGroups = groupsAfterRemoval.map((group) => {
           if (group.id === toGroupId) {
             return { ...group, parameterIds: [...group.parameterIds, paramId] };
           }
           return group;
         });
+
+        return { ...entry, editableParameterGroups: newGroups };
       }),
     );
   }, []);

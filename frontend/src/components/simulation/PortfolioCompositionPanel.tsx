@@ -16,7 +16,7 @@
  */
 
 import { useState, useEffect } from "react";
-import { ArrowUp, ArrowDown, Trash2, ChevronDown, ChevronRight, CircleHelp, Settings, Plus, Trash2 as Trash2Icon } from "lucide-react";
+import { ArrowUp, ArrowDown, Trash2, ChevronDown, ChevronRight, CircleHelp, Settings, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Popover,
@@ -409,7 +409,7 @@ export function PortfolioCompositionPanel({
                                         : "Delete group"
                                   }
                                 >
-                                  <Trash2Icon className="h-3 w-3" />
+                                  <Trash2 className="h-3 w-3" />
                                 </button>
                               )}
                             </div>
