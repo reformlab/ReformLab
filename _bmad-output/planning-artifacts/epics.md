@@ -2,7 +2,7 @@
 title: ReformLab - Epics and Stories
 project: ReformLab
 description: Consolidated active epics and stories
-date: 2026-04-15
+date: 2026-04-19
 stepsCompleted:
   - step-01-validate-prerequisites
   - step-02-design-epics
@@ -21,16 +21,16 @@ source_documents:
 # Epics and Stories
 
 Consolidated source of truth for the active backlog.
-Epics 1-22 remain archived in git history rather than being reintroduced here.
+Completed epics are intentionally not reintroduced here to keep bmad-assist context small.
 
 ## Epic Index
 
-Epics 1-22 are complete (see git history for details).
+Epics 1-24 are complete (see git history and implementation artifacts for details).
 
 | Epic | Title | Phase | Status | Stories |
 |------|-------|-------|--------|---------|
-| EPIC-23 | Live OpenFisca Runtime and Executable Population Alignment | 3 | in-progress | 6 |
-| EPIC-24 | Live Policy Catalog Activation and Domain-to-OpenFisca Translation | 3 | backlog | 5 |
+| EPIC-25 | Stage 1 Policies Redesign (Revision 4.1 UX) | 3 | backlog | 6 |
+| EPIC-26 | Five-Stage Workspace Migration and Stage Completion | 3 | backlog | 7 |
 
 ## Conventions
 
@@ -40,51 +40,30 @@ Epics 1-22 are complete (see git history for details).
 - **Done:** Acceptance criteria pass and tests are in CI
 - **Story files:** `_bmad-output/implementation-artifacts/{epic}-{story-slug}.md`
 
+## Completed Epic Archive Policy
+
+To reduce agent context, this file contains only active and upcoming epics.
+Completed epics remain available through git history, story artifacts, code reviews, validations, benchmarks, and retrospectives under `_bmad-output/implementation-artifacts/`.
+Current completed range: EPIC-1 through EPIC-24.
+
 ## Requirements Inventory
 
 ### Functional Requirements
 
-- FR2: System can optionally execute OpenFisca runs through a version-pinned API adapter.
-- FR3: Analyst can map OpenFisca variables to project schema fields through configuration.
-- FR4: System validates mapping/schema contracts with clear field-level errors.
-- FR5: Analyst can load synthetic populations and external environmental datasets.
-- FR7: Analyst can load prebuilt environmental policy templates, including carbon tax, subsidy, rebate, and feebate.
-- FR11: Analyst can compose tax-benefit baseline outputs with environmental template logic in one workflow.
-- FR18: System outputs year-by-year panel results for each scenario.
 - FR25: System automatically generates immutable run manifests including versions, hashes, parameters, and assumptions.
 - FR26: Analyst can inspect assumptions and mappings used in any run.
-- FR27: System emits warnings for unsupported run configurations.
-- FR28: Results are pinned to scenario version, data version, and OpenFisca adapter/version.
 - FR32: User can use a stage-based no-code GUI to create, inspect, clone, and run scenarios.
 - FR32a: The primary population for a scenario is selected in the Population stage and inherited by later stages without mandatory reselection.
 - FR32c: The Scenario stage configures execution settings, annual horizon, optional sensitivity population, and final validation before run.
 - FR43: Analyst can compose multiple individual policy templates into a named policy portfolio.
-- FR44: System executes a simulation with a policy portfolio, applying all bundled policies together.
-- FR45: Analyst can compare results across different policy portfolios side-by-side.
 - FR46: Analyst can define custom policy templates that participate in portfolios alongside built-in templates.
-- FR-RUNTIME-1: Web runs use live OpenFisca as the default execution path; precomputed replay is not the default runtime.
-- FR-RUNTIME-2: The selected population is a real execution input for live runs, not only a display or metadata choice.
-- FR-RUNTIME-3: Bundled, uploaded, and generated populations are executable through the same live runtime contract.
-- FR-RUNTIME-4: Precomputed mode remains available only for explicit demo or manual replay flows.
-- FR-RUNTIME-5: Live runs return a stable app-facing result schema so existing indicators, result views, and comparison flows continue to work.
-- FR-RUNTIME-6: Policy/domain definitions remain the source of truth for policy catalog entries, and live OpenFisca translation happens downstream of that layer.
-- FR-RUNTIME-7: Existing hidden policy packs that are already supported by backend/domain logic are surfaced through the catalog/API where appropriate.
 
 ### NonFunctional Requirements
 
-- NFR1: Full population simulation should remain performant enough for interactive analyst workflows.
-- NFR3: Populations up to the supported laptop-scale threshold should fail with clear preflight warnings rather than opaque runtime crashes.
-- NFR6: Identical inputs produce bit-identical outputs across runs on the same machine.
 - NFR9: Run manifests are generated automatically with zero manual effort from the user.
 - NFR10: No implicit temporal assumptions; period semantics must remain explicit.
-- NFR13: Core workflows remain offline-capable with no required external network dependency.
-- NFR14: CSV and Parquet files remain supported for relevant data input and output operations.
-- NFR15: OpenFisca integration supports version-pinned orchestration and compatible import contracts.
-- NFR18: Regression coverage protects adapters, orchestration, template logic, and execution flows.
 - NFR21: Any app-facing contract changes preserve compatibility intentionally and are versioned clearly.
-- NFR-RUNTIME-1: Live-runtime adoption must preserve current indicator and result-surface behavior for existing workflows.
 - NFR-RUNTIME-2: Runtime-mode behavior must be explicit and interpretable in manifests, API responses, and validation surfaces.
-- NFR-RUNTIME-3: The first delivery slice prioritizes runtime and data-path correctness before expanding policy breadth.
 
 ### Additional Requirements
 
@@ -93,111 +72,374 @@ Epics 1-22 are complete (see git history for details).
 - `simulation_mode` and `runtime_mode` are distinct contracts. `simulation_mode` belongs to `Scenario` and controls execution semantics such as `annual` versus `horizon_step`. `runtime_mode` belongs to run requests, persisted run metadata, and manifests, and distinguishes `live` from explicit `replay`.
 - Population selection remains part of scenario state, but Stage 2 owns the primary population choice and later stages consume inherited context.
 - Backend contracts, manifests, and validation surfaces must distinguish runtime modes so demo replay and live execution remain interpretable.
-- The normalized app-facing result contract must expose at least: run/scenario identifiers, runtime mode, simulation mode, executed population reference, normalized yearly or endpoint outputs, and the metadata required by existing indicator/comparison/export consumers.
-- Subsidy and similar policy logic must be implemented in the policy/domain layer and translated into live OpenFisca execution; it must not be embedded into the `ComputationAdapter` interface or the precomputed adapter.
-- Surfaced catalog entries must expose stable identifiers plus availability metadata sufficient for UX and validation surfaces: `runtime_availability` (`live_ready` or `live_unavailable`) and `availability_reason` when unavailable.
-- Existing completed foundations in EPIC-1, EPIC-9, EPIC-13, EPIC-17, and EPIC-20 should be reused rather than recreated.
-- The first expansion slice should not start with housing reforms or family-benefit reforms.
+- Policy-set work should reuse completed foundations from EPIC-13, EPIC-17, EPIC-20, and EPIC-24 rather than recreating them.
 
 ### UX Design Requirements
 
-- UX-DR1: The first slice must not introduce a frontend engine selector; live OpenFisca is the default web behavior unless the user explicitly enters demo/manual replay flows.
-- UX-DR2: Scenario setup must show the inherited primary population context clearly and avoid duplicate primary-population reselection.
-- UX-DR3: Validation and run summary surfaces must make it clear whether a run uses live execution or explicit replay mode.
-- UX-DR4: Catalog and policy-editing surfaces must expose newly surfaced policy packs without requiring users to understand backend adapter distinctions.
-- UX-DR5: Existing results and indicator screens should continue to render without requiring users to learn a new output mental model.
+- UX-DR6: The workspace must use a five-stage nav rail (Policies → Population → Investment Decisions → Scenario → Run/Results/Compare) as specified in UX Revision 4.1.
+- UX-DR7: Stage 1 must implement the Revision 4.1 policy type and category model: three closed policy types (Tax/Subsidy/Transfer), duplicate policy instances, API-driven categories, category badges, and formula-help popovers.
+- UX-DR8: Stage 1 must implement create-from-scratch authoring: pick type and compatible category, then receive default parameter groups based on policy type.
+- UX-DR9: Stage 1 policy editing must support the 50/50 desktop browser/composition layout, dense grouped parameter controls, and editable parameter groups (rename/add/move/delete).
+- UX-DR10: Policy sets must be first-class reusable artifacts, saved and loaded independently from scenarios, with auto-suggested names derived from policy types and categories.
+- UX-DR11: Investment Decisions must be a dedicated Stage 3 that can be skipped when decision behavior is disabled, not a sub-wizard embedded in the Scenario/Engine stage.
+- UX-DR12: Stage 4 (Scenario) must show inherited primary population as read-only context from Stage 2, own simulation mode and horizon controls, show runtime summary with Live OpenFisca default status, and serve as the cross-stage integration validation gate.
+- UX-DR13: Stage 5 (Run / Results / Compare) must include run queue, results, comparison sub-views, and a dedicated Run Manifest Viewer component for assumptions, mappings, lineage, and reproducibility metadata.
+- UX-DR14: The Population Library must include a visually differentiated Quick Test Population for demos, smoke tests, and walkthroughs, clearly marked as not analysis-grade.
+- UX-DR15: Scenario names must be suggested deterministically from context, preferring policy set name and primary population name, and must freeze once manually edited.
 
 ### FR Coverage Map
 
-- FR2: EPIC-23 - make live OpenFisca the default execution path for web runs.
-- FR3: EPIC-23 - preserve and validate input/output mapping contracts on the live path.
-- FR4: EPIC-23 - block invalid schema and mapping combinations before live execution.
-- FR5: EPIC-23 - make bundled, uploaded, and generated populations executable through the same runtime contract.
-- FR7: EPIC-24 - surface existing built-in packs that are already modeled in the domain layer.
-- FR11: EPIC-23 - preserve the combined OpenFisca-plus-environment workflow under live execution.
-- FR18: EPIC-23 - keep year-by-year outputs available through a stable normalized result schema.
-- FR25: EPIC-23 - capture runtime mode, population provenance, and normalized-output lineage in manifests.
-- FR26: EPIC-23 - keep assumptions, mappings, and runtime provenance inspectable after live runs.
-- FR27: EPIC-23 - warn clearly when a request falls outside supported live or replay behavior.
-- FR28: EPIC-23 - pin results to scenario, data, and adapter/runtime versions.
-- FR32: EPIC-23 - preserve the no-code scenario run flow while changing the backend default path.
-- FR32a: EPIC-23 - ensure the selected primary population is the real execution input.
-- FR32c: EPIC-23 - keep Scenario as the execution and validation owner without adding a runtime selector.
-- FR43: EPIC-24 - allow surfaced packs to participate in named portfolios.
-- FR44: EPIC-24 - execute surfaced policy bundles together through the live runtime.
-- FR45: EPIC-24 - preserve comparison behavior across expanded live-executable portfolios.
-- FR46: EPIC-24 - keep policy/domain templates as the authoring source for live-executable packs.
-- FR-RUNTIME-1: EPIC-23 - switch web runs to live OpenFisca by default.
-- FR-RUNTIME-2: EPIC-23 - treat selected population data as computational input, not metadata only.
-- FR-RUNTIME-3: EPIC-23 - execute bundled, uploaded, and generated populations through the same live path.
-- FR-RUNTIME-4: EPIC-23 - confine precomputed execution to explicit replay/demo flows.
-- FR-RUNTIME-5: EPIC-23 - normalize live outputs into the stable app-facing schema.
-- FR-RUNTIME-6: EPIC-24 - keep domain-layer policy definitions authoritative and translate downstream.
-- FR-RUNTIME-7: EPIC-24 - expose hidden supported packs through catalog and API where appropriate.
+- FR25: EPIC-26 - expose manifests in a dedicated Stage 5 manifest viewer.
+- FR26: EPIC-26 - make assumptions, mappings, lineage, and reproducibility metadata inspectable in Stage 5.
+- FR32: EPIC-26 - migrate the no-code workspace to the five-stage flow.
+- FR32a: EPIC-26 - show inherited primary population context in Scenario.
+- FR32c: EPIC-26 - keep Scenario as the execution and validation owner without adding a runtime selector.
+- FR43: EPIC-25 - make policy sets reusable artifacts independent from scenarios.
+- FR46: EPIC-25 - add custom from-scratch policy authoring alongside built-in templates.
+- UX-DR6: EPIC-26 - five-stage nav rail (Policies, Population, Investment Decisions, Scenario, Run/Results/Compare).
+- UX-DR7: EPIC-25 - three policy types, duplicate instances, API-driven categories, category badges, and formula help.
+- UX-DR8: EPIC-25 - create-from-scratch policy authoring with compatible categories and default groups.
+- UX-DR9: EPIC-25 - 50/50 Policies layout, dense grouped controls, and editable parameter groups.
+- UX-DR10: EPIC-25 - policy sets as first-class reusable artifacts with auto-suggested names.
+- UX-DR11: EPIC-26 - Investment Decisions as dedicated Stage 3 with skip-when-disabled routing.
+- UX-DR12: EPIC-26 - Scenario stage with inherited population context, runtime summary, and cross-stage validation gate.
+- UX-DR13: EPIC-26 - Stage 5 Run / Results / Compare with a dedicated Run Manifest Viewer.
+- UX-DR14: EPIC-26 - Quick Test Population in the Population Library.
+- UX-DR15: EPIC-26 - deterministic scenario name suggestions that freeze after manual edit.
 
 ## Epic List
 
-### Epic 23: Live OpenFisca Runtime and Executable Population Alignment
-Analyst can run the web workflow against a real selected population through live OpenFisca by default, while existing indicators, results, and replay use cases continue to work.
-**FRs covered:** FR2, FR3, FR4, FR5, FR11, FR18, FR25, FR26, FR27, FR28, FR32, FR32a, FR32c, FR-RUNTIME-1, FR-RUNTIME-2, FR-RUNTIME-3, FR-RUNTIME-4, FR-RUNTIME-5
+### Epic 25: Stage 1 Policies Redesign (Revision 4.1 UX)
+Analyst can build reusable policy sets in the redesigned Policies stage using three policy types, API-driven categories, formula help, from-template or from-scratch creation, editable parameter groups, and policy set save/load independent from scenarios.
+**FRs covered:** FR43, FR46, UX-DR7, UX-DR8, UX-DR9, UX-DR10
 
-### Epic 24: Live Policy Catalog Activation and Domain-to-OpenFisca Translation
-Analyst can discover, configure, and execute already-modeled subsidy and related policy packs from the product catalog/API, with policy logic defined in the domain layer and translated into live OpenFisca execution.
-**FRs covered:** FR7, FR43, FR44, FR45, FR46, FR-RUNTIME-6, FR-RUNTIME-7
+### Epic 26: Five-Stage Workspace Migration and Stage Completion
+Analyst can move through the canonical five-stage workspace, configure optional investment decisions in their own stage, review inherited population and runtime context in Scenario, and use completed Stage 2/4/5 UX affordances including Quick Test Population, scenario name suggestions, and run manifest viewing.
+**FRs covered:** FR25, FR26, FR32, FR32a, FR32c, UX-DR6, UX-DR11, UX-DR12, UX-DR13, UX-DR14, UX-DR15
 
 ---
+# Epic 25: Stage 1 Policies Redesign (Revision 4.1 UX)
 
-# Epic 23: Live OpenFisca Runtime and Executable Population Alignment
-
-**User outcome:** Analyst runs the web product against the actual selected population through live OpenFisca by default, keeps existing indicator/result behavior, and uses precomputed outputs only for explicit replay or demo flows.
+**User outcome:** The analyst builds reusable policy sets in a redesigned Policies stage with three policy types, API-driven categories, formula help, from-template or from-scratch creation, editable parameter groups, and policy set save/load independent from scenarios.
 
 **Status:** backlog
 
-**Builds on:** EPIC-1 (computation adapter and data layer), EPIC-9 (OpenFisca adapter hardening), EPIC-17 (GUI showcase product), EPIC-20 (workspace alignment), EPIC-22 (Scenario-stage fit)
+**Builds on:** EPIC-13 (policy templates and extensibility), EPIC-17 (GUI showcase product), EPIC-20 (workspace alignment), EPIC-24 (surfaced live-capable catalog packs where available)
 
-**PRD Refs:** FR2, FR3, FR4, FR5, FR11, FR18, FR25-FR28, FR32, FR32a, FR32c, FR-RUNTIME-1, FR-RUNTIME-2, FR-RUNTIME-3, FR-RUNTIME-4, FR-RUNTIME-5
+**PRD Refs:** FR43, FR46, UX-DR7, UX-DR8, UX-DR9, UX-DR10
 
 **Primary source documents:**
-- `_bmad-output/planning-artifacts/prd.md`
-- `_bmad-output/planning-artifacts/architecture.md`
 - `_bmad-output/planning-artifacts/ux-design-specification.md` (Revision 4.1, dated 2026-04-01)
-- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-04-01.md`
+- `_bmad-output/planning-artifacts/prd.md`
 
 | ID | Type | Pri | SP | Title | Status | PRD Refs |
 |------|------|-----|----|-------|--------|----------|
-| BKL-2301 | Story | P0 | 5 | Define explicit runtime-mode contract and default-live execution semantics | backlog | FR25-FR28, FR32c, FR-RUNTIME-1, FR-RUNTIME-4 |
-| BKL-2302 | Story | P0 | 5 | Make bundled and uploaded populations executable through a unified population resolver | backlog | FR5, FR32a, FR-RUNTIME-2, FR-RUNTIME-3 |
-| BKL-2303 | Story | P0 | 8 | Normalize live OpenFisca results into the stable app-facing output schema | backlog | FR3, FR4, FR11, FR18, FR-RUNTIME-5 |
-| BKL-2304 | Story | P0 | 8 | Switch web runs to live OpenFisca by default and isolate replay mode to explicit paths | backlog | FR2, FR27, FR32, FR-RUNTIME-1, FR-RUNTIME-4 |
-| BKL-2305 | Story | P0 | 5 | Extend preflight, manifests, and result metadata with runtime and population provenance | backlog | FR4, FR25-FR28, FR32c, FR-RUNTIME-2 |
-| BKL-2306 | Story | P1 | 5 | Add regression coverage and operator docs for live default runs and replay smoke flows | backlog | FR18, FR25, FR32, FR-RUNTIME-3, FR-RUNTIME-5 |
+| BKL-2501 | Story | P0 | 8 | Add API-driven categories endpoint and formula-help metadata | backlog | FR46, UX-DR7 |
+| BKL-2502 | Story | P0 | 5 | Redesign Policies stage browser/composition layout with types, categories, and duplicate policy instances | backlog | FR43, UX-DR7, UX-DR9 |
+| BKL-2503 | Story | P0 | 8 | Implement create-from-scratch policy flow with compatible category picker and default parameter groups | backlog | FR46, UX-DR8 |
+| BKL-2504 | Story | P0 | 5 | Make parameter groups editable within policy cards | backlog | FR46, UX-DR9 |
+| BKL-2505 | Story | P0 | 8 | Make policy sets first-class reusable artifacts independent from scenarios | backlog | FR43, UX-DR10 |
+| BKL-2506 | Story | P1 | 3 | Add Stage 1 validation, responsive polish, and regression coverage | backlog | FR43, FR46, UX-DR7, UX-DR8, UX-DR9, UX-DR10 |
 
 ## Epic-Level Acceptance Criteria
 
-- Web-initiated runs execute through live OpenFisca by default without requiring a new frontend runtime selector.
-- The selected primary population, whether bundled, uploaded, or generated, is the actual computational input used by the run path.
-- Live outputs are normalized into the existing app-facing result schema so indicator, comparison, and export flows continue to work.
-- Precomputed execution remains available only via explicit replay or demo-oriented paths and is never the implicit default.
-- Preflight checks, run metadata, and manifests record runtime mode, population provenance, and compatibility warnings clearly.
-- Existing Scenario-stage ownership from EPIC-20 and EPIC-22 is extended rather than duplicated.
+- Stage 1 is named Policies and removes Portfolio from user-facing copy while preserving backward-compatible API aliases where needed.
+- Policies use the closed Tax/Subsidy/Transfer type model with the specified amber/emerald/blue badges.
+- Categories are fetched from `GET /api/categories`, not hardcoded in frontend UI, and expose formula-help metadata.
+- The Policies stage supports both from-template and from-scratch creation, including duplicate instances of the same template with independent parameters.
+- Parameter groups are editable: the analyst can rename groups, add groups, move parameters between groups, and delete empty groups.
+- Policy sets are saved and loaded independently from scenarios with deterministic name suggestions that freeze after manual edit.
+- Desktop Stage 1 uses the UX-specified 50/50 browser/composition layout and remains usable when stacked on phone.
 
 ## Implementation Intent
 
-- Reuse the existing typed direct-execution path and OpenFisca API adapter behavior where possible instead of introducing a parallel runtime stack.
-- Treat runtime selection as an API and workflow contract concern first; keep the first slice free of any new user-facing engine selector.
-- Resolve the known gap where uploaded/generated populations are discoverable in the workspace but not reliably executable by the run endpoint.
-- Introduce a thin normalization layer between live OpenFisca output and app-facing results so downstream surfaces stay stable while the runtime changes.
+- Reuse the existing `PoliciesStageScreen`, template catalog, and `PortfolioCompositionPanel` where possible; the work is a redesign of Stage 1 behavior, not a new workspace shell.
+- Backend additions are limited to category metadata, from-scratch policy scaffolding, and policy-set persistence aliases/entities needed by the UI.
+- The old `portfolio` implementation can remain as a compatibility layer internally, but user-facing copy and new APIs should use Policy Set terminology.
+- Policy set independence requires decoupling saved policy composition from scenario state; scenarios should reference a policy set identifier/version rather than owning the full composition inline.
 
 ## Scope Notes
 
-- This epic does not redesign the five-stage workspace proposed in the 2026-04-01 sprint change; it assumes those stage-boundary corrections remain owned by EPIC-20 and EPIC-22.
-- Replay mode is retained only for explicit demo/manual use; it must not regain status as the default runtime through fallback behavior.
-- If EPIC-20 Story 20.5 or Story 20.7 need contract extensions for inherited population context or execution metadata, those changes should extend the existing contracts rather than fork them.
-- `runtime_mode` (`live` or explicit `replay`) must remain separate from `simulation_mode` (`annual` or `horizon_step`) so the two concepts cannot collapse into one overloaded field.
+- This epic can start before the five-stage shell migration because it is limited to Stage 1 surfaces and policy-set contracts.
+- Epic 24 can expand which templates appear, but this epic defines how all policy types, categories, and policy sets are authored and reused.
+- Cross-stage population-column warnings may be implemented here as Stage 1 warnings and completed in Epic 26's Scenario integration gate.
 
 ---
 
-## Story 23.1: Define explicit runtime-mode contract and default-live execution semantics
+## Story 25.1: Add API-driven categories endpoint and formula-help metadata
+
+**Status:** backlog
+**Priority:** P0
+**Estimate:** 8
+
+**Dependencies:** None
+
+Implement the `GET /api/categories` backend endpoint and update the Policies stage (Stage 1) to fetch and display categories. Policy templates in the browser are grouped and filterable by category. Each policy card shows a category badge with a formula-help popover.
+
+**Implementation Notes:**
+
+- **Backend:** Add `GET /api/categories` route in `src/reformlab/server/routes/` returning the category schema from the UX spec: `id`, `label`, `columns`, `compatible_types`, `formula_explanation`, `description`. Initial categories: `carbon_emissions`, `energy_consumption`, `vehicle_emissions`, `housing`, `income`.
+- **Frontend API wrapper:** Add `listCategories()` in `frontend/src/api/categories.ts` calling `GET /api/categories`. Add `Category` type to `frontend/src/api/types.ts`.
+- **Policy browser update:** Fetch categories on mount. Group templates by category (existing grouping may use `parameter_groups` — switch to category). Add category filter chips alongside the existing type filter.
+- **Category badge:** Each policy card shows a category badge (e.g., "Carbon Emissions") using the category's label. The badge uses a neutral color (slate) to distinguish from the type badge (amber/emerald/blue).
+- **Formula help popover:** Add a CircleHelp icon next to each category badge. Clicking it opens a Shadcn Popover showing the category's `formula_explanation` and `description` from the API.
+- **Template list item type:** Extend `TemplateListItem` to include `category_id` so the frontend can join templates to categories.
+
+**Test Notes:**
+
+- Add backend tests for `GET /api/categories` response shape and content.
+- Add frontend tests for category fetching, template grouping by category, and filter behavior.
+- Add popover render tests confirming formula help content appears on click.
+- Verify existing template selection flows still work after the grouping change.
+
+### Acceptance Criteria
+
+- Given the categories API, when called, then it returns the defined categories with id, label, columns, compatible_types, formula_explanation, and description.
+- Given the Policies stage, when rendered, then templates are grouped by category with category headers.
+- Given a category filter chip, when selected, then only templates matching that category are shown.
+- Given a policy card, when the category help icon is clicked, then a popover appears showing the formula explanation and description.
+- Given a template without a matching category, when the browser renders, then it appears in a fallback "Other" group rather than being hidden.
+
+---
+
+## Story 25.2: Redesign Policies stage browser/composition layout with types, categories, and duplicate policy instances
+
+**Status:** backlog
+**Priority:** P0
+**Estimate:** 5
+
+**Dependencies:** Story 25.1
+
+Update Stage 1 so the analyst works in the Revision 4.1 Policies model: a 50/50 desktop workbench with a category/type-aware browser on the left and inline policy composition on the right. Template cards must support duplicate additions and show truthful type, category, formula-help, and live-availability signals.
+
+**Implementation Notes:**
+
+- Rename user-facing stage copy to "Policies" and remove "Portfolio" from visible labels in this surface.
+- Apply the desktop 50/50 split between policy browser and policy composition; stack the panels vertically on phone.
+- Render closed-set policy type badges: Tax (amber), Subsidy (emerald), Transfer (blue).
+- Group and filter the policy browser by API category, type, and search keyword.
+- Allow the same template to be added multiple times as independent policy instances with distinct IDs and parameters.
+- Keep composite templates such as feebate as policy-set templates that add multiple independently editable policies.
+- Preserve Epic 24 live-availability metadata on cards and detail panels without adding a runtime selector.
+
+**Test Notes:**
+
+- Add layout/render tests for the 50/50 desktop structure and stacked mobile structure.
+- Add duplicate-template tests proving two instances of the same template can be added and edited independently.
+- Add type/category badge tests for Tax, Subsidy, and Transfer.
+- Verify existing template-add flows still work with the redesigned layout.
+
+### Acceptance Criteria
+
+- Given the Policies stage on desktop, when rendered, then the policy browser and composition panel occupy a balanced 50/50 workbench layout.
+- Given the Policies stage on phone width, when rendered, then browser and composition panels stack without horizontal overflow.
+- Given a template card, when displayed, then it shows type badge, category badge, formula-help affordance, and live-availability status when available.
+- Given the same template is added twice, when the analyst edits one instance, then the other instance keeps its own parameters.
+- Given a feebate template is added, when it enters the composition panel, then it creates separate Tax and Subsidy policies that can be edited independently.
+
+---
+
+## Story 25.3: Implement create-from-scratch policy flow with type selection, category picker, and default parameter groups
+
+**Status:** backlog
+**Priority:** P0
+**Estimate:** 8
+
+**Dependencies:** Story 25.1, Story 25.2
+
+Add the "create from scratch" path alongside the existing "from template" path in the Policies stage. The analyst picks a policy type (Tax / Subsidy / Transfer), selects a category, and receives a new policy with default parameter groups pre-populated for that type.
+
+**Implementation Notes:**
+
+- **"+ Add Policy" flow:** The existing "+ Add Policy" button (or equivalent) opens a choice: "From template" (existing flow) or "From scratch" (new flow).
+- **From-scratch step 1 — Type selection:** Three large cards for Tax (amber), Subsidy (emerald), Transfer (blue) with one-line descriptions. Selecting one highlights it and reveals step 2.
+- **From-scratch step 2 — Category selection:** Show only categories whose `compatible_types` includes the selected type (from the categories API). Each category card shows its label and description.
+- **From-scratch step 3 — Policy created:** A new policy entry is added to the composition panel with:
+  - Auto-generated name: `"{Type} — {Category}"` (e.g., "Tax — Carbon Emissions")
+  - The selected type and category
+  - Default parameter groups per the UX spec table: Mechanism, Eligibility, Schedule for all types; Redistribution added for Tax
+  - Each group has placeholder parameters with sensible defaults (rate = 0, threshold = 0, etc.)
+- **Backend:** Add a `POST /api/templates/from-scratch` endpoint (or extend the existing custom template endpoint) that generates a blank policy structure given type + category.
+- **Composition panel:** The new policy appears in the panel identically to template-sourced policies — same card layout, same expand/collapse, same parameter editing.
+
+**Test Notes:**
+
+- Add frontend tests for the from-scratch wizard: type selection → category filtering → policy creation.
+- Add backend tests for blank policy structure generation given type + category.
+- Verify that a from-scratch policy can be saved as part of a policy set and later loaded.
+- Verify the composition panel treats from-scratch and from-template policies identically.
+
+### Acceptance Criteria
+
+- Given the Policies stage, when the analyst clicks "+ Add Policy", then two paths are offered: "From template" and "From scratch".
+- Given the from-scratch flow, when a type is selected, then only compatible categories are shown.
+- Given a type and category selection, when confirmed, then a new policy appears in the composition panel with the correct type badge, category badge, and default parameter groups.
+- Given a Tax policy created from scratch, when expanded, then it shows Mechanism, Eligibility, Schedule, and Redistribution parameter groups.
+- Given a Subsidy policy created from scratch, when expanded, then it shows Mechanism, Eligibility, and Schedule parameter groups (no Redistribution).
+- Given the new policy, when the analyst edits its parameters and saves the policy set, then the from-scratch policy persists and reloads correctly.
+
+---
+
+## Story 25.4: Make parameter groups editable within policy cards
+
+**Status:** backlog
+**Priority:** P0
+**Estimate:** 5
+
+**Dependencies:** Story 25.3
+
+Enable editable parameter groups within policy cards. Group editing stays hidden behind a gear/tool action by default so the ordinary parameter-editing path remains simple.
+
+**Implementation Notes:**
+
+- Add an "Edit groups" icon action on each policy card with an accessible label and tooltip.
+- In edit-groups mode, allow analysts to rename a group inline, add a new empty group, move parameters between groups, and delete empty groups.
+- Disable deletion for non-empty groups and explain why in the tooltip or disabled action label.
+- Keep parameter value editing available in both normal and edit-groups modes.
+- Preserve the primary parameter summary in collapsed card headers after group edits.
+- Persist group names/order/membership inside the policy instance so from-template and from-scratch policies behave the same way.
+
+**Test Notes:**
+
+- Add frontend tests for rename, add, delete-empty, block-delete-non-empty, and move-parameter operations.
+- Add persistence tests proving group edits survive collapse/expand, save, and reload.
+- Add accessibility checks for the icon action, inline edit fields, and disabled delete state.
+
+### Acceptance Criteria
+
+- Given a policy card in edit-groups mode, when the analyst renames a group, then the new name persists and displays on collapse and expand.
+- Given a policy card in edit-groups mode, when the analyst adds a new group, then an empty group appears and can receive moved parameters.
+- Given an empty parameter group, when deleted, then it disappears.
+- Given a non-empty group, when delete is attempted, then the action is disabled and the parameters remain intact.
+- Given a parameter is moved between groups, when the policy is saved and reloaded, then the parameter remains in the selected group.
+
+---
+
+## Story 25.5: Make policy sets first-class reusable artifacts independent from scenarios
+
+**Status:** backlog
+**Priority:** P0
+**Estimate:** 8
+
+**Dependencies:** Story 25.4
+
+Decouple policy set persistence from scenario persistence. The analyst can save, load, clone, and reuse policy sets independently, while scenarios reference a selected policy set rather than owning the entire policy composition inline.
+
+**Implementation Notes:**
+
+- Add a `PolicySet` entity in frontend state with `id`, `name`, `description`, `policies[]`, `createdAt`, and `updatedAt`.
+- Add or alias backend routes under `/api/policy-sets` while keeping current portfolio routes compatible during migration.
+- Update scenario state so new scenarios reference a `policySetId` or policy set version instead of owning only `portfolioName`.
+- Add a localStorage migration for old `portfolioName` and inline composition state.
+- Add policy set actions in Stage 1: save, load, clone, clear/start over.
+- Pre-fill save names deterministically from selected policy types and categories, and stop updating the suggestion once the analyst manually edits it.
+- Keep a loaded policy set reusable across scenarios without mutating previous scenario references unexpectedly.
+
+**Test Notes:**
+
+- Add backend tests for policy set create/list/load/clone compatibility.
+- Add frontend tests for save with auto-name, manual-name freeze, load into composition, and clone.
+- Add migration tests for old `portfolioName` state.
+- Add scenario-reference tests proving scenarios point to policy sets by ID/version.
+
+### Acceptance Criteria
+
+- Given the Policies stage, when the analyst saves the current composition, then a policy set is persisted independently from the scenario.
+- Given the current composition contains a Tax on Carbon Emissions and Subsidy on Energy Consumption, when the save dialog opens, then the suggested name reflects those policy types/categories.
+- Given the analyst manually edits the suggested policy set name, when the composition changes later, then the manual name is not overwritten.
+- Given a saved policy set, when loaded into a different scenario, then the composition panel populates with the set's policies, categories, groups, and parameters.
+- Given a scenario, when inspected, then it references a policy set by ID or version rather than embedding policy composition as the only source of truth.
+- Given old localStorage state with `portfolioName`, when the app initializes, then it migrates to the new policy set reference model without losing the existing composition.
+
+---
+
+## Story 25.6: Add Stage 1 validation, responsive polish, and regression coverage
+
+**Status:** backlog
+**Priority:** P1
+**Estimate:** 3
+
+**Dependencies:** Story 25.5
+
+Close the Policies redesign with validation and regression coverage for the revised Stage 1 model.
+
+**Implementation Notes:**
+
+- Validate every policy has type, category, required parameters, and valid year schedule before the policy set is considered ready.
+- Add non-blocking population-column warnings in Stage 1 when a selected population is already known and lacks required category columns.
+- Preserve duplicate-policy validation so two instances of the same template are allowed but conflicts are surfaced inline.
+- Verify Stage 1 copy uses Policies and Policy Set terminology, not Portfolio.
+- Add responsive checks for the 50/50 split and stacked phone layout.
+
+**Test Notes:**
+
+- Add validation tests for missing type/category/parameters, invalid schedules, and allowed duplicate template instances.
+- Add population-column warning tests for missing category columns.
+- Add terminology assertions for Stage 1 visible copy.
+- Add a focused regression test for from-template, from-scratch, group-edit, save, load, and reload.
+
+### Acceptance Criteria
+
+- Given a policy is missing type, category, or required parameters, when validation runs, then the policy set is not marked ready and the failing field is identified.
+- Given two instances of the same template, when validation runs, then duplicates are allowed and any real conflicts are shown as inline warnings.
+- Given selected policies require `vehicle_co2` and the selected population lacks that column, when Stage 1 renders, then a non-blocking warning explains the missing data.
+- Given Stage 1 renders, when visible copy is inspected, then the stage says Policies and Policy Set rather than Portfolio.
+- Given the Stage 1 regression suite, when it runs, then it covers from-template creation, from-scratch creation, editable groups, policy set save/load, and responsive layout.
+
+---
+
+# Epic 26: Five-Stage Workspace Migration and Stage Completion
+
+**User outcome:** The analyst uses the canonical five-stage workspace (Policies → Population → Investment Decisions → Scenario → Run/Results/Compare), with optional investment decisions separated from Scenario, inherited population context visible before execution, completed run-manifest access, Quick Test Population support, and deterministic scenario naming.
+
+**Status:** backlog
+
+**Builds on:** EPIC-20 (workspace alignment and four-stage nav rail), EPIC-22 (Scenario-stage fit), EPIC-23 (live runtime metadata), EPIC-25 (policy set reference model)
+
+**PRD Refs:** FR25, FR26, FR32, FR32a, FR32c, UX-DR6, UX-DR11, UX-DR12, UX-DR13, UX-DR14, UX-DR15
+
+**Primary source documents:**
+- `_bmad-output/planning-artifacts/ux-design-specification.md` (Revision 4.1, dated 2026-04-01)
+- `_bmad-output/planning-artifacts/prd.md`
+- `_bmad-output/planning-artifacts/architecture.md`
+
+| ID | Type | Pri | SP | Title | Status | PRD Refs |
+|------|------|-----|----|-------|--------|----------|
+| BKL-2601 | Story | P0 | 5 | Migrate nav rail and routing from four stages to five stages | backlog | FR32, UX-DR6 |
+| BKL-2602 | Story | P0 | 5 | Extract Investment Decisions into a dedicated Stage 3 with skip-when-disabled routing | backlog | UX-DR11 |
+| BKL-2603 | Story | P0 | 5 | Refactor Engine into Scenario stage with inherited population and runtime summary | backlog | FR32a, FR32c, UX-DR12 |
+| BKL-2604 | Story | P0 | 5 | Complete Stage 5 Run / Results / Compare with dedicated Run Manifest Viewer | backlog | FR25, FR26, UX-DR13 |
+| BKL-2605 | Story | P1 | 3 | Add Quick Test Population to the Population Library | backlog | UX-DR14 |
+| BKL-2606 | Story | P1 | 3 | Add deterministic scenario name suggestions from policy set and population context | backlog | UX-DR15 |
+| BKL-2607 | Story | P1 | 3 | Add five-stage migration, demo, restore, and cross-stage regression coverage | backlog | FR32, FR32a, FR32c, UX-DR6, UX-DR11, UX-DR12 |
+
+## Epic-Level Acceptance Criteria
+
+- The nav rail shows five stages: Policies, Population, Investment Decisions, Scenario, Run / Results / Compare.
+- Existing `engine` route/state values migrate to `scenario` without breaking bookmarks or localStorage restore.
+- Investment Decisions is a dedicated Stage 3, optional by default, and skippable when disabled.
+- Stage 4 Scenario shows inherited primary population context, owns simulation-mode and horizon controls, shows Live OpenFisca as the default runtime summary when applicable, and performs final cross-stage validation.
+- Stage 5 includes run queue, results, comparison, and a dedicated Run Manifest Viewer for assumptions, mappings, lineage, and reproducibility metadata.
+- Population Library includes a visually differentiated Quick Test Population near the top.
+- Scenario names are suggested from policy set and population context and freeze after manual edit.
+
+## Implementation Intent
+
+- Keep hash routing and `navigateTo(stage, subView?)` patterns unless implementation evidence shows a safer local alternative.
+- Reuse the existing `InvestmentDecisionsWizard`; extract it into a stage screen rather than rewriting the wizard.
+- Rename or wrap `EngineStageScreen` as `ScenarioStageScreen` and remove investment-decision editing from it.
+- Use Epic 23 runtime metadata for Live OpenFisca/replay badges when available; do not add a runtime selector to the standard path.
+- Keep Results and Comparison as sub-views under Stage 5 rather than top-level stages.
+
+## Scope Notes
+
+- Epic 26 depends on Epic 25 only where Stage 4 scenario summaries need policy set names/IDs. The route split and Investment Decisions extraction can begin independently.
+- Quick Test Population and scenario naming are included here because they are workspace UX gaps from Revision 3/4.1 that were not covered by existing epics.
+- This epic should not change live runtime execution semantics; it surfaces and routes the existing contracts.
+
+---
+
+## Story 26.1: Migrate nav rail and routing from four stages to five stages
 
 **Status:** backlog
 **Priority:** P0
@@ -205,390 +447,235 @@ Analyst can discover, configure, and execute already-modeled subsidy and related
 
 **Dependencies:** None
 
-Define the durable execution contract used by Scenario, run requests, run metadata, and manifests. The contract must make live execution the default for web runs, keep replay as an explicit non-default path, and avoid introducing a frontend runtime selector in the first slice.
+Update the workspace shell from the current four-stage layout to the canonical five-stage nav rail: Policies, Population, Investment Decisions, Scenario, Run / Results / Compare.
 
 **Implementation Notes:**
 
-- Add an explicit runtime-mode field to the backend and shared frontend/API contracts, with a live default and an explicit replay-only mode.
-- Keep `runtime_mode` separate from `simulation_mode`; replay versus live is not a substitute for annual versus horizon-step simulation behavior.
-- Record runtime mode in run metadata and manifest packaging so later evidence and comparison flows can distinguish live runs from replay runs.
-- Keep the default user journey unchanged: standard Scenario execution chooses the live mode automatically unless the user enters a dedicated replay/demo flow.
+- Update `WorkflowNavRail.tsx` `STAGES` to include `investment-decisions` and `scenario` as separate top-level stages.
+- Retire user-facing "Engine" terminology and route old `#engine` hash values to `#scenario`.
+- Update workspace stage types, active-stage state, route parsing, and `navigateTo()` calls.
+- Keep Population sub-steps (`Library`, `Build`, `Explorer`) as stage-local navigation, not top-level stages.
+- Keep Stage 5 active for run queue, results, comparison, decisions, and runner sub-views as specified by UX labels.
 
 **Test Notes:**
 
-- Add contract tests for request/response serialization of runtime mode.
-- Add manifest packaging tests asserting runtime mode is recorded for live and replay paths.
-- Add migration tests for previously saved scenarios or run metadata that predate the runtime-mode field.
+- Update nav rail and mobile stage switcher tests to assert five stages and labels.
+- Add hash migration tests for `#engine` to `#scenario`.
+- Add localStorage migration tests for saved `activeStage: "engine"`.
+- Verify Population sub-step routing remains unchanged.
 
 ### Acceptance Criteria
 
-- Given a standard web run request, when no special replay path is invoked, then the runtime contract resolves to live OpenFisca execution by default.
-- Given an explicit replay or demo path, when invoked, then the runtime contract records replay mode rather than inheriting the live default implicitly.
-- Given a scenario configured for `annual` or `horizon_step` simulation, when runtime mode is serialized, then the simulation-mode value remains unchanged and separately addressable from runtime mode.
-- Given run metadata or manifests, when inspected, then runtime mode is visible and unambiguous.
-- Given the Scenario-stage UX, when reviewed for this story, then no new frontend runtime selector is introduced.
+- Given the workspace renders, then the nav rail shows Policies, Population, Investment Decisions, Scenario, and Run / Results / Compare in that order.
+- Given the URL hash is `#engine`, when the app loads, then it redirects or resolves to Scenario.
+- Given saved workspace state has `activeStage: "engine"`, when restored, then the active stage becomes `scenario`.
+- Given Population is active, then Library, Build, and Explorer remain sub-steps rather than top-level stages.
+- Given any five-stage nav item is clicked, then the correct stage renders and the hash updates.
 
 ---
 
-## Story 23.2: Make bundled, uploaded, and generated populations executable through a unified population resolver
+## Story 26.2: Extract Investment Decisions into a dedicated Stage 3 with skip-when-disabled routing
 
 **Status:** backlog
 **Priority:** P0
 **Estimate:** 5
 
-**Dependencies:** Story 23.1
+**Dependencies:** Story 26.1
 
-Close the current gap between population selection and execution. The same population identifiers used in the workspace must resolve to executable datasets for bundled populations, uploaded populations, and generated outputs without separate code paths leaking into user behavior.
-
-**Implementation Notes:**
-
-- Replace data-directory-only population lookup with a resolver that understands bundled, uploaded, and generated population sources already exposed by the workspace APIs.
-- Keep the population identifier stable from Population stage selection through Scenario execution and run persistence.
-- Fail early with actionable errors when a selected population exists in catalog metadata but is not executable as a dataset.
-
-**Test Notes:**
-
-- Add resolver unit tests for bundled, uploaded, generated, and missing population IDs.
-- Add run-route integration tests showing that uploaded and generated populations can be executed, not just listed.
-- Add negative-path tests for deleted, unreadable, or schema-incompatible population files.
-
-### Acceptance Criteria
-
-- Given a bundled population selected in the workspace, when a run starts, then that dataset is loaded as the actual execution input.
-- Given an uploaded population selected in the workspace, when a run starts, then the uploaded dataset is resolved and executed through the same run path.
-- Given a generated population selected in the workspace, when a run starts, then the generated dataset is resolved and executed through the same run path.
-- Given a population ID that cannot be resolved to an executable dataset, when the run is requested, then execution is blocked with a precise population-resolution error.
-- Given completed run metadata, when reviewed, then it points back to the resolved population identifier and source class used for execution.
-
----
-
-## Story 23.3: Normalize live OpenFisca results into the stable app-facing output schema
-
-**Status:** backlog
-**Priority:** P0
-**Estimate:** 8
-
-**Dependencies:** Story 23.1, Story 23.2
-
-Introduce the normalization boundary that allows live OpenFisca execution to feed the existing app without breaking indicators, comparison views, or result persistence. This story owns the stable app-facing schema, not new policy breadth.
+Move investment-decision configuration out of the Scenario/Engine stage into its own optional Stage 3.
 
 **Implementation Notes:**
 
-- Define the canonical normalized output shape expected by result storage, indicator computation, and comparison surfaces.
-- The canonical normalized output shape includes, at minimum: run identifier, scenario identifier, runtime mode, simulation mode, executed population reference, normalized result payload, and the metadata consumed by indicator/comparison/export flows.
-- Map live OpenFisca outputs and metadata into that shape using existing mapping and ingestion primitives where possible.
-- Keep replay-mode outputs flowing through the same normalized schema so downstream consumers do not branch on runtime mode.
+- Create `InvestmentDecisionsStageScreen.tsx` from the existing investment-decision content currently nested in the engine/scenario screen.
+- Reuse `InvestmentDecisionsWizard` and preserve its Enable, Model, Parameters, Review flow.
+- When disabled, show optional-behavior summary copy, an enable toggle, and a clear Continue to Scenario action.
+- Remove the investment-decision editor from Scenario; Scenario should only summarize decision behavior with a link back to Stage 3.
+- Add Stage 3 nav summary states: Disabled, Incomplete, or selected model/calibration summary.
 
 **Test Notes:**
 
-- Add schema-level tests for normalized output fields, types, and required metadata.
-- Add regression tests showing existing indicator and comparison code accepts normalized live results without special casing.
-- Add compatibility tests covering both live and replay outputs against the same normalized contract.
+- Add render tests for disabled, enabled incomplete, and enabled configured states.
+- Add navigation test for Continue to Scenario.
+- Add regression test proving Scenario no longer renders the wizard editor.
+- Verify wizard behavior remains unchanged after extraction.
 
 ### Acceptance Criteria
 
-- Given a successful live OpenFisca run, when results are packaged for the app, then they conform to the stable normalized output schema used by existing result consumers.
-- Given a normalized result payload, when inspected, then it includes run/scenario identifiers, runtime mode, simulation mode, and executed population provenance alongside the normalized result data required by existing consumers.
-- Given an existing indicator or comparison flow, when it consumes normalized live results, then it behaves without requiring a runtime-specific code path.
-- Given a mapping or schema mismatch during normalization, when detected, then the error identifies the offending field or mapping boundary clearly.
-- Given replay-mode results, when packaged, then they also conform to the same normalized output schema.
+- Given Stage 3 renders with decisions disabled, then the analyst sees the enable toggle and can continue directly to Scenario.
+- Given decisions are enabled, then the full four-step wizard renders and works in Stage 3.
+- Given Stage 4 Scenario renders, then it does not include investment-decision editing controls.
+- Given decisions are enabled and configured, then the nav rail summary shows the selected model or calibration summary.
+- Given decisions are disabled, then cross-stage validation treats Stage 3 as skippable.
 
 ---
 
-## Story 23.4: Switch web runs to live OpenFisca by default and isolate replay mode to explicit paths
-
-**Status:** backlog
-**Priority:** P0
-**Estimate:** 8
-
-**Dependencies:** Story 23.1, Story 23.2, Story 23.3
-
-Move the actual execution default in the product. The standard run route, Scenario flow, and server orchestration should use live OpenFisca by default, while replay behavior is available only through clearly separate demo/manual entry points.
-
-**Implementation Notes:**
-
-- Rewire the main web run route and Scenario execution plumbing to use the live runtime contract as the default.
-- Keep explicit replay endpoints, demo helpers, or manual re-run utilities separate enough that logs and manifests cannot confuse them with live runs.
-- Preserve current result-store and cache semantics so the runtime swap does not create a second persistence model.
-
-**Test Notes:**
-
-- Add server integration tests proving the default run route uses live execution when no replay path is requested.
-- Add smoke tests for explicit replay paths to confirm they still work and remain opt-in.
-- Add route-level tests confirming result persistence and cache hydration behave the same after the default switch.
-
-### Acceptance Criteria
-
-- Given a standard run triggered from the web product, when executed, then it uses live OpenFisca rather than the precomputed adapter path.
-- Given a demo or manual replay action, when invoked explicitly, then replay execution remains available without changing the default path for normal runs.
-- Given a successful live run, when stored and later reloaded, then existing result-store and cache behavior continues to work.
-- Given runtime fallback conditions, when replay mode is not explicitly requested, then the system does not silently downgrade to the precomputed path.
-
----
-
-## Story 23.5: Extend preflight, manifests, and result metadata with runtime and population provenance
+## Story 26.3: Refactor Engine into Scenario stage with inherited population and runtime summary
 
 **Status:** backlog
 **Priority:** P0
 **Estimate:** 5
 
-**Dependencies:** Story 23.1, Story 23.4
+**Dependencies:** Story 26.1, Story 26.2
 
-Make runtime-mode clarity a first-class trust feature. Before execution and after persistence, the product should tell the analyst what runtime ran, which population was executed, and whether any requested configuration is unsupported on the live path.
+Make Stage 4 the Scenario stage described by Revision 4.1: inherited primary population context, simulation mode, horizon controls, runtime summary, run summary, and final integration validation.
 
 **Implementation Notes:**
 
-- Extend the existing preflight registry to validate runtime support, selected-population executability, and normalization prerequisites.
-- Record runtime mode, population provenance, and compatibility warnings in manifests, run metadata, and result summaries.
-- Preserve the current error-message style so failures explain what happened, why, and how to fix it.
+- Rename or wrap `EngineStageScreen.tsx` as `ScenarioStageScreen.tsx`.
+- Add an inherited primary population summary from Stage 2: population name, source badge (Built-in / Generated / Uploaded), household count, and link back to Population.
+- Keep simulation mode and horizon controls in Scenario and keep them distinct from runtime mode.
+- Add runtime summary panel showing Live OpenFisca as the standard web path and replay/demo badge only when explicitly selected by demo/replay flow.
+- Add a run summary panel with scenario name, policy set, primary/sensitivity populations, simulation mode/horizon, decision summary, run count, and estimated time if available.
+- Strengthen validation to check policy set validity, executable population, required mappings, schedules, decision completeness when enabled, and runtime preflight.
+- Each failing validation item should link to the owning stage.
 
 **Test Notes:**
 
-- Add validation-registry tests for runtime support checks and population-executability checks.
-- Add manifest/result-store tests asserting runtime and population provenance fields are persisted and reloaded.
-- Add UI/API tests for warning visibility when replay-only or unsupported configurations are requested.
+- Add Scenario render tests for inherited population, runtime summary, and decision summary.
+- Add validation tests for missing policy set, missing population, incomplete decisions, invalid schedules, missing mappings, and all-valid state.
+- Add navigation tests for stage-fix links.
+- Add regression coverage for live-default display without a runtime selector.
 
 ### Acceptance Criteria
 
-- Given a run request that is unsupported on the live path or has no executable population resolution, when preflight runs, then execution is blocked with actionable runtime-specific guidance.
-- Given a completed run, when its manifest or metadata is inspected, then runtime mode and executed population provenance are visible.
-- Given a normalization prerequisite failure, when detected before run, then the validation output identifies the missing mapping or schema requirement.
-- Given a supported live run with only non-blocking informational caveats, when preflight runs, then the analyst receives an explicit warning without any replay fallback implication.
-- Given a supported live run, when preflight passes cleanly, then the analyst receives no false replay warnings.
+- Given Stage 4 renders, then inherited primary population appears as read-only context with name, source badge, and household count.
+- Given standard web execution, then the runtime summary shows Live OpenFisca as the default path and does not show a runtime selector.
+- Given a replay/demo flow is active, then the runtime summary shows explicit replay/demo status.
+- Given investment decisions are enabled, then Scenario summarizes them and links to Stage 3 for edits.
+- Given validation fails, then each failing check identifies the owning stage and links to it.
+- Given all checks pass, then the Ready to Run action is enabled.
 
 ---
 
-## Story 23.6: Add regression coverage and operator docs for live default runs and replay smoke flows
+## Story 26.4: Complete Stage 5 Run / Results / Compare with dedicated Run Manifest Viewer
+
+**Status:** backlog
+**Priority:** P0
+**Estimate:** 5
+
+**Dependencies:** Story 26.1, Story 26.3
+
+Make Stage 5 the canonical home for run queue, results, comparison, and run manifest inspection.
+
+**Implementation Notes:**
+
+- Keep run queue, results, and comparison as Stage 5 sub-views.
+- Add or extract a dedicated `RunManifestViewer` component for per-run assumptions, mappings, lineage, hashes, versions, population reference, runtime mode, and reproducibility metadata.
+- Link the manifest viewer from completed run rows, result views, exports, and comparison context where relevant.
+- Preserve existing indicator and comparison rendering; this story adds manifest access rather than changing result schemas.
+- Show clear empty states for no runs, running only, failed run, and completed run with missing manifest.
+
+**Test Notes:**
+
+- Add component tests for `RunManifestViewer` with complete and partial manifests.
+- Add Stage 5 routing tests for run queue, results, comparison, and manifest view.
+- Add regression tests proving existing result and comparison screens still render.
+- Add accessibility tests for manifest disclosure and close/back navigation.
+
+### Acceptance Criteria
+
+- Given Stage 5 renders before any runs exist, then it shows a run queue or empty state under Run / Results / Compare.
+- Given a completed run exists, when the analyst opens its manifest, then a dedicated manifest viewer shows assumptions, mappings, lineage, versions, hashes, runtime mode, and population reference.
+- Given a comparison view is active, when a run is selected, then its manifest is reachable without leaving Stage 5.
+- Given a manifest is incomplete or unavailable, then the viewer shows a clear missing-metadata state rather than failing silently.
+- Given existing results and comparison views render, then adding manifest access does not change their visible indicator semantics.
+
+---
+
+## Story 26.5: Add Quick Test Population to the Population Library
 
 **Status:** backlog
 **Priority:** P1
-**Estimate:** 5
+**Estimate:** 3
 
-**Dependencies:** Story 23.2, Story 23.3, Story 23.4, Story 23.5
+**Dependencies:** Story 26.1
 
-Lock the change down with end-to-end coverage and concise operator guidance. This story closes the first slice by proving that live-default execution works with built-in and uploaded populations and that replay remains a deliberately narrow maintenance path.
-
-**Implementation Notes:**
-
-- Extend existing workspace, run-route, and results regression suites rather than creating a separate runtime-specific test silo.
-- Document the supported live-default flow, the explicit replay path, and the operational checks needed when a run fails due to population or mapping issues.
-- Keep docs aligned with the product reality that live OpenFisca is the default web runtime.
-
-**Test Notes:**
-
-- Add end-to-end coverage for built-in population live runs, uploaded population live runs, generated population live runs, and explicit replay smoke runs.
-- Add regression assertions that existing indicator, comparison, and export flows still pass on normalized live results.
-- Add doc-example or smoke tests for any operator-facing commands or documented replay utilities.
-
-### Acceptance Criteria
-
-- Given the automated regression suite, when it runs, then it covers live-default execution with bundled, uploaded, and generated populations plus an explicit replay smoke path.
-- Given existing results and indicator workflows, when exercised by regression tests, then they pass on normalized live outputs.
-- Given operator-facing documentation for runtime support, when reviewed, then it describes live as the default and replay as explicit/manual.
-- Given this epic is complete, when a developer or operator investigates a failed run, then the docs and tests point to the relevant runtime, population, and mapping diagnostics.
-
----
-
-# Epic 24: Live Policy Catalog Activation and Domain-to-OpenFisca Translation
-
-**User outcome:** Analyst can discover and execute already-modeled subsidy and related policy packs from the catalog/API, with policy definitions remaining in the domain layer and live OpenFisca translation happening behind the scenes.
-
-**Status:** backlog
-
-**Builds on:** EPIC-2 (scenario templates and registry), EPIC-12 (policy portfolio model), EPIC-13 (additional policy templates and extensibility), EPIC-20 (workspace alignment), EPIC-23 (live runtime foundation)
-
-**PRD Refs:** FR7, FR43-FR46, FR-RUNTIME-6, FR-RUNTIME-7
-
-**Primary source documents:**
-- `_bmad-output/planning-artifacts/prd.md`
-- `_bmad-output/planning-artifacts/architecture.md`
-- `_bmad-output/planning-artifacts/ux-design-specification.md` (Revision 4.1, dated 2026-04-01)
-- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-04-01.md`
-
-| ID | Type | Pri | SP | Title | Status | PRD Refs |
-|------|------|-----|----|-------|--------|----------|
-| BKL-2401 | Story | P0 | 5 | Publish canonical catalog and API exposure for already-modeled hidden policy packs | backlog | FR7, FR-RUNTIME-7 |
-| BKL-2402 | Story | P0 | 8 | Implement domain-layer live translation for subsidy-style policies without adapter-interface changes | backlog | FR46, FR-RUNTIME-6 |
-| BKL-2403 | Story | P0 | 5 | Enable portfolio execution for surfaced subsidy and related live policy packs | backlog | FR43-FR45, FR46 |
-| BKL-2404 | Story | P0 | 5 | Surface live-capable policy packs in workspace catalog flows without runtime-specific UX | backlog | FR7, FR43, FR44, FR-RUNTIME-7 |
-| BKL-2405 | Story | P1 | 5 | Add regression coverage and examples for the expanded live policy catalog | backlog | FR44-FR46, FR-RUNTIME-6, FR-RUNTIME-7 |
-
-## Epic-Level Acceptance Criteria
-
-- Existing modeled policy packs that were previously hidden are exposed through the canonical catalog and API with clear availability metadata.
-- Live translation for subsidy-style policies is implemented in the domain/policy layer and does not add subsidy logic to `ComputationAdapter` or the precomputed adapter.
-- At least one surfaced subsidy-family pack executes successfully through the live runtime while preserving the normalized result contract from EPIC-23.
-- Surfaced packs participate in portfolio validation, execution, and comparison flows without introducing runtime-specific UI branching.
-- The first policy-expansion slice explicitly excludes housing and family-benefit reforms.
-
-## Implementation Intent
-
-- Reuse the existing pack and template registry utilities from EPIC-13 instead of creating a second catalog representation.
-- Add a dedicated domain-to-live translation layer for subsidy-style policies so future policy expansion does not leak into adapter contracts.
-- Surface only packs that are genuinely executable or intentionally marked unavailable; avoid exposing placeholders that the live runtime cannot honor.
-- Keep catalog UX focused on policy discovery and configuration, not runtime education or engine toggles.
-- Availability metadata should be stable and explicit enough to drive catalog rendering, validation, and save/load compatibility without hidden frontend logic.
-
-## Scope Notes
-
-- This epic assumes EPIC-23 has already established the live runtime default and normalized output contract.
-- Housing and family-benefit reforms remain out of scope for this first expansion slice even if OpenFisca has related concepts.
-- Existing hidden packs may include subsidy, rebate, feebate, vehicle-malus, and energy-poverty-aid variants; only the live-capable subset should be surfaced as executable.
-
----
-
-## Story 24.1: Publish canonical catalog and API exposure for already-modeled hidden policy packs
-
-**Status:** backlog
-**Priority:** P0
-**Estimate:** 5
-
-**Dependencies:** Story 23.4
-
-Inventory the policy packs that already exist in the domain/template layer and expose them through the canonical product catalog and API. This story is about truthful discoverability: what exists, what is executable now, and what remains intentionally hidden.
+Add the UX-specified Quick Test Population near the top of the Population Library for demos, smoke tests, and walkthroughs.
 
 **Implementation Notes:**
 
-- Build catalog metadata from the existing template-pack registry utilities rather than hardcoding a second list in the frontend or API layer.
-- Mark availability and execution readiness explicitly so hidden-but-supported packs can be surfaced without misleading users about runtime support.
-- Expose `runtime_availability` (`live_ready` or `live_unavailable`) and `availability_reason` in the canonical catalog contract.
-- Preserve deterministic identifiers so catalog items remain stable across API, workspace, and saved scenario references.
+- Add a built-in Quick Test Population entry near the top of the library.
+- Label it with copy such as "Fast demo / smoke test" and "Not for substantive analysis".
+- Visually differentiate it from analysis-grade populations without making it look like an error.
+- Ensure it can be selected as primary population and inherited by Scenario like any other population.
+- Keep it out of analysis-grade default recommendations where those exist.
 
 **Test Notes:**
 
-- Add catalog listing tests covering visible, hidden, and newly surfaced packs.
-- Add API contract tests for availability metadata and stable identifiers.
-- Add regression tests ensuring existing visible packs keep their current identifiers and grouping.
+- Add Population Library render/order tests.
+- Add selection tests proving Quick Test can become the inherited primary population.
+- Add copy tests for demo/smoke-test and not-for-analysis labeling.
 
 ### Acceptance Criteria
 
-- Given the canonical catalog or API, when inspected, then existing modeled hidden packs appear with stable identifiers plus `runtime_availability` and `availability_reason` metadata.
-- Given a pack that is not yet executable on the live path, when surfaced, then its status is explicit rather than silently failing at run time.
-- Given existing visible packs, when the catalog is updated, then their identifiers and grouping remain stable.
-- Given saved scenarios or portfolios that reference previously visible packs, when loaded, then they remain compatible after the catalog expansion.
+- Given the Population Library renders, then Quick Test Population appears near the top.
+- Given Quick Test Population is displayed, then it is labeled as fast demo/smoke test and not for substantive analysis.
+- Given the analyst selects Quick Test Population, then Scenario inherits it as primary population.
+- Given analysis-grade population recommendations are shown, then Quick Test is visually differentiated from those recommendations.
 
 ---
 
-## Story 24.2: Implement domain-layer live translation for subsidy-style policies without adapter-interface changes
-
-**Status:** backlog
-**Priority:** P0
-**Estimate:** 8
-
-**Dependencies:** Story 23.3, Story 24.1
-
-Add the translation boundary that turns domain-authored subsidy-style policies into live OpenFisca execution inputs. This story must preserve the adapter contract: the adapter remains generic, while domain logic decides how subsidy-family policies are translated.
-
-**Implementation Notes:**
-
-- Introduce translator components or functions owned by the policy/domain layer that convert subsidy-style definitions into the live runtime request shape.
-- Invoke translation between domain policy-set resolution and live run-request assembly so the adapter still receives a generic computation input rather than subsidy-aware instructions.
-- Keep `ComputationAdapter` unchanged and avoid embedding subsidy semantics into the precomputed adapter.
-- Start with subsidy-family policies already represented in the domain model and explicitly exclude housing and family-benefit reforms.
-
-**Test Notes:**
-
-- Add unit tests for domain-to-live translation of subsidy-style policy parameters.
-- Add contract tests proving the adapter interface remains unchanged while translated payloads execute successfully.
-- Add negative-path tests for unsupported subsidy variants or missing translation fields.
-
-### Acceptance Criteria
-
-- Given a subsidy-style policy defined in the domain layer, when prepared for execution, then it is translated into live OpenFisca inputs by domain-owned translation logic.
-- Given the live execution path, when translation completes, then the adapter receives the same generic request shape it would for any other live run rather than a subsidy-specific adapter extension.
-- Given the translation implementation, when reviewed, then no subsidy-specific behavior is added to `ComputationAdapter` or the precomputed adapter.
-- Given an unsupported subsidy-domain feature, when translation is attempted, then the failure is explicit and actionable.
-- Given the excluded housing or family-benefit domains, when requested in this slice, then they are not silently treated as supported.
-
----
-
-## Story 24.3: Enable portfolio execution for surfaced subsidy and related live policy packs
-
-**Status:** backlog
-**Priority:** P0
-**Estimate:** 5
-
-**Dependencies:** Story 24.1, Story 24.2
-
-Move from discoverability to execution. Surfaced live-capable packs must work inside the existing portfolio model, including compatibility validation, runtime execution, and comparison against baseline or other portfolios.
-
-**Implementation Notes:**
-
-- Reuse existing portfolio composition and conflict-resolution rules from EPIC-12 and EPIC-13 where they already fit the surfaced pack types.
-- Ensure translated subsidy-family policies and already-supported related packs can execute together through the live runtime foundation from EPIC-23.
-- Preserve the normalized output contract so comparison and indicator flows remain untouched downstream.
-
-**Test Notes:**
-
-- Add portfolio integration tests covering mixed portfolios with carbon tax plus surfaced subsidy-family packs.
-- Add compatibility-rule regression tests for conflict detection and resolution.
-- Add execution tests proving normalized outputs remain valid after portfolio runs with surfaced packs.
-
-### Acceptance Criteria
-
-- Given a portfolio containing surfaced live-capable packs, when validated, then compatibility checks behave consistently with existing portfolio rules.
-- Given a portfolio containing a surfaced subsidy-family pack, when executed, then it runs through the live runtime and produces normalized results.
-- Given baseline-versus-portfolio comparison, when computed, then existing comparison surfaces continue to work without pack-specific branching.
-- Given a pack marked unavailable for live execution, when added to a portfolio run, then the system blocks or warns before execution rather than failing deep in the runtime.
-
----
-
-## Story 24.4: Surface live-capable policy packs in workspace catalog flows without runtime-specific UX
-
-**Status:** backlog
-**Priority:** P0
-**Estimate:** 5
-
-**Dependencies:** Story 24.1, Story 24.3
-
-Expose the newly surfaced packs across the workspace where analysts actually choose and configure policies. The UX should communicate availability and category clearly, but it should not force users to understand runtime internals or choose an engine.
-
-**Implementation Notes:**
-
-- Reuse existing template-browser and composition-panel patterns from EPIC-20 and EPIC-22.
-- Display policy type, readiness, and any availability constraints through catalog metadata rather than runtime-selector UI.
-- Keep the default editing and portfolio-assembly experience consistent across old and newly surfaced packs.
-
-**Test Notes:**
-
-- Add frontend tests confirming surfaced packs appear in template browsers and composition panels with the correct labels.
-- Add UX regression tests ensuring no runtime selector or adapter-specific jargon appears in the first-slice policy flows.
-- Add persistence tests for scenarios and portfolios using newly surfaced packs.
-
-### Acceptance Criteria
-
-- Given the policy browser and composition flows, when rendered, then newly surfaced live-capable packs are available alongside existing packs.
-- Given a surfaced pack with a readiness caveat, when shown to the user, then the caveat is visible without exposing backend runtime mechanics.
-- Given the first-slice policy workflows, when reviewed, then no runtime or engine selector is introduced.
-- Given a scenario or portfolio using a surfaced pack, when saved and reloaded, then the pack reference remains stable.
-
----
-
-## Story 24.5: Add regression coverage and examples for the expanded live policy catalog
+## Story 26.6: Add deterministic scenario name suggestions from policy set and population context
 
 **Status:** backlog
 **Priority:** P1
-**Estimate:** 5
+**Estimate:** 3
 
-**Dependencies:** Story 24.3, Story 24.4
+**Dependencies:** Story 26.3
 
-Close the policy-expansion epic by proving that the newly surfaced packs behave coherently across catalog, portfolio, execution, and comparison flows. Capture that behavior in regression tests and lightweight examples for future pack additions.
+Replace generic new-scenario names with deterministic suggestions derived from available policy set and population context.
 
 **Implementation Notes:**
 
-- Extend the existing catalog, portfolio, and run regression suites rather than creating one-off tests per pack.
-- Add lightweight examples that demonstrate surfaced subsidy-family execution through the live runtime and normalized results.
-- Document the current supported live policy catalog so future additions have a clear baseline.
+- Add a scenario-name suggestion helper that prefers policy set name, then primary population name, with a simple fallback when context is incomplete.
+- Keep updating the suggestion while the scenario name is untouched by the user.
+- Freeze the name once the analyst manually edits it.
+- Ensure loaded/cloned scenarios keep explicit names and do not receive unexpected renames.
+- Use the same helper in first-create, clone-as-new where appropriate, and Scenario save controls.
 
 **Test Notes:**
 
-- Add end-to-end or integration coverage for selecting a surfaced pack, running it live, and comparing results.
-- Add regression tests for portfolio save/load and scenario persistence with surfaced pack identifiers.
-- Add example smoke tests for any shipped sample configurations that demonstrate surfaced packs.
+- Add unit tests for full context, partial context, fallback context, manual-edit freeze, and clone behavior.
+- Add Scenario screen tests proving the suggested name appears and then freezes after edit.
 
 ### Acceptance Criteria
 
-- Given the automated test suite, when it runs, then it covers catalog exposure, portfolio validation, live execution, and comparison for surfaced packs.
-- Given shipped examples or smoke configs, when executed, then they demonstrate at least one surfaced subsidy-family pack running through the live path successfully.
-- Given the supported policy catalog documentation, when reviewed, then it matches the packs actually exposed and executable in the product.
-- Given future pack expansion work, when planned, then the added tests and examples provide a reusable baseline rather than a one-off demo.
+- Given a new scenario has policy set "Carbon Tax" and population "FR Synthetic 2024", when the name has not been manually edited, then the suggested name is "Carbon Tax — FR Synthetic 2024".
+- Given only a policy set is selected, then the suggested name uses the policy set with a sensible fallback suffix.
+- Given the analyst manually edits the scenario name, when policy set or population changes later, then the manual name is not overwritten.
+- Given a named scenario is cloned, when the clone opens, then it follows the clone naming rule rather than reverting to a generic "New Scenario".
+
+---
+
+## Story 26.7: Add five-stage migration, demo, restore, and cross-stage regression coverage
+
+**Status:** backlog
+**Priority:** P1
+**Estimate:** 3
+
+**Dependencies:** Story 26.6
+
+Close the workspace migration with regression coverage across first launch, returning-user restore, skip routing, and final validation.
+
+**Implementation Notes:**
+
+- Add a full five-stage happy-path regression: demo scenario, policy set, population, optional decisions disabled, Scenario validation, run, results.
+- Add returning-user restore coverage for new stage keys, migrated `engine`, selected policy set, primary population, decision enabled/disabled state, scenario settings, and Stage 5 sub-view.
+- Add cross-stage validation coverage for Policies x Population warnings in Stage 1 and Stage 2, and hard blockers in Scenario where execution cannot proceed.
+- Verify Stage 5 stays active for run queue, results, comparison, and manifest sub-views.
+
+**Test Notes:**
+
+- Add or update analyst-journey tests for the five-stage flow.
+- Add localStorage migration fixture tests.
+- Add cross-stage warning/blocker tests.
+- Add mobile stage-switcher coverage for five stages.
+
+### Acceptance Criteria
+
+- Given first launch uses the demo scenario, when the workspace opens, then valid Stage 1-4 selections are present and the analyst can run immediately.
+- Given a returning user has saved old four-stage state, when the app initializes, then state migrates to the five-stage model without losing scenario context.
+- Given investment decisions are disabled, when the analyst follows the natural flow, then Stage 3 can be skipped and Scenario validation can still pass.
+- Given policies require columns missing from the selected population, when Stage 1 and Stage 2 render, then both show non-blocking warnings.
+- Given Stage 5 sub-views are used, then run queue, results, comparison, and manifest viewer all keep Run / Results / Compare active in the nav rail.
+- Given the regression suite runs, then it covers five-stage nav, skip routing, scenario validation, Quick Test Population, scenario naming, manifest access, demo flow, and restore flow.
