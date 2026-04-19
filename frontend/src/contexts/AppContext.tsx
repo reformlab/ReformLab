@@ -70,7 +70,7 @@ interface AppState {
   // Auth
   isAuthenticated: boolean;
   authLoading: boolean;
-  authenticate: (password: string) => Promise<boolean>;
+  authenticate: (password: string) => Promise<string | null>;
   logout: () => void;
 
   // Stage routing (Story 20.1 — AC-2)
@@ -185,15 +185,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => { setOnAuthInvalid(null); };
   }, []);
 
-  const authenticate = useCallback(async (password: string) => {
+  const authenticate = useCallback(async (password: string): Promise<string | null> => {
     setAuthLoading(true);
     try {
       const response = await login(password);
       setAuthToken(response.token);
       setIsAuthenticated(true);
-      return true;
-    } catch {
-      return false;
+      return null;
+    } catch (err) {
+      return err instanceof Error ? err.message : "Login failed";
     } finally {
       setAuthLoading(false);
     }

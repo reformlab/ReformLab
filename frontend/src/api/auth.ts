@@ -7,11 +7,16 @@ import { getAuthToken } from "./client";
 
 /** Login with shared password. Does not use apiFetch to avoid auth loop. */
 export async function login(password: string): Promise<LoginResponse> {
-  const response = await fetch("/api/auth/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ password }),
-  });
+  let response: Response;
+  try {
+    response = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+  } catch {
+    throw new Error("Server is not reachable — it may still be starting up.");
+  }
 
   if (!response.ok) {
     if (response.status === 429) {
