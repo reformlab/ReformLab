@@ -11,9 +11,9 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { ContextualHelpPanel } from "@/components/help/ContextualHelpPanel";
 
 describe("ContextualHelpPanel", () => {
-  it("renders Policies & Portfolio title for policies stage", () => {
+  it("renders Policy title for policies stage", () => {
     render(<ContextualHelpPanel activeStage="policies" activeSubView={null} />);
-    expect(screen.getByText("Policies & Portfolio")).toBeInTheDocument();
+    expect(screen.getByText("Policy")).toBeInTheDocument();
   });
 
   it("renders Population Library title for population stage (Story 20.4)", () => {
@@ -53,7 +53,7 @@ describe("ContextualHelpPanel", () => {
 
   it("falls back to policies for unrecognized stage", () => {
     render(<ContextualHelpPanel activeStage={"unknown" as never} activeSubView={null} />);
-    expect(screen.getByText("Policies & Portfolio")).toBeInTheDocument();
+    expect(screen.getByText("Policy")).toBeInTheDocument();
   });
 
   it("renders tips as list items", () => {
@@ -90,9 +90,9 @@ describe("ContextualHelpPanel", () => {
 
   it("updates content automatically when stage changes (AC-1)", () => {
     const { rerender } = render(<ContextualHelpPanel activeStage="policies" activeSubView={null} />);
-    expect(screen.getByText("Policies & Portfolio")).toBeInTheDocument();
+    expect(screen.getByText("Policy")).toBeInTheDocument();
     rerender(<ContextualHelpPanel activeStage="results" activeSubView={null} />);
     expect(screen.getByText("Results Overview")).toBeInTheDocument();
-    expect(screen.queryByText("Policies & Portfolio")).not.toBeInTheDocument();
+    expect(screen.queryByText("Policy")).not.toBeInTheDocument();
   });
 });

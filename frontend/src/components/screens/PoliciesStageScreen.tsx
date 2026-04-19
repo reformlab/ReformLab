@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 Lucas Vivier
 /**
- * PoliciesStageScreen — Stage 1: Policies & Portfolio (Story 20.3, AC-1 through AC-6).
+ * PoliciesStageScreen — Stage 1: Policy (Story 20.3, AC-1 through AC-6).
  *
  * Inline composition layout: template browser and portfolio composition panel side-by-side
  * on a single page (no multi-step wizard). Replaces the PortfolioDesignerScreen 3-step flow.

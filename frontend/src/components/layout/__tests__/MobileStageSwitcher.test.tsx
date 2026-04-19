@@ -28,7 +28,7 @@ describe("MobileStageSwitcher — Story 22.7", () => {
     );
 
     // All 4 stages should be rendered
-    expect(screen.getByRole("button", { name: /Policies & Portfolio/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Policy/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Population/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Scenario/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Run \/ Results \/ Compare/i })).toBeInTheDocument();

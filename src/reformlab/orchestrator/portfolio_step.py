@@ -308,9 +308,9 @@ class PortfolioComputationStep:
         )
 
         # Defensive validation (should be guaranteed by PolicyPortfolio.__post_init__)
-        if len(portfolio.policies) < 2:
+        if len(portfolio.policies) < 1:
             raise PortfolioComputationStepError(
-                f"Portfolio must have at least 2 policies, got {len(portfolio.policies)}",
+                f"Portfolio must have at least 1 policy, got {len(portfolio.policies)}",
                 year=0,
                 adapter_version="<not-started>",
                 policy_index=-1,

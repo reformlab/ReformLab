@@ -61,7 +61,7 @@ interface PortfolioCompositionPanelProps {
   parameterSchemas?: Record<string, Parameter[]>;
   /**
    * Minimum number of policies required before showing the "add more" warning.
-   * Defaults to 2 (original behaviour). PoliciesStageScreen passes 1.
+   * Defaults to 1.
    */
   minimumPolicies?: number;
 }
@@ -74,7 +74,7 @@ export function PortfolioCompositionPanel({
   onParameterChange,
   onRateScheduleChange,
   parameterSchemas = {},
-  minimumPolicies = 2,
+  minimumPolicies = 1,
 }: PortfolioCompositionPanelProps) {
   const [expandedIndices, setExpandedIndices] = useState<Set<number>>(new Set());
 

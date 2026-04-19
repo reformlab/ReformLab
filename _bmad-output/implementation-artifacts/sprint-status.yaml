@@ -1,4 +1,4 @@
-# Updated by Codex on 2026-04-19T12:00:00
+# Updated by Codex on 2026-04-19T10:29:08Z
 # Sprint Status File - ReformLab
 #
 generated: "2026-03-03T00:00:00"
@@ -27,8 +27,8 @@ development_status:
   24-5-add-regression-coverage-and-examples-for-the-expanded-live-policy-catalog: done
   epic-24-retrospective: done
   # Epic 25
-  epic-25: backlog
-  25-1-add-api-driven-categories-endpoint-and-formula-help-metadata: backlog
+  epic-25: in-progress
+  25-1-add-api-driven-categories-endpoint-and-formula-help-metadata: in-progress
   25-2-redesign-policies-stage-browser-composition-layout-with-types-categories-and-duplicate-policy-instances: backlog
   25-3-implement-create-from-scratch-policy-flow-with-compatible-category-picker-and-default-parameter-groups: backlog
   25-4-make-parameter-groups-editable-within-policy-cards: backlog

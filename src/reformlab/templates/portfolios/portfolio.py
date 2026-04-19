@@ -69,12 +69,12 @@ class PolicyConfig:
 class PolicyPortfolio:
     """Named, versioned collection of policy configurations.
 
-    A portfolio is a frozen dataclass containing 2+ individual policies
+    A portfolio is a frozen dataclass containing 1+ individual policies
     that will be applied together during simulation runs.
 
     Attributes:
         name: Portfolio name
-        policies: Tuple of PolicyConfig objects (at least 2 required)
+        policies: Tuple of PolicyConfig objects (at least 1 required)
         version: Schema version (defaults to "1.0")
         description: Human-readable description
         resolution_strategy: Strategy for resolving conflicts (default: "error")
@@ -87,12 +87,12 @@ class PolicyPortfolio:
     resolution_strategy: str = "error"
 
     def __post_init__(self) -> None:
-        """Validate portfolio has at least 2 policies and valid resolution_strategy."""
-        if len(self.policies) < 2:
+        """Validate portfolio has at least 1 policy and valid resolution_strategy."""
+        if len(self.policies) < 1:
             raise PortfolioValidationError(
                 summary="Invalid portfolio",
-                reason=f"Portfolio must have at least 2 policies, got {len(self.policies)}",
-                fix="Add at least 2 PolicyConfig objects to the portfolio",
+                reason=f"Portfolio must have at least 1 policy, got {len(self.policies)}",
+                fix="Add at least 1 PolicyConfig object to the portfolio",
                 invalid_fields=("policies",),
             )
 
