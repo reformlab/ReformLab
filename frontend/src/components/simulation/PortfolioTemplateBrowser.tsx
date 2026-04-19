@@ -52,7 +52,7 @@ interface PortfolioTemplateBrowserProps {
   // Story 25.2: Changed from toggle to add-instance action
   onAddTemplate: (templateId: string) => void;
   // Story 25.1 / Task 3.1: Categories prop for grouping and filtering
-  categories?: Category[];
+  categories?: Category[] | null;
   // Story 25.2: Count of instances per template in composition
   templateInstanceCounts?: Record<string, number>;
 }
@@ -142,6 +142,7 @@ function TemplateCard({ template, inComposition, instanceCount, templateCategory
                 <PopoverTrigger asChild>
                   <button
                     type="button"
+                    onClick={(e) => e.stopPropagation()}
                     className="inline-flex items-center p-0.5 text-slate-500 hover:text-slate-700"
                     aria-label={`Formula help for ${templateCategory.label}`}
                   >
@@ -372,7 +373,6 @@ export function PortfolioTemplateBrowser({
                       instanceCount={instanceCount}
                       templateCategory={templateCategory}
                       onAdd={() => onAddTemplate(template.id)}
-                      onToggle={() => onToggleTemplate(template.id)}
                     />
                   );
                 })}

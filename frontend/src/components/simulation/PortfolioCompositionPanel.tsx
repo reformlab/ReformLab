@@ -111,7 +111,7 @@ export function PortfolioCompositionPanel({
         </p>
         {composition.length < minimumPolicies ? (
           <p className="mt-1 text-xs text-amber-600">
-            Add at least {minimumPolicies} {minimumPolicies === 1 ? "policy" : "policies"} to save a portfolio.
+            Add at least {minimumPolicies} {minimumPolicies === 1 ? "policy" : "policies"} to save a policy set.
           </p>
         ) : null}
       </div>
@@ -119,10 +119,10 @@ export function PortfolioCompositionPanel({
   }
 
   return (
-    <section aria-label="Portfolio composition" className="space-y-2">
+    <section aria-label="Policy Set Composition" className="space-y-2">
       {composition.length < minimumPolicies ? (
         <p className="text-xs text-amber-600 border border-amber-200 bg-amber-50 p-2">
-          Add at least {minimumPolicies} {minimumPolicies === 1 ? "policy" : "policies"} to save a portfolio.
+          Add at least {minimumPolicies} {minimumPolicies === 1 ? "policy" : "policies"} to save a policy set.
         </p>
       ) : null}
 
@@ -180,6 +180,7 @@ export function PortfolioCompositionPanel({
                             <PopoverTrigger asChild>
                               <button
                                 type="button"
+                                onClick={(e) => e.stopPropagation()}
                                 className="inline-flex items-center p-0.5 text-slate-500 hover:text-slate-700"
                                 aria-label={`Formula help for ${category.label}`}
                               >

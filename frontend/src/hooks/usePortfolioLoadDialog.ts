@@ -26,8 +26,8 @@ interface UsePortfolioLoadDialogParams<ResolutionStrategy extends string> {
   setActivePortfolioName: (name: string | null) => void;
   updateScenarioPortfolioName: (name: string | null) => void;
   setSelectedPortfolioName: (name: string | null) => void;
-  // Story 25.2: Setter for nextInstanceId counter
-  setNextInstanceId?: (value: number | ((prev: number) => number)) => void;
+  // Story 25.2: Setter for instance counter (ref-based to avoid stale closure)
+  setInstanceCounter?: (value: number) => void;
 }
 
 export function usePortfolioLoadDialog<ResolutionStrategy extends string>({
@@ -42,7 +42,7 @@ export function usePortfolioLoadDialog<ResolutionStrategy extends string>({
   setActivePortfolioName,
   updateScenarioPortfolioName,
   setSelectedPortfolioName,
-  setNextInstanceId,
+  setInstanceCounter,
 }: UsePortfolioLoadDialogParams<ResolutionStrategy>) {
   const [loadDialogOpen, setLoadDialogOpen] = useState(false);
 
@@ -64,9 +64,9 @@ export function usePortfolioLoadDialog<ResolutionStrategy extends string>({
         };
       });
       setComposition(entries);
-      // Story 25.2: Update nextInstanceId to prevent collisions with loaded items
-      if (setNextInstanceId) {
-        setNextInstanceId(detail.policies.length);
+      // Story 25.2: Update instance counter to prevent collisions with loaded items
+      if (setInstanceCounter) {
+        setInstanceCounter(detail.policies.length);
       }
       setResolutionStrategy(
         validStrategies.includes(detail.resolution_strategy as ResolutionStrategy)
@@ -77,9 +77,9 @@ export function usePortfolioLoadDialog<ResolutionStrategy extends string>({
       return true;
     } catch (err) {
       if (err instanceof ApiError) {
-        toast.warning(`Could not load portfolio '${name}': ${err.why}`);
+        toast.warning(`Could not load policy set '${name}': ${err.why}`);
       } else {
-        toast.warning(`Could not load portfolio '${name}'`);
+        toast.warning(`Could not load policy set '${name}'`);
       }
       return false;
     }
@@ -88,7 +88,7 @@ export function usePortfolioLoadDialog<ResolutionStrategy extends string>({
     validStrategies,
     defaultResolutionStrategy,
     setComposition,
-    setNextInstanceId,
+    setInstanceCounter,
     setResolutionStrategy,
     setActivePortfolioName,
   ]);
@@ -127,7 +127,7 @@ export function usePortfolioLoadDialog<ResolutionStrategy extends string>({
     updateScenarioPortfolioName(name);
     setSelectedPortfolioName(name);
     setLoadDialogOpen(false);
-    toast.success(`Loaded portfolio '${name}'`);
+    toast.success(`Loaded policy set '${name}'`);
   }, [
     loadPortfolioIntoComposition,
     loadedPortfolioRef,

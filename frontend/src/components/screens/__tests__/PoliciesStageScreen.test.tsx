@@ -213,7 +213,7 @@ describe("PoliciesStageScreen — AC-1: Inline layout", () => {
   it("shows Save and Load buttons in toolbar", () => {
     renderScreen();
     // Save is disabled (no templates), Load is always enabled
-    expect(screen.getByTitle("Load a saved portfolio")).toBeInTheDocument();
+    expect(screen.getByTitle("Load a saved policy set")).toBeInTheDocument();
   });
 
   it("shows empty-state guidance when composition is empty", () => {
@@ -355,7 +355,7 @@ describe("PoliciesStageScreen — AC-4, AC-5: Portfolio-scenario integration", (
   it("Load dialog opens with saved portfolios listed", () => {
     renderScreen({ portfolios: [makePortfolio("saved-portfolio")] });
 
-    fireEvent.click(screen.getByTitle("Load a saved portfolio"));
+    fireEvent.click(screen.getByTitle("Load a saved policy set"));
 
     expect(screen.getByRole("dialog", { name: /load portfolio/i })).toBeInTheDocument();
     // Portfolio name appears in the dialog
@@ -372,7 +372,7 @@ describe("PoliciesStageScreen — AC-4, AC-5: Portfolio-scenario integration", (
       setSelectedPortfolioName,
     });
 
-    fireEvent.click(screen.getByTitle("Load a saved portfolio"));
+    fireEvent.click(screen.getByTitle("Load a saved policy set"));
     // Click the portfolio row inside the load dialog
     const loadDialog = screen.getByRole("dialog", { name: /load portfolio/i });
     const dialogPortfolioBtn = within(loadDialog).getByRole("button", { name: /saved-portfolio/i });
@@ -417,7 +417,7 @@ describe("PoliciesStageScreen — AC-4, AC-5: Portfolio-scenario integration", (
       setSelectedPortfolioName,
     });
 
-    fireEvent.click(screen.getByTitle("Load a saved portfolio"));
+    fireEvent.click(screen.getByTitle("Load a saved policy set"));
     const loadDialog = screen.getByRole("dialog", { name: /load portfolio/i });
     await act(async () => {
       fireEvent.click(within(loadDialog).getByRole("button", { name: /missing-portfolio/i }));
@@ -842,7 +842,7 @@ describe("Story 24.4: Portfolio with Surfaced Policies", () => {
         setSelectedPortfolioName,
       });
 
-      fireEvent.click(screen.getByTitle("Load a saved portfolio"));
+      fireEvent.click(screen.getByTitle("Load a saved policy set"));
 
       const loadDialog = screen.getByRole("dialog", { name: /load portfolio/i });
       const portfolioBtn = within(loadDialog).getByRole("button", { name: /vehicle-malus-portfolio/i });
@@ -898,7 +898,7 @@ describe("Story 24.4: Portfolio with Surfaced Policies", () => {
         setSelectedPortfolioName,
       });
 
-      fireEvent.click(screen.getByTitle("Load a saved portfolio"));
+      fireEvent.click(screen.getByTitle("Load a saved policy set"));
 
       const loadDialog = screen.getByRole("dialog", { name: /load portfolio/i });
       const portfolioBtn = within(loadDialog).getByRole("button", { name: /energy-aid-portfolio/i });
@@ -1024,7 +1024,7 @@ describe("Story 25.2: Redesign Policies stage", () => {
     it("should show 'Load Policy Set' in dialog title when loading", () => {
       renderScreen({ portfolios: [makePortfolio("test-portfolio")] });
 
-      fireEvent.click(screen.getByTitle("Load a saved portfolio"));
+      fireEvent.click(screen.getByTitle("Load a saved policy set"));
 
       // Dialog title should contain "Policy Set"
       expect(screen.getByRole("dialog")).toBeInTheDocument();
@@ -1044,7 +1044,7 @@ describe("Story 25.2: Redesign Policies stage", () => {
       fireEvent.click(carbonButton!);
 
       // Should have 2 entries in composition (AC-6)
-      const policyCards = container.querySelectorAll('section[aria-label="Policy Set Composition"] > div > div');
+      const policyCards = container.querySelectorAll('section[aria-label="Policy Set Composition"] > div');
       expect(policyCards.length).toBe(2);
     });
 
@@ -1083,7 +1083,7 @@ describe("Story 25.2: Redesign Policies stage", () => {
       fireEvent.click(carbonButton!);
 
       // Should have 3 distinct entries
-      const policyCards = container.querySelectorAll('section[aria-label="Policy Set Composition"] > div > div');
+      const policyCards = container.querySelectorAll('section[aria-label="Policy Set Composition"] > div');
       expect(policyCards.length).toBe(3);
     });
   });
@@ -1143,7 +1143,7 @@ describe("Story 25.2: Redesign Policies stage", () => {
       fireEvent.click(templateButtons[0]);
 
       // No category badge should be rendered for this specific card
-      const compositionCards = container.querySelectorAll('section[aria-label="Policy Set Composition"] > div > div');
+      const compositionCards = container.querySelectorAll('section[aria-label="Policy Set Composition"] > div');
       expect(compositionCards.length).toBe(1);
     });
   });
@@ -1158,7 +1158,7 @@ describe("Story 25.2: Redesign Policies stage", () => {
       fireEvent.click(feebateButton!);
 
       // Should add as single entry, not expanded into tax + subsidy
-      const policyCards = container.querySelectorAll('section[aria-label="Policy Set Composition"] > div > div');
+      const policyCards = container.querySelectorAll('section[aria-label="Policy Set Composition"] > div');
       expect(policyCards.length).toBe(1);
     });
   });

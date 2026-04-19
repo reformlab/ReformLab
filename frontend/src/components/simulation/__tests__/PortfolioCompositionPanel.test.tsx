@@ -5,7 +5,6 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { PortfolioCompositionPanel } from "@/components/simulation/PortfolioCompositionPanel";
 import type { CompositionEntry } from "@/components/simulation/PortfolioCompositionPanel";
 import { mockTemplates } from "@/data/mock-data";
-import type { Category } from "@/api/types";
 
 const baseEntry = (id: string): CompositionEntry => ({
   templateId: id,
@@ -383,7 +382,7 @@ describe("Story 25.2: PortfolioCompositionPanel", () => {
       expect(screen.getByText("Carbon Tax 2")).toBeInTheDocument();
 
       // Should have 2 cards
-      const cards = container.querySelectorAll('section[aria-label="Portfolio composition"] > div');
+      const cards = container.querySelectorAll('section[aria-label="Policy Set Composition"] > div');
       expect(cards.length).toBe(2);
     });
   });

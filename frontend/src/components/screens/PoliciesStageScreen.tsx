@@ -76,7 +76,8 @@ export function PoliciesStageScreen() {
   // ============================================================================
 
   // Story 25.2: Duplicate instance support - use monotonic counter instead of selection toggle
-  const [nextInstanceId, setNextInstanceId] = useState(0);
+  // Use useRef for counter to avoid stale closure bugs with rapid-fire adds
+  const instanceCounterRef = useRef(0);
   const [composition, setComposition] = useState<CompositionEntry[]>([]);
   const [resolutionStrategy, setResolutionStrategy] = useState<ResolutionStrategy>("error");
   const [conflicts, setConflicts] = useState<PortfolioConflict[]>([]);
@@ -124,17 +125,17 @@ export function PoliciesStageScreen() {
     const t = templates.find((tmpl) => tmpl.id === templateId);
     if (!t) return;
 
+    const id = instanceCounterRef.current++;
     const newInstance: CompositionEntry = {
-      instanceId: `${templateId}-ins${nextInstanceId}`, // Guaranteed unique via counter
+      instanceId: `${templateId}-ins${id}`, // Guaranteed unique via counter
       templateId,
       name: t?.name ?? templateId,
       parameters: {},
       rateSchedule: {},
     };
 
-    setNextInstanceId((prev) => prev + 1);
     setComposition((prev) => [...prev, newInstance]);
-  }, [templates, nextInstanceId]);
+  }, [templates]);
 
   // Removed: toggleTemplate (replaced by addTemplateInstance for duplicate support)
 
@@ -281,8 +282,9 @@ export function PoliciesStageScreen() {
     setActivePortfolioName,
     updateScenarioPortfolioName: (name) => updateScenarioField("portfolioName", name),
     setSelectedPortfolioName,
-    // Story 25.2: Pass nextInstanceId setter for duplicate support
-    setNextInstanceId,
+    setInstanceCounter: (value: number) => {
+      instanceCounterRef.current = value;
+    },
   });
 
   const {
@@ -310,6 +312,7 @@ export function PoliciesStageScreen() {
     loadedRef.current = null;
     updateScenarioField("portfolioName", null);
     setSelectedPortfolioName(null);
+    instanceCounterRef.current = 0; // Reset counter on clear
   }, [updateScenarioField, setSelectedPortfolioName]);
 
   // ============================================================================

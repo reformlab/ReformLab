@@ -480,29 +480,29 @@ describe("Story 25.1 - Regression tests", () => {
     vi.mocked(listCategories).mockResolvedValue(mockCategories);
   });
 
-  it("templates can still be selected and unselected", async () => {
+  it("templates can be added as multiple instances (Story 25.2)", async () => {
     const user = userEvent.setup();
-    render(<PoliciesStageScreen />);
+    const { container } = render(<PoliciesStageScreen />);
 
     await waitFor(() => {
       expect(listCategories).toHaveBeenCalledTimes(1);
     });
 
-    // Click a template to select it - find the button/card containing the template name
+    // Click a template card to add it to composition
     const template = screen.getByText("Carbon Tax - Flat Rate").closest('[role="button"]');
     expect(template).toBeInTheDocument();
     await user.click(template!);
 
-    // Check that the checkbox inside the template is now checked
-    // Since checkboxes are aria-hidden, we use querySelector to find them
-    const checkbox = template!.querySelector('input[type="checkbox"]') as HTMLInputElement;
-    expect(checkbox).toBeChecked();
+    // Verify one entry in composition panel
+    const policyCards = container.querySelectorAll('section[aria-label="Policy Set Composition"] > div');
+    expect(policyCards.length).toBe(1);
 
-    // Click again to unselect
+    // Click the same template again to add another instance
     await user.click(template!);
 
-    // Checkbox should now be unchecked
-    expect(checkbox).not.toBeChecked();
+    // Verify two entries in composition panel (duplicate instances)
+    const policyCardsAfter = container.querySelectorAll('section[aria-label="Policy Set Composition"] > div');
+    expect(policyCardsAfter.length).toBe(2);
   });
 
   it("type badges still display correctly with category badges", async () => {
