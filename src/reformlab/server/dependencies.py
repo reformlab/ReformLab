@@ -142,7 +142,7 @@ def _create_adapter() -> ComputationAdapter:
     Story 23.4: Defaults to live OpenFiscaApiAdapter, supports replay mode
     via REFORMLAB_RUNTIME_MODE env var, falls back to MockAdapter for dev.
     """
-    runtime_mode = os.environ.get("REFORMLAB_RUNTIME_MODE", "live")
+    runtime_mode = os.environ.get("REFORMLAB_RUNTIME_MODE", "live").strip().lower()
     if runtime_mode not in ("live", "replay"):
         logger.warning("Invalid REFORMLAB_RUNTIME_MODE=%s, defaulting to 'live'", runtime_mode)
         runtime_mode = "live"
@@ -156,10 +156,15 @@ def _create_adapter() -> ComputationAdapter:
 
             logger.warning("Replay adapter failed (precomputed data not found), using MockAdapter")
             return MockAdapter()
-        except Exception:
+        except (ImportError, ValueError, KeyError):
             from reformlab.computation.mock_adapter import MockAdapter
 
             logger.warning("Replay adapter failed, using MockAdapter")
+            return MockAdapter()
+        except Exception:
+            from reformlab.computation.mock_adapter import MockAdapter
+
+            logger.exception("Replay adapter failed unexpectedly, using MockAdapter")
             return MockAdapter()
 
     # Default: live mode

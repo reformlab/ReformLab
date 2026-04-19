@@ -281,7 +281,19 @@ def apply_output_mapping(table: pa.Table, config: MappingConfig) -> pa.Table:
     """
     rename_map: dict[str, str] = {}
     type_map: dict[str, pa.DataType] = {}
+    seen_targets: dict[str, str] = {}  # project_name -> openfisca_name
     for mapping in config.output_mappings:
+        if mapping.project_name in seen_targets:
+            raise ValueError(
+                f"Output mapping collision: both '{seen_targets[mapping.project_name]}' "
+                f"and '{mapping.openfisca_name}' map to '{mapping.project_name}'"
+            )
+        if mapping.openfisca_name in rename_map:
+            raise ValueError(
+                f"Output mapping collision: '{mapping.openfisca_name}' is mapped twice "
+                f"(to '{rename_map[mapping.openfisca_name]}' and '{mapping.project_name}')"
+            )
+        seen_targets[mapping.project_name] = mapping.openfisca_name
         rename_map[mapping.openfisca_name] = mapping.project_name
         type_map[mapping.project_name] = mapping.pa_type
     return _rename_table(table, rename_map, type_map)
