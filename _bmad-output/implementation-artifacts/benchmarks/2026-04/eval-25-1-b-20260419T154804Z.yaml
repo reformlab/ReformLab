@@ -1,0 +1,121 @@
+record_id: 1154c9a4-14dd-40d4-9e4e-9eb4097e78a0
+created_at: '2026-04-19T15:48:04.438591+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 25
+  story_num: '1'
+  title: Story 25.1
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: sonnet
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-04-19T15:42:39.393668Z'
+  end_time: '2026-04-19T15:47:32.444668Z'
+  duration_ms: 293051
+  input_tokens: 0
+  output_tokens: 3278
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 13114
+  heading_count: 21
+  list_depth_max: 2
+  code_block_count: 11
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: **8.6**'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes & Readability
+  - ⚡ Performance & Scalability
+  - 🐛 Correctness & Safety
+  - '🐛 Bug 1 — CRITICAL: Nested `<button>` inside `<button>`'
+  - 🔒 Security
+  - 🎭 Lying Tests
+  - 🔧 Maintainability Issues
+  - '💣 Tech Debt 1: AC-6 warning flashes on initial render'
+  - '💣 Tech Debt 2: Stray duplicate file `frontend/@/components/ui/popover.tsx`'
+  - '💣 Tech Debt 3: Group sort order doesn''t match filter chip order'
+  - '💣 Tech Debt 4: Existing `PortfolioTemplateBrowser` tests now test wrong code path'
+  - 🛠️ Suggested Fixes
+  - 1. Fix nested button (CRITICAL)
+  - 2. Fix AC-6 flash with loading state
+  - 3. Fix AC-7 lying test
+  - 4. Delete the stray file
+  - 5. Fix group sort order to match API order
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 808fb588aa3c
+findings:
+  total_count: 9
+  by_severity:
+    critical: 1
+    major: 4
+    minor: 4
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 3
+    completeness: 1
+    clarity: 1
+    testability: 4
+  has_fix_count: 9
+  has_location_count: 9
+  has_evidence_count: 7
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 4
+  confidence_phrases_count: 2
+linguistic:
+  avg_sentence_length: 26.876923076923077
+  vocabulary_richness: 0.3388666285060103
+  flesch_reading_ease: 22.218444453990912
+  vague_terms_count: 0
+  formality_score: 0.65
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.95
+  evidence_quality: 0.78
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 14
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

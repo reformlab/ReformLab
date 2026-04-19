@@ -63,10 +63,18 @@ interface TemplateCardProps {
 }
 
 function TemplateCard({ template, selected, templateCategory, onToggle }: TemplateCardProps) {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onToggle();
+    }
+  };
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onToggle}
+      onKeyDown={handleKeyDown}
       aria-pressed={selected}
       className={cn(
         "w-full border p-3 text-left transition-colors",
@@ -180,7 +188,7 @@ function TemplateCard({ template, selected, templateCategory, onToggle }: Templa
           className="mt-0.5 h-4 w-4 shrink-0 accent-blue-500"
         />
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -195,8 +203,13 @@ export function PortfolioTemplateBrowser({
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
 
   // Story 25.1 / AC-6: Determine if we should show grouped or flat layout
-  // Show flat list if categories are not loaded or empty (API failed)
-  const shouldShowGrouped = categories && categories.length > 0;
+  // undefined = not provided (flat list, no warning — pre-categories behavior)
+  // null = still loading (flat list, no warning yet)
+  // [] = API failed (flat list + warning)
+  // non-empty = loaded successfully (grouped)
+  const categoriesLoaded = categories != null;
+  const shouldShowGrouped = categoriesLoaded && categories!.length > 0;
+  const categoriesFailed = categoriesLoaded && categories!.length === 0;
 
   // Story 25.1 / AC-8: Filter by both category and query (AND logic)
   const filtered = useMemo(() => {
@@ -220,31 +233,6 @@ export function PortfolioTemplateBrowser({
     return result;
   }, [templates, selectedCategoryId, query]);
 
-  // Build display groups from filtered results
-  const displayGroups = useMemo(() => {
-    // Story 25.1 / AC-6: If categories failed, return empty groups for flat display
-    if (!shouldShowGrouped) {
-      return {};
-    }
-    const groups: Record<string, Template[]> = {};
-    for (const t of filtered) {
-      const key = t.category_id ?? "other";
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(t);
-    }
-    return groups;
-  }, [filtered, shouldShowGrouped]);
-
-  // Story 25.1 / Task 3.5: Sort "Other" group last, named categories first alphabetically
-  const sortedGroupKeys = useMemo(() => {
-    const keys = Object.keys(displayGroups);
-    return keys.sort((a, b) => {
-      if (a === "other") return 1;
-      if (b === "other") return -1;
-      return a.localeCompare(b);
-    });
-  }, [displayGroups]);
-
   // Category lookup map
   const categoryMap = useMemo(() => {
     const map = new Map<string, Category>();
@@ -255,6 +243,38 @@ export function PortfolioTemplateBrowser({
     }
     return map;
   }, [categories]);
+
+  // Build display groups from filtered results
+  const displayGroups = useMemo(() => {
+    // Story 25.1 / AC-6: If categories failed, return empty groups for flat display
+    if (!shouldShowGrouped) {
+      return {};
+    }
+    const groups: Record<string, Template[]> = {};
+    for (const t of filtered) {
+      // AC-5: Templates without category or with unknown category go to "Other"
+      const key = (t.category_id && categoryMap.has(t.category_id)) ? t.category_id : "other";
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(t);
+    }
+    return groups;
+  }, [filtered, shouldShowGrouped, categoryMap]);
+
+  // Story 25.1 / Task 3.5: Sort "Other" group last, named categories in API-defined order
+  const sortedGroupKeys = useMemo(() => {
+    const keys = Object.keys(displayGroups);
+    const categoryOrder = (categories ?? []).map((c) => c.id);
+    return keys.sort((a, b) => {
+      if (a === "other") return 1;
+      if (b === "other") return -1;
+      const ia = categoryOrder.indexOf(a);
+      const ib = categoryOrder.indexOf(b);
+      if (ia === -1 && ib === -1) return a.localeCompare(b);
+      if (ia === -1) return 1;
+      if (ib === -1) return -1;
+      return ia - ib;
+    });
+  }, [displayGroups, categories]);
 
   return (
     <section aria-label="Policy template browser" className="space-y-3">
@@ -270,7 +290,7 @@ export function PortfolioTemplateBrowser({
       </div>
 
       {/* Story 25.1 / AC-6: Non-blocking warning if categories failed to load */}
-      {!shouldShowGrouped && templates.length > 0 ? (
+      {categoriesFailed && templates.length > 0 ? (
         <div className="p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
           Categories could not be loaded. Templates are shown ungrouped.
         </div>
@@ -301,7 +321,7 @@ export function PortfolioTemplateBrowser({
         </div>
       ) : null}
 
-      {/* Story 25.1 / AC-6: Flat list when categories failed */}
+      {/* Story 25.1 / AC-6: Flat list when categories failed or still loading */}
       {!shouldShowGrouped ? (
         <div className="grid gap-2 xl:grid-cols-2">
           {filtered.map((template) => {

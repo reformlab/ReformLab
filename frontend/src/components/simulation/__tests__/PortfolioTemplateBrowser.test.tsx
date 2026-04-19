@@ -14,6 +14,7 @@ describe("PortfolioTemplateBrowser", () => {
         templates={mockTemplates}
         selectedIds={[]}
         onToggleTemplate={noop}
+        categories={[]}
       />,
     );
 
@@ -27,6 +28,7 @@ describe("PortfolioTemplateBrowser", () => {
         templates={mockTemplates}
         selectedIds={[]}
         onToggleTemplate={noop}
+        categories={[]}
       />,
     );
 
@@ -40,6 +42,7 @@ describe("PortfolioTemplateBrowser", () => {
         templates={mockTemplates}
         selectedIds={[]}
         onToggleTemplate={noop}
+        categories={[]}
       />,
     );
 
@@ -52,6 +55,7 @@ describe("PortfolioTemplateBrowser", () => {
         templates={mockTemplates}
         selectedIds={[]}
         onToggleTemplate={noop}
+        categories={[]}
       />,
     );
 
@@ -64,6 +68,7 @@ describe("PortfolioTemplateBrowser", () => {
         templates={mockTemplates}
         selectedIds={["carbon-tax-flat"]}
         onToggleTemplate={noop}
+        categories={[]}
       />,
     );
 
@@ -78,6 +83,7 @@ describe("PortfolioTemplateBrowser", () => {
         templates={mockTemplates}
         selectedIds={[]}
         onToggleTemplate={onToggle}
+        categories={[]}
       />,
     );
 
@@ -93,6 +99,7 @@ describe("PortfolioTemplateBrowser", () => {
         templates={mockTemplates}
         selectedIds={[]}
         onToggleTemplate={noop}
+        categories={[]}
       />,
     );
 
@@ -130,6 +137,7 @@ describe("Story 24.4: Surfaced Policy Packs", () => {
           templates={[vehicleMalusTemplate]}
           selectedIds={[]}
           onToggleTemplate={noop}
+          categories={[]}
         />,
       );
 
@@ -157,6 +165,7 @@ describe("Story 24.4: Surfaced Policy Packs", () => {
           templates={[energyAidTemplate]}
           selectedIds={[]}
           onToggleTemplate={noop}
+          categories={[]}
         />,
       );
 
@@ -184,6 +193,7 @@ describe("Story 24.4: Surfaced Policy Packs", () => {
           templates={[underscoreTemplate]}
           selectedIds={[]}
           onToggleTemplate={noop}
+          categories={[]}
         />,
       );
 
@@ -210,6 +220,7 @@ describe("Story 24.4: Surfaced Policy Packs", () => {
           templates={[vehicleMalusTemplate]}
           selectedIds={[]}
           onToggleTemplate={noop}
+          categories={[]}
         />,
       );
 
@@ -235,6 +246,7 @@ describe("Story 24.4: Surfaced Policy Packs", () => {
           templates={[energyAidTemplate]}
           selectedIds={[]}
           onToggleTemplate={noop}
+          categories={[]}
         />,
       );
 
@@ -262,6 +274,7 @@ describe("Story 24.4: Surfaced Policy Packs", () => {
           templates={[vehicleMalusTemplate]}
           selectedIds={[]}
           onToggleTemplate={noop}
+          categories={[]}
         />,
       );
 
@@ -286,6 +299,7 @@ describe("Story 24.4: Surfaced Policy Packs", () => {
           templates={[vehicleMalusTemplate]}
           selectedIds={[]}
           onToggleTemplate={noop}
+          categories={[]}
         />,
       );
 
@@ -365,6 +379,7 @@ describe("Story 24.4: Surfaced Policy Packs", () => {
           templates={surfacedTemplates}
           selectedIds={[]}
           onToggleTemplate={noop}
+          categories={[]}
         />,
       );
 

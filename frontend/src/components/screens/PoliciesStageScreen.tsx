@@ -81,8 +81,8 @@ export function PoliciesStageScreen() {
   const [conflicts, setConflicts] = useState<PortfolioConflict[]>([]);
   const [validationLoading, setValidationLoading] = useState(false);
 
-  // Story 25.1 / Task 3.1: Categories state
-  const [categories, setCategories] = useState<Category[]>([]);
+  // Story 25.1 / Task 3.1: Categories state (null = loading, [] = failed/empty)
+  const [categories, setCategories] = useState<Category[] | null>(null);
 
   // Track the portfolio name currently loaded into the composition panel
   const [activePortfolioName, setActivePortfolioName] = useState<string | null>(null);

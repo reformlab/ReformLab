@@ -412,14 +412,11 @@ describe("Story 25.1 - Category badge and help popover", () => {
 
     // Find the "Other" section which contains templates without categories
     const otherSection = screen.getByText("Other").closest("section");
+    expect(otherSection).toBeInTheDocument();
 
-    if (otherSection) {
-      // The help icon (CircleHelp) should not be present in the Other group
-      const helpIcons = otherSection.querySelectorAll("svg");
-      // Filter for CircleHelp icons (they would have specific classes or attributes)
-      // For simplicity, we just check that templates in Other group don't have help
-      expect(otherSection).toContainHTML("Generic Rebate");
-    }
+    // The help icon (buttons with aria-label containing "Formula help") should not be present
+    const helpButtons = otherSection!.querySelectorAll('button[aria-label*="Formula help"]');
+    expect(helpButtons.length).toBe(0);
   });
 
   it("AC-4: clicking help icon shows popover with formula explanation", async () => {
@@ -432,19 +429,18 @@ describe("Story 25.1 - Category badge and help popover", () => {
 
     // Find all help icons (buttons with aria-label containing "Formula help")
     const helpButtons = screen.getAllByLabelText(/Formula help for/);
+    expect(helpButtons.length).toBeGreaterThan(0);
 
-    if (helpButtons.length > 0) {
-      // Click the first help button
-      await user.click(helpButtons[0]);
+    // Click the first help button
+    await user.click(helpButtons[0]);
 
-      // Popover content should be visible
-      expect(screen.getByText("Formula")).toBeInTheDocument();
-      expect(screen.getByText("Description")).toBeInTheDocument();
-      expect(screen.getByText("Columns")).toBeInTheDocument();
+    // Popover content should be visible
+    expect(screen.getByText("Formula")).toBeInTheDocument();
+    expect(screen.getByText("Description")).toBeInTheDocument();
+    expect(screen.getByText("Columns")).toBeInTheDocument();
 
-      // Formula explanation should be visible
-      expect(screen.getByText("emissions_co2 × tax_rate")).toBeInTheDocument();
-    }
+    // Formula explanation should be visible
+    expect(screen.getByText("emissions_co2 × tax_rate")).toBeInTheDocument();
   });
 
   it("AC-7: popover closes on Escape key press", async () => {
@@ -456,20 +452,20 @@ describe("Story 25.1 - Category badge and help popover", () => {
     });
 
     const helpButtons = screen.getAllByLabelText(/Formula help for/);
+    expect(helpButtons.length).toBeGreaterThan(0);
 
-    if (helpButtons.length > 0) {
-      await user.click(helpButtons[0]);
+    await user.click(helpButtons[0]);
 
-      // Verify popover is open
-      expect(screen.getByText("Formula")).toBeInTheDocument();
+    // Verify popover is open
+    expect(screen.getByText("Formula")).toBeInTheDocument();
 
-      // Press Escape
-      await user.keyboard("{Escape}");
+    // Press Escape
+    await user.keyboard("{Escape}");
 
-      // Popover should be closed (Formula text no longer visible)
-      // Note: This depends on Radix Popover's behavior
-      // In a real test, we might need to wait for the close animation
-    }
+    // AC-7: Verify popover is closed after Escape
+    await waitFor(() => {
+      expect(screen.queryByText("emissions_co2 × tax_rate")).not.toBeInTheDocument();
+    });
   });
 });
 
@@ -492,8 +488,8 @@ describe("Story 25.1 - Regression tests", () => {
       expect(listCategories).toHaveBeenCalledTimes(1);
     });
 
-    // Click a template to select it - find the button containing the template name
-    const template = screen.getByText("Carbon Tax - Flat Rate").closest("button");
+    // Click a template to select it - find the button/card containing the template name
+    const template = screen.getByText("Carbon Tax - Flat Rate").closest('[role="button"]');
     expect(template).toBeInTheDocument();
     await user.click(template!);
 

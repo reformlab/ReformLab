@@ -98,10 +98,9 @@ class TestTemplateCategoryMapping:
 
         # Find carbon_tax templates
         carbon_tax_templates = [t for t in templates if t["type"] == "carbon_tax"]
-        if carbon_tax_templates:
-            # Should be mapped to carbon_emissions category
-            for tmpl in carbon_tax_templates:
-                assert tmpl["category_id"] == "carbon_emissions"
+        assert len(carbon_tax_templates) > 0, "Expected at least one carbon_tax template"
+        for tmpl in carbon_tax_templates:
+            assert tmpl["category_id"] == "carbon_emissions"
 
     def test_vehicle_malus_templates_mapped_to_vehicle_emissions(
         self, client: TestClient, auth_headers: dict[str, str]
@@ -114,10 +113,9 @@ class TestTemplateCategoryMapping:
 
         # Find vehicle_malus templates
         vehicle_templates = [t for t in templates if t["type"] == "vehicle_malus"]
-        if vehicle_templates:
-            # Should be mapped to vehicle_emissions category
-            for tmpl in vehicle_templates:
-                assert tmpl["category_id"] == "vehicle_emissions"
+        assert len(vehicle_templates) > 0, "Expected at least one vehicle_malus template"
+        for tmpl in vehicle_templates:
+            assert tmpl["category_id"] == "vehicle_emissions"
 
     def test_energy_poverty_aid_templates_mapped_to_income(
         self, client: TestClient, auth_headers: dict[str, str]
@@ -130,7 +128,6 @@ class TestTemplateCategoryMapping:
 
         # Find energy_poverty_aid templates
         energy_templates = [t for t in templates if t["type"] == "energy_poverty_aid"]
-        if energy_templates:
-            # Should be mapped to income category
-            for tmpl in energy_templates:
-                assert tmpl["category_id"] == "income"
+        assert len(energy_templates) > 0, "Expected at least one energy_poverty_aid template"
+        for tmpl in energy_templates:
+            assert tmpl["category_id"] == "income"

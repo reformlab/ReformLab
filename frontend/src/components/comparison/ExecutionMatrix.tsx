@@ -19,7 +19,8 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Popover } from "@/components/ui/popover";
+// Popover stub was replaced with Radix in Story 25.1; this component
+// only used it as a styled div, so we use a plain div here.
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -325,7 +326,7 @@ function ContextMenu({ cell, onClose, onClone, onViewResults, onDelete, onExport
 
   return (
     <div className="fixed inset-0 z-50" onClick={onClose}>
-      <Popover className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-48 rounded-md border border-slate-200 bg-white p-1 shadow-md">
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-48 rounded-md border border-slate-200 bg-white p-1 shadow-md">
           <div className="space-y-0.5">
             <button
               className="w-full text-left px-2 py-1.5 text-sm hover:bg-slate-100 rounded disabled:opacity-50 disabled:cursor-not-allowed"
@@ -362,7 +363,7 @@ function ContextMenu({ cell, onClose, onClone, onViewResults, onDelete, onExport
               Retry Run
             </button>
           </div>
-      </Popover>
+      </div>
     </div>
   );
 }
