@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { usePopulationPreview } from "@/hooks/useApi";
-import type { ColumnInfo } from "@/api/types";
+import type { ColumnInfo, PopulationPreviewResponse } from "@/api/types";
 
 // ============================================================================
 // Types
@@ -26,6 +26,8 @@ export interface PopulationQuickPreviewProps {
   populationName: string;
   onClose: () => void;
   onOpenFullView: (id: string) => void;
+  /** When provided, uses this data instead of fetching via usePopulationPreview. */
+  externalPreview?: { data: PopulationPreviewResponse; loading: boolean };
 }
 
 type SortDirection = "asc" | "desc" | null;
@@ -107,8 +109,10 @@ export function PopulationQuickPreview({
   populationName,
   onClose,
   onOpenFullView,
+  externalPreview,
 }: PopulationQuickPreviewProps) {
-  const { data: preview, loading } = usePopulationPreview(populationId);
+  const populationHook = usePopulationPreview(externalPreview ? null : populationId);
+  const { data: preview, loading } = externalPreview ?? populationHook;
   const [sortCol, setSortCol] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<SortDirection>(null);
   const [filters, setFilters] = useState<Record<string, string>>({});

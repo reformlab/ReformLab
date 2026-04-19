@@ -20,7 +20,6 @@ import logging
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import JSONResponse
 
 from reformlab.server.models import (
     AssumptionRecordItem,
@@ -32,6 +31,9 @@ from reformlab.server.models import (
     MarginalResultItem,
     MergeMethodInfo,
     MergeMethodParamSpec,
+    PopulationPreviewColumnInfo,
+    PopulationPreviewResponse,
+    PopulationProfileResponse,
     PopulationSummary,
     StepLogItem,
     ValidationResultResponse,
@@ -80,6 +82,11 @@ _PROVIDER_EVIDENCE: dict[str, dict[str, str]] = {
 }
 
 
+def _problem_detail(what: str, why: str, fix: str) -> dict[str, str]:
+    """Build the standard API error detail payload."""
+    return {"what": what, "why": why, "fix": fix}
+
+
 def _build_source_item(provider: str, dataset_id: str, dataset: Any) -> DataSourceItem:
     """Convert a catalog dataset entry to a DataSourceItem response model.
 
@@ -91,8 +98,11 @@ def _build_source_item(provider: str, dataset_id: str, dataset: Any) -> DataSour
     if provider not in _PROVIDER_EVIDENCE:
         raise HTTPException(
             status_code=422,
-            detail=f"Unknown provider evidence mapping: {provider!r}. "
-                    f"Valid providers: {sorted(_VALID_PROVIDERS)}",
+            detail=_problem_detail(
+                "Unknown provider evidence mapping",
+                f"Provider {provider!r} has no evidence classification mapping",
+                f"Use one of: {sorted(_VALID_PROVIDERS)}",
+            ),
         )
 
     evidence = _PROVIDER_EVIDENCE[provider]
@@ -297,13 +307,24 @@ def _execute_pipeline(request: GeneratePopulationRequest) -> Any:
         label = f"source_{i}"
 
         if provider not in loader_factories:
-            raise HTTPException(status_code=422, detail=f"Unknown provider: {provider!r}")
+            raise HTTPException(
+                status_code=422,
+                detail=_problem_detail(
+                    "Unknown data provider",
+                    f"Provider {provider!r} is not registered",
+                    f"Use one of: {sorted(_VALID_PROVIDERS)}",
+                ),
+            )
 
         catalog = _get_catalog_for_provider(provider)
         if catalog is None or dataset_id not in catalog:
             raise HTTPException(
                 status_code=422,
-                detail=f"Unknown dataset {dataset_id!r} for provider {provider!r}",
+                detail=_problem_detail(
+                    "Unknown data source dataset",
+                    f"Dataset {dataset_id!r} is not available for provider {provider!r}",
+                    "Choose a dataset returned by the data source listing endpoint",
+                ),
             )
 
         get_loader_fn, make_config_fn = loader_factories[provider]
@@ -325,7 +346,14 @@ def _execute_pipeline(request: GeneratePopulationRequest) -> Any:
     elif request.merge_method == "conditional":
         method = ConditionalSamplingMethod(strata_columns=tuple(request.strata_columns))
     else:
-        raise HTTPException(status_code=422, detail=f"Unknown merge method: {request.merge_method!r}")
+        raise HTTPException(
+            status_code=422,
+            detail=_problem_detail(
+                "Unknown merge method",
+                f"Merge method {request.merge_method!r} is not supported",
+                f"Use one of: {sorted(_VALID_MERGE_METHODS)}",
+            ),
+        )
 
     # Chain merges: source_0 + source_1 → merged_0, merged_0 + source_2 → merged_1, …
     left_label = "source_0"
@@ -397,18 +425,188 @@ async def get_source_detail(provider: str, dataset_id: str) -> DataSourceDetail:
     if provider not in _VALID_PROVIDERS:
         raise HTTPException(
             status_code=404,
-            detail=f"Unknown provider {provider!r}. Valid providers: {sorted(_VALID_PROVIDERS)}",
+            detail=_problem_detail(
+                "Unknown data provider",
+                f"Provider {provider!r} is not registered",
+                f"Use one of: {sorted(_VALID_PROVIDERS)}",
+            ),
         )
 
     catalog = _get_catalog_for_provider(provider)
     if catalog is None or dataset_id not in catalog:
         raise HTTPException(
             status_code=404,
-            detail=f"Dataset {dataset_id!r} not found in provider {provider!r}",
+            detail=_problem_detail(
+                "Data source dataset not found",
+                f"Dataset {dataset_id!r} was not found for provider {provider!r}",
+                "Choose a dataset returned by the data source listing endpoint",
+            ),
         )
 
     dataset = catalog[dataset_id]
     return _build_source_detail(provider, dataset_id, dataset)
+
+
+def _load_data_source_table(provider: str, dataset_id: str) -> Any:
+    """Load a data source as a PyArrow table via the loader infrastructure."""
+    from reformlab.population import (
+        SourceCache,
+        get_ademe_loader,
+        get_eurostat_loader,
+        get_insee_loader,
+        get_sdes_loader,
+        make_ademe_config,
+        make_eurostat_config,
+        make_insee_config,
+        make_sdes_config,
+    )
+
+    loader_factories: dict[str, tuple[Any, Any]] = {
+        "insee": (get_insee_loader, make_insee_config),
+        "eurostat": (get_eurostat_loader, make_eurostat_config),
+        "ademe": (get_ademe_loader, make_ademe_config),
+        "sdes": (get_sdes_loader, make_sdes_config),
+    }
+
+    if provider not in loader_factories:
+        raise HTTPException(
+            status_code=404,
+            detail=_problem_detail(
+                "Unknown data provider",
+                f"Provider {provider!r} is not registered",
+                f"Use one of: {sorted(_VALID_PROVIDERS)}",
+            ),
+        )
+
+    catalog = _get_catalog_for_provider(provider)
+    if catalog is None or dataset_id not in catalog:
+        raise HTTPException(
+            status_code=404,
+            detail=_problem_detail(
+                "Data source dataset not found",
+                f"Dataset {dataset_id!r} was not found for provider {provider!r}",
+                "Choose a dataset returned by the data source listing endpoint",
+            ),
+        )
+
+    cache = SourceCache()
+    get_loader_fn, make_config_fn = loader_factories[provider]
+    loader = get_loader_fn(dataset_id, cache=cache)
+    config = make_config_fn(dataset_id)
+    pop_data, _manifest = loader.download(config)
+    return pop_data.primary_table
+
+
+@router.get(
+    "/sources/{provider}/{dataset_id}/preview",
+    response_model=PopulationPreviewResponse,
+)
+async def preview_data_source(
+    provider: str,
+    dataset_id: str,
+    offset: int = 0,
+    limit: int = 100,
+    sort_by: str | None = None,
+    order: str = "asc",
+) -> PopulationPreviewResponse:
+    """Get a paginated preview of data source rows."""
+    import pyarrow as pa
+
+    limit = min(limit, 100)
+
+    try:
+        table = _load_data_source_table(provider, dataset_id)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Failed to load data source %s/%s", provider, dataset_id)
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "what": f"Failed to load data source {provider}/{dataset_id}",
+                "why": str(exc),
+                "fix": "Ensure the data has been cached or check network connectivity",
+            },
+        )
+
+    if sort_by and sort_by in table.column_names:
+        sort_order = "ascending" if order == "asc" else "descending"
+        table = table.sort_by([(sort_by, sort_order)])
+
+    total_rows = table.num_rows
+    end_idx = min(offset + limit, total_rows)
+    sliced = table.slice(offset, end_idx - offset)
+    rows = sliced.to_pylist()
+
+    columns = []
+    for i, name in enumerate(sliced.column_names):
+        arrow_type = sliced.schema[i].type
+        if pa.types.is_integer(arrow_type):
+            type_str = "integer"
+        elif pa.types.is_floating(arrow_type):
+            type_str = "float"
+        elif pa.types.is_boolean(arrow_type):
+            type_str = "boolean"
+        else:
+            type_str = "string"
+        columns.append(PopulationPreviewColumnInfo(name=name, type=type_str, description=""))
+
+    source_name = dataset_id.replace("_", " ").title()
+    return PopulationPreviewResponse(
+        id=f"{provider}/{dataset_id}",
+        name=source_name,
+        rows=rows,
+        columns=columns,
+        total_rows=total_rows,
+    )
+
+
+@router.get(
+    "/sources/{provider}/{dataset_id}/profile",
+    response_model=PopulationProfileResponse,
+)
+async def profile_data_source(provider: str, dataset_id: str) -> PopulationProfileResponse:
+    """Get per-column profile statistics for a data source."""
+    import pyarrow as pa
+
+    from reformlab.server.models import ColumnProfile, ColumnProfileEntry
+    from reformlab.server.routes.populations import (
+        _compute_boolean_profile,
+        _compute_categorical_profile,
+        _compute_numeric_profile,
+    )
+
+    try:
+        table = _load_data_source_table(provider, dataset_id)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Failed to load data source %s/%s for profiling", provider, dataset_id)
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "what": f"Failed to profile data source {provider}/{dataset_id}",
+                "why": str(exc),
+                "fix": "Ensure the data has been cached or check network connectivity",
+            },
+        )
+
+    columns = []
+    for col_name in table.column_names:
+        arrow_type = table.column(col_name).type
+        profile: ColumnProfile
+        if pa.types.is_integer(arrow_type) or pa.types.is_floating(arrow_type):
+            profile = _compute_numeric_profile(table, col_name)
+        elif pa.types.is_boolean(arrow_type):
+            profile = _compute_boolean_profile(table, col_name)
+        else:
+            profile = _compute_categorical_profile(table, col_name)
+        columns.append(ColumnProfileEntry(name=col_name, profile=profile))
+
+    return PopulationProfileResponse(
+        id=f"{provider}/{dataset_id}",
+        columns=columns,
+    )
 
 
 @router.get("/merge-methods")
@@ -441,7 +639,11 @@ async def generate_population(request: GeneratePopulationRequest) -> GeneratePop
     if len(request.sources) < 2:
         raise HTTPException(
             status_code=422,
-            detail="At least 2 data sources required to perform a merge",
+            detail=_problem_detail(
+                "Not enough data sources",
+                "Population generation requires at least two sources to merge",
+                "Select at least two data sources before generating a population",
+            ),
         )
 
     # Validate provider names upfront
@@ -449,14 +651,22 @@ async def generate_population(request: GeneratePopulationRequest) -> GeneratePop
         if src.provider not in _VALID_PROVIDERS:
             raise HTTPException(
                 status_code=422,
-                detail=f"Unknown provider {src.provider!r}. Valid: {sorted(_VALID_PROVIDERS)}",
+                detail=_problem_detail(
+                    "Unknown data provider",
+                    f"Provider {src.provider!r} is not registered",
+                    f"Use one of: {sorted(_VALID_PROVIDERS)}",
+                ),
             )
 
     # Validate merge method upfront
     if request.merge_method not in _VALID_MERGE_METHODS:
         raise HTTPException(
             status_code=422,
-            detail=f"Unknown merge method {request.merge_method!r}. Valid: {sorted(_VALID_MERGE_METHODS)}",
+            detail=_problem_detail(
+                "Unknown merge method",
+                f"Merge method {request.merge_method!r} is not supported",
+                f"Use one of: {sorted(_VALID_MERGE_METHODS)}",
+            ),
         )
 
     try:
@@ -465,40 +675,26 @@ async def generate_population(request: GeneratePopulationRequest) -> GeneratePop
         raise
     except PipelineConfigError as exc:
         logger.error("Pipeline config error: %s", exc)
-        return JSONResponse(  # type: ignore[return-value]
+        raise HTTPException(
             status_code=422,
-            content={
-                "error": "Pipeline configuration error",
-                "what": exc.summary,
-                "why": exc.reason,
-                "fix": exc.fix,
-                "status_code": 422,
-            },
-        )
+            detail=_problem_detail(exc.summary, exc.reason, exc.fix),
+        ) from exc
     except PipelineError as exc:
         logger.error("Pipeline execution error: %s", exc)
-        return JSONResponse(  # type: ignore[return-value]
+        raise HTTPException(
             status_code=500,
-            content={
-                "error": "Population generation failed",
-                "what": exc.summary,
-                "why": exc.reason,
-                "fix": exc.fix,
-                "status_code": 500,
-            },
-        )
+            detail=_problem_detail(exc.summary, exc.reason, exc.fix),
+        ) from exc
     except DataSourceError as exc:
         logger.error("Data source error: %s", exc)
-        return JSONResponse(  # type: ignore[return-value]
+        raise HTTPException(
             status_code=500,
-            content={
-                "error": "Data source unavailable",
-                "what": str(exc),
-                "why": "The data source could not be loaded (network or cache issue)",
-                "fix": "Ensure the data has been cached or check network connectivity",
-                "status_code": 500,
-            },
-        )
+            detail=_problem_detail(
+                str(exc),
+                "The data source could not be loaded (network or cache issue)",
+                "Ensure the data has been cached or check network connectivity",
+            ),
+        ) from exc
 
     # Serialize step log
     step_log = [
