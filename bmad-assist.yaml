@@ -71,6 +71,8 @@ phase_models:
   validate_story:
     - provider: claude-subprocess
       model: sonnet                    # First reviewer 
+      model_name: glm-4.7
+      settings: ~/.claude/glm.json
     - provider: codex
       model: gpt-5.3-codex             # Second reviewer with deep reasoning
       reasoning_effort: high
@@ -89,8 +91,8 @@ phase_models:
       reasoning_effort: high
   code_review_synthesis:
     provider: claude-subprocess        # Last gate before code ships — upgraded model
-    model: opus
-    model_name: glm-5-turbo
+    model: sonnet
+    model_name: glm-4.7
     settings: ~/.claude/glm.json
 
   # Retrospective: runs after each epic completes
