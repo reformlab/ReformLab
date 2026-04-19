@@ -1,6 +1,6 @@
 # Story 24.2: Implement domain-layer live translation for subsidy-style policies without adapter interface changes
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 

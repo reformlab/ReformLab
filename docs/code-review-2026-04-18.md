@@ -35,29 +35,15 @@ Clean builder pattern with fluent API. Error hierarchy with summary/reason/fix i
 
 ### Discrete Choice (`src/reformlab/discrete_choice/`)
 
-Mostly good, but has **one significant issue:**
+Good after the follow-up fixes.
 
-**`step.py` fuel price injection block** — A 50-line fuel price injection block is embedded mid-method. It mixes infrastructure concerns (exogenous context lookup, `PopulationData` reconstruction) into the step's core expand/compute/reshape flow. Worse, it **silently swallows exceptions** in the broad `except Exception` handler — a fuel price injection failure is logged and ignored. **No test covers this error path.** This code should be extracted to a helper and have explicit test coverage for the failure case.
+The original fuel-price injection finding is fixed. The injection path is extracted, preserves population metadata, replaces existing `fuel_price` columns safely, raises `DiscreteChoiceError` on lookup/injection failure, and has success/failure coverage.
 
 ---
 
 ## 2. Server / API Layer
 
-**Overall verdict: MEDIUM CONCERNS — functional but has god functions, missing validation, and test gaps.**
-
-### High Severity
-
-#### `run_simulation` is a 300-line god function
-
-**File:** `src/reformlab/server/routes/runs.py` — `run_simulation`
-
-This single handler does: UUID generation, population resolution, adapter selection, scenario config construction, simulation execution, manifest patching via `dataclasses.replace`, metadata persistence, panel/manifest disk save, exogenous hash computation, trust warning generation, and response construction — all inline. This is where most bugs will cluster and it is hard to reason about for correctness (especially the `finally` block that catches all exceptions at line 186). Should be decomposed into at least 3–4 helper functions.
-
-#### Auth session memory leak
-
-**File:** `src/reformlab/server/auth.py`
-
-`_active_sessions` dict grows unboundedly. Expired sessions are only evicted on the next request with that token. No background pruning. `_login_attempts` also never prunes IPs that haven't retried. Over time with many logins, this leaks memory.
+**Overall verdict: MEDIUM CONCERNS — the highest-risk backend issues found in this review have been fixed; remaining server concerns are maintainability and test quality.**
 
 ### Medium Severity
 
@@ -66,20 +52,6 @@ This single handler does: UUID generation, population resolution, adapter select
 **File:** `src/reformlab/server/routes/populations.py`
 
 Contains file I/O, profiling statistics (histograms, percentiles), evidence classification mapping, upload handling, and comparison logic. `_scan_populations_with_origin` alone is ~230 lines with duplicated parsing logic for folder-based and file-based populations (lines 294–517). Domain logic that belongs in the data layer, not in route handlers.
-
-#### Inconsistent error format
-
-The project convention is `{"what": str, "why": str, "fix": str}` via `HTTPException(detail={...})`. However:
-
-- `data_fusion.py` has multiple bare string `detail=` responses for validation failures
-- `data_fusion.py` returns `JSONResponse` directly with a non-standard `"error"` key for pipeline failures
-- `populations.py` line 168 (`_map_to_canonical_evidence`) returns a bare string detail
-
-#### Missing input validation on Pydantic models
-
-- `RunRequest.start_year` / `end_year` have no bounds validation — `start_year=9999, end_year=1` is accepted
-- `population_id` is not validated for path-traversal characters at the Pydantic level (the resolver does it later, but validation should happen at the boundary)
-- `ExportRequest.run_id` has no format validation
 
 #### Global mutable singleton pattern is fragile
 
@@ -91,9 +63,18 @@ Uses module-level `_adapter`, `_result_store`, etc. with `global` statements. Te
 
 - **`test_api.py` — weak assertions:** Tests for `TestTemplateRoutes::test_list_templates` (lines 83–89), `TestPopulationRoutes::test_list_populations` (lines 117–124), and `TestScenarioRoutes::test_list_scenarios` (lines 143–149) only check `status == 200` and field presence. An empty `{"templates": []}` would pass.
 - **Conditional logic hides failures:** `test_api.py::TestScenarioDetail::test_get_scenario_after_create_returns_scenario_response` (lines 367–411) accepts `200 OR 404 OR 422`. The test never actually validates the success path.
-- **Remaining error path test gaps:** `_check_memory_preflight` still lacks a warning-path test. Direct `run_id` path-parameter traversal coverage is still thin, although POST export body validation now rejects traversal-style run IDs and auth rate limiting now has explicit 5-failures-then-429 coverage.
+- **Remaining error path test gaps:** Direct `run_id` path-parameter traversal coverage is still thin. POST export body validation now rejects traversal-style run IDs, auth rate limiting now has explicit 5-failures-then-429 coverage, and `_check_memory_preflight` now has warning-path coverage.
 - **Export route tests are split:** `tests/server/test_results.py` mostly covers export error paths, while `tests/server/test_exports_integration.py` does cover CSV/Parquet success paths with actual `PanelOutput` data. Keep both suites in sync when export behavior changes.
 - **Over-mocking:** Several server integration tests create `SimulationResult` with a loose `MagicMock()` manifest. `test_indicators_integration.py` is one example; the same pattern also appears in export, cache/disk loading, decisions, and portfolio comparison tests. Any access to an unexpected manifest attribute silently returns a new `MagicMock`, masking bugs.
+
+### Backend Items Fixed Since Initial Review
+
+- `run_simulation` has been decomposed into focused helper functions for dispatch validation, adapter/population resolution, execution, persistence, trust warnings, and response construction.
+- Auth now prunes expired sessions and stale login-attempt buckets.
+- `RunRequest` and `ExportRequest` now validate boundary inputs for year ranges and traversal-style identifiers.
+- Data-fusion and population evidence errors now follow the standard structured API error shape.
+- Fuel-price injection is extracted and covered for success and failure paths.
+- Memory preflight now has explicit warning-path coverage and returns warning severity for non-blocking memory risk.
 
 ---
 
@@ -168,10 +149,8 @@ AppContext maintains both `activeScenario: WorkspaceScenario` (new) AND legacy `
 
 ### Coverage Gaps
 
-- `discrete_choice/step.py` silent exception handler — no test coverage
 - Direct route-parameter traversal coverage for `run_id` endpoints is still thin
 - Frontend chart components — presence-only tests, no behavioral assertions
-- `_check_memory_preflight` — no test for the warning path
 
 ### Overall Assessment
 
@@ -183,29 +162,30 @@ AppContext maintains both `activeScenario: WorkspaceScenario` (new) AND legacy `
 
 ## Priority Fix List
 
-### Production Risk
+### Done (this review cycle)
 
-| Priority | Issue | Location | Status | Impact |
-|----------|-------|----------|--------|--------|
-| 1 | Add input validation to `RunRequest` and export run IDs | `src/reformlab/server/models.py` | Started | Rejects nonsensical years and traversal-style IDs at the boundary |
-| 2 | Fix auth session and login-attempt pruning | `src/reformlab/server/auth.py` | Started | Prevents unbounded in-memory growth under repeated login traffic |
-| 3 | Decompose `run_simulation` persistence/execution branches | `src/reformlab/server/routes/runs.py` | Started | Reduces bug risk around run metadata, manifests, and response construction |
-| 4 | Consistent error format across routes | `data_fusion.py`, `populations.py` | Open | Preserves API error contract for frontend handling |
-| 5 | Extract + test fuel price injection | `src/reformlab/discrete_choice/step.py` | Open | Avoids silent domain behavior changes when exogenous data injection fails |
+| # | Issue | Status | Notes |
+|---|-------|--------|-------|
+| 6 | Add direct `run_id` route-parameter traversal tests | Done | 16 parametrized tests added to `tests/server/test_results.py` covering GET/DELETE/export paths |
+| 7 | Strengthen weak API list/detail assertions | Done | Lists assert minimum counts; structure tests no longer skip on empty; scenarios validate shape |
+| 8 | Replace conditional success-path assertions | Done | Scenario detail test now asserts 200 on success; only skips for known registry integrity hash mismatch |
+| 9 | Replace CSS class assertions with behavioral tests | Partial | Badge component gets `data-variant` attr; ScenarioCard tests use `toHaveAttribute` instead of `toHaveClass`. Grid-class tests kept — only way to verify layout intent in JSDOM |
+| 10 | Fix mock data type mismatches | Done | `mobile-layouts.test.tsx` now uses valid `PopulationLibraryItem` enum values and includes `access_mode`/`created_date` |
 
-### Maintainability
+### In Progress (quick-specs, being implemented)
 
-| Priority | Issue | Location | Status | Impact |
-|----------|-------|----------|--------|--------|
-| 6 | Split AppContext into focused contexts | `frontend/src/contexts/AppContext.tsx` | Open | Reduces broad re-renders and state coupling |
-| 7 | Consolidate dual scenario systems | `frontend/src/contexts/AppContext.tsx` | Open | Removes sync bugs between old/new scenario state |
-| 8 | Extract `populations.py` domain logic to data layer | `src/reformlab/server/routes/populations.py` | Open | Separates file scanning, evidence mapping, profiling, and route concerns |
+| # | Issue | Spec |
+|---|-------|------|
+| 5 | Extract `PoliciesStageScreen` dialog/composition state | `spec-extract-policies-screen-dialog-state.md` — 3 hooks (`usePortfolioSaveDialog`, `usePortfolioCloneDialog`, `usePortfolioLoadDialog`) extracting 10+ useState calls; ~150-200 line reduction; 37 existing tests remain unchanged |
+| 11 | Add behavioral assertions to chart tests | `spec-chart-behavioral-assertions.md` — SVG element assertions (`<rect>`, `<path>` counts) + companion table checks across 4 chart test files; no prod code changes |
 
-### Test Quality
+### Needs Epic Story (architectural refactors)
 
-| Priority | Issue | Location | Status | Impact |
-|----------|-------|----------|--------|--------|
-| 9 | Add auth rate-limit, run-ID traversal, and memory-warning tests | Server tests | Started | Covers the highest-risk untested API branches |
-| 10 | Replace CSS class assertions with behavioral tests | Frontend test files | Open | Reduces false coverage and Tailwind-coupled tests |
-| 11 | Fix mock data type mismatches | `mobile-layouts.test.tsx` | Open | Prevents impossible population metadata from passing tests |
-| 12 | Add behavioral assertions to chart tests | `DistributionalChart.test.tsx` etc. | Open | Ensures charts render data, not only headings |
+These items are cross-cutting refactors with high blast radius. Each needs a proper story with acceptance criteria, migration plan, and regression testing.
+
+| # | Issue | Location | Scope | Notes |
+|---|-------|----------|-------|-------|
+| 1 | Extract `populations.py` domain logic to data layer | `src/reformlab/server/routes/populations.py` (1,357 lines) | Large | Creates new service module; moves ~500 lines of file scanning (`_scan_populations_with_origin` ~230 lines with duplicated parsing), evidence classification mapping, profiling statistics (histograms, percentiles), and comparison logic out of route handlers. Upload handling stays in route. |
+| 2 | Simplify global mutable singleton dependencies | `src/reformlab/server/dependencies.py` | Large | Module-level `global` singletons (`_adapter`, `_result_store`, etc.) force tests to do both `monkeypatch.setattr` on the module AND `app.dependency_overrides` on FastAPI DI. Replace with a proper DI pattern (e.g. FastAPI `Depends` all the way down, or a container). Touches all server test fixtures. |
+| 3 | Split AppContext into focused contexts | `frontend/src/contexts/AppContext.tsx` (~880 lines, ~50 fields) | Large | Current single context causes all consumers to re-render on any state change. Split into AuthContext, RoutingContext, ScenarioContext, DataContext. Every component using `useApp()` needs migration. Items 3 and 4 are tightly coupled — consider doing them together or 3 before 4. |
+| 4 | Consolidate dual scenario systems | `frontend/src/contexts/AppContext.tsx` | Large | `activeScenario: WorkspaceScenario` (new) coexists with legacy `scenarios: Scenario[]` + `selectedScenarioId` + `cloneScenario`/`deleteScenario`. The `startRun` callback still operates on the legacy system. Depends on item 3 (split first, then consolidate within ScenarioContext). |
