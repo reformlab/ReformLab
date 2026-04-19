@@ -43,7 +43,7 @@ const exogenousDimension: ComparisonDimension<string> = {
 };
 
 // Auto-register on module load
-import { DimensionRegistry } from "./DimensionRegistry";
+import * as DimensionRegistry from "./DimensionRegistry";
 
 DimensionRegistry.register(exogenousDimension);
 

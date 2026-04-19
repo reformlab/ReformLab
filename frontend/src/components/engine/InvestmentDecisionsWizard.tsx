@@ -277,7 +277,7 @@ export function InvestmentDecisionsWizard({ engineConfig, onUpdateEngineConfig }
             max={0}
             step={0.1}
             value={[tasteParams.priceSensitivity]}
-            onChange={([v]) => handleTasteParameterChange("priceSensitivity", v!)}
+            onValueChange={([v]) => handleTasteParameterChange("priceSensitivity", v!)}
             aria-label="Price sensitivity"
           />
           <p className="text-xs text-slate-500">Negative: households prefer lower prices</p>
@@ -294,7 +294,7 @@ export function InvestmentDecisionsWizard({ engineConfig, onUpdateEngineConfig }
             max={0}
             step={0.1}
             value={[tasteParams.rangeAnxiety]}
-            onChange={([v]) => handleTasteParameterChange("rangeAnxiety", v!)}
+            onValueChange={([v]) => handleTasteParameterChange("rangeAnxiety", v!)}
             aria-label="Range anxiety"
           />
           <p className="text-xs text-slate-500">Negative: households dislike limited range</p>
@@ -311,7 +311,7 @@ export function InvestmentDecisionsWizard({ engineConfig, onUpdateEngineConfig }
             max={3}
             step={0.1}
             value={[tasteParams.envPreference]}
-            onChange={([v]) => handleTasteParameterChange("envPreference", v!)}
+            onValueChange={([v]) => handleTasteParameterChange("envPreference", v!)}
             aria-label="Environmental preference"
           />
           <p className="text-xs text-slate-500">Positive: households prefer eco-friendly options</p>

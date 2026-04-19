@@ -232,6 +232,7 @@ export function PopulationUploadZone({ onClose, onConfirm }: PopulationUploadZon
       trust_status: "exploratory",
       column_count: report.column_count,
       created_date: new Date().toISOString(),
+      is_synthetic: true,
     };
     onConfirm(population);
   }

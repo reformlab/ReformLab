@@ -120,7 +120,7 @@ const logitModelRequiredCheck: ValidationCheck = {
     }
     const model = ctx.scenario?.engineConfig.logitModel;
     const allowedModels = ["multinomial_logit", "nested_logit", "mixed_logit"] as const;
-    const hasValidModel = model !== null && allowedModels.includes(model);
+    const hasValidModel = model != null && allowedModels.includes(model);
     if (!hasValidModel) {
       return {
         passed: false,

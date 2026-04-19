@@ -118,7 +118,7 @@ function PopulationCard({
           {(population.canonical_origin === "open-official" ||
             population.canonical_origin === "synthetic-public") && (
             <SyntheticBadge
-              origin={population.canonical_origin}
+              canonicalOrigin={population.canonical_origin}
               isSynthetic={population.is_synthetic}
             />
           )}

@@ -105,6 +105,7 @@ export function PopulationStageScreen({ onExplorerPopulationChange }: Population
             trust_status: "exploratory",
             column_count: dataFusionResult.summary.column_count,
             created_date: new Date().toISOString(),
+            is_synthetic: true,
           },
         ]
       : [];
