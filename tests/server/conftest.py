@@ -15,8 +15,9 @@ def _cleanup_test_registry() -> None:
     Removes leftover portfolios and templates that reference custom policy types
     which may not be registered in all test contexts.
     """
-    from reformlab.server.dependencies import get_registry
     import shutil
+
+    from reformlab.server.dependencies import get_registry
 
     registry = get_registry()
     registry_path = registry.path
@@ -42,9 +43,12 @@ def _cleanup_test_registry() -> None:
         "second-portfolio",
     ]
 
-    # Also clean up any rest-smoke-* templates
+    # Also clean up dynamically named test entries from previous interrupted runs.
     for entry in registry_path.iterdir():
-        if entry.is_dir() and entry.name.startswith("rest-smoke-"):
+        if entry.is_dir() and (
+            entry.name.startswith("rest-smoke-")
+            or entry.name.startswith("test-unavail-rt-")
+        ):
             shutil.rmtree(entry)
 
     for name in test_names:

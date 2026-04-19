@@ -166,8 +166,11 @@ def _map_to_canonical_evidence(
     else:
         raise HTTPException(
             status_code=422,
-            detail=f"Unknown legacy origin: {legacy_origin!r}. "
-                    "Valid values: built-in, generated, uploaded"
+            detail={
+                "what": "Unknown population origin",
+                "why": f"Legacy origin {legacy_origin!r} is not recognized",
+                "fix": "Use one of: built-in, generated, uploaded",
+            },
         )
 
 

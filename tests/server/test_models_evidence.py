@@ -236,7 +236,9 @@ class TestOriginMappingFunction:
             _map_to_canonical_evidence("unknown")  # type: ignore[arg-type]
 
         assert exc_info.value.status_code == 422
-        assert "Unknown legacy origin" in exc_info.value.detail
+        assert exc_info.value.detail["what"] == "Unknown population origin"
+        assert "unknown" in exc_info.value.detail["why"]
+        assert "built-in" in exc_info.value.detail["fix"]
 
 
 # =============================================================================

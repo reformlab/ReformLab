@@ -97,6 +97,61 @@ class TestRuntimeSupportCheck:
 
 
 # =============================================================================
+# Test Memory Preflight Check
+# =============================================================================
+
+
+class TestMemoryPreflightCheck:
+    """Tests for memory preflight warning behavior."""
+
+    def test_memory_warning_is_non_blocking_warning(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A high-memory estimate is surfaced as a preflight warning."""
+        import reformlab.interfaces.api as api
+        from reformlab.governance.memory import MemoryEstimate
+        from reformlab.interfaces.api import MemoryCheckResult, ScenarioConfig
+        from reformlab.server.validation import _check_memory_preflight
+
+        def fake_check_memory_requirements(
+            scenario_config: ScenarioConfig,
+        ) -> MemoryCheckResult:
+            assert scenario_config.start_year == 2025
+            assert scenario_config.end_year == 2030
+            return MemoryCheckResult(
+                should_warn=True,
+                estimate=MemoryEstimate(
+                    population_size=10_000_000,
+                    projection_years=5,
+                    estimated_bytes=16 * 1024**3,
+                    available_bytes=8 * 1024**3,
+                    threshold_bytes=12 * 1024**3,
+                ),
+                message="Estimated 16.0 GB exceeds available memory",
+            )
+
+        monkeypatch.setattr(
+            api, "check_memory_requirements", fake_check_memory_requirements
+        )
+
+        request = PreflightRequest(
+            scenario={
+                "portfolioName": "test-portfolio",
+                "populationIds": ["fr-synthetic-2024"],
+                "engineConfig": {"startYear": 2025, "endYear": 2030},
+            },
+            runtime_mode="live",
+        )
+        result = _check_memory_preflight(request)
+
+        assert result.id == "memory-preflight"
+        assert result.passed is False
+        assert result.severity == "warning"
+        assert "Memory warning" in result.message
+        assert "16.0 GB" in result.message
+
+
+# =============================================================================
 # Test Population-Executable Check
 # =============================================================================
 
@@ -368,10 +423,9 @@ class TestPortfolioRuntimeAvailabilityValidation:
         import reformlab.templates.vehicle_malus  # noqa: F401
         from reformlab.server.dependencies import get_registry
         from reformlab.server.validation import _check_portfolio_runtime_availability
-        from reformlab.templates.portfolios.portfolio import PolicyPortfolio, PolicyConfig
+        from reformlab.templates.portfolios.portfolio import PolicyConfig, PolicyPortfolio
         from reformlab.templates.schema import (
             CarbonTaxParameters,
-            FeebateParameters,
             SubsidyParameters,
         )
         from reformlab.templates.vehicle_malus.compute import VehicleMalusParameters
@@ -413,19 +467,21 @@ class TestPortfolioRuntimeAvailabilityValidation:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """AC-4: Portfolio with unavailable policy type fails validation with error message."""
+        from dataclasses import dataclass
+
         import reformlab.templates.subsidy  # noqa: F401
         from reformlab.server.dependencies import get_registry
         from reformlab.server.validation import _check_portfolio_runtime_availability
         from reformlab.templates.portfolios.portfolio import PolicyConfig, PolicyPortfolio
-        from reformlab.templates.schema import PolicyType, SubsidyParameters
+        from reformlab.templates.schema import (
+            SubsidyParameters,
+            register_policy_type,
+        )
 
         # Create a custom policy type that is NOT live_ready
-        from reformlab.templates.schema import register_policy_type
-
         custom_type = register_policy_type("test_unavailable_type")
 
         # Create a PolicyParameters subclass for testing
-        from dataclasses import dataclass, field
 
         @dataclass(frozen=True)
         class TestUnavailableParameters(SubsidyParameters):
@@ -518,12 +574,16 @@ class TestPortfolioRuntimeAvailabilityValidation:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """AC-4: Error message identifies all unavailable policies."""
+        from dataclasses import dataclass
+
         from reformlab.server.dependencies import get_registry
         from reformlab.server.validation import _check_portfolio_runtime_availability
         from reformlab.templates.portfolios.portfolio import PolicyConfig, PolicyPortfolio
-        from reformlab.templates.schema import PolicyType, register_policy_type
-        from reformlab.templates.schema import SubsidyParameters, register_custom_template
-        from dataclasses import dataclass
+        from reformlab.templates.schema import (
+            SubsidyParameters,
+            register_custom_template,
+            register_policy_type,
+        )
 
         # Register two unavailable policy types
         type1 = register_policy_type("unavailable_type_1")

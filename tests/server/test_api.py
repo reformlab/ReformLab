@@ -133,19 +133,20 @@ class TestTemplateRoutes:
         data = response.json()
         assert "templates" in data
         assert isinstance(data["templates"], list)
+        assert len(data["templates"]) >= 8, "Expected at least 8 built-in templates"
 
     def test_list_templates_structure(
         self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
         response = client.get("/api/templates", headers=auth_headers)
         data = response.json()
-        if data["templates"]:
-            item = data["templates"][0]
-            assert "id" in item
-            assert "name" in item
-            assert "type" in item
-            assert "parameter_count" in item
-            assert isinstance(item["parameter_count"], int)
+        assert data["templates"], "Template list must not be empty"
+        item = data["templates"][0]
+        assert "id" in item
+        assert "name" in item
+        assert "type" in item
+        assert "parameter_count" in item
+        assert isinstance(item["parameter_count"], int)
 
     def test_get_template_not_found(
         self, client: TestClient, auth_headers: dict[str, str]
@@ -167,20 +168,21 @@ class TestPopulationRoutes:
         data = response.json()
         assert "populations" in data
         assert isinstance(data["populations"], list)
+        assert len(data["populations"]) >= 1, "Expected at least 1 built-in population"
 
     def test_list_populations_structure(
         self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
         response = client.get("/api/populations", headers=auth_headers)
         data = response.json()
-        if data["populations"]:
-            item = data["populations"][0]
-            assert "id" in item
-            assert "name" in item
-            assert "households" in item
-            assert isinstance(item["households"], int)
-            assert "source" in item
-            assert "year" in item
+        assert data["populations"], "Population list must not be empty"
+        item = data["populations"][0]
+        assert "id" in item
+        assert "name" in item
+        assert "households" in item
+        assert isinstance(item["households"], int)
+        assert "source" in item
+        assert "year" in item
 
 
 class TestScenarioRoutes:
@@ -194,6 +196,10 @@ class TestScenarioRoutes:
         data = response.json()
         assert "scenarios" in data
         assert isinstance(data["scenarios"], list)
+        # Scenarios are user-created — empty list is valid, but shape must be correct
+        for scenario in data["scenarios"]:
+            assert "name" in scenario
+            assert "policy_type" in scenario
 
     def test_get_scenario_not_found(
         self, client: TestClient, auth_headers: dict[str, str]
@@ -412,12 +418,7 @@ class TestScenarioDetail:
     def test_get_scenario_after_create_returns_scenario_response(
         self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
-        """Create a scenario via POST then GET it.
-
-        The registry's hash integrity check may prevent loading in some
-        environments. This test accepts either 200 (success with correct fields)
-        or 404 with structured error (registry integrity failure).
-        """
+        """Create a scenario via POST then GET it back — verify round-trip."""
         create_response = client.post(
             "/api/scenarios",
             headers=auth_headers,
@@ -437,23 +438,22 @@ class TestScenarioDetail:
             "/api/scenarios/test-detail-scenario-17-6",
             headers=auth_headers,
         )
-        if response.status_code == 200:
-            data = response.json()
-            assert data["name"] == "test-detail-scenario-17-6"
-            assert data["policy_type"] == "carbon_tax"
-            assert "policy" in data
-            assert "year_schedule" in data
-        else:
-            # Registry integrity issue — verify error is structured
-            assert response.status_code in (404, 422)
+        if response.status_code == 404:
             body = response.json()
-            # HTTPException wraps in "detail"; global handlers put keys at top level
-            detail = body.get("detail", body)
-            if isinstance(detail, dict):
-                assert set(detail.keys()) >= {"what", "why", "fix"}
-            else:
-                # String detail from unhandled error — just ensure we got a response
-                assert detail is not None
+            detail = body.get("detail", body) if isinstance(body, dict) else body
+            if isinstance(detail, dict) and "integrity" in detail.get("what", "").lower():
+                pytest.skip("Registry integrity check prevents round-trip in test")
+            # Non-integrity 404 is a real failure
+            pytest.fail(f"Unexpected 404: {response.text}")
+        assert response.status_code == 200, (
+            f"GET after successful POST should return 200, got {response.status_code}: "
+            f"{response.text}"
+        )
+        data = response.json()
+        assert data["name"] == "test-detail-scenario-17-6"
+        assert data["policy_type"] == "carbon_tax"
+        assert "policy" in data
+        assert "year_schedule" in data
 
     def test_get_scenario_not_found_returns_404_with_structured_error(
         self, client: TestClient, auth_headers: dict[str, str]

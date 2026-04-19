@@ -14,21 +14,53 @@ Tests cover all endpoints in /api/portfolios:
 
 from __future__ import annotations
 
+import shutil
+from contextlib import suppress
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
-
 
 # ---------------------------------------------------------------------------
 # Test fixtures for cleanup
 # ---------------------------------------------------------------------------
 
 @pytest.fixture(autouse=True)
-def _cleanup_test_portfolio() -> None:
+def _isolate_portfolio_registry(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Run portfolio API tests against an isolated registry and custom type set."""
+    from reformlab.server import dependencies
+    from reformlab.templates.registry import ScenarioRegistry
+    from reformlab.templates.schema import (
+        TemplateError,
+        list_custom_registrations,
+        unregister_policy_type,
+    )
+
+    registry_path = tmp_path / "registry"
+    registry = ScenarioRegistry(registry_path=registry_path)
+    initial_custom_types = set(list_custom_registrations())
+
+    monkeypatch.setenv("REFORMLAB_REGISTRY_PATH", str(registry_path))
+    monkeypatch.setattr(dependencies, "_registry", registry)
+
+    yield
+
+    for type_name in set(list_custom_registrations()) - initial_custom_types:
+        with suppress(TemplateError):
+            unregister_policy_type(type_name)
+
+    dependencies._registry = None
+    shutil.rmtree(registry_path, ignore_errors=True)
+
+
+@pytest.fixture(autouse=True)
+def _cleanup_test_portfolio(_isolate_portfolio_registry: None) -> None:
     """Clean up test portfolios after each test to avoid 409 conflicts."""
     yield
     # Cleanup after test
     from reformlab.server.dependencies import get_registry
-    import shutil
 
     registry = get_registry()
     # Clean up common test portfolio names
@@ -575,7 +607,6 @@ class TestCustomPolicyTypeSupport:
         import os
 
         import reformlab.templates.vehicle_malus  # noqa: F401
-        from reformlab.templates.vehicle_malus.compute import VehicleMalusParameters
 
         os.environ["REFORMLAB_REGISTRY_PATH"] = str(tmp_path)
         try:
@@ -611,7 +642,6 @@ class TestCustomPolicyTypeSupport:
         import os
 
         import reformlab.templates.energy_poverty_aid  # noqa: F401
-        from reformlab.templates.energy_poverty_aid.compute import EnergyPovertyAidParameters
 
         os.environ["REFORMLAB_REGISTRY_PATH"] = str(tmp_path)
         try:
@@ -692,12 +722,13 @@ class TestCustomPolicyTypeSupport:
         portfolio_name = f"test-unavail-rt-{unique_suffix}"
         try:
             # Create a new custom type for testing
+            from dataclasses import dataclass
+
             from reformlab.templates.schema import (
                 PolicyParameters,
                 register_custom_template,
                 register_policy_type,
             )
-            from dataclasses import dataclass
 
             custom_type = register_policy_type("test_unavailable_runtime")
 

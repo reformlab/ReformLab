@@ -313,12 +313,25 @@ def _check_memory_preflight(request: PreflightRequest) -> ValidationCheckResult:
         )
 
     try:
+        # Resolve population path so memory estimate uses actual row count
+        population_path = None
+        if request.population_id:
+            try:
+                from reformlab.server.dependencies import get_population_resolver
+
+                resolver = get_population_resolver()
+                resolved = resolver.resolve(request.population_id)
+                population_path = resolved.data_path
+            except Exception:
+                pass  # Fall back to default estimate
+
         # Build scenario config from request
         scenario_config = ScenarioConfig(
             template_name=request.template_name or "",
             policy={},
             start_year=engine_config.get("startYear", 2025),
             end_year=engine_config.get("endYear", 2030),
+            population_path=population_path,
         )
 
         memory_result = check_memory_requirements(scenario_config)
@@ -327,8 +340,8 @@ def _check_memory_preflight(request: PreflightRequest) -> ValidationCheckResult:
             return ValidationCheckResult(
                 id="memory-preflight",
                 label="Memory requirements",
-                passed=True,  # Warning doesn't block execution
-                severity="error",
+                passed=False,
+                severity="warning",
                 message=f"Memory warning: {memory_result.message}",
             )
 

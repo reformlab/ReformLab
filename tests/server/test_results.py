@@ -340,3 +340,67 @@ class TestExportParquet:
         tmp_store.save_metadata("evicted", _make_metadata("evicted"))
         response = client_with_store.get("/api/results/evicted/export/parquet", headers=auth_headers)
         assert response.status_code == 409
+
+
+# ---------------------------------------------------------------------------
+# Path traversal — run_id as path parameter
+# ---------------------------------------------------------------------------
+
+
+class TestRunIdPathTraversal:
+    """Verify that path-traversal run_ids in URL path parameters are rejected."""
+
+    TRAVERSAL_IDS = [
+        "../etc/passwd",
+        "..%2Fetc%2Fpasswd",
+        "run-001/../../secrets",
+        "....//....//etc",
+    ]
+
+    @pytest.mark.parametrize("bad_id", TRAVERSAL_IDS)
+    def test_get_result_rejects_traversal(
+        self,
+        client_with_store: TestClient,
+        auth_headers: dict[str, str],
+        bad_id: str,
+    ) -> None:
+        response = client_with_store.get(
+            f"/api/results/{bad_id}", headers=auth_headers
+        )
+        assert response.status_code in (400, 404)
+
+    @pytest.mark.parametrize("bad_id", TRAVERSAL_IDS)
+    def test_delete_result_rejects_traversal(
+        self,
+        client_with_store: TestClient,
+        auth_headers: dict[str, str],
+        bad_id: str,
+    ) -> None:
+        response = client_with_store.delete(
+            f"/api/results/{bad_id}", headers=auth_headers
+        )
+        assert response.status_code in (400, 404)
+
+    @pytest.mark.parametrize("bad_id", TRAVERSAL_IDS)
+    def test_csv_export_rejects_traversal(
+        self,
+        client_with_store: TestClient,
+        auth_headers: dict[str, str],
+        bad_id: str,
+    ) -> None:
+        response = client_with_store.get(
+            f"/api/results/{bad_id}/export/csv", headers=auth_headers
+        )
+        assert response.status_code in (400, 404)
+
+    @pytest.mark.parametrize("bad_id", TRAVERSAL_IDS)
+    def test_parquet_export_rejects_traversal(
+        self,
+        client_with_store: TestClient,
+        auth_headers: dict[str, str],
+        bad_id: str,
+    ) -> None:
+        response = client_with_store.get(
+            f"/api/results/{bad_id}/export/parquet", headers=auth_headers
+        )
+        assert response.status_code in (400, 404)
