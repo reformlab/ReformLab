@@ -141,6 +141,8 @@ function mapTemplate(item: TemplateListItem): Template {
     // Story 24.1 / AC-1: Include runtime availability metadata in mapping
     runtime_availability: item.runtime_availability,
     availability_reason: item.availability_reason,
+    // Story 25.1 / Task 2.4: Pass category_id through mapping
+    category_id: item.category_id,
   };
 }
 

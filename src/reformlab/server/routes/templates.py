@@ -26,6 +26,17 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# Story 25.1 / Task 1.6: Type-to-category mapping for templates
+TYPE_TO_CATEGORY: dict[str, str | None] = {
+    "carbon-tax": "carbon_emissions",
+    "carbon_tax": "carbon_emissions",  # API uses underscore format
+    "vehicle_malus": "vehicle_emissions",
+    "energy_poverty_aid": "income",
+    # subsidy, rebate, feebate → None intentionally (may apply to multiple categories)
+    # These will appear in "Other" group until proper metadata is added in 25.2-25.3
+}
+
+
 # Story 24.1 / AC-1: Live-ready policy types (from Epic 23)
 # Story 24.2: Added vehicle_malus and energy_poverty_aid to live-ready types
 LIVE_READY_TYPES = {
@@ -93,6 +104,9 @@ def _template_to_list_item(
         param_count = len(params)
         param_groups = list(params.keys())
 
+    # Story 25.1 / Task 1.6: Map policy type to category
+    category_id = TYPE_TO_CATEGORY.get(policy_type)
+
     return TemplateListItem(
         id=name,
         name=getattr(template, "name", name),
@@ -103,6 +117,7 @@ def _template_to_list_item(
         is_custom=is_custom,
         runtime_availability=runtime_availability,
         availability_reason=availability_reason,
+        category_id=category_id,
     )
 
 
@@ -224,6 +239,9 @@ async def list_templates() -> dict[str, list[TemplateListItem]]:
         runtime_availability, availability_reason = _classify_runtime_availability(
             type_name, is_builtin=is_builtin_custom
         )
+        # Story 25.1 / Task 1.6: Map policy type to category
+        category_id = TYPE_TO_CATEGORY.get(type_name)
+
         items.append(
             TemplateListItem(
                 id=type_name,
@@ -235,6 +253,7 @@ async def list_templates() -> dict[str, list[TemplateListItem]]:
                 is_custom=True,
                 runtime_availability=runtime_availability,
                 availability_reason=availability_reason,
+                category_id=category_id,
             )
         )
 
@@ -281,6 +300,8 @@ async def get_template(name: str) -> TemplateDetailResponse:
         runtime_availability, availability_reason = _classify_runtime_availability(
             name, is_builtin=is_builtin_custom
         )
+        # Story 25.1 / Task 1.6: Map policy type to category
+        category_id = TYPE_TO_CATEGORY.get(name)
         return TemplateDetailResponse(
             id=name,
             name=name,
@@ -291,6 +312,7 @@ async def get_template(name: str) -> TemplateDetailResponse:
             is_custom=True,
             runtime_availability=runtime_availability,
             availability_reason=availability_reason,
+            category_id=category_id,
             default_policy=default_policy,
         )
 

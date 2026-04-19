@@ -34,8 +34,10 @@ import {
   deletePortfolio,
   validatePortfolio,
 } from "@/api/portfolios";
+// Story 25.1 / Task 3.1: Import listCategories
+import { listCategories } from "@/api/categories";
 import { useAppState } from "@/contexts/AppContext";
-import type { PortfolioConflict } from "@/api/types";
+import type { PortfolioConflict, Category } from "@/api/types";
 import { usePortfolioSaveDialog } from "@/hooks/usePortfolioSaveDialog";
 import { usePortfolioLoadDialog } from "@/hooks/usePortfolioLoadDialog";
 import { usePortfolioCloneDialog } from "@/hooks/usePortfolioCloneDialog";
@@ -78,6 +80,9 @@ export function PoliciesStageScreen() {
   const [resolutionStrategy, setResolutionStrategy] = useState<ResolutionStrategy>("error");
   const [conflicts, setConflicts] = useState<PortfolioConflict[]>([]);
   const [validationLoading, setValidationLoading] = useState(false);
+
+  // Story 25.1 / Task 3.1: Categories state
+  const [categories, setCategories] = useState<Category[]>([]);
 
   // Track the portfolio name currently loaded into the composition panel
   const [activePortfolioName, setActivePortfolioName] = useState<string | null>(null);
@@ -208,6 +213,21 @@ export function PoliciesStageScreen() {
       if (validationTimerRef.current) clearTimeout(validationTimerRef.current);
     };
   }, [composition, resolutionStrategy, runValidation]);
+
+  // Story 25.1 / Task 3.1: Fetch categories on mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const cats = await listCategories();
+        setCategories(cats);
+      } catch (err) {
+        console.error("Failed to load categories:", err);
+        // Story 25.1 / AC-6: Non-blocking warning - templates still shown ungrouped
+        setCategories([]); // Empty categories array causes ungrouped display
+      }
+    };
+    void fetchCategories();
+  }, []);
 
   // ============================================================================
   // Portfolio dialog hooks (Task 6.1 through 6.3)
@@ -425,10 +445,12 @@ export function PoliciesStageScreen() {
         {/* Left: Template browser */}
         <div className="rounded-lg border border-slate-200 bg-white p-3 overflow-y-auto min-w-0">
           <h2 className="text-sm font-semibold text-slate-900 mb-2">Policy Templates</h2>
+          {/* Story 25.1 / Task 3.1: Pass categories to PortfolioTemplateBrowser */}
           <PortfolioTemplateBrowser
             templates={templates}
             selectedIds={selectedTemplateIds}
             onToggleTemplate={toggleTemplate}
+            categories={categories}
           />
         </div>
 

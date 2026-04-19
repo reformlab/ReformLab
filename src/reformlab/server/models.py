@@ -189,6 +189,23 @@ class TemplateListItem(BaseModel):
     # Story 24.1 / AC-1: Runtime availability metadata
     runtime_availability: RuntimeAvailability = "live_unavailable"
     availability_reason: str | None = None
+    # Story 25.1 / Task 1.5: Category ID for grouping and filtering
+    category_id: str | None = None
+
+
+class CategoryItem(BaseModel):
+    """Policy category metadata — Story 25.1, AC-1.
+
+    Categories define the data columns a policy operates on, compatible policy
+    types, formula explanations, and descriptions for user understanding.
+    """
+
+    id: str  # e.g., "carbon_emissions", "income"
+    label: str  # Human-readable name, e.g., "Carbon Emissions"
+    columns: list[str]  # Data columns this category operates on
+    compatible_types: list[str]  # Policy types that can use this category
+    formula_explanation: str  # Plain-language formula description
+    description: str  # What this category applies to
 
 
 class TemplateDetailResponse(TemplateListItem):

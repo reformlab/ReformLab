@@ -121,6 +121,18 @@ export interface TemplateListItem {
   // Story 24.1 / AC-1: Runtime availability metadata
   runtime_availability: RuntimeAvailability;
   availability_reason: string | null;
+  // Story 25.1 / Task 2.2: Category ID for grouping and filtering
+  category_id?: string;
+}
+
+// Story 25.1 / Task 2.1: Category type for API responses
+export interface Category {
+  id: string;
+  label: string;
+  columns: string[];
+  compatible_types: string[];
+  formula_explanation: string;
+  description: string;
 }
 
 export interface TemplateDetailResponse extends TemplateListItem {

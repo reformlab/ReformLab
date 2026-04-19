@@ -306,16 +306,29 @@ describe("Story 24.4: Surfaced Policy Packs", () => {
         availability_reason: null,
       };
 
+      const mockCategories = [
+        {
+          id: "vehicle_emissions",
+          label: "Vehicle Emissions",
+          columns: ["vehicle_co2"],
+          compatible_types: ["tax"],
+          formula_explanation: "vehicle_co2 × malus_rate",
+          description: "Applies to vehicle emissions",
+        },
+      ];
+
       const { container } = render(
         <PortfolioTemplateBrowser
           templates={[vehicleMalusTemplate]}
           selectedIds={[]}
           onToggleTemplate={noop}
+          categories={mockCategories}
         />,
       );
 
       // Should not render any availability reason container (amber background div)
-      const reasonBox = container.querySelector('.bg-amber-50.rounded.border');
+      // Exclude the categories warning box by checking for a more specific selector
+      const reasonBox = container.querySelector('button .bg-amber-50');
       expect(reasonBox).not.toBeInTheDocument();
     });
   });
