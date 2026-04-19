@@ -1,0 +1,302 @@
+---
+title: Live Policy Catalog
+description: Supported live-ready policy types and runtime availability
+sidebar:
+  order: 5
+---
+
+# Live Policy Catalog
+
+The ReformLab live policy catalog contains policy packs that are ready for execution through the OpenFisca computation backend. This document lists all live-ready policy types, their parameter schemas, and how to use them.
+
+## Catalog Overview
+
+The live policy catalog surfaced through the `GET /api/templates` API endpoint includes both built-in policy types and custom policy registrations. Each policy pack has a `runtime_availability` status:
+
+- **live_ready**: The policy is fully supported for live execution
+- **live_unavailable**: The policy exists but cannot be executed in live mode (replay mode only)
+
+Policy packs are surfaced from the domain layer through the translation layer implemented in Epic 24. The translation validates policy parameters and ensures compatibility with the OpenFisca adapter interface.
+
+## Live-Ready Policy Types
+
+The following policy types are currently live-ready as of Epic 24:
+
+### Carbon Tax (`carbon_tax`)
+
+A carbon emissions tax with configurable rates and redistribution.
+
+**Parameter Class:** `CarbonTaxParameters`
+
+**Key Fields:**
+- `rate_schedule`: Dict mapping years to tax rates per ton CO2e
+- `redistribution_type`: How revenues are redistributed (`lump_sum`, `per_capita`, etc.)
+- `exemptions`: Tuple of exempt emission categories
+- `covered_categories`: Tuple of categories included in the tax base
+
+**Example:**
+```yaml
+policy_type: carbon_tax
+rate_schedule:
+  2025: 44.6
+  2026: 55.0
+  2027: 65.0
+redistribution_type: lump_sum
+exemptions: []
+covered_categories: [heating_fuel, transport_fuel]
+```
+
+### Subsidy (`subsidy`)
+
+Direct subsidies for households based on income and category eligibility.
+
+**Parameter Class:** `SubsidyParameters`
+
+**Key Fields:**
+- `rate_schedule`: Dict mapping years to subsidy amounts
+- `income_caps`: Dict mapping years to income eligibility ceilings
+- `eligible_categories`: Tuple of household categories that qualify
+
+**Example:**
+```yaml
+policy_type: subsidy
+rate_schedule:
+  2025: 5000.0
+  2026: 4500.0
+income_caps:
+  2025: 45000.0
+  2026: 42000.0
+eligible_categories: [owner_occupier, low_efficiency_home]
+```
+
+### Rebate (`rebate`)
+
+Rebates applied to eligible households or entities.
+
+**Parameter Class:** `RebateParameters`
+
+**Key Fields:**
+- `rate_schedule`: Dict mapping years to rebate amounts
+- `rebate_type`: Rebate distribution type (e.g. `lump_sum`, `progressive_dividend`)
+- `income_weights`: Dict mapping decile names to weight multipliers for progressive distribution
+
+**Example:**
+```yaml
+policy_type: rebate
+rate_schedule:
+  2025: 1000.0
+rebate_type: lump_sum
+income_weights: {}
+```
+
+### Feebate (`feebate`)
+
+Combined fee and rebate system with income thresholds.
+
+**Parameter Class:** `FeebateParameters`
+
+**Key Fields:**
+- `rate_schedule`: Dict mapping years to base rates
+- `pivot_point`: Income pivot point for fee vs rebate eligibility
+- `fee_rate`: Fee rate applied above pivot point
+- `rebate_rate`: Rebate rate applied below pivot point
+
+**Example:**
+```yaml
+policy_type: feebate
+rate_schedule:
+  2025: 50.0
+pivot_point: 50000.0
+fee_rate: 200.0
+rebate_rate: 500.0
+```
+
+### Vehicle Malus (`vehicle_malus`)
+
+Penalty tax on vehicles with high CO2 emissions per kilometer.
+
+**Parameter Class:** `VehicleMalusParameters`
+
+**Availability:** Live-ready since Story 24.2 (Epic 24)
+
+**Key Fields:**
+- `rate_schedule`: Dict mapping years to malus rate per g/km
+- `emission_threshold`: Emission level (g/km) below which no malus applies
+- `malus_rate_per_gkm`: Malus amount per g/km above threshold
+- `threshold_schedule`: Optional year-specific emission thresholds
+
+**Example:**
+```yaml
+policy_type: vehicle_malus
+rate_schedule:
+  2025: 50.0
+  2026: 55.0
+emission_threshold: 118.0
+malus_rate_per_gkm: 50.0
+threshold_schedule:
+  2026: 115.0
+  2027: 110.0
+covered_categories: [passenger_vehicle]
+```
+
+### Energy Poverty Aid (`energy_poverty_aid`)
+
+Targeted aid for households with high energy expenditure relative to income.
+
+**Parameter Class:** `EnergyPovertyAidParameters`
+
+**Availability:** Live-ready since Story 24.2 (Epic 24)
+
+**Key Fields:**
+- `rate_schedule`: Dict mapping years to aid multipliers
+- `income_ceiling`: Maximum income for eligibility
+- `energy_share_threshold`: Minimum energy expenditure as share of income
+- `base_aid_amount`: Base aid amount for eligible households
+- `max_energy_factor`: Maximum multiplier for energy expenditure
+
+**Example:**
+```yaml
+policy_type: energy_poverty_aid
+rate_schedule:
+  2025: 1.0
+income_ceiling: 11000.0
+energy_share_threshold: 0.08
+base_aid_amount: 150.0
+max_energy_factor: 2.0
+```
+
+## Runtime Availability Contract
+
+### Live Mode (Default)
+
+When executing scenarios in live mode (the default), only policies with `runtime_availability="live_ready"` can be executed. Attempts to execute unavailable policies will return a 422 status code.
+
+### Replay Mode
+
+In replay mode, the runtime availability check is bypassed, allowing execution of any policy type. This is useful for:
+- Replaying historical scenarios
+- Testing policies that were live-ready in previous versions
+- Validating policy semantics without live execution requirements
+
+### Determining Availability
+
+Runtime availability is determined by the template's origin:
+- **Built-in template packs** (shipped with ReformLab): Classified based on Epic 24 validation
+- **User-saved scenarios**: Automatically `live_unavailable` (replay only)
+- **Custom policy registrations**: Can be `live_ready` if registered as built-in custom types
+
+## Usage Examples
+
+### Python API Usage
+
+```python
+from reformlab.server.app import create_app
+from fastapi.testclient import TestClient
+
+app = create_app()
+client = TestClient(app)
+
+# Login
+response = client.post("/api/auth/login", json={"password": "your-password"})
+token = response.json()["token"]
+headers = {"Authorization": f"Bearer {token}"}
+
+# Get templates
+response = client.get("/api/templates", headers=headers)
+templates = response.json()["templates"]
+
+# Filter for live-ready surfaced packs
+surfaced_packs = [
+    t for t in templates
+    if t["runtime_availability"] == "live_ready"
+    and t["type"] in ["vehicle_malus", "energy_poverty_aid", "subsidy"]
+]
+```
+
+### Portfolio Composition
+
+```python
+# Create a portfolio with surfaced packs
+portfolio_body = {
+    "name": "climate-transition-portfolio",
+    "description": "Carbon pricing plus targeted support",
+    "policies": [
+        {
+            "name": "carbon-pricing",
+            "policy_type": "carbon_tax",
+            "rate_schedule": {"2025": "44.6"},
+            "exemptions": [],
+            "thresholds": [],
+            "covered_categories": [],
+            "extra_params": {},
+        },
+        {
+            "name": "energy-aid",
+            "policy_type": "energy_poverty_aid",
+            "rate_schedule": {"2026": "150"},
+            "exemptions": [],
+            "thresholds": [],
+            "covered_categories": [],
+            "extra_params": {
+                "income_ceiling": 11000.0,
+                "energy_share_threshold": 0.10,
+                "base_aid_amount": 100.0,
+            },
+        },
+    ],
+    "resolution_strategy": "sum",
+}
+
+response = client.post("/api/portfolios", json=portfolio_body, headers=headers)
+```
+
+### Comparison Workflow
+
+```python
+# Execute baseline and reform scenarios for comparison
+baseline_run = {
+    "template_name": "carbon-tax-2025",
+    "policy": {"rate_schedule": {"2025": 44.6}},
+    "start_year": 2025,
+    "end_year": 2025,
+}
+
+reform_run = {
+    "template_name": "carbon-plus-aid-2025",
+    "policy": {
+        "rate_schedule": {"2025": 50.0},
+        "energy_poverty_aid_rate": 150.0,
+    },
+    "start_year": 2025,
+    "end_year": 2025,
+}
+
+# Compare outcomes
+comparison = client.post("/api/comparison", json={
+    "baseline_run_id": baseline_id,
+    "reform_run_id": reform_id,
+    "welfare_field": "disposable_income",
+    "threshold": 0,
+}, headers=headers)
+```
+
+## Future Expansion
+
+New policy types can be added to the live catalog through:
+
+1. **Domain-layer implementation**: Create compute module and parameter class
+2. **Translation layer**: Add validation function in `computation/translator.py`
+3. **Custom registration**: Register parameter class via `register_policy_type()`
+4. **Catalog validation**: Ensure `runtime_availability="live_ready"` for live execution
+
+See the regression tests in `tests/regression/test_surfaced_packs.py` for examples of how surfaced packs are validated end-to-end.
+
+## References
+
+- **Story 24.1**: Catalog API exposure with runtime_availability metadata
+- **Story 24.2**: Domain-layer live translation for subsidy-family policies
+- **Story 24.3**: Portfolio execution for surfaced packs
+- **Story 24.4**: UX surfacing of packs in workspace catalog
+- **Story 24.5**: Regression coverage and examples (this story)
+
+For API details, see the [API Reference](/api-reference).

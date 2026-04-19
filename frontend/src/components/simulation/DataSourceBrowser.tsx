@@ -3,7 +3,7 @@
 /** Data source browser for the Data Fusion Workbench (Story 17.1, AC-1, AC-2). */
 
 import { useState } from "react";
-import { Search, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, ExternalLink, ChevronDown, ChevronUp, Eye, BarChart3 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
@@ -24,6 +24,8 @@ interface DataSourceBrowserProps {
   sources: Record<string, MockDataSource[]>;
   selectedIds: Array<{ provider: string; dataset_id: string }>;
   onToggleSource: (provider: string, datasetId: string) => void;
+  onPreview?: (provider: string, datasetId: string) => void;
+  onExplore?: (provider: string, datasetId: string) => void;
 }
 
 function isSelected(
@@ -38,6 +40,8 @@ export function DataSourceBrowser({
   sources,
   selectedIds,
   onToggleSource,
+  onPreview,
+  onExplore,
 }: DataSourceBrowserProps) {
   const [query, setQuery] = useState("");
   const [inspectedKey, setInspectedKey] = useState<string | null>(null);
@@ -142,7 +146,33 @@ export function DataSourceBrowser({
                         />
                       </div>
                     </button>
-                    <div className="flex items-center justify-between gap-2 border-t border-slate-100 px-3 py-1.5">
+                    <div className="flex items-center gap-1 border-t border-slate-100 px-3 py-1.5">
+                      {onPreview && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 gap-1 px-2 text-xs text-slate-600"
+                          onClick={(e) => { e.stopPropagation(); onPreview(provider, ds.id); }}
+                          title="Quick Preview"
+                        >
+                          <Eye className="h-3 w-3" />
+                          Preview
+                        </Button>
+                      )}
+                      {onExplore && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 gap-1 px-2 text-xs text-slate-600"
+                          onClick={(e) => { e.stopPropagation(); onExplore(provider, ds.id); }}
+                          title="Full Data Explorer"
+                        >
+                          <BarChart3 className="h-3 w-3" />
+                          Explore
+                        </Button>
+                      )}
                       <Button
                         type="button"
                         variant="ghost"
@@ -152,8 +182,9 @@ export function DataSourceBrowser({
                         aria-expanded={inspectOpen}
                       >
                         {inspectOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                        Inspect columns
+                        Inspect
                       </Button>
+                      <div className="flex-1" />
                       <a
                         href={ds.source_url}
                         target="_blank"

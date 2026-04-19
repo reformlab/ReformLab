@@ -24,7 +24,7 @@ import {
 
 import { toast } from "sonner";
 
-import { AuthError } from "@/api/client";
+import { setOnAuthInvalid } from "@/api/client";
 import { login, logout as apiLogout } from "@/api/auth";
 import { getAuthToken, setAuthToken } from "@/api/client";
 import { createScenario as apiCreateScenario, cloneScenario as apiCloneScenario } from "@/api/scenarios";
@@ -70,7 +70,7 @@ interface AppState {
   // Auth
   isAuthenticated: boolean;
   authLoading: boolean;
-  authenticate: (password: string) => Promise<boolean>;
+  authenticate: (password: string) => Promise<string | null>;
   logout: () => void;
 
   // Stage routing (Story 20.1 — AC-2)
@@ -176,15 +176,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(() => !!getAuthToken());
   const [authLoading, setAuthLoading] = useState(false);
 
-  const authenticate = useCallback(async (password: string) => {
+  // Global 401 handler — any apiFetch 401 forces back to password prompt
+  useEffect(() => {
+    setOnAuthInvalid(() => {
+      setIsAuthenticated(false);
+      initializedRef.current = false;
+    });
+    return () => { setOnAuthInvalid(null); };
+  }, []);
+
+  const authenticate = useCallback(async (password: string): Promise<string | null> => {
     setAuthLoading(true);
     try {
       const response = await login(password);
       setAuthToken(response.token);
       setIsAuthenticated(true);
-      return true;
-    } catch {
-      return false;
+      return null;
+    } catch (err) {
+      return err instanceof Error ? err.message : "Login failed";
     } finally {
       setAuthLoading(false);
     }
@@ -329,6 +338,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [activeStage, isAuthenticated]);
 
   // ============================================================================
+  // API health check — pings /api/health to determine real connectivity
+  // ============================================================================
+
+  const [apiConnected, setApiConnected] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setApiConnected(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const check = async () => {
+      try {
+        const res = await fetch("/api/health", { method: "GET" });
+        if (!cancelled) setApiConnected(res.ok);
+      } catch {
+        if (!cancelled) setApiConnected(false);
+      }
+    };
+
+    // Check immediately on auth, then every 30s
+    check();
+    const id = setInterval(check, 30_000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [isAuthenticated]);
+
+  // ============================================================================
   // Data hooks
   // ============================================================================
 
@@ -418,18 +456,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Fetch data on auth
   useEffect(() => {
     if (isAuthenticated) {
-      refetchPopulations().catch((err) => {
-        if (err instanceof AuthError) {
-          setIsAuthenticated(false);
-          setAuthToken(null);
-        }
-      });
-      refetchTemplates().catch((err) => {
-        if (err instanceof AuthError) {
-          setIsAuthenticated(false);
-          setAuthToken(null);
-        }
-      });
+      refetchPopulations().catch(() => {});
+      refetchTemplates().catch(() => {});
       refetchDataFusionSources().catch(() => {});
       refetchDataFusionMethods().catch(() => {});
       refetchPortfolios().catch(() => {});
@@ -441,9 +469,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (isAuthenticated && !populationsLoading && !templatesLoading) {
       if (populationsMock || templatesMock) {
-        toast.warning("Using sample data — backend API may be unavailable", {
+        toast.warning("Loaded sample data — API returned empty or errored for populations/templates", {
           id: "mock-data-warning",
-          duration: 8000,
+          duration: 10000,
         });
       }
     }
@@ -805,7 +833,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setSelectedComparisonRunIds,
       executionMatrix,
       updateExecutionCell,
-      apiConnected: !populationsMock && !templatesMock,
+      apiConnected,
     }),
     [
       isAuthenticated, authLoading, authenticate, logout,
@@ -826,7 +854,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       selectedPortfolioName, setSelectedPortfolioName,
       selectedComparisonRunIds, setSelectedComparisonRunIds,
       executionMatrix, updateExecutionCell,
-      populationsMock, templatesMock,
+      apiConnected,
     ],
   );
 

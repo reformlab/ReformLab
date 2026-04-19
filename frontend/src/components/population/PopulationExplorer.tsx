@@ -19,7 +19,7 @@ import { PopulationProfiler } from "./PopulationProfiler";
 import { PopulationSummaryView } from "./PopulationSummaryView";
 import { usePopulationPreview, usePopulationProfile } from "@/hooks/useApi";
 import { mockPopulationSummary, mockCrosstabData } from "@/data/mock-population-explorer";
-import type { PopulationCrosstabResponse } from "@/api/types";
+import type { PopulationCrosstabResponse, PopulationPreviewResponse, PopulationProfileResponse } from "@/api/types";
 
 // ============================================================================
 // Types
@@ -29,6 +29,13 @@ export interface PopulationExplorerProps {
   populationId: string | null;
   onBack: () => void;
   onCrosstabRequest?: (id: string, colA: string, colB: string) => void;
+  /** When provided, uses this data instead of fetching via hooks. */
+  externalData?: {
+    preview: PopulationPreviewResponse;
+    profile: PopulationProfileResponse;
+  };
+  /** Label for the back button (defaults to "Back to Library"). */
+  backLabel?: string;
 }
 
 // ============================================================================
@@ -39,10 +46,14 @@ export function PopulationExplorer({
   populationId,
   onBack,
   onCrosstabRequest,
+  externalData,
+  backLabel = "Back to Library",
 }: PopulationExplorerProps) {
   const [crosstabData, setCrosstabData] = useState<PopulationCrosstabResponse | null>(null);
-  const { data: preview } = usePopulationPreview(populationId);
-  const { data: profile } = usePopulationProfile(populationId);
+  const populationPreviewHook = usePopulationPreview(externalData ? null : populationId);
+  const populationProfileHook = usePopulationProfile(externalData ? null : populationId);
+  const preview = externalData?.preview ?? populationPreviewHook.data;
+  const profile = externalData?.profile ?? populationProfileHook.data;
 
   // Reset crosstab when population changes
   useEffect(() => {
@@ -78,10 +89,10 @@ export function PopulationExplorer({
           variant="ghost"
           className="h-8 gap-1.5 text-xs"
           onClick={onBack}
-          aria-label="Back to library"
+          aria-label={backLabel}
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          Back to Library
+          {backLabel}
         </Button>
         <span className="text-slate-300">|</span>
         <span className="text-sm font-semibold text-slate-900">{preview.name}</span>

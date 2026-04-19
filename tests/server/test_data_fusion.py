@@ -479,7 +479,7 @@ class TestGeneratePopulation:
             },
         )
         assert response.status_code == 500
-        data = response.json()
+        data = response.json()["detail"]
         assert "what" in data
         assert "why" in data
         assert "fix" in data

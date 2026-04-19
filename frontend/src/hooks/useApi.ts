@@ -9,7 +9,7 @@ import { listTemplates, getTemplate } from "@/api/templates";
 import { listScenarios as apiListScenarios } from "@/api/scenarios";
 import { runScenario as apiRunScenario } from "@/api/runs";
 import { getIndicators } from "@/api/indicators";
-import { listDataSources, listMergeMethods } from "@/api/data-fusion";
+import { listDataSources, listMergeMethods, getDataSourcePreview, getDataSourceProfile } from "@/api/data-fusion";
 import { listPortfolios as apiListPortfolios, validatePortfolio as apiValidatePortfolio } from "@/api/portfolios";
 import { listResults as apiListResults, deleteResult as apiDeleteResult } from "@/api/results";
 import { AuthError } from "@/api/client";
@@ -76,21 +76,17 @@ export function usePopulations() {
     },
   ];
   const [populations, setPopulations] = useState<PopulationLibraryItem[]>(mockWithEvidence);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const [usingMockData, setUsingMockData] = useState(true);
+  const [usingMockData, setUsingMockData] = useState(false);
 
   const fetch = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const items = await listPopulations();
-      // Story 21.2 / AC6: Pass through all evidence fields from API response
-      if (items.length > 0) {
-        setPopulations(items);
-        setUsingMockData(false);
-      }
-      // If empty, keep mock data as fallback
+      setPopulations(items.length > 0 ? items : []);
+      setUsingMockData(false);
     } catch (err) {
       if (err instanceof AuthError) throw err;
       setError(err instanceof Error ? err : new Error(String(err)));
@@ -109,19 +105,17 @@ export function usePopulations() {
 
 export function useTemplates() {
   const [templates, setTemplates] = useState<Template[]>(mockTemplates);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const [usingMockData, setUsingMockData] = useState(true);
+  const [usingMockData, setUsingMockData] = useState(false);
 
   const fetch = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const items = await listTemplates();
-      if (items.length > 0) {
-        setTemplates(items.map(mapTemplate));
-        setUsingMockData(false);
-      }
+      setTemplates(items.length > 0 ? items.map(mapTemplate) : []);
+      setUsingMockData(false);
     } catch (err) {
       if (err instanceof AuthError) throw err;
       setError(err instanceof Error ? err : new Error(String(err)));
@@ -143,6 +137,9 @@ function mapTemplate(item: TemplateListItem): Template {
     description: item.description,
     parameterGroups: item.parameter_groups,
     is_custom: item.is_custom,
+    // Story 24.1 / AC-1: Include runtime availability metadata in mapping
+    runtime_availability: item.runtime_availability,
+    availability_reason: item.availability_reason,
   };
 }
 
@@ -515,6 +512,56 @@ export function usePopulationCrosstab(id: string | null, colA: string | null, co
   }, [id, colA, colB]);
 
   return { data, loading, error, refetch: fetch };
+}
+
+// ============================================================================
+// Data source explorer hooks
+// ============================================================================
+
+export function useDataSourcePreview(provider: string | null, datasetId: string | null) {
+  const [data, setData] = useState<PopulationPreviewResponse>(() =>
+    mockPopulationPreview
+  );
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!provider || !datasetId) return;
+    setLoading(true);
+    (async () => {
+      try {
+        const result = await getDataSourcePreview(provider, datasetId);
+        if (result) setData(result);
+      } catch (err) {
+        if (err instanceof AuthError) throw err;
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [provider, datasetId]);
+
+  return { data, loading };
+}
+
+export function useDataSourceProfile(provider: string | null, datasetId: string | null) {
+  const [data, setData] = useState<PopulationProfileResponse>(mockPopulationProfile);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!provider || !datasetId) return;
+    setLoading(true);
+    (async () => {
+      try {
+        const result = await getDataSourceProfile(provider, datasetId);
+        if (result) setData(result);
+      } catch (err) {
+        if (err instanceof AuthError) throw err;
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [provider, datasetId]);
+
+  return { data, loading };
 }
 
 export function useValidatePortfolio() {

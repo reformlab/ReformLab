@@ -9,6 +9,8 @@ import type {
   GenerationRequest,
   GenerationResult,
   MergeMethodInfo,
+  PopulationPreviewResponse,
+  PopulationProfileResponse,
 } from "@/api/types";
 
 /** List all available data sources grouped by provider. */
@@ -31,6 +33,33 @@ export async function getDataSourceDetail(
 export async function listMergeMethods(): Promise<MergeMethodInfo[]> {
   const response = await apiFetch<{ methods: MergeMethodInfo[] }>("/api/data-fusion/merge-methods");
   return response.methods;
+}
+
+/** Get a paginated preview of data source rows. */
+export async function getDataSourcePreview(
+  provider: string,
+  datasetId: string,
+  params?: { offset?: number; limit?: number; sort_by?: string; order?: "asc" | "desc" },
+): Promise<PopulationPreviewResponse> {
+  const query = new URLSearchParams();
+  if (params?.offset !== undefined) query.set("offset", String(params.offset));
+  if (params?.limit !== undefined) query.set("limit", String(params.limit));
+  if (params?.sort_by) query.set("sort_by", params.sort_by);
+  if (params?.order) query.set("order", params.order);
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  return apiFetch<PopulationPreviewResponse>(
+    `/api/data-fusion/sources/${provider}/${datasetId}/preview${qs}`,
+  );
+}
+
+/** Get per-column profile statistics for a data source. */
+export async function getDataSourceProfile(
+  provider: string,
+  datasetId: string,
+): Promise<PopulationProfileResponse> {
+  return apiFetch<PopulationProfileResponse>(
+    `/api/data-fusion/sources/${provider}/${datasetId}/profile`,
+  );
 }
 
 /** Execute the population generation pipeline and return the result. */

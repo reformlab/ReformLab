@@ -66,6 +66,18 @@ export function slugify(name: string): string {
 }
 
 // ============================================================================
+// truncateSlug()
+// ============================================================================
+
+/**
+ * Truncate a slug to 64 chars without leaving a trailing hyphen.
+ */
+function truncateSlug(slug: string): string {
+  if (slug.length <= 64) return slug;
+  return slug.slice(0, 64).replace(/-+$/, "");
+}
+
+// ============================================================================
 // generatePortfolioSuggestion()
 // ============================================================================
 
@@ -103,13 +115,13 @@ export function generatePortfolioSuggestion(
   if (composition.length === 2) {
     const slug1 = slugify(composition[0]!.name);
     const slug2 = slugify(composition[1]!.name);
-    return `${slug1}-plus-${slug2}`;
+    return truncateSlug(`${slug1}-plus-${slug2}`);
   }
 
   // 3+ policies: use "first-slug-plus-(N-1)-more" pattern
   const firstSlug = slugify(composition[0]!.name);
   const remainingCount = composition.length - 1;
-  return `${firstSlug}-plus-${remainingCount}-more`;
+  return truncateSlug(`${firstSlug}-plus-${remainingCount}-more`);
 }
 
 // ============================================================================

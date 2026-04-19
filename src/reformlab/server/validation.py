@@ -313,12 +313,25 @@ def _check_memory_preflight(request: PreflightRequest) -> ValidationCheckResult:
         )
 
     try:
+        # Resolve population path so memory estimate uses actual row count
+        population_path = None
+        if request.population_id:
+            try:
+                from reformlab.server.dependencies import get_population_resolver
+
+                resolver = get_population_resolver()
+                resolved = resolver.resolve(request.population_id)
+                population_path = resolved.data_path
+            except Exception:
+                pass  # Fall back to default estimate
+
         # Build scenario config from request
         scenario_config = ScenarioConfig(
             template_name=request.template_name or "",
             policy={},
             start_year=engine_config.get("startYear", 2025),
             end_year=engine_config.get("endYear", 2030),
+            population_path=population_path,
         )
 
         memory_result = check_memory_requirements(scenario_config)
@@ -327,8 +340,8 @@ def _check_memory_preflight(request: PreflightRequest) -> ValidationCheckResult:
             return ValidationCheckResult(
                 id="memory-preflight",
                 label="Memory requirements",
-                passed=True,  # Warning doesn't block execution
-                severity="error",
+                passed=False,
+                severity="warning",
                 message=f"Memory warning: {memory_result.message}",
             )
 
@@ -716,6 +729,108 @@ def _check_runtime_info(request: PreflightRequest) -> ValidationCheckResult:
 
 
 # =============================================================================
+# Story 24.3: Portfolio runtime availability validation
+# =============================================================================
+
+
+def _check_portfolio_runtime_availability(request: PreflightRequest) -> ValidationCheckResult:
+    """Story 24.3 / AC-1, AC-4: Validate portfolio policies are live-ready.
+
+    Checks that all policies in the selected portfolio have runtime_availability='live_ready'.
+    Blocks execution if any policy is unavailable for live execution.
+
+    NOTE: This check only applies to runtime_mode=live. For runtime_mode=replay,
+    availability is bypassed.
+    """
+    # Story 24.3 code review fix: bypass availability check for replay mode
+    if request.runtime_mode == "replay":
+        return ValidationCheckResult(
+            id="portfolio-runtime-availability",
+            label="Portfolio runtime availability",
+            passed=True,
+            severity="error",
+            message="Replay mode: runtime availability bypassed",
+        )
+
+    from reformlab.server.dependencies import get_registry
+    from reformlab.templates.portfolios.portfolio import PolicyPortfolio
+    from reformlab.templates.registry import RegistryError, ScenarioNotFoundError
+
+    portfolio_name = request.scenario.get("portfolioName")
+    if not portfolio_name:
+        return ValidationCheckResult(
+            id="portfolio-runtime-availability",
+            label="Portfolio runtime availability",
+            passed=True,
+            severity="error",
+            message="No portfolio selected",
+        )
+
+    registry = get_registry()
+    try:
+        entry = registry.get(portfolio_name)
+    except (KeyError, ScenarioNotFoundError, RegistryError):
+        return ValidationCheckResult(
+            id="portfolio-runtime-availability",
+            label="Portfolio runtime availability",
+            passed=False,
+            severity="error",
+            message=f"Portfolio '{portfolio_name}' not found in registry",
+        )
+
+    if not isinstance(entry, PolicyPortfolio):
+        return ValidationCheckResult(
+            id="portfolio-runtime-availability",
+            label="Portfolio runtime availability",
+            passed=True,
+            severity="error",
+            message=f"'{portfolio_name}' is not a portfolio",
+        )
+
+    # Check runtime availability for each policy
+    # Runtime availability is determined by policy type
+    # Story 24.2: subsidy, vehicle_malus, energy_poverty_aid are now live_ready
+    from reformlab.server.routes.templates import LIVE_READY_TYPES
+
+    unavailable_policies = []
+    for i, policy_cfg in enumerate(entry.policies):
+        if policy_cfg.policy_type is None:
+            # Story 24.3 code review fix: flag None policy_type as error
+            policy_name = policy_cfg.name or f"policy_{i}"
+            unavailable_policies.append(
+                f"  - policy[{i}]: '{policy_name}' (policy_type is None — malformed portfolio entry)"
+            )
+            continue
+        policy_type_str = policy_cfg.policy_type.value
+        if policy_type_str not in LIVE_READY_TYPES:
+            policy_name = policy_cfg.name or policy_type_str
+            unavailable_policies.append(f"  - policy[{i}]: '{policy_name}' ({policy_type_str})")
+
+    if unavailable_policies:
+        unavailable_list = "\n".join(unavailable_policies)
+        return ValidationCheckResult(
+            id="portfolio-runtime-availability",
+            label="Portfolio runtime availability",
+            passed=False,
+            severity="error",
+            message=(
+                f"Portfolio '{portfolio_name}' contains policies unavailable for live execution:\n"
+                f"{unavailable_list}\n"
+                f"Supported types for live execution: {', '.join(sorted(LIVE_READY_TYPES))}"
+            ),
+        )
+
+    policy_count = entry.policy_count
+    return ValidationCheckResult(
+        id="portfolio-runtime-availability",
+        label="Portfolio runtime availability",
+        passed=True,
+        severity="error",
+        message=f"All {policy_count} policies in portfolio are live-ready",
+    )
+
+
+# =============================================================================
 # Register built-in checks at import time
 # =============================================================================
 
@@ -783,6 +898,13 @@ def _register_builtin_checks() -> None:
             label="Runtime status",
             severity="warning",
             check_fn=_check_runtime_info,
+        ),
+        # Story 24.3 / AC-1, AC-4: Portfolio runtime availability validation
+        ValidationCheck(
+            check_id="portfolio-runtime-availability",
+            label="Portfolio runtime availability",
+            severity="error",
+            check_fn=_check_portfolio_runtime_availability,
         ),
     ]
 

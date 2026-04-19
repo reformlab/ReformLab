@@ -148,7 +148,7 @@ export const HELP_CONTENT: Record<string, HelpEntry> = {
 
   // Stage-level keys (Story 20.1, updated Story 20.3)
   "policies": {
-    title: "Policies & Portfolio",
+    title: "Policy",
     summary: "Browse policy templates and compose a portfolio inline — no multi-step wizard. A single policy is a valid portfolio.",
     tips: [
       "The template browser (left) and composition panel (right) are visible simultaneously — no separate steps",

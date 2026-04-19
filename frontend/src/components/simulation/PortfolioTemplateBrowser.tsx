@@ -9,7 +9,7 @@
  */
 
 import { useState } from "react";
-import { Search } from "lucide-react";
+import { Search, CheckCircle2, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -17,10 +17,13 @@ import type { Template } from "@/data/mock-data";
 
 const TYPE_LABELS: Record<string, string> = {
   "carbon-tax": "Carbon Tax",
+  "carbon_tax": "Carbon Tax",
   "subsidy": "Subsidy",
   "rebate": "Rebate",
   "feebate": "Feebate",
-  "carbon_tax": "Carbon Tax",
+  // Story 24.4: Surfaced policy packs (underscore format from API)
+  "vehicle_malus": "Vehicle Malus",
+  "energy_poverty_aid": "Energy Poverty Aid",
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -29,6 +32,9 @@ const TYPE_COLORS: Record<string, string> = {
   "subsidy": "bg-emerald-100 text-emerald-800",
   "rebate": "bg-blue-100 text-blue-800",
   "feebate": "bg-violet-100 text-violet-800",
+  // Story 24.4: Surfaced policy packs
+  "vehicle_malus": "bg-rose-100 text-rose-800",
+  "energy_poverty_aid": "bg-cyan-100 text-cyan-800",
 };
 
 interface PortfolioTemplateBrowserProps {
@@ -108,12 +114,43 @@ export function PortfolioTemplateBrowser({
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-900 truncate">
-                          {template.name}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-slate-900 truncate">
+                            {template.name}
+                          </p>
+                          {/* Story 24.1 / AC-1, #2: Runtime availability indicator */}
+                          {template.runtime_availability && (
+                            <Badge
+                              variant="outline"
+                              className={`text-xs ${
+                                template.runtime_availability === "live_ready"
+                                  ? "bg-green-50 text-green-700 border-green-200"
+                                  : "bg-amber-50 text-amber-700 border-amber-200"
+                              }`}
+                            >
+                              {template.runtime_availability === "live_ready" ? (
+                                <>
+                                  <CheckCircle2 className="h-3 w-3 mr-1 inline" /> Ready
+                                </>
+                              ) : (
+                                <>
+                                  <AlertCircle className="h-3 w-3 mr-1 inline" /> Unavailable
+                                </>
+                              )}
+                            </Badge>
+                          )}
+                        </div>
                         <p className="mt-0.5 text-xs text-slate-600 line-clamp-2">
                           {template.description}
                         </p>
+                        {/* Story 24.1 / AC-2: Display availability reason for unavailable templates */}
+                        {template.runtime_availability === "live_unavailable" && template.availability_reason && (
+                          <div className="mt-1.5 p-1.5 bg-amber-50 rounded border border-amber-200">
+                            <p className="text-xs text-amber-800">
+                              {template.availability_reason}
+                            </p>
+                          </div>
+                        )}
                         <div className="mt-1.5 flex flex-wrap gap-1">
                           <span
                             className={cn(

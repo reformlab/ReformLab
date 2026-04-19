@@ -18,9 +18,12 @@ import { MergeParametersPanel } from "@/components/simulation/MergeParametersPan
 import { PopulationGenerationProgress } from "@/components/simulation/PopulationGenerationProgress";
 import { PopulationPreview } from "@/components/simulation/PopulationPreview";
 import { PopulationValidationPanel } from "@/components/simulation/PopulationValidationPanel";
+import { PopulationQuickPreview } from "@/components/population/PopulationQuickPreview";
+import { PopulationExplorer } from "@/components/population/PopulationExplorer";
 import { generatePopulation } from "@/api/data-fusion";
 import { ApiError } from "@/api/client";
 import { WorkbenchStepper } from "@/components/simulation/WorkbenchStepper";
+import { useDataSourcePreview, useDataSourceProfile } from "@/hooks/useApi";
 import type { MockDataSource, MockMergeMethod } from "@/data/mock-data";
 import type { GenerationResult } from "@/api/types";
 
@@ -70,6 +73,24 @@ export function DataFusionWorkbench({
   const [selectedMethodId, setSelectedMethodId] = useState("uniform");
   const [seed, setSeed] = useState(42);
   const [strataColumns, setStrataColumns] = useState("");
+
+  // Data source preview/explore state
+  const [previewSource, setPreviewSource] = useState<{ provider: string; datasetId: string } | null>(null);
+  const [explorerSource, setExplorerSource] = useState<{ provider: string; datasetId: string } | null>(null);
+
+  // Data source hooks (active only when a source is being previewed/explored)
+  const previewHook = useDataSourcePreview(
+    previewSource?.provider ?? null,
+    previewSource?.datasetId ?? null,
+  );
+  const explorerPreviewHook = useDataSourcePreview(
+    explorerSource?.provider ?? null,
+    explorerSource?.datasetId ?? null,
+  );
+  const explorerProfileHook = useDataSourceProfile(
+    explorerSource?.provider ?? null,
+    explorerSource?.datasetId ?? null,
+  );
 
   // Generation state (AC-4)
   const [generating, setGenerating] = useState(false);
@@ -168,6 +189,21 @@ export function DataFusionWorkbench({
     (activeStep === "generate" && result !== null) ||
     activeStep === "preview";
 
+  // When exploring a data source, show the explorer full-screen
+  if (explorerSource) {
+    return (
+      <PopulationExplorer
+        populationId={`${explorerSource.provider}/${explorerSource.datasetId}`}
+        onBack={() => { setExplorerSource(null); }}
+        backLabel="Back to Sources"
+        externalData={{
+          preview: explorerPreviewHook.data,
+          profile: explorerProfileHook.data,
+        }}
+      />
+    );
+  }
+
   return (
     <section aria-label="Data Fusion Workbench" className="space-y-3">
       <div className="rounded-lg border border-slate-200 bg-white p-3">
@@ -192,6 +228,8 @@ export function DataFusionWorkbench({
               sources={sources}
               selectedIds={selectedSources}
               onToggleSource={handleToggleSource}
+              onPreview={(provider, datasetId) => { setPreviewSource({ provider, datasetId }); }}
+              onExplore={(provider, datasetId) => { setExplorerSource({ provider, datasetId }); }}
             />
           </div>
         ) : null}
@@ -291,6 +329,20 @@ export function DataFusionWorkbench({
           </div>
         )}
       </div>
+
+      {/* Data source quick preview slide-over */}
+      {previewSource && (
+        <PopulationQuickPreview
+          populationId={`${previewSource.provider}/${previewSource.datasetId}`}
+          populationName={previewSource.datasetId.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+          onClose={() => { setPreviewSource(null); }}
+          onOpenFullView={() => {
+            setPreviewSource(null);
+            setExplorerSource(previewSource);
+          }}
+          externalPreview={previewHook}
+        />
+      )}
     </section>
   );
 }

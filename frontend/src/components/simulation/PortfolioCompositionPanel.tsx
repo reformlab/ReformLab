@@ -26,6 +26,9 @@ const TYPE_COLORS: Record<string, string> = {
   "subsidy": "bg-emerald-100 text-emerald-800",
   "rebate": "bg-blue-100 text-blue-800",
   "feebate": "bg-violet-100 text-violet-800",
+  // Story 24.4: Surfaced policy packs
+  "vehicle_malus": "bg-rose-100 text-rose-800",
+  "energy_poverty_aid": "bg-cyan-100 text-cyan-800",
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -34,6 +37,9 @@ const TYPE_LABELS: Record<string, string> = {
   "subsidy": "Subsidy",
   "rebate": "Rebate",
   "feebate": "Feebate",
+  // Story 24.4: Surfaced policy packs
+  "vehicle_malus": "Vehicle Malus",
+  "energy_poverty_aid": "Energy Poverty Aid",
 };
 
 export interface CompositionEntry {
@@ -55,7 +61,7 @@ interface PortfolioCompositionPanelProps {
   parameterSchemas?: Record<string, Parameter[]>;
   /**
    * Minimum number of policies required before showing the "add more" warning.
-   * Defaults to 2 (original behaviour). PoliciesStageScreen passes 1.
+   * Defaults to 1.
    */
   minimumPolicies?: number;
 }
@@ -68,7 +74,7 @@ export function PortfolioCompositionPanel({
   onParameterChange,
   onRateScheduleChange,
   parameterSchemas = {},
-  minimumPolicies = 2,
+  minimumPolicies = 1,
 }: PortfolioCompositionPanelProps) {
   const [expandedIndices, setExpandedIndices] = useState<Set<number>>(new Set());
 
@@ -237,7 +243,7 @@ export function PortfolioCompositionPanel({
                         ),
                       );
                     }}
-                    unit={template?.type === "carbon_tax" || template?.type === "carbon-tax" ? "€/tonne" : "€"}
+                    unit={template?.type.replace(/-/g, "_") === "carbon_tax" ? "€/tonne" : "€"}
                   />
                 </div>
                 {/* ParameterRow editing (when schemas available) */}

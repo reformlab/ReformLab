@@ -15,10 +15,11 @@ from __future__ import annotations
 
 import logging
 from dataclasses import replace
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import pyarrow as pa
 
+from reformlab.computation.translator import TranslationError, translate_policy
 from reformlab.orchestrator.computation_step import (
     COMPUTATION_METADATA_KEY,
     COMPUTATION_RESULT_KEY,
@@ -266,6 +267,7 @@ class PortfolioComputationStep:
         "_adapter",
         "_population",
         "_portfolio",
+        "_runtime_mode",
         "_name",
         "_depends_on",
         "_description",
@@ -276,6 +278,7 @@ class PortfolioComputationStep:
         adapter: ComputationAdapter,
         population: PopulationData,
         portfolio: PolicyPortfolio,
+        runtime_mode: Literal["live", "replay"] = "live",
         name: str = "portfolio_computation",
         depends_on: tuple[str, ...] = (),
         description: str | None = None,
@@ -297,6 +300,7 @@ class PortfolioComputationStep:
         self._adapter = adapter
         self._population = population
         self._portfolio = portfolio
+        self._runtime_mode = runtime_mode
         self._name = name
         self._depends_on = depends_on
         self._description = (
@@ -304,9 +308,9 @@ class PortfolioComputationStep:
         )
 
         # Defensive validation (should be guaranteed by PolicyPortfolio.__post_init__)
-        if len(portfolio.policies) < 2:
+        if len(portfolio.policies) < 1:
             raise PortfolioComputationStepError(
-                f"Portfolio must have at least 2 policies, got {len(portfolio.policies)}",
+                f"Portfolio must have at least 1 policy, got {len(portfolio.policies)}",
                 year=0,
                 adapter_version="<not-started>",
                 policy_index=-1,
@@ -359,10 +363,39 @@ class PortfolioComputationStep:
         execution_records: list[dict[str, Any]] = []
 
         for i, policy_cfg in enumerate(self._portfolio.policies):
-            comp_policy = _to_computation_policy(policy_cfg)
             assert policy_cfg.policy_type is not None  # guaranteed by __post_init__
             policy_name = policy_cfg.name or policy_cfg.policy_type.value
             policy_type_value = policy_cfg.policy_type.value
+
+            if self._runtime_mode == "replay":
+                comp_policy = _to_computation_policy(policy_cfg)
+            else:
+                # Story 24.3: Translate domain policy for live execution.
+                try:
+                    translated_policy = translate_policy(
+                        policy_cfg.policy, f"{self._portfolio.name}[{i}]"
+                    )
+                    translated_cfg = replace(policy_cfg, policy=translated_policy)
+                    comp_policy = _to_computation_policy(translated_cfg)
+                except TranslationError as exc:
+                    logger.error(
+                        "event=portfolio_translation_error year=%d "
+                        "policy_index=%d policy_type=%s adapter_version=%s what=%s",
+                        year,
+                        i,
+                        policy_type_value,
+                        adapter_version,
+                        exc.what,
+                    )
+                    raise PortfolioComputationStepError(
+                        f"Translation failed: {exc.what}",
+                        year=year,
+                        adapter_version=adapter_version,
+                        policy_index=i,
+                        policy_name=policy_name,
+                        policy_type=policy_type_value,
+                        original_error=exc,
+                    ) from exc
 
             try:
                 result = self._adapter.compute(

@@ -1,0 +1,134 @@
+record_id: 6d8fdd52-05b6-4f66-aceb-31c77f3e7a4b
+created_at: '2026-04-18T16:58:37.171710+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 24
+  story_num: 4
+  title: Story 24.4
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: codex
+  model: gpt-5.3-codex
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-04-18T16:55:55.413678Z'
+  end_time: '2026-04-18T16:58:13.456678Z'
+  duration_ms: 138043
+  input_tokens: 0
+  output_tokens: 3565
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 14263
+  heading_count: 38
+  list_depth_max: 3
+  code_block_count: 8
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 5.8'
+  - 🎯 Ruthless Story Validation 24.4
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 5.8 → MAJOR REWORK'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Missing Prerequisite Gate for Story Dependency
+  - 2. No Canonical `type` Identifier Contract (Hyphen vs Underscore)
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Route Scope Matrix for Active Screens
+  - '2. Objective Test Oracle for AC #3'
+  - '3. Persistence Assertions for AC #4'
+  - 4. Grouping/Filtering Taxonomy
+  - 5. Explicit Fixture Set for Surfaced Packs
+  - 6. Done Criteria with Required Commands
+  - ✨ Optimizations (Nice to Have)
+  - 1. Shared Policy Presentation Registry
+  - 2. Replace “Verify” Tasks with Outcome Tasks
+  - 3. Add Unknown-Type Fallback UX Rule
+  - 4. Add Minimal Accessibility Check
+  - 🤖 LLM Optimization Improvements
+  - 1. Resolve Type-Format Ambiguity Inline
+  - 2. Convert Routing Uncertainty to Decision Table
+  - 3. Collapse Repeated “No Runtime Selector” Statements
+  - 4. Replace Narrative Test Examples with Required Assertions List
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 7fc84d4ebb94
+findings:
+  total_count: 16
+  by_severity:
+    critical: 2
+    major: 6
+    minor: 8
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 2
+    completeness: 8
+    clarity: 12
+    testability: 6
+  has_fix_count: 16
+  has_location_count: 8
+  has_evidence_count: 14
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: false
+  uses_conditionals: true
+  uncertainty_phrases_count: 7
+  confidence_phrases_count: 4
+linguistic:
+  avg_sentence_length: 14.34959349593496
+  vocabulary_richness: 0.3654390934844193
+  flesch_reading_ease: 15.896644142293809
+  vague_terms_count: 2
+  formality_score: 0.75
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.75
+  evidence_quality: 0.88
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false

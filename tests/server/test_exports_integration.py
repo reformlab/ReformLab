@@ -269,6 +269,18 @@ class TestExportParquetSuccess:
 class TestExportErrors:
     """POST /api/exports/* — 404 (unknown) and 409 (evicted) error paths."""
 
+    def test_path_like_run_id_is_rejected_at_request_boundary(
+        self,
+        client_with_deps: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        response = client_with_deps.post(
+            "/api/exports/csv",
+            headers=auth_headers,
+            json={"run_id": "../outside"},
+        )
+        assert response.status_code == 422
+
     def test_unknown_run_id_csv_returns_404_with_structured_error(
         self,
         client_with_deps: TestClient,

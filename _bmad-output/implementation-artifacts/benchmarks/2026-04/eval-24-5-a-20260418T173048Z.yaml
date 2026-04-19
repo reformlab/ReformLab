@@ -1,0 +1,137 @@
+record_id: a34c230e-6df4-4ba0-a1da-a0de1b689829
+created_at: '2026-04-18T17:30:48.791141+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 24
+  story_num: 5
+  title: Story 24.5
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: codex
+  model: gpt-5.3-codex
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-04-18T17:26:32.463562Z'
+  end_time: '2026-04-18T17:30:24.368562Z'
+  duration_ms: 231905
+  input_tokens: 0
+  output_tokens: 4163
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 16652
+  heading_count: 41
+  list_depth_max: 3
+  code_block_count: 8
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 23.9'
+  - 🎯 Ruthless Story Validation 24.5
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 23.9 → REJECT'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. AC4 Is Non-Testable
+  - 2. Backend/Frontend Contract Confusion
+  - 3. Incorrect Domain/Result Field Guidance
+  - 4. Missing Negative-Path Runtime Regression AC
+  - 5. “Executable Example” Lacks Executable Contract
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Add Prerequisite Gate in Story Header
+  - 2. Add Coverage Matrix Instead of “Covers”
+  - 3. Require Gap-First Test Additions
+  - 4. Define Deterministic vs Optional Live Lanes
+  - 5. Align Documentation Target With Active Docs Pipeline
+  - 6. Add Contract Source-of-Truth Rule for Docs
+  - 7. Add Stability Requirements for Smoke Script
+  - ✨ Optimizations (Nice to Have)
+  - 1. Add AC-to-Test Traceability Table
+  - 2. Add Minimal Shared Fixture Contract
+  - 3. Add Explicit Test Execution Commands
+  - 🤖 LLM Optimization Improvements
+  - 1. Collapse Repeated Historical Context
+  - 2. Replace Narrative AC Wording With Assertions
+  - 3. Remove Placeholder Pseudocode in Smoke Example
+  - 4. Move “Documentation Requirements” to Checklist Format
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: bf77972789b1
+findings:
+  total_count: 19
+  by_severity:
+    critical: 5
+    major: 7
+    minor: 7
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 4
+    completeness: 6
+    clarity: 6
+    testability: 3
+  has_fix_count: 19
+  has_location_count: 17
+  has_evidence_count: 14
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 6
+  confidence_phrases_count: 3
+linguistic:
+  avg_sentence_length: 15.557251908396946
+  vocabulary_richness: 0.34003925417075564
+  flesch_reading_ease: 13.569666486778203
+  vague_terms_count: 2
+  formality_score: 0.72
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.84
+  evidence_quality: 0.79
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false

@@ -29,7 +29,7 @@ describe("PortfolioCompositionPanel", () => {
     expect(screen.getByText(/Select templates/)).toBeInTheDocument();
   });
 
-  it("shows 'at least 2 policies' hint when fewer than 2 selected (AC-2)", () => {
+  it("does not show minimum-policies hint when 1 policy is present (default minimumPolicies=1)", () => {
     render(
       <PortfolioCompositionPanel
         templates={mockTemplates}
@@ -41,7 +41,7 @@ describe("PortfolioCompositionPanel", () => {
       />,
     );
 
-    expect(screen.getAllByText(/at least 2 policies/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/at least/i)).not.toBeInTheDocument();
   });
 
   it("renders each composition entry as a card (AC-2)", () => {

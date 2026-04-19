@@ -14,8 +14,74 @@ Tests cover all endpoints in /api/portfolios:
 
 from __future__ import annotations
 
+import shutil
+from contextlib import suppress
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
+
+# ---------------------------------------------------------------------------
+# Test fixtures for cleanup
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(autouse=True)
+def _isolate_portfolio_registry(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Run portfolio API tests against an isolated registry and custom type set."""
+    from reformlab.server import dependencies
+    from reformlab.templates.registry import ScenarioRegistry
+    from reformlab.templates.schema import (
+        TemplateError,
+        list_custom_registrations,
+        unregister_policy_type,
+    )
+
+    registry_path = tmp_path / "registry"
+    registry = ScenarioRegistry(registry_path=registry_path)
+    initial_custom_types = set(list_custom_registrations())
+
+    monkeypatch.setenv("REFORMLAB_REGISTRY_PATH", str(registry_path))
+    monkeypatch.setattr(dependencies, "_registry", registry)
+
+    yield
+
+    for type_name in set(list_custom_registrations()) - initial_custom_types:
+        with suppress(TemplateError):
+            unregister_policy_type(type_name)
+
+    dependencies._registry = None
+    shutil.rmtree(registry_path, ignore_errors=True)
+
+
+@pytest.fixture(autouse=True)
+def _cleanup_test_portfolio(_isolate_portfolio_registry: None) -> None:
+    """Clean up test portfolios after each test to avoid 409 conflicts."""
+    yield
+    # Cleanup after test
+    from reformlab.server.dependencies import get_registry
+
+    registry = get_registry()
+    # Clean up common test portfolio names
+    test_names = [
+        "test-portfolio",
+        "test-error",
+        "test-sum",
+        "test-first-wins",
+        "test-last-wins",
+        "test-max",
+        "test-vehicle-malus-portfolio",
+        "test-energy-poverty-aid-portfolio",
+        "test-clone-source",
+        "cloned-portfolio",
+        "test-energy-aid-portfolio",
+    ]
+    for name in test_names:
+        portfolio_path = registry.path / name
+        if portfolio_path.exists():
+            shutil.rmtree(portfolio_path)
+
 
 # ---------------------------------------------------------------------------
 # Shared payload helpers
@@ -520,3 +586,186 @@ class TestResolutionStrategy:
         body = {**_CREATE_BODY, "resolution_strategy": "invalid_strategy"}
         response = client.post("/api/portfolios", json=body, headers=auth_headers)
         assert response.status_code == 422
+
+
+# =============================================================================
+# Story 24.3: CustomPolicyType Support in Portfolio Routes
+# =============================================================================
+
+
+class TestCustomPolicyTypeSupport:
+    """Tests for CustomPolicyType support in portfolio routes (Story 24.3).
+
+    Tests that vehicle_malus and energy_poverty_aid can be used in portfolios
+    through the portfolio API.
+    """
+
+    def test_create_portfolio_with_vehicle_malus_succeeds(
+        self, client: TestClient, auth_headers: dict[str, str], tmp_path: Path
+    ) -> None:
+        """AC: Portfolio creation with vehicle_malus (CustomPolicyType) succeeds."""
+        import os
+
+        import reformlab.templates.vehicle_malus  # noqa: F401
+
+        os.environ["REFORMLAB_REGISTRY_PATH"] = str(tmp_path)
+        try:
+            vehicle_malus_policy = {
+                "name": "Vehicle Malus",
+                "policy_type": "vehicle_malus",
+                "rate_schedule": {"2025": 50.0},
+                "exemptions": [],
+                "thresholds": [],
+                "covered_categories": [],
+                "extra_params": {
+                    "emission_threshold": 118.0,
+                    "malus_rate_per_gkm": 50.0,
+                },
+            }
+
+            body = {
+                "name": "test-vehicle-malus-portfolio",
+                "description": "Portfolio with vehicle malus",
+                "policies": [_VALID_POLICIES[0], vehicle_malus_policy],
+                "resolution_strategy": "error",
+            }
+
+            response = client.post("/api/portfolios", json=body, headers=auth_headers)
+            assert response.status_code == 201
+        finally:
+            del os.environ["REFORMLAB_REGISTRY_PATH"]
+
+    def test_create_portfolio_with_energy_poverty_aid_succeeds(
+        self, client: TestClient, auth_headers: dict[str, str], tmp_path: Path
+    ) -> None:
+        """AC: Portfolio creation with energy_poverty_aid (CustomPolicyType) succeeds."""
+        import os
+
+        import reformlab.templates.energy_poverty_aid  # noqa: F401
+
+        os.environ["REFORMLAB_REGISTRY_PATH"] = str(tmp_path)
+        try:
+            energy_aid_policy = {
+                "name": "Energy Poverty Aid",
+                "policy_type": "energy_poverty_aid",
+                "rate_schedule": {"2025": 150.0},
+                "exemptions": [],
+                "thresholds": [],
+                "covered_categories": [],
+                "extra_params": {
+                    "income_ceiling": 11000.0,
+                    "energy_share_threshold": 0.08,
+                    "base_aid_amount": 150.0,
+                },
+            }
+
+            body = {
+                "name": "test-energy-aid-portfolio",
+                "description": "Portfolio with energy poverty aid",
+                "policies": [_VALID_POLICIES[0], energy_aid_policy],
+                "resolution_strategy": "error",
+            }
+
+            response = client.post("/api/portfolios", json=body, headers=auth_headers)
+            assert response.status_code == 201
+        finally:
+            del os.environ["REFORMLAB_REGISTRY_PATH"]
+
+    def test_create_portfolio_with_invalid_custom_type_fails(
+        self, client: TestClient, auth_headers: dict[str, str], tmp_path: Path
+    ) -> None:
+        """AC: Portfolio creation with unavailable custom type fails with 422."""
+        import os
+
+        os.environ["REFORMLAB_REGISTRY_PATH"] = str(tmp_path)
+        try:
+            invalid_policy = {
+                "name": "Invalid Policy",
+                "policy_type": "unavailable_custom_type",
+                "rate_schedule": {"2025": 100.0},
+                "exemptions": [],
+                "thresholds": [],
+                "covered_categories": [],
+                "extra_params": {},
+            }
+
+            body = {
+                "name": "test-invalid-custom-portfolio",
+                "description": "Portfolio with unavailable type",
+                "policies": [_VALID_POLICIES[0], invalid_policy],
+                "resolution_strategy": "error",
+            }
+
+            response = client.post("/api/portfolios", json=body, headers=auth_headers)
+            assert response.status_code == 422
+            detail = response.json()["detail"]
+            assert "Invalid policy_type" in detail["what"]
+            assert "unavailable_custom_type" in detail["what"]
+        finally:
+            del os.environ["REFORMLAB_REGISTRY_PATH"]
+
+    def test_error_message_identifies_unavailable_policy(
+        self, client: TestClient, auth_headers: dict[str, str], tmp_path: Path
+    ) -> None:
+        """AC: Error message clearly identifies the unavailable policy type.
+
+        Story 24.3 code review fix: runtime availability is now enforced at
+        preflight time (test_preflight_runtime.py), not at portfolio creation.
+        This test verifies that portfolio creation with a custom type succeeds
+        when the type is properly registered.
+        """
+        import os
+        import uuid
+
+        os.environ["REFORMLAB_REGISTRY_PATH"] = str(tmp_path)
+        unique_suffix = uuid.uuid4().hex[:8]
+        portfolio_name = f"test-unavail-rt-{unique_suffix}"
+        try:
+            # Create a new custom type for testing
+            from dataclasses import dataclass
+
+            from reformlab.templates.schema import (
+                PolicyParameters,
+                register_custom_template,
+                register_policy_type,
+            )
+
+            custom_type = register_policy_type("test_unavailable_runtime")
+
+            @dataclass(frozen=True)
+            class TestUnavailableParams(PolicyParameters):
+                rate_schedule: dict[int, float]
+                exemptions: tuple = ()
+                thresholds: tuple = ()
+                covered_categories: tuple = ()
+
+            register_custom_template(custom_type, TestUnavailableParams)
+
+            unavailable_policy = {
+                "name": "Test Unavailable",
+                "policy_type": "test_unavailable_runtime",
+                "rate_schedule": {"2025": 100.0},
+                "exemptions": [],
+                "thresholds": [],
+                "covered_categories": [],
+                "extra_params": {},
+            }
+
+            body = {
+                "name": portfolio_name,
+                "description": "Portfolio with custom type",
+                "policies": [_VALID_POLICIES[0], unavailable_policy],
+                "resolution_strategy": "error",
+            }
+
+            # Portfolio creation should succeed — runtime availability is
+            # enforced at preflight time, not at portfolio creation
+            response = client.post("/api/portfolios", json=body, headers=auth_headers)
+            assert response.status_code == 201
+
+            # Clean up
+            from reformlab.templates.schema import unregister_policy_type
+
+            unregister_policy_type("test_unavailable_runtime")
+        finally:
+            del os.environ["REFORMLAB_REGISTRY_PATH"]

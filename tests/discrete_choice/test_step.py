@@ -18,16 +18,40 @@ from reformlab.computation.mock_adapter import MockAdapter
 from reformlab.computation.types import PolicyConfig, PopulationData
 from reformlab.discrete_choice.domain import DecisionDomain
 from reformlab.discrete_choice.errors import DiscreteChoiceError
+from reformlab.discrete_choice.expansion import expand_population
 from reformlab.discrete_choice.step import (
     DISCRETE_CHOICE_COST_MATRIX_KEY,
     DISCRETE_CHOICE_EXPANSION_KEY,
     DISCRETE_CHOICE_METADATA_KEY,
     DiscreteChoiceStep,
+    _inject_fuel_price_from_exogenous_context,
 )
-from reformlab.discrete_choice.types import CostMatrix, ExpansionResult
+from reformlab.discrete_choice.types import ChoiceSet, CostMatrix, ExpansionResult
 from reformlab.orchestrator.step import StepRegistry, is_protocol_step
 from reformlab.orchestrator.types import YearState
 from tests.discrete_choice.conftest import MockDomain
+
+
+class _FuelPriceConfig:
+    fuel_price_series = "fuel_price_eur_litre"
+
+
+class _FuelPriceDomain(MockDomain):
+    @property
+    def config(self) -> _FuelPriceConfig:
+        return _FuelPriceConfig()
+
+
+class _ExogenousContext:
+    def __init__(self, value: float | Exception) -> None:
+        self._value = value
+
+    def get_value(self, series_id: str, year: int) -> float:
+        if isinstance(self._value, Exception):
+            raise self._value
+        assert series_id == "fuel_price_eur_litre"
+        assert year == 2025
+        return self._value
 
 
 class TestDiscreteChoiceStepProtocol:
@@ -193,6 +217,59 @@ class TestDiscreteChoiceStepExecution:
         assert meta["n_alternatives"] == 3
         assert meta["alternative_names"] == ["option_a", "option_b", "option_c"]
         assert meta["adapter_version"] == "mock-dc-1.0.0"
+
+    def test_fuel_price_injection_adds_column_and_metadata(
+        self,
+        sample_population: PopulationData,
+    ) -> None:
+        """Configured exogenous fuel prices are injected into expanded rows."""
+        domain = _FuelPriceDomain()
+        choice_set = ChoiceSet(alternatives=domain.alternatives)
+        expansion = expand_population(sample_population, choice_set, domain)
+
+        injected, metadata = _inject_fuel_price_from_exogenous_context(
+            expansion=expansion,
+            domain=domain,
+            state_data={"exogenous_context": _ExogenousContext(1.87)},
+            year=2025,
+            step_name="discrete_choice",
+        )
+
+        assert metadata == {
+            "source": "exogenous:fuel_price_eur_litre",
+            "value": 1.87,
+            "unit": "EUR/litre",
+        }
+        for table in injected.population.tables.values():
+            assert table.column("fuel_price").to_pylist() == pytest.approx(
+                [1.87] * table.num_rows
+            )
+
+    def test_fuel_price_injection_failure_is_not_silent(
+        self,
+        mock_adapter: MockAdapter,
+        sample_policy: PolicyConfig,
+        sample_population: PopulationData,
+    ) -> None:
+        """Fuel price lookup failures abort the step with context."""
+        step = DiscreteChoiceStep(
+            adapter=mock_adapter,
+            domain=_FuelPriceDomain(),
+            policy=sample_policy,
+        )
+        state = YearState(
+            year=2025,
+            data={
+                "population_data": sample_population,
+                "exogenous_context": _ExogenousContext(KeyError("missing series")),
+            },
+            seed=42,
+        )
+
+        with pytest.raises(DiscreteChoiceError, match="Fuel price injection failed"):
+            step.execute(2025, state)
+
+        assert mock_adapter.call_log == []
 
     def test_single_batch_call(
         self,

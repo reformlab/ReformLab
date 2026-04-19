@@ -1,0 +1,115 @@
+record_id: 3ab6f7fa-de1f-4d11-8044-59d415a77d1d
+created_at: '2026-04-18T15:39:37.414355+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 24
+  story_num: '2'
+  title: Story 24.2
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-04-18T15:33:35.446599Z'
+  end_time: '2026-04-18T15:39:06.474599Z'
+  duration_ms: 331028
+  input_tokens: 0
+  output_tokens: 4243
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 16972
+  heading_count: 15
+  list_depth_max: 2
+  code_block_count: 5
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: 11.7'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes & Readability
+  - ⚡ Performance & Scalability
+  - 🐛 Correctness & Safety
+  - 🔧 Maintainability Issues
+  - 🛠️ Suggested Fixes
+  - '1. AC #7: Add actual end-to-end execution tests'
+  - 2. Validate VehicleMalusParameters.rate_schedule
+  - 3. Add schedule field validation for EnergyPovertyAidParameters
+  - 4. Add SubsidyParameters.income_caps validation
+  - 5. Define output variables in translators (task claim false)
+  - 6. Fix lying test about threshold_schedule validation
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 828bf42da9ed
+findings:
+  total_count: 12
+  by_severity:
+    critical: 3
+    major: 6
+    minor: 3
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 5
+    completeness: 4
+    clarity: 3
+    testability: 0
+  has_fix_count: 12
+  has_location_count: 12
+  has_evidence_count: 10
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: false
+  uses_conditionals: true
+  uncertainty_phrases_count: 3
+  confidence_phrases_count: 0
+linguistic:
+  avg_sentence_length: 27.304347826086957
+  vocabulary_richness: 0.27123142250530785
+  flesch_reading_ease: -13.655876865671615
+  vague_terms_count: 0
+  formality_score: 0.65
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.95
+  evidence_quality: 0.83
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 7
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 interface PasswordPromptProps {
-  onSubmit: (password: string) => Promise<boolean>;
+  onSubmit: (password: string) => Promise<string | null>;
   loading: boolean;
 }
 
@@ -20,9 +20,9 @@ export function PasswordPrompt({ onSubmit, loading }: PasswordPromptProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    const success = await onSubmit(password);
-    if (!success) {
-      setError("Invalid password");
+    const errorMessage = await onSubmit(password);
+    if (errorMessage) {
+      setError(errorMessage);
       setPassword("");
     }
   };

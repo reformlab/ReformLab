@@ -12,10 +12,14 @@ from __future__ import annotations
 import logging
 import re
 import shutil
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 from fastapi import APIRouter, HTTPException
 
+if TYPE_CHECKING:
+    from reformlab.templates.portfolios.portfolio import PolicyPortfolio
+
+from reformlab.server.dependencies import get_registry
 from reformlab.server.models import (
     ClonePortfolioRequest,
     CreatePortfolioRequest,
@@ -89,6 +93,9 @@ def _validate_resolution_strategy(strategy: str) -> None:
 def _build_policy_config(req: PortfolioPolicyRequest) -> Any:
     """Build a PolicyConfig from a request object.
 
+    Story 24.3: Extended to handle CustomPolicyType for vehicle_malus
+    and energy_poverty_aid policies.
+
     Returns a PolicyConfig frozen dataclass.
 
     Raises HTTPException(422) on bad policy_type or unknown parameters.
@@ -96,31 +103,78 @@ def _build_policy_config(req: PortfolioPolicyRequest) -> Any:
     from reformlab.templates.portfolios import PolicyConfig
     from reformlab.templates.schema import (
         CarbonTaxParameters,
+        CustomPolicyType,
         FeebateParameters,
         PolicyParameters,
         PolicyType,
         RebateParameters,
         SubsidyParameters,
+        get_policy_type,
     )
 
+    # Story 24.3: Try PolicyType enum first, then CustomPolicyType
+    policy_type: PolicyType | CustomPolicyType
     try:
         policy_type = PolicyType(req.policy_type)
     except ValueError:
-        raise HTTPException(
-            status_code=422,
-            detail={
-                "what": f"Invalid policy_type: '{req.policy_type}'",
-                "why": f"Must be one of: {[e.value for e in PolicyType]}",
-                "fix": "Use one of: carbon_tax, subsidy, rebate, feebate",
-            },
-        )
+        # Fall back to CustomPolicyType via public registry API
+        from reformlab.templates.exceptions import TemplateError
 
-    params_cls: type[PolicyParameters] = {
+        try:
+            policy_type = get_policy_type(req.policy_type)
+        except TemplateError:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "what": f"Invalid policy_type: '{req.policy_type}'",
+                    "why": "Policy type not found in built-in or custom registries",
+                    "fix": (
+                        "Use a valid policy type: carbon_tax, subsidy, rebate, "
+                        "feebate, vehicle_malus, energy_poverty_aid"
+                    ),
+                },
+            )
+
+    # Get parameters class from registry
+    # Story 24.3: Built-in types
+    _POLICY_TYPE_TO_PARAMS: dict[PolicyType, type[PolicyParameters]] = {
         PolicyType.CARBON_TAX: CarbonTaxParameters,
         PolicyType.SUBSIDY: SubsidyParameters,
         PolicyType.REBATE: RebateParameters,
         PolicyType.FEEBATE: FeebateParameters,
-    }.get(policy_type, PolicyParameters)
+    }
+
+    # Story 24.3: Handle CustomPolicyType parameter class lookup
+    params_cls: type[PolicyParameters]
+    if isinstance(policy_type, PolicyType):
+        builtin_params_cls = _POLICY_TYPE_TO_PARAMS.get(policy_type)
+        if builtin_params_cls is None:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "what": f"Parameters class not found for policy type: '{req.policy_type}'",
+                    "why": "No parameters mapping registered for this built-in type",
+                    "fix": "Use one of: carbon_tax, subsidy, rebate, feebate",
+                },
+            )
+        params_cls = builtin_params_cls
+    else:
+        # CustomPolicyType: look up via public registry API
+        from reformlab.templates.schema import list_custom_registrations
+
+        custom_registrations = list_custom_registrations()
+        custom_params_cls = custom_registrations.get(policy_type.value)
+
+        if custom_params_cls is None:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "what": f"Parameters class not found for policy type: '{req.policy_type}'",
+                    "why": "No parameters mapping registered for this custom policy type",
+                    "fix": "Register the parameters class for this custom policy type",
+                },
+            )
+        params_cls = custom_params_cls
 
     # Convert string keys to int for rate_schedule
     try:
@@ -152,6 +206,11 @@ def _build_policy_config(req: PortfolioPolicyRequest) -> Any:
         **extra,
     )
 
+    # Story 24.3 code review fix: removed runtime availability check from
+    # portfolio create/update. Availability is enforced at execution time
+    # via the preflight validation check, allowing replay-only portfolios
+    # to reference any policy type.
+
     return PolicyConfig(policy_type=policy_type, policy=policy, name=req.name)
 
 
@@ -164,13 +223,13 @@ def _build_portfolio(name: str, description: str, resolution_strategy: str,
     from reformlab.templates.portfolios import PolicyPortfolio
     from reformlab.templates.portfolios.exceptions import PortfolioValidationError
 
-    if len(policies) < 2:
+    if len(policies) < 1:
         raise HTTPException(
             status_code=400,
             detail={
                 "what": "Insufficient policies",
-                "why": f"Portfolio requires at least 2 policies, got {len(policies)}",
-                "fix": "Add at least 2 policies to the portfolio",
+                "why": f"Portfolio requires at least 1 policy, got {len(policies)}",
+                "fix": "Add at least 1 policy to the portfolio",
             },
         )
 
@@ -244,11 +303,6 @@ def _portfolio_to_detail(name: str, portfolio: Any, version_id: str) -> Portfoli
     )
 
 
-def _get_registry() -> Any:
-    """Return a ScenarioRegistry instance."""
-    from reformlab.templates.registry import ScenarioRegistry
-    return ScenarioRegistry()
-
 
 # ---------------------------------------------------------------------------
 # Routes — NOTE: /validate must be declared before /{name}
@@ -261,13 +315,13 @@ async def validate_portfolio(body: ValidatePortfolioRequest) -> ValidatePortfoli
     from reformlab.templates.portfolios import validate_compatibility
     from reformlab.templates.portfolios.exceptions import PortfolioValidationError
 
-    if len(body.policies) < 2:
+    if len(body.policies) < 1:
         raise HTTPException(
             status_code=400,
             detail={
                 "what": "Insufficient policies",
-                "why": f"Validation requires at least 2 policies, got {len(body.policies)}",
-                "fix": "Add at least 2 policies before validating",
+                "why": f"Validation requires at least 1 policy, got {len(body.policies)}",
+                "fix": "Add at least 1 policy before validating",
             },
         )
 
@@ -320,12 +374,12 @@ async def validate_portfolio(body: ValidatePortfolioRequest) -> ValidatePortfoli
 @router.get("", response_model=list[PortfolioListItem])
 async def list_portfolios() -> list[PortfolioListItem]:
     """List all saved portfolios."""
-    registry = _get_registry()
+    registry = get_registry()
     names = registry.list_portfolios()
     result = []
     for name in names:
         try:
-            portfolio = registry.get(name)
+            portfolio = cast("PolicyPortfolio", registry.get(name))
             entry = registry.get_entry(name)
             result.append(PortfolioListItem(
                 name=name,
@@ -342,7 +396,7 @@ async def list_portfolios() -> list[PortfolioListItem]:
 @router.get("/{name}", response_model=PortfolioDetailResponse)
 async def get_portfolio(name: str) -> PortfolioDetailResponse:
     """Get portfolio detail including all policies."""
-    registry = _get_registry()
+    registry = get_registry()
     try:
         portfolio = registry.get(name)
     except (KeyError, FileNotFoundError, ValueError, RegistryError) as exc:
@@ -380,7 +434,7 @@ async def create_portfolio(body: CreatePortfolioRequest) -> dict[str, str]:
     """Create and save a new portfolio."""
     _validate_portfolio_name(body.name)
 
-    registry = _get_registry()
+    registry = get_registry()
 
     # Check for name collision
     if registry.exists(body.name):
@@ -410,7 +464,7 @@ async def create_portfolio(body: CreatePortfolioRequest) -> dict[str, str]:
 @router.put("/{name}", response_model=PortfolioDetailResponse)
 async def update_portfolio(name: str, body: UpdatePortfolioRequest) -> PortfolioDetailResponse:
     """Update an existing portfolio's policies/parameters/order."""
-    registry = _get_registry()
+    registry = get_registry()
 
     # Verify portfolio exists and is a portfolio type
     if not registry.exists(name):
@@ -439,7 +493,7 @@ async def update_portfolio(name: str, body: UpdatePortfolioRequest) -> Portfolio
         )
 
     # Get existing to preserve fields not in the update request
-    existing = registry.get(name)
+    existing = cast("PolicyPortfolio", registry.get(name))
 
     resolution_strategy = body.resolution_strategy or existing.resolution_strategy
     description = body.description if body.description is not None else existing.description
@@ -459,7 +513,7 @@ async def update_portfolio(name: str, body: UpdatePortfolioRequest) -> Portfolio
 @router.delete("/{name}", status_code=204)
 async def delete_portfolio(name: str) -> None:
     """Delete a portfolio from the registry."""
-    registry = _get_registry()
+    registry = get_registry()
     entry_path = registry.path / name
 
     if not entry_path.exists():
@@ -497,7 +551,7 @@ async def clone_portfolio(name: str, body: ClonePortfolioRequest) -> PortfolioDe
     """Clone a portfolio with a new name."""
     _validate_portfolio_name(body.new_name)
 
-    registry = _get_registry()
+    registry = get_registry()
 
     # Verify source exists
     if not registry.exists(name):

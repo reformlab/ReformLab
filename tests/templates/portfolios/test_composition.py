@@ -293,9 +293,9 @@ version: "1.0"
         with pytest.raises(PortfolioValidationError, match="policies"):
             load_portfolio(file_path)
 
-    def test_load_insufficient_policies(self, temp_portfolio_dir: Path) -> None:
-        """Loading portfolio with <2 policies raises clear error."""
-        file_path = temp_portfolio_dir / "insufficient.yaml"
+    def test_load_single_policy_portfolio(self, temp_portfolio_dir: Path) -> None:
+        """Loading portfolio with 1 policy succeeds."""
+        file_path = temp_portfolio_dir / "single.yaml"
         file_path.write_text(
             """
 name: "Single Policy Portfolio"
@@ -306,8 +306,8 @@ policies:
       rate_schedule: {2026: 44.6}
 """
         )
-        with pytest.raises(PortfolioValidationError, match="at least 2 policies"):
-            load_portfolio(file_path)
+        portfolio = load_portfolio(file_path)
+        assert len(portfolio.policies) == 1
 
     def test_load_invalid_policy_type(self, temp_portfolio_dir: Path) -> None:
         """Loading portfolio with invalid policy_type raises clear error."""

@@ -281,10 +281,43 @@ def apply_output_mapping(table: pa.Table, config: MappingConfig) -> pa.Table:
     """
     rename_map: dict[str, str] = {}
     type_map: dict[str, pa.DataType] = {}
+    seen_targets: dict[str, str] = {}  # project_name -> openfisca_name
     for mapping in config.output_mappings:
+        if mapping.project_name in seen_targets:
+            raise ValueError(
+                f"Output mapping collision: both '{seen_targets[mapping.project_name]}' "
+                f"and '{mapping.openfisca_name}' map to '{mapping.project_name}'"
+            )
+        if mapping.openfisca_name in rename_map:
+            raise ValueError(
+                f"Output mapping collision: '{mapping.openfisca_name}' is mapped twice "
+                f"(to '{rename_map[mapping.openfisca_name]}' and '{mapping.project_name}')"
+            )
+        seen_targets[mapping.project_name] = mapping.openfisca_name
         rename_map[mapping.openfisca_name] = mapping.project_name
         type_map[mapping.project_name] = mapping.pa_type
     return _rename_table(table, rename_map, type_map)
+
+
+def apply_output_mapping_to_name(
+    openfisca_name: str, config: MappingConfig
+) -> str:
+    """Apply output mapping to a single column name.
+
+    Story 24.3: Helper for normalizing portfolio prefixed columns.
+    Returns the mapped project name, or the original name if not found.
+
+    Args:
+        openfisca_name: OpenFisca variable name to map.
+        config: MappingConfig with output_mappings.
+
+    Returns:
+        Mapped project name, or original name if not in mapping.
+    """
+    for mapping in config.output_mappings:
+        if mapping.openfisca_name == openfisca_name:
+            return mapping.project_name
+    return openfisca_name
 
 
 def apply_input_mapping(table: pa.Table, config: MappingConfig) -> pa.Table:

@@ -40,13 +40,33 @@ SKIP_PATHS = {"/up", "/api/auth/login", "/api/health", "/api/docs", "/api/openap
 router = APIRouter()
 
 
+def _prune_expired_sessions(now: float | None = None) -> None:
+    """Remove expired sessions from the process-local session store."""
+    current = time.monotonic() if now is None else now
+    expired = [
+        token
+        for token, created_at in _active_sessions.items()
+        if current - created_at > SESSION_TTL_SECONDS
+    ]
+    for token in expired:
+        _active_sessions.pop(token, None)
+
+
+def _prune_login_attempts(now: float | None = None) -> None:
+    """Remove expired and empty rate-limit buckets."""
+    current = time.monotonic() if now is None else now
+    for client_ip, attempts in list(_login_attempts.items()):
+        fresh_attempts = [t for t in attempts if current - t < _RATE_LIMIT_WINDOW]
+        if fresh_attempts:
+            _login_attempts[client_ip] = fresh_attempts
+        else:
+            _login_attempts.pop(client_ip, None)
+
+
 def _check_rate_limit(client_ip: str) -> bool:
     """Return True if the IP is within rate limits, False if blocked."""
-    now = time.monotonic()
-    # Prune old attempts outside the window
-    attempts = _login_attempts[client_ip]
-    _login_attempts[client_ip] = [t for t in attempts if now - t < _RATE_LIMIT_WINDOW]
-    return len(_login_attempts[client_ip]) < _RATE_LIMIT_MAX
+    _prune_login_attempts()
+    return len(_login_attempts.get(client_ip, [])) < _RATE_LIMIT_MAX
 
 
 def _record_attempt(client_ip: str) -> None:
@@ -62,6 +82,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         if request.url.path in SKIP_PATHS:
             return await call_next(request)
+
+        _prune_expired_sessions()
 
         token = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
         if not token or token not in _active_sessions:
@@ -87,6 +109,7 @@ async def login(body: LoginRequest, request: Request) -> LoginResponse:
     """Validate password and issue a session token."""
     from fastapi import HTTPException
 
+    _prune_expired_sessions()
     client_ip = request.client.host if request.client else "unknown"
 
     # Rate limit check

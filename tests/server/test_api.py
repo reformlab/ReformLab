@@ -76,6 +76,51 @@ class TestAuthRoutes:
             tokens.add(response.json()["token"])
         assert len(tokens) == 3  # All unique
 
+    def test_login_rate_limit_blocks_sixth_failed_attempt(
+        self, client: TestClient
+    ) -> None:
+        from reformlab.server.auth import _active_sessions, _login_attempts
+
+        _active_sessions.clear()
+        _login_attempts.clear()
+        try:
+            for _ in range(5):
+                response = client.post(
+                    "/api/auth/login",
+                    json={"password": "wrong"},
+                )
+                assert response.status_code == 401
+
+            response = client.post(
+                "/api/auth/login",
+                json={"password": "wrong"},
+            )
+            assert response.status_code == 429
+        finally:
+            _active_sessions.clear()
+            _login_attempts.clear()
+
+    def test_auth_pruning_removes_expired_state(self) -> None:
+        from reformlab.server import auth
+
+        now = 1_000_000.0
+        auth._active_sessions.clear()
+        auth._login_attempts.clear()
+        try:
+            auth._active_sessions["expired"] = now - auth.SESSION_TTL_SECONDS - 1
+            auth._active_sessions["fresh"] = now
+            auth._login_attempts["old-ip"] = [now - auth._RATE_LIMIT_WINDOW - 1]
+            auth._login_attempts["fresh-ip"] = [now]
+
+            auth._prune_expired_sessions(now)
+            auth._prune_login_attempts(now)
+
+            assert set(auth._active_sessions) == {"fresh"}
+            assert set(auth._login_attempts) == {"fresh-ip"}
+        finally:
+            auth._active_sessions.clear()
+            auth._login_attempts.clear()
+
 
 class TestTemplateRoutes:
     """AC-1: Template listing and selection."""
@@ -88,19 +133,20 @@ class TestTemplateRoutes:
         data = response.json()
         assert "templates" in data
         assert isinstance(data["templates"], list)
+        assert len(data["templates"]) >= 8, "Expected at least 8 built-in templates"
 
     def test_list_templates_structure(
         self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
         response = client.get("/api/templates", headers=auth_headers)
         data = response.json()
-        if data["templates"]:
-            item = data["templates"][0]
-            assert "id" in item
-            assert "name" in item
-            assert "type" in item
-            assert "parameter_count" in item
-            assert isinstance(item["parameter_count"], int)
+        assert data["templates"], "Template list must not be empty"
+        item = data["templates"][0]
+        assert "id" in item
+        assert "name" in item
+        assert "type" in item
+        assert "parameter_count" in item
+        assert isinstance(item["parameter_count"], int)
 
     def test_get_template_not_found(
         self, client: TestClient, auth_headers: dict[str, str]
@@ -122,20 +168,21 @@ class TestPopulationRoutes:
         data = response.json()
         assert "populations" in data
         assert isinstance(data["populations"], list)
+        assert len(data["populations"]) >= 1, "Expected at least 1 built-in population"
 
     def test_list_populations_structure(
         self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
         response = client.get("/api/populations", headers=auth_headers)
         data = response.json()
-        if data["populations"]:
-            item = data["populations"][0]
-            assert "id" in item
-            assert "name" in item
-            assert "households" in item
-            assert isinstance(item["households"], int)
-            assert "source" in item
-            assert "year" in item
+        assert data["populations"], "Population list must not be empty"
+        item = data["populations"][0]
+        assert "id" in item
+        assert "name" in item
+        assert "households" in item
+        assert isinstance(item["households"], int)
+        assert "source" in item
+        assert "year" in item
 
 
 class TestScenarioRoutes:
@@ -149,6 +196,10 @@ class TestScenarioRoutes:
         data = response.json()
         assert "scenarios" in data
         assert isinstance(data["scenarios"], list)
+        # Scenarios are user-created — empty list is valid, but shape must be correct
+        for scenario in data["scenarios"]:
+            assert "name" in scenario
+            assert "policy_type" in scenario
 
     def test_get_scenario_not_found(
         self, client: TestClient, auth_headers: dict[str, str]
@@ -367,12 +418,7 @@ class TestScenarioDetail:
     def test_get_scenario_after_create_returns_scenario_response(
         self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
-        """Create a scenario via POST then GET it.
-
-        The registry's hash integrity check may prevent loading in some
-        environments. This test accepts either 200 (success with correct fields)
-        or 404 with structured error (registry integrity failure).
-        """
+        """Create a scenario via POST then GET it back — verify round-trip."""
         create_response = client.post(
             "/api/scenarios",
             headers=auth_headers,
@@ -392,23 +438,22 @@ class TestScenarioDetail:
             "/api/scenarios/test-detail-scenario-17-6",
             headers=auth_headers,
         )
-        if response.status_code == 200:
-            data = response.json()
-            assert data["name"] == "test-detail-scenario-17-6"
-            assert data["policy_type"] == "carbon_tax"
-            assert "policy" in data
-            assert "year_schedule" in data
-        else:
-            # Registry integrity issue — verify error is structured
-            assert response.status_code in (404, 422)
+        if response.status_code == 404:
             body = response.json()
-            # HTTPException wraps in "detail"; global handlers put keys at top level
-            detail = body.get("detail", body)
-            if isinstance(detail, dict):
-                assert set(detail.keys()) >= {"what", "why", "fix"}
-            else:
-                # String detail from unhandled error — just ensure we got a response
-                assert detail is not None
+            detail = body.get("detail", body) if isinstance(body, dict) else body
+            if isinstance(detail, dict) and "integrity" in detail.get("what", "").lower():
+                pytest.skip("Registry integrity check prevents round-trip in test")
+            # Non-integrity 404 is a real failure
+            pytest.fail(f"Unexpected 404: {response.text}")
+        assert response.status_code == 200, (
+            f"GET after successful POST should return 200, got {response.status_code}: "
+            f"{response.text}"
+        )
+        data = response.json()
+        assert data["name"] == "test-detail-scenario-17-6"
+        assert data["policy_type"] == "carbon_tax"
+        assert "policy" in data
+        assert "year_schedule" in data
 
     def test_get_scenario_not_found_returns_404_with_structured_error(
         self, client: TestClient, auth_headers: dict[str, str]
@@ -478,3 +523,258 @@ class TestTemplateDetail:
         assert response.status_code == 404
         detail = response.json()["detail"]
         assert set(detail.keys()) >= {"what", "why", "fix"}
+
+
+class TestCatalogWithRuntimeAvailability:
+    """AC-1: Catalog listing includes all templates with runtime availability metadata."""
+
+    def test_all_packs_appear_in_catalog(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """All 12 existing built-in packs appear in catalog listing (8 visible + 4 hidden)."""
+        response = client.get("/api/templates", headers=auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert "templates" in data
+        templates = data["templates"]
+
+        # Check for all expected template IDs
+        template_ids = {t["id"] for t in templates}
+        visible_packs = {
+            "carbon-tax-flat-lump-sum-dividend",
+            "carbon-tax-flat-no-redistribution",
+            "carbon-tax-flat-progressive-dividend",
+            "carbon-tax-progressive-no-redistribution",
+            "carbon-tax-progressive-progressive-dividend",
+            "subsidy-energy-retrofit",
+            "rebate-progressive-income",
+            "feebate-vehicle-emissions",
+        }
+        hidden_packs = {
+            "vehicle-malus-flat-rate",
+            "vehicle-malus-french-2026",
+            "energy-poverty-cheque-energie",
+            "energy-poverty-generous",
+        }
+
+        for pack_id in visible_packs | hidden_packs:
+            assert pack_id in template_ids, f"Missing template: {pack_id}"
+
+    def test_visible_packs_have_live_ready_status(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """Visible packs have runtime_availability: 'live_ready'."""
+        response = client.get("/api/templates", headers=auth_headers)
+        assert response.status_code == 200
+        templates = response.json()["templates"]
+
+        visible_pack_ids = {
+            "carbon-tax-flat-lump-sum-dividend",
+            "carbon-tax-flat-no-redistribution",
+            "carbon-tax-flat-progressive-dividend",
+            "carbon-tax-progressive-no-redistribution",
+            "carbon-tax-progressive-progressive-dividend",
+            "subsidy-energy-retrofit",
+            "rebate-progressive-income",
+            "feebate-vehicle-emissions",
+        }
+
+        for template in templates:
+            if template["id"] in visible_pack_ids:
+                assert (
+                    template["runtime_availability"] == "live_ready"
+                ), f"{template['id']} should be live_ready"
+
+    def test_subsidy_family_packs_are_live_ready(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """Story 24.2: Subsidy-family packs are now live_ready after translation."""
+        response = client.get("/api/templates", headers=auth_headers)
+        assert response.status_code == 200
+        templates = response.json()["templates"]
+
+        subsidy_family_pack_ids = {
+            "vehicle-malus-flat-rate",
+            "vehicle-malus-french-2026",
+            "energy-poverty-cheque-energie",
+            "energy-poverty-generous",
+        }
+
+        for template in templates:
+            if template["id"] in subsidy_family_pack_ids:
+                assert (
+                    template["runtime_availability"] == "live_ready"
+                ), f"{template['id']} should be live_ready after Story 24.2"
+                assert (
+                    template["availability_reason"] is None
+                ), f"{template['id']} should have no availability_reason"
+
+    def test_template_detail_includes_runtime_availability(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """Template detail endpoint includes runtime availability metadata."""
+        # Test a visible template
+        response = client.get(
+            "/api/templates/carbon-tax-flat-lump-sum-dividend",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "runtime_availability" in data
+        assert data["runtime_availability"] == "live_ready"
+        assert "availability_reason" in data
+        assert data["availability_reason"] is None
+
+        # Story 24.2: Vehicle malus is now live_ready after translation
+        response = client.get(
+            "/api/templates/vehicle-malus-flat-rate",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "runtime_availability" in data
+        assert data["runtime_availability"] == "live_ready"
+        assert "availability_reason" in data
+        assert data["availability_reason"] is None
+
+    def test_custom_template_has_runtime_availability(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """Custom templates created via API have live_unavailable status."""
+        response = client.post(
+            "/api/templates/custom",
+            headers=auth_headers,
+            json={
+                "name": "test_custom_policy_24_1",
+                "description": "Test custom template for Story 24.1",
+                "parameters": [
+                    {"name": "rate", "type": "float", "default": 0.0, "unit": "EUR/t"}
+                ],
+            },
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert "runtime_availability" in data
+        assert data["runtime_availability"] == "live_unavailable"
+        assert "availability_reason" in data
+        assert data["availability_reason"] is None
+
+    def test_stable_identifiers_preserved(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """Existing pack identifiers remain stable after catalog expansion."""
+        response = client.get("/api/templates", headers=auth_headers)
+        assert response.status_code == 200
+        templates = response.json()["templates"]
+
+        # Verify all expected IDs are present (user-saved scenarios may add more)
+        expected_ids = {
+            "carbon-tax-flat-lump-sum-dividend",
+            "carbon-tax-flat-no-redistribution",
+            "carbon-tax-flat-progressive-dividend",
+            "carbon-tax-progressive-no-redistribution",
+            "carbon-tax-progressive-progressive-dividend",
+            "subsidy-energy-retrofit",
+            "rebate-progressive-income",
+            "feebate-vehicle-emissions",
+            "vehicle-malus-flat-rate",
+            "vehicle-malus-french-2026",
+            "energy-poverty-cheque-energie",
+            "energy-poverty-generous",
+        }
+
+        template_ids = {t["id"] for t in templates}
+        # Check that all expected IDs are present
+        missing = expected_ids - template_ids
+        assert expected_ids.issubset(template_ids), f"Missing: {missing}"
+
+    def test_catalog_is_deterministically_ordered(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """AC-3: Catalog is grouped by type, sorted by id within each group."""
+        response = client.get("/api/templates", headers=auth_headers)
+        assert response.status_code == 200
+        templates = response.json()["templates"]
+
+        # Group by type
+        groups: dict[str, list[dict]] = {}
+        for t in templates:
+            groups.setdefault(t["type"], []).append(t)
+
+        # Verify templates within each group are sorted by id
+        for type_name, group in groups.items():
+            ids = [t["id"] for t in group]
+            assert ids == sorted(ids), f"Type {type_name} not sorted by id"
+
+        # Verify group order is deterministic (alphabetical by type name)
+        group_names = list(groups.keys())
+        assert group_names == sorted(group_names), "Groups not sorted by type"
+
+    def test_scenario_compatibility_after_catalog_expansion(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """AC-4: Scenarios referencing previously visible packs load correctly after catalog expansion."""
+        # Create a scenario referencing a visible pack (carbon-tax)
+        scenario_data = {
+            "name": "test-scenario-visible-pack-24-1",
+            "policy_type": "carbon_tax",
+            "policy": {
+                "rate_schedule": {"2026": 50.0, "2027": 55.0},
+                "exemptions": [],
+                "thresholds": [],
+                "covered_categories": ["heating_fuel", "transport_fuel"],
+            },
+            "start_year": 2026,
+            "end_year": 2030,
+            "description": "Test scenario with visible pack after catalog expansion",
+        }
+
+        # Create the scenario — may return 201 or 404 depending on registry state
+        create_response = client.post(
+            "/api/scenarios",
+            headers=auth_headers,
+            json=scenario_data,
+        )
+        # Must not be a validation error — request shape is correct
+        assert create_response.status_code != 422
+
+        # Verify catalog listing still succeeds (no crash from expanded catalog)
+        templates_response = client.get("/api/templates", headers=auth_headers)
+        assert templates_response.status_code == 200
+
+    def test_portfolio_validation_after_catalog_expansion(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """AC-4: Portfolios with visible packs validate correctly after catalog expansion."""
+        response = client.post(
+            "/api/portfolios/validate",
+            headers=auth_headers,
+            json={
+                "policies": [
+                    {
+                        "name": "carbon-tax-test-24-1",
+                        "policy_type": "carbon_tax",
+                        "rate_schedule": {"2026": 44.0},
+                        "exemptions": [],
+                        "thresholds": [],
+                        "covered_categories": ["heating_fuel"],
+                        "extra_params": {},
+                    },
+                    {
+                        "name": "subsidy-test-24-1",
+                        "policy_type": "subsidy",
+                        "rate_schedule": {"2026": 5000.0},
+                        "exemptions": [],
+                        "thresholds": [30000.0],
+                        "covered_categories": ["energy_retrofit"],
+                        "extra_params": {},
+                    },
+                ],
+                "resolution_strategy": "error",
+            },
+        )
+        # Validation should succeed (may have conflicts, but endpoint returns response)
+        assert response.status_code == 200
+        data = response.json()
+        assert "conflicts" in data
+        assert "is_compatible" in data

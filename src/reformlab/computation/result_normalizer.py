@@ -52,6 +52,11 @@ _DEFAULT_OUTPUT_MAPPING: dict[str, str] = {
     "revenu_brut": "gross_income",
     "prestations_sociales": "social_benefits",
     "taxe_carbone": "carbon_tax",
+    # Story 24.2: Subsidy-family output variable mappings
+    "montant_subvention": "subsidy_amount",
+    "eligible_subvention": "subsidy_eligible",
+    "malus_ecologique": "vehicle_malus",
+    "aide_energie": "energy_poverty_aid",
 }
 
 # OpenFisca variable names to request from the live adapter.
@@ -160,6 +165,10 @@ def normalize_computation_result(
     If mapping_config is provided, uses apply_output_mapping from mapping.py.
     If no mapping_config, applies _DEFAULT_OUTPUT_MAPPING.
 
+    Story 24.3: For portfolio results (source="portfolio"), normalization is
+    applied per-policy after prefixing. Each prefixed column (e.g., subsidy_0_subsidy_amount)
+    has its base name normalized (e.g., subsidy_amount) and the prefix reapplied.
+
     Validates that at least one column from _MINIMUM_REQUIRED_COLUMNS is present.
     Does NOT add household_id — that is the panel builder's responsibility.
 
@@ -175,8 +184,105 @@ def normalize_computation_result(
     """
     table = comp_result.output_fields
 
-    # Apply mapping
-    if mapping_config is not None:
+    # Story 24.3: Handle portfolio results with prefixed columns
+    is_portfolio = comp_result.metadata.get("source") == "portfolio"
+
+    if is_portfolio:
+        # For portfolio results, normalize each prefixed column individually.
+        # Prefix format (from portfolio_step._merge_policy_results):
+        #   - No prefix (first policy, no duplicate types)
+        #   - {policy_type}_{column_name} (non-first policy, no duplicates)
+        #   - {policy_type}_{index}_{column_name} (any policy when duplicates exist)
+        #
+        # Policy type names may contain underscores (e.g. vehicle_malus,
+        # energy_poverty_aid), so naive split("_", 2) is ambiguous.
+        # We match against known policy type names (longest-first) to
+        # correctly separate prefix from base column name.
+        #
+        # Story 24.3 code review fix: robust prefix parsing for
+        # underscore-containing policy types.
+        # Known policy types sorted longest-first so that multi-word
+        # types (energy_poverty_aid) match before shorter prefixes.
+        _KNOWN_POLICY_TYPES = [
+            "energy_poverty_aid",
+            "vehicle_malus",
+            "carbon_tax",
+            "subsidy",
+            "rebate",
+            "feebate",
+        ]
+
+        rename_map: dict[str, str] = {}
+        for col_name in table.column_names:
+            if col_name == "household_id":
+                continue
+
+            # Try to match a known policy type prefix (longest first)
+            prefix = ""
+            base_name = col_name
+            matched = False
+            for ptype in _KNOWN_POLICY_TYPES:
+                if col_name.startswith(f"{ptype}_"):
+                    remainder = col_name[len(ptype) + 1 :]  # skip past "{ptype}_"
+                    # Check if remainder starts with a digit (index marker)
+                    remainder_parts = remainder.split("_", 1)
+                    if remainder_parts[0].isdigit():
+                        # Format: {type}_{index}_{name}
+                        prefix = f"{ptype}_{remainder_parts[0]}_"
+                        base_name = remainder_parts[1] if len(remainder_parts) > 1 else ""
+                    else:
+                        # Format: {type}_{name} (no index)
+                        prefix = f"{ptype}_"
+                        base_name = remainder
+                    matched = True
+                    break
+
+            if not matched:
+                # No known prefix — first policy with no prefix, or
+                # unrecognized column. Treat entire name as base.
+                prefix = ""
+                base_name = col_name
+
+            # Apply normalization to the base column name
+            if mapping_config is not None:
+                from reformlab.computation.mapping import apply_output_mapping_to_name
+
+                normalized_base = apply_output_mapping_to_name(base_name, mapping_config)
+            else:
+                normalized_base = _DEFAULT_OUTPUT_MAPPING.get(base_name, base_name)
+
+            # Reapply the prefix to get the final normalized column name
+            new_name = f"{prefix}{normalized_base}"
+            if new_name != col_name:
+                rename_map[col_name] = new_name
+
+        if rename_map:
+            new_names = [
+                rename_map.get(name, name)
+                for name in table.column_names
+            ]
+
+            # Guard against duplicate column names after rename
+            seen: set[str] = set()
+            dupes: list[str] = []
+            for new_name in new_names:
+                if new_name in seen:
+                    dupes.append(new_name)
+                seen.add(new_name)
+
+            if dupes:
+                raise NormalizationError(
+                    what="Output normalization failed",
+                    why=(
+                        f"Renaming would produce duplicate column names: {dupes}. "
+                        f"This can happen if policy outputs have conflicting base names "
+                        f"that normalize to the same value."
+                    ),
+                    fix="Check output mapping configuration for conflicting column mappings",
+                )
+
+            table = table.rename_columns(new_names)
+    elif mapping_config is not None:
         from reformlab.computation.mapping import apply_output_mapping
 
         table = apply_output_mapping(table, mapping_config)

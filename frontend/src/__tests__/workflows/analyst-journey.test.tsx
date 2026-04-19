@@ -111,7 +111,7 @@ async function authenticate(user: ReturnType<typeof userEvent.setup>): Promise<v
 
   await waitFor(() => {
     // After login, TopBar shows stage label and nav rail shows stage labels
-    expect(screen.getAllByText("Policies & Portfolio")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("Policy")[0]).toBeInTheDocument();
   });
 }
 
@@ -119,7 +119,7 @@ async function authenticate(user: ReturnType<typeof userEvent.setup>): Promise<v
 // Left-panel helper
 //
 // The workspace renders <aside> elements (left and right panels). Navigation
-// buttons (Policies & Portfolio, Population, Engine, Run / Results / Compare)
+// buttons (Policy, Population, Engine, Run / Results / Compare)
 // live in the FIRST aside (leftPanel). Using within() prevents false matches.
 // ============================================================================
 
@@ -176,7 +176,7 @@ describe("Analyst Journey — cross-screen navigation", () => {
       await authenticate(user);
 
       // Post-auth: stage navigation visible (stage label from TopBar)
-      expect(screen.getAllByText("Policies & Portfolio")[0]).toBeInTheDocument();
+      expect(screen.getAllByText("Policy")[0]).toBeInTheDocument();
     });
 
     it("navigates to Population Library via Population button (Story 20.4)", async () => {
@@ -194,13 +194,13 @@ describe("Analyst Journey — cross-screen navigation", () => {
       });
     });
 
-    it("navigates to Policies & Portfolio stage via nav rail button", async () => {
+    it("navigates to Policy stage via nav rail button", async () => {
       const user = userEvent.setup();
       renderApp();
       await authenticate(user);
 
-      // Click the Policies & Portfolio stage button in the nav rail
-      await user.click(within(getLeftPanel()).getByRole("button", { name: /policies.*portfolio/i }));
+      // Click the Policy stage button in the nav rail
+      await user.click(within(getLeftPanel()).getByRole("button", { name: /^policy$/i }));
 
       await waitFor(() => {
         // PoliciesStageScreen renders inline composition layout (Story 20.3)

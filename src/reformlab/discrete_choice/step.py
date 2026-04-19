@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import replace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 
@@ -22,10 +22,13 @@ from reformlab.discrete_choice.reshape import reshape_to_cost_matrix
 from reformlab.discrete_choice.types import ChoiceSet
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from reformlab.computation.adapter import ComputationAdapter
     from reformlab.computation.types import PolicyConfig
     from reformlab.discrete_choice.domain import DecisionDomain
     from reformlab.discrete_choice.eligibility import EligibilityFilter
+    from reformlab.discrete_choice.types import ExpansionResult
     from reformlab.orchestrator.types import YearState
 
 logger = logging.getLogger(__name__)
@@ -38,6 +41,69 @@ logger = logging.getLogger(__name__)
 DISCRETE_CHOICE_COST_MATRIX_KEY = "discrete_choice_cost_matrix"
 DISCRETE_CHOICE_EXPANSION_KEY = "discrete_choice_expansion"
 DISCRETE_CHOICE_METADATA_KEY = "discrete_choice_metadata"
+
+
+def _inject_fuel_price_from_exogenous_context(
+    expansion: ExpansionResult,
+    domain: DecisionDomain,
+    state_data: Mapping[str, Any],
+    year: int,
+    step_name: str,
+) -> tuple[ExpansionResult, dict[str, Any] | None]:
+    """Inject configured exogenous fuel price into expanded population tables."""
+    config = getattr(domain, "config", None)
+    fuel_price_series = getattr(config, "fuel_price_series", None)
+    if not fuel_price_series or "exogenous_context" not in state_data:
+        return expansion, None
+
+    try:
+        exogenous_context = state_data["exogenous_context"]
+        fuel_price = float(exogenous_context.get_value(fuel_price_series, year))
+
+        from reformlab.computation.types import PopulationData
+
+        injected_tables: dict[str, pa.Table] = {}
+        for table_name, table in expansion.population.tables.items():
+            new_col = pa.array([fuel_price] * table.num_rows, type=pa.float64())
+            if "fuel_price" in table.column_names:
+                col_index = table.column_names.index("fuel_price")
+                injected_tables[table_name] = table.set_column(
+                    col_index, "fuel_price", new_col
+                )
+            else:
+                injected_tables[table_name] = table.append_column(
+                    "fuel_price", new_col
+                )
+
+        modified_population = PopulationData(
+            tables=injected_tables,
+            metadata=dict(expansion.population.metadata),
+        )
+    except Exception as exc:
+        raise DiscreteChoiceError(
+            f"Fuel price injection failed at year {year} "
+            f"for domain '{domain.name}' using series {fuel_price_series!r}: {exc}",
+            year=year,
+            step_name=step_name,
+            domain_name=domain.name,
+            original_error=exc,
+        ) from exc
+
+    metadata = {
+        "source": f"exogenous:{fuel_price_series}",
+        "value": fuel_price,
+        "unit": "EUR/litre",
+    }
+
+    logger.debug(
+        "year=%d step_name=%s fuel_price=%s source=%s event=fuel_price_injected",
+        year,
+        step_name,
+        fuel_price,
+        fuel_price_series,
+    )
+
+    return replace(expansion, population=modified_population), metadata
 
 
 class DiscreteChoiceStep:
@@ -237,55 +303,13 @@ class DiscreteChoiceStep:
         )
 
         # Story 21.6 / AC5: Inject exogenous fuel prices before adapter computation
-        fuel_price_metadata = None
-        if hasattr(domain, "config") and hasattr(
-            domain.config, "fuel_price_series"
-        ):
-            fuel_price_series = domain.config.fuel_price_series
-            if fuel_price_series and "exogenous_context" in state.data:
-                try:
-                    exogenous_context = state.data["exogenous_context"]
-                    fuel_price = exogenous_context.get_value(fuel_price_series, year)
-
-                    # Inject fuel price into expanded population
-                    # Add new column to each entity table in the expanded population
-                    from reformlab.computation.types import PopulationData
-
-                    injected_tables = {}
-                    for table_name, table in expansion.population.tables.items():
-                        # Add fuel_price column with constant value for all rows
-                        n_rows = table.num_rows
-                        new_col = pa.array([fuel_price] * n_rows, type=pa.float64())
-                        injected_tables[table_name] = table.append_column(
-                            "fuel_price", new_col
-                        )
-
-                    # Create new PopulationData and ExpansionResult with injected fuel prices
-                    modified_population = PopulationData(tables=injected_tables)
-                    expansion = replace(expansion, population=modified_population)
-
-                    fuel_price_metadata = {
-                        "source": f"exogenous:{fuel_price_series}",
-                        "value": fuel_price,
-                        "unit": "EUR/litre",
-                    }
-
-                    logger.debug(
-                        "year=%d step_name=%s fuel_price=%s source=%s event=fuel_price_injected",
-                        year,
-                        self._name,
-                        fuel_price,
-                        fuel_price_series,
-                    )
-                except Exception as exc:
-                    # Log error but continue with default fuel price
-                    logger.warning(
-                        "year=%d step_name=%s fuel_price_series=%s injection failed: %s",
-                        year,
-                        self._name,
-                        fuel_price_series,
-                        exc,
-                    )
+        expansion, fuel_price_metadata = _inject_fuel_price_from_exogenous_context(
+            expansion,
+            domain,
+            state.data,
+            year,
+            self._name,
+        )
 
         # Phase 2: Compute via adapter (single batch call)
         # Skip adapter call for empty population (AC-3)
@@ -405,4 +429,3 @@ class DiscreteChoiceStep:
         )
 
         return replace(state, data=new_data)
-

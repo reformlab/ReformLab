@@ -4,7 +4,7 @@
  * Tests for WorkflowNavRail component (Story 20.1, AC-1).
  *
  * Validates the four canonical stages:
- *   Policies & Portfolio → Population → Scenario → Run / Results / Compare
+ *   Policy → Population → Scenario → Run / Results / Compare
  *
  * AC-1: nav rail with stage indicators and connecting lines
  * AC-2: completion indicators (checkmark=emerald, active=blue, pending=slate)
@@ -46,7 +46,7 @@ function baseProps(overrides: Partial<WorkflowNavRailProps> = {}): WorkflowNavRa
 describe("WorkflowNavRail - stage rendering", () => {
   it("renders all four stage labels when expanded", () => {
     render(<WorkflowNavRail {...baseProps()} />);
-    expect(screen.getByText("Policies & Portfolio")).toBeInTheDocument();
+    expect(screen.getByText("Policy")).toBeInTheDocument();
     expect(screen.getByText("Population")).toBeInTheDocument();
     expect(screen.getByText("Scenario")).toBeInTheDocument();
     expect(screen.getByText("Run / Results / Compare")).toBeInTheDocument();
@@ -161,10 +161,10 @@ describe("WorkflowNavRail - summary lines", () => {
 // ============================================================================
 
 describe("WorkflowNavRail - navigation", () => {
-  it("calls navigateTo with policies when Policies & Portfolio stage is clicked", async () => {
+  it("calls navigateTo with policies when Policy stage is clicked", async () => {
     const navigateTo = vi.fn();
     render(<WorkflowNavRail {...baseProps({ navigateTo })} />);
-    await userEvent.click(screen.getByRole("button", { name: /policies.*portfolio/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^policy$/i }));
     expect(navigateTo).toHaveBeenCalledWith("policies");
   });
 
@@ -197,7 +197,7 @@ describe("WorkflowNavRail - navigation", () => {
 describe("WorkflowNavRail - collapsed state", () => {
   it("does not show stage labels when collapsed", () => {
     render(<WorkflowNavRail {...baseProps({ collapsed: true })} />);
-    expect(screen.queryByText("Policies & Portfolio")).not.toBeInTheDocument();
+    expect(screen.queryByText("Policy")).not.toBeInTheDocument();
     expect(screen.queryByText("Population")).not.toBeInTheDocument();
     expect(screen.queryByText("Scenario")).not.toBeInTheDocument();
     expect(screen.queryByText("Run / Results / Compare")).not.toBeInTheDocument();

@@ -95,14 +95,18 @@ export function TopBar() {
           <Github className="h-4 w-4" />
         </a>
 
-        {/* API status dot with title tooltip and live region */}
+        {/* API status indicator */}
         <div
           role="status"
           aria-live="polite"
-          className={`h-2 w-2 rounded-full ${apiConnected ? "bg-emerald-500" : "bg-amber-500"}`}
-          title={apiConnected ? "API connected" : "Using sample data"}
-          aria-label={apiConnected ? "API connected" : "API disconnected — using sample data"}
-        />
+          className="flex items-center gap-1.5"
+          title={apiConnected ? "Backend API is reachable" : "Cannot reach backend API"}
+        >
+          <div className={`h-2 w-2 rounded-full ${apiConnected ? "bg-emerald-500" : "bg-amber-500 animate-pulse"}`} />
+          <span className={`hidden md:inline text-xs ${apiConnected ? "text-slate-400" : "text-amber-600 font-medium"}`}>
+            {apiConnected ? "API" : "Disconnected"}
+          </span>
+        </div>
 
         {/* Settings icon (display-only, decorative - hidden from screen readers) */}
         <div className="hidden md:flex items-center text-slate-500" aria-hidden="true">

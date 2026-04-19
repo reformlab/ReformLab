@@ -1,0 +1,109 @@
+record_id: d45516ee-7d2f-404e-a419-83ecf36e1e41
+created_at: '2026-04-18T17:53:19.944566+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 24
+  story_num: '5'
+  title: Story 24.5
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: codex
+  model: gpt-5.3-codex
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-04-18T17:46:37.368453Z'
+  end_time: '2026-04-18T17:52:59.325453Z'
+  duration_ms: 381957
+  input_tokens: 0
+  output_tokens: 2454
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 9819
+  heading_count: 9
+  list_depth_max: 1
+  code_block_count: 0
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: 7.6'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes & Readability
+  - ⚡ Performance & Scalability
+  - 🐛 Correctness & Safety
+  - 🔧 Maintainability Issues
+  - 🛠️ Suggested Fixes
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 3a9abb224b31
+findings:
+  total_count: 9
+  by_severity:
+    critical: 2
+    major: 7
+    minor: 0
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 4
+    completeness: 4
+    clarity: 1
+    testability: 5
+  has_fix_count: 9
+  has_location_count: 9
+  has_evidence_count: 9
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: false
+  uncertainty_phrases_count: 0
+  confidence_phrases_count: 0
+linguistic:
+  avg_sentence_length: 32.82051282051282
+  vocabulary_richness: 0.275
+  flesch_reading_ease: -93.23111111111103
+  vague_terms_count: 0
+  formality_score: 0.75
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 1.0
+  evidence_quality: 1.0
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 13
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

@@ -1,21 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 Lucas Vivier
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 
 import {
   MultiRunChart,
   columnarToRows,
   type SeriesSpec,
 } from "@/components/simulation/MultiRunChart";
+import {
+  renderedBarShapes,
+  setupRechartsResponsiveContainerMock,
+} from "./recharts-test-utils";
 
-// Recharts uses ResizeObserver which jsdom doesn't support
-beforeAll(() => {
-  globalThis.ResizeObserver ??= class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  };
-});
+setupRechartsResponsiveContainerMock();
 
 const mockSeries: SeriesSpec[] = [
   { key: "Run A", label: "Run A" },
@@ -34,6 +31,33 @@ describe("MultiRunChart", () => {
       render(<MultiRunChart data={mockData} xKey="decile" series={mockSeries} />);
       // Table should appear
       expect(screen.getByRole("table")).toBeInTheDocument();
+    });
+
+    it("renders SVG bars for each row and series", async () => {
+      const barData = [
+        { decile: 1, "Run A": 120, "Run B": 80 },
+        { decile: 2, "Run A": 180, "Run B": 150 },
+        { decile: 3, "Run A": 240, "Run B": 210 },
+      ];
+      const { container } = render(
+        <MultiRunChart data={barData} xKey="decile" series={mockSeries} />,
+      );
+
+      await waitFor(() => {
+        const bars = renderedBarShapes(container);
+        expect(bars.length).toBeGreaterThanOrEqual(
+          barData.length * mockSeries.length,
+        );
+      });
+    });
+
+    it("renders one companion table body row per data row", () => {
+      const { container } = render(
+        <MultiRunChart data={mockData} xKey="decile" series={mockSeries} />,
+      );
+      const rows = container.querySelectorAll("tbody tr");
+
+      expect(rows).toHaveLength(mockData.length);
     });
 
     it("renders with 5 series without crashing", () => {

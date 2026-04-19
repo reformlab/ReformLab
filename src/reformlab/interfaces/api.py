@@ -1086,6 +1086,46 @@ def _sanitize_error_text(value: str) -> str:
     return cleaned.strip(" :-")
 
 
+def _translate_policy_for_live_execution(
+    policy: Any,
+    template_name: str,
+) -> Any:
+    """Translate domain policy for live OpenFisca execution.
+
+    Story 24.2: Domain-layer translation boundary. Validates and passes
+    through PolicyParameters for adapter consumption. Wraps TranslationError
+    as ConfigurationError for API consistency.
+
+    Args:
+        policy: Domain policy parameters (SubsidyParameters, etc.).
+        template_name: Template name for error messages.
+
+    Returns:
+        The validated policy, ready for adapter consumption.
+
+    Raises:
+        ConfigurationError: If policy cannot be translated or is unsupported.
+    """
+    from reformlab.computation.translator import TranslationError, translate_policy
+    from reformlab.interfaces.errors import ConfigurationError
+    from reformlab.templates.exceptions import TemplateError
+
+    try:
+        return translate_policy(policy, template_name)
+    except TemplateError:
+        # Policy type cannot be inferred (e.g. base PolicyParameters from
+        # deserialization without policy_type). Pass through — existing
+        # adapters handle these directly.
+        return policy
+    except TranslationError as exc:
+        raise ConfigurationError(
+            field_path=f"policy.{template_name}",
+            expected="Translatable policy parameters",
+            actual=exc.why,
+            fix=exc.fix,
+        ) from exc
+
+
 def _unwrap_original_error(exc: Exception) -> Exception:
     """Unwrap nested ``original_error`` links to reach root cause."""
     current: Exception = exc
@@ -1577,6 +1617,9 @@ def _run_direct_scenario(
             fix="Pass a BaselineScenario or ReformScenario object",
         )
 
+    # Story 24.2: Translate domain policy for live execution
+    execution_policy = _translate_policy_for_live_execution(execution_policy, execution_name)
+
     # Build typed PolicyConfig — the typed policy flows directly to adapters
     policy = PolicyConfig(
         policy=execution_policy,
@@ -1847,6 +1890,9 @@ def _execute_orchestration(
 
     # Reconstruct typed PolicyParameters from the dict-based ScenarioConfig.
     typed_policy = deserialize_policy(scenario.policy)
+
+    # Story 24.2: Translate domain policy for live execution
+    typed_policy = _translate_policy_for_live_execution(typed_policy, scenario.template_name)
 
     # Serialize for manifest/workflow boundaries (JSON-compatible dict).
     # Merge original scenario.policy keys so user-facing parameter names

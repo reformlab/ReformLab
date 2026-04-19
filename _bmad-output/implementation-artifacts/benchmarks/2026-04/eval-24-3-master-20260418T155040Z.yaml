@@ -1,0 +1,51 @@
+record_id: d2eed434-4174-489b-a715-9c56bb556501
+created_at: '2026-04-18T15:50:40.850456+00:00'
+workflow:
+  id: create-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 24
+  story_num: 3
+  title: Story 24.3
+  complexity_flags: {}
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: master
+  role_id: null
+  session_id: 67b7a76e-5f42-4421-ada4-cb52b1e6c50a
+execution:
+  start_time: '2026-04-18T15:48:13.031311Z'
+  end_time: '2026-04-18T15:50:40.818647Z'
+  duration_ms: 147787
+  input_tokens: 0
+  output_tokens: 0
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 4353
+  heading_count: 2
+  list_depth_max: 2
+  code_block_count: 0
+  sections_detected:
+  - 'Story 24.3: Enable Portfolio Execution for Surfaced Subsidy and Related Live Policy Packs'
+  - 'Story 24.3: Enable Portfolio Execution for Surfaced Subsidy and Related Live Policy Packs'
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: c4bea5ef54ba
+findings: null
+reasoning: null
+linguistic: null
+quality: null
+consensus: null
+ground_truth: null
+custom: null

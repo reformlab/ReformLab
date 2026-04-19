@@ -765,6 +765,263 @@ class TestPortfolioStepKeys:
 
 
 # ============================================================================
+# Story 24.3: Translation integration tests
+# ============================================================================
+
+
+class TestPortfolioTranslationIntegration:
+    """Tests for translation integration in PortfolioComputationStep.
+
+    Story 24.3 / AC-2, AC-5: Subsidy-family policies are translated before
+    adapter invocation when executing portfolios.
+    """
+
+    def test_subsidy_policy_translated_in_portfolio(
+        self,
+        portfolio_population: PopulationData,
+        year_state: YearState,
+    ) -> None:
+        """AC-2: Subsidy policy in portfolio is translated before execution."""
+        import reformlab.templates.subsidy  # noqa: F401 - ensure subsidy is loaded
+        from reformlab.computation.translator import translate_policy
+        from reformlab.orchestrator.portfolio_step import _to_computation_policy
+        from reformlab.templates.portfolios.portfolio import PolicyPortfolio, PolicyConfig
+        from reformlab.templates.schema import SubsidyParameters
+
+        # Create a portfolio with a subsidy policy that has empty rate_schedule
+        # This should fail translation
+        portfolio = PolicyPortfolio(
+            name="test-empty-subsidy",
+            policies=(
+                PolicyConfig(
+                    policy=SubsidyParameters(rate_schedule={}),  # Empty schedule
+                    name="empty_subsidy",
+                ),
+                PolicyConfig(
+                    policy=SubsidyParameters(rate_schedule={2025: 100.0}),
+                    name="valid_subsidy",
+                ),
+            ),
+        )
+
+        adapter = MockAdapter(version_string="v1")
+        step = PortfolioComputationStep(
+            adapter=adapter,
+            population=portfolio_population,
+            portfolio=portfolio,
+        )
+
+        # Verify that empty rate_schedule fails during translation
+        with pytest.raises(PortfolioComputationStepError, match="Translation failed"):
+            step.execute(2025, year_state)
+
+    def test_vehicle_malus_policy_translated_in_portfolio(
+        self,
+        portfolio_population: PopulationData,
+        year_state: YearState,
+    ) -> None:
+        """AC-2: Vehicle malus policy in portfolio is translated before execution."""
+        import reformlab.templates.vehicle_malus  # noqa: F401
+        from reformlab.templates.portfolios.portfolio import PolicyConfig
+        from reformlab.templates.vehicle_malus.compute import VehicleMalusParameters
+
+        # Create a portfolio with vehicle_malus that has negative malus_rate
+        # This should fail translation validation
+        portfolio = PolicyPortfolio(
+            name="test-invalid-vehicle-malus",
+            policies=(
+                PolicyConfig(
+                    policy=VehicleMalusParameters(
+                        rate_schedule={2025: 100.0},
+                        malus_rate_per_gkm=-10.0,  # Negative - invalid
+                    ),
+                    name="invalid_vehicle_malus",
+                ),
+                PolicyConfig(
+                    policy=VehicleMalusParameters(
+                        rate_schedule={2025: 100.0},
+                        malus_rate_per_gkm=50.0,
+                    ),
+                    name="valid_vehicle_malus",
+                ),
+            ),
+        )
+
+        adapter = MockAdapter(version_string="v1")
+        step = PortfolioComputationStep(
+            adapter=adapter,
+            population=portfolio_population,
+            portfolio=portfolio,
+        )
+
+        # Verify that negative malus_rate fails during translation
+        with pytest.raises(PortfolioComputationStepError, match="Translation failed"):
+            step.execute(2025, year_state)
+
+    def test_energy_poverty_aid_policy_translated_in_portfolio(
+        self,
+        portfolio_population: PopulationData,
+        year_state: YearState,
+    ) -> None:
+        """AC-2: Energy poverty aid policy in portfolio is translated before execution."""
+        import reformlab.templates.energy_poverty_aid  # noqa: F401
+        from reformlab.templates.portfolios.portfolio import PolicyConfig
+        from reformlab.templates.energy_poverty_aid.compute import EnergyPovertyAidParameters
+
+        # Create a portfolio with energy_poverty_aid that has empty rate_schedule
+        # This should fail translation validation (the __post_init__ allows empty schedule)
+        portfolio = PolicyPortfolio(
+            name="test-invalid-energy-aid",
+            policies=(
+                PolicyConfig(
+                    policy=EnergyPovertyAidParameters(
+                        rate_schedule={},  # Empty schedule - fails translation
+                        income_ceiling=11000.0,
+                    ),
+                    name="invalid_energy_aid",
+                ),
+                PolicyConfig(
+                    policy=EnergyPovertyAidParameters(
+                        rate_schedule={2025: 150.0},
+                        income_ceiling=11000.0,
+                    ),
+                    name="valid_energy_aid",
+                ),
+            ),
+        )
+
+        adapter = MockAdapter(version_string="v1")
+        step = PortfolioComputationStep(
+            adapter=adapter,
+            population=portfolio_population,
+            portfolio=portfolio,
+        )
+
+        # Verify that empty rate_schedule fails during translation
+        with pytest.raises(PortfolioComputationStepError, match="Translation failed"):
+            step.execute(2025, year_state)
+
+    def test_translation_error_wrapped_as_portfolio_step_error(
+        self,
+        portfolio_population: PopulationData,
+        year_state: YearState,
+    ) -> None:
+        """AC-2: TranslationError is wrapped with PortfolioComputationStepError."""
+        from reformlab.computation.translator import TranslationError
+        from reformlab.templates.portfolios.portfolio import PolicyConfig
+        from reformlab.templates.schema import SubsidyParameters
+
+        # Create a portfolio that will fail translation
+        portfolio = PolicyPortfolio(
+            name="test-translation-error",
+            policies=(
+                PolicyConfig(
+                    policy=SubsidyParameters(rate_schedule={}),  # Empty - fails translation
+                    name="failing_policy",
+                ),
+                PolicyConfig(
+                    policy=SubsidyParameters(rate_schedule={2025: 100.0}),
+                    name="valid_policy",
+                ),
+            ),
+        )
+
+        adapter = MockAdapter(version_string="v1")
+        step = PortfolioComputationStep(
+            adapter=adapter,
+            population=portfolio_population,
+            portfolio=portfolio,
+        )
+
+        # Verify TranslationError is wrapped with PortfolioComputationStepError
+        with pytest.raises(PortfolioComputationStepError) as exc_info:
+            step.execute(2025, year_state)
+
+        error = exc_info.value
+        assert error.policy_index == 0
+        assert error.policy_name == "failing_policy"
+        assert error.year == 2025
+        assert error.original_error is not None
+        assert isinstance(error.original_error, TranslationError)
+
+    def test_valid_subsidy_policy_translates_successfully(
+        self,
+        portfolio_population: PopulationData,
+        year_state: YearState,
+    ) -> None:
+        """AC-2, AC-5: Valid subsidy policy translates and executes successfully."""
+        from reformlab.templates.portfolios.portfolio import PolicyConfig
+        from reformlab.templates.schema import SubsidyParameters
+
+        # Create a portfolio with valid subsidy policy
+        portfolio = PolicyPortfolio(
+            name="test-valid-subsidy",
+            policies=(
+                PolicyConfig(
+                    policy=SubsidyParameters(rate_schedule={2025: 100.0, 2026: 120.0}),
+                    name="valid_subsidy",
+                ),
+                PolicyConfig(
+                    policy=SubsidyParameters(rate_schedule={2025: 150.0}),
+                    name="another_subsidy",
+                ),
+            ),
+        )
+
+        adapter = MockAdapter(version_string="v1")
+        step = PortfolioComputationStep(
+            adapter=adapter,
+            population=portfolio_population,
+            portfolio=portfolio,
+        )
+
+        # Should execute without error
+        result = step.execute(2025, year_state)
+        assert COMPUTATION_RESULT_KEY in result.data
+
+    def test_passthrough_policy_types_execute_successfully(
+        self,
+        portfolio_population: PopulationData,
+        year_state: YearState,
+    ) -> None:
+        """AC-2: Carbon tax, rebate, feebate pass through translation unchanged."""
+        from reformlab.templates.portfolios.portfolio import PolicyConfig
+        from reformlab.templates.schema import CarbonTaxParameters, FeebateParameters, RebateParameters
+
+        # Create a portfolio with passthrough types
+        portfolio = PolicyPortfolio(
+            name="test-passthrough",
+            policies=(
+                PolicyConfig(
+                    policy=CarbonTaxParameters(rate_schedule={2025: 44.6}),
+                    name="carbon_tax",
+                ),
+                PolicyConfig(
+                    policy=RebateParameters(rate_schedule={2025: 100.0}),
+                    name="rebate",
+                ),
+                PolicyConfig(
+                    policy=FeebateParameters(rate_schedule={2025: 0.05}),
+                    name="feebate",
+                ),
+            ),
+        )
+
+        adapter = MockAdapter(version_string="v1")
+        step = PortfolioComputationStep(
+            adapter=adapter,
+            population=portfolio_population,
+            portfolio=portfolio,
+        )
+
+        # Should execute without error
+        result = step.execute(2025, year_state)
+        assert COMPUTATION_RESULT_KEY in result.data
+        # All 3 policies should have been computed
+        assert len(adapter.call_log) == 3
+
+
+# ============================================================================
 # Merge validation: household_id consistency (Code Review Synthesis)
 # ============================================================================
 

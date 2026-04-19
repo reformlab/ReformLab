@@ -1,20 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 Lucas Vivier
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 
 import { TransitionChart } from "@/components/simulation/TransitionChart";
 import type { YearlyOutcome } from "@/api/types";
+import {
+  renderedAreaPaths,
+  setupRechartsResponsiveContainerMock,
+} from "./recharts-test-utils";
 
-// Recharts uses ResizeObserver which jsdom doesn't support
-beforeAll(() => {
-  globalThis.ResizeObserver ??= class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  };
-});
+setupRechartsResponsiveContainerMock();
 
 const ALT_IDS = ["keep_current", "buy_ev"];
 const ALT_LABELS: Record<string, string> = {
@@ -52,6 +49,34 @@ describe("TransitionChart", () => {
       expect(screen.getByRole("table")).toBeInTheDocument();
     });
 
+    it("renders SVG paths for the stacked areas", async () => {
+      const { container } = render(
+        <TransitionChart
+          data={MOCK_OUTCOMES}
+          alternativeIds={ALT_IDS}
+          alternativeLabels={ALT_LABELS}
+        />,
+      );
+
+      await waitFor(() => {
+        const areaPaths = renderedAreaPaths(container);
+        expect(areaPaths.length).toBeGreaterThanOrEqual(ALT_IDS.length);
+      });
+    });
+
+    it("renders one companion table body row per year", () => {
+      const { container } = render(
+        <TransitionChart
+          data={MOCK_OUTCOMES}
+          alternativeIds={ALT_IDS}
+          alternativeLabels={ALT_LABELS}
+        />,
+      );
+      const rows = container.querySelectorAll("tbody tr");
+
+      expect(rows).toHaveLength(MOCK_OUTCOMES.length);
+    });
+
     it("renders no-data message when data is empty", () => {
       render(
         <TransitionChart
@@ -72,8 +97,9 @@ describe("TransitionChart", () => {
           alternativeLabels={ALT_LABELS}
         />,
       );
-      expect(screen.getByText("Keep Current")).toBeInTheDocument();
-      expect(screen.getByText("Electric (EV)")).toBeInTheDocument();
+      const table = within(screen.getByRole("table"));
+      expect(table.getByText("Keep Current")).toBeInTheDocument();
+      expect(table.getByText("Electric (EV)")).toBeInTheDocument();
     });
 
     it("shows year rows in companion table", () => {
@@ -84,8 +110,9 @@ describe("TransitionChart", () => {
           alternativeLabels={ALT_LABELS}
         />,
       );
-      expect(screen.getByText("2025")).toBeInTheDocument();
-      expect(screen.getByText("2026")).toBeInTheDocument();
+      const table = within(screen.getByRole("table"));
+      expect(table.getByText("2025")).toBeInTheDocument();
+      expect(table.getByText("2026")).toBeInTheDocument();
     });
 
     it("shows count values in companion table", () => {
@@ -96,8 +123,9 @@ describe("TransitionChart", () => {
           alternativeLabels={ALT_LABELS}
         />,
       );
-      expect(screen.getByText("80")).toBeInTheDocument();
-      expect(screen.getByText("20")).toBeInTheDocument();
+      const table = within(screen.getByRole("table"));
+      expect(table.getByText("80")).toBeInTheDocument();
+      expect(table.getByText("20")).toBeInTheDocument();
     });
   });
 
@@ -113,7 +141,7 @@ describe("TransitionChart", () => {
           onYearClick={onYearClick}
         />,
       );
-      await user.click(screen.getByText("2025"));
+      await user.click(within(screen.getByRole("table")).getByText("2025"));
       expect(onYearClick).toHaveBeenCalledWith(2025);
     });
 
@@ -127,7 +155,7 @@ describe("TransitionChart", () => {
           alternativeLabels={ALT_LABELS}
         />,
       );
-      await user.click(screen.getByText("2025"));
+      await user.click(within(screen.getByRole("table")).getByText("2025"));
       // No assertion needed — just verifying no crash
     });
   });

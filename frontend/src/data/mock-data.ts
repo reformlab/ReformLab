@@ -17,7 +17,10 @@ export interface Template {
   parameterCount: number;
   description: string;
   parameterGroups: string[];
-  is_custom?: boolean;
+  is_custom: boolean;
+  // Story 24.1 / AC-1: Runtime availability metadata (required fields)
+  runtime_availability: "live_ready" | "live_unavailable";
+  availability_reason: string | null;
 }
 
 export interface Parameter {
@@ -99,6 +102,10 @@ export const mockTemplates: Template[] = [
     parameterCount: 8,
     description: "Flat carbon tax rate applied uniformly across all households",
     parameterGroups: ["Tax Rates", "Thresholds"],
+    is_custom: false,
+    // Story 24.4: Runtime availability metadata
+    runtime_availability: "live_ready",
+    availability_reason: null,
   },
   {
     id: "carbon-tax-progressive",
@@ -107,6 +114,9 @@ export const mockTemplates: Template[] = [
     parameterCount: 12,
     description: "Progressive rate by income decile with exemptions",
     parameterGroups: ["Tax Rates", "Thresholds"],
+    is_custom: false,
+    runtime_availability: "live_ready",
+    availability_reason: null,
   },
   {
     id: "carbon-tax-dividend",
@@ -115,6 +125,9 @@ export const mockTemplates: Template[] = [
     parameterCount: 10,
     description: "Flat tax with equal per-capita dividend redistribution",
     parameterGroups: ["Tax Rates", "Thresholds", "Redistribution"],
+    is_custom: false,
+    runtime_availability: "live_ready",
+    availability_reason: null,
   },
   {
     id: "subsidy-energy",
@@ -123,6 +136,9 @@ export const mockTemplates: Template[] = [
     parameterCount: 6,
     description: "Means-tested energy efficiency subsidy for low-income households",
     parameterGroups: ["Redistribution", "Thresholds"],
+    is_custom: false,
+    runtime_availability: "live_ready",
+    availability_reason: null,
   },
   {
     id: "feebate-vehicle",
@@ -131,6 +147,67 @@ export const mockTemplates: Template[] = [
     parameterCount: 9,
     description: "Fee on high-emission, rebate on low-emission vehicles",
     parameterGroups: ["Redistribution", "Thresholds"],
+    is_custom: false,
+    runtime_availability: "live_ready",
+    availability_reason: null,
+  },
+  // Story 24.4: Non-regression — rebate template for TYPE_LABELS/TYPE_COLORS coverage
+  {
+    id: "rebate-energy",
+    name: "Energy Rebate",
+    type: "rebate",
+    parameterCount: 6,
+    description: "Direct rebate for energy-efficient purchases and renovations",
+    parameterGroups: ["Redistribution", "Thresholds"],
+    is_custom: false,
+    runtime_availability: "live_ready",
+    availability_reason: null,
+  },
+  // Story 24.4: Surfaced pack templates - Vehicle Malus
+  {
+    id: "vehicle-malus-flat-rate",
+    name: "Vehicle Malus \u2014 Flat Rate",
+    type: "vehicle_malus",
+    parameterCount: 4,
+    description: "Flat-rate malus for vehicles exceeding CO2 emissions threshold",
+    parameterGroups: ["emission_threshold", "malus_rate_per_gkm", "rate_schedule", "threshold_schedule"],
+    is_custom: true,
+    runtime_availability: "live_ready",
+    availability_reason: null,
+  },
+  {
+    id: "vehicle-malus-french-2026",
+    name: "Vehicle Malus \u2014 French 2026 System",
+    type: "vehicle_malus",
+    parameterCount: 5,
+    description: "Tiered malus system following French 2026 emission bands",
+    parameterGroups: ["emission_bands", "malus_schedule", "exemption_categories"],
+    is_custom: true,
+    runtime_availability: "live_ready",
+    availability_reason: null,
+  },
+  // Story 24.4: Surfaced pack templates - Energy Poverty Aid
+  {
+    id: "energy-poverty-cheque-energie",
+    name: "Energy Poverty Aid \u2014 Cheque \u00c9nergie",
+    type: "energy_poverty_aid",
+    parameterCount: 4,
+    description: "Flat energy voucher for eligible households based on income ceiling",
+    parameterGroups: ["income_ceiling", "rate_schedule", "eligible_categories"],
+    is_custom: true,
+    runtime_availability: "live_ready",
+    availability_reason: null,
+  },
+  {
+    id: "energy-poverty-generous",
+    name: "Energy Poverty Aid \u2014 Generous",
+    type: "energy_poverty_aid",
+    parameterCount: 5,
+    description: "Enhanced aid with higher income ceiling and household size multiplier",
+    parameterGroups: ["income_ceiling", "rate_schedule", "eligible_categories", "household_size_multiplier"],
+    is_custom: true,
+    runtime_availability: "live_ready",
+    availability_reason: null,
   },
 ];
 

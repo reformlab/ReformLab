@@ -110,7 +110,7 @@ describe("ScenarioCard", () => {
     const scenario: Scenario = { ...reformScenario, status: "running" };
     render(<ScenarioCard scenario={scenario} selected={false} {...h} />);
     const badge = screen.getByText("running");
-    expect(badge).toHaveClass("bg-amber-50");
+    expect(badge).toHaveAttribute("data-variant", "warning");
   });
 
   it("maps 'failed' status to destructive badge variant", () => {
@@ -118,6 +118,6 @@ describe("ScenarioCard", () => {
     const scenario: Scenario = { ...reformScenario, status: "failed" };
     render(<ScenarioCard scenario={scenario} selected={false} {...h} />);
     const badge = screen.getByText("failed");
-    expect(badge).toHaveClass("bg-red-50");
+    expect(badge).toHaveAttribute("data-variant", "destructive");
   });
 });

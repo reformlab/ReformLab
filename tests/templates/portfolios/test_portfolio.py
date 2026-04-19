@@ -113,22 +113,22 @@ class TestPolicyPortfolioConstruction:
         assert portfolio.policies[0] is policy1
         assert portfolio.policies[1] is policy2
 
-    def test_portfolio_requires_at_least_two_policies(self, carbon_tax_params: CarbonTaxParameters) -> None:
-        """Portfolio with <2 policies raises clear error (AC4)."""
+    def test_portfolio_allows_single_policy(self, carbon_tax_params: CarbonTaxParameters) -> None:
+        """Portfolio with 1 policy is valid."""
         policy1 = PolicyConfig(
             policy_type=PolicyType.CARBON_TAX,
             policy=carbon_tax_params,
             name="Single Policy",
         )
-        with pytest.raises(PortfolioValidationError, match="at least 2 policies"):
-            PolicyPortfolio(
-                name="Invalid Portfolio",
-                policies=(policy1,),
-            )
+        portfolio = PolicyPortfolio(
+            name="Single Policy Portfolio",
+            policies=(policy1,),
+        )
+        assert len(portfolio.policies) == 1
 
-    def test_portfolio_requires_at_least_two_policies_empty(self) -> None:
-        """Portfolio with 0 policies raises clear error (AC4)."""
-        with pytest.raises(PortfolioValidationError, match="at least 2 policies"):
+    def test_portfolio_requires_at_least_one_policy_empty(self) -> None:
+        """Portfolio with 0 policies raises clear error."""
+        with pytest.raises(PortfolioValidationError, match="at least 1 policy"):
             PolicyPortfolio(
                 name="Empty Portfolio",
                 policies=(),

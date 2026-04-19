@@ -242,8 +242,8 @@ export function PortfolioDesignerScreen({
     setNameError(err);
     if (err) return;
 
-    if (composition.length < 2) {
-      toast.error("Add at least 2 policies before saving");
+    if (composition.length < 1) {
+      toast.error("Add at least 1 policy before saving");
       return;
     }
 
@@ -368,7 +368,7 @@ export function PortfolioDesignerScreen({
     }
   };
 
-  const canSave = composition.length >= 2 &&
+  const canSave = composition.length >= 1 &&
     (resolutionStrategy !== "error" || conflicts.length === 0);
 
   // ============================================================================
@@ -387,15 +387,15 @@ export function PortfolioDesignerScreen({
               <div>
                 <h2 className="text-sm font-semibold text-slate-900">Select Policy Templates</h2>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Choose 2 or more templates to compose into a portfolio.{" "}
+                  Choose 1 or more templates to compose into a portfolio.{" "}
                   <span className="font-medium">{selectedTemplateIds.length} selected.</span>
                 </p>
               </div>
               <Button
                 size="sm"
                 onClick={() => setActiveStep("compose")}
-                disabled={selectedTemplateIds.length < 2}
-                title={selectedTemplateIds.length < 2 ? "Select at least 2 templates" : undefined}
+                disabled={selectedTemplateIds.length < 1}
+                title={selectedTemplateIds.length < 1 ? "Select at least 1 template" : undefined}
               >
                 Next
                 <ChevronRight className="ml-1 h-3 w-3" />
@@ -489,8 +489,8 @@ export function PortfolioDesignerScreen({
                   disabled={!canSave}
                   title={
                     !canSave
-                      ? composition.length < 2
-                        ? "Add at least 2 policies"
+                      ? composition.length < 1
+                        ? "Add at least 1 policy"
                         : "Resolve conflicts first"
                       : undefined
                   }

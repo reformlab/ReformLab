@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 Lucas Vivier
 /**
- * PoliciesStageScreen — Stage 1: Policies & Portfolio (Story 20.3, AC-1 through AC-6).
+ * PoliciesStageScreen — Stage 1: Policy (Story 20.3, AC-1 through AC-6).
  *
  * Inline composition layout: template browser and portfolio composition panel side-by-side
  * on a single page (no multi-step wizard). Replaces the PortfolioDesignerScreen 3-step flow.
@@ -29,18 +29,16 @@ import { PortfolioTemplateBrowser } from "@/components/simulation/PortfolioTempl
 import { PortfolioCompositionPanel } from "@/components/simulation/PortfolioCompositionPanel";
 import type { CompositionEntry } from "@/components/simulation/PortfolioCompositionPanel";
 import { ConflictList } from "@/components/simulation/ConflictList";
-import { validatePortfolioName } from "@/components/simulation/portfolioValidation";
 import { ApiError } from "@/api/client";
 import {
-  clonePortfolio,
-  createPortfolio,
   deletePortfolio,
-  getPortfolio,
   validatePortfolio,
 } from "@/api/portfolios";
 import { useAppState } from "@/contexts/AppContext";
 import type { PortfolioConflict } from "@/api/types";
-import { generatePortfolioSuggestion, generatePortfolioCloneName } from "@/utils/naming";
+import { usePortfolioSaveDialog } from "@/hooks/usePortfolioSaveDialog";
+import { usePortfolioLoadDialog } from "@/hooks/usePortfolioLoadDialog";
+import { usePortfolioCloneDialog } from "@/hooks/usePortfolioCloneDialog";
 
 // ============================================================================
 // Constants
@@ -88,26 +86,6 @@ export function PoliciesStageScreen() {
   const loadedRef = useRef<string | null>(null);
 
   // ============================================================================
-  // Dialog state
-  // ============================================================================
-
-  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
-  const [portfolioSaveName, setPortfolioSaveName] = useState("");
-  const [portfolioSaveDesc, setPortfolioSaveDesc] = useState("");
-  const [saveNameError, setSaveNameError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-
-  // Story 22.3: Track whether user has manually edited the portfolio name in the dialog
-  const [saveDialogNameManuallyEdited, setSaveDialogNameManuallyEdited] = useState(false);
-
-  const [loadDialogOpen, setLoadDialogOpen] = useState(false);
-
-  const [cloneDialogName, setCloneDialogName] = useState<string | null>(null);
-  const [cloneNewName, setCloneNewName] = useState("");
-  const [cloneNameError, setCloneNameError] = useState<string | null>(null);
-  const [cloning, setCloning] = useState(false);
-
-  // ============================================================================
   // Computed validity
   // AC-6: valid = composition.length >= 1 AND (no conflicts OR strategy !== "error")
   // ============================================================================
@@ -115,17 +93,6 @@ export function PoliciesStageScreen() {
   const isPortfolioValid =
     composition.length >= 1 &&
     (composition.length < 2 || conflicts.length === 0 || resolutionStrategy !== "error");
-
-  // ============================================================================
-  // Portfolio name auto-suggestion (Story 22.3, AC-1 through AC-5)
-  // ============================================================================
-
-  // Generate suggestion when composition changes, but only if user hasn't manually edited
-  useEffect(() => {
-    if (!saveDialogOpen || saveDialogNameManuallyEdited) return;
-    const suggestion = generatePortfolioSuggestion(templates, composition);
-    setPortfolioSaveName(suggestion);
-  }, [composition, templates, saveDialogOpen, saveDialogNameManuallyEdited]);
 
   // ============================================================================
   // Template selection → composition sync
@@ -243,162 +210,65 @@ export function PoliciesStageScreen() {
   }, [composition, resolutionStrategy, runValidation]);
 
   // ============================================================================
-  // Portfolio auto-load on mount (Task 3.5)
-  // When the screen mounts and activeScenario.portfolioName is set, load it.
+  // Portfolio dialog hooks (Task 6.1 through 6.3)
   // ============================================================================
 
-  const loadPortfolioIntoComposition = useCallback(async (name: string): Promise<boolean> => {
-    try {
-      const detail = await getPortfolio(name);
-      const entries: CompositionEntry[] = detail.policies.map((p) => {
-        const t = templates.find((tmpl) => tmpl.type.replace(/-/g, "_") === p.policy_type);
-        return {
-          templateId: t?.id ?? p.policy_type,
-          name: p.name,
-          parameters: Object.fromEntries(
-            Object.entries(p.parameters).filter(([, v]) => typeof v === "number"),
-          ) as Record<string, number>,
-          rateSchedule: p.rate_schedule,
-        };
-      });
-      setComposition(entries);
-      setSelectedTemplateIds(entries.map((e) => e.templateId));
-      setResolutionStrategy(
-        VALID_STRATEGIES.includes(detail.resolution_strategy as ResolutionStrategy)
-          ? (detail.resolution_strategy as ResolutionStrategy)
-          : "error",
-      );
-      setActivePortfolioName(name);
-      return true;
-    } catch (err) {
-      if (err instanceof ApiError) {
-        toast.warning(`Could not load portfolio '${name}': ${err.why}`);
-      } else {
-        toast.warning(`Could not load portfolio '${name}'`);
-      }
-      return false;
-    }
-  }, [templates]);
-
-  useEffect(() => {
-    if (!activeScenario?.portfolioName) return;
-    if (composition.length > 0) return;
-    if (loadedRef.current === activeScenario.portfolioName) return;
-
-    loadedRef.current = activeScenario.portfolioName;
-    void loadPortfolioIntoComposition(activeScenario.portfolioName);
-  }, [activeScenario?.portfolioName, composition.length, loadPortfolioIntoComposition]);
-
-  // ============================================================================
-  // Portfolio Save (Task 6.1)
-  // ============================================================================
-
-  const handleSave = useCallback(async () => {
-    const err = validatePortfolioName(portfolioSaveName);
-    setSaveNameError(err);
-    if (err) return;
-
-    if (resolutionStrategy === "error" && conflicts.length > 0) {
-      toast.error("Resolve conflicts before saving", {
-        description: "Change resolution strategy or remove conflicting policies",
-      });
-      return;
-    }
-
-    setSaving(true);
-    try {
-      await createPortfolio({
-        name: portfolioSaveName,
-        description: portfolioSaveDesc,
-        policies: composition.map((e) => {
-          const t = templates.find((tmpl) => tmpl.id === e.templateId);
-          return {
-            name: e.name,
-            policy_type: (t?.type ?? "carbon_tax").replace(/-/g, "_"),
-            rate_schedule: e.rateSchedule,
-            exemptions: [],
-            thresholds: [],
-            covered_categories: [],
-            extra_params: e.parameters as Record<string, unknown>,
-          };
-        }),
-        resolution_strategy: resolutionStrategy,
-      });
-
-      // Task 3.2: update loadedRef BEFORE updating scenario field to avoid reload loop
-      loadedRef.current = portfolioSaveName;
-      setActivePortfolioName(portfolioSaveName);
-      updateScenarioField("portfolioName", portfolioSaveName);
-      setSelectedPortfolioName(portfolioSaveName);
-      void refetchPortfolios();
-
-      toast.success(`Portfolio '${portfolioSaveName}' saved`);
-      setSaveDialogOpen(false);
-      setPortfolioSaveName("");
-      setPortfolioSaveDesc("");
-      setSaveDialogNameManuallyEdited(false);
-    } catch (err) {
-      if (err instanceof ApiError) {
-        toast.error(`${err.what} — ${err.why}`, { description: err.fix });
-      } else if (err instanceof Error) {
-        toast.error("Save failed", { description: err.message });
-      }
-    } finally {
-      setSaving(false);
-    }
-  }, [
+  const {
+    saveDialogOpen,
     portfolioSaveName,
     portfolioSaveDesc,
-    composition,
+    saveNameError,
+    saving,
+    openSaveDialog,
+    closeSaveDialog,
+    handleSaveNameChange,
+    setPortfolioSaveDesc,
+    handleSave,
+  } = usePortfolioSaveDialog({
     templates,
+    composition,
     resolutionStrategy,
     conflicts,
-    updateScenarioField,
+    loadedPortfolioRef: loadedRef,
+    setActivePortfolioName,
+    updateScenarioPortfolioName: (name) => updateScenarioField("portfolioName", name),
     setSelectedPortfolioName,
     refetchPortfolios,
-  ]);
+  });
 
-  // ============================================================================
-  // Portfolio Load (Task 6.2)
-  // ============================================================================
+  const {
+    loadDialogOpen,
+    openLoadDialog,
+    closeLoadDialog,
+    handleLoad,
+  } = usePortfolioLoadDialog({
+    templates,
+    activeScenarioPortfolioName: activeScenario?.portfolioName,
+    compositionLength: composition.length,
+    validStrategies: VALID_STRATEGIES,
+    defaultResolutionStrategy: "error",
+    loadedPortfolioRef: loadedRef,
+    setComposition,
+    setSelectedTemplateIds,
+    setResolutionStrategy,
+    setActivePortfolioName,
+    updateScenarioPortfolioName: (name) => updateScenarioField("portfolioName", name),
+    setSelectedPortfolioName,
+  });
 
-  const handleLoad = useCallback(async (name: string) => {
-    const ok = await loadPortfolioIntoComposition(name);
-    if (!ok) return; // warning toast already shown
-    loadedRef.current = name;
-    updateScenarioField("portfolioName", name);
-    setSelectedPortfolioName(name);
-    setLoadDialogOpen(false);
-    toast.success(`Loaded portfolio '${name}'`);
-  }, [loadPortfolioIntoComposition, updateScenarioField, setSelectedPortfolioName]);
-
-  // ============================================================================
-  // Portfolio Clone (Task 6.3)
-  // ============================================================================
-
-  const handleClone = useCallback(async () => {
-    if (!cloneDialogName) return;
-    const err = validatePortfolioName(cloneNewName);
-    setCloneNameError(err);
-    if (err) return;
-
-    setCloning(true);
-    try {
-      await clonePortfolio(cloneDialogName, { new_name: cloneNewName });
-      void refetchPortfolios();
-      toast.success(`Cloned '${cloneDialogName}' as '${cloneNewName}'`);
-      setCloneDialogName(null);
-      setCloneNewName("");
-    } catch (err) {
-      if (err instanceof ApiError) {
-        toast.error(`${err.what} — ${err.why}`, { description: err.fix });
-      } else if (err instanceof Error) {
-        toast.error("Clone failed", { description: err.message });
-      }
-    } finally {
-      setCloning(false);
-    }
-  }, [cloneDialogName, cloneNewName, refetchPortfolios]);
+  const {
+    cloneDialogName,
+    cloneNewName,
+    cloneNameError,
+    cloning,
+    openCloneDialog,
+    closeCloneDialog,
+    handleCloneNameChange,
+    handleClone,
+  } = usePortfolioCloneDialog({
+    portfolios,
+    refetchPortfolios,
+  });
 
   // ============================================================================
   // Portfolio Clear (Task 6.4)
@@ -478,15 +348,7 @@ export function PoliciesStageScreen() {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => {
-              // Story 22.3: Set initial suggestion from composition, reset manual edit flag
-              const suggestion = generatePortfolioSuggestion(templates, composition);
-              setPortfolioSaveName(suggestion);
-              setPortfolioSaveDesc("");
-              setSaveNameError(null);
-              setSaveDialogNameManuallyEdited(false);
-              setSaveDialogOpen(true);
-            }}
+            onClick={openSaveDialog}
             disabled={composition.length < 1}
             title={composition.length < 1 ? "Add at least 1 policy template" : "Save portfolio"}
           >
@@ -496,7 +358,7 @@ export function PoliciesStageScreen() {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => setLoadDialogOpen(true)}
+            onClick={openLoadDialog}
             title="Load a saved portfolio"
           >
             <FolderOpen className="mr-1.5 h-3 w-3" />
@@ -506,14 +368,7 @@ export function PoliciesStageScreen() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => {
-                // Story 22.3: Use collision handling for clone names
-                const existingNames = new Set(portfolios.map((p) => p.name));
-                const cloneName = generatePortfolioCloneName(activePortfolioName, existingNames);
-                setCloneDialogName(activePortfolioName);
-                setCloneNewName(cloneName);
-                setCloneNameError(null);
-              }}
+              onClick={() => openCloneDialog(activePortfolioName)}
               title="Clone active portfolio"
             >
               <Copy className="mr-1.5 h-3 w-3" />
@@ -635,14 +490,7 @@ export function PoliciesStageScreen() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    // Story 22.3: Use collision handling for clone names
-                    const existingNames = new Set(portfolios.map((port) => port.name));
-                    const cloneName = generatePortfolioCloneName(p.name, existingNames);
-                    setCloneDialogName(p.name);
-                    setCloneNewName(cloneName);
-                    setCloneNameError(null);
-                  }}
+                  onClick={() => openCloneDialog(p.name)}
                   className="shrink-0 border border-slate-200 p-1 text-slate-500 hover:bg-slate-50"
                   aria-label={`Clone portfolio ${p.name}`}
                   title="Clone"
@@ -671,11 +519,11 @@ export function PoliciesStageScreen() {
           aria-modal="true"
           aria-labelledby="save-portfolio-dialog-title"
           className="fixed inset-0 z-50 flex items-center justify-center"
-          onKeyDown={(e) => { if (e.key === "Escape") { setSaveDialogOpen(false); setSaveDialogNameManuallyEdited(false); } }}
+          onKeyDown={(e) => { if (e.key === "Escape") closeSaveDialog(); }}
         >
           <div
             className="absolute inset-0 bg-black/30"
-            onClick={() => { setSaveDialogOpen(false); setSaveDialogNameManuallyEdited(false); }}
+            onClick={closeSaveDialog}
             aria-hidden="true"
           />
           <div className="relative z-10 w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-lg">
@@ -693,10 +541,7 @@ export function PoliciesStageScreen() {
                   type="text"
                   value={portfolioSaveName}
                   onChange={(e) => {
-                    // Story 22.3: Mark as manually edited on any user input
-                    setSaveDialogNameManuallyEdited(true);
-                    setPortfolioSaveName(e.target.value);
-                    setSaveNameError(validatePortfolioName(e.target.value));
+                    handleSaveNameChange(e.target.value);
                   }}
                   placeholder="my-portfolio-2030"
                   className={saveNameError ? "border-red-400" : ""}
@@ -735,7 +580,7 @@ export function PoliciesStageScreen() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => { setSaveDialogOpen(false); setSaveDialogNameManuallyEdited(false); }}
+                onClick={closeSaveDialog}
                 disabled={saving}
               >
                 Cancel
@@ -764,11 +609,11 @@ export function PoliciesStageScreen() {
           aria-modal="true"
           aria-labelledby="load-portfolio-dialog-title"
           className="fixed inset-0 z-50 flex items-center justify-center"
-          onKeyDown={(e) => { if (e.key === "Escape") setLoadDialogOpen(false); }}
+          onKeyDown={(e) => { if (e.key === "Escape") closeLoadDialog(); }}
         >
           <div
             className="absolute inset-0 bg-black/30"
-            onClick={() => setLoadDialogOpen(false)}
+            onClick={closeLoadDialog}
             aria-hidden="true"
           />
           <div className="relative z-10 w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-lg">
@@ -802,7 +647,7 @@ export function PoliciesStageScreen() {
             )}
 
             <div className="mt-4 flex justify-end">
-              <Button variant="outline" size="sm" onClick={() => setLoadDialogOpen(false)}>
+              <Button variant="outline" size="sm" onClick={closeLoadDialog}>
                 Cancel
               </Button>
             </div>
@@ -817,11 +662,11 @@ export function PoliciesStageScreen() {
           aria-modal="true"
           aria-labelledby="clone-portfolio-dialog-title"
           className="fixed inset-0 z-50 flex items-center justify-center"
-          onKeyDown={(e) => { if (e.key === "Escape") setCloneDialogName(null); }}
+          onKeyDown={(e) => { if (e.key === "Escape") closeCloneDialog(); }}
         >
           <div
             className="absolute inset-0 bg-black/30"
-            onClick={() => setCloneDialogName(null)}
+            onClick={closeCloneDialog}
             aria-hidden="true"
           />
           <div className="relative z-10 w-full max-w-sm rounded-lg border border-slate-200 bg-white p-6 shadow-lg">
@@ -838,8 +683,7 @@ export function PoliciesStageScreen() {
                 type="text"
                 value={cloneNewName}
                 onChange={(e) => {
-                  setCloneNewName(e.target.value);
-                  setCloneNameError(validatePortfolioName(e.target.value));
+                  handleCloneNameChange(e.target.value);
                 }}
                 placeholder="my-portfolio-copy"
                 className={cloneNameError ? "border-red-400" : ""}
@@ -857,7 +701,7 @@ export function PoliciesStageScreen() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setCloneDialogName(null)}
+                onClick={closeCloneDialog}
                 disabled={cloning}
               >
                 Cancel

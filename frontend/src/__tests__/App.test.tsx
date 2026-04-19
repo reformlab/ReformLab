@@ -93,7 +93,7 @@ describe("App", () => {
     });
 
     // Stage labels appear in both TopBar and WorkflowNavRail — verify at least one exists
-    expect(screen.getAllByText("Policies & Portfolio").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Policy").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Population").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Scenario").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Run / Results / Compare").length).toBeGreaterThanOrEqual(1);
@@ -108,7 +108,7 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: /enter/i }));
 
     await waitFor(() => {
-      expect(screen.getAllByText("Policies & Portfolio").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Policy").length).toBeGreaterThanOrEqual(1);
     });
 
     // Gradient header should not exist
@@ -127,7 +127,7 @@ describe("App", () => {
 
     await waitFor(() => {
       // Default stage is "policies" — TopBar and nav rail show stage label
-      expect(screen.getAllByText("Policies & Portfolio").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Policy").length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -157,7 +157,7 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: /enter/i }));
 
     await waitFor(() => {
-      expect(screen.getAllByText("Policies & Portfolio").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Policy").length).toBeGreaterThanOrEqual(1);
     });
 
     // Navigate to population stage via hash — Story 20.4: library is default entry point

@@ -147,7 +147,7 @@ class PanelOutput:
             )
         else:
             # Concatenate all yearly tables
-            panel_table = pa.concat_tables(yearly_tables)
+            panel_table = pa.concat_tables(yearly_tables, promote_options="permissive")
 
         # Build metadata from orchestrator result
         metadata = _build_panel_metadata(result)
