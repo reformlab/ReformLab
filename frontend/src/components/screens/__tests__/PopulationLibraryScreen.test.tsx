@@ -144,7 +144,7 @@ describe("PopulationLibraryScreen - Quick Test Population (Story 22.4)", () => {
       },
     ];
 
-    const { container } = render(<PopulationLibraryScreen {...baseProps({ populations })} />);
+    render(<PopulationLibraryScreen {...baseProps({ populations })} />);
 
     // Get all population cards by finding elements with "rows" text (each card shows row count)
     const allCards = screen.getAllByText(/rows/);

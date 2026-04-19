@@ -91,7 +91,22 @@ const mockCreateNewScenario = vi.fn();
 function makeDefaultAppState(overrides: Partial<ReturnType<typeof useAppState>> = {}) {
   return {
     activeScenario: makeScenario(),
-    populations: [{ id: "fr-synthetic-2024", name: "FR 2024", households: 100000, source: "INSEE", year: 2024 }],
+    populations: [
+      {
+        id: "fr-synthetic-2024",
+        name: "FR 2024",
+        households: 100000,
+        source: "INSEE",
+        year: 2024,
+        origin: "built-in" as const,
+        canonical_origin: "open-official" as const,
+        access_mode: "bundled" as const,
+        trust_status: "production-safe" as const,
+        column_count: 10,
+        created_date: null,
+        is_synthetic: false,
+      },
+    ],
     dataFusionResult: null as GenerationResult | null,
     portfolios: [{ name: "Test Portfolio", description: "", version_id: "v1", policy_count: 1 }],
     updateScenarioField: mockUpdateScenarioField,
@@ -239,8 +254,34 @@ describe("EngineStageScreen — Story 20.5", () => {
     it("selecting population calls updateScenarioField and setSelectedPopulationId", async () => {
       renderScreen({
         populations: [
-          { id: "fr-synthetic-2024", name: "FR 2024", households: 100000, source: "INSEE", year: 2024 },
-          { id: "eu-silc-2023", name: "EU-SILC 2023", households: 80000, source: "Eurostat", year: 2023 },
+          {
+            id: "fr-synthetic-2024",
+            name: "FR 2024",
+            households: 100000,
+            source: "INSEE",
+            year: 2024,
+            origin: "built-in" as const,
+            canonical_origin: "open-official" as const,
+            access_mode: "bundled" as const,
+            trust_status: "production-safe" as const,
+            column_count: 10,
+            created_date: null,
+            is_synthetic: false,
+          },
+          {
+            id: "eu-silc-2023",
+            name: "EU-SILC 2023",
+            households: 80000,
+            source: "Eurostat",
+            year: 2023,
+            origin: "built-in" as const,
+            canonical_origin: "open-official" as const,
+            access_mode: "bundled" as const,
+            trust_status: "production-safe" as const,
+            column_count: 10,
+            created_date: null,
+            is_synthetic: false,
+          },
         ],
       });
       const select = screen.getByRole("combobox", { name: /primary population/i });

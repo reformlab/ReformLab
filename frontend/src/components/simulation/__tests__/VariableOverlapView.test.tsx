@@ -93,6 +93,10 @@ describe("VariableOverlapView", () => {
       variable_count: 2,
       record_count: null,
       source_url: "",
+      origin: "open-official",
+      access_mode: "bundled",
+      trust_status: "production-safe",
+      data_class: "structural",
       columns: [
         { name: "commune_code", type: "string", description: "Commune code" },
         { name: datasetId === "filosofi_2021_commune" ? "median_income" : "fleet_count", type: "float", description: "" },

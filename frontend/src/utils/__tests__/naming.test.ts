@@ -35,10 +35,10 @@ import type { CompositionEntry } from "@/components/simulation/PortfolioComposit
 // ============================================================================
 
 const mockTemplates: Template[] = [
-  { id: "carbon-tax-flat", name: "Carbon Tax — Flat Rate", type: "carbon-tax", parameterCount: 8, description: "Flat carbon tax", parameterGroups: ["Rates"] },
-  { id: "carbon-tax-progressive", name: "Carbon Tax — Progressive", type: "carbon-tax", parameterCount: 12, description: "Progressive carbon tax", parameterGroups: ["Rates"] },
-  { id: "subsidy-energy", name: "Energy Efficiency Subsidy", type: "subsidy", parameterCount: 6, description: "Energy subsidy", parameterGroups: ["Redistribution"] },
-  { id: "feebate-vehicle", name: "Vehicle Feebate", type: "feebate", parameterCount: 9, description: "Vehicle feebate", parameterGroups: ["Redistribution"] },
+  { id: "carbon-tax-flat", name: "Carbon Tax — Flat Rate", type: "carbon-tax", parameterCount: 8, description: "Flat carbon tax", parameterGroups: ["Rates"], is_custom: false, runtime_availability: "live_ready", availability_reason: null },
+  { id: "carbon-tax-progressive", name: "Carbon Tax — Progressive", type: "carbon-tax", parameterCount: 12, description: "Progressive carbon tax", parameterGroups: ["Rates"], is_custom: false, runtime_availability: "live_ready", availability_reason: null },
+  { id: "subsidy-energy", name: "Energy Efficiency Subsidy", type: "subsidy", parameterCount: 6, description: "Energy subsidy", parameterGroups: ["Redistribution"], is_custom: false, runtime_availability: "live_ready", availability_reason: null },
+  { id: "feebate-vehicle", name: "Vehicle Feebate", type: "feebate", parameterCount: 9, description: "Vehicle feebate", parameterGroups: ["Redistribution"], is_custom: false, runtime_availability: "live_ready", availability_reason: null },
 ];
 
 const mockPopulations: Population[] = [
@@ -167,8 +167,7 @@ describe("generatePortfolioSuggestion()", () => {
     for (const composition of testCases) {
       const suggestion = generatePortfolioSuggestion(mockTemplates, composition);
       const validationError = validatePortfolioName(suggestion);
-      expect(validationError).toBeNull();
-      expect(validationError).withContext(`Suggestion "${suggestion}" should pass validation`).toBeNull();
+      expect(validationError, `Suggestion "${suggestion}" should pass validation`).toBeNull();
     }
   });
 

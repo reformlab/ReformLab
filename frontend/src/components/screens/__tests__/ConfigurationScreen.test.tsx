@@ -35,6 +35,8 @@ function mockTemplates(): Template[] {
       description: "Standard carbon tax",
       parameterGroups: ["carbon"],
       is_custom: false,
+      runtime_availability: "live_ready",
+      availability_reason: null,
     },
   ];
 }
