@@ -43,6 +43,11 @@ function buildPortfolioPolicies(
       thresholds: [],
       covered_categories: [],
       extra_params: entry.parameters as Record<string, unknown>,
+      // Story 25.3: Optional fields for from-scratch policies
+      category_id: entry.category_id,
+      parameter_groups: entry.parameter_groups,
+      // Story 25.4: Editable parameter groups
+      editable_parameter_groups: entry.editableParameterGroups,
     };
   });
 }

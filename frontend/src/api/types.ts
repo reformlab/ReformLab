@@ -317,6 +317,16 @@ export interface GenerationResult {
 }
 
 // ============================================================================
+// Editable parameter groups — Story 25.4
+// ============================================================================
+
+export interface EditableParameterGroup {
+  id: string;
+  name: string;
+  parameterIds: string[];
+}
+
+// ============================================================================
 // Portfolio types — Story 17.2
 // ============================================================================
 
@@ -331,6 +341,8 @@ export interface PortfolioPolicyRequest {
   // Story 25.3: Optional fields for from-scratch policies
   category_id?: string;
   parameter_groups?: string[];
+  // Story 25.4: Editable parameter groups
+  editable_parameter_groups?: EditableParameterGroup[];
 }
 
 export interface CreatePortfolioRequest {
@@ -376,6 +388,8 @@ export interface PortfolioPolicyItem {
   category_id?: string;
   // Story 25.3: Optional parameter_groups for from-scratch policies
   parameter_groups?: string[];
+  // Story 25.4: Editable parameter groups
+  editable_parameter_groups?: EditableParameterGroup[];
 }
 
 export interface PortfolioDetailResponse {

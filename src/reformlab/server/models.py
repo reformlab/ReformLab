@@ -432,6 +432,7 @@ class PortfolioPolicyRequest(BaseModel):
     """A single policy entry in a portfolio create/update request.
 
     Story 25.3: Added optional policy_type, category_id, and parameter_groups for from-scratch policies.
+    Story 25.4: Added optional editable_parameter_groups for editable parameter groups.
     """
 
     model_config = {"from_attributes": True}
@@ -445,6 +446,9 @@ class PortfolioPolicyRequest(BaseModel):
     # Story 25.3: Optional fields for from-scratch policies
     category_id: str | None = None  # Category ID for from-scratch policies
     parameter_groups: list[str] = []  # Parameter groups for from-scratch policies
+    # Story 25.4: Editable parameter groups (optional for backward compatibility)
+    # Each group: {"id": str, "name": str, "parameter_ids": list[str]}
+    editable_parameter_groups: list[dict[str, Any]] | None = None
 
 
 class CreatePortfolioRequest(BaseModel):
@@ -488,7 +492,9 @@ class ValidatePortfolioResponse(BaseModel):
 
 
 class PortfolioPolicyItem(BaseModel):
-    """Story 25.3: Added optional category_id and parameter_groups for from-scratch policies."""
+    """Story 25.3: Added optional category_id and parameter_groups for from-sscratch policies.
+    Story 25.4: Added optional editable_parameter_groups for editable parameter groups.
+    """
 
     model_config = {"from_attributes": True}
     name: str
@@ -497,6 +503,9 @@ class PortfolioPolicyItem(BaseModel):
     parameters: dict[str, Any]
     category_id: str | None = None  # Story 25.3: Category ID for from-scratch policies
     parameter_groups: list[str] = []  # Story 25.3: Parameter groups for from-scratch policies
+    # Story 25.4: Editable parameter groups (optional for backward compatibility)
+    # Each group: {"id": str, "name": str, "parameter_ids": list[str]}
+    editable_parameter_groups: list[dict[str, Any]] | None = None
 
 
 class PortfolioDetailResponse(BaseModel):

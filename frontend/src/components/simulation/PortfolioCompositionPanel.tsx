@@ -16,7 +16,7 @@
  */
 
 import { useState, useEffect } from "react";
-import { ArrowUp, ArrowDown, Trash2, ChevronDown, ChevronRight, CircleHelp } from "lucide-react";
+import { ArrowUp, ArrowDown, Trash2, ChevronDown, ChevronRight, CircleHelp, Settings, Plus, Trash2 as Trash2Icon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Popover,
@@ -29,7 +29,8 @@ import { YearScheduleEditor } from "@/components/simulation/YearScheduleEditor";
 import { TYPE_COLORS, TYPE_LABELS } from "@/components/simulation/typeConstants";
 import { cn } from "@/lib/utils";
 import type { Template, Parameter } from "@/data/mock-data";
-import type { Category } from "@/api/types";
+import type { Category, EditableParameterGroup } from "@/api/types";
+import { Input } from "@/components/ui/input";
 
 export interface CompositionEntry {
   templateId: string;
@@ -45,6 +46,8 @@ export interface CompositionEntry {
   category_id?: string;
   /** Story 25.3: Parameter groups for from-scratch policies */
   parameter_groups?: string[];
+  /** Story 25.4: Editable parameter groups */
+  editableParameterGroups?: EditableParameterGroup[];
 }
 
 interface PortfolioCompositionPanelProps {
@@ -65,6 +68,18 @@ interface PortfolioCompositionPanelProps {
   categories?: Category[] | null;
   /** Story 25.3: Instance ID to auto-expand on mount (for newly created policies) */
   autoExpandInstanceId?: string | null;
+  /** Story 25.4: Index of card in edit-groups mode (null = none) */
+  editGroupsIndex?: number | null;
+  /** Story 25.4: Callback to toggle edit-groups mode */
+  onToggleEditGroups?: (index: number) => void;
+  /** Story 25.4: Callback to rename a group */
+  onGroupRename?: (policyIndex: number, groupId: string, newName: string) => void;
+  /** Story 25.4: Callback to add a new group */
+  onAddGroup?: (policyIndex: number) => void;
+  /** Story 25.4: Callback to delete a group */
+  onDeleteGroup?: (policyIndex: number, groupId: string) => void;
+  /** Story 25.4: Callback to move parameter between groups */
+  onMoveParameter?: (policyIndex: number, paramId: string, fromGroupId: string, toGroupId: string) => void;
 }
 
 export function PortfolioCompositionPanel({
@@ -78,6 +93,12 @@ export function PortfolioCompositionPanel({
   minimumPolicies = 1,
   categories,
   autoExpandInstanceId,
+  editGroupsIndex = null,
+  onToggleEditGroups,
+  onGroupRename,
+  onAddGroup,
+  onDeleteGroup,
+  onMoveParameter,
 }: PortfolioCompositionPanelProps) {
   const [expandedIndices, setExpandedIndices] = useState<Set<number>>(new Set());
 
@@ -148,7 +169,10 @@ export function PortfolioCompositionPanel({
         return (
           <div
             key={entry.instanceId || `${entry.templateId}-${index}`}
-            className="border border-slate-200 bg-white"
+            className={cn(
+              "border bg-white",
+              editGroupsIndex === index ? "border-blue-500" : "border-slate-200",
+            )}
           >
             {/* Card header */}
             <div className="flex items-center gap-2 p-3">
@@ -160,6 +184,12 @@ export function PortfolioCompositionPanel({
               {/* Template info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
+                  {/* Story 25.4: Editing badge */}
+                  {editGroupsIndex === index && (
+                    <Badge variant="default" className="text-xs shrink-0 bg-blue-500 text-white">
+                      Editing
+                    </Badge>
+                  )}
                   <p className="text-sm font-medium text-slate-900 truncate">
                     {entry.name || template?.name || entry.templateId}
                   </p>
@@ -225,6 +255,23 @@ export function PortfolioCompositionPanel({
 
               {/* Action buttons */}
               <div className="flex items-center gap-1 shrink-0">
+                {/* Story 25.4: Edit groups button */}
+                {onToggleEditGroups && entry.editableParameterGroups && entry.editableParameterGroups.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => onToggleEditGroups(index)}
+                    className={cn(
+                      "border p-1",
+                      editGroupsIndex === index
+                        ? "border-blue-500 bg-blue-50 text-blue-600"
+                        : "border-slate-200 text-slate-600 hover:bg-slate-50",
+                    )}
+                    aria-label="Edit parameter groups"
+                    title="Customize parameter groups"
+                  >
+                    <Settings className="h-3 w-3" />
+                  </button>
+                )}
                 {/* Expand/collapse */}
                 <button
                   type="button"
@@ -314,53 +361,140 @@ export function PortfolioCompositionPanel({
                   />
                 </div>
 
-                {/* Story 25.3: Parameter groups display for from-scratch policies */}
-                {parameterGroups.length > 0 && (
+                {/* Story 25.3/25.4: Parameter groups display */}
+                {(parameterGroups.length > 0 || (entry.editableParameterGroups && entry.editableParameterGroups.length > 0)) && (
                   <div>
                     <p className="text-xs font-semibold text-slate-700 mb-2">
                       Parameter Groups
                     </p>
-                    <div className="space-y-2">
-                      {parameterGroups.map((group) => (
-                        <div
-                          key={group}
-                          className="border border-slate-200 rounded p-2 bg-slate-50"
-                        >
-                          <div className="flex items-center justify-between mb-1">
-                            <p className="text-xs font-medium text-slate-900">{group}</p>
-                            <Badge variant="outline" className="text-xs">
-                              {/* Show parameter count based on group */}
-                              {group === "Mechanism" && "2 params"}
-                              {group === "Eligibility" && "2 params"}
-                              {group === "Schedule" && "0 params"}
-                              {group === "Redistribution" && "2 params"}
-                            </Badge>
+                    {/* Story 25.4: Editable groups */}
+                    {entry.editableParameterGroups && entry.editableParameterGroups.length > 0 ? (
+                      <div className="space-y-2">
+                        {entry.editableParameterGroups.map((group) => (
+                          <div
+                            key={group.id}
+                            className="border border-slate-200 rounded p-2 bg-slate-50"
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              {/* Story 25.4: Edit mode - rename input */}
+                              {editGroupsIndex === index && onGroupRename ? (
+                                <Input
+                                  value={group.name}
+                                  onChange={(e) => onGroupRename(index, group.id, e.target.value)}
+                                  className="border-0 bg-transparent p-0 h-auto text-xs font-medium focus-visible:ring-1 focus-visible:ring-blue-500 flex-1"
+                                  aria-label={`Rename group ${group.name}`}
+                                />
+                              ) : (
+                                <p className="text-xs font-medium text-slate-900">{group.name}</p>
+                              )}
+                              <Badge variant="outline" className="text-xs shrink-0">
+                                {group.parameterIds.length} {group.parameterIds.length === 1 ? "param" : "params"}
+                              </Badge>
+                              {/* Story 25.4: Delete button */}
+                              {editGroupsIndex === index && onDeleteGroup && (
+                                <button
+                                  type="button"
+                                  onClick={() => onDeleteGroup(index, group.id)}
+                                  disabled={group.parameterIds.length > 0 || entry.editableParameterGroups!.length <= 1}
+                                  className={cn(
+                                    "p-1 text-red-500 hover:bg-red-50 shrink-0",
+                                    (group.parameterIds.length > 0 || entry.editableParameterGroups!.length <= 1) && "opacity-50 cursor-not-allowed hover:bg-transparent",
+                                  )}
+                                  aria-label="Delete group"
+                                  title={
+                                    group.parameterIds.length > 0
+                                      ? "Remove all parameters before deleting this group"
+                                      : entry.editableParameterGroups!.length <= 1
+                                        ? "Cannot delete the last group"
+                                        : "Delete group"
+                                  }
+                                >
+                                  <Trash2Icon className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
+                            {/* Story 25.4: Show parameters in group */}
+                            {group.parameterIds.length > 0 && (
+                              <div className="text-xs text-slate-600 space-y-0.5">
+                                {group.parameterIds.map((paramId) => (
+                                  <div key={paramId} className="flex items-center gap-2">
+                                    <span>{paramId}: <span className="font-mono">{String(entry.parameters[paramId] ?? 0)}</span></span>
+                                    {/* Story 25.4: Move dropdown */}
+                                    {editGroupsIndex === index && onMoveParameter && (
+                                      <select
+                                        className="text-xs h-6 border border-slate-200 rounded px-1"
+                                        aria-label={`Move parameter ${paramId} to`}
+                                        title={`Move ${paramId} to another group`}
+                                        value={group.id}
+                                        onChange={(e) => onMoveParameter(index, paramId, group.id, e.target.value)}
+                                      >
+                                        {entry.editableParameterGroups!.map((g) => (
+                                          <option key={g.id} value={g.id}>{g.name}</option>
+                                        ))}
+                                      </select>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                          {/* Show placeholder parameter values */}
-                          {group === "Mechanism" && (
-                            <div className="text-xs text-slate-600 space-y-0.5">
-                              <div>rate: <span className="font-mono">0</span></div>
-                              <div>unit: <span className="font-mono">EUR</span></div>
+                        ))}
+                        {/* Story 25.4: Add group button */}
+                        {editGroupsIndex === index && onAddGroup && (
+                          <button
+                            type="button"
+                            onClick={() => onAddGroup(index)}
+                            className="w-full text-xs border border-slate-200 px-2 py-1.5 hover:bg-slate-50 rounded flex items-center justify-center gap-1"
+                          >
+                            <Plus className="h-3 w-3" />
+                            Add group
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      /* Story 25.3: Static groups (legacy) */
+                      <div className="space-y-2">
+                        {parameterGroups.map((group) => (
+                          <div
+                            key={group}
+                            className="border border-slate-200 rounded p-2 bg-slate-50"
+                          >
+                            <div className="flex items-center justify-between mb-1">
+                              <p className="text-xs font-medium text-slate-900">{group}</p>
+                              <Badge variant="outline" className="text-xs">
+                                {/* Show parameter count based on group */}
+                                {group === "Mechanism" && "2 params"}
+                                {group === "Eligibility" && "2 params"}
+                                {group === "Schedule" && "0 params"}
+                                {group === "Redistribution" && "2 params"}
+                              </Badge>
                             </div>
-                          )}
-                          {group === "Eligibility" && (
-                            <div className="text-xs text-slate-600 space-y-0.5">
-                              <div>threshold: <span className="font-mono">0</span></div>
-                              <div>ceiling: <span className="font-mono">null</span></div>
-                            </div>
-                          )}
-                          {group === "Schedule" && (
-                            <div className="text-xs text-slate-500 italic">No years configured</div>
-                          )}
-                          {group === "Redistribution" && (
-                            <div className="text-xs text-slate-600 space-y-0.5">
-                              <div>divisible: <span className="font-mono">true</span></div>
-                              <div>recipients: <span className="font-mono">all</span></div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                            {/* Show placeholder parameter values */}
+                            {group === "Mechanism" && (
+                              <div className="text-xs text-slate-600 space-y-0.5">
+                                <div>rate: <span className="font-mono">0</span></div>
+                                <div>unit: <span className="font-mono">EUR</span></div>
+                              </div>
+                            )}
+                            {group === "Eligibility" && (
+                              <div className="text-xs text-slate-600 space-y-0.5">
+                                <div>threshold: <span className="font-mono">0</span></div>
+                                <div>ceiling: <span className="font-mono">null</span></div>
+                              </div>
+                            )}
+                            {group === "Schedule" && (
+                              <div className="text-xs text-slate-500 italic">No years configured</div>
+                            )}
+                            {group === "Redistribution" && (
+                              <div className="text-xs text-slate-600 space-y-0.5">
+                                <div>divisible: <span className="font-mono">true</span></div>
+                                <div>recipients: <span className="font-mono">all</span></div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 

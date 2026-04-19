@@ -97,6 +97,9 @@ export function PoliciesStageScreen() {
   const [fromScratchDialogOpen, setFromScratchDialogOpen] = useState(false);
   const [autoExpandInstanceId, setAutoExpandInstanceId] = useState<string | null>(null);
 
+  // Story 25.4: Edit groups mode state
+  const [editGroupsIndex, setEditGroupsIndex] = useState<number | null>(null);
+
   // Story 25.3: Reset autoExpandInstanceId after expansion (prevents re-expanding on reorder)
   useEffect(() => {
     if (autoExpandInstanceId !== null) {
@@ -231,6 +234,82 @@ export function PoliciesStageScreen() {
     },
     [],
   );
+
+  // ============================================================================
+  // Story 25.4: Edit groups mode handlers
+  // ============================================================================
+
+  const handleToggleEditGroups = useCallback((index: number) => {
+    setEditGroupsIndex((prev) => (prev === index ? null : index));
+  }, []);
+
+  const handleGroupRename = useCallback((policyIndex: number, groupId: string, newName: string) => {
+    setComposition((prev) =>
+      prev.map((entry, i) =>
+        i === policyIndex && entry.editableParameterGroups
+          ? {
+              ...entry,
+              editableParameterGroups: entry.editableParameterGroups.map((g) =>
+                g.id === groupId ? { ...g, name: newName } : g,
+              ),
+            }
+          : entry,
+      ),
+    );
+  }, []);
+
+  const handleAddGroup = useCallback((policyIndex: number) => {
+    setComposition((prev) =>
+      prev.map((entry, i) =>
+        i === policyIndex
+          ? {
+              ...entry,
+              editableParameterGroups: [
+                ...(entry.editableParameterGroups ?? []),
+                { id: `group-${Date.now()}`, name: "New Group", parameterIds: [] },
+              ],
+            }
+          : entry,
+      ),
+    );
+  }, []);
+
+  const handleDeleteGroup = useCallback((policyIndex: number, groupId: string) => {
+    setComposition((prev) =>
+      prev.map((entry, i) =>
+        i === policyIndex && entry.editableParameterGroups
+          ? {
+              ...entry,
+              editableParameterGroups: entry.editableParameterGroups.filter((g) => g.id !== groupId),
+            }
+          : entry,
+      ),
+    );
+  }, []);
+
+  const handleMoveParameter = useCallback((policyIndex: number, paramId: string, fromGroupId: string, toGroupId: string) => {
+    setComposition((prev) =>
+      prev.map((entry, i) => {
+        if (i !== policyIndex || !entry.editableParameterGroups) return entry;
+
+        const newGroups = entry.editableParameterGroups.map((group) => {
+          // Remove from source group
+          if (group.id === fromGroupId) {
+            return { ...group, parameterIds: group.parameterIds.filter((id) => id !== paramId) };
+          }
+          return group;
+        });
+
+        // Add to target group
+        return newGroups.map((group) => {
+          if (group.id === toGroupId) {
+            return { ...group, parameterIds: [...group.parameterIds, paramId] };
+          }
+          return group;
+        });
+      }),
+    );
+  }, []);
 
   // ============================================================================
   // Validation — debounced (AC-3, Task 5.1)
@@ -557,6 +636,12 @@ export function PoliciesStageScreen() {
               minimumPolicies={1}
               categories={categories}
               autoExpandInstanceId={autoExpandInstanceId}
+              editGroupsIndex={editGroupsIndex}
+              onToggleEditGroups={handleToggleEditGroups}
+              onGroupRename={handleGroupRename}
+              onAddGroup={handleAddGroup}
+              onDeleteGroup={handleDeleteGroup}
+              onMoveParameter={handleMoveParameter}
             />
           )}
         </div>

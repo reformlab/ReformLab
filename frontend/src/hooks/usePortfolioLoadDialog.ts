@@ -8,7 +8,16 @@ import { toast } from "sonner";
 import { ApiError } from "@/api/client";
 import { getPortfolio } from "@/api/portfolios";
 import type { CompositionEntry } from "@/components/simulation/PortfolioCompositionPanel";
+import type { EditableParameterGroup, PortfolioPolicyItem } from "@/api/types";
 import type { Template } from "@/data/mock-data";
+
+// Story 25.4: Default parameter-to-group assignments for migration
+const DEFAULT_PARAM_ASSIGNMENTS: Record<string, string[]> = {
+  "Mechanism": ["rate", "unit"],
+  "Eligibility": ["threshold", "ceiling", "income_cap"],
+  "Schedule": [], // Uses year schedule editor
+  "Redistribution": ["divisible", "recipients", "income_weights"],
+};
 
 interface LoadedPortfolioRef {
   current: string | null;
@@ -53,6 +62,25 @@ export function usePortfolioLoadDialog<ResolutionStrategy extends string>({
       const entries: CompositionEntry[] = detail.policies.map((policy, index) => {
         const template = templates.find((tmpl) => tmpl.type.replace(/-/g, "_") === policy.policy_type);
         const templateId = template?.id ?? policy.policy_type;
+
+        // Story 25.4: Restore or migrate editable parameter groups
+        let editableParameterGroups: EditableParameterGroup[] | undefined;
+        const policyEditableGroups = (policy as PortfolioPolicyItem & { editable_parameter_groups?: EditableParameterGroup[] }).editable_parameter_groups;
+        const policyParameterGroups = (policy as PortfolioPolicyItem & { parameter_groups?: string[] }).parameter_groups;
+
+        if (policyEditableGroups && policyEditableGroups.length > 0) {
+          // Use editable groups from saved portfolio
+          editableParameterGroups = policyEditableGroups;
+        } else if (policyParameterGroups && policyParameterGroups.length > 0) {
+          // Migrate from parameter_groups string array to editable structure
+          editableParameterGroups = policyParameterGroups.map((groupName: string, idx: number) => ({
+            id: `group-${idx}`,
+            name: groupName,
+            parameterIds: DEFAULT_PARAM_ASSIGNMENTS[groupName] ?? [],
+          }));
+        }
+        // Note: If neither exists, the parameter groups will be generated from template defaults
+
         return {
           instanceId: `${templateId}-ins${index}`, // Use index for initial load
           templateId,
@@ -64,7 +92,9 @@ export function usePortfolioLoadDialog<ResolutionStrategy extends string>({
           // Story 25.3: Restore from-scratch policy fields
           policy_type: policy.policy_type,
           category_id: policy.category_id,
-          parameter_groups: (policy as any).parameter_groups,
+          parameter_groups: (policy as PortfolioPolicyItem & { parameter_groups?: string[] }).parameter_groups,
+          // Story 25.4: Restore editable parameter groups
+          editableParameterGroups,
         };
       });
       setComposition(entries);
