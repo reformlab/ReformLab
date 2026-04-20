@@ -216,6 +216,7 @@ function Workspace() {
       <WorkspaceLayout
         topBar={<TopBar />}
         mobileStageSwitcher={<MobileStageSwitcher activeStage={activeStage} navigateTo={navigateTo} />}
+        isNarrow={isNarrow}
         leftCollapsed={leftCollapsed}
         rightCollapsed={rightCollapsed}
         leftPanel={

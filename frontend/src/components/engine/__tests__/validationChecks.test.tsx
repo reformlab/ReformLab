@@ -179,7 +179,7 @@ describe("validationChecks — Story 22.6", () => {
           investmentDecisionsEnabled: true,
           logitModel: "multinomial_logit",
           discountRate: 0.03,
-          tasteParameters: { priceSensitivity: -1.5, rangeAnxiety: -0.8, envPreference: undefined as any },
+          tasteParameters: { priceSensitivity: -1.5, rangeAnxiety: -0.8, envPreference: undefined as unknown as number },
           calibrationState: "not_configured",
         },
       });

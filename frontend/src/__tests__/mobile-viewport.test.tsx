@@ -25,6 +25,7 @@ vi.mock("@/api/populations", () => ({
   deletePopulation: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/api/templates", () => ({ listTemplates: vi.fn(), getTemplate: vi.fn() }));
+vi.mock("@/api/categories", () => ({ listCategories: vi.fn() }));
 vi.mock("@/api/scenarios", () => ({
   listScenarios: vi.fn(),
   getScenario: vi.fn(),
@@ -64,6 +65,7 @@ vi.mock("@/api/exports", () => ({
 import { login } from "@/api/auth";
 import { listPopulations } from "@/api/populations";
 import { listTemplates, getTemplate } from "@/api/templates";
+import { listCategories } from "@/api/categories";
 import { listResults } from "@/api/results";
 import { listPortfolios } from "@/api/portfolios";
 import { listDataSources, listMergeMethods } from "@/api/data-fusion";
@@ -91,6 +93,7 @@ describe("Mobile Viewport — Story 22.7", () => {
     vi.mocked(listPopulations).mockResolvedValue([]);
     vi.mocked(listTemplates).mockResolvedValue([]);
     vi.mocked(getTemplate).mockRejectedValue(new Error("not found"));
+    vi.mocked(listCategories).mockResolvedValue([]);
     vi.mocked(listResults).mockResolvedValue([]);
     vi.mocked(listPortfolios).mockResolvedValue([]);
     vi.mocked(listDataSources).mockResolvedValue({});
@@ -124,18 +127,18 @@ describe("Mobile Viewport — Story 22.7", () => {
       await user.click(screen.getByRole("button", { name: /enter/i }));
 
       await waitFor(() => {
-        // AC-1: Verify responsive layout classes prevent horizontal overflow
-        // Check that WorkspaceLayout renders mobile layout (lg:hidden) and hides desktop panels (hidden lg:flex)
+        // AC-1: Verify responsive layout prevents horizontal overflow.
+        // The app now renders only the active branch at a given viewport.
         const layoutContainer = document.querySelector(".flex.flex-1.flex-col.overflow-hidden");
         expect(layoutContainer).toBeTruthy();
 
-        // Mobile layout div should have lg:hidden class
+        // Mobile stage switcher should be present at narrow widths.
         const mobileLayout = layoutContainer?.querySelector(".lg\\:hidden");
         expect(mobileLayout).toBeTruthy();
 
-        // Desktop layout div should have hidden lg:flex classes
-        const desktopLayout = layoutContainer?.querySelector(".hidden.lg\\:flex");
-        expect(desktopLayout).toBeTruthy();
+        // Desktop panel group should not be rendered in the mobile branch.
+        const desktopLayout = layoutContainer?.querySelector("[data-panel-group-direction='horizontal']");
+        expect(desktopLayout).toBeNull();
       });
     });
   });

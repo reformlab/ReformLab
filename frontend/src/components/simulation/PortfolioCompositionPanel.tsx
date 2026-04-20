@@ -16,7 +16,7 @@
  */
 
 import { useState, useEffect } from "react";
-import { ArrowUp, ArrowDown, Trash2, ChevronDown, ChevronRight, CircleHelp, Settings, Plus } from "lucide-react";
+import { ArrowUp, ArrowDown, Trash2, ChevronDown, ChevronRight, CircleHelp, Settings, Plus, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Popover,
@@ -31,6 +31,8 @@ import { cn } from "@/lib/utils";
 import type { Template, Parameter } from "@/data/mock-data";
 import type { Category, EditableParameterGroup } from "@/api/types";
 import { Input } from "@/components/ui/input";
+// Story 25.6: Import validation error type
+import type { PolicyValidationError } from "@/components/simulation/portfolioValidation";
 
 export interface CompositionEntry {
   templateId: string;
@@ -80,6 +82,8 @@ interface PortfolioCompositionPanelProps {
   onDeleteGroup?: (policyIndex: number, groupId: string) => void;
   /** Story 25.4: Callback to move parameter between groups */
   onMoveParameter?: (policyIndex: number, paramId: string, fromGroupId: string, toGroupId: string) => void;
+  /** Story 25.6: Validation errors for policies in the composition */
+  validationErrors?: PolicyValidationError[];
 }
 
 export function PortfolioCompositionPanel({
@@ -99,6 +103,7 @@ export function PortfolioCompositionPanel({
   onAddGroup,
   onDeleteGroup,
   onMoveParameter,
+  validationErrors = [],
 }: PortfolioCompositionPanelProps) {
   const [expandedIndices, setExpandedIndices] = useState<Set<number>>(new Set());
 
@@ -166,12 +171,16 @@ export function PortfolioCompositionPanel({
         const policyType = entry.policy_type ?? template?.type;
         const parameterGroups = entry.parameter_groups ?? [];
 
+        // Story 25.6: Check if this policy has validation errors
+        const policyError = validationErrors.find((err) => err.policyIndex === index);
+
         return (
           <div
             key={entry.instanceId || `${entry.templateId}-${index}`}
             className={cn(
               "border bg-white",
               editGroupsIndex === index ? "border-blue-500" : "border-slate-200",
+              policyError ? "border-red-300 bg-red-50/30" : "",
             )}
           >
             {/* Card header */}
@@ -184,6 +193,13 @@ export function PortfolioCompositionPanel({
               {/* Template info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
+                  {/* Story 25.6: Error badge */}
+                  {policyError && (
+                    <Badge variant="default" className="text-xs shrink-0 bg-red-500 text-white flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      Error
+                    </Badge>
+                  )}
                   {/* Story 25.4: Editing badge */}
                   {editGroupsIndex === index && (
                     <Badge variant="default" className="text-xs shrink-0 bg-blue-500 text-white">

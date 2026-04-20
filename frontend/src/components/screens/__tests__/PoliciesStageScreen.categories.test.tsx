@@ -194,7 +194,9 @@ describe("Story 25.1 - Category fetching", () => {
     });
 
     // Should show warning about categories not loaded
-    expect(screen.getByText(/Categories could not be loaded/)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/Categories could not be loaded/)).toBeInTheDocument();
+    });
 
     // Templates should still be visible (ungrouped) - check for template cards
     expect(screen.getByText("Carbon Tax - Flat Rate")).toBeInTheDocument();
@@ -214,7 +216,9 @@ describe("Story 25.1 - Category fetching", () => {
     });
 
     // Should show warning about empty categories
-    expect(screen.getByText(/Categories could not be loaded/)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/Categories could not be loaded/)).toBeInTheDocument();
+    });
   });
 });
 

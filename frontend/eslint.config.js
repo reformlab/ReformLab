@@ -16,7 +16,11 @@ export default tseslint.config(
         ...globals.node,
       },
       parserOptions: {
-        projectService: true,
+        projectService: {
+          allowDefaultProject: [
+            "src/components/engine/__tests__/validationChecks.test.tsx",
+          ],
+        },
         tsconfigRootDir: import.meta.dirname,
       },
     },

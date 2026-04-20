@@ -154,8 +154,8 @@ export function getPopulationShortName(population: Population): string {
     name = name.slice(franceIndex + 7);
   }
 
-  // Add "FR " prefix if not already prefixed with "FR " or "EU "
-  if (!name.startsWith("FR ") && !name.startsWith("EU ")) {
+  // Add "FR " prefix if not already prefixed with FR or EU context.
+  if (!name.startsWith("FR ") && !name.startsWith("EU ") && !name.startsWith("EU-")) {
     name = `FR ${name}`;
   }
 

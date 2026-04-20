@@ -9,7 +9,7 @@
  * AC-6: localStorage migration for legacy portfolio state
  */
 
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ============================================================================
@@ -60,7 +60,6 @@ import { useAppState } from "@/contexts/AppContext";
 import { PoliciesStageScreen } from "@/components/screens/PoliciesStageScreen";
 import { mockTemplates } from "@/data/mock-data";
 import type { WorkspaceScenario } from "@/types/workspace";
-import type { PortfolioListItem } from "@/api/types";
 
 // ============================================================================
 // Helpers
@@ -88,10 +87,6 @@ function makeScenario(overrides: Partial<WorkspaceScenario> = {}): WorkspaceScen
     lastRunId: null,
     ...overrides,
   };
-}
-
-function makePortfolio(name: string): PortfolioListItem {
-  return { name, description: "Test portfolio", version_id: "v1", policy_count: 2 };
 }
 
 function makeDefaultAppState(overrides: Partial<ReturnType<typeof useAppState>> = {}) {

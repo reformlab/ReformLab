@@ -37,6 +37,7 @@ import { createDemoScenario, DEMO_POPULATION_ID } from "@/data/demo-scenario";
  * Call this in beforeEach to ensure test isolation.
  */
 export function cleanLocalStorage(): void {
+  sessionStorage.clear();
   localStorage.removeItem(SCENARIO_STORAGE_KEY);
   localStorage.removeItem(STAGE_STORAGE_KEY);
   localStorage.removeItem(SAVED_SCENARIOS_KEY);

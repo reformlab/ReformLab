@@ -17,7 +17,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import {
-  Save, FolderOpen, Copy, X, CheckCircle2, AlertTriangle, Trash2, Plus,
+  Save, FolderOpen, Copy, X, CheckCircle2, Trash2, Plus, AlertCircle, Info,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -40,11 +40,19 @@ import {
 import { listCategories } from "@/api/categories";
 // Story 25.3: Import createBlankPolicy for from-scratch flow
 import { createBlankPolicy } from "@/api/templates";
+// Story 25.6: Import getPopulationProfile for population column warnings
+import { getPopulationProfile } from "@/api/populations";
 import { useAppState } from "@/contexts/AppContext";
 import type { PortfolioConflict, Category } from "@/api/types";
 import { usePortfolioSaveDialog } from "@/hooks/usePortfolioSaveDialog";
 import { usePortfolioLoadDialog } from "@/hooks/usePortfolioLoadDialog";
 import { usePortfolioCloneDialog } from "@/hooks/usePortfolioCloneDialog";
+// Story 25.6: Import validation functions
+import {
+  validateComposition,
+  type PolicyValidationError,
+} from "@/components/simulation/portfolioValidation";
+import { cn } from "@/lib/utils";
 
 // ============================================================================
 // Constants
@@ -87,8 +95,14 @@ export function PoliciesStageScreen() {
   const [conflicts, setConflicts] = useState<PortfolioConflict[]>([]);
   const [validationLoading, setValidationLoading] = useState(false);
 
+  // Story 25.6 / Task 1: Per-policy validation errors state
+  const [validationErrors, setValidationErrors] = useState<PolicyValidationError[]>([]);
+
   // Story 25.1 / Task 3.1: Categories state (null = loading, [] = failed/empty)
   const [categories, setCategories] = useState<Category[] | null>(null);
+
+  // Story 25.6 / Task 3: Population column warnings state
+  const [populationColumnWarnings, setPopulationColumnWarnings] = useState<string[]>([]);
 
   // Story 25.3: Choice dialog state for "+ Add Policy" button
   const [choiceDialogOpen, setChoiceDialogOpen] = useState(false);
@@ -119,11 +133,15 @@ export function PoliciesStageScreen() {
   // ============================================================================
   // Computed validity
   // AC-6: valid = composition.length >= 1 AND (no conflicts OR strategy !== "error")
+  // Story 25.6 / Task 1: Also check for per-policy validation errors
   // ============================================================================
 
-  const isPortfolioValid =
-    composition.length >= 1 &&
-    (composition.length < 2 || conflicts.length === 0 || resolutionStrategy !== "error");
+  const isPortfolioValid = useMemo(() => {
+    const hasPolicies = composition.length >= 1;
+    const hasConflicts = composition.length >= 2 && conflicts.length > 0 && resolutionStrategy === "error";
+    const hasValidationErrors = validationErrors.length > 0;
+    return hasPolicies && !hasConflicts && !hasValidationErrors;
+  }, [composition, conflicts, resolutionStrategy, validationErrors]);
 
   // Story 25.2: Derive browser highlighting from composition (templateIds in composition)
   const inCompositionTemplateIds = useMemo(
@@ -433,6 +451,69 @@ export function PoliciesStageScreen() {
     void fetchCategories();
   }, []);
 
+  // Story 25.6 / Task 1: Recalculate validation errors when composition changes
+  useEffect(() => {
+    const errors = validateComposition(composition);
+    setValidationErrors(errors);
+  }, [composition]);
+
+  // Story 25.6 / Task 3: Check population column compatibility
+  useEffect(() => {
+    const checkPopulationColumnCompatibility = async () => {
+      const populationIds = activeScenario?.populationIds ?? [];
+      if (populationIds.length === 0 || composition.length === 0 || !categories) {
+        setPopulationColumnWarnings([]);
+        return;
+      }
+
+      // Collect required columns from all policies in composition
+      const requiredColumns: string[] = [];
+      for (const entry of composition) {
+        if (!entry.category_id) continue;
+
+        const category = categories.find((c) => c.id === entry.category_id);
+        if (category && category.columns && category.columns.length > 0) {
+          requiredColumns.push(...category.columns);
+        }
+      }
+
+      if (requiredColumns.length === 0) {
+        setPopulationColumnWarnings([]);
+        return;
+      }
+
+      // Fetch population profiles to check column availability
+      try {
+        const missingColumns: string[] = [];
+        const uniqueRequiredColumns = [...new Set(requiredColumns)];
+
+        for (const popId of populationIds) {
+          try {
+            const profile = await getPopulationProfile(popId);
+            const availableColumns = profile.columns.map((c) => c.name);
+
+            for (const col of uniqueRequiredColumns) {
+              if (!availableColumns.includes(col)) {
+                missingColumns.push(col);
+              }
+            }
+          } catch {
+            // Gracefully handle fetch failures - don't show warning if we can't verify
+            console.error(`Failed to fetch profile for population ${popId}`);
+          }
+        }
+
+        setPopulationColumnWarnings([...new Set(missingColumns)].sort());
+      } catch {
+        // Gracefully handle errors - don't show warning if we can't verify
+        console.error("Failed to check population column compatibility");
+        setPopulationColumnWarnings([]);
+      }
+    };
+
+    void checkPopulationColumnCompatibility();
+  }, [composition, activeScenario?.populationIds, categories]);
+
   // ============================================================================
   // Portfolio dialog hooks (Task 6.1 through 6.3)
   // ============================================================================
@@ -518,7 +599,7 @@ export function PoliciesStageScreen() {
     try {
       await deletePortfolio(name);
       void refetchPortfolios();
-      toast.success(`Portfolio '${name}' deleted`);
+      toast.success(`Policy set '${name}' deleted`);
       // If the deleted portfolio is the active one, delink from scenario
       if (activeScenario?.portfolioName === name) {
         updateScenarioField("portfolioName", null);
@@ -556,13 +637,16 @@ export function PoliciesStageScreen() {
             isPortfolioValid ? (
               <CheckCircle2
                 className="h-4 w-4 shrink-0 text-emerald-500"
-                aria-label="Portfolio valid"
+                aria-label="Policy set valid"
                 data-testid="validity-indicator-valid"
               />
             ) : (
-              <AlertTriangle
-                className="h-4 w-4 shrink-0 text-amber-500"
-                aria-label="Portfolio has issues"
+              <AlertCircle
+                className={cn(
+                  "h-4 w-4 shrink-0",
+                  validationErrors.length > 0 ? "text-red-500" : "text-amber-500",
+                )}
+                aria-label="Policy set has issues"
                 data-testid="validity-indicator-invalid"
               />
             )
@@ -657,10 +741,45 @@ export function PoliciesStageScreen() {
         </div>
       ) : null}
 
+      {/* Story 25.6 / Task 1: Validation errors display */}
+      {validationErrors.length > 0 ? (
+        <div className="rounded-lg border border-red-200 bg-red-50/50 p-3">
+          <p className="text-xs font-semibold text-red-700 mb-1">
+            Policy validation errors
+          </p>
+          <ul className="text-xs text-red-600 space-y-0.5">
+            {validationErrors.map((err) => (
+              <li key={err.policyIndex}>
+                <strong>{err.policyName}</strong>:{" "}
+                {err.missingFields.length > 0 && `Missing: ${err.missingFields.join(", ")}. `}
+                {err.invalidFields.length > 0 && `Invalid: ${err.invalidFields.join(", ")}.`}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {/* Story 25.6 / Task 3: Population column compatibility warning (non-blocking) */}
+      {populationColumnWarnings.length > 0 ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 flex items-start gap-2">
+          <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+          <div className="text-xs text-amber-700">
+            <p className="font-semibold mb-1">Population data compatibility warning</p>
+            <p>
+              Some policies require population columns that may not be available in the selected population:{" "}
+              <strong>{populationColumnWarnings.join(", ")}</strong>.
+            </p>
+            <p className="mt-1">
+              Validate data compatibility in Stage 2 (Population) before running.
+            </p>
+          </div>
+        </div>
+      ) : null}
+
       {/* Main two-column layout (AC-1) - Story 22.2: 50/50 equal split */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 flex-1 min-h-0">
         {/* Left: Template browser */}
-        <div className="rounded-lg border border-slate-200 bg-white p-3 overflow-y-auto min-w-0">
+        <div className="rounded-lg border border-slate-200 bg-white p-3 overflow-y-auto min-w-0 min-h-0">
           <h2 className="text-sm font-semibold text-slate-900 mb-2">Policy Templates</h2>
           {/* Story 25.2: Use add-instance instead of toggle selection; pass highlighting state */}
           <PortfolioTemplateBrowser
@@ -673,7 +792,7 @@ export function PoliciesStageScreen() {
         </div>
 
         {/* Right: Composition panel */}
-        <div className="rounded-lg border border-slate-200 bg-white p-3 overflow-y-auto min-w-0">
+        <div className="rounded-lg border border-slate-200 bg-white p-3 overflow-y-auto min-w-0 min-h-0">
           <h2 className="text-sm font-semibold text-slate-900 mb-2">Policy Set Composition</h2>
           {composition.length === 0 ? (
             <div className="border border-slate-200 bg-slate-50 p-6 text-center mt-2">
@@ -698,6 +817,7 @@ export function PoliciesStageScreen() {
               onAddGroup={handleAddGroup}
               onDeleteGroup={handleDeleteGroup}
               onMoveParameter={handleMoveParameter}
+              validationErrors={validationErrors}
             />
           )}
         </div>
@@ -933,7 +1053,7 @@ export function PoliciesStageScreen() {
                 onChange={(e) => {
                   handleCloneNameChange(e.target.value);
                 }}
-                placeholder="my-portfolio-copy"
+                placeholder="my-policy-set-copy"
                 className={cloneNameError ? "border-red-400" : ""}
               />
               {cloneNameError ? (

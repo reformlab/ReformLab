@@ -30,7 +30,9 @@ interface PortfolioTemplateBrowserProps {
   templates: Template[];
   selectedIds: string[];
   // Story 25.2: Changed from toggle to add-instance action
-  onAddTemplate: (templateId: string) => void;
+  onAddTemplate?: (templateId: string) => void;
+  // Deprecated PortfolioDesignerScreen still uses toggle semantics.
+  onToggleTemplate?: (templateId: string) => void;
   // Story 25.1 / Task 3.1: Categories prop for grouping and filtering
   categories?: Category[] | null;
   // Story 25.2: Count of instances per template in composition
@@ -56,6 +58,7 @@ function TemplateCard({ template, inComposition, instanceCount, templateCategory
   return (
     <div
       role="button"
+      aria-pressed={inComposition}
       tabIndex={0}
       onClick={onAdd}
       onKeyDown={handleKeyDown}
@@ -182,6 +185,7 @@ export function PortfolioTemplateBrowser({
   templates,
   selectedIds,
   onAddTemplate,
+  onToggleTemplate,
   categories,
   templateInstanceCounts = {},
 }: PortfolioTemplateBrowserProps) {
@@ -263,6 +267,8 @@ export function PortfolioTemplateBrowser({
     });
   }, [displayGroups, categories]);
 
+  const handleTemplateAction = onAddTemplate ?? onToggleTemplate;
+
   return (
     <section aria-label="Policy template browser" className="space-y-3">
       <div className="relative">
@@ -322,7 +328,7 @@ export function PortfolioTemplateBrowser({
                 inComposition={inComposition}
                 instanceCount={instanceCount}
                 templateCategory={templateCategory}
-                onAdd={() => onAddTemplate(template.id)}
+                onAdd={() => handleTemplateAction?.(template.id)}
               />
             );
           })}
@@ -352,7 +358,7 @@ export function PortfolioTemplateBrowser({
                       inComposition={inComposition}
                       instanceCount={instanceCount}
                       templateCategory={templateCategory}
-                      onAdd={() => onAddTemplate(template.id)}
+                      onAdd={() => handleTemplateAction?.(template.id)}
                     />
                   );
                 })}

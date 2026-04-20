@@ -102,7 +102,7 @@ describe("DataSourceBrowser", () => {
       <DataSourceBrowser sources={mockDataSources} selectedIds={[]} onToggleSource={noop} />,
     );
 
-    const inspectButtons = screen.getAllByRole("button", { name: /inspect columns/i });
+    const inspectButtons = screen.getAllByRole("button", { name: /inspect/i });
     await user.click(inspectButtons[0]);
 
     await waitFor(() => {

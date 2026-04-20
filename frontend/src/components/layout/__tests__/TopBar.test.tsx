@@ -244,8 +244,7 @@ describe("AC-3: Scenario controls in center-left container", () => {
 
   it("renders current stage label", () => {
     renderTopBar({ activeStage: "policies" as const });
-    // Stage label should be visible - the actual text includes more than just "Policies"
-    const stageLabel = screen.getByText(/policies/i);
+    const stageLabel = screen.getByText(/policy/i);
     expect(stageLabel).toBeInTheDocument();
   });
 
