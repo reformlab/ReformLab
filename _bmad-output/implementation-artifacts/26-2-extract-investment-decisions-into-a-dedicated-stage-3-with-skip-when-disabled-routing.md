@@ -665,3 +665,35 @@ Status set to: ready-for-dev
 
 Status set to: completed
 
+---
+
+## Senior Developer Review (AI)
+
+### Review: 2026-04-21
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 9.3 + 11.2 = 20.5 (both reviewers identified issues)
+- **Issues Found:** 10 unique issues across both reviewers
+- **Issues Fixed:** 5 issues addressed in source code
+- **Action Items Created:** 2 (integration test coverage, AC-7 wizard recovery)
+
+#### Code Review Synthesis Applied (2026-04-21)
+
+**Synopsis:** Both reviewers identified valid issues with model label formatting, outdated comments, and test accuracy. Five fixes were applied to source code.
+
+**Changes Applied:**
+1. **EngineStageScreen.test.tsx** - Updated mock from `"engine"` to `"scenario"` stage (Story 26.1 migration)
+2. **lib/utils.ts** - Added `formatLogitModelLabel()` utility function for title-cased model display
+3. **WorkflowNavRail.tsx** - Updated to use title-cased formatting and removed outdated "will implement" comment
+4. **EngineStageScreen.tsx** - Updated to use title-cased model formatting
+5. **WorkflowNavRail.test.tsx** - Updated test expectations from lowercase to title case (Multinomial Logit)
+6. **EngineStageScreen.test.tsx** - Updated test expectation for title-cased model name
+7. **useScenarioPersistence.ts** - Updated migration to write back to localStorage (one-time migration)
+8. **useScenarioPersistence.test.ts** - Updated test to reflect write-back migration behavior
+
+**Test Results After Fixes:**
+- 862 tests passing, 4 skipped (all tests pass)
+
+#### Review Follow-ups (AI)
+- [ ] [AI-Review] HIGH: Add e2e/integration test for Investment Decisions stage navigation flow (`frontend/src/__tests__/workflows/analyst-journey.test.tsx`)
+- [ ] [AI-Review] MEDIUM: Implement AC-7 wizard step recovery - wizard should restore to Review step (3) when returning with enabled+configured model, not always step 1 (`frontend/src/components/engine/InvestmentDecisionsWizard.tsx`)
+

@@ -13,7 +13,7 @@
  */
 
 import { Check, Circle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatLogitModelLabel } from "@/lib/utils";
 import type { GenerationResult, PortfolioListItem, ResultListItem, PopulationItem } from "@/api/types";
 import type { StageKey, WorkspaceScenario, SubView } from "@/types/workspace";
 import { STAGES, POPULATION_SUB_STEPS } from "@/types/workspace";
@@ -61,9 +61,7 @@ function isComplete(
         dataFusionResult !== null
       );
     case "investment-decisions":
-      // Story 26.2 will implement proper completion logic
-      // Until the dedicated configuration surface lands, a real scenario must
-      // exist before this stage can be considered complete.
+      // Stage 3 is complete when disabled OR when enabled with model configured (Story 26.2)
       return activeScenario !== null &&
              (!activeScenario.engineConfig.investmentDecisionsEnabled ||
               activeScenario.engineConfig.logitModel !== null);
@@ -105,12 +103,12 @@ function getSummary(
       return null;
     }
     case "investment-decisions": {
-      // Story 26.2: Return "Incomplete" when enabled but no model selected, or model name with spaces
+      // Story 26.2: Return "Incomplete" when enabled but no model selected, or model name formatted for display (AC-4)
       if (!activeScenario) return null;
       if (!activeScenario.engineConfig.investmentDecisionsEnabled) {
         return "Disabled";
       }
-      return activeScenario.engineConfig.logitModel?.replace(/_/g, " ") ?? "Incomplete";
+      return activeScenario.engineConfig.logitModel ? formatLogitModelLabel(activeScenario.engineConfig.logitModel) : "Incomplete";
     }
     case "scenario": {
       if (!activeScenario) return null;

@@ -247,8 +247,8 @@ describe("WorkflowNavRail - summary lines", () => {
       },
     });
     render(<WorkflowNavRail {...baseProps({ activeScenario })} />);
-    // Should replace underscores with spaces: "multinomial_logit" → "multinomial logit"
-    expect(screen.getByTestId("summary-investment-decisions")).toHaveTextContent("multinomial logit");
+    // Story 26.2 AC-4: Model name should be title-cased for display
+    expect(screen.getByTestId("summary-investment-decisions")).toHaveTextContent("Multinomial Logit");
   });
 
   it("shows 'Nested Logit' for nested_logit model", () => {
@@ -263,7 +263,8 @@ describe("WorkflowNavRail - summary lines", () => {
       },
     });
     render(<WorkflowNavRail {...baseProps({ activeScenario })} />);
-    expect(screen.getByTestId("summary-investment-decisions")).toHaveTextContent("nested logit");
+    // Story 26.2 AC-4: Model name should be title-cased for display
+    expect(screen.getByTestId("summary-investment-decisions")).toHaveTextContent("Nested Logit");
   });
 
   it("shows 'Mixed Logit' for mixed_logit model", () => {
@@ -278,7 +279,8 @@ describe("WorkflowNavRail - summary lines", () => {
       },
     });
     render(<WorkflowNavRail {...baseProps({ activeScenario })} />);
-    expect(screen.getByTestId("summary-investment-decisions")).toHaveTextContent("mixed logit");
+    // Story 26.2 AC-4: Model name should be title-cased for display
+    expect(screen.getByTestId("summary-investment-decisions")).toHaveTextContent("Mixed Logit");
   });
 });
 

@@ -19,6 +19,7 @@ import { Separator } from "@/components/ui/separator";
 import { useAppState } from "@/contexts/AppContext";
 import { RunSummaryPanel } from "@/components/engine/RunSummaryPanel";
 import { ValidationGate } from "@/components/engine/ValidationGate";
+import { formatLogitModelLabel } from "@/lib/utils";
 import type { EngineConfig } from "@/types/workspace";
 
 // ============================================================================
@@ -346,7 +347,7 @@ export function EngineStageScreen() {
             <div className="text-xs text-slate-600">
               {engineConfig.investmentDecisionsEnabled ? (
                 <span>
-                  Enabled — {engineConfig.logitModel ? engineConfig.logitModel.replace(/_/g, " ") : "no model selected"}
+                  Enabled — {engineConfig.logitModel ? formatLogitModelLabel(engineConfig.logitModel) : "no model selected"}
                 </span>
               ) : (
                 <span>Disabled</span>

@@ -121,7 +121,7 @@ function makeDefaultAppState(overrides: Partial<ReturnType<typeof useAppState>> 
     authLoading: false,
     authenticate: vi.fn(),
     logout: vi.fn(),
-    activeStage: "engine" as const,
+    activeStage: "scenario" as const,
     activeSubView: null,
     setActiveScenario: vi.fn(),
     savedScenarios: [],
@@ -326,7 +326,8 @@ describe("EngineStageScreen — Story 20.5", () => {
           },
         }),
       });
-      expect(screen.getByText(/enabled — multinomial logit/i)).toBeInTheDocument();
+      // Story 26.2 AC-4: Model name should be title-cased for display
+      expect(screen.getByText(/enabled — Multinomial Logit/i)).toBeInTheDocument();
     });
 
     it("investment decisions summary shows 'no model selected' when enabled but no model", () => {

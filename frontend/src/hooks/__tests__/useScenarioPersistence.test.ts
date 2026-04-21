@@ -236,14 +236,12 @@ describe("saveStage / loadStage", () => {
       expect(loadStage()).toBeNull();
     });
 
-    it("does NOT update localStorage on migration (read-time only)", () => {
+    it("updates localStorage on migration (one-time write to avoid repeated migrations)", () => {
       localStorage.setItem(STAGE_STORAGE_KEY, "engine");
-      const { loadStage, saveStage } = getHook();
-      loadStage(); // This migrates "engine" → "scenario" in return value only
-      // localStorage still has "engine" (migration is read-only)
-      expect(localStorage.getItem(STAGE_STORAGE_KEY)).toBe("engine");
-      // Explicit save updates localStorage
-      saveStage("scenario");
+      const { loadStage } = getHook();
+      const loaded = loadStage(); // This migrates "engine" → "scenario" and writes back to localStorage
+      expect(loaded).toBe("scenario");
+      // localStorage should now have "scenario" (one-time migration)
       expect(localStorage.getItem(STAGE_STORAGE_KEY)).toBe("scenario");
     });
 
