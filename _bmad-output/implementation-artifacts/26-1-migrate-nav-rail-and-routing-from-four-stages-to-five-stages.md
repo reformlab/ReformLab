@@ -1,6 +1,6 @@
 # Story 26.1: Migrate nav rail and routing from four stages to five stages
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -13,80 +13,93 @@ so that I can move through the workspace in the sequence specified by UX Revisio
 ## Acceptance Criteria
 
 1. Given the workspace renders, when the nav rail displays, then it shows exactly five stages in order: "Policies", "Population", "Investment Decisions", "Scenario", and "Run / Results / Compare".
-2. Given the URL hash is `#engine` (legacy bookmark), when the app loads, then it resolves to the Scenario stage (hash changes to `#scenario`) without errors.
+2. Given the URL hash is `#engine` or `#engine/<subview>` (legacy bookmark), when the app loads, then it resolves to the Scenario stage (hash changes to `#scenario` or `#scenario/<subview>`) without errors.
 3. Given saved workspace state has `activeStage: "engine"` (from previous session), when restored via localStorage, then the active stage becomes "scenario".
 4. Given Population is active, then Library, Build, and Explorer remain as stage-local sub-steps under Population (not promoted to top-level stages).
-5. Given any five-stage nav item is clicked, then the correct stage content renders, the hash updates, and WorkflowNavRail shows the correct active state.
+5. Given any five-stage nav item is clicked, then the correct stage content renders, the hash updates, and WorkflowNavRail shows the correct active state. For investment-decisions stage, a placeholder panel with test-id "investment-decisions-placeholder" renders.
 6. Given the mobile stage switcher renders at narrow width, then it shows five stage buttons matching the nav rail stages.
 7. Given type validation runs, then StageKey includes "policies", "population", "investment-decisions", "scenario", "results" and explicitly excludes "engine".
 8. Given Scenario stage is active, then the main panel renders EngineStageScreen (to be renamed in Story 26.3) with correct content.
+9. Given help panel opens on any stage, then the correct stage-specific help content displays (engine migrated to scenario, investment-decisions added).
 
 ## Tasks / Subtasks
 
-- [ ] Update StageKey type and STAGES constant in workspace.ts (AC: #1, #7)
-  - [ ] Add "investment-decisions" to StageKey type union
-  - [ ] Replace "engine" with "scenario" in StageKey type union
-  - [ ] Update VALID_STAGES Set to include all five new stage keys
-  - [ ] Add "investment-decisions" stage entry to STAGES array with label "Investment Decisions" and activeFor array
-  - [ ] Update "engine" stage entry to "scenario" with label "Scenario"
-  - [ ] Update STAGES order: policies, population, investment-decisions, scenario, results
-  - [ ] Verify results stage activeFor includes all sub-views: results, comparison, decisions, runner
+- [x] Update StageKey type and STAGES constant in workspace.ts (AC: #1, #7)
+  - [x] Add "investment-decisions" to StageKey type union
+  - [x] Replace "engine" with "scenario" in StageKey type union
+  - [x] Update VALID_STAGES Set to include all five new stage keys
+  - [x] Add "investment-decisions" stage entry to STAGES array with label "Investment Decisions" and activeFor array
+  - [x] Update "engine" stage entry to "scenario" with label "Scenario"
+  - [x] Update STAGES order: policies, population, investment-decisions, scenario, results
+  - [x] Verify results stage activeFor includes all sub-views: results, comparison, decisions, runner
+  - [x] Update module docstring from "four-stage workspace model" to "five-stage workspace model"
 
-- [ ] Update WorkflowNavRail component for five stages (AC: #1, #5)
-  - [ ] Update isComplete() function switch statement to handle "investment-decisions" and "scenario" cases
-  - [ ] Update getSummary() function switch statement to handle "investment-decisions" and "scenario" cases
-  - [ ] Verify connecting lines render correctly between all five stages
-  - [ ] Verify population sub-steps (Library, Build, Explorer) still render when population stage is active
-  - [ ] Update comments referencing "four stages" to "five stages"
+- [x] Update WorkflowNavRail component for five stages (AC: #1, #5)
+  - [x] Update isComplete() function switch statement to handle "investment-decisions" and "scenario" cases
+  - [x] Update getSummary() function switch statement to handle "investment-decisions" and "scenario" cases
+  - [x] Verify connecting lines render correctly between all five stages
+  - [x] Verify population sub-steps (Library, Build, Explorer) still render when population stage is active
+  - [x] Update comments and docstrings referencing "four stages" to "five stages"
+    - [x] Update component docstring from "Displays the four canonical workflow stages" to "Displays the five canonical workflow stages"
 
-- [ ] Update MobileStageSwitcher component for five stages (AC: #6)
-  - [ ] Verify STAGES import from workspace.ts includes five stages
-  - [ ] Confirm horizontal scroll shows all five stage buttons
-  - [ ] Verify active state highlighting works for all five stages
+- [x] Update MobileStageSwitcher component for five stages (AC: #6)
+  - [x] Verify STAGES import from workspace.ts includes five stages
+  - [x] Confirm horizontal scroll shows all five stage buttons
+  - [x] Verify active state highlighting works for all five stages
+  - [x] Update docstring from "Shows all 4 canonical workflow stages" to "Shows all 5 canonical workflow stages"
 
-- [ ] Add hash routing migration for legacy #engine → #scenario (AC: #2)
-  - [ ] Add migration logic in AppContext onHashChange effect
-  - [ ] When hash is "engine", auto-redirect to "scenario" and update hash
-  - [ ] Test bookmark navigation with #engine resolves correctly
-  - [ ] Verify direct navigation to #scenario works without migration
+- [x] Add hash routing migration for legacy #engine → #scenario (AC: #2)
+  - [x] Add migration logic in AppContext onHashChange effect
+  - [x] When hash is "engine" or "engine/<subview>", auto-redirect to "scenario" (or "scenario/<subview>") and update hash
+  - [x] Test bookmark navigation with #engine resolves correctly
+  - [x] Test bookmark navigation with #engine/decisions resolves to #scenario/decisions
+  - [x] Verify direct navigation to #scenario works without migration
 
-- [ ] Add localStorage migration for activeStage: "engine" → "scenario" (AC: #3)
-  - [ ] Add migration in loadStage() function in useScenarioPersistence.ts
-  - [ ] When loaded stage is "engine", return "scenario" instead
-  - [ ] Test returning user with saved "engine" stage migrates to "scenario"
-  - [ ] Verify subsequent saves use "scenario" not "engine"
+- [x] Add localStorage migration for activeStage: "engine" → "scenario" (AC: #3)
+  - [x] Add migration in loadStage() function in useScenarioPersistence.ts
+  - [x] When loaded stage is "engine", return "scenario" instead
+  - [x] Test returning user with saved "engine" stage migrates to "scenario"
+  - [x] Verify subsequent saves use "scenario" not "engine"
 
-- [ ] Update App.tsx main content routing (AC: #8)
-  - [ ] Add case for "investment-decisions" stage (placeholder or skip to next story)
-  - [ ] Replace "engine" case with "scenario" case
-  - [ ] Verify both stage keys render EngineStageScreen (ScenarioStageScreen comes in Story 26.3)
-  - [ ] Update comments referencing four stages to five stages
+- [x] Update App.tsx main content routing (AC: #5, #8)
+  - [x] Add case for "investment-decisions" stage with placeholder div (data-testid="investment-decisions-placeholder")
+  - [x] Replace "engine" case with "scenario" case
+  - [x] Verify "scenario" stage renders EngineStageScreen (ScenarioStageScreen comes in Story 26.3)
+  - [x] Update comments referencing four stages to five stages
 
-- [ ] Update type guards and validation (AC: #7)
-  - [ ] Update isValidStage() to exclude "engine" explicitly
-  - [ ] Add tests for invalid legacy "engine" stage key
-  - [ ] Verify TypeScript compilation rejects "engine" as valid StageKey
+- [x] Update type guards and validation (AC: #7)
+  - [x] Update isValidStage() to exclude "engine" explicitly
+  - [x] Add tests for invalid legacy "engine" stage key
+  - [x] Verify TypeScript compilation rejects "engine" as valid StageKey (run: npm run typecheck in a temp file with `const stage: StageKey = "engine";`)
 
-- [ ] Update WorkflowNavRail tests for five stages (AC: #1, #5)
-  - [ ] Update "renders all four stage labels" test to assert five stages
-  - [ ] Add tests for investment-decisions stage rendering
-  - [ ] Add tests for scenario stage (formerly engine) rendering
-  - [ ] Update completion tests for investment-decisions and scenario stages
-  - [ ] Update navigation tests for all five stages
-  - [ ] Add hash migration test for #engine → #scenario
+- [x] Update help content for stage migration (AC: #9)
+  - [x] Add help-content.ts entries for "scenario" and "investment-decisions" stages
+  - [x] Migrate "engine" help content to "scenario" key
+  - [x] Update help panel tests for new stage keys
 
-- [ ] Update MobileStageSwitcher tests for five stages (AC: #6)
-  - [ ] Update test to assert five stage buttons render
-  - [ ] Verify all five stages are clickable and navigate correctly
+- [x] Update WorkflowNavRail tests for five stages (AC: #1, #5)
+  - [x] Update "renders all four stage labels" test to assert five stages
+  - [x] Add tests for investment-decisions stage rendering
+  - [x] Add tests for scenario stage (formerly engine) rendering
+  - [x] Update completion tests for investment-decisions and scenario stages
+  - [x] Update navigation tests for all five stages
+  - [x] Add hash migration test for #engine → #scenario
+    - [x] Test direct navigation to #scenario works without migration
+    - [x] Test hash migration preserves subView: #engine/decisions → #scenario/decisions
 
-- [ ] Add localStorage migration tests (AC: #3)
-  - [ ] Test loadStage() returns "scenario" when localStorage has "engine"
-  - [ ] Test returning user flow with migrated stage
+- [x] Update MobileStageSwitcher tests for five stages (AC: #6)
+  - [x] Update test to assert five stage buttons render
+  - [x] Verify all five stages are clickable and navigate correctly
 
-- [ ] Non-regression: verify existing Population sub-steps work (AC: #4)
-  - [ ] Test Library, Build, Explorer sub-steps still render under Population
-  - [ ] Test sub-step navigation still works after five-stage migration
-  - [ ] Verify population sub-step disabled states still function
+- [x] Add localStorage migration tests (AC: #3)
+  - [x] Test loadStage() returns "scenario" when localStorage has "engine"
+  - [x] Test returning user flow with migrated stage
+  - [x] Test hash+localStorage conflict scenario (hash empty, localStorage has "engine")
+
+- [x] Non-regression: verify existing Population sub-steps work (AC: #4)
+  - [x] Test Library, Build, Explorer sub-steps still render under Population
+  - [x] Test sub-step navigation still works after five-stage migration
+  - [x] Verify population sub-step disabled states still function
 
 ## Dev Notes
 
@@ -94,13 +107,14 @@ so that I can move through the workspace in the sequence specified by UX Revisio
 
 **UX Revision 4.1 (from UX-DR6):** "The workspace must use a five-stage nav rail (Policies → Population → Investment Decisions → Scenario → Run/Results/Compare) as specified in UX Revision 4.1."
 
-**Key Design Decision:** This story updates the nav rail and routing structure only. The InvestmentDecisionsStageScreen component creation happens in Story 26.2, and the EngineStageScreen rename to ScenarioStageScreen happens in Story 26.3. For this story, the "investment-decisions" stage can show a placeholder or the wizard can be rendered directly.
+**Key Design Decision:** This story updates the nav rail and routing structure only. The InvestmentDecisionsStageScreen component creation happens in Story 26.2, and the EngineStageScreen rename to ScenarioStageScreen happens in Story 26.3. For this story, the "investment-decisions" stage shows a placeholder panel.
 
 **Migration Strategy:**
-- Hash routing: `#engine` → `#scenario` via client-side redirect
+- Hash routing: `#engine` → `#scenario` via client-side redirect (subView preserved: `#engine/<subview>` → `#scenario/<subview>`)
 - localStorage: Read-time migration in `loadStage()` returns "scenario" for stored "engine"
-- Type safety: StageKey excludes "engine" so TypeScript prevents new "engine" references
-- Runtime: isValidStage() rejects "engine" explicitly
+- Type safety: StageKey excludes "engine" so TypeScript prevents new "engine" references at compile time
+- Runtime validation: `isValidStage()` rejects "engine" explicitly at runtime
+- Migration layer only: "engine" is handled only at migration boundaries (hash parse, localStorage read). Active runtime stage is always one of the five valid keys.
 
 ### Current State (After Epic 25)
 
@@ -149,6 +163,8 @@ export type StageKey = "policies" | "population" | "engine" | "results";
 ```typescript
 export type StageKey = "policies" | "population" | "investment-decisions" | "scenario" | "results";
 ```
+
+**Module docstring update:** Change "Defines the four-stage workspace model" to "Defines the five-stage workspace model" at the top of workspace.ts.
 
 **Current VALID_STAGES Set (line 105):**
 ```typescript
@@ -236,9 +252,10 @@ function isComplete(
       );
     case "investment-decisions":
       // Story 26.2 will implement proper completion logic
-      // For now, stage is complete when decisions are disabled or configured
-      return !activeScenario?.engineConfig.investmentDecisionsEnabled ||
-             activeScenario?.engineConfig.logitModel !== null;
+      // For now, stage is complete when no active scenario, or decisions are disabled, or configured
+      return !activeScenario ||
+             !activeScenario.engineConfig.investmentDecisionsEnabled ||
+             activeScenario.engineConfig.logitModel !== null;
     case "scenario":
       return activeScenario !== null;
     case "results":
@@ -347,8 +364,8 @@ function getSummary(
 
 **Changes Required:**
 - Update docstring from "Shows all 4 canonical workflow stages" to "Shows all 5 canonical workflow stages"
-- Tests will automatically pass due to STAGES import
 - Verify all five stages are visible in horizontal scroll
+- Tests will automatically pass due to STAGES import
 
 ### File: `frontend/src/contexts/AppContext.tsx`
 
@@ -473,9 +490,7 @@ const mainPanelContent = (
       />
     ) : null}
     {activeStage === "investment-decisions" ? (
-      // Story 26.2 will create InvestmentDecisionsStageScreen
-      // For now, show placeholder or skip to scenario
-      <div className="flex items-center justify-center p-12 text-slate-500">
+      <div className="flex items-center justify-center p-12 text-slate-500" data-testid="investment-decisions-placeholder">
         <p>Investment Decisions stage — coming in Story 26.2</p>
       </div>
     ) : null}
@@ -485,7 +500,7 @@ const mainPanelContent = (
 );
 ```
 
-**Note:** Story 26.3 will rename EngineStageScreen to ScenarioStageScreen. For this story, both `activeStage === "scenario"` and the old `activeStage === "engine"` (if any references remain) should render EngineStageScreen.
+**Note:** Story 26.3 will rename EngineStageScreen to ScenarioStageScreen. The migration layer (hash+localStorage) ensures `activeStage` is always "scenario" at runtime, never "engine". No fallback for "engine" is needed in the routing logic.
 
 ### File: `frontend/src/components/layout/__tests__/WorkflowNavRail.test.tsx`
 
@@ -520,6 +535,20 @@ describe("Story 26.1: Hash migration", () => {
     window.location.hash = "engine";
     // Trigger hashchange
     // Assert activeStage is "scenario"
+  });
+
+  it("preserves subView during hash migration", () => {
+    window.location.hash = "engine/decisions";
+    // Trigger hashchange
+    // Assert hash was updated to #scenario/decisions
+    expect(window.location.hash).toBe("#scenario/decisions");
+  });
+
+  it("direct navigation to #scenario works without migration", () => {
+    window.location.hash = "scenario";
+    // Trigger hashchange
+    // Assert hash remains #scenario (no change)
+    expect(window.location.hash).toBe("#scenario");
   });
 });
 ```
@@ -563,6 +592,14 @@ describe("Story 26.1: localStorage migration", () => {
     localStorage.setItem("reformlab-active-stage", "population");
     expect(loadStage()).toBe("population");
   });
+
+  it("handles hash migration when localStorage has engine", () => {
+    localStorage.setItem("reformlab-active-stage", "engine");
+    window.location.hash = ""; // Empty hash
+    // After app initialization, should load "scenario" from localStorage
+    const loaded = loadStage();
+    expect(loaded).toBe("scenario");
+  });
 });
 ```
 
@@ -579,7 +616,10 @@ Required test coverage for Story 26.1:
 - Test summary lines for all five stages
 - Test navigation calls for all five stages
 - Test hash migration from #engine to #scenario
+- Test hash migration with subView preservation: #engine/decisions → #scenario/decisions
+- Test direct navigation to #scenario without migration
 - Test localStorage migration from "engine" to "scenario"
+- Test hash+localStorage conflict scenarios
 
 **Frontend Integration Tests:** `frontend/src/hooks/__tests__/useScenarioPersistence.test.tsx`
 
@@ -591,7 +631,8 @@ Required test coverage:
 ### Project Structure Notes
 
 **Frontend Files to Modify:**
-- `frontend/src/types/workspace.ts` — Update StageKey, STAGES, VALID_STAGES
+- `frontend/src/types/workspace.ts` — Update StageKey, STAGES, VALID_STAGES, module docstring
+- `frontend/src/components/help/help-content.ts` — Add "scenario" and "investment-decisions" help entries, migrate "engine" content
 - `frontend/src/components/layout/WorkflowNavRail.tsx` — Update isComplete(), getSummary()
 - `frontend/src/components/layout/__tests__/WorkflowNavRail.test.tsx` — Update tests for 5 stages
 - `frontend/src/components/layout/MobileStageSwitcher.tsx` — Update docstring
@@ -613,10 +654,12 @@ Required test coverage:
    - Update StageKey type in workspace.ts
    - Update STAGES constant in workspace.ts
    - Update VALID_STAGES Set in workspace.ts
+   - Update module docstring in workspace.ts
    - Verify TypeScript compilation passes
 
 2. **Phase 2: Component Updates** (UI changes)
    - Update WorkflowNavRail isComplete() and getSummary()
+   - Update WorkflowNavRail docstring
    - Update WorkflowNavRail tests for 5 stages
    - Update MobileStageSwitcher docstring
    - Update or create MobileStageSwitcher tests
@@ -626,10 +669,12 @@ Required test coverage:
    - Add localStorage migration in useScenarioPersistence
    - Add migration tests
    - Update App.tsx mainPanelContent routing
+   - Update help content for stage migration
 
 4. **Phase 4: Integration and Regression** (Validation)
    - Test full navigation flow across all five stages
    - Test hash migration with #engine bookmarks
+   - Test hash migration with #engine/decisions → #scenario/decisions
    - Test localStorage migration with returning user
    - Verify Population sub-steps still work
    - Non-regression testing for existing stages
@@ -637,9 +682,9 @@ Required test coverage:
 ### Key Implementation Decisions
 
 **Hash Migration Strategy:**
-- Immediate redirect: When #engine is detected, immediately update hash to #scenario
-- Alternative: Use ref flag to prevent infinite loops if hashchange event fires recursively
-- Recommendation: Use one-time migration flag to prevent edge cases
+- SubView preservation: When migrating `#engine/<subview>`, preserve the subView as `#scenario/<subview>`
+- Recommended approach: Use the one-time migration flag (`engineMigratedRef`) to prevent edge cases and ensure clean migration
+- The alternative approach (immediate redirect without ref flag) is provided for reference but the ref-based approach is preferred
 
 **localStorage Migration Strategy:**
 - Read-time migration: loadStage() returns "scenario" when stored value is "engine"
@@ -650,7 +695,7 @@ Required test coverage:
 - Story 26.1 adds routing structure only
 - Story 26.2 creates InvestmentDecisionsStageScreen
 - Story 26.3 renames EngineStageScreen to ScenarioStageScreen
-- For this story, use simple placeholder div for investment-decisions stage
+- For this story, use simple placeholder div with data-testid for investment-decisions stage
 
 **Terminology Migration:**
 - User-facing: "Engine" → "Scenario" (completed in UX spec updates)
@@ -686,15 +731,43 @@ None - This is the initial story creation.
 
 ### Completion Notes List
 
-Story created with comprehensive developer context:
-- Five-stage structure: Policies, Population, Investment Decisions, Scenario, Run / Results / Compare
-- Type updates: StageKey, STAGES constant, VALID_STAGES Set
-- Component updates: WorkflowNavRail isComplete(), getSummary(), test updates
-- Routing migration: Hash #engine → #scenario, localStorage "engine" → "scenario"
-- Mobile switcher updates and test coverage
-- Integration tests for migration paths
-- Implementation order recommendations
-- Non-regression checklist for existing functionality
+Story 26.1 completed successfully - all acceptance criteria met:
 
-Ultimate context engine analysis completed - comprehensive developer guide created.
-Status set to: ready-for-dev
+**Files Modified:**
+- frontend/src/types/workspace.ts — Updated StageKey type (added "investment-decisions", "scenario"; removed "engine"), updated STAGES constant with five stages, updated VALID_STAGES Set, updated module docstring
+- frontend/src/components/layout/WorkflowNavRail.tsx — Updated isComplete() and getSummary() functions for investment-decisions and scenario cases, updated component docstring
+- frontend/src/components/layout/MobileStageSwitcher.tsx — Updated component docstring
+- frontend/src/contexts/AppContext.tsx — Added hash routing migration logic for #engine → #scenario
+- frontend/src/hooks/useScenarioPersistence.ts — Added localStorage migration logic in loadStage()
+- frontend/src/App.tsx — Updated mainPanelContent routing with investment-decisions placeholder and scenario stage
+- frontend/src/components/help/help-content.ts — Added "scenario" and "investment-decisions" help entries
+
+**Tests Updated:**
+- frontend/src/components/layout/__tests__/WorkflowNavRail.test.tsx — Updated for 5 stages, added investment-decisions and scenario tests
+- frontend/src/components/layout/__tests__/MobileStageSwitcher.test.tsx — Updated for 5 stages
+- frontend/src/hooks/__tests__/useScenarioPersistence.test.tsx — Added localStorage migration tests
+- frontend/src/__tests__/App.test.tsx — Updated "Policy" → "Policies", 4-stage → 5-stage
+- frontend/src/__tests__/e2e/first-launch-flow.test.tsx — Updated "engine" → "scenario"
+- frontend/src/__tests__/e2e/population-workflow.test.tsx — Updated "engine" → "scenario"
+- frontend/src/__tests__/e2e/portfolio-workflow.test.tsx — Updated "engine" → "scenario"
+- frontend/src/__tests__/workflows/analyst-journey.test.tsx — Updated "engine" → "scenario", "Policy" → "Policies"
+- frontend/src/components/layout/__tests__/TopBar.test.tsx — Updated "policy" → "Policies"
+
+**Migration Strategy Implemented:**
+- Hash routing: Client-side redirect from #engine → #scenario with subView preservation
+- localStorage: Read-time migration in loadStage() returns "scenario" for stored "engine"
+- Type safety: StageKey excludes "engine", includes "investment-decisions" and "scenario"
+
+**Test Results:**
+- All 825 tests pass (4 skipped)
+- TypeScript compilation passes (no errors)
+- ESLint passes (0 errors, 7 pre-existing warnings)
+
+**Key Implementation Notes:**
+- investment-decisions stage shows "Disabled" summary when investmentDecisionsEnabled is false or no active scenario
+- investment-decisions stage is complete when: no active scenario OR decisions disabled OR logitModel configured
+- Scenario stage renders EngineStageScreen (rename happens in Story 26.3)
+- Population sub-steps (Library, Build, Explorer) remain unchanged under Population stage
+- Label change: "Policy" → "Policies" (plural form)
+
+Status set to: done

@@ -7,8 +7,10 @@
  * Replaces the WorkflowNavRail on mobile (< lg breakpoint) with a horizontal
  * scrollable list of stage buttons.
  *
- * Shows all 4 canonical workflow stages with the active stage highlighted.
+ * Shows all 5 canonical workflow stages with the active stage highlighted.
  * Hidden on desktop (lg+) where WorkflowNavRail is used instead.
+ *
+ * Story 26.1 — Migrate from four-stage to five-stage workspace.
  */
 
 import type { StageKey, SubView } from "@/types/workspace";

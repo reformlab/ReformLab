@@ -3,14 +3,16 @@
 /**
  * Tests for WorkflowNavRail component (Story 20.1, AC-1).
  *
- * Validates the four canonical stages:
- *   Policy → Population → Scenario → Run / Results / Compare
+ * Validates the five canonical stages:
+ *   Policies → Population → Investment Decisions → Scenario → Run / Results / Compare
  *
  * AC-1: nav rail with stage indicators and connecting lines
  * AC-2: completion indicators (checkmark=emerald, active=blue, pending=slate)
  * AC-3: stage summary lines in muted text
  * AC-4: clickable navigation always available
  * AC-6: collapsed state shows icons only
+ *
+ * Story 26.1 — Migrate from four-stage to five-stage workspace.
  */
 
 import { render, screen } from "@testing-library/react";
@@ -40,14 +42,15 @@ function baseProps(overrides: Partial<WorkflowNavRailProps> = {}): WorkflowNavRa
 }
 
 // ============================================================================
-// AC-1: Navigation rail renders all four canonical workflow stages
+// AC-1: Navigation rail renders all five canonical workflow stages
 // ============================================================================
 
 describe("WorkflowNavRail - stage rendering", () => {
-  it("renders all four stage labels when expanded", () => {
+  it("renders all five stage labels when expanded", () => {
     render(<WorkflowNavRail {...baseProps()} />);
-    expect(screen.getByText("Policy")).toBeInTheDocument();
+    expect(screen.getByText("Policies")).toBeInTheDocument();
     expect(screen.getByText("Population")).toBeInTheDocument();
+    expect(screen.getByText("Investment Decisions")).toBeInTheDocument();
     expect(screen.getByText("Scenario")).toBeInTheDocument();
     expect(screen.getByText("Run / Results / Compare")).toBeInTheDocument();
   });
@@ -60,11 +63,14 @@ describe("WorkflowNavRail - stage rendering", () => {
 describe("WorkflowNavRail - completion state", () => {
   it("shows stage numbers for all incomplete stages", () => {
     render(<WorkflowNavRail {...baseProps()} />);
-    // All stages are incomplete → stage numbers 1-4 appear
+    // investment-decisions is complete when no active scenario (Story 26.1 logic)
+    // Stages 1, 2, 4, 5 are incomplete → stage numbers 1, 2, 4, 5 appear
     expect(screen.getByText("1")).toBeInTheDocument();
     expect(screen.getByText("2")).toBeInTheDocument();
-    expect(screen.getByText("3")).toBeInTheDocument();
     expect(screen.getByText("4")).toBeInTheDocument();
+    expect(screen.getByText("5")).toBeInTheDocument();
+    // investment-decisions (stage 3) shows checkmark instead of number
+    expect(screen.queryByText("3")).not.toBeInTheDocument();
   });
 
   it("shows checkmark for Population stage when selectedPopulationId is set", () => {
@@ -104,8 +110,8 @@ describe("WorkflowNavRail - completion state", () => {
   it("shows checkmark for Results stage when results exist", () => {
     const results = [{ run_id: "r1", timestamp: "2026-01-01T00:00:00Z", run_kind: "scenario" as const, start_year: 2025, end_year: 2030, row_count: 1000, status: "completed" as const, data_available: true, template_name: "carbon_tax", policy_type: "carbon_tax", portfolio_name: null }];
     render(<WorkflowNavRail {...baseProps({ results })} />);
-    // Results (stage 4) is complete → no "4" text
-    expect(screen.queryByText("4")).not.toBeInTheDocument();
+    // Results (stage 5) is complete → no "5" text
+    expect(screen.queryByText("5")).not.toBeInTheDocument();
   });
 
   it("marks active stage with data-active attribute", () => {
@@ -151,7 +157,10 @@ describe("WorkflowNavRail - summary lines", () => {
     render(<WorkflowNavRail {...baseProps()} />);
     expect(screen.queryByTestId("summary-policies")).not.toBeInTheDocument();
     expect(screen.queryByTestId("summary-population")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("summary-engine")).not.toBeInTheDocument();
+    // investment-decisions shows "Disabled" when no active scenario (Story 26.1 behavior)
+    expect(screen.getByTestId("summary-investment-decisions")).toBeInTheDocument();
+    expect(screen.getByTestId("summary-investment-decisions")).toHaveTextContent("Disabled");
+    expect(screen.queryByTestId("summary-scenario")).not.toBeInTheDocument();
     expect(screen.queryByTestId("summary-results")).not.toBeInTheDocument();
   });
 });
@@ -161,10 +170,10 @@ describe("WorkflowNavRail - summary lines", () => {
 // ============================================================================
 
 describe("WorkflowNavRail - navigation", () => {
-  it("calls navigateTo with policies when Policy stage is clicked", async () => {
+  it("calls navigateTo with policies when Policies stage is clicked", async () => {
     const navigateTo = vi.fn();
     render(<WorkflowNavRail {...baseProps({ navigateTo })} />);
-    await userEvent.click(screen.getByRole("button", { name: /^policy$/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^policies$/i }));
     expect(navigateTo).toHaveBeenCalledWith("policies");
   });
 
@@ -175,11 +184,11 @@ describe("WorkflowNavRail - navigation", () => {
     expect(navigateTo).toHaveBeenCalledWith("population");
   });
 
-  it("calls navigateTo with engine when Scenario stage is clicked", async () => {
+  it("calls navigateTo with scenario when Scenario stage is clicked", async () => {
     const navigateTo = vi.fn();
     render(<WorkflowNavRail {...baseProps({ navigateTo })} />);
     await userEvent.click(screen.getByRole("button", { name: /^scenario$/i }));
-    expect(navigateTo).toHaveBeenCalledWith("engine");
+    expect(navigateTo).toHaveBeenCalledWith("scenario");
   });
 
   it("calls navigateTo with results when Run / Results / Compare stage is clicked", async () => {
@@ -197,8 +206,9 @@ describe("WorkflowNavRail - navigation", () => {
 describe("WorkflowNavRail - collapsed state", () => {
   it("does not show stage labels when collapsed", () => {
     render(<WorkflowNavRail {...baseProps({ collapsed: true })} />);
-    expect(screen.queryByText("Policy")).not.toBeInTheDocument();
+    expect(screen.queryByText("Policies")).not.toBeInTheDocument();
     expect(screen.queryByText("Population")).not.toBeInTheDocument();
+    expect(screen.queryByText("Investment Decisions")).not.toBeInTheDocument();
     expect(screen.queryByText("Scenario")).not.toBeInTheDocument();
     expect(screen.queryByText("Run / Results / Compare")).not.toBeInTheDocument();
   });
@@ -214,7 +224,8 @@ describe("WorkflowNavRail - collapsed state", () => {
     // Step indicators (numbers or check icons) should still be present
     expect(screen.getByTestId("step-indicator-policies")).toBeInTheDocument();
     expect(screen.getByTestId("step-indicator-population")).toBeInTheDocument();
-    expect(screen.getByTestId("step-indicator-engine")).toBeInTheDocument();
+    expect(screen.getByTestId("step-indicator-investment-decisions")).toBeInTheDocument();
+    expect(screen.getByTestId("step-indicator-scenario")).toBeInTheDocument();
     expect(screen.getByTestId("step-indicator-results")).toBeInTheDocument();
   });
 });

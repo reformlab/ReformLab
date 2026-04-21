@@ -244,7 +244,8 @@ describe("AC-3: Scenario controls in center-left container", () => {
 
   it("renders current stage label", () => {
     renderTopBar({ activeStage: "policies" as const });
-    const stageLabel = screen.getByText(/policy/i);
+    // Story 26.1: Label changed from "Policy" to "Policies"
+    const stageLabel = screen.getByText("Policies");
     expect(stageLabel).toBeInTheDocument();
   });
 

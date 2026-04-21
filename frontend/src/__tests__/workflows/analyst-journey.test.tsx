@@ -113,7 +113,7 @@ async function authenticate(user: ReturnType<typeof userEvent.setup>): Promise<v
 
   await waitFor(() => {
     // After login, TopBar shows stage label and nav rail shows stage labels
-    expect(screen.getAllByText("Policy")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("Policies")[0]).toBeInTheDocument();
   });
 }
 
@@ -121,7 +121,7 @@ async function authenticate(user: ReturnType<typeof userEvent.setup>): Promise<v
 // Left-panel helper
 //
 // The workspace renders <aside> elements (left and right panels). Navigation
-// buttons (Policy, Population, Engine, Run / Results / Compare)
+// buttons (Policies, Population, Investment Decisions, Scenario, Run / Results / Compare)
 // live in the FIRST aside (leftPanel). Using within() prevents false matches.
 // ============================================================================
 
@@ -179,7 +179,7 @@ describe("Analyst Journey — cross-screen navigation", () => {
       await authenticate(user);
 
       // Post-auth: stage navigation visible (stage label from TopBar)
-      expect(screen.getAllByText("Policy")[0]).toBeInTheDocument();
+      expect(screen.getAllByText("Policies")[0]).toBeInTheDocument();
     });
 
     it("navigates to Population Library via Population button (Story 20.4)", async () => {
@@ -197,13 +197,13 @@ describe("Analyst Journey — cross-screen navigation", () => {
       });
     });
 
-    it("navigates to Policy stage via nav rail button", async () => {
+    it("navigates to Policies stage via nav rail button", async () => {
       const user = userEvent.setup();
       renderApp();
       await authenticate(user);
 
-      // Click the Policy stage button in the nav rail
-      await user.click(within(getLeftPanel()).getByRole("button", { name: /^policy$/i }));
+      // Click the Policies stage button in the nav rail
+      await user.click(within(getLeftPanel()).getByRole("button", { name: /^policies$/i }));
 
       await waitFor(() => {
         // PoliciesStageScreen renders inline composition layout (Story 20.3)
@@ -243,12 +243,12 @@ describe("Analyst Journey — cross-screen navigation", () => {
       });
     });
 
-    it("renders Engine stub when navigating to #engine (AC-2)", async () => {
+    it("renders Engine stub when navigating to #scenario (AC-2)", async () => {
       const user = userEvent.setup();
       renderApp();
       await authenticate(user);
 
-      window.location.hash = "#engine";
+      window.location.hash = "#scenario";
       window.dispatchEvent(new HashChangeEvent("hashchange"));
 
       await waitFor(() => {
@@ -459,7 +459,7 @@ describe("Analyst Journey — cross-screen navigation", () => {
       await waitFor(() => {
         expect(screen.getAllByText("Scenario Configuration").length).toBeGreaterThanOrEqual(1);
       });
-      expect(window.location.hash).toBe("#engine");
+      expect(window.location.hash).toBe("#scenario");
     });
 
     it("scenario entry dialog opens from TopBar and shows 4 options (AC-3)", async () => {
@@ -590,12 +590,12 @@ describe("Analyst Journey — cross-screen navigation", () => {
   // ===========================================================================
 
   describe("Story 20.5 — Scenario Configuration Stage", () => {
-    it("navigates to #engine and shows Scenario Configuration heading (AC-1)", async () => {
+    it("navigates to #scenario and shows Scenario Configuration heading (AC-1)", async () => {
       const user = userEvent.setup();
       renderApp();
       await authenticate(user);
 
-      window.location.hash = "#engine";
+      window.location.hash = "#scenario";
       window.dispatchEvent(new HashChangeEvent("hashchange"));
 
       await waitFor(() => {
@@ -608,7 +608,7 @@ describe("Analyst Journey — cross-screen navigation", () => {
       renderApp();
       await authenticate(user);
 
-      window.location.hash = "#engine";
+      window.location.hash = "#scenario";
       window.dispatchEvent(new HashChangeEvent("hashchange"));
 
       await waitFor(() => {
@@ -622,7 +622,7 @@ describe("Analyst Journey — cross-screen navigation", () => {
       renderApp();
       await authenticate(user);
 
-      window.location.hash = "#engine";
+      window.location.hash = "#scenario";
       window.dispatchEvent(new HashChangeEvent("hashchange"));
 
       await waitFor(() => {
@@ -639,7 +639,7 @@ describe("Analyst Journey — cross-screen navigation", () => {
       renderApp();
       await authenticate(user);
 
-      window.location.hash = "#engine";
+      window.location.hash = "#scenario";
       window.dispatchEvent(new HashChangeEvent("hashchange"));
 
       await waitFor(() => {

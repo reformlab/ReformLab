@@ -206,7 +206,12 @@ function Workspace() {
           onExplorerPopulationChange={setExplorerPopulationId}
         />
       ) : null}
-      {activeStage === "engine" ? <EngineStageScreen /> : null}
+      {activeStage === "investment-decisions" ? (
+        <div className="flex items-center justify-center p-12 text-slate-500" data-testid="investment-decisions-placeholder">
+          <p>Investment Decisions stage — coming in Story 26.2</p>
+        </div>
+      ) : null}
+      {activeStage === "scenario" ? <EngineStageScreen /> : null}
       {activeStage === "results" ? resultsContent : null}
     </>
   );

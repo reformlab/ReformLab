@@ -83,7 +83,9 @@ export function loadStage(): StageKey | null {
   try {
     const raw = localStorage.getItem(STAGE_STORAGE_KEY);
     if (!raw) return null;
-    return isValidStage(raw) ? raw : null;
+    // Story 26.1: Migrate legacy "engine" stage to "scenario"
+    const migrated = raw === "engine" ? "scenario" : raw;
+    return isValidStage(migrated) ? migrated : null;
   } catch {
     return null;
   }

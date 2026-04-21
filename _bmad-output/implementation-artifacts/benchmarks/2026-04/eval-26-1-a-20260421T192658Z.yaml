@@ -1,0 +1,138 @@
+record_id: 5fdaa3b6-64d8-46cd-9eb4-48aba9a01222
+created_at: '2026-04-21T19:26:58.562990+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 26
+  story_num: 1
+  title: Story 26.1
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-04-21T19:21:42.392758Z'
+  end_time: '2026-04-21T19:22:51.155758Z'
+  duration_ms: 68763
+  input_tokens: 0
+  output_tokens: 6115
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 24461
+  heading_count: 42
+  list_depth_max: 2
+  code_block_count: 27
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 23.0'
+  - 🎯 Ruthless Story Validation 26.1
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Missing `isValidStage()` Update Requirement
+  - 2. Hash Migration Potential Infinite Loop
+  - '3. Typo in Stage Key: "investments-decisions" vs "investment-decisions"'
+  - 4. Missing Docstring Update Requirements
+  - 5. Missing StageKey Exhaustiveness Requirement
+  - ⚡ Enhancement Opportunities (Should Add)
+  - '1. Label Inconsistency: "Policy" vs "Policies"'
+  - 2. Missing Sub-View Preservation in Hash Migration
+  - 3. Missing Test for Direct `#scenario` Navigation
+  - 4. No Requirement for TypeScript Compilation Check
+  - 5. Missing Component Comment Update Requirements
+  - 6. No Explicit Requirement for StageKey Type Imports
+  - '7. Missing Edge Case: Empty Hash with "engine" in localStorage'
+  - ✨ Optimizations (Nice to Have)
+  - 1. Implementation Order Optimization
+  - 2. Type Migration Verification Script
+  - Find all "engine" stage references in frontend
+  - Find all StageKey switch statements
+  - 3. Migration Rollback Strategy
+  - 4. Browser History Consideration
+  - 🤖 LLM Optimization Improvements
+  - 1. Verbose Code Snippets in Dev Notes
+  - 2. Redundant Current/Target State Blocks
+  - 3. Repeated Task Sub-checklists
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: ffcda909f696
+findings:
+  total_count: 19
+  by_severity:
+    critical: 5
+    major: 7
+    minor: 4
+    nit: 3
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 5
+    completeness: 7
+    clarity: 4
+    testability: 3
+  has_fix_count: 19
+  has_location_count: 19
+  has_evidence_count: 17
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 14
+  confidence_phrases_count: 1
+linguistic:
+  avg_sentence_length: 27.44736842105263
+  vocabulary_richness: 0.2588686481303931
+  flesch_reading_ease: 18.451919637168913
+  vague_terms_count: 2
+  formality_score: 0.75
+  sentiment: neutral
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.9
+  evidence_quality: 0.89
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true

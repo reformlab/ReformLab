@@ -3,17 +3,18 @@
 /**
  * Canonical workspace type definitions for ReformLab.
  *
- * Defines the four-stage workspace model (Story 20.1, AC-3).
+ * Defines the five-stage workspace model (Story 26.1, AC-1).
  * StageKey, SubView, WorkspaceScenario, EngineConfig, STAGES.
  *
  * Story 20.1 — FR32 stage-based GUI.
+ * Story 26.1 — Migrate from four-stage to five-stage workspace.
  */
 
 // ============================================================================
 // Stage and routing types
 // ============================================================================
 
-export type StageKey = "policies" | "population" | "engine" | "results";
+export type StageKey = "policies" | "population" | "investment-decisions" | "scenario" | "results";
 
 export type SubView =
   | "data-fusion"
@@ -92,17 +93,18 @@ export interface WorkspaceScenario {
 
 // Import this in WorkflowNavRail, TopBar, and tests.
 export const STAGES: { key: StageKey; label: string; activeFor: (StageKey | SubView)[] }[] = [
-  { key: "policies",   label: "Policy",    activeFor: ["policies"] },
-  { key: "population", label: "Population",              activeFor: ["population", "data-fusion", "population-explorer"] },
-  { key: "engine",     label: "Scenario",                activeFor: ["engine"] },
-  { key: "results",    label: "Run / Results / Compare", activeFor: ["results", "comparison", "decisions", "runner"] },
+  { key: "policies",           label: "Policies",           activeFor: ["policies"] },
+  { key: "population",         label: "Population",         activeFor: ["population", "data-fusion", "population-explorer"] },
+  { key: "investment-decisions", label: "Investment Decisions", activeFor: ["investment-decisions"] },
+  { key: "scenario",           label: "Scenario",           activeFor: ["scenario"] },
+  { key: "results",            label: "Run / Results / Compare", activeFor: ["results", "comparison", "decisions", "runner"] },
 ];
 
 // ============================================================================
 // Type guards
 // ============================================================================
 
-const VALID_STAGES = new Set<string>(["policies", "population", "engine", "results"]);
+const VALID_STAGES = new Set<string>(["policies", "population", "investment-decisions", "scenario", "results"]);
 export function isValidStage(s: string): s is StageKey {
   return VALID_STAGES.has(s);
 }

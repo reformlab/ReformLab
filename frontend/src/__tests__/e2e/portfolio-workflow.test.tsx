@@ -162,12 +162,12 @@ describe("Portfolio Editing Flow", () => {
     });
 
     // Navigate to Scenario stage
-    window.location.hash = "#engine";
+    window.location.hash = "#scenario";
     window.dispatchEvent(new HashChangeEvent("hashchange"));
 
     // Assert: Scenario stage renders
     await waitFor(() => {
-      expect(window.location.hash).toBe("#engine");
+      expect(window.location.hash).toBe("#scenario");
     });
   });
 
@@ -204,11 +204,11 @@ describe("Portfolio Editing Flow", () => {
     await user.click(screen.getByRole("button", { name: /enter/i }));
 
     // Navigate to Scenario
-    window.location.hash = "#engine";
+    window.location.hash = "#scenario";
     window.dispatchEvent(new HashChangeEvent("hashchange"));
 
     await waitFor(() => {
-      expect(window.location.hash).toBe("#engine");
+      expect(window.location.hash).toBe("#scenario");
     });
 
     // Stage 3 validation opens the runner; the runner starts the backend call.
@@ -270,7 +270,7 @@ describe("Portfolio Editing Flow", () => {
 
     // Wait for Scenario stage to load
     await waitFor(() => {
-      expect(window.location.hash).toBe("#engine");
+      expect(window.location.hash).toBe("#scenario");
     });
 
     // Assert: validation error displayed

@@ -246,11 +246,11 @@ describe("Population Selection Flow", () => {
     await user.click(screen.getByRole("button", { name: /enter/i }));
 
     // Navigate to Scenario
-    window.location.hash = "#engine";
+    window.location.hash = "#scenario";
     window.dispatchEvent(new HashChangeEvent("hashchange"));
 
     await waitFor(() => {
-      expect(window.location.hash).toBe("#engine");
+      expect(window.location.hash).toBe("#scenario");
     });
 
     // Stage 3 validation opens the runner; the runner starts the backend call.
@@ -390,11 +390,11 @@ describe("Population Selection Flow", () => {
     });
 
     // Navigate to Scenario and run
-    window.location.hash = "#engine";
+    window.location.hash = "#scenario";
     window.dispatchEvent(new HashChangeEvent("hashchange"));
 
     await waitFor(() => {
-      expect(window.location.hash).toBe("#engine");
+      expect(window.location.hash).toBe("#scenario");
     });
   });
 
@@ -445,11 +445,11 @@ describe("Population Selection Flow", () => {
     });
 
     // Navigate away
-    window.location.hash = "#engine";
+    window.location.hash = "#scenario";
     window.dispatchEvent(new HashChangeEvent("hashchange"));
 
     await waitFor(() => {
-      expect(window.location.hash).toBe("#engine");
+      expect(window.location.hash).toBe("#scenario");
     });
 
     // Navigate back

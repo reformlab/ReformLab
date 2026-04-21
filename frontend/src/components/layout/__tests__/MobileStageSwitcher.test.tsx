@@ -4,6 +4,8 @@
  * MobileStageSwitcher tests — Story 22.7, Task 3
  *
  * AC-2: Stage navigation reachable from every screen at phone width
+ *
+ * Story 26.1 — Migrate from four-stage to five-stage workspace.
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
@@ -27,9 +29,10 @@ describe("MobileStageSwitcher — Story 22.7", () => {
       />
     );
 
-    // All 4 stages should be rendered
-    expect(screen.getByRole("button", { name: /Policy/i })).toBeInTheDocument();
+    // All 5 stages should be rendered
+    expect(screen.getByRole("button", { name: /Policies/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Population/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Investment Decisions/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Scenario/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Run \/ Results \/ Compare/i })).toBeInTheDocument();
   });
@@ -56,10 +59,10 @@ describe("MobileStageSwitcher — Story 22.7", () => {
       />
     );
 
-    const engineButton = screen.getByRole("button", { name: /Scenario/i });
-    await user.click(engineButton);
+    const scenarioButton = screen.getByRole("button", { name: /Scenario/i });
+    await user.click(scenarioButton);
 
-    expect(mockNavigateTo).toHaveBeenCalledWith("engine");
+    expect(mockNavigateTo).toHaveBeenCalledWith("scenario");
   });
 
   it("should have horizontal scroll for many stages", () => {

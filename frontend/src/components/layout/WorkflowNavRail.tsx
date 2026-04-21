@@ -3,12 +3,13 @@
 /**
  * WorkflowNavRail — vertical stepper navigation for the left panel.
  *
- * Displays the four canonical workflow stages (Policy → Population →
- * Scenario → Run / Results / Compare) with completion indicators, summary lines,
- * and connecting lines between steps.
+ * Displays the five canonical workflow stages (Policies → Population →
+ * Investment Decisions → Scenario → Run / Results / Compare) with completion
+ * indicators, summary lines, and connecting lines between steps.
  * Supports a collapsed variant that shows only step indicator icons.
  *
  * Story 20.1 — AC-1, refactored from Story 18.1.
+ * Story 26.1 — Migrate from four-stage to five-stage workspace.
  */
 
 import { Check, Circle } from "lucide-react";
@@ -59,7 +60,13 @@ function isComplete(
         !!selectedPopulationId ||
         dataFusionResult !== null
       );
-    case "engine":
+    case "investment-decisions":
+      // Story 26.2 will implement proper completion logic
+      // For now, stage is complete when no active scenario, or decisions are disabled, or configured
+      return !activeScenario ||
+             !activeScenario.engineConfig.investmentDecisionsEnabled ||
+             activeScenario.engineConfig.logitModel !== null;
+    case "scenario":
       return activeScenario !== null;
     case "results":
       return results.length > 0;
@@ -96,7 +103,14 @@ function getSummary(
       }
       return null;
     }
-    case "engine": {
+    case "investment-decisions": {
+      // Story 26.2 will implement proper summary
+      if (!activeScenario?.engineConfig.investmentDecisionsEnabled) {
+        return "Disabled";
+      }
+      return activeScenario.engineConfig.logitModel ?? null;
+    }
+    case "scenario": {
       if (!activeScenario) return null;
       const { startYear, endYear } = activeScenario.engineConfig;
       return `${startYear}–${endYear}`;

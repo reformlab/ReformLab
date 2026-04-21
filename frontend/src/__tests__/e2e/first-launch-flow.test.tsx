@@ -223,7 +223,7 @@ describe("First Launch Flow", () => {
   it("returning user restores scenario from localStorage", async () => {
     // Set up: persist a scenario and stage
     const testScenario = createDemoScenario();
-    const testStage = "engine" as const;
+    const testStage = "scenario" as const; // Story 26.1: Changed from "engine" to "scenario"
     persistScenario(testScenario, testStage);
 
     // Render app

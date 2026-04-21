@@ -217,9 +217,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     function onHashChange() {
       const hash = window.location.hash.slice(1); // remove leading #
       const [stage, sub] = hash.split("/");
-      if (stage && isValidStage(stage)) {
-        setActiveStage(stage);
+
+      // Story 26.1: Migrate legacy #engine hash to #scenario
+      const migratedStage = stage === "engine" ? "scenario" : stage;
+
+      if (migratedStage && isValidStage(migratedStage)) {
+        setActiveStage(migratedStage);
         setActiveSubView(sub && isValidSubView(sub) ? sub : null);
+        // Update hash if migration occurred
+        if (stage === "engine") {
+          window.location.hash = sub ? `scenario/${sub}` : "scenario";
+        }
       } else {
         // Empty hash or unknown stage → default to policies
         setActiveStage("policies");

@@ -5,7 +5,7 @@
  *
  * Verifies:
  * - Auth prompt renders before login
- * - Post-auth workspace renders 4-stage navigation (AC-1)
+ * - Post-auth workspace renders 5-stage navigation (AC-1, Story 26.1)
  * - Gradient header removed (AC-1 brand compliance)
  * - Hash routing defaults and invalid hash handling (AC-4)
  */
@@ -80,7 +80,7 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: /reformlab/i })).toBeInTheDocument();
   });
 
-  it("renders 4-stage navigation after login (AC-1)", async () => {
+  it("renders 5-stage navigation after login (AC-1, Story 26.1)", async () => {
     vi.mocked(login).mockResolvedValueOnce({ token: "test-token" });
     const user = userEvent.setup();
     renderApp();
@@ -93,8 +93,9 @@ describe("App", () => {
     });
 
     // Stage labels appear in both TopBar and WorkflowNavRail — verify at least one exists
-    expect(screen.getAllByText("Policy").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Policies").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Population").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Investment Decisions").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Scenario").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Run / Results / Compare").length).toBeGreaterThanOrEqual(1);
   });
@@ -108,7 +109,7 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: /enter/i }));
 
     await waitFor(() => {
-      expect(screen.getAllByText("Policy").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Policies").length).toBeGreaterThanOrEqual(1);
     });
 
     // Gradient header should not exist
@@ -127,7 +128,7 @@ describe("App", () => {
 
     await waitFor(() => {
       // Default stage is "policies" — TopBar and nav rail show stage label
-      expect(screen.getAllByText("Policy").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Policies").length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -157,7 +158,7 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: /enter/i }));
 
     await waitFor(() => {
-      expect(screen.getAllByText("Policy").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Policies").length).toBeGreaterThanOrEqual(1);
     });
 
     // Navigate to population stage via hash — Story 20.4: library is default entry point

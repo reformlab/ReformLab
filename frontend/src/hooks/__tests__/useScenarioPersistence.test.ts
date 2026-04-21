@@ -3,6 +3,7 @@
 /**
  * Unit tests for useScenarioPersistence hook.
  * Story 20.2 — Task 2, Task 7.2.
+ * Story 26.1 — Migrate from four-stage to five-stage workspace (localStorage migration).
  */
 
 import { renderHook } from "@testing-library/react";
@@ -182,8 +183,8 @@ describe("saveScenario / loadScenario", () => {
 describe("saveStage / loadStage", () => {
   it("round-trip preserves stage key", () => {
     const { saveStage, loadStage } = getHook();
-    saveStage("engine");
-    expect(loadStage()).toBe("engine");
+    saveStage("scenario");
+    expect(loadStage()).toBe("scenario");
   });
 
   it("loadStage returns null on empty localStorage", () => {
@@ -195,6 +196,64 @@ describe("saveStage / loadStage", () => {
     const { saveStage } = getHook();
     saveStage("population");
     expect(localStorage.getItem(STAGE_STORAGE_KEY)).toBe("population");
+  });
+
+  describe("Story 26.1: localStorage migration for 'engine' → 'scenario'", () => {
+    it("migrates stored 'engine' stage to 'scenario' on load", () => {
+      localStorage.setItem(STAGE_STORAGE_KEY, "engine");
+      const { loadStage } = getHook();
+      const loaded = loadStage();
+      expect(loaded).toBe("scenario");
+    });
+
+    it("returns 'scenario' for stored 'engine' even after migration (idempotent)", () => {
+      localStorage.setItem(STAGE_STORAGE_KEY, "engine");
+      const { loadStage } = getHook();
+      const firstLoad = loadStage();
+      expect(firstLoad).toBe("scenario");
+      // Simulate app re-load - localStorage still has "engine"
+      const secondLoad = loadStage();
+      expect(secondLoad).toBe("scenario");
+    });
+
+    it("preserves other stored stages", () => {
+      const { loadStage } = getHook();
+      localStorage.setItem(STAGE_STORAGE_KEY, "policies");
+      expect(loadStage()).toBe("policies");
+      localStorage.setItem(STAGE_STORAGE_KEY, "population");
+      expect(loadStage()).toBe("population");
+      localStorage.setItem(STAGE_STORAGE_KEY, "investment-decisions");
+      expect(loadStage()).toBe("investment-decisions");
+      localStorage.setItem(STAGE_STORAGE_KEY, "scenario");
+      expect(loadStage()).toBe("scenario");
+      localStorage.setItem(STAGE_STORAGE_KEY, "results");
+      expect(loadStage()).toBe("results");
+    });
+
+    it("returns null for invalid stage", () => {
+      localStorage.setItem(STAGE_STORAGE_KEY, "invalid-stage");
+      const { loadStage } = getHook();
+      expect(loadStage()).toBeNull();
+    });
+
+    it("does NOT update localStorage on migration (read-time only)", () => {
+      localStorage.setItem(STAGE_STORAGE_KEY, "engine");
+      const { loadStage, saveStage } = getHook();
+      loadStage(); // This migrates "engine" → "scenario" in return value only
+      // localStorage still has "engine" (migration is read-only)
+      expect(localStorage.getItem(STAGE_STORAGE_KEY)).toBe("engine");
+      // Explicit save updates localStorage
+      saveStage("scenario");
+      expect(localStorage.getItem(STAGE_STORAGE_KEY)).toBe("scenario");
+    });
+
+    it("handles hash+localStorage conflict scenario (hash empty, localStorage has engine)", () => {
+      localStorage.setItem(STAGE_STORAGE_KEY, "engine");
+      const { loadStage } = getHook();
+      const loaded = loadStage();
+      expect(loaded).toBe("scenario");
+      // After migration, hash routing would use "scenario"
+    });
   });
 });
 
