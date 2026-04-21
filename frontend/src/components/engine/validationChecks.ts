@@ -61,7 +61,10 @@ const populationSelectedCheck: ValidationCheck = {
   label: "Population selected",
   severity: "error",
   fn: (ctx) => {
-    const passed = (ctx.scenario?.populationIds ?? []).some((id) => id.trim().length > 0);
+    // Story 26.3: Require PRIMARY population (populationIds[0]) to be non-empty.
+    // Secondary population is optional for sensitivity analysis.
+    const primaryId = ctx.scenario?.populationIds?.[0];
+    const passed = primaryId !== undefined && primaryId.trim().length > 0;
     return {
       passed,
       message: passed ? "" : "No population selected. Go to Stage 2 (Population) to select a population.",
@@ -81,10 +84,10 @@ const timeHorizonValidCheck: ValidationCheck = {
     }
     const { startYear, endYear } = cfg;
     if (startYear >= endYear) {
-      return { passed: false, message: "End year must be greater than start year. Adjust time horizon in this stage.", severity: "error" };
+      return { passed: false, message: "End year must be greater than start year. Adjust in Stage 4 (Scenario).", severity: "error" };
     }
     if (endYear - startYear > 50) {
-      return { passed: false, message: "Time horizon exceeds 50 years — reduce the range. Adjust time horizon in this stage.", severity: "error" };
+      return { passed: false, message: "Time horizon exceeds 50 years — reduce the range. Adjust in Stage 4 (Scenario).", severity: "error" };
     }
     return { passed: true, message: "", severity: "error" };
   },

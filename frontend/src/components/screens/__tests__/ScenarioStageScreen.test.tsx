@@ -324,9 +324,9 @@ describe("ScenarioStageScreen — Story 20.5, Story 26.3", () => {
       expect(screen.queryByText("Replay")).not.toBeInTheDocument();
     });
 
-    it("shows 'Replay' badge when lastRunRuntimeMode is 'replay'", () => {
+    it("shows 'Replay' badge when lastRunId exists AND lastRunRuntimeMode is 'replay'", () => {
       renderScreen({
-        activeScenario: makeScenario({ lastRunRuntimeMode: "replay" }),
+        activeScenario: makeScenario({ lastRunId: "run-123", lastRunRuntimeMode: "replay" }),
       });
       // Replay badge should appear in both Runtime section and RunSummaryPanel
       const replayBadges = screen.getAllByText("Replay");
@@ -465,6 +465,18 @@ describe("ScenarioStageScreen — Story 20.5, Story 26.3", () => {
       });
       // Should show validation error with clickable stage link
       expect(screen.getByText(/no portfolio selected/i)).toBeInTheDocument();
+      // Verify the stage link button is rendered
+      expect(screen.getByRole("button", { name: /stage 1/i })).toBeInTheDocument();
+    });
+
+    it("Story 26.3 — AC-5: clicking stage link in validation message calls navigateTo", async () => {
+      const user = userEvent.setup();
+      renderScreen({
+        activeScenario: makeScenario({ portfolioName: null }),
+      });
+      // Click the Stage 1 link in the validation message
+      await user.click(screen.getByRole("button", { name: /stage 1/i }));
+      expect(mockNavigateTo).toHaveBeenCalledWith("policies");
     });
   });
 

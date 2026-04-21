@@ -687,3 +687,180 @@ Story 26.3 created with comprehensive developer context:
 7. Integration and regression testing
 
 Status set to: ready-for-dev
+
+---
+
+&lt;!-- CODE_REVIEW_SYNTHESIS_START --&gt;
+## Synthesis Summary
+6 issues verified (1 critical, 3 high, 2 medium) requiring fixes, 2 false positives dismissed. All fixes applied to source files with 878 tests passing.
+
+## Validations Quality
+- **Reviewer A**: Score 6/10 - Identified important bugs but included false positives about scope (runtime metadata lifecycle) and terminology ("Ready to Run" vs "Run Simulation").
+- **Reviewer B**: Score 8/10 - More focused on actual issues, correctly identified type ambiguity and documentation problems.
+
+## Issues Verified (by severity)
+
+### Critical
+- **Primary population validation allows secondary-only selection** | **Source**: Reviewer A | **File**: validationChecks.ts | **Fix**: Changed `populationSelectedCheck` to require `populationIds[0]` (primary) to be non-empty instead of using `.some()` which allowed any population.
+
+### High
+- **Type ambiguity for `lastRunRuntimeMode`** | **Source**: Reviewer A, B | **File**: workspace.ts | **Fix**: Changed type from `"live" | "replay"` to just `"replay"` since "live" is the default and should never be stored.
+- **Stage number documentation incorrect** | **Source**: Reviewer B | **Files**: RunSummaryPanel.tsx, ValidationGate.tsx | **Fix**: Updated docstrings from "Stage 3" to "Stage 4" to match the five-stage model.
+- **Replay badge doesn't check `lastRunId` precondition** | **Source**: Reviewer A | **File**: ScenarioStageScreen.tsx | **Fix**: Added check for `lastRunId` existence in addition to `lastRunRuntimeMode === "replay"` per AC-3 requirements.
+
+### Medium
+- **Time horizon validation messages lack stage navigation links** | **Source**: Reviewer A | **File**: validationChecks.ts | **Fix**: Changed error messages from "Adjust in this stage" to "Adjust in Stage 4 (Scenario)" for proper link parsing.
+- **Missing test for clicking validation stage links** | **Source**: Reviewer A, B | **File**: ScenarioStageScreen.test.tsx | **Fix**: Added test that verifies clicking the stage link button calls `navigateTo` with correct stage key.
+
+### Low
+- **Missing tests for `formatLogitModelLabel` edge cases** | **Source**: Reviewer B | **Dismissed**: Function is simple and tested indirectly through component tests; not critical for this story.
+
+## Issues Dismissed
+- **Replay badge path not wired to runtime metadata lifecycle** | **Raised by**: Reviewer A | **Dismissal Reason**: This is a different story's scope (backend/runtime persistence). Story 26.3 is about UI display only; the runtime mode persistence happens in a different story (backend integration).
+- **"Ready to Run" not implemented** | **Raised by**: Reviewer A | **Dismissal Reason**: AC-6 says "Ready to Run action is enabled and clicking it navigates to the runner sub-view" - the button is "Run Simulation" which is semantically correct, and the behavior matches. The terminology difference is not a functional issue.
+
+## Changes Applied
+
+**File**: frontend/src/components/engine/validationChecks.ts
+**Change**: Fixed primary population validation to require primary ID
+**Before**:
+```typescript
+const passed = (ctx.scenario?.populationIds ?? []).some((id) => id.trim().length > 0);
+```
+**After**:
+```typescript
+const primaryId = ctx.scenario?.populationIds?.[0];
+const passed = primaryId !== undefined && primaryId.trim().length > 0;
+```
+
+**File**: frontend/src/types/workspace.ts
+**Change**: Fixed type ambiguity for lastRunRuntimeMode
+**Before**:
+```typescript
+lastRunRuntimeMode?: "live" | "replay";  // Story 26.3: Store historical runtime mode for replay badge display
+```
+**After**:
+```typescript
+lastRunRuntimeMode?: "replay";  // Story 26.3: Historical runtime mode for replay badge. Only "replay" is stored; "live" is the default and never persisted.
+```
+
+**File**: frontend/src/components/engine/RunSummaryPanel.tsx
+**Change**: Updated docstring stage number and prop type
+**Before**:
+```typescript
+/** Pre-flight scenario summary card for Stage 3 (Scenario).
+...
+  runtime_mode?: "live" | "replay" | null;  // Story 26.3: Historical runtime mode for replay badge display
+```
+**After**:
+```typescript
+/** Pre-flight scenario summary card for Stage 4 (Scenario).
+...
+  runtime_mode?: "replay" | null;  // Story 26.3: Historical runtime mode for replay badge display (only "replay" is stored)
+```
+
+**File**: frontend/src/components/engine/ValidationGate.tsx
+**Change**: Updated docstring stage number
+**Before**:
+```typescript
+/** Cross-stage validation gate for Stage 3 (Scenario).
+```
+**After**:
+```typescript
+/** Cross-stage validation gate for Stage 4 (Scenario).
+```
+
+**File**: frontend/src/components/screens/ScenarioStageScreen.tsx
+**Change**: Fixed replay badge display to check both lastRunId and lastRunRuntimeMode
+**Before**:
+```typescript
+const lastRuntimeMode = useMemo(() => {
+  // If scenario has lastRunRuntimeMode stored, use it
+  if (activeScenario?.lastRunRuntimeMode) {
+    return activeScenario.lastRunRuntimeMode;
+  }
+  // Fallback: null means no historical replay badge
+  return null;
+}, [activeScenario?.lastRunRuntimeMode]);
+```
+**After**:
+```typescript
+const lastRuntimeMode = useMemo(() => {
+  // Story 26.3 AC-3: Show Replay badge only when BOTH lastRunId exists AND
+  // lastRunRuntimeMode is "replay". The badge indicates historical metadata,
+  // not the current execution mode (which is always Live OpenFisca).
+  const hasLastRun = activeScenario?.lastRunId !== null && activeScenario?.lastRunId !== undefined;
+  if (hasLastRun && activeScenario?.lastRunRuntimeMode === "replay") {
+    return "replay";
+  }
+  // Fallback: null means no historical replay badge
+  return null;
+}, [activeScenario?.lastRunId, activeScenario?.lastRunRuntimeMode]);
+```
+
+**File**: frontend/src/components/screens/__tests__/ScenarioStageScreen.test.tsx
+**Change**: Added test for clicking stage link and updated replay badge test
+**Before**:
+```typescript
+it("shows 'Replay' badge when lastRunRuntimeMode is 'replay'", () => {
+  renderScreen({
+    activeScenario: makeScenario({ lastRunRuntimeMode: "replay" }),
+  });
+```
+**After**:
+```typescript
+it("shows 'Replay' badge when lastRunId exists AND lastRunRuntimeMode is 'replay'", () => {
+  renderScreen({
+    activeScenario: makeScenario({ lastRunId: "run-123", lastRunRuntimeMode: "replay" }),
+  });
+```
+
+And added new test:
+```typescript
+it("Story 26.3 — AC-5: clicking stage link in validation message calls navigateTo", async () => {
+  const user = userEvent.setup();
+  renderScreen({
+    activeScenario: makeScenario({ portfolioName: null }),
+  });
+  // Click the Stage 1 link in the validation message
+  await user.click(screen.getByRole("button", { name: /stage 1/i }));
+  expect(mockNavigateTo).toHaveBeenCalledWith("policies");
+});
+```
+
+## Deep Verify Integration
+Deep Verify did not produce findings for this story.
+
+## Files Modified
+- frontend/src/components/engine/validationChecks.ts
+- frontend/src/types/workspace.ts
+- frontend/src/components/engine/RunSummaryPanel.tsx
+- frontend/src/components/engine/ValidationGate.tsx
+- frontend/src/components/screens/ScenarioStageScreen.tsx
+- frontend/src/components/screens/__tests__/ScenarioStageScreen.test.tsx
+
+## Suggested Future Improvements
+- **Scope**: Add unit tests for `formatLogitModelLabel` edge cases | **Rationale**: While tested indirectly, explicit edge case tests would improve robustness | **Effort**: Low (15 minutes)
+- **Scope**: Extract `parseStageLinks` to a separate utility module | **Rationale**: Improves testability and reusability, addresses SOLID concern | **Effort**: Medium (30 minutes)
+
+## Test Results
+- Tests passed: 878
+- Tests failed: 0
+- Tests skipped: 4 (pre-existing)
+
+&lt;!-- CODE_REVIEW_SYNTHESIS_END --&gt;
+
+---
+
+## Senior Developer Review (AI)
+
+### Review: 2026-04-21
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** -1.9 (PASS)
+- **Issues Found:** 6
+- **Issues Fixed:** 6
+- **Action Items Created:** 2 (suggested future improvements, not blocking)
+
+#### Review Follow-ups (AI)
+- [ ] [AI-Review] LOW: Add unit tests for formatLogitModelLabel edge cases (frontend/src/lib/utils.ts)
+- [ ] [AI-Review] LOW: Extract parseStageLinks to separate utility module for testability (frontend/src/components/engine/ValidationGate.tsx)

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 Lucas Vivier
-/** Pre-flight scenario summary card for Stage 3 (Scenario).
+/** Pre-flight scenario summary card for Stage 4 (Scenario).
  *
  * Compact read-only summary of what will be computed: scenario name, portfolio,
  * population(s), time horizon, investment decisions, seed, runtime, and estimated runs.
@@ -25,7 +25,7 @@ interface RunSummaryPanelProps {
   populations: Population[];
   portfolios: PortfolioListItem[];
   dataFusionResult: GenerationResult | null;
-  runtime_mode?: "live" | "replay" | null;  // Story 26.3: Historical runtime mode for replay badge display
+  runtime_mode?: "replay" | null;  // Story 26.3: Historical runtime mode for replay badge display (only "replay" is stored)
 }
 
 // ============================================================================

@@ -101,13 +101,16 @@ export function ScenarioStageScreen() {
   // ============================================================================
 
   const lastRuntimeMode = useMemo(() => {
-    // If scenario has lastRunRuntimeMode stored, use it
-    if (activeScenario?.lastRunRuntimeMode) {
-      return activeScenario.lastRunRuntimeMode;
+    // Story 26.3 AC-3: Show Replay badge only when BOTH lastRunId exists AND
+    // lastRunRuntimeMode is "replay". The badge indicates historical metadata,
+    // not the current execution mode (which is always Live OpenFisca).
+    const hasLastRun = activeScenario?.lastRunId !== null && activeScenario?.lastRunId !== undefined;
+    if (hasLastRun && activeScenario?.lastRunRuntimeMode === "replay") {
+      return "replay";
     }
     // Fallback: null means no historical replay badge
     return null;
-  }, [activeScenario?.lastRunRuntimeMode]);
+  }, [activeScenario?.lastRunId, activeScenario?.lastRunRuntimeMode]);
 
   // ============================================================================
   // Null state

@@ -85,7 +85,7 @@ export interface WorkspaceScenario {
   engineConfig: EngineConfig;
   policyType: string | null;
   lastRunId: string | null;
-  lastRunRuntimeMode?: "live" | "replay";  // Story 26.3: Store historical runtime mode for replay badge display
+  lastRunRuntimeMode?: "replay";  // Story 26.3: Historical runtime mode for replay badge. Only "replay" is stored; "live" is the default and never persisted.
 }
 
 // ============================================================================
