@@ -21,6 +21,8 @@ export interface Template {
   // Story 24.1 / AC-1: Runtime availability metadata (required fields)
   runtime_availability: "live_ready" | "live_unavailable";
   availability_reason: string | null;
+  // Story 25.1 / Task 2.3: Category ID for grouping and filtering
+  category_id?: string;
 }
 
 export interface Parameter {

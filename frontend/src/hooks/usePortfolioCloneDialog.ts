@@ -19,7 +19,7 @@ interface UsePortfolioCloneDialogParams {
 function validateClonePortfolioName(name: string, existingNames: Set<string>): string | null {
   const formatError = validatePortfolioName(name);
   if (formatError) return formatError;
-  if (existingNames.has(name)) return "A portfolio with this name already exists";
+  if (existingNames.has(name)) return "A policy set with this name already exists";
   return null;
 }
 
@@ -64,7 +64,7 @@ export function usePortfolioCloneDialog({
     try {
       await clonePortfolio(cloneDialogName, { new_name: cloneNewName });
       void refetchPortfolios();
-      toast.success(`Cloned '${cloneDialogName}' as '${cloneNewName}'`);
+      toast.success(`Policy set '${cloneDialogName}' cloned as '${cloneNewName}'`);
       setCloneDialogName(null);
       setCloneNewName("");
     } catch (err) {

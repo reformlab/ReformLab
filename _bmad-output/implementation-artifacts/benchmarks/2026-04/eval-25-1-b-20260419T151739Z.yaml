@@ -1,0 +1,137 @@
+record_id: 6c294272-3998-4080-a115-12dacf4c8df9
+created_at: '2026-04-19T15:17:39.518147+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 25
+  story_num: 1
+  title: Story 25.1
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: true
+    requires_migration: false
+evaluator:
+  provider: codex
+  model: gpt-5.3-codex
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-04-19T15:13:27.963706Z'
+  end_time: '2026-04-19T15:15:41.213706Z'
+  duration_ms: 133250
+  input_tokens: 0
+  output_tokens: 3796
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 15187
+  heading_count: 41
+  list_depth_max: 2
+  code_block_count: 8
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 10.1'
+  - 🎯 Ruthless Story Validation 25.1
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 10.1 → REJECT'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. API Categories Endpoint Contract Conflict
+  - 2. Contradictory `category_id` Population Strategy
+  - 3. Missing Non-Happy-Path Acceptance Criteria
+  - 4. Regression Risk from Grouping Replacement
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 5. Define Filter Interaction Matrix
+  - 6. Specify Deterministic Category Ordering
+  - 7. Specify Nullability/Enums in Category Schema
+  - 8. Clarify Popover Accessibility Requirements
+  - 9. Define Behavior for Templates With Unknown/Empty Category Help
+  - 10. Specify Single Data Fetch Owner
+  - 11. Expand Regression Coverage Scope
+  - ✨ Optimizations (Nice to Have)
+  - 12. Add Shared Fixture for Category Definitions
+  - 13. Add Lightweight Client-Side Caching for Categories
+  - 14. Add Contract Test Between Pydantic Model and TS Type
+  - 15. Add Explicit Story Boundary Note
+  - 🤖 LLM Optimization Improvements
+  - 16. Resolve Contradictory Mapping Instructions
+  - 17. Replace “or” Ownership Language
+  - 18. Convert Vague Regression Task to Explicit Checklist
+  - 19. Reduce Non-Actionable Narrative in Dev Notes
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 6897c29531a6
+findings:
+  total_count: 19
+  by_severity:
+    critical: 4
+    major: 7
+    minor: 8
+    nit: 0
+  by_category:
+    security: 2
+    performance: 2
+    correctness: 6
+    completeness: 9
+    clarity: 4
+    testability: 6
+  has_fix_count: 18
+  has_location_count: 12
+  has_evidence_count: 15
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 5
+  confidence_phrases_count: 1
+linguistic:
+  avg_sentence_length: 12.091503267973856
+  vocabulary_richness: 0.34486486486486484
+  flesch_reading_ease: 9.978447763997025
+  vague_terms_count: 0
+  formality_score: 0.75
+  sentiment: mixed
+quality:
+  actionable_ratio: 0.95
+  specificity_score: 0.75
+  evidence_quality: 0.85
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: true
+    requires_migration: false

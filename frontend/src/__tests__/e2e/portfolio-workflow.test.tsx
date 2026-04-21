@@ -33,6 +33,7 @@ vi.mock("@/api/populations", () => ({
   deletePopulation: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/api/templates", () => ({ listTemplates: vi.fn(), getTemplate: vi.fn() }));
+vi.mock("@/api/categories", () => ({ listCategories: vi.fn() }));
 vi.mock("@/api/scenarios", () => ({
   listScenarios: vi.fn(),
   getScenario: vi.fn(),
@@ -72,6 +73,7 @@ vi.mock("@/api/exports", () => ({ exportCsv: vi.fn(), exportParquet: vi.fn() }))
 import { login } from "@/api/auth";
 import { listPopulations } from "@/api/populations";
 import { listTemplates, getTemplate } from "@/api/templates";
+import { listCategories } from "@/api/categories";
 import { listResults } from "@/api/results";
 import { listPortfolios, validatePortfolio, createPortfolio } from "@/api/portfolios";
 import { listDataSources, listMergeMethods } from "@/api/data-fusion";
@@ -113,6 +115,7 @@ describe("Portfolio Editing Flow", () => {
     vi.mocked(listPopulations).mockResolvedValue([]);
     vi.mocked(listTemplates).mockResolvedValue([]);
     vi.mocked(getTemplate).mockRejectedValue(new Error("not found"));
+    vi.mocked(listCategories).mockResolvedValue([]);
     vi.mocked(listResults).mockResolvedValue([]);
     vi.mocked(listPortfolios).mockResolvedValue([]);
     vi.mocked(listDataSources).mockResolvedValue({});
@@ -204,29 +207,31 @@ describe("Portfolio Editing Flow", () => {
     window.location.hash = "#engine";
     window.dispatchEvent(new HashChangeEvent("hashchange"));
 
-    // Click Run Simulation
     await waitFor(() => {
-      const runButton = screen.queryByRole("button", { name: /run simulation/i });
-      if (runButton) {
-        expect(runButton).not.toBeDisabled();
-      }
+      expect(window.location.hash).toBe("#engine");
     });
 
-    const runButton = screen.queryByRole("button", { name: /run simulation/i });
-    if (runButton) {
-      await user.click(runButton);
+    // Stage 3 validation opens the runner; the runner starts the backend call.
+    const validationRunButton = screen.getByRole("button", { name: /run simulation/i });
+    expect(validationRunButton).not.toBeDisabled();
+    await user.click(validationRunButton);
+    await waitForNavigation("results", "runner");
 
-      // Assert: runScenario called
+    const runnerRunButton = screen.getByRole("button", { name: /run simulation/i });
+    expect(runnerRunButton).not.toBeDisabled();
+    await user.click(runnerRunButton);
+
+    await waitFor(() => {
       expect(runScenario).toHaveBeenCalled();
+    });
 
-      // Assert: scenario updated with lastRunId
-      await waitFor(() => {
-        const stored = localStorage.getItem(SCENARIO_STORAGE_KEY);
-        expect(stored).toBeTruthy();
-        const storedScenario = JSON.parse(stored!);
-        expect(storedScenario.lastRunId).toBe(mockRunId);
-      });
-    }
+    // Assert: scenario updated with lastRunId
+    await waitFor(() => {
+      const stored = localStorage.getItem(SCENARIO_STORAGE_KEY);
+      expect(stored).toBeTruthy();
+      const storedScenario = JSON.parse(stored!);
+      expect(storedScenario.lastRunId).toBe(mockRunId);
+    });
   });
 
   /**

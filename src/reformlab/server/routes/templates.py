@@ -12,6 +12,8 @@ from fastapi import APIRouter, HTTPException
 
 from reformlab.server.dependencies import get_registry
 from reformlab.server.models import (
+    BlankPolicyResponse,
+    CreateBlankPolicyRequest,
     CreateCustomTemplateRequest,
     CustomTemplateResponse,
     RuntimeAvailability,
@@ -25,6 +27,17 @@ from reformlab.templates.registry import RegistryError
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# Story 25.1 / Task 1.6: Type-to-category mapping for templates
+TYPE_TO_CATEGORY: dict[str, str | None] = {
+    "carbon-tax": "carbon_emissions",
+    "carbon_tax": "carbon_emissions",  # API uses underscore format
+    "vehicle_malus": "vehicle_emissions",
+    "energy_poverty_aid": "income",
+    # subsidy, rebate, feebate → None intentionally (may apply to multiple categories)
+    # These will appear in "Other" group until proper metadata is added in 25.2-25.3
+}
+
 
 # Story 24.1 / AC-1: Live-ready policy types (from Epic 23)
 # Story 24.2: Added vehicle_malus and energy_poverty_aid to live-ready types
@@ -93,6 +106,9 @@ def _template_to_list_item(
         param_count = len(params)
         param_groups = list(params.keys())
 
+    # Story 25.1 / Task 1.6: Map policy type to category
+    category_id = TYPE_TO_CATEGORY.get(policy_type)
+
     return TemplateListItem(
         id=name,
         name=getattr(template, "name", name),
@@ -103,6 +119,7 @@ def _template_to_list_item(
         is_custom=is_custom,
         runtime_availability=runtime_availability,
         availability_reason=availability_reason,
+        category_id=category_id,
     )
 
 
@@ -224,6 +241,9 @@ async def list_templates() -> dict[str, list[TemplateListItem]]:
         runtime_availability, availability_reason = _classify_runtime_availability(
             type_name, is_builtin=is_builtin_custom
         )
+        # Story 25.1 / Task 1.6: Map policy type to category
+        category_id = TYPE_TO_CATEGORY.get(type_name)
+
         items.append(
             TemplateListItem(
                 id=type_name,
@@ -235,6 +255,7 @@ async def list_templates() -> dict[str, list[TemplateListItem]]:
                 is_custom=True,
                 runtime_availability=runtime_availability,
                 availability_reason=availability_reason,
+                category_id=category_id,
             )
         )
 
@@ -281,6 +302,8 @@ async def get_template(name: str) -> TemplateDetailResponse:
         runtime_availability, availability_reason = _classify_runtime_availability(
             name, is_builtin=is_builtin_custom
         )
+        # Story 25.1 / Task 1.6: Map policy type to category
+        category_id = TYPE_TO_CATEGORY.get(name)
         return TemplateDetailResponse(
             id=name,
             name=name,
@@ -291,6 +314,7 @@ async def get_template(name: str) -> TemplateDetailResponse:
             is_custom=True,
             runtime_availability=runtime_availability,
             availability_reason=availability_reason,
+            category_id=category_id,
             default_policy=default_policy,
         )
 
@@ -432,3 +456,150 @@ async def delete_custom_template(name: str) -> None:
                 "fix": "Check the template name",
             },
         ) from exc
+
+
+# ============================================================================
+# Story 25.3: POST /api/templates/from-scratch
+# ============================================================================
+
+_VALID_POLICY_TYPES = {"tax", "subsidy", "transfer"}
+
+_TYPE_TO_LABELS = {
+    "tax": "Tax",
+    "subsidy": "Subsidy",
+    "transfer": "Transfer",
+}
+
+# Default parameter groups by policy type (Story 25.3, AC-4, AC-5, AC-6)
+_DEFAULT_PARAMETER_GROUPS: dict[str, list[str]] = {
+    "tax": ["Mechanism", "Eligibility", "Schedule", "Redistribution"],
+    "subsidy": ["Mechanism", "Eligibility", "Schedule"],
+    "transfer": ["Mechanism", "Eligibility", "Schedule"],
+}
+
+
+def _get_category_label(category_id: str) -> str:
+    """Get human-readable label for a category ID."""
+    from reformlab.server.routes.categories import _CATEGORY_DEFINITIONS
+
+    for cat in _CATEGORY_DEFINITIONS:
+        if cat.id == category_id:
+            return cat.label
+    # Fallback: convert snake_case to Title Case
+    return category_id.replace("_", " ").title()
+
+
+def _validate_category_exists(category_id: str) -> None:
+    """Validate that a category ID exists in the registry.
+
+    Raises:
+        HTTPException: 400 if category_id not found
+    """
+    from reformlab.server.routes.categories import _CATEGORY_DEFINITIONS
+
+    category_ids = {cat.id for cat in _CATEGORY_DEFINITIONS}
+    if category_id not in category_ids:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "what": f"Category '{category_id}' not found",
+                "why": f"Category must be one of: {', '.join(sorted(category_ids))}",
+                "fix": "Select a valid category ID",
+            },
+        )
+
+
+def _validate_category_compatible(category_id: str, policy_type: str) -> None:
+    """Validate that a category is compatible with the requested policy type.
+
+    Raises:
+        HTTPException: 400 if category is not compatible with policy_type
+    """
+    from reformlab.server.routes.categories import _CATEGORY_DEFINITIONS
+
+    for cat in _CATEGORY_DEFINITIONS:
+        if cat.id == category_id:
+            if policy_type not in cat.compatible_types:
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "what": f"Category '{category_id}' is not compatible with '{policy_type}'",
+                        "why": f"Category only supports: {', '.join(cat.compatible_types)}",
+                        "fix": "Select a compatible category or change policy type",
+                    },
+                )
+            return
+
+    # Should not reach here if _validate_category_exists was called first
+    raise HTTPException(
+        status_code=400,
+        detail={
+            "what": f"Category '{category_id}' not found",
+            "why": "Category does not exist",
+            "fix": "Select a valid category ID",
+        },
+    )
+
+
+@router.post("/from-scratch", response_model=BlankPolicyResponse, status_code=201)
+async def create_blank_policy(body: CreateBlankPolicyRequest) -> BlankPolicyResponse:
+    """Create a blank policy from scratch with default parameter groups.
+
+    Story 25.3: Allows users to create policies by selecting a type and category,
+    rather than starting from a template.
+
+    Args:
+        body: Request with policy_type and category_id
+
+    Returns:
+        BlankPolicyResponse with auto-generated name and default parameters
+
+    Raises:
+        HTTPException: 400 if validation fails
+    """
+    # Validate policy_type is in closed set (lowercase)
+    if body.policy_type not in _VALID_POLICY_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "what": f"Invalid policy type '{body.policy_type}'",
+                "why": f"Policy type must be one of: {', '.join(sorted(_VALID_POLICY_TYPES))}",
+                "fix": "Select a valid policy type (tax, subsidy, or transfer)",
+            },
+        )
+
+    # Validate category exists
+    _validate_category_exists(body.category_id)
+
+    # Validate category is compatible with policy type
+    _validate_category_compatible(body.category_id, body.policy_type)
+
+    # Generate auto-generated name: "{Type} — {Category}"
+    type_label = _TYPE_TO_LABELS[body.policy_type]
+    category_label = _get_category_label(body.category_id)
+    name = f"{type_label} — {category_label}"
+
+    # Default placeholder parameters
+    parameters: dict[str, Any] = {
+        "rate": 0,
+        "unit": "EUR",
+        "threshold": 0,
+        "ceiling": None,
+    }
+
+    # Add Redistribution group defaults for Tax policies (Story 25.3, AC-4)
+    if body.policy_type == "tax":
+        parameters["divisible"] = True
+        parameters["recipients"] = "all"
+
+    # Get default parameter groups for the policy type
+    parameter_groups = _DEFAULT_PARAMETER_GROUPS.get(body.policy_type, [])
+
+    return BlankPolicyResponse(
+        name=name,
+        policy_type=body.policy_type,
+        category_id=body.category_id,
+        parameters=parameters,
+        parameter_groups=parameter_groups,
+        rate_schedule={},
+    )

@@ -1,0 +1,126 @@
+record_id: 21812aa3-a6db-4fac-908b-78f2035f67d8
+created_at: '2026-04-19T15:17:39.497262+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 25
+  story_num: 1
+  title: Story 25.1
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: sonnet
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-04-19T15:13:27.963706Z'
+  end_time: '2026-04-19T15:17:11.917706Z'
+  duration_ms: 223954
+  input_tokens: 0
+  output_tokens: 4214
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 16859
+  heading_count: 30
+  list_depth_max: 3
+  code_block_count: 7
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Evidence Score Summary
+  - 'Evidence Score: **4.5** → **MAJOR REWORK**'
+  - 🎯 Ruthless Story Validation 25.1
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 4.5 → MAJOR REWORK'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. `category_id` will be silently dropped — `mock-data.ts` and `useApi.ts` are missing from the file list
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Popover component is a stub — not flagged as clearly as Dialog/Sheet
+  - 2. Dev note incorrectly describes existing template grouping as `parameter_groups`
+  - 3. `TemplateCard.tsx` "may exist" is incorrect — it does not exist
+  - 4. Template-type → category mapping table is unspecified for 4 of 6 known policy types
+  - ✨ Optimizations (Nice to Have)
+  - 1. UX spec line range reference may drift
+  - 2. Test file location for `PoliciesStageScreen.categories.test.tsx` is inconsistent
+  - 🤖 LLM Optimization Improvements
+  - 1. "or" in component ownership creates branching interpretation
+  - 2. Wrong grouping description causes investigation loop
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 6897c29531a6
+findings:
+  total_count: 11
+  by_severity:
+    critical: 1
+    major: 6
+    minor: 4
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 3
+    completeness: 3
+    clarity: 5
+    testability: 0
+  has_fix_count: 11
+  has_location_count: 11
+  has_evidence_count: 11
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 11
+  confidence_phrases_count: 10
+linguistic:
+  avg_sentence_length: 25.06741573033708
+  vocabulary_richness: 0.3065889735544599
+  flesch_reading_ease: 25.23742822892018
+  vague_terms_count: 1
+  formality_score: 0.75
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.95
+  evidence_quality: 0.95
+  follows_template: true
+  internal_consistency: 0.85
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false

@@ -22,6 +22,11 @@ import { DEFAULT_TASTE_PARAMETERS } from "@/types/workspace";
 // Helpers
 // ============================================================================
 
+type LegacyEngineConfig = WorkspaceScenario["engineConfig"] & {
+  tasteParameters?: unknown;
+  calibrationState?: unknown;
+};
+
 function makeScenario(overrides: Partial<WorkspaceScenario> = {}): WorkspaceScenario {
   return {
     id: "test-scenario-1",
@@ -116,8 +121,8 @@ describe("saveScenario / loadScenario", () => {
     it("loadScenario migrates missing tasteParameters with defaults", () => {
       // Save a legacy scenario without tasteParameters
       const legacyScenario = makeScenario();
-      delete (legacyScenario.engineConfig as any).tasteParameters;
-      delete (legacyScenario.engineConfig as any).calibrationState;
+      delete (legacyScenario.engineConfig as LegacyEngineConfig).tasteParameters;
+      delete (legacyScenario.engineConfig as LegacyEngineConfig).calibrationState;
 
       localStorage.setItem(SCENARIO_STORAGE_KEY, JSON.stringify(legacyScenario));
 
@@ -131,7 +136,7 @@ describe("saveScenario / loadScenario", () => {
     it("loadScenario does not mutate the stored scenario object", () => {
       // Save a legacy scenario
       const legacyScenario = makeScenario();
-      delete (legacyScenario.engineConfig as any).tasteParameters;
+      delete (legacyScenario.engineConfig as LegacyEngineConfig).tasteParameters;
 
       const rawJson = JSON.stringify(legacyScenario);
       localStorage.setItem(SCENARIO_STORAGE_KEY, rawJson);
@@ -153,8 +158,8 @@ describe("saveScenario / loadScenario", () => {
       ];
 
       // Remove tasteParameters from one scenario
-      delete (legacyScenarios[0].engineConfig as any).tasteParameters;
-      delete (legacyScenarios[0].engineConfig as any).calibrationState;
+      delete (legacyScenarios[0].engineConfig as LegacyEngineConfig).tasteParameters;
+      delete (legacyScenarios[0].engineConfig as LegacyEngineConfig).calibrationState;
 
       localStorage.setItem(SAVED_SCENARIOS_KEY, JSON.stringify(legacyScenarios));
 

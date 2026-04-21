@@ -35,6 +35,7 @@ vi.mock("@/api/populations", () => ({
   deletePopulation: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/api/templates", () => ({ listTemplates: vi.fn(), getTemplate: vi.fn() }));
+vi.mock("@/api/categories", () => ({ listCategories: vi.fn() }));
 vi.mock("@/api/scenarios", () => ({
   listScenarios: vi.fn(),
   getScenario: vi.fn(),
@@ -72,6 +73,7 @@ vi.mock("@/api/exports", () => ({ exportCsv: vi.fn(), exportParquet: vi.fn() }))
 import { login } from "@/api/auth";
 import { listPopulations, uploadPopulation, getPopulationPreview } from "@/api/populations";
 import { listTemplates, getTemplate } from "@/api/templates";
+import { listCategories } from "@/api/categories";
 import { listResults } from "@/api/results";
 import { listPortfolios } from "@/api/portfolios";
 import { listDataSources, listMergeMethods, generatePopulation } from "@/api/data-fusion";
@@ -153,6 +155,7 @@ describe("Population Selection Flow", () => {
     vi.mocked(listPopulations).mockResolvedValue(mockPopulations);
     vi.mocked(listTemplates).mockResolvedValue([]);
     vi.mocked(getTemplate).mockRejectedValue(new Error("not found"));
+    vi.mocked(listCategories).mockResolvedValue([]);
     vi.mocked(listResults).mockResolvedValue([]);
     vi.mocked(listPortfolios).mockResolvedValue([]);
     vi.mocked(listDataSources).mockResolvedValue({});
@@ -221,6 +224,7 @@ describe("Population Selection Flow", () => {
 
     // Set up scenario with selected population
     const scenario = createTestScenario({
+      portfolioName: "Test Portfolio",
       populationIds: [selectedPopulationId],
     });
     setupDemoScenario(scenario);
@@ -245,25 +249,28 @@ describe("Population Selection Flow", () => {
     window.location.hash = "#engine";
     window.dispatchEvent(new HashChangeEvent("hashchange"));
 
-    // Click Run Simulation
     await waitFor(() => {
-      const runButton = screen.queryByRole("button", { name: /run simulation/i });
-      if (runButton) {
-        expect(runButton).not.toBeDisabled();
-      }
+      expect(window.location.hash).toBe("#engine");
     });
 
-    const runButton = screen.queryByRole("button", { name: /run simulation/i });
-    if (runButton) {
-      await user.click(runButton);
+    // Stage 3 validation opens the runner; the runner starts the backend call.
+    const validationRunButton = screen.getByRole("button", { name: /run simulation/i });
+    expect(validationRunButton).not.toBeDisabled();
+    await user.click(validationRunButton);
+    await waitForNavigation("results", "runner");
 
-      // Assert: runScenario called with population_id
+    const runnerRunButton = screen.getByRole("button", { name: /run simulation/i });
+    expect(runnerRunButton).not.toBeDisabled();
+    await user.click(runnerRunButton);
+
+    // Assert: runScenario called with population_id
+    await waitFor(() => {
       expect(runScenario).toHaveBeenCalledWith(
         expect.objectContaining({
           population_id: selectedPopulationId,
         }),
       );
-    }
+    });
   });
 
   /**

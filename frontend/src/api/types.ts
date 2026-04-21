@@ -121,6 +121,18 @@ export interface TemplateListItem {
   // Story 24.1 / AC-1: Runtime availability metadata
   runtime_availability: RuntimeAvailability;
   availability_reason: string | null;
+  // Story 25.1 / Task 2.2: Category ID for grouping and filtering
+  category_id?: string;
+}
+
+// Story 25.1 / Task 2.1: Category type for API responses
+export interface Category {
+  id: string;
+  label: string;
+  columns: string[];
+  compatible_types: string[];
+  formula_explanation: string;
+  description: string;
 }
 
 export interface TemplateDetailResponse extends TemplateListItem {
@@ -150,6 +162,21 @@ export interface CustomTemplateResponse {
   // Story 24.1 / AC-1: Runtime availability metadata for custom templates
   runtime_availability: RuntimeAvailability;
   availability_reason: string | null;
+}
+
+// Story 25.3: Blank policy creation types for from-scratch flow
+export interface CreateBlankPolicyRequest {
+  policy_type: "tax" | "subsidy" | "transfer"; // lowercase
+  category_id: string;
+}
+
+export interface BlankPolicyResponse {
+  name: string; // Auto-generated: "{Type} — {Category}"
+  policy_type: "tax" | "subsidy" | "transfer";
+  category_id: string;
+  parameters: Record<string, unknown>; // Placeholder parameters with defaults
+  parameter_groups: string[]; // Default groups based on type
+  rate_schedule: Record<string, number>; // Empty year-indexed schedule
 }
 
 export interface PopulationItem {
@@ -290,6 +317,16 @@ export interface GenerationResult {
 }
 
 // ============================================================================
+// Editable parameter groups — Story 25.4
+// ============================================================================
+
+export interface EditableParameterGroup {
+  id: string;
+  name: string;
+  parameterIds: string[];
+}
+
+// ============================================================================
 // Portfolio types — Story 17.2
 // ============================================================================
 
@@ -301,6 +338,11 @@ export interface PortfolioPolicyRequest {
   thresholds: number[];
   covered_categories: string[];
   extra_params: Record<string, unknown>;
+  // Story 25.3: Optional fields for from-scratch policies
+  category_id?: string;
+  parameter_groups?: string[];
+  // Story 25.4: Editable parameter groups
+  editable_parameter_groups?: EditableParameterGroup[];
 }
 
 export interface CreatePortfolioRequest {
@@ -342,6 +384,12 @@ export interface PortfolioPolicyItem {
   policy_type: string;
   rate_schedule: Record<string, number>;
   parameters: Record<string, unknown>;
+  // Story 25.3: Optional category_id for from-scratch policies
+  category_id?: string;
+  // Story 25.3: Optional parameter_groups for from-scratch policies
+  parameter_groups?: string[];
+  // Story 25.4: Editable parameter groups
+  editable_parameter_groups?: EditableParameterGroup[];
 }
 
 export interface PortfolioDetailResponse {

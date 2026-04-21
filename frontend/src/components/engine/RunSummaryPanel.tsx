@@ -90,16 +90,16 @@ export function RunSummaryPanel({ scenario, populations, portfolios, dataFusionR
         <span>{isBaseline ? "[Baseline]" : `[Reform${baselineRef ? ` vs ${baselineRef}` : ""}]`}</span>
       </div>
 
-      {/* Portfolio */}
+      {/* Policy Set */}
       <div className="flex justify-between">
-        <span className="text-slate-500">Portfolio</span>
+        <span className="text-slate-500">Policy Set</span>
         {portfolioName ? (
           <span className="text-slate-700">
             {portfolioName}
             {portfolio ? ` (${portfolio.policy_count} policies)` : ""}
           </span>
         ) : (
-          <span className="text-red-500">— no portfolio</span>
+          <span className="text-red-500">— no policy set</span>
         )}
       </div>
 

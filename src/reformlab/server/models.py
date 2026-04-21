@@ -189,6 +189,23 @@ class TemplateListItem(BaseModel):
     # Story 24.1 / AC-1: Runtime availability metadata
     runtime_availability: RuntimeAvailability = "live_unavailable"
     availability_reason: str | None = None
+    # Story 25.1 / Task 1.5: Category ID for grouping and filtering
+    category_id: str | None = None
+
+
+class CategoryItem(BaseModel):
+    """Policy category metadata — Story 25.1, AC-1.
+
+    Categories define the data columns a policy operates on, compatible policy
+    types, formula explanations, and descriptions for user understanding.
+    """
+
+    id: str  # e.g., "carbon_emissions", "income"
+    label: str  # Human-readable name, e.g., "Carbon Emissions"
+    columns: list[str]  # Data columns this category operates on
+    compatible_types: list[str]  # Policy types that can use this category
+    formula_explanation: str  # Plain-language formula description
+    description: str  # What this category applies to
 
 
 class TemplateDetailResponse(TemplateListItem):
@@ -224,6 +241,24 @@ class CustomTemplateResponse(BaseModel):
     # Story 24.1 / AC-1: Runtime availability metadata for custom templates
     runtime_availability: RuntimeAvailability = "live_unavailable"
     availability_reason: str | None = None
+
+
+class CreateBlankPolicyRequest(BaseModel):
+    """Request body for POST /api/templates/from-scratch — Story 25.3."""
+
+    policy_type: str  # "tax" | "subsidy" | "transfer" (lowercase)
+    category_id: str  # e.g., "carbon_emissions", "income"
+
+
+class BlankPolicyResponse(BaseModel):
+    """Response for blank policy creation — Story 25.3."""
+
+    name: str  # Auto-generated: "{Type} — {Category}"
+    policy_type: str  # "tax" | "subsidy" | "transfer"
+    category_id: str  # Category ID
+    parameters: dict[str, Any]  # Placeholder parameters with defaults
+    parameter_groups: list[str]  # Default groups based on type
+    rate_schedule: dict[str, float]  # Empty year-indexed schedule
 
 
 class PopulationItem(BaseModel):
@@ -394,7 +429,11 @@ class GeneratePopulationResponse(BaseModel):
 
 
 class PortfolioPolicyRequest(BaseModel):
-    """A single policy entry in a portfolio create/update request."""
+    """A single policy entry in a portfolio create/update request.
+
+    Story 25.3: Added optional policy_type, category_id, and parameter_groups for from-scratch policies.
+    Story 25.4: Added optional editable_parameter_groups for editable parameter groups.
+    """
 
     model_config = {"from_attributes": True}
     name: str
@@ -404,6 +443,12 @@ class PortfolioPolicyRequest(BaseModel):
     thresholds: list[float] = []
     covered_categories: list[str] = []
     extra_params: dict[str, Any] = {}
+    # Story 25.3: Optional fields for from-scratch policies
+    category_id: str | None = None  # Category ID for from-scratch policies
+    parameter_groups: list[str] = []  # Parameter groups for from-scratch policies
+    # Story 25.4: Editable parameter groups (optional for backward compatibility)
+    # Each group: {"id": str, "name": str, "parameter_ids": list[str]}
+    editable_parameter_groups: list[dict[str, Any]] | None = None
 
 
 class CreatePortfolioRequest(BaseModel):
@@ -447,11 +492,20 @@ class ValidatePortfolioResponse(BaseModel):
 
 
 class PortfolioPolicyItem(BaseModel):
+    """Story 25.3: Added optional category_id and parameter_groups for from-sscratch policies.
+    Story 25.4: Added optional editable_parameter_groups for editable parameter groups.
+    """
+
     model_config = {"from_attributes": True}
     name: str
     policy_type: str
     rate_schedule: dict[str, float]
     parameters: dict[str, Any]
+    category_id: str | None = None  # Story 25.3: Category ID for from-scratch policies
+    parameter_groups: list[str] = []  # Story 25.3: Parameter groups for from-scratch policies
+    # Story 25.4: Editable parameter groups (optional for backward compatibility)
+    # Each group: {"id": str, "name": str, "parameter_ids": list[str]}
+    editable_parameter_groups: list[dict[str, Any]] | None = None
 
 
 class PortfolioDetailResponse(BaseModel):

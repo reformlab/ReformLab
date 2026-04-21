@@ -38,7 +38,7 @@ export function PasswordPrompt({ onSubmit, loading }: PasswordPromptProps) {
       />
 
       {/* Wordmark */}
-      <h1 className="mt-5 text-2xl font-semibold text-slate-700">
+      <h1 className="mt-5 text-2xl font-semibold text-slate-700" aria-label="ReformLab">
         Reform<span className="text-emerald-500">Lab</span>
       </h1>
 

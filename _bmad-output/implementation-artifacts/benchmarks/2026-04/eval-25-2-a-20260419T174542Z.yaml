@@ -1,0 +1,135 @@
+record_id: 90919fdd-6fc1-40dd-a36a-fdd6f03990a1
+created_at: '2026-04-19T17:45:42.345437+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 25
+  story_num: 2
+  title: Story 25.2
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: codex
+  model: gpt-5.3-codex
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-04-19T17:41:25.479434Z'
+  end_time: '2026-04-19T17:45:19.870434Z'
+  duration_ms: 234391
+  input_tokens: 0
+  output_tokens: 4139
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 16559
+  heading_count: 39
+  list_depth_max: 2
+  code_block_count: 8
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 12.8'
+  - 🎯 Ruthless Story Validation 25.2
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 12.8 → REJECT'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. AC-8 Contradiction
+  - 2. Parent Artifact Misalignment (Feebate + Type Model)
+  - 3. Missing Type-Filter Requirement
+  - 4. Incomplete Refactor Impact Surface for Duplicates
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 5. Define Canonical Type Mapping Table
+  - 6. Strengthen Instance ID Contract
+  - 7. Bound Terminology Migration Scope
+  - 8. Add Interaction Safety AC for Help Icon
+  - 9. Clarify Duplicate Persistence Scope
+  - 10. Make Mobile Overflow Testable
+  - ✨ Optimizations (Nice to Have)
+  - 11. Replace “Verify Existing Layout” with “Assert + Protect”
+  - 12. Add AC-to-Test Trace Matrix
+  - 13. Consolidate Repeated Dev Notes
+  - 🤖 LLM Optimization Improvements
+  - 14. Resolve Contradictory AC-8
+  - 15. Replace Ambiguous Type Badge Text with Mapping Contract
+  - 16. Convert Unbounded Terminology Requirement into Checklist
+  - 17. Compress “Verify” Sections into Actionable Delta
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 8abacec6c999
+findings:
+  total_count: 17
+  by_severity:
+    critical: 4
+    major: 6
+    minor: 3
+    nit: 4
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 3
+    completeness: 7
+    clarity: 9
+    testability: 5
+  has_fix_count: 17
+  has_location_count: 14
+  has_evidence_count: 15
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 2
+  confidence_phrases_count: 5
+linguistic:
+  avg_sentence_length: 16.11111111111111
+  vocabulary_richness: 0.30482758620689654
+  flesch_reading_ease: 17.90460185185188
+  vague_terms_count: 3
+  formality_score: 0.65
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.82
+  evidence_quality: 0.88
+  follows_template: true
+  internal_consistency: 0.65
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false

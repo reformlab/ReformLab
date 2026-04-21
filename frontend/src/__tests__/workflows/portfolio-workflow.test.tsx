@@ -160,21 +160,17 @@ describe("Portfolio Designer workflow", () => {
     });
   });
 
-  describe("Task 3.5 — enforces minimum 2 template selection", () => {
-    it("keeps Next disabled with 1 template and enables it after 2nd selection", async () => {
+  describe("Task 3.5 — enforces template selection before continuing", () => {
+    it("keeps Next disabled with 0 templates and enables it after 1st selection", async () => {
       const user = userEvent.setup();
       renderDesigner();
 
       // Initially: 0 selected → Next disabled
       expect(screen.getByRole("button", { name: /next/i })).toBeDisabled();
 
-      // Select only 1 template
+      // Select 1 template → Next enabled
       const toggleButtons = screen.getAllByRole("button", { pressed: false });
       await user.click(toggleButtons[0]);
-      expect(screen.getByRole("button", { name: /next/i })).toBeDisabled();
-
-      // Select 2nd → Next enabled
-      await user.click(toggleButtons[1]);
       expect(screen.getByRole("button", { name: /next/i })).not.toBeDisabled();
     });
   });

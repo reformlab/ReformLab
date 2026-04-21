@@ -21,6 +21,7 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 import reformlab
 from reformlab.server.auth import AuthMiddleware
 from reformlab.server.auth import router as auth_router
+from reformlab.server.routes.categories import router as categories_router
 from reformlab.server.routes.data_fusion import router as data_fusion_router
 from reformlab.server.routes.decisions import router as decisions_router
 from reformlab.server.routes.exogenous import router as exogenous_router
@@ -87,6 +88,7 @@ def create_app() -> FastAPI:
 
     # Register route groups
     app.include_router(auth_router, prefix="/api/auth")
+    app.include_router(categories_router, prefix="/api/categories")
     app.include_router(scenarios_router, prefix="/api/scenarios")
     app.include_router(runs_router, prefix="/api/runs")
     app.include_router(indicators_router, prefix="/api/indicators")

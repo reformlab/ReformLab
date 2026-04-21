@@ -32,6 +32,7 @@ vi.mock("@/api/populations", () => ({
   deletePopulation: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/api/templates", () => ({ listTemplates: vi.fn(), getTemplate: vi.fn() }));
+vi.mock("@/api/categories", () => ({ listCategories: vi.fn() }));
 vi.mock("@/api/scenarios", () => ({
   listScenarios: vi.fn(),
   getScenario: vi.fn(),
@@ -77,6 +78,7 @@ import { listDataSources, listMergeMethods } from "@/api/data-fusion";
 import { listPopulations } from "@/api/populations";
 import { listResults } from "@/api/results";
 import { getTemplate, listTemplates } from "@/api/templates";
+import { listCategories } from "@/api/categories";
 import App from "@/App";
 import { AppProvider } from "@/contexts/AppContext";
 import {
@@ -142,10 +144,11 @@ beforeEach(() => {
   window.location.hash = "";
   vi.clearAllMocks();
 
-  // Defaults: hooks fall back to mock data when API returns empty or rejects
-  vi.mocked(listPopulations).mockResolvedValue([]);
-  vi.mocked(listTemplates).mockResolvedValue([]);
+  // Defaults: hooks fall back to built-in mock data when API calls fail.
+  vi.mocked(listPopulations).mockRejectedValue(new Error("offline"));
+  vi.mocked(listTemplates).mockRejectedValue(new Error("offline"));
   vi.mocked(getTemplate).mockRejectedValue(new Error("not found"));
+  vi.mocked(listCategories).mockResolvedValue([]);
   vi.mocked(listResults).mockResolvedValue([]);
   vi.mocked(listPortfolios).mockResolvedValue([]);
   vi.mocked(listDataSources).mockResolvedValue({});
@@ -205,7 +208,7 @@ describe("Analyst Journey — cross-screen navigation", () => {
       await waitFor(() => {
         // PoliciesStageScreen renders inline composition layout (Story 20.3)
         expect(screen.getByRole("heading", { name: /policy templates/i })).toBeInTheDocument();
-        expect(screen.getByRole("heading", { name: /portfolio composition/i })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: /policy set composition/i })).toBeInTheDocument();
       });
     });
 
@@ -348,7 +351,7 @@ describe("Analyst Journey — cross-screen navigation", () => {
       await waitFor(() => {
         // PoliciesStageScreen shows both template browser and composition panel
         expect(screen.getByRole("heading", { name: /policy templates/i })).toBeInTheDocument();
-        expect(screen.getByRole("heading", { name: /portfolio composition/i })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: /policy set composition/i })).toBeInTheDocument();
       });
     });
 
@@ -377,16 +380,16 @@ describe("Analyst Journey — cross-screen navigation", () => {
 
       // Wait for Save button to become enabled (composition has 1 entry)
       await waitFor(() => {
-        expect(screen.getByTitle("Save portfolio")).not.toBeDisabled();
+        expect(screen.getByTitle("Save policy set")).not.toBeDisabled();
       }, { timeout: 3000 });
-      await user.click(screen.getByTitle("Save portfolio"));
+      await user.click(screen.getByTitle("Save policy set"));
 
       await waitFor(() => {
-        expect(screen.getByRole("dialog", { name: /save portfolio/i })).toBeInTheDocument();
+        expect(screen.getByRole("dialog", { name: /save policy set/i })).toBeInTheDocument();
       });
 
-      const dialog = screen.getByRole("dialog", { name: /save portfolio/i });
-      fireEvent.change(within(dialog).getByLabelText(/portfolio name/i), {
+      const dialog = screen.getByRole("dialog", { name: /save policy set/i });
+      fireEvent.change(within(dialog).getByLabelText(/policy set name/i), {
         target: { value: "my-portfolio" },
       });
 
@@ -540,7 +543,7 @@ describe("Analyst Journey — cross-screen navigation", () => {
         expect(screen.getAllByText("Population Library").length).toBeGreaterThanOrEqual(1);
       });
 
-      await user.click(screen.getByRole("button", { name: /build new/i }));
+      await user.click(screen.getByRole("button", { name: /^build new$/i }));
 
       await waitFor(() => {
         expect(screen.getByText("Data Fusion Workbench")).toBeInTheDocument();

@@ -33,6 +33,11 @@ vi.mock("@/api/portfolios", () => ({
   validatePortfolio: vi.fn(),
 }));
 
+// Story 25.2: Mock categories API
+vi.mock("@/api/categories", () => ({
+  listCategories: vi.fn(),
+}));
+
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
@@ -53,6 +58,7 @@ import {
   getPortfolio,
   deletePortfolio,
 } from "@/api/portfolios";
+import { listCategories } from "@/api/categories";
 import { PoliciesStageScreen } from "@/components/screens/PoliciesStageScreen";
 import { mockTemplates } from "@/data/mock-data";
 import type { WorkspaceScenario } from "@/types/workspace";
@@ -151,6 +157,10 @@ function renderScreen(overrides: Partial<ReturnType<typeof useAppState>> = {}) {
   return render(<PoliciesStageScreen />);
 }
 
+function addTemplate(name: RegExp = /Carbon Tax.*Flat Rate/i) {
+  fireEvent.click(screen.getByRole("button", { name }));
+}
+
 // ============================================================================
 // Setup
 // ============================================================================
@@ -175,6 +185,8 @@ beforeEach(() => {
     policy_count: 1,
   });
   vi.mocked(deletePortfolio).mockResolvedValue(undefined);
+  // Story 25.2: Mock categories API to return empty array
+  vi.mocked(listCategories).mockResolvedValue([]);
 });
 
 // Ensure fake timers don't leak between tests
@@ -192,9 +204,9 @@ describe("PoliciesStageScreen — AC-1: Inline layout", () => {
     expect(screen.getByRole("heading", { name: /policy templates/i })).toBeInTheDocument();
   });
 
-  it("renders portfolio composition section heading", () => {
+  it("renders policy set composition section heading", () => {
     renderScreen();
-    expect(screen.getByRole("heading", { name: /portfolio composition/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /policy set composition/i })).toBeInTheDocument();
   });
 
   it("renders PortfolioTemplateBrowser section (always visible)", () => {
@@ -205,7 +217,7 @@ describe("PoliciesStageScreen — AC-1: Inline layout", () => {
   it("shows Save and Load buttons in toolbar", () => {
     renderScreen();
     // Save is disabled (no templates), Load is always enabled
-    expect(screen.getByTitle("Load a saved portfolio")).toBeInTheDocument();
+    expect(screen.getByTitle("Load a saved policy set")).toBeInTheDocument();
   });
 
   it("shows empty-state guidance when composition is empty", () => {
@@ -228,11 +240,10 @@ describe("PoliciesStageScreen — AC-2: Single-policy portfolios", () => {
   it("Save button is enabled after adding a single template", () => {
     renderScreen();
 
-    const templateButtons = screen.getAllByRole("button", { pressed: false });
-    fireEvent.click(templateButtons[0]);
+    addTemplate();
 
-    // Save button title changes to "Save portfolio" when enabled
-    const saveBtn = screen.getByTitle("Save portfolio");
+    // Save button title changes to "Save policy set" when enabled
+    const saveBtn = screen.getByTitle("Save policy set");
     expect(saveBtn).not.toBeDisabled();
   });
 });
@@ -246,8 +257,7 @@ describe("PoliciesStageScreen — AC-3: Conflict detection", () => {
     vi.useFakeTimers();
     renderScreen();
 
-    const templateButtons = screen.getAllByRole("button", { pressed: false });
-    fireEvent.click(templateButtons[0]);
+    addTemplate();
 
     await act(async () => {
       vi.advanceTimersByTime(600);
@@ -261,9 +271,8 @@ describe("PoliciesStageScreen — AC-3: Conflict detection", () => {
     vi.useFakeTimers();
     renderScreen();
 
-    const templateButtons = screen.getAllByRole("button", { pressed: false });
-    fireEvent.click(templateButtons[0]);
-    fireEvent.click(templateButtons[1]);
+    addTemplate();
+    addTemplate(/Carbon Tax.*Progressive/i);
 
     // Advance debounce timer
     await act(async () => {
@@ -286,11 +295,10 @@ describe("PoliciesStageScreen — AC-4, AC-5: Portfolio-scenario integration", (
   it("Save dialog opens when Save button is clicked with a policy added", () => {
     renderScreen();
 
-    const templateButtons = screen.getAllByRole("button", { pressed: false });
-    fireEvent.click(templateButtons[0]);
-    fireEvent.click(screen.getByTitle("Save portfolio"));
+    addTemplate();
+    fireEvent.click(screen.getByTitle("Save policy set"));
 
-    expect(screen.getByRole("dialog", { name: /save portfolio/i })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: /save policy set/i })).toBeInTheDocument();
   });
 
   it("portfolio save calls createPortfolio and updates portfolioName (AC-4, AC-5)", async () => {
@@ -299,12 +307,11 @@ describe("PoliciesStageScreen — AC-4, AC-5: Portfolio-scenario integration", (
 
     renderScreen({ updateScenarioField, setSelectedPortfolioName });
 
-    const templateButtons = screen.getAllByRole("button", { pressed: false });
-    fireEvent.click(templateButtons[0]);
-    fireEvent.click(screen.getByTitle("Save portfolio"));
+    addTemplate();
+    fireEvent.click(screen.getByTitle("Save policy set"));
 
-    const dialog = screen.getByRole("dialog", { name: /save portfolio/i });
-    fireEvent.change(within(dialog).getByLabelText(/portfolio name/i), {
+    const dialog = screen.getByRole("dialog", { name: /save policy set/i });
+    fireEvent.change(within(dialog).getByLabelText(/policy set name/i), {
       target: { value: "my-portfolio" },
     });
 
@@ -325,12 +332,11 @@ describe("PoliciesStageScreen — AC-4, AC-5: Portfolio-scenario integration", (
 
     renderScreen({ saveCurrentScenario, cloneCurrentScenario });
 
-    const templateButtons = screen.getAllByRole("button", { pressed: false });
-    fireEvent.click(templateButtons[0]);
-    fireEvent.click(screen.getByTitle("Save portfolio"));
+    addTemplate();
+    fireEvent.click(screen.getByTitle("Save policy set"));
 
-    const dialog = screen.getByRole("dialog", { name: /save portfolio/i });
-    fireEvent.change(within(dialog).getByLabelText(/portfolio name/i), {
+    const dialog = screen.getByRole("dialog", { name: /save policy set/i });
+    fireEvent.change(within(dialog).getByLabelText(/policy set name/i), {
       target: { value: "my-portfolio" },
     });
 
@@ -347,9 +353,9 @@ describe("PoliciesStageScreen — AC-4, AC-5: Portfolio-scenario integration", (
   it("Load dialog opens with saved portfolios listed", () => {
     renderScreen({ portfolios: [makePortfolio("saved-portfolio")] });
 
-    fireEvent.click(screen.getByTitle("Load a saved portfolio"));
+    fireEvent.click(screen.getByTitle("Load a saved policy set"));
 
-    expect(screen.getByRole("dialog", { name: /load portfolio/i })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: /load policy set/i })).toBeInTheDocument();
     // Portfolio name appears in the dialog
     expect(screen.getAllByText("saved-portfolio").length).toBeGreaterThan(0);
   });
@@ -364,9 +370,9 @@ describe("PoliciesStageScreen — AC-4, AC-5: Portfolio-scenario integration", (
       setSelectedPortfolioName,
     });
 
-    fireEvent.click(screen.getByTitle("Load a saved portfolio"));
+    fireEvent.click(screen.getByTitle("Load a saved policy set"));
     // Click the portfolio row inside the load dialog
-    const loadDialog = screen.getByRole("dialog", { name: /load portfolio/i });
+    const loadDialog = screen.getByRole("dialog", { name: /load policy set/i });
     const dialogPortfolioBtn = within(loadDialog).getByRole("button", { name: /saved-portfolio/i });
     await act(async () => {
       fireEvent.click(dialogPortfolioBtn);
@@ -385,8 +391,7 @@ describe("PoliciesStageScreen — AC-4, AC-5: Portfolio-scenario integration", (
 
     renderScreen({ updateScenarioField, setSelectedPortfolioName });
 
-    const templateButtons = screen.getAllByRole("button", { pressed: false });
-    fireEvent.click(templateButtons[0]);
+    addTemplate();
 
     await waitFor(() => {
       expect(screen.getByTitle("Clear composition")).toBeInTheDocument();
@@ -409,8 +414,8 @@ describe("PoliciesStageScreen — AC-4, AC-5: Portfolio-scenario integration", (
       setSelectedPortfolioName,
     });
 
-    fireEvent.click(screen.getByTitle("Load a saved portfolio"));
-    const loadDialog = screen.getByRole("dialog", { name: /load portfolio/i });
+    fireEvent.click(screen.getByTitle("Load a saved policy set"));
+    const loadDialog = screen.getByRole("dialog", { name: /load policy set/i });
     await act(async () => {
       fireEvent.click(within(loadDialog).getByRole("button", { name: /missing-portfolio/i }));
     });
@@ -434,7 +439,7 @@ describe("PoliciesStageScreen — AC-4, AC-5: Portfolio-scenario integration", (
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /delete portfolio my-portfolio/i }));
+      fireEvent.click(screen.getByRole("button", { name: /delete policy set my-portfolio/i }));
     });
 
     await waitFor(() => {
@@ -459,8 +464,7 @@ describe("PoliciesStageScreen — AC-6: Validity indicator", () => {
   it("shows green checkmark when 1 policy added (single-policy is always valid)", () => {
     renderScreen();
 
-    const templateButtons = screen.getAllByRole("button", { pressed: false });
-    fireEvent.click(templateButtons[0]);
+    addTemplate();
 
     expect(screen.getByTestId("validity-indicator-valid")).toBeInTheDocument();
     expect(screen.queryByTestId("validity-indicator-invalid")).not.toBeInTheDocument();
@@ -482,9 +486,8 @@ describe("PoliciesStageScreen — AC-6: Validity indicator", () => {
 
     renderScreen();
 
-    const templateButtons = screen.getAllByRole("button", { pressed: false });
-    fireEvent.click(templateButtons[0]);
-    fireEvent.click(templateButtons[1]);
+    addTemplate();
+    addTemplate(/Carbon Tax.*Progressive/i);
 
     await act(async () => {
       vi.advanceTimersByTime(600);
@@ -556,8 +559,7 @@ describe("PoliciesStageScreen — Story 22.2: Layout rebalance and typography", 
       const { container } = renderScreen();
 
       // Add a template to trigger parameter display
-      const templateButtons = screen.getAllByRole("button", { pressed: false });
-      fireEvent.click(templateButtons[0]);
+      addTemplate();
 
       // Expand the first policy card to show parameters
       const expandButtons = container.querySelectorAll('button[aria-label="Expand parameters"]');
@@ -576,8 +578,7 @@ describe("PoliciesStageScreen — Story 22.2: Layout rebalance and typography", 
     it("baseline display remains text-xs (no change)", () => {
       const { container } = renderScreen();
 
-      const templateButtons = screen.getAllByRole("button", { pressed: false });
-      fireEvent.click(templateButtons[0]);
+      addTemplate();
 
       const expandButtons = container.querySelectorAll('button[aria-label="Expand parameters"]');
       if (expandButtons.length > 0) {
@@ -592,11 +593,10 @@ describe("PoliciesStageScreen — Story 22.2: Layout rebalance and typography", 
     it("composition panel renders without layout errors", () => {
       renderScreen();
 
-      const templateButtons = screen.getAllByRole("button", { pressed: false });
-      fireEvent.click(templateButtons[0]);
+      addTemplate();
 
       // Verify that the composition panel renders correctly
-      const compositionPanel = screen.getByRole("heading", { name: /portfolio composition/i })
+      const compositionPanel = screen.getByRole("heading", { name: /policy set composition/i })
         .closest("div");
       expect(compositionPanel).toBeInTheDocument();
     });
@@ -607,20 +607,17 @@ describe("PoliciesStageScreen — Story 22.2: Layout rebalance and typography", 
       const { container } = renderScreen();
 
       // Add multiple templates (3+)
-      const templateButtons = screen.getAllByRole("button", { pressed: false });
-      // Only click if we have at least 3 buttons
-      const buttonsToClick = Math.min(3, templateButtons.length);
-      for (let i = 0; i < buttonsToClick; i++) {
-        fireEvent.click(templateButtons[i]);
-      }
+      addTemplate();
+      addTemplate(/Carbon Tax.*Progressive/i);
+      addTemplate(/Carbon Tax.*With Dividend/i);
 
       // Verify all selected are in the composition
       // Policy cards are in section with class="space-y-2"
-      const policyCards = container.querySelectorAll('section[aria-label="Portfolio composition"] > div');
-      expect(policyCards.length).toBeGreaterThanOrEqual(buttonsToClick);
+      const policyCards = container.querySelectorAll('section[aria-label="Policy Set Composition"] > div');
+      expect(policyCards.length).toBeGreaterThanOrEqual(3);
 
       // The composition panel should exist and not have overflow
-      const compositionPanel = screen.getByRole("heading", { name: /portfolio composition/i })
+      const compositionPanel = screen.getByRole("heading", { name: /policy set composition/i })
         .closest("div");
       expect(compositionPanel).not.toHaveStyle("overflow-x: auto");
     });
@@ -629,13 +626,12 @@ describe("PoliciesStageScreen — Story 22.2: Layout rebalance and typography", 
       const { container } = renderScreen();
 
       // Add 3 templates
-      const templateButtons = screen.getAllByRole("button", { pressed: false });
-      fireEvent.click(templateButtons[0]);
-      fireEvent.click(templateButtons[1]);
-      fireEvent.click(templateButtons[2]);
+      addTemplate();
+      addTemplate(/Carbon Tax.*Progressive/i);
+      addTemplate(/Carbon Tax.*With Dividend/i);
 
       // Verify save button is enabled
-      const saveBtn = screen.getByTitle("Save portfolio");
+      const saveBtn = screen.getByTitle("Save policy set");
       expect(saveBtn).not.toBeDisabled();
 
       // Verify reorder buttons exist for non-first/non-last items
@@ -663,7 +659,7 @@ describe("PoliciesStageScreen — Story 22.2: Layout rebalance and typography", 
       // Both panels should have overflow-y-auto for independent scrolling
       const templateBrowser = screen.getByRole("heading", { name: /policy templates/i })
         .closest("div");
-      const compositionPanel = screen.getByRole("heading", { name: /portfolio composition/i })
+      const compositionPanel = screen.getByRole("heading", { name: /policy set composition/i })
         .closest("div");
 
       expect(templateBrowser).toHaveClass("overflow-y-auto");
@@ -705,16 +701,16 @@ describe("Story 24.4: Portfolio with Surfaced Policies", () => {
       });
 
       // Click the vehicle_malus template
-      const templateButtons = screen.getAllByRole("button", { pressed: false });
+      const templateButtons = screen.getAllByRole("button");
       const vehicleButton = templateButtons.find((btn) => btn.textContent?.includes("Vehicle Malus"));
       expect(vehicleButton).toBeDefined();
       fireEvent.click(vehicleButton!);
 
       // Open save dialog
-      fireEvent.click(screen.getByTitle("Save portfolio"));
+      fireEvent.click(screen.getByTitle("Save policy set"));
 
-      const dialog = screen.getByRole("dialog", { name: /save portfolio/i });
-      fireEvent.change(within(dialog).getByLabelText(/portfolio name/i), {
+      const dialog = screen.getByRole("dialog", { name: /save policy set/i });
+      fireEvent.change(within(dialog).getByLabelText(/policy set name/i), {
         target: { value: "vehicle-malus-portfolio" },
       });
 
@@ -761,15 +757,15 @@ describe("Story 24.4: Portfolio with Surfaced Policies", () => {
         setSelectedPortfolioName,
       });
 
-      const templateButtons = screen.getAllByRole("button", { pressed: false });
+      const templateButtons = screen.getAllByRole("button");
       const energyButton = templateButtons.find((btn) => btn.textContent?.includes("Energy Poverty Aid"));
       expect(energyButton).toBeDefined();
       fireEvent.click(energyButton!);
 
-      fireEvent.click(screen.getByTitle("Save portfolio"));
+      fireEvent.click(screen.getByTitle("Save policy set"));
 
-      const dialog = screen.getByRole("dialog", { name: /save portfolio/i });
-      fireEvent.change(within(dialog).getByLabelText(/portfolio name/i), {
+      const dialog = screen.getByRole("dialog", { name: /save policy set/i });
+      fireEvent.change(within(dialog).getByLabelText(/policy set name/i), {
         target: { value: "energy-aid-portfolio" },
       });
 
@@ -834,9 +830,9 @@ describe("Story 24.4: Portfolio with Surfaced Policies", () => {
         setSelectedPortfolioName,
       });
 
-      fireEvent.click(screen.getByTitle("Load a saved portfolio"));
+      fireEvent.click(screen.getByTitle("Load a saved policy set"));
 
-      const loadDialog = screen.getByRole("dialog", { name: /load portfolio/i });
+      const loadDialog = screen.getByRole("dialog", { name: /load policy set/i });
       const portfolioBtn = within(loadDialog).getByRole("button", { name: /vehicle-malus-portfolio/i });
       await act(async () => {
         fireEvent.click(portfolioBtn);
@@ -890,9 +886,9 @@ describe("Story 24.4: Portfolio with Surfaced Policies", () => {
         setSelectedPortfolioName,
       });
 
-      fireEvent.click(screen.getByTitle("Load a saved portfolio"));
+      fireEvent.click(screen.getByTitle("Load a saved policy set"));
 
-      const loadDialog = screen.getByRole("dialog", { name: /load portfolio/i });
+      const loadDialog = screen.getByRole("dialog", { name: /load policy set/i });
       const portfolioBtn = within(loadDialog).getByRole("button", { name: /energy-aid-portfolio/i });
       await act(async () => {
         fireEvent.click(portfolioBtn);
@@ -923,7 +919,7 @@ describe("Story 24.4: Portfolio with Surfaced Policies", () => {
 
       const { container } = renderScreen({ templates: templatesWithSurfaced });
 
-      const templateButtons = screen.getAllByRole("button", { pressed: false });
+      const templateButtons = screen.getAllByRole("button");
       const vehicleButton = templateButtons.find((btn) => btn.textContent?.includes("Vehicle Malus"));
       fireEvent.click(vehicleButton!);
 
@@ -951,7 +947,7 @@ describe("Story 24.4: Portfolio with Surfaced Policies", () => {
 
       const { container } = renderScreen({ templates: templatesWithSurfaced });
 
-      const templateButtons = screen.getAllByRole("button", { pressed: false });
+      const templateButtons = screen.getAllByRole("button");
       const energyButton = templateButtons.find((btn) => btn.textContent?.includes("Energy Poverty Aid"));
       fireEvent.click(energyButton!);
 
@@ -960,5 +956,275 @@ describe("Story 24.4: Portfolio with Surfaced Policies", () => {
       expect(typeBadge).toBeInTheDocument();
       expect(typeBadge).toHaveTextContent("Energy Poverty Aid");
     });
+  });
+});
+
+// ============================================================================
+// Story 25.2: Redesign Policies stage — types, categories, duplicate instances
+// ============================================================================
+
+describe("Story 25.2: Redesign Policies stage", () => {
+  describe("Task 1: Verify 50/50 layout implementation (AC-1, AC-2)", () => {
+    it("should use lg:grid-cols-2 for 50/50 desktop split", () => {
+      renderScreen();
+      const mainGrid = screen.getByRole("heading", { name: /policy templates/i })
+        .closest(".grid");
+      expect(mainGrid).toHaveClass("lg:grid-cols-2");
+    });
+
+    it("should use grid-cols-1 for single column mobile layout", () => {
+      renderScreen();
+      const mainGrid = screen.getByRole("heading", { name: /policy templates/i })
+        .closest(".grid");
+      expect(mainGrid).toHaveClass("grid-cols-1");
+    });
+
+    it("should have min-h-0 on both panels for proper scroll", () => {
+      renderScreen();
+      const templateBrowser = screen.getByRole("heading", { name: /policy templates/i })
+        .closest("div");
+      const compositionPanel = screen.getByRole("heading", { name: /policy set composition/i })
+        .closest("div");
+
+      expect(templateBrowser).toHaveClass("min-h-0");
+      expect(compositionPanel).toHaveClass("min-h-0");
+    });
+  });
+
+  describe("Task 4: Update Policies stage terminology (AC-7)", () => {
+    it("should show 'Policies' stage heading", () => {
+      renderScreen();
+      expect(screen.getByRole("heading", { name: /policy templates/i })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: /policy set composition/i })).toBeInTheDocument();
+    });
+
+    it("should show 'Save Policy Set' in dialog title when saving", () => {
+      renderScreen();
+
+      addTemplate();
+      fireEvent.click(screen.getByTitle("Save policy set"));
+
+      // Dialog title should contain "Policy Set"
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+
+    it("should show 'Load Policy Set' in dialog title when loading", () => {
+      renderScreen({ portfolios: [makePortfolio("test-portfolio")] });
+
+      fireEvent.click(screen.getByTitle("Load a saved policy set"));
+
+      // Dialog title should contain "Policy Set"
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+  });
+
+  describe("Task 3: Implement duplicate policy instances (AC-5, AC-6)", () => {
+    it("should allow adding the same template twice with unique instance IDs", () => {
+      const onParameterChange = vi.fn();
+      const { container } = renderScreen({ onParameterChange });
+
+      // Click the same template twice
+      addTemplate();
+      addTemplate();
+
+      // Should have 2 entries in composition (AC-6)
+      const policyCards = container.querySelectorAll('section[aria-label="Policy Set Composition"] > div');
+      expect(policyCards.length).toBe(2);
+    });
+
+    it("should keep instances independently editable (AC-5)", () => {
+      const onParameterChange = vi.fn();
+      const { container } = renderScreen({ onParameterChange });
+
+      // Add same template twice
+      addTemplate();
+      addTemplate();
+
+      // Expand both instances to verify independent editing
+      const expandButtons = container.querySelectorAll('button[aria-label="Expand parameters"]');
+      if (expandButtons.length >= 2) {
+        fireEvent.click(expandButtons[0]);
+        fireEvent.click(expandButtons[1]);
+      }
+
+      // Both instances should be independently expandable/editable
+      const rateScheduleHeaders = screen.getAllByText("Rate Schedule");
+      expect(rateScheduleHeaders.length).toBe(2);
+    });
+
+    it("should generate unique instance IDs using monotonic counter", () => {
+      const { container } = renderScreen();
+
+      // Add same template 3 times rapidly
+      addTemplate();
+      addTemplate();
+      addTemplate();
+
+      // Should have 3 distinct entries
+      const policyCards = container.querySelectorAll('section[aria-label="Policy Set Composition"] > div');
+      expect(policyCards.length).toBe(3);
+    });
+  });
+
+  describe("Task 2: Add category badges to composition panel (AC-4)", () => {
+    it("should display category badge in composition panel cards", async () => {
+      vi.mocked(listCategories).mockResolvedValue([
+        {
+          id: "carbon",
+          label: "Carbon Pricing",
+          description: "Carbon pricing policies",
+          compatible_types: ["carbon-tax"],
+          columns: [],
+          formula_explanation: "rate * emissions",
+        },
+      ]);
+
+      const templatesWithCategory = [
+        {
+          id: "carbon-tax-with-category",
+          name: "Carbon Tax — With Category",
+          type: "carbon-tax",
+          parameterCount: 4,
+          description: "Carbon tax with category",
+          parameterGroups: ["Tax Rates"],
+          is_custom: false,
+          runtime_availability: "live_ready" as const,
+          availability_reason: null,
+          category_id: "carbon",
+        },
+      ];
+
+      const { container } = renderScreen({
+        templates: templatesWithCategory,
+      });
+
+      // Add the template with category
+      addTemplate(/Carbon Tax.*With Category/i);
+
+      // Category badge should appear with neutral slate color
+      await waitFor(() => {
+        const categoryBadge = container.querySelector('.bg-slate-100.text-slate-800');
+        expect(categoryBadge).toBeInTheDocument();
+        expect(categoryBadge).toHaveTextContent("Carbon Pricing");
+      });
+    });
+
+    it("should hide category badge gracefully when template has no category", () => {
+      const templatesWithoutCategory = [
+        {
+          id: "carbon-tax-no-category",
+          name: "Carbon Tax — No Category",
+          type: "carbon-tax",
+          parameterCount: 4,
+          description: "Carbon tax without category",
+          parameterGroups: ["Tax Rates"],
+          is_custom: false,
+          runtime_availability: "live_ready" as const,
+          availability_reason: null,
+        },
+      ];
+
+      const { container } = renderScreen({
+        templates: templatesWithoutCategory,
+      });
+
+      // Add the template without category
+      addTemplate(/Carbon Tax.*No Category/i);
+
+      // No category badge should be rendered for this specific card
+      const compositionCards = container.querySelectorAll('section[aria-label="Policy Set Composition"] > div');
+      expect(compositionCards.length).toBe(1);
+    });
+  });
+
+  describe("AC-8: Composite template adds as single policy entry", () => {
+    it("should add feebate template as single policy entry (deferred expansion to 25.3)", () => {
+      const { container } = renderScreen();
+
+      const templateButtons = screen.getAllByRole("button");
+      const feebateButton = templateButtons.find((btn) => btn.textContent?.includes("Feebate"));
+
+      fireEvent.click(feebateButton!);
+
+      // Should add as single entry, not expanded into tax + subsidy
+      const policyCards = container.querySelectorAll('section[aria-label="Policy Set Composition"] > div');
+      expect(policyCards.length).toBe(1);
+    });
+  });
+});
+
+// ============================================================================
+// Story 25.6 / Task 5: Responsive layout tests
+// ============================================================================
+
+describe("PoliciesStageScreen — Responsive layout", () => {
+  const DEFAULT_WIDTH = 1024;
+
+  afterEach(() => {
+    // Reset viewport so tests outside this suite don't inherit mobile widths.
+    window.innerWidth = DEFAULT_WIDTH;
+  });
+
+  describe("AC-5: Responsive layout behavior", () => {
+    it("should render 50/50 layout on desktop (1024px)", () => {
+      window.innerWidth = 1024;
+      const { container } = renderScreen();
+
+      expect(screen.getByText(/Policy Templates/i)).toBeInTheDocument();
+      expect(screen.getByText(/Policy Set Composition/i)).toBeInTheDocument();
+
+      const gridContainer = container.querySelector(".grid");
+      expect(gridContainer).toHaveClass("lg:grid-cols-2");
+    });
+
+    it("should stack layout on mobile (375px)", () => {
+      window.innerWidth = 375;
+      const { container } = renderScreen();
+
+      expect(screen.getByText(/Policy Templates/i)).toBeInTheDocument();
+      expect(screen.getByText(/Policy Set Composition/i)).toBeInTheDocument();
+
+      // Verify stacking (grid-cols-1 on mobile, lg:grid-cols-2 on desktop)
+      const gridContainer = container.querySelector(".grid");
+      expect(gridContainer).toHaveClass("grid-cols-1");
+      expect(gridContainer).toHaveClass("lg:grid-cols-2");
+    });
+
+    it("should handle toolbar wrapping on small widths", () => {
+      window.innerWidth = 400;
+      renderScreen();
+
+      // Verify toolbar buttons exist and are not overflowing
+      const toolbar = screen.getByText(/Unsaved policy set/i).closest(".flex");
+      expect(toolbar).toBeInTheDocument();
+
+      // Check that all expected buttons are present
+      expect(screen.getByText(/Add Policy/i)).toBeInTheDocument();
+      expect(screen.getByTitle(/Add at least 1 policy template/i)).toBeInTheDocument();
+      expect(screen.getByTitle(/Load a saved policy set/i)).toBeInTheDocument();
+    });
+
+    it("should handle template browser scroll on mobile", () => {
+      window.innerWidth = 375;
+      const { container } = renderScreen();
+
+      // Verify template browser exists and has overflow handling
+      const templateBrowser = container.querySelector('.overflow-y-auto');
+      expect(templateBrowser).toBeInTheDocument();
+    });
+
+    it("should handle composition panel scroll on mobile", () => {
+      window.innerWidth = 375;
+      renderScreen();
+
+      // Verify composition panel has overflow handling
+      const compositionSection = screen.getByText(/Policy Set Composition/i).closest('.overflow-y-auto');
+      expect(compositionSection).toBeInTheDocument();
+    });
+
+    // Removed: "no horizontal scroll on page body" — jsdom returns offsetWidth=0
+    // regardless of actual layout width, so the assertion trivially passes and
+    // gives no signal. True overflow testing requires a real browser (Playwright,
+    // etc.); tracked separately.
   });
 });

@@ -9,9 +9,11 @@ via the shared bearer token.
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 import shutil
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
 from fastapi import APIRouter, HTTPException
@@ -83,6 +85,83 @@ def _validate_resolution_strategy(strategy: str) -> None:
                 "fix": "Use one of: error, sum, first_wins, last_wins, max",
             },
         )
+
+
+# ---------------------------------------------------------------------------
+# Metadata storage helpers — Story 25.4
+# ---------------------------------------------------------------------------
+
+
+def _get_portfolio_metadata_path(registry: Any, name: str) -> Path:
+    """Get the path to a portfolio's metadata.json file."""
+    return Path(registry.path) / name / "metadata.json"
+
+
+def _load_portfolio_metadata(registry: Any, name: str) -> dict[str, Any]:
+    """Load UI-layer metadata for a portfolio.
+
+    Returns empty dict if no metadata file exists.
+    """
+    metadata_path = _get_portfolio_metadata_path(registry, name)
+    if metadata_path.exists():
+        try:
+            with open(metadata_path) as f:
+                return json.load(f)  # type: ignore[no-any-return]
+        except (json.JSONDecodeError, IOError) as exc:
+            logger.warning("event=metadata_load_failed name=%s error=%s", name, str(exc))
+            return {}
+    return {}
+
+
+def _save_portfolio_metadata(registry: Any, name: str, metadata: dict[str, Any]) -> None:
+    """Save UI-layer metadata for a portfolio.
+
+    Stores editable_parameter_groups, category_id, and parameter_groups
+    for each policy (Story 25.3/25.4).
+    """
+    metadata_path = _get_portfolio_metadata_path(registry, name)
+    try:
+        with open(metadata_path, "w") as f:
+            json.dump(metadata, f, indent=2)
+    except IOError as exc:
+        logger.warning("event=metadata_save_failed name=%s error=%s", name, str(exc))
+
+
+def _delete_portfolio_metadata(registry: Any, name: str) -> None:
+    """Delete UI-layer metadata for a portfolio.
+
+    Story 25.5: Removes stale metadata when all UI-layer fields are removed.
+    """
+    metadata_path = _get_portfolio_metadata_path(registry, name)
+    if metadata_path.exists():
+        try:
+            metadata_path.unlink()
+            logger.info("event=metadata_deleted name=%s", name)
+        except OSError as exc:
+            logger.warning("event=metadata_delete_failed name=%s error=%s", name, str(exc))
+
+
+def _extract_metadata_from_policies(policies: list[PortfolioPolicyRequest]) -> dict[str, Any]:
+    """Extract UI-layer metadata from portfolio policies (Story 25.4).
+
+    Returns a metadata dict with editable_parameter_groups, category_id,
+    and parameter_groups for each policy that has them.
+    """
+    policies_metadata = []
+    for policy in policies:
+        policy_meta: dict[str, Any] = {"name": policy.name}
+        if policy.category_id:
+            policy_meta["category_id"] = policy.category_id
+        if policy.parameter_groups:
+            policy_meta["parameter_groups"] = policy.parameter_groups
+        if policy.editable_parameter_groups:
+            policy_meta["editable_parameter_groups"] = policy.editable_parameter_groups
+
+        # Only include policies that have UI-layer metadata
+        if len(policy_meta) > 1:
+            policies_metadata.append(policy_meta)
+
+    return {"policies": policies_metadata} if policies_metadata else {}
 
 
 # ---------------------------------------------------------------------------
@@ -259,8 +338,20 @@ def _build_portfolio(name: str, description: str, resolution_strategy: str,
     return portfolio
 
 
-def _portfolio_to_detail(name: str, portfolio: Any, version_id: str) -> PortfolioDetailResponse:
-    """Convert a PolicyPortfolio domain object to a PortfolioDetailResponse."""
+def _portfolio_to_detail(name: str, portfolio: Any, version_id: str, metadata: dict[str, Any] | None = None) -> PortfolioDetailResponse:
+    """Convert a PolicyPortfolio domain object to a PortfolioDetailResponse.
+
+    Story 25.4: Accepts optional metadata dict containing UI-layer fields
+    (editable_parameter_groups, category_id, parameter_groups) for each policy.
+    """
+    # Build metadata lookup by policy name for efficient access
+    metadata_by_policy: dict[str, dict[str, Any]] = {}
+    if metadata and "policies" in metadata:
+        for policy_meta in metadata["policies"]:
+            policy_name = policy_meta.get("name")
+            if policy_name:
+                metadata_by_policy[policy_name] = policy_meta
+
     policy_items = []
     for config in portfolio.policies:
         raw = config.policy
@@ -286,11 +377,17 @@ def _portfolio_to_detail(name: str, portfolio: Any, version_id: str) -> Portfoli
                 else:
                     params[field_name] = val
 
+        # Get UI-layer metadata for this policy (Story 25.4)
+        policy_metadata = metadata_by_policy.get(config.name, {})
+
         policy_items.append(PortfolioPolicyItem(
             name=config.name,
             policy_type=config.policy_type.value,
             rate_schedule=rate_schedule,
             parameters=params,
+            category_id=policy_metadata.get("category_id"),  # Story 25.3
+            parameter_groups=policy_metadata.get("parameter_groups", []),  # Story 25.3
+            editable_parameter_groups=policy_metadata.get("editable_parameter_groups"),  # Story 25.4
         ))
 
     return PortfolioDetailResponse(
@@ -395,7 +492,10 @@ async def list_portfolios() -> list[PortfolioListItem]:
 
 @router.get("/{name}", response_model=PortfolioDetailResponse)
 async def get_portfolio(name: str) -> PortfolioDetailResponse:
-    """Get portfolio detail including all policies."""
+    """Get portfolio detail including all policies.
+
+    Story 25.4: Loads UI-layer metadata from sidecar metadata.json file.
+    """
     registry = get_registry()
     try:
         portfolio = registry.get(name)
@@ -425,13 +525,20 @@ async def get_portfolio(name: str) -> PortfolioDetailResponse:
             },
         )
 
+    # Story 25.4: Load UI-layer metadata from sidecar file
+    metadata = _load_portfolio_metadata(registry, name)
+
     entry = registry.get_entry(name)
-    return _portfolio_to_detail(name, portfolio, entry.latest_version)
+    return _portfolio_to_detail(name, portfolio, entry.latest_version, metadata)
 
 
 @router.post("", response_model=dict[str, str], status_code=201)
 async def create_portfolio(body: CreatePortfolioRequest) -> dict[str, str]:
-    """Create and save a new portfolio."""
+    """Create and save a new portfolio.
+
+    Story 25.4: Saves UI-layer metadata (editable_parameter_groups, etc.)
+    to a sidecar metadata.json file.
+    """
     _validate_portfolio_name(body.name)
 
     registry = get_registry()
@@ -457,13 +564,22 @@ async def create_portfolio(body: CreatePortfolioRequest) -> dict[str, str]:
     )
 
     version_id = registry.save(portfolio, body.name)
+
+    # Story 25.4: Save UI-layer metadata to sidecar file
+    metadata = _extract_metadata_from_policies(body.policies)
+    if metadata:
+        _save_portfolio_metadata(registry, body.name, metadata)
+
     logger.info("event=portfolio_created name=%s version_id=%s", body.name, version_id)
     return {"version_id": version_id}
 
 
 @router.put("/{name}", response_model=PortfolioDetailResponse)
 async def update_portfolio(name: str, body: UpdatePortfolioRequest) -> PortfolioDetailResponse:
-    """Update an existing portfolio's policies/parameters/order."""
+    """Update an existing portfolio's policies/parameters/order.
+
+    Story 25.4: Saves UI-layer metadata to sidecar metadata.json file.
+    """
     registry = get_registry()
 
     # Verify portfolio exists and is a portfolio type
@@ -506,6 +622,15 @@ async def update_portfolio(name: str, body: UpdatePortfolioRequest) -> Portfolio
     )
 
     version_id = registry.save(portfolio, name)
+
+    # Story 25.4/25.5: Save UI-layer metadata to sidecar file
+    # Story 25.5: Delete stale metadata when all UI-layer fields are removed
+    metadata = _extract_metadata_from_policies(body.policies)
+    if metadata:
+        _save_portfolio_metadata(registry, name, metadata)
+    else:
+        _delete_portfolio_metadata(registry, name)
+
     logger.info("event=portfolio_updated name=%s version_id=%s", name, version_id)
     return _portfolio_to_detail(name, portfolio, version_id)
 
@@ -595,5 +720,14 @@ async def clone_portfolio(name: str, body: ClonePortfolioRequest) -> PortfolioDe
     # Clone in memory and save
     cloned = registry.clone(name, new_name=body.new_name)
     version_id = registry.save(cloned, body.new_name)
+
+    # Story 25.4: Clone metadata file if it exists
+    source_metadata = _load_portfolio_metadata(registry, name)
+    if source_metadata:
+        _save_portfolio_metadata(registry, body.new_name, source_metadata)
+
     logger.info("event=portfolio_cloned source=%s target=%s version_id=%s", name, body.new_name, version_id)
-    return _portfolio_to_detail(body.new_name, cloned, version_id)
+
+    # Load metadata for the response
+    cloned_metadata = _load_portfolio_metadata(registry, body.new_name)
+    return _portfolio_to_detail(body.new_name, cloned, version_id, cloned_metadata)

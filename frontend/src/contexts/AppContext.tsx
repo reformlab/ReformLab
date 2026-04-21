@@ -486,8 +486,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const isManuallyEdited = manuallyEditedScenarioNames.has(activeScenario.id);
     const isDemo = activeScenario.id === demoId;
 
-    // Skip auto-update if name was manually edited (unless it's the demo scenario)
-    if (isManuallyEdited && !isDemo) return;
+    // Preserve the curated first-launch demo name; auto-naming is for user scenarios.
+    if (isDemo) return;
+
+    // Skip auto-update if name was manually edited.
+    if (isManuallyEdited) return;
 
     // Generate suggested name from current context
     const suggestedName = generateScenarioSuggestion(
