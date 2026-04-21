@@ -459,18 +459,18 @@ export function PoliciesStageScreen() {
 
   // Story 25.6 / Task 3: Check population column compatibility
   useEffect(() => {
+    let cancelled = false;
+
     const checkPopulationColumnCompatibility = async () => {
       const populationIds = activeScenario?.populationIds ?? [];
       if (populationIds.length === 0 || composition.length === 0 || !categories) {
-        setPopulationColumnWarnings([]);
+        if (!cancelled) setPopulationColumnWarnings([]);
         return;
       }
 
-      // Collect required columns from all policies in composition
       const requiredColumns: string[] = [];
       for (const entry of composition) {
         if (!entry.category_id) continue;
-
         const category = categories.find((c) => c.id === entry.category_id);
         if (category && category.columns && category.columns.length > 0) {
           requiredColumns.push(...category.columns);
@@ -478,40 +478,42 @@ export function PoliciesStageScreen() {
       }
 
       if (requiredColumns.length === 0) {
-        setPopulationColumnWarnings([]);
+        if (!cancelled) setPopulationColumnWarnings([]);
         return;
       }
 
-      // Fetch population profiles to check column availability
-      try {
-        const missingColumns: string[] = [];
-        const uniqueRequiredColumns = [...new Set(requiredColumns)];
+      const uniqueRequiredColumns = [...new Set(requiredColumns)];
+      const results = await Promise.allSettled(
+        populationIds.map((popId) => getPopulationProfile(popId)),
+      );
 
-        for (const popId of populationIds) {
-          try {
-            const profile = await getPopulationProfile(popId);
-            const availableColumns = profile.columns.map((c) => c.name);
+      if (cancelled) return;
 
-            for (const col of uniqueRequiredColumns) {
-              if (!availableColumns.includes(col)) {
-                missingColumns.push(col);
-              }
+      const missingColumns: string[] = [];
+      results.forEach((result, i) => {
+        if (result.status === "fulfilled") {
+          const availableColumns = result.value.columns.map((c) => c.name);
+          for (const col of uniqueRequiredColumns) {
+            if (!availableColumns.includes(col)) {
+              missingColumns.push(col);
             }
-          } catch {
-            // Gracefully handle fetch failures - don't show warning if we can't verify
-            console.error(`Failed to fetch profile for population ${popId}`);
           }
+        } else {
+          console.error(
+            `Failed to fetch profile for population ${populationIds[i]}`,
+            result.reason,
+          );
         }
+      });
 
-        setPopulationColumnWarnings([...new Set(missingColumns)].sort());
-      } catch {
-        // Gracefully handle errors - don't show warning if we can't verify
-        console.error("Failed to check population column compatibility");
-        setPopulationColumnWarnings([]);
-      }
+      setPopulationColumnWarnings([...new Set(missingColumns)].sort());
     };
 
     void checkPopulationColumnCompatibility();
+
+    return () => {
+      cancelled = true;
+    };
   }, [composition, activeScenario?.populationIds, categories]);
 
   // ============================================================================

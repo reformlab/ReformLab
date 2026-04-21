@@ -1158,27 +1158,29 @@ describe("Story 25.2: Redesign Policies stage", () => {
 // ============================================================================
 
 describe("PoliciesStageScreen — Responsive layout", () => {
+  const DEFAULT_WIDTH = 1024;
+
+  afterEach(() => {
+    // Reset viewport so tests outside this suite don't inherit mobile widths.
+    window.innerWidth = DEFAULT_WIDTH;
+  });
+
   describe("AC-5: Responsive layout behavior", () => {
     it("should render 50/50 layout on desktop (1024px)", () => {
-      // Set desktop viewport
       window.innerWidth = 1024;
       const { container } = renderScreen();
 
-      // Verify both columns visible
       expect(screen.getByText(/Policy Templates/i)).toBeInTheDocument();
       expect(screen.getByText(/Policy Set Composition/i)).toBeInTheDocument();
 
-      // Verify grid layout (check for lg:grid-cols-2 class effect)
       const gridContainer = container.querySelector(".grid");
       expect(gridContainer).toHaveClass("lg:grid-cols-2");
     });
 
     it("should stack layout on mobile (375px)", () => {
-      // Set mobile viewport
       window.innerWidth = 375;
       const { container } = renderScreen();
 
-      // Verify both sections still present
       expect(screen.getByText(/Policy Templates/i)).toBeInTheDocument();
       expect(screen.getByText(/Policy Set Composition/i)).toBeInTheDocument();
 
@@ -1189,7 +1191,6 @@ describe("PoliciesStageScreen — Responsive layout", () => {
     });
 
     it("should handle toolbar wrapping on small widths", () => {
-      // Set small width
       window.innerWidth = 400;
       renderScreen();
 
@@ -1199,13 +1200,11 @@ describe("PoliciesStageScreen — Responsive layout", () => {
 
       // Check that all expected buttons are present
       expect(screen.getByText(/Add Policy/i)).toBeInTheDocument();
-      // Save button title changes based on state, check for either
       expect(screen.getByTitle(/Add at least 1 policy template/i)).toBeInTheDocument();
       expect(screen.getByTitle(/Load a saved policy set/i)).toBeInTheDocument();
     });
 
     it("should handle template browser scroll on mobile", () => {
-      // Set mobile viewport
       window.innerWidth = 375;
       const { container } = renderScreen();
 
@@ -1215,7 +1214,6 @@ describe("PoliciesStageScreen — Responsive layout", () => {
     });
 
     it("should handle composition panel scroll on mobile", () => {
-      // Set mobile viewport
       window.innerWidth = 375;
       renderScreen();
 
@@ -1224,16 +1222,9 @@ describe("PoliciesStageScreen — Responsive layout", () => {
       expect(compositionSection).toBeInTheDocument();
     });
 
-    it("should verify no horizontal scroll on page body", () => {
-      renderScreen();
-
-      // Check that body doesn't have horizontal overflow
-      const body = document.body;
-      const bodyWidth = body.offsetWidth;
-      const windowWidth = window.innerWidth;
-
-      // Body should not be wider than window (no horizontal scroll)
-      expect(bodyWidth).toBeLessThanOrEqual(windowWidth);
-    });
+    // Removed: "no horizontal scroll on page body" — jsdom returns offsetWidth=0
+    // regardless of actual layout width, so the assertion trivially passes and
+    // gives no signal. True overflow testing requires a real browser (Playwright,
+    // etc.); tracked separately.
   });
 });

@@ -36,8 +36,8 @@ export function validatePortfolioName(name: string): string | null {
  * Story 25.6 / Task 1: Field-level error messages for policy validation.
  */
 export interface PolicyValidationError {
-  /** Index of the policy in the composition array */
-  policyIndex: number;
+  /** Index of the policy in the composition array. Set by validateComposition(); omitted when validating a single entry. */
+  policyIndex?: number;
   /** Display name of the policy */
   policyName: string;
   /** Field names that are missing (e.g., ["policy_type", "category_id"]) */
@@ -85,11 +85,13 @@ export function validateCompositionEntry(
   // Check rate schedule structure (not emptiness—some policies don't require schedules)
   // Only validate if schedule exists and has entries
   if (Object.keys(entry.rateSchedule).length > 0) {
-    // Check for malformed entries (e.g., non-numeric years, invalid rate values)
+    const YEAR_RE = /^-?\d+$/;
     const hasInvalidEntry = Object.entries(entry.rateSchedule).some(([year, value]) => {
-      const yearIsNumeric = !isNaN(Number(year));
-      const valueIsValid = typeof value === "number" || typeof value === "object";
-      return !yearIsNumeric || !valueIsValid;
+      const yearIsValid = YEAR_RE.test(year);
+      const valueIsValid =
+        typeof value === "number" ||
+        (typeof value === "object" && value !== null && !Array.isArray(value));
+      return !yearIsValid || !valueIsValid;
     });
     if (hasInvalidEntry) {
       invalidFields.push("rateSchedule (malformed entries)");
@@ -102,7 +104,6 @@ export function validateCompositionEntry(
   }
 
   return {
-    policyIndex: 0, // Set by caller
     policyName: entry.name,
     missingFields,
     invalidFields,

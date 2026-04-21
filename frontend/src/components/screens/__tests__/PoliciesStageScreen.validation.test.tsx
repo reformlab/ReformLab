@@ -199,123 +199,63 @@ beforeEach(() => {
 // ============================================================================
 
 describe("PoliciesStageScreen — AC-1: Per-policy validation", () => {
-  describe("from-scratch policy validation", () => {
-    it("shows error when from-scratch policy is missing policy_type", async () => {
-      // This test verifies that when a from-scratch policy is created
-      // but missing the policy_type field, a validation error is shown
-      // For now, this is a placeholder - the actual validation
-      // will be implemented as part of the story
+  // Note: From-scratch field-level error detection (missing policy_type,
+  // category_id, empty parameters, malformed rate schedule) is exhaustively
+  // covered by the validateCompositionEntry / validateComposition unit tests
+  // below. Triggering those code paths end-to-end through the UI requires the
+  // from-scratch choice dialog + createBlankPolicy mock wiring, which is
+  // tested separately in PoliciesStageScreen.test.tsx (Story 25.3). These
+  // integration tests focus on the UI contracts that are directly observable
+  // from a template-click workflow: validity indicator, save button, no
+  // spurious errors for valid template policies.
+
+  describe("valid template-based policy (no errors)", () => {
+    it("does not show validation error banner for a valid template policy", () => {
       renderScreen();
-
-      // Add a template-based policy first (no error expected)
-      const templateButtons = screen.getAllByRole("button");
-      fireEvent.click(templateButtons[0]);
-
-      // Verify no validation errors for template-based policies
+      fireEvent.click(screen.getByRole("button", { name: /Carbon Tax.*Flat Rate/i }));
       expect(screen.queryByText(/Policy validation errors/i)).not.toBeInTheDocument();
     });
 
-    it("shows error when from-scratch policy is missing category_id", async () => {
-      // Placeholder for category_id validation
+    it("does not render an error badge on a valid template policy card", () => {
       renderScreen();
-      expect(screen.queryByText(/Policy validation errors/i)).not.toBeInTheDocument();
-    });
-
-    it("shows error when policy has empty parameters object", async () => {
-      // This test will verify that a policy with no parameters
-      // is flagged as invalid
-      // For template-based policies, parameters start empty and are filled by user
-      // This is acceptable - validation should flag completely empty parameters
-      // after user has had a chance to edit
-      renderScreen();
-
-      const templateButtons = screen.getAllByRole("button");
-      fireEvent.click(templateButtons[0]);
-
-      // Template-based policy starts with empty parameters - this is OK initially
-      expect(screen.queryByText(/Policy validation errors/i)).not.toBeInTheDocument();
-    });
-
-    it("shows error when rate schedule has malformed entries", async () => {
-      // Placeholder for rate schedule structure validation
-      renderScreen();
-      expect(screen.queryByText(/Policy validation errors/i)).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: /Carbon Tax.*Flat Rate/i }));
+      // The "Error" badge is only rendered for policies with validation errors.
+      const errorBadges = screen.queryAllByText(/^Error$/);
+      expect(errorBadges).toHaveLength(0);
     });
   });
 
   describe("validity indicator state", () => {
-    it("shows ERROR (red) indicator when validation errors exist", async () => {
-      // This test will verify the validity indicator shows red ERROR state
-      // when there are validation errors (not just amber warning state)
+    it("renders no validity indicator before any policy is added", () => {
       renderScreen();
-
-      // Initially no policies, no indicator shown
       expect(screen.queryByTestId("validity-indicator-invalid")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("validity-indicator-valid")).not.toBeInTheDocument();
     });
 
-    it("shows green (valid) indicator when all policies are valid", async () => {
+    it("shows green (valid) indicator after adding a valid template policy", async () => {
       renderScreen();
-
-      // Click a template card to add it to composition
-      const templateCards = screen.getAllByTitle(/Add/i);
-      if (templateCards.length > 0) {
-        fireEvent.click(templateCards[0]);
-      }
-
-      // Should show green checkmark for valid single policy
+      fireEvent.click(screen.getByRole("button", { name: /Carbon Tax.*Flat Rate/i }));
       await waitFor(() => {
-        const validIndicator = screen.queryByTestId("validity-indicator-valid");
-        // Note: The indicator may not be visible if template wasn't actually added
-        // This is a basic smoke test for now
-        if (validIndicator) {
-          expect(validIndicator).toBeInTheDocument();
-        }
-      }, { timeout: 3000 });
+        expect(screen.getByTestId("validity-indicator-valid")).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId("validity-indicator-invalid")).not.toBeInTheDocument();
     });
   });
 
   describe("save button disabled state", () => {
-    it("disables Save button when validation errors exist", async () => {
-      // This test verifies that validation errors block save
+    it("disables Save button when no policies are in the composition", () => {
       renderScreen();
-
-      // Save button disabled when no policies
       const saveBtn = screen.getByTitle("Add at least 1 policy template");
       expect(saveBtn).toBeDisabled();
     });
 
-    it("enables Save button when policies are valid", async () => {
+    it("enables Save button after adding a valid template policy", async () => {
       renderScreen();
-
-      // Click a template card to add it to composition
-      const templateCards = screen.getAllByTitle(/Add/i);
-      if (templateCards.length > 0) {
-        fireEvent.click(templateCards[0]);
-      }
-
-      // Wait a bit for state to update
+      fireEvent.click(screen.getByRole("button", { name: /Carbon Tax.*Flat Rate/i }));
       await waitFor(() => {
-        // Check if save button is now enabled
-        const saveBtnMaybeEnabled = screen.queryByTitle("Save policy set");
-        const saveBtnDisabled = screen.queryByTitle("Add at least 1 policy template");
-
-        // Either the save button is enabled, or it's still disabled (no policy added)
-        expect(saveBtnMaybeEnabled || saveBtnDisabled).toBeTruthy();
-      }, { timeout: 3000 });
-    });
-  });
-
-  describe("error badges on policy cards", () => {
-    it("shows error badge on policy card with validation errors", async () => {
-      // This test will verify that policies with validation errors
-      // display a visible error indicator on their card
-      renderScreen();
-
-      const templateButtons = screen.getAllByRole("button");
-      fireEvent.click(templateButtons[0]);
-
-      // No error badge for valid template-based policy
-      expect(screen.queryByText(/Error/i)).not.toBeInTheDocument();
+        const saveBtn = screen.getByTitle("Save policy set");
+        expect(saveBtn).not.toBeDisabled();
+      });
     });
   });
 });
@@ -540,138 +480,72 @@ describe("validateComposition", () => {
 // AC-2: Duplicate policy validation behavior tests
 // ============================================================================
 
-describe("PoliciesStageScreen — AC-2: Duplicate policy validation behavior", () => {
-  describe("duplicate instances are allowed", () => {
-    it("allows two instances of the same template (no automatic blocking)", () => {
-      // This test verifies that the code supports duplicate instances
-      // via the instanceCounterRef pattern (Story 25.2)
-      // The actual behavior is verified by the existing Story 25.2 tests
-      expect(true).toBe(true);
-    });
-
-    it("shows conflict warning when duplicate policies have conflicting parameters", () => {
-      // This test verifies that the validatePortfolio API correctly
-      // identifies conflicts between duplicate policies
-      // The ConflictList component displays these warnings
-      expect(true).toBe(true);
-    });
-
-    it("shows no conflict warning when duplicate policies have no conflicts", () => {
-      // This test verifies that when two instances of the same template
-      // have non-conflicting parameters, no warning is shown
-      expect(true).toBe(true);
-    });
-  });
-
-  describe("resolution strategy affects save behavior", () => {
-    it("blocks save when conflicts exist with 'error' strategy", () => {
-      // This test verifies that when resolutionStrategy is "error"
-      // and conflicts exist, the save operation is blocked
-      // This is verified by the isPortfolioValid computation
-      expect(true).toBe(true);
-    });
-
-    it("allows save when conflicts exist with 'sum' strategy", () => {
-      // This test verifies that when resolutionStrategy is "sum"
-      // and conflicts exist, the save operation is allowed
-      expect(true).toBe(true);
-    });
-
-    it("allows save when conflicts exist with 'first_wins' strategy", () => {
-      // This test verifies that when resolutionStrategy is "first_wins"
-      // and conflicts exist, the save operation is allowed
-      expect(true).toBe(true);
-    });
-
-    it("allows save when conflicts exist with 'last_wins' strategy", () => {
-      // This test verifies that when resolutionStrategy is "last_wins"
-      // and conflicts exist, the save operation is allowed
-      expect(true).toBe(true);
-    });
-  });
-});
+// AC-2 (duplicate policy validation behavior) is covered end-to-end by:
+//   - PoliciesStageScreen.test.tsx — Story 25.2 duplicate-instance suite
+//     (duplicate templates produce independent composition entries, and
+//     isPortfolioValid honors resolutionStrategy for conflict blocking)
+//   - PoliciesStageScreen.test.tsx — AC-3 conflict detection suite
+//     (ConflictList renders when validatePortfolio returns conflicts)
+// No additional tests are added here to avoid duplicating that coverage.
 
 // ============================================================================
 // AC-3: Population column compatibility warnings tests
 // ============================================================================
 
 describe("PoliciesStageScreen — AC-3: Population column compatibility warnings", () => {
-  it("shows warning when policy requires columns not in population", async () => {
-    // Mock getPopulationProfile to return columns without 'vehicle_co2'
-    vi.mocked(getPopulationProfile).mockResolvedValue({
-      id: "test-population",
-      columns: [
-        { name: "household_id", profile: { type: "categorical", count: 100, nulls: 0, null_pct: 0, cardinality: 100, value_counts: [] } },
-        { name: "income", profile: { type: "numeric", count: 100, nulls: 0, null_pct: 0, min: 0, max: 100000, mean: 50000, median: 45000, std: 20000, percentiles: {}, histogram_buckets: [] } },
-      ],
-    });
+  // The warning effect runs for composition entries that carry a category_id.
+  // Template-click flow (addTemplateInstance) does NOT propagate category_id
+  // onto the composition entry — only the from-scratch flow
+  // (handleCreateBlankPolicy) does. End-to-end triggering of the warning
+  // therefore requires driving the from-scratch dialog, which is out of scope
+  // for this suite. The tests below cover the negative paths that the
+  // template-click flow DOES exercise.
 
-    // Create scenario with a population
-    const scenarioWithPopulation = makeScenario({
-      populationIds: ["test-population"],
-    });
-
-    renderScreen({ activeScenario: scenarioWithPopulation });
-
-    // Should show warning about missing columns
-    // (assuming there's a policy with vehicle_emissions category that requires vehicle_co2)
-    await waitFor(() => {
-      const warning = screen.queryByText(/Population data compatibility warning/i);
-      // Warning should be shown if there's a policy requiring vehicle_co2
-      // For now, this is a placeholder test
-      if (warning) {
-        expect(warning).toBeInTheDocument();
-      }
-    }, { timeout: 3000 });
-  });
-
-  it("shows no warning when population has all required columns", async () => {
-    // Mock getPopulationProfile to return columns including 'vehicle_co2'
-    vi.mocked(getPopulationProfile).mockResolvedValue({
-      id: "test-population",
-      columns: [
-        { name: "household_id", profile: { type: "categorical", count: 100, nulls: 0, null_pct: 0, cardinality: 100, value_counts: [] } },
-        { name: "income", profile: { type: "numeric", count: 100, nulls: 0, null_pct: 0, min: 0, max: 100000, mean: 50000, median: 45000, std: 20000, percentiles: {}, histogram_buckets: [] } },
-        { name: "vehicle_co2", profile: { type: "numeric", count: 100, nulls: 0, null_pct: 0, min: 0, max: 10, mean: 2, median: 1.5, std: 1.5, percentiles: {}, histogram_buckets: [] } },
-      ],
-    });
-
-    const scenarioWithPopulation = makeScenario({
-      populationIds: ["test-population"],
-    });
-
-    renderScreen({ activeScenario: scenarioWithPopulation });
-
-    // Should not show warning about missing columns
-    await waitFor(() => {
-      const warning = screen.queryByText(/Population data compatibility warning/i);
-      expect(warning).not.toBeInTheDocument();
-    }, { timeout: 3000 });
-  });
-
-  it("shows no warning when no population is selected", async () => {
+  it("shows no warning when no population is selected (composition empty or no-pop)", async () => {
     renderScreen();
+    // Add a template policy (category_id not propagated → no required columns)
+    fireEvent.click(screen.getByRole("button", { name: /Carbon Tax.*Flat Rate/i }));
 
-    // No population selected → no warning
-    const warning = screen.queryByText(/Population data compatibility warning/i);
-    expect(warning).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(getPopulationProfile).not.toHaveBeenCalled();
+    });
+    expect(
+      screen.queryByText(/Population data compatibility warning/i),
+    ).not.toBeInTheDocument();
   });
 
-  it("shows no warning when population metadata fetch fails gracefully", async () => {
-    // Mock getPopulationProfile to throw an error
+  it("shows no warning and does not fetch profile when composition has no category-tagged policies", async () => {
+    const scenarioWithPopulation = makeScenario({
+      populationIds: ["test-population"],
+    });
+    renderScreen({ activeScenario: scenarioWithPopulation });
+    fireEvent.click(screen.getByRole("button", { name: /Carbon Tax.*Flat Rate/i }));
+
+    // Template-click policies have no category_id → requiredColumns is empty →
+    // effect short-circuits before any fetch.
+    await waitFor(() => {
+      expect(
+        screen.queryByText(/Population data compatibility warning/i),
+      ).not.toBeInTheDocument();
+    });
+    expect(getPopulationProfile).not.toHaveBeenCalled();
+  });
+
+  it("handles population profile fetch failure gracefully (no warning, no crash)", async () => {
     vi.mocked(getPopulationProfile).mockRejectedValue(new Error("Network error"));
 
     const scenarioWithPopulation = makeScenario({
       populationIds: ["test-population"],
     });
 
-    renderScreen({ activeScenario: scenarioWithPopulation });
+    expect(() => {
+      renderScreen({ activeScenario: scenarioWithPopulation });
+    }).not.toThrow();
 
-    // Should handle error gracefully and not show warning
     await waitFor(() => {
       const warning = screen.queryByText(/Population data compatibility warning/i);
       expect(warning).not.toBeInTheDocument();
-    }, { timeout: 3000 });
+    });
   });
 });
 
@@ -700,19 +574,13 @@ describe("PoliciesStageScreen — AC-4: Terminology consistency", () => {
   it("does not show 'Portfolio' in visible UI text", () => {
     renderScreen();
 
-    // Check that "Portfolio" (with capital P) is not shown in user-facing text
-    // Note: Variable names, component names, etc. may still use "Portfolio"
-    const body = document.body;
-    const visibleText = body.textContent || "";
-
-    // Count occurrences of "Portfolio" in visible text
-    // Should be minimal (only in aria-labels or IDs that are not visible)
-    const portfolioMatches = visibleText.match(/Portfolio/g);
-    const count = portfolioMatches ? portfolioMatches.length : 0;
-
-    // We allow a small number of "Portfolio" occurrences for technical/ID attributes
-    // But it should not appear in visible user-facing text
-    expect(count).toBeLessThan(3);
+    // `Element.textContent` returns only the visible text content of the DOM
+    // (it does NOT include aria-labels, titles, placeholders, or other attribute
+    // values). So any occurrence of "Portfolio" here is user-facing copy and
+    // must be zero for AC-4.
+    const visibleText = document.body.textContent ?? "";
+    const portfolioMatches = visibleText.match(/Portfolio/g) ?? [];
+    expect(portfolioMatches).toHaveLength(0);
   });
 
   it("shows 'Saved Policy Sets' heading for saved portfolios list", () => {
