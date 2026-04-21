@@ -197,19 +197,26 @@ export const HELP_CONTENT: Record<string, HelpEntry> = {
   },
   "investment-decisions": {
     title: "Investment Decisions",
-    summary: "Configure behavioral response models for household technology adoption (vehicles, heating systems). Expandable section when enabled in scenario configuration.",
+    summary: "Configure behavioral response models for household technology adoption (vehicles, heating systems). Optional advanced feature—skip when disabled.",
     tips: [
-      "Coming in Story 26.2 — full behavioral decision configuration interface",
-      "For now, investment decisions can be enabled/disabled in the Scenario stage",
-      "When enabled, households respond to policy-driven cost changes using discrete choice models",
+      "Investment decisions are disabled by default—enable the toggle to configure behavioral modeling",
+      "When enabled, you must select a logit model and configure taste parameters",
+      "The four-step wizard guides you through: Enable, Model selection, Parameters, and Review",
+      "Use Continue to Scenario at any time—Stage 3 is optional and does not block validation when disabled",
+      "Calibration is optional but recommended for realistic behavioral responses",
+    ],
+    concepts: [
+      { term: "Discrete Choice Model", definition: "A statistical model that predicts household choices between alternatives (e.g., vehicle types) based on utility maximization." },
+      { term: "Logit Model", definition: "A type of discrete choice model: Multinomial Logit (basic), Nested Logit (groups similar alternatives), Mixed Logit (allows preference variation)." },
+      { term: "Taste Parameters", definition: "Coefficients that capture household preferences for technology attributes: price sensitivity, range anxiety, environmental preference." },
     ],
   },
   "scenario": {
     title: "Scenario Configuration",
-    summary: "Assemble your scenario: bind portfolio and population, configure time horizon, seed, and investment-decision model. Cross-stage validation must pass before running.",
+    summary: "Assemble your scenario: bind portfolio and population, configure time horizon, seed, and discount rate. Investment decisions are configured in Stage 3. Cross-stage validation must pass before running.",
     tips: [
       "Set Start and End year — the 'N-year projection' label updates automatically. Max 50 years.",
-      "Investment decisions expand inline when enabled — logit model and taste parameters appear without leaving the stage.",
+      "Investment decisions show a read-only summary here—click 'Configure in Stage 3' to edit them",
       "The right panel shows a live validation checklist — all red checks must be resolved before Run is enabled.",
       "Save Scenario persists the full configuration (portfolio + population + scenario settings) to your saved list.",
       "Clone Scenario creates a copy with '(copy)' appended — useful for sensitivity analysis variants.",

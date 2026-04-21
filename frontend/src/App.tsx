@@ -15,6 +15,7 @@ import { ComparisonDashboardScreen } from "@/components/screens/ComparisonDashbo
 import { ResultsOverviewScreen } from "@/components/screens/ResultsOverviewScreen";
 import { PoliciesStageScreen } from "@/components/screens/PoliciesStageScreen";
 import { PopulationStageScreen } from "@/components/screens/PopulationStageScreen";
+import { InvestmentDecisionsStageScreen } from "@/components/screens/InvestmentDecisionsStageScreen";
 import { EngineStageScreen } from "@/components/screens/EngineStageScreen";
 import { WorkflowNavRail } from "@/components/layout/WorkflowNavRail";
 import { MobileStageSwitcher } from "@/components/layout/MobileStageSwitcher";
@@ -206,11 +207,7 @@ function Workspace() {
           onExplorerPopulationChange={setExplorerPopulationId}
         />
       ) : null}
-      {activeStage === "investment-decisions" ? (
-        <div className="flex items-center justify-center p-12 text-slate-500" data-testid="investment-decisions-placeholder">
-          <p>Investment Decisions stage — coming in Story 26.2</p>
-        </div>
-      ) : null}
+      {activeStage === "investment-decisions" ? <InvestmentDecisionsStageScreen /> : null}
       {activeStage === "scenario" ? <EngineStageScreen /> : null}
       {activeStage === "results" ? resultsContent : null}
     </>

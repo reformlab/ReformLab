@@ -1,0 +1,137 @@
+record_id: c0b9b295-b02b-4f70-8163-3dd7800f892a
+created_at: '2026-04-21T20:16:04.395597+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 26
+  story_num: 2
+  title: Story 26.2
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-04-21T20:11:08.460370Z'
+  end_time: '2026-04-21T20:13:58.003370Z'
+  duration_ms: 169543
+  input_tokens: 0
+  output_tokens: 6960
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 27840
+  heading_count: 41
+  list_depth_max: 3
+  code_block_count: 20
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 13.7'
+  - 🎯 Ruthless Story Validation 26.2
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 13.7 → REJECT'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Missing "Incomplete" Summary Implementation
+  - 2. Switch Component Import Missing
+  - 3. Null State UX Creates Dead-End Navigation Loop
+  - 4. "Continue to Scenario" Button Behavior Undefined for Null Scenario
+  - 5. Wizard State Reset Mechanism Not Specified
+  - 6. Button Label Ambiguity
+  - 7. Calibration Summary Format Not Specified
+  - 8. Test Data Update Scope Incomplete
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Specify Expected Wizard Step on Re-Entry
+  - 2. Document Nav Rail Completion Timing Behavior
+  - 3. Specify Module Docstring Format
+  - 4. Add Validation Check Message Updates to Tasks
+  - 5. Specify Error Handling for Toggle Failure
+  - 6. Add Accessibility Requirements
+  - ✨ Optimizations (Nice to Have)
+  - 1. Use key={activeScenario.id} for Wizard Remount
+  - 2. Memoize updateEngineConfig Callback
+  - 3. Add Loading State for Navigation
+  - 🤖 LLM Optimization Improvements
+  - 1. Remove Redundant Code Comments
+  - 2. Consolidate Repetitive prose
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: fe72ed1ffe3b
+findings:
+  total_count: 18
+  by_severity:
+    critical: 8
+    major: 6
+    minor: 4
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 4
+    completeness: 9
+    clarity: 5
+    testability: 0
+  has_fix_count: 18
+  has_location_count: 10
+  has_evidence_count: 10
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 16
+  confidence_phrases_count: 9
+linguistic:
+  avg_sentence_length: 20.636363636363637
+  vocabulary_richness: 0.21998898678414097
+  flesch_reading_ease: 20.765057446386265
+  vague_terms_count: 4
+  formality_score: 0.72
+  sentiment: positive
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.56
+  evidence_quality: 0.56
+  follows_template: true
+  internal_consistency: 0.94
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false

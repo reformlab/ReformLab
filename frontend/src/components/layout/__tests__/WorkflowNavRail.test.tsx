@@ -219,6 +219,67 @@ describe("WorkflowNavRail - summary lines", () => {
     render(<WorkflowNavRail {...baseProps({ activeScenario: makeScenario() })} />);
     expect(screen.getByTestId("summary-investment-decisions")).toHaveTextContent("Disabled");
   });
+
+  it("shows 'Incomplete' summary for Investment Decisions when enabled but no model selected", () => {
+    const activeScenario = makeScenario({
+      engineConfig: {
+        startYear: 2025,
+        endYear: 2030,
+        seed: null,
+        investmentDecisionsEnabled: true,
+        logitModel: null,
+        discountRate: 0.03,
+      },
+    });
+    render(<WorkflowNavRail {...baseProps({ activeScenario })} />);
+    expect(screen.getByTestId("summary-investment-decisions")).toHaveTextContent("Incomplete");
+  });
+
+  it("shows formatted model name (e.g., 'Multinomial Logit') when enabled with model", () => {
+    const activeScenario = makeScenario({
+      engineConfig: {
+        startYear: 2025,
+        endYear: 2030,
+        seed: null,
+        investmentDecisionsEnabled: true,
+        logitModel: "multinomial_logit",
+        discountRate: 0.03,
+      },
+    });
+    render(<WorkflowNavRail {...baseProps({ activeScenario })} />);
+    // Should replace underscores with spaces: "multinomial_logit" → "multinomial logit"
+    expect(screen.getByTestId("summary-investment-decisions")).toHaveTextContent("multinomial logit");
+  });
+
+  it("shows 'Nested Logit' for nested_logit model", () => {
+    const activeScenario = makeScenario({
+      engineConfig: {
+        startYear: 2025,
+        endYear: 2030,
+        seed: null,
+        investmentDecisionsEnabled: true,
+        logitModel: "nested_logit",
+        discountRate: 0.03,
+      },
+    });
+    render(<WorkflowNavRail {...baseProps({ activeScenario })} />);
+    expect(screen.getByTestId("summary-investment-decisions")).toHaveTextContent("nested logit");
+  });
+
+  it("shows 'Mixed Logit' for mixed_logit model", () => {
+    const activeScenario = makeScenario({
+      engineConfig: {
+        startYear: 2025,
+        endYear: 2030,
+        seed: null,
+        investmentDecisionsEnabled: true,
+        logitModel: "mixed_logit",
+        discountRate: 0.03,
+      },
+    });
+    render(<WorkflowNavRail {...baseProps({ activeScenario })} />);
+    expect(screen.getByTestId("summary-investment-decisions")).toHaveTextContent("mixed logit");
+  });
 });
 
 // ============================================================================

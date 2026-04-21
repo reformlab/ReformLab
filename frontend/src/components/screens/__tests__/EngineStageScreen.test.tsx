@@ -4,10 +4,11 @@
  * Unit tests for EngineStageScreen — Story 20.5.
  *
  * Tests:
- * - AC-1: Engine configuration form (time horizon, population, seed, investment decisions, discount rate)
+ * - AC-1: Engine configuration form (time horizon, population, seed, discount rate)
  * - AC-2: Scenario save and clone toolbar actions
  * - AC-3: Cross-stage validation gate displayed in right panel
  * - AC-4: Run button state depends on validation
+ * - Story 26.2 — AC-3: Investment decisions moved to dedicated Stage 3, summary shown here.
  */
 
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
@@ -301,23 +302,56 @@ describe("EngineStageScreen — Story 20.5", () => {
       });
     });
 
-    it("investment decisions toggle shows wizard when clicked", async () => {
+    // Story 26.2: Investment decisions wizard removed, now in Stage 3
+    it("investment decisions summary shows 'Disabled' when investmentDecisionsEnabled is false", () => {
       renderScreen();
-      // The Switch component renders as a checkbox input with the aria-label
-      const toggle = screen.getByRole("checkbox", { name: /toggle investment decisions/i });
-      fireEvent.click(toggle);
-      await waitFor(() => {
-        expect(mockUpdateScenarioField).toHaveBeenCalledWith(
-          "engineConfig",
-          expect.objectContaining({ investmentDecisionsEnabled: true }),
-        );
-      });
+      // Find the Investment Decisions heading and look for "Disabled" near it
+      const heading = screen.getByText("Investment Decisions");
+      const parent = heading.closest("section");
+      expect(parent).toHaveTextContent("Disabled");
     });
 
-    it("wizard renders Enable Investment Decisions text", () => {
+    it("investment decisions summary shows model name when enabled", () => {
+      renderScreen({
+        activeScenario: makeScenario({
+          engineConfig: {
+            startYear: 2025,
+            endYear: 2030,
+            seed: null,
+            investmentDecisionsEnabled: true,
+            logitModel: "multinomial_logit",
+            discountRate: 0.03,
+            tasteParameters: DEFAULT_TASTE_PARAMETERS,
+            calibrationState: "not_configured",
+          },
+        }),
+      });
+      expect(screen.getByText(/enabled — multinomial logit/i)).toBeInTheDocument();
+    });
+
+    it("investment decisions summary shows 'no model selected' when enabled but no model", () => {
+      renderScreen({
+        activeScenario: makeScenario({
+          engineConfig: {
+            startYear: 2025,
+            endYear: 2030,
+            seed: null,
+            investmentDecisionsEnabled: true,
+            logitModel: null,
+            discountRate: 0.03,
+            tasteParameters: DEFAULT_TASTE_PARAMETERS,
+            calibrationState: "not_configured",
+          },
+        }),
+      });
+      expect(screen.getByText(/enabled — no model selected/i)).toBeInTheDocument();
+    });
+
+    it("'Configure in Stage 3' link navigates to investment-decisions stage", async () => {
+      const user = userEvent.setup();
       renderScreen();
-      // The wizard should render the "Enable Investment Decisions" heading
-      expect(screen.getByText("Enable Investment Decisions")).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: /configure in stage 3/i }));
+      expect(mockNavigateTo).toHaveBeenCalledWith("investment-decisions");
     });
   });
 

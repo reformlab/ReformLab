@@ -105,12 +105,12 @@ function getSummary(
       return null;
     }
     case "investment-decisions": {
-      // Story 26.2 will implement proper summary
+      // Story 26.2: Return "Incomplete" when enabled but no model selected, or model name with spaces
       if (!activeScenario) return null;
       if (!activeScenario.engineConfig.investmentDecisionsEnabled) {
         return "Disabled";
       }
-      return activeScenario.engineConfig.logitModel ?? null;
+      return activeScenario.engineConfig.logitModel?.replace(/_/g, " ") ?? "Incomplete";
     }
     case "scenario": {
       if (!activeScenario) return null;

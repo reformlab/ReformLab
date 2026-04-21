@@ -124,7 +124,7 @@ const logitModelRequiredCheck: ValidationCheck = {
     if (!hasValidModel) {
       return {
         passed: false,
-        message: "Investment decisions require a logit model to be selected.",
+        message: "Investment decisions require a logit model. Configure in Stage 3.",
         severity: "error",
       };
     }
@@ -146,7 +146,7 @@ const tasteParametersRequiredCheck: ValidationCheck = {
     if (!params) {
       return {
         passed: false,
-        message: "Investment decisions require taste parameters to be configured.",
+        message: "Investment decisions require taste parameters. Configure in Stage 3.",
         severity: "error",
       };
     }
@@ -159,7 +159,7 @@ const tasteParametersRequiredCheck: ValidationCheck = {
     if (!hasPriceSensitivity || !hasRangeAnxiety || !hasEnvPreference) {
       return {
         passed: false,
-        message: "Investment decisions require taste parameters to be configured.",
+        message: "Investment decisions require taste parameters. Configure in Stage 3.",
         severity: "error",
       };
     }

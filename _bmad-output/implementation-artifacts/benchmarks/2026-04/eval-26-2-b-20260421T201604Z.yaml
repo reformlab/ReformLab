@@ -1,0 +1,134 @@
+record_id: b2896400-c8aa-4c92-9f94-afad8e764399
+created_at: '2026-04-21T20:16:04.412122+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 26
+  story_num: 2
+  title: Story 26.2
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: codex
+  model: gpt-5.3-codex
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-04-21T20:11:08.460370Z'
+  end_time: '2026-04-21T20:15:42.518370Z'
+  duration_ms: 274058
+  input_tokens: 0
+  output_tokens: 3544
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 14179
+  heading_count: 38
+  list_depth_max: 3
+  code_block_count: 6
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 6.3'
+  - 🎯 Ruthless Story Validation 26.2
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 6.3 → MAJOR REWORK'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. AC-7 State Contract Is Not Implementable As Written
+  - 2. AC-4 and Task Guidance Conflict on Nav Summary Semantics
+  - 3. “Reuse Wizard Unchanged” Conflicts with Proposed New Toggle Logic
+  - 4. “Skip-When-Disabled Routing” Is Underspecified
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Define Null-State CTA Behavior Precisely
+  - 2. Normalize User-Facing Model Labels
+  - 3. Expand Help-Surface Update Scope
+  - 4. Add Regression AC for Disable/Re-enable Behavior
+  - 5. Pin Test Ownership by Layer
+  - 6. Make Optional Validation Message Non-Optional or Remove It
+  - ✨ Optimizations (Nice to Have)
+  - 1. Remove Brittle Line-Number References
+  - 2. Trim Repeated “Current/Target” Boilerplate
+  - 3. Add Explicit Out-of-Scope Block
+  - 🤖 LLM Optimization Improvements
+  - 1. Replace Verbose Scaffolds with Behavioral Contracts
+  - 2. Resolve Ambiguous “Optional” Language in Core Tasks
+  - 3. Make AC Assertions Machine-Testable
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: fe72ed1ffe3b
+findings:
+  total_count: 16
+  by_severity:
+    critical: 4
+    major: 9
+    minor: 3
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 2
+    completeness: 9
+    clarity: 9
+    testability: 5
+  has_fix_count: 15
+  has_location_count: 14
+  has_evidence_count: 16
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 1
+  confidence_phrases_count: 4
+linguistic:
+  avg_sentence_length: 15.05
+  vocabulary_richness: 0.3532668881506091
+  flesch_reading_ease: 14.560369166151958
+  vague_terms_count: 2
+  formality_score: 0.75
+  sentiment: mixed
+quality:
+  actionable_ratio: 0.94
+  specificity_score: 0.88
+  evidence_quality: 1.0
+  follows_template: true
+  internal_consistency: 0.95
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false

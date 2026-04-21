@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 Lucas Vivier
-/** EngineStageScreen — Stage 3: Scenario Configuration.
+/** EngineStageScreen — Stage 4: Scenario Configuration.
  *
  * Two-column layout: left config form (time horizon, population, seed,
- * investment decisions, discount rate) + right panel (RunSummaryPanel +
- * ValidationGate). Toolbar shows scenario name (editable), Save, and Clone.
+ * discount rate) + right panel (RunSummaryPanel + ValidationGate).
+ * Toolbar shows scenario name (editable), Save, and Clone.
  *
  * Story 20.5 — AC-1, AC-2, AC-3, AC-4.
+ * Story 26.2 — AC-3: Investment decisions moved to dedicated Stage 3.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -18,7 +19,6 @@ import { Separator } from "@/components/ui/separator";
 import { useAppState } from "@/contexts/AppContext";
 import { RunSummaryPanel } from "@/components/engine/RunSummaryPanel";
 import { ValidationGate } from "@/components/engine/ValidationGate";
-import { InvestmentDecisionsWizard } from "@/components/engine/InvestmentDecisionsWizard";
 import type { EngineConfig } from "@/types/workspace";
 
 // ============================================================================
@@ -330,12 +330,28 @@ export function EngineStageScreen() {
 
           <Separator />
 
-          {/* Investment Decisions */}
+          {/* Investment Decisions Summary */}
           <section className="space-y-3">
-            <InvestmentDecisionsWizard
-              engineConfig={engineConfig}
-              onUpdateEngineConfig={updateEngineConfig}
-            />
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-slate-700">Investment Decisions</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 text-xs text-blue-600 hover:text-blue-700 px-2"
+                onClick={() => navigateTo("investment-decisions")}
+              >
+                Configure in Stage 3
+              </Button>
+            </div>
+            <div className="text-xs text-slate-600">
+              {engineConfig.investmentDecisionsEnabled ? (
+                <span>
+                  Enabled — {engineConfig.logitModel ? engineConfig.logitModel.replace(/_/g, " ") : "no model selected"}
+                </span>
+              ) : (
+                <span>Disabled</span>
+              )}
+            </div>
           </section>
 
           <Separator />
