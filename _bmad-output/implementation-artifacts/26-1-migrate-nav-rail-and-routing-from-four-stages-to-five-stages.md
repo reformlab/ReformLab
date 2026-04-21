@@ -252,10 +252,11 @@ function isComplete(
       );
     case "investment-decisions":
       // Story 26.2 will implement proper completion logic
-      // For now, stage is complete when no active scenario, or decisions are disabled, or configured
-      return !activeScenario ||
-             !activeScenario.engineConfig.investmentDecisionsEnabled ||
-             activeScenario.engineConfig.logitModel !== null;
+      // Until the dedicated configuration surface lands, a real scenario must
+      // exist before this stage can be considered complete.
+      return activeScenario !== null &&
+             (!activeScenario.engineConfig.investmentDecisionsEnabled ||
+              activeScenario.engineConfig.logitModel !== null);
     case "scenario":
       return activeScenario !== null;
     case "results":
@@ -330,7 +331,8 @@ function getSummary(
     }
     case "investment-decisions": {
       // Story 26.2 will implement proper summary
-      if (!activeScenario?.engineConfig.investmentDecisionsEnabled) {
+      if (!activeScenario) return null;
+      if (!activeScenario.engineConfig.investmentDecisionsEnabled) {
         return "Disabled";
       }
       return activeScenario.engineConfig.logitModel ?? null;
@@ -744,9 +746,10 @@ Story 26.1 completed successfully - all acceptance criteria met:
 
 **Tests Updated:**
 - frontend/src/components/layout/__tests__/WorkflowNavRail.test.tsx — Updated for 5 stages, added investment-decisions and scenario tests
+- frontend/src/components/help/__tests__/ContextualHelpPanel.test.tsx — Updated help-panel coverage for scenario and investment-decisions stage keys
 - frontend/src/components/layout/__tests__/MobileStageSwitcher.test.tsx — Updated for 5 stages
 - frontend/src/hooks/__tests__/useScenarioPersistence.test.tsx — Added localStorage migration tests
-- frontend/src/__tests__/App.test.tsx — Updated "Policy" → "Policies", 4-stage → 5-stage
+- frontend/src/__tests__/App.test.tsx — Updated "Policy" → "Policies", 4-stage → 5-stage; added app-routing hash migration coverage for #engine, #engine/decisions, invalid legacy subviews, and canonical #scenario
 - frontend/src/__tests__/e2e/first-launch-flow.test.tsx — Updated "engine" → "scenario"
 - frontend/src/__tests__/e2e/population-workflow.test.tsx — Updated "engine" → "scenario"
 - frontend/src/__tests__/e2e/portfolio-workflow.test.tsx — Updated "engine" → "scenario"
@@ -754,20 +757,27 @@ Story 26.1 completed successfully - all acceptance criteria met:
 - frontend/src/components/layout/__tests__/TopBar.test.tsx — Updated "policy" → "Policies"
 
 **Migration Strategy Implemented:**
-- Hash routing: Client-side redirect from #engine → #scenario with subView preservation
+- Hash routing: Client-side redirect from #engine → #scenario with valid subView preservation; invalid legacy subviews normalize to bare #scenario
 - localStorage: Read-time migration in loadStage() returns "scenario" for stored "engine"
 - Type safety: StageKey excludes "engine", includes "investment-decisions" and "scenario"
 
 **Test Results:**
-- All 825 tests pass (4 skipped)
+- All 835 tests pass (4 skipped)
 - TypeScript compilation passes (no errors)
 - ESLint passes (0 errors, 7 pre-existing warnings)
 
 **Key Implementation Notes:**
-- investment-decisions stage shows "Disabled" summary when investmentDecisionsEnabled is false or no active scenario
-- investment-decisions stage is complete when: no active scenario OR decisions disabled OR logitModel configured
+- investment-decisions stage has no completion checkmark and no summary when there is no active scenario
+- investment-decisions stage shows "Disabled" summary only when an active scenario exists and investmentDecisionsEnabled is false
+- investment-decisions stage is complete when an active scenario exists and either decisions are disabled or logitModel is configured
 - Scenario stage renders EngineStageScreen (rename happens in Story 26.3)
 - Population sub-steps (Library, Build, Explorer) remain unchanged under Population stage
 - Label change: "Policy" → "Policies" (plural form)
+
+**Post-Review Fixes Applied (2026-04-21):**
+- Corrected investment-decisions completion and summary behavior to avoid false-positive completion when activeScenario is null
+- Sanitized #engine hash migration so invalid subviews do not persist in canonical #scenario URLs
+- Removed the legacy "engine" help-content key and kept scenario as the canonical stage help key
+- Added focused regression tests for hash migration and help-panel stage key coverage
 
 Status set to: done

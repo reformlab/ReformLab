@@ -21,9 +21,14 @@ describe("ContextualHelpPanel", () => {
     expect(screen.getByText("Population Library")).toBeInTheDocument();
   });
 
-  it("renders Engine Configuration title for engine stage", () => {
-    render(<ContextualHelpPanel activeStage="engine" activeSubView={null} />);
+  it("renders Scenario Configuration title for scenario stage", () => {
+    render(<ContextualHelpPanel activeStage="scenario" activeSubView={null} />);
     expect(screen.getByText("Scenario Configuration")).toBeInTheDocument();
+  });
+
+  it("renders Investment Decisions title for investment-decisions stage", () => {
+    render(<ContextualHelpPanel activeStage="investment-decisions" activeSubView={null} />);
+    expect(screen.getByText("Investment Decisions")).toBeInTheDocument();
   });
 
   it("renders Results Overview title for results stage", () => {

@@ -220,13 +220,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       // Story 26.1: Migrate legacy #engine hash to #scenario
       const migratedStage = stage === "engine" ? "scenario" : stage;
+      const validSubView = sub && isValidSubView(sub) ? sub : null;
 
       if (migratedStage && isValidStage(migratedStage)) {
         setActiveStage(migratedStage);
-        setActiveSubView(sub && isValidSubView(sub) ? sub : null);
+        setActiveSubView(validSubView);
         // Update hash if migration occurred
         if (stage === "engine") {
-          window.location.hash = sub ? `scenario/${sub}` : "scenario";
+          window.location.hash = validSubView ? `scenario/${validSubView}` : "scenario";
         }
       } else {
         // Empty hash or unknown stage → default to policies

@@ -19,6 +19,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { WorkflowNavRail, type WorkflowNavRailProps } from "@/components/layout/WorkflowNavRail";
+import type { WorkspaceScenario } from "@/types/workspace";
 
 // ============================================================================
 // Helpers
@@ -37,6 +38,30 @@ function baseProps(overrides: Partial<WorkflowNavRailProps> = {}): WorkflowNavRa
     populations: [],
     explorerPopulationId: null,
     activeSubView: null,
+    ...overrides,
+  };
+}
+
+function makeScenario(overrides: Partial<WorkspaceScenario> = {}): WorkspaceScenario {
+  return {
+    id: "s1",
+    name: "S",
+    version: "1.0",
+    status: "ready",
+    isBaseline: false,
+    baselineRef: null,
+    portfolioName: null,
+    populationIds: [],
+    engineConfig: {
+      startYear: 2025,
+      endYear: 2030,
+      seed: null,
+      investmentDecisionsEnabled: false,
+      logitModel: null,
+      discountRate: 0.03,
+    },
+    policyType: null,
+    lastRunId: null,
     ...overrides,
   };
 }
@@ -63,14 +88,12 @@ describe("WorkflowNavRail - stage rendering", () => {
 describe("WorkflowNavRail - completion state", () => {
   it("shows stage numbers for all incomplete stages", () => {
     render(<WorkflowNavRail {...baseProps()} />);
-    // investment-decisions is complete when no active scenario (Story 26.1 logic)
-    // Stages 1, 2, 4, 5 are incomplete → stage numbers 1, 2, 4, 5 appear
+    // No active scenario means investment-decisions is not configured yet.
     expect(screen.getByText("1")).toBeInTheDocument();
     expect(screen.getByText("2")).toBeInTheDocument();
+    expect(screen.getByText("3")).toBeInTheDocument();
     expect(screen.getByText("4")).toBeInTheDocument();
     expect(screen.getByText("5")).toBeInTheDocument();
-    // investment-decisions (stage 3) shows checkmark instead of number
-    expect(screen.queryByText("3")).not.toBeInTheDocument();
   });
 
   it("shows checkmark for Population stage when selectedPopulationId is set", () => {
@@ -88,12 +111,7 @@ describe("WorkflowNavRail - completion state", () => {
   });
 
   it("shows checkmark for Policies stage when activeScenario.portfolioName is set (Story 20.3)", () => {
-    const activeScenario = {
-      id: "s1", name: "S", version: "1.0", status: "ready", isBaseline: false,
-      baselineRef: null, portfolioName: "p1", populationIds: [],
-      engineConfig: { startYear: 2025, endYear: 2030, seed: null, investmentDecisionsEnabled: false, logitModel: null as null, discountRate: 0.03 },
-      policyType: null, lastRunId: null,
-    };
+    const activeScenario = makeScenario({ portfolioName: "p1" });
     render(<WorkflowNavRail {...baseProps({ activeScenario })} />);
     // Policies (stage 1) is complete → no "1" text
     expect(screen.queryByText("1")).not.toBeInTheDocument();
@@ -114,6 +132,46 @@ describe("WorkflowNavRail - completion state", () => {
     expect(screen.queryByText("5")).not.toBeInTheDocument();
   });
 
+  it("does NOT show checkmark for Investment Decisions when there is no active scenario", () => {
+    render(<WorkflowNavRail {...baseProps({ activeScenario: null })} />);
+    expect(screen.getByText("3")).toBeInTheDocument();
+  });
+
+  it("shows checkmark for Investment Decisions when an active scenario has decisions disabled", () => {
+    render(<WorkflowNavRail {...baseProps({ activeScenario: makeScenario() })} />);
+    expect(screen.queryByText("3")).not.toBeInTheDocument();
+  });
+
+  it("shows checkmark for Investment Decisions when an enabled scenario has a logit model", () => {
+    const activeScenario = makeScenario({
+      engineConfig: {
+        startYear: 2025,
+        endYear: 2030,
+        seed: null,
+        investmentDecisionsEnabled: true,
+        logitModel: "multinomial_logit",
+        discountRate: 0.03,
+      },
+    });
+    render(<WorkflowNavRail {...baseProps({ activeScenario })} />);
+    expect(screen.queryByText("3")).not.toBeInTheDocument();
+  });
+
+  it("does NOT show checkmark for Investment Decisions when an enabled scenario has no logit model", () => {
+    const activeScenario = makeScenario({
+      engineConfig: {
+        startYear: 2025,
+        endYear: 2030,
+        seed: null,
+        investmentDecisionsEnabled: true,
+        logitModel: null,
+        discountRate: 0.03,
+      },
+    });
+    render(<WorkflowNavRail {...baseProps({ activeScenario })} />);
+    expect(screen.getByText("3")).toBeInTheDocument();
+  });
+
   it("marks active stage with data-active attribute", () => {
     render(<WorkflowNavRail {...baseProps({ activeStage: "population" })} />);
     const activeIndicator = screen.getByTestId("step-indicator-population");
@@ -132,12 +190,7 @@ describe("WorkflowNavRail - summary lines", () => {
   });
 
   it("shows active portfolio name as summary when activeScenario.portfolioName is set (Story 20.3)", () => {
-    const activeScenario = {
-      id: "s1", name: "S", version: "1.0", status: "ready", isBaseline: false,
-      baselineRef: null, portfolioName: "carbon-transition", populationIds: [],
-      engineConfig: { startYear: 2025, endYear: 2030, seed: null, investmentDecisionsEnabled: false, logitModel: null as null, discountRate: 0.03 },
-      policyType: null, lastRunId: null,
-    };
+    const activeScenario = makeScenario({ portfolioName: "carbon-transition" });
     render(<WorkflowNavRail {...baseProps({ activeScenario })} />);
     const summary = screen.getByTestId("summary-policies");
     expect(summary).toHaveTextContent("carbon-transition");
@@ -157,11 +210,14 @@ describe("WorkflowNavRail - summary lines", () => {
     render(<WorkflowNavRail {...baseProps()} />);
     expect(screen.queryByTestId("summary-policies")).not.toBeInTheDocument();
     expect(screen.queryByTestId("summary-population")).not.toBeInTheDocument();
-    // investment-decisions shows "Disabled" when no active scenario (Story 26.1 behavior)
-    expect(screen.getByTestId("summary-investment-decisions")).toBeInTheDocument();
-    expect(screen.getByTestId("summary-investment-decisions")).toHaveTextContent("Disabled");
+    expect(screen.queryByTestId("summary-investment-decisions")).not.toBeInTheDocument();
     expect(screen.queryByTestId("summary-scenario")).not.toBeInTheDocument();
     expect(screen.queryByTestId("summary-results")).not.toBeInTheDocument();
+  });
+
+  it("shows Disabled summary for Investment Decisions only when an active scenario disables decisions", () => {
+    render(<WorkflowNavRail {...baseProps({ activeScenario: makeScenario() })} />);
+    expect(screen.getByTestId("summary-investment-decisions")).toHaveTextContent("Disabled");
   });
 });
 

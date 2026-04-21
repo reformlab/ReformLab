@@ -62,10 +62,11 @@ function isComplete(
       );
     case "investment-decisions":
       // Story 26.2 will implement proper completion logic
-      // For now, stage is complete when no active scenario, or decisions are disabled, or configured
-      return !activeScenario ||
-             !activeScenario.engineConfig.investmentDecisionsEnabled ||
-             activeScenario.engineConfig.logitModel !== null;
+      // Until the dedicated configuration surface lands, a real scenario must
+      // exist before this stage can be considered complete.
+      return activeScenario !== null &&
+             (!activeScenario.engineConfig.investmentDecisionsEnabled ||
+              activeScenario.engineConfig.logitModel !== null);
     case "scenario":
       return activeScenario !== null;
     case "results":
@@ -105,7 +106,8 @@ function getSummary(
     }
     case "investment-decisions": {
       // Story 26.2 will implement proper summary
-      if (!activeScenario?.engineConfig.investmentDecisionsEnabled) {
+      if (!activeScenario) return null;
+      if (!activeScenario.engineConfig.investmentDecisionsEnabled) {
         return "Disabled";
       }
       return activeScenario.engineConfig.logitModel ?? null;

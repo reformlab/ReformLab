@@ -9,11 +9,17 @@
  * - Gradient header removed (AC-1 brand compliance)
  * - Hash routing defaults and invalid hash handling (AC-4)
  */
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import App from "@/App";
 import { AppProvider } from "@/contexts/AppContext";
+import {
+  HAS_LAUNCHED_KEY,
+  SCENARIO_STORAGE_KEY,
+  STAGE_STORAGE_KEY,
+} from "@/hooks/useScenarioPersistence";
+import { createDemoScenario } from "@/data/demo-scenario";
 
 vi.mock("@/api/auth", () => ({ login: vi.fn() }));
 vi.mock("@/api/populations", () => ({
@@ -33,6 +39,7 @@ vi.mock("@/api/runs", () => ({ runScenario: vi.fn() }));
 vi.mock("@/api/indicators", () => ({ getIndicators: vi.fn(), comparePortfolios: vi.fn() }));
 vi.mock("@/api/decisions", () => ({ getDecisionSummary: vi.fn() }));
 vi.mock("@/api/exports", () => ({ exportCsv: vi.fn(), exportParquet: vi.fn() }));
+vi.mock("@/api/categories", () => ({ listCategories: vi.fn() }));
 
 import { login } from "@/api/auth";
 import { listPopulations } from "@/api/populations";
@@ -40,6 +47,7 @@ import { listTemplates, getTemplate } from "@/api/templates";
 import { listResults } from "@/api/results";
 import { listPortfolios } from "@/api/portfolios";
 import { listDataSources, listMergeMethods } from "@/api/data-fusion";
+import { listCategories } from "@/api/categories";
 
 function renderApp() {
   return render(
@@ -47,6 +55,12 @@ function renderApp() {
       <App />
     </AppProvider>,
   );
+}
+
+function seedReturningUser(stage = "policies") {
+  localStorage.setItem(HAS_LAUNCHED_KEY, "true");
+  localStorage.setItem(SCENARIO_STORAGE_KEY, JSON.stringify(createDemoScenario()));
+  localStorage.setItem(STAGE_STORAGE_KEY, stage);
 }
 
 describe("App", () => {
@@ -67,6 +81,7 @@ describe("App", () => {
     vi.mocked(listPortfolios).mockResolvedValue([]);
     vi.mocked(listDataSources).mockResolvedValue({});
     vi.mocked(listMergeMethods).mockResolvedValue([]);
+    vi.mocked(listCategories).mockResolvedValue([]);
   });
 
   it("shows password prompt when not authenticated", () => {
@@ -162,11 +177,106 @@ describe("App", () => {
     });
 
     // Navigate to population stage via hash — Story 20.4: library is default entry point
-    window.location.hash = "#population";
-    window.dispatchEvent(new HashChangeEvent("hashchange"));
+    act(() => {
+      window.location.hash = "#population";
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
 
     await waitFor(() => {
       expect(screen.getAllByText("Population Library").length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it("migrates legacy #engine hash to #scenario", async () => {
+    seedReturningUser();
+    vi.mocked(login).mockResolvedValueOnce({ token: "test-token" });
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.type(screen.getByPlaceholderText(/password/i), "secret");
+    await user.click(screen.getByRole("button", { name: /enter/i }));
+
+    await waitFor(() => {
+      expect(window.location.hash).toBe("#policies");
+    });
+
+    act(() => {
+      window.location.hash = "#engine";
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
+
+    await waitFor(() => {
+      expect(window.location.hash).toBe("#scenario");
+    });
+    expect(screen.getAllByText("Scenario Configuration").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("preserves valid subviews when migrating legacy #engine hash", async () => {
+    seedReturningUser();
+    vi.mocked(login).mockResolvedValueOnce({ token: "test-token" });
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.type(screen.getByPlaceholderText(/password/i), "secret");
+    await user.click(screen.getByRole("button", { name: /enter/i }));
+
+    await waitFor(() => {
+      expect(window.location.hash).toBe("#policies");
+    });
+
+    act(() => {
+      window.location.hash = "#engine/decisions";
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
+
+    await waitFor(() => {
+      expect(window.location.hash).toBe("#scenario/decisions");
+    });
+  });
+
+  it("drops invalid subviews when migrating legacy #engine hash", async () => {
+    seedReturningUser();
+    vi.mocked(login).mockResolvedValueOnce({ token: "test-token" });
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.type(screen.getByPlaceholderText(/password/i), "secret");
+    await user.click(screen.getByRole("button", { name: /enter/i }));
+
+    await waitFor(() => {
+      expect(window.location.hash).toBe("#policies");
+    });
+
+    act(() => {
+      window.location.hash = "#engine/not-a-real-subview";
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
+
+    await waitFor(() => {
+      expect(window.location.hash).toBe("#scenario");
+    });
+  });
+
+  it("leaves canonical #scenario hash unchanged", async () => {
+    seedReturningUser();
+    vi.mocked(login).mockResolvedValueOnce({ token: "test-token" });
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.type(screen.getByPlaceholderText(/password/i), "secret");
+    await user.click(screen.getByRole("button", { name: /enter/i }));
+
+    await waitFor(() => {
+      expect(window.location.hash).toBe("#policies");
+    });
+
+    act(() => {
+      window.location.hash = "#scenario";
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
+
+    await waitFor(() => {
+      expect(window.location.hash).toBe("#scenario");
     });
   });
 });
