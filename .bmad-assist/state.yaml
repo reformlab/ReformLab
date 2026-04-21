@@ -1,6 +1,6 @@
-current_epic: 25
-current_story: '25.6'
-current_phase: dev_story
+current_epic: 26
+current_story: '26.1'
+current_phase: create_story
 completed_stories:
 - '25.3'
 - '25.4'
