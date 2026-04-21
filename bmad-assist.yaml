@@ -86,6 +86,8 @@ phase_models:
   code_review:
     - provider: claude-subprocess
       model: sonnet                    # First reviewer
+      model_name: glm-4.7              # Display name shown in logs instead of "sonnet"
+      settings: ~/.claude/glm.json       # Claude CLI settings file (permissions, allowed tools, etc.)
     - provider: codex
       model: gpt-5.3-codex             # Second reviewer with deep reasoning
       reasoning_effort: high

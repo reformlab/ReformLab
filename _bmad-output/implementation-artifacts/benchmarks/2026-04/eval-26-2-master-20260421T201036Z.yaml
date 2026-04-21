@@ -1,0 +1,51 @@
+record_id: 358af6bb-2837-459a-9832-d543b1e0861d
+created_at: '2026-04-21T20:10:36.853723+00:00'
+workflow:
+  id: create-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 26
+  story_num: 2
+  title: Story 26.2
+  complexity_flags: {}
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: master
+  role_id: null
+  session_id: 6812f8de-8103-4b2a-a451-e4d89d80f88d
+execution:
+  start_time: '2026-04-21T20:08:37.596825Z'
+  end_time: '2026-04-21T20:10:36.819813Z'
+  duration_ms: 119222
+  input_tokens: 0
+  output_tokens: 0
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 4702
+  heading_count: 6
+  list_depth_max: 2
+  code_block_count: 0
+  sections_detected:
+  - 'Story 26.2: Extract Investment Decisions into a dedicated Stage 3 with skip-when-disabled routing'
+  - 'Story 26.2: Extract Investment Decisions into a dedicated Stage 3 with skip-when-disabled routing'
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 8d240adfb223
+findings: null
+reasoning: null
+linguistic: null
+quality: null
+consensus: null
+ground_truth: null
+custom: null
