@@ -109,7 +109,7 @@ describe("validationChecks — Story 22.6", () => {
       });
       const result = logitModelRequiredCheck.fn(ctx);
       expect(result.passed).toBe(false);
-      expect(result.message).toBe("Investment decisions require a logit model. Configure in Stage 3.");
+      expect(result.message).toBe("Investment decisions require a logit model. Go to Stage 3 (Investment Decisions).");
       expect(result.severity).toBe("error");
     });
   });
@@ -166,7 +166,7 @@ describe("validationChecks — Story 22.6", () => {
       });
       const result = tasteParametersRequiredCheck.fn(ctx);
       expect(result.passed).toBe(false);
-      expect(result.message).toBe("Investment decisions require taste parameters. Configure in Stage 3.");
+      expect(result.message).toBe("Investment decisions require taste parameters. Go to Stage 3 (Investment Decisions).");
       expect(result.severity).toBe("error");
     });
 
@@ -185,7 +185,7 @@ describe("validationChecks — Story 22.6", () => {
       });
       const result = tasteParametersRequiredCheck.fn(ctx);
       expect(result.passed).toBe(false);
-      expect(result.message).toBe("Investment decisions require taste parameters. Configure in Stage 3.");
+      expect(result.message).toBe("Investment decisions require taste parameters. Go to Stage 3 (Investment Decisions).");
     });
 
     it("errors when investment decisions enabled with out-of-bounds values", () => {
@@ -203,7 +203,7 @@ describe("validationChecks — Story 22.6", () => {
       });
       const result = tasteParametersRequiredCheck.fn(ctx);
       expect(result.passed).toBe(false);
-      expect(result.message).toBe("Investment decisions require taste parameters. Configure in Stage 3.");
+      expect(result.message).toBe("Investment decisions require taste parameters. Go to Stage 3 (Investment Decisions).");
     });
 
     it("accepts all values within slider bounds", () => {

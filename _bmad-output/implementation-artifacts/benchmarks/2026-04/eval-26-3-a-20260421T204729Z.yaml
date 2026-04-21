@@ -1,0 +1,133 @@
+record_id: cb8c92cb-1e60-48e7-a7ad-716765834139
+created_at: '2026-04-21T20:47:29.861190+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 26
+  story_num: 3
+  title: Story 26.3
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-04-21T20:44:43.706685Z'
+  end_time: '2026-04-21T20:46:34.006685Z'
+  duration_ms: 110300
+  input_tokens: 0
+  output_tokens: 5315
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 21263
+  heading_count: 37
+  list_depth_max: 2
+  code_block_count: 12
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 15.1'
+  - 🎯 Ruthless Story Validation 26.3
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Runtime Mode Type System Mismatch
+  - 2. Missing Runtime Mode Persistence Strategy
+  - 3. Validation Navigation Callback Chain Undefined
+  - 4. Data Fusion Population Origin Undefined
+  - 5. RunSummaryPanel Props Signature Incomplete
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Primary Population Helper Edge Cases
+  - 2. Missing OriginBadge Import
+  - 3. Secondary Population Section Rename Clarification
+  - 4. Test Helper for Stage Navigation
+  - ✨ Optimizations (Nice to Have)
+  - 1. Memoization for Runtime Mode Lookup
+  - 2. Section Ordering Consistency
+  - 🤖 LLM Optimization Improvements
+  - 1. Code Sample Boilerplate Reduction
+  - 2. Validation Message Pattern Specified as Regex
+  - 3. Rename Strategy Simplified
+  - 'Rename files (git will detect as rename):'
+  - 'Then: update component name, docstring, imports'
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 08c84c8458b7
+findings:
+  total_count: 17
+  by_severity:
+    critical: 5
+    major: 4
+    minor: 5
+    nit: 3
+  by_category:
+    security: 0
+    performance: 1
+    correctness: 6
+    completeness: 1
+    clarity: 7
+    testability: 2
+  has_fix_count: 17
+  has_location_count: 14
+  has_evidence_count: 8
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 8
+  confidence_phrases_count: 5
+linguistic:
+  avg_sentence_length: 21.672131147540984
+  vocabulary_richness: 0.2972768532526475
+  flesch_reading_ease: 11.20582466504004
+  vague_terms_count: 3
+  formality_score: 0.75
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.82
+  evidence_quality: 0.47
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false

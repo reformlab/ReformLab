@@ -50,7 +50,7 @@ const portfolioSelectedCheck: ValidationCheck = {
     const passed = typeof ctx.scenario?.portfolioName === "string" && ctx.scenario.portfolioName.length > 0;
     return {
       passed,
-      message: passed ? "" : "No portfolio selected. Go to Stage 1 to compose a portfolio.",
+      message: passed ? "" : "No portfolio selected. Go to Stage 1 (Policies) to compose a portfolio.",
       severity: "error",
     };
   },
@@ -64,7 +64,7 @@ const populationSelectedCheck: ValidationCheck = {
     const passed = (ctx.scenario?.populationIds ?? []).some((id) => id.trim().length > 0);
     return {
       passed,
-      message: passed ? "" : "No population selected. Go to Stage 2 to select a population.",
+      message: passed ? "" : "No population selected. Go to Stage 2 (Population) to select a population.",
       severity: "error",
     };
   },
@@ -81,10 +81,10 @@ const timeHorizonValidCheck: ValidationCheck = {
     }
     const { startYear, endYear } = cfg;
     if (startYear >= endYear) {
-      return { passed: false, message: "End year must be greater than start year.", severity: "error" };
+      return { passed: false, message: "End year must be greater than start year. Adjust time horizon in this stage.", severity: "error" };
     }
     if (endYear - startYear > 50) {
-      return { passed: false, message: "Time horizon exceeds 50 years — reduce the range.", severity: "error" };
+      return { passed: false, message: "Time horizon exceeds 50 years — reduce the range. Adjust time horizon in this stage.", severity: "error" };
     }
     return { passed: true, message: "", severity: "error" };
   },
@@ -124,7 +124,7 @@ const logitModelRequiredCheck: ValidationCheck = {
     if (!hasValidModel) {
       return {
         passed: false,
-        message: "Investment decisions require a logit model. Configure in Stage 3.",
+        message: "Investment decisions require a logit model. Go to Stage 3 (Investment Decisions).",
         severity: "error",
       };
     }
@@ -146,7 +146,7 @@ const tasteParametersRequiredCheck: ValidationCheck = {
     if (!params) {
       return {
         passed: false,
-        message: "Investment decisions require taste parameters. Configure in Stage 3.",
+        message: "Investment decisions require taste parameters. Go to Stage 3 (Investment Decisions).",
         severity: "error",
       };
     }
@@ -159,7 +159,7 @@ const tasteParametersRequiredCheck: ValidationCheck = {
     if (!hasPriceSensitivity || !hasRangeAnxiety || !hasEnvPreference) {
       return {
         passed: false,
-        message: "Investment decisions require taste parameters. Configure in Stage 3.",
+        message: "Investment decisions require taste parameters. Go to Stage 3 (Investment Decisions).",
         severity: "error",
       };
     }

@@ -16,7 +16,7 @@ import { ResultsOverviewScreen } from "@/components/screens/ResultsOverviewScree
 import { PoliciesStageScreen } from "@/components/screens/PoliciesStageScreen";
 import { PopulationStageScreen } from "@/components/screens/PopulationStageScreen";
 import { InvestmentDecisionsStageScreen } from "@/components/screens/InvestmentDecisionsStageScreen";
-import { EngineStageScreen } from "@/components/screens/EngineStageScreen";
+import { ScenarioStageScreen } from "@/components/screens/ScenarioStageScreen";
 import { WorkflowNavRail } from "@/components/layout/WorkflowNavRail";
 import { MobileStageSwitcher } from "@/components/layout/MobileStageSwitcher";
 import { Toaster } from "@/components/ui/sonner";
@@ -208,7 +208,7 @@ function Workspace() {
         />
       ) : null}
       {activeStage === "investment-decisions" ? <InvestmentDecisionsStageScreen /> : null}
-      {activeStage === "scenario" ? <EngineStageScreen /> : null}
+      {activeStage === "scenario" ? <ScenarioStageScreen /> : null}
       {activeStage === "results" ? resultsContent : null}
     </>
   );

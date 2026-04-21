@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 Lucas Vivier
-/** EngineStageScreen — Stage 4: Scenario Configuration.
+/** ScenarioStageScreen — Stage 4: Scenario Configuration.
  *
- * Two-column layout: left config form (time horizon, population, seed,
- * discount rate) + right panel (RunSummaryPanel + ValidationGate).
+ * Two-column layout: left config form (inherited population, time horizon,
+ * seed, discount rate) + right panel (RunSummaryPanel + ValidationGate).
  * Toolbar shows scenario name (editable), Save, and Clone.
  *
  * Story 20.5 — AC-1, AC-2, AC-3, AC-4.
  * Story 26.2 — AC-3: Investment decisions moved to dedicated Stage 3.
+ * Story 26.3 — AC-1, AC-2, AC-3, AC-7: Renamed from EngineStageScreen,
+ * added inherited population summary and runtime summary.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -16,9 +18,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import { useAppState } from "@/contexts/AppContext";
 import { RunSummaryPanel } from "@/components/engine/RunSummaryPanel";
 import { ValidationGate } from "@/components/engine/ValidationGate";
+import { OriginBadge } from "@/components/population/OriginBadge";
 import { formatLogitModelLabel } from "@/lib/utils";
 import type { EngineConfig } from "@/types/workspace";
 
@@ -26,7 +30,7 @@ import type { EngineConfig } from "@/types/workspace";
 // Component
 // ============================================================================
 
-export function EngineStageScreen() {
+export function ScenarioStageScreen() {
   const {
     activeScenario,
     updateScenarioField,
@@ -37,7 +41,6 @@ export function EngineStageScreen() {
     populations,
     dataFusionResult,
     portfolios,
-    setSelectedPopulationId,
   } = useAppState();
 
   // Local state — initialize from scenario (handles reload when scenario already has 2 populations)
@@ -47,8 +50,8 @@ export function EngineStageScreen() {
   // Depends only on scenario identity — not on populationIds.length — to avoid
   // resetting state while the user is interacting with the secondary dropdown.
   useEffect(() => {
-    setHasSecondary((activeScenario?.populationIds?.length ?? 0) > 1); // eslint-disable-line react-hooks/exhaustive-deps
-  }, [activeScenario?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+    setHasSecondary((activeScenario?.populationIds?.length ?? 0) > 1);
+  }, [activeScenario?.id]);
 
   // ============================================================================
   // Population list — hook must be before early return
@@ -69,6 +72,42 @@ export function EngineStageScreen() {
     dataFusionResult,
     portfolios,
   }), [activeScenario, populations, dataFusionResult, portfolios]);
+
+  // ============================================================================
+  // Primary population helper — Story 26.3
+  // ============================================================================
+
+  const primaryPopulation = useMemo(() => {
+    const primaryId = activeScenario?.populationIds?.[0];
+    // Guard: no ID or empty string
+    if (!primaryId || primaryId.trim() === "") return null;
+
+    // Check dataFusionResult first (synthetic origin)
+    if (primaryId === "data-fusion-result" && dataFusionResult) {
+      return {
+        id: "data-fusion-result",
+        name: "Fused Population",
+        households: dataFusionResult.summary.record_count,
+        origin: "generated" as const,
+      };
+    }
+
+    // Check built-in/uploaded populations
+    return populations.find((p) => p.id === primaryId) ?? null;
+  }, [activeScenario?.populationIds, populations, dataFusionResult]);
+
+  // ============================================================================
+  // Runtime mode helper — Story 26.3
+  // ============================================================================
+
+  const lastRuntimeMode = useMemo(() => {
+    // If scenario has lastRunRuntimeMode stored, use it
+    if (activeScenario?.lastRunRuntimeMode) {
+      return activeScenario.lastRunRuntimeMode;
+    }
+    // Fallback: null means no historical replay badge
+    return null;
+  }, [activeScenario?.lastRunRuntimeMode]);
 
   // ============================================================================
   // Null state
@@ -100,12 +139,6 @@ export function EngineStageScreen() {
 
   const primaryId = activeScenario.populationIds[0] ?? "";
   const secondaryId = activeScenario.populationIds[1] ?? "";
-
-  const handlePrimaryPopChange = (id: string) => {
-    const ids = id ? (hasSecondary && secondaryId ? [id, secondaryId] : [id]) : [];
-    updateScenarioField("populationIds", ids);
-    setSelectedPopulationId(id);
-  };
 
   const handleSecondaryPopChange = (id: string) => {
     updateScenarioField("populationIds", [primaryId, id]);
@@ -193,6 +226,72 @@ export function EngineStageScreen() {
         <div className="flex-1 overflow-y-auto p-6 space-y-6 min-w-0">
           <h2 className="text-xl font-semibold text-slate-900">Scenario Configuration</h2>
 
+          {/* Inherited Primary Population — Story 26.3 */}
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-slate-700">Primary Population</h3>
+              <span className="text-xs text-slate-400">Inherited from Stage 2</span>
+            </div>
+
+            {primaryPopulation ? (
+              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-slate-900">{primaryPopulation.name}</span>
+                    <OriginBadge origin={primaryPopulation.origin} />
+                  </div>
+                  <p className="text-xs text-slate-600">
+                    {primaryPopulation.households.toLocaleString()} households
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs text-blue-600 hover:text-blue-700 px-2"
+                  onClick={() => navigateTo("population")}
+                >
+                  Change in Stage 2
+                </Button>
+              </div>
+            ) : (
+              <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                <p className="text-sm text-amber-800">No population selected.</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-2 h-7 text-xs"
+                  onClick={() => navigateTo("population")}
+                >
+                  Go to Stage 2 to select a population
+                </Button>
+              </div>
+            )}
+          </section>
+
+          <Separator />
+
+          {/* Runtime — Story 26.3 */}
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold text-slate-700">Runtime</h3>
+            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
+              {/* Always show Live OpenFisca - this is the current execution mode */}
+              <Badge variant="outline" className="text-xs border-emerald-600 text-emerald-700">
+                Live OpenFisca
+              </Badge>
+              <p className="text-xs text-slate-600 flex-1">
+                Live execution uses OpenFisca engine for real-time policy calculations.
+              </p>
+              {/* Optional: Replay badge indicates historical mode of last run */}
+              {lastRuntimeMode === "replay" && (
+                <Badge variant="outline" className="text-xs border-amber-600 text-amber-700">
+                  Replay
+                </Badge>
+              )}
+            </div>
+          </section>
+
+          <Separator />
+
           {/* Time Horizon */}
           <section className="space-y-3">
             <h3 className="text-sm font-semibold text-slate-700">Time Horizon</h3>
@@ -235,27 +334,10 @@ export function EngineStageScreen() {
 
           <Separator />
 
-          {/* Population */}
+          {/* Sensitivity Population (Optional) — Story 26.3 */}
           <section className="space-y-3">
-            <h3 className="text-sm font-semibold text-slate-700">Population</h3>
+            <h3 className="text-sm font-semibold text-slate-700">Sensitivity Population (Optional)</h3>
             <div className="space-y-2">
-              <div className="space-y-1">
-                <label className="text-xs text-slate-500">Primary population</label>
-                <select
-                  className="w-full rounded border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400"
-                  value={primaryId}
-                  aria-label="Primary population"
-                  onChange={(e) => handlePrimaryPopChange(e.target.value)}
-                >
-                  <option value="">— Select population —</option>
-                  {allPopulations.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} ({p.households.toLocaleString()})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
               {hasSecondary && (
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
@@ -396,10 +478,12 @@ export function EngineStageScreen() {
             populations={populations}
             portfolios={portfolios}
             dataFusionResult={dataFusionResult}
+            runtime_mode={lastRuntimeMode}
           />
           <ValidationGate
             context={validationContext}
             onRun={() => navigateTo("results", "runner")}
+            onStageNavigate={(stage) => navigateTo(stage)}
             runLoading={false}
           />
         </div>

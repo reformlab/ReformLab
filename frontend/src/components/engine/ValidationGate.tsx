@@ -8,6 +8,7 @@
  * check fails.
  *
  * Story 20.5 — AC-3, AC-4, AC-5.
+ * Story 26.3 — AC-5, AC-6: Added stage navigation support.
  */
 
 import { useMemo, useState } from "react";
@@ -19,6 +20,7 @@ import {
   type ValidationContext,
   type ValidationCheckResult,
 } from "./validationChecks";
+import type { StageKey } from "@/types/workspace";
 
 // ============================================================================
 // Types
@@ -28,13 +30,50 @@ interface ValidationGateProps {
   context: ValidationContext;
   onRun: () => void;
   runLoading: boolean;
+  onStageNavigate?: (stage: StageKey) => void;  // Story 26.3
+}
+
+// Stage mapping for navigation — Story 26.3
+const STAGE_KEY_MAP: Record<number, StageKey> = {
+  1: "policies",
+  2: "population",
+  3: "investment-decisions",
+  4: "scenario",
+  5: "results",
+};
+
+// Parse stage references from messages and wrap in clickable links — Story 26.3
+function parseStageLinks(message: string, onStageNavigate?: (stage: StageKey) => void): React.ReactNode {
+  if (!onStageNavigate) return message;
+
+  // Match "Stage 1", "Stage 2", etc. and wrap in clickable links
+  const parts = message.split(/(Stage \d)/g);
+  return parts.map((part, i) => {
+    const match = part.match(/Stage (\d)/);
+    if (match) {
+      const stageNum = parseInt(match[1], 10);
+      const stageKey = STAGE_KEY_MAP[stageNum];
+      if (stageKey) {
+        return (
+          <button
+            key={i}
+            className="text-blue-600 underline hover:text-blue-700"
+            onClick={() => onStageNavigate(stageKey)}
+          >
+            {part}
+          </button>
+        );
+      }
+    }
+    return part;
+  });
 }
 
 // ============================================================================
 // Component
 // ============================================================================
 
-export function ValidationGate({ context, onRun, runLoading }: ValidationGateProps) {
+export function ValidationGate({ context, onRun, runLoading, onStageNavigate }: ValidationGateProps) {
   const [memoryCheckResult, setMemoryCheckResult] = useState<ValidationCheckResult | null>(null);
   const [memoryLoading, setMemoryLoading] = useState(false);
 
@@ -130,7 +169,7 @@ export function ValidationGate({ context, onRun, runLoading }: ValidationGatePro
                 </span>
                 {!result.passed && !isPending && result.message && (
                   <p className={`text-xs mt-0.5 ${result.severity === "error" ? "text-red-600" : "text-amber-600"}`}>
-                    {result.message}
+                    {parseStageLinks(result.message, onStageNavigate)}
                   </p>
                 )}
                 {isPending && (

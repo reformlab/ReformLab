@@ -3,6 +3,7 @@
 /**
  * Unit tests for ValidationGate component.
  * Story 20.5 — AC-3, AC-4.
+ * Story 26.3 — AC-5, AC-6: Stage navigation support.
  */
 
 import { render, screen, waitFor } from "@testing-library/react";
@@ -198,6 +199,48 @@ describe("ValidationGate — Story 20.5", () => {
         expect(screen.getByText(/memory may be insufficient/i)).toBeInTheDocument();
       });
       expect(onRun).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Story 26.3 — AC-5, AC-6: Stage navigation", () => {
+    it("renders stage references as clickable links when onStageNavigate provided", () => {
+      const ctx = makeContext({ scenario: { ...makeContext().scenario!, portfolioName: null } });
+      const onStageNavigate = vi.fn();
+      render(<ValidationGate context={ctx} onRun={vi.fn()} runLoading={false} onStageNavigate={onStageNavigate} />);
+      // Should show validation error with "Stage 1" in the text
+      expect(screen.getByText(/no portfolio selected/i)).toBeInTheDocument();
+    });
+
+    it("clicking 'Stage 1' link calls onStageNavigate with 'policies'", async () => {
+      const user = userEvent.setup();
+      const ctx = makeContext({ scenario: { ...makeContext().scenario!, portfolioName: null } });
+      const onStageNavigate = vi.fn();
+      render(<ValidationGate context={ctx} onRun={vi.fn()} runLoading={false} onStageNavigate={onStageNavigate} />);
+      // Find and click the Stage 1 button
+      const stageButton = screen.getByRole("button", { name: /stage 1/i });
+      await user.click(stageButton);
+      expect(onStageNavigate).toHaveBeenCalledWith("policies");
+    });
+
+    it("clicking 'Stage 2' link calls onStageNavigate with 'population'", async () => {
+      const user = userEvent.setup();
+      const ctx = makeContext({ scenario: { ...makeContext().scenario!, populationIds: [] } });
+      const onStageNavigate = vi.fn();
+      render(<ValidationGate context={ctx} onRun={vi.fn()} runLoading={false} onStageNavigate={onStageNavigate} />);
+      // Find and click the Stage 2 button
+      const stageButton = screen.getByRole("button", { name: /stage 2/i });
+      await user.click(stageButton);
+      expect(onStageNavigate).toHaveBeenCalledWith("population");
+    });
+
+    it("clicking Run button with all checks passing calls onRun callback", async () => {
+      const user = userEvent.setup();
+      const onRun = vi.fn();
+      render(<ValidationGate context={makeContext()} onRun={onRun} runLoading={false} />);
+      await user.click(screen.getByRole("button", { name: /run simulation/i }));
+      await waitFor(() => {
+        expect(onRun).toHaveBeenCalledTimes(1);
+      });
     });
   });
 });

@@ -12,9 +12,9 @@ so that I can review my complete scenario configuration before running, understa
 
 ## Acceptance Criteria
 
-1. Given Stage 4 (Scenario) renders, then inherited primary population appears as read-only context with name, origin badge (Built-in / Generated / Uploaded), household count, and link back to Population.
-2. Given standard web execution, then the runtime summary shows "Live OpenFisca" as the default path and does not show a runtime selector.
-3. Given a replay/demo flow is active (when runtime mode is explicitly set to "replay" in a demo context), then the runtime summary shows explicit replay/demo status badge.
+1. Given Stage 4 (Scenario) renders, then inherited primary population appears as read-only context with name, origin badge (Built-in / Generated / Uploaded), household count, and link back to Population. The primary population must NOT be editable in Stage 4.
+2. Given standard web execution, then the runtime summary shows "Live OpenFisca" as the default path and does not show a runtime selector. This is the current execution mode, not derived from last run metadata.
+3. Given a demo/replay scenario is loaded (activeScenario.lastRunId exists and the corresponding result has runtime_mode="replay"), then the runtime summary shows an additional "Replay" badge to indicate the historical mode of the last run.
 4. Given investment decisions are enabled, then Scenario summarizes them (Enabled with model name) and links to Stage 3 for edits (already done in Story 26.2).
 5. Given validation fails, then each failing check identifies the owning stage ("Go to Stage X") and the validation gate includes clickable links to navigate to the owning stage.
 6. Given all validation checks pass, then the Ready to Run action is enabled and clicking it navigates to the runner sub-view.
@@ -32,6 +32,11 @@ so that I can review my complete scenario configuration before running, understa
   - [ ] Replace `<EngineStageScreen />` with `<ScenarioStageScreen />`
   - [ ] Update import from EngineStageScreen to ScenarioStageScreen
 
+- [ ] Extend WorkspaceScenario type for runtime mode persistence (AC: #2, #3)
+  - [ ] Add `lastRunRuntimeMode?: "live" | "replay"` field to WorkspaceScenario interface in types/workspace.ts
+  - [ ] This field stores the historical runtime mode of the last run for replay badge display
+  - [ ] NOTE: ResultListItem does not have runtime_mode field, so we store it in scenario metadata
+
 - [ ] Add inherited primary population summary section (AC: #1)
   - [ ] Add new section at top of left panel: "Inherited Primary Population"
   - [ ] Show population name as read-only text
@@ -43,10 +48,11 @@ so that I can review my complete scenario configuration before running, understa
 
 - [ ] Add runtime summary section (AC: #2, #3)
   - [ ] Add new section after population: "Runtime"
-  - [ ] Show "Live OpenFisca" as default with emerald badge for standard web execution
-  - [ ] For demo/replay flow (check if activeScenario.lastRunId exists and run has runtime_mode="replay"), show "Replay" badge with amber color
+  - [ ] Show "Live OpenFisca" as the current execution mode with emerald badge (always shown, never changes)
+  - [ ] For replay badge (historical only): check if activeScenario.lastRunId exists, then fetch the result detail to get runtime_mode, show additional "Replay" badge with amber color if runtime_mode="replay"
   - [ ] Add helper text: "Live execution uses OpenFisca engine for real-time policy calculations"
   - [ ] Do NOT add a runtime selector — the standard path is always live
+  - [ ] NOTE: ResultListItem does not have runtime_mode field; must fetch ResultDetailResponse or store runtime_mode in scenario metadata
 
 - [ ] Update investment decisions summary (AC: #4)
   - [ ] Already done in Story 26.2 — verify link to Stage 3 works
@@ -61,14 +67,16 @@ so that I can review my complete scenario configuration before running, understa
 
 - [ ] Update ValidationGate component with stage navigation (AC: #5, #6)
   - [ ] Make validation check messages render with clickable stage links
-  - [ ] Add onStageNavigate callback prop to ValidationGate
-  - [ ] Parse stage references from messages (e.g., "Go to Stage 1") and wrap in clickable links
+  - [ ] Add onStageNavigate callback prop to ValidationGate: `onStageNavigate?: (stage: StageKey) => void`
+  - [ ] Parse stage references from messages (e.g., "Go to Stage 1", "Stage 2") and wrap in clickable links
+  - [ ] Stage mapping: 1→"policies", 2→"population", 3→"investment-decisions", 4→"scenario", 5→"results"
   - [ ] Ensure Ready to Run button navigates to "results" with subView "runner"
 
 - [ ] Update RunSummaryPanel for Scenario stage (AC: #2, #3, #4)
-  - [ ] Add runtime summary row showing "Live OpenFisca" or "Replay" badge
-  - [ ] Show runtime mode based on lastRunId lookup from results list
-  - [ ] If no lastRunId, show "Live OpenFisca" as default
+  - [ ] Add runtime summary row showing "Live OpenFisca" badge (always shown)
+  - [ ] Add optional "Replay" badge when lastRuntimeMode is "replay" (historical metadata only)
+  - [ ] Pass runtime_mode prop to RunSummaryPanel: `runtime_mode?: "live" | "replay" | null`
+  - [ ] If no lastRunId or runtime_mode is null, show only "Live OpenFisca" badge
   - [ ] Keep existing summary rows (Type, Policy Set, Population, Time horizon, Inv. decisions, Seed, Estimated runs)
 
 - [ ] Update help content for Scenario stage (AC: #1, #2, #3)
@@ -105,7 +113,8 @@ so that I can review my complete scenario configuration before running, understa
   - [ ] Verify time horizon controls still work
   - [ ] Verify seed controls still work
   - [ ] Verify discount rate slider still works
-  - [ ] Verify population dropdowns still work (primary + sensitivity)
+  - [ ] Verify sensitivity population dropdown still works (secondary population only)
+  - [ ] Verify primary population is now read-only (not editable)
   - [ ] Verify validation checks still execute correctly
   - [ ] Verify RunSummaryPanel still displays correctly
 
@@ -226,12 +235,14 @@ so that I can review my complete scenario configuration before running, understa
 <section className="space-y-3">
   <h3 className="text-sm font-semibold text-slate-700">Runtime</h3>
   <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
+    {/* Always show Live OpenFisca - this is the current execution mode */}
     <Badge variant="outline" className="text-xs border-emerald-600 text-emerald-700">
       Live OpenFisca
     </Badge>
     <p className="text-xs text-slate-600 flex-1">
       Live execution uses OpenFisca engine for real-time policy calculations.
     </p>
+    {/* Optional: Replay badge indicates historical mode of last run */}
     {lastRuntimeMode === "replay" && (
       <Badge variant="outline" className="text-xs border-amber-600 text-amber-700">
         Replay
@@ -241,33 +252,45 @@ so that I can review my complete scenario configuration before running, understa
 </section>
 ```
 
+**Runtime Mode Detection:**
+```typescript
+// Get historical runtime mode from last run (for replay badge display only)
+// NOTE: ResultListItem does NOT have runtime_mode field.
+// Two approaches:
+// 1. Store runtime_mode in WorkspaceScenario.lastRunRuntimeMode when run completes
+// 2. Fetch ResultDetailResponse using API to get runtime_mode from manifest
+// For this story, use approach 1: add optional field to WorkspaceScenario type
+const lastRuntimeMode = useMemo(() => {
+  // If scenario has lastRunRuntimeMode stored, use it
+  if (activeScenario?.lastRunRuntimeMode) {
+    return activeScenario.lastRunRuntimeMode;
+  }
+  // Fallback: null means no historical replay badge
+  return null;
+}, [activeScenario?.lastRunRuntimeMode]);
+```
+
 4. **Helper to Find Primary Population:**
 ```typescript
 // Find primary population from populations or dataFusionResult
 const primaryPopulation = useMemo(() => {
-  const primaryId = activeScenario?.populationIds[0];
-  if (!primaryId) return null;
+  const primaryId = activeScenario?.populationIds?.[0];
+  // Guard: no ID or empty string
+  if (!primaryId || primaryId.trim() === "") return null;
 
-  // Check dataFusionResult first
+  // Check dataFusionResult first (synthetic origin)
   if (primaryId === "data-fusion-result" && dataFusionResult) {
     return {
       id: "data-fusion-result",
       name: "Fused Population",
       households: dataFusionResult.summary.record_count,
-      origin: "generated" as const,
+      origin: "generated" as const,  // Synthetic — dataFusionResult has no origin field
     };
   }
 
   // Check built-in/uploaded populations
   return populations.find((p) => p.id === primaryId) ?? null;
 }, [activeScenario?.populationIds, populations, dataFusionResult]);
-
-// Get runtime mode from last run (for replay badge)
-const lastRuntimeMode = useMemo(() => {
-  if (!activeScenario?.lastRunId) return null;
-  const lastRun = results.find((r) => r.run_id === activeScenario.lastRunId);
-  return lastRun?.runtime_mode ?? null;
-}, [activeScenario?.lastRunId, results]);
 ```
 
 5. **Remove Population Editing Section:**
@@ -324,8 +347,28 @@ interface RunSummaryPanelProps {
   populations: Population[];
   portfolios: PortfolioListItem[];
   dataFusionResult: GenerationResult | null;
-  results: ResultListItem[];  // Add results prop for runtime lookup
-  runtime_mode?: "live" | "replay" | null;  // Or derive from scenario.lastRunId
+  runtime_mode?: "live" | "replay" | null;  // Historical runtime mode for replay badge display
+}
+
+// Usage in ScenarioStageScreen:
+<RunSummaryPanel
+  scenario={activeScenario}
+  populations={populations}
+  portfolios={portfolios}
+  dataFusionResult={dataFusionResult}
+  runtime_mode={lastRuntimeMode}  // Passed from useMemo computed value
+/>
+```
+
+### File: `frontend/src/types/workspace.ts` - Type Extension Needed
+
+**Add Runtime Mode Field to WorkspaceScenario:**
+```typescript
+// In WorkspaceScenario interface, add:
+interface WorkspaceScenario {
+  // ... existing fields ...
+  lastRunId?: string;
+  lastRunRuntimeMode?: "live" | "replay";  // ADD THIS: Store historical runtime mode for replay badge
 }
 ```
 
@@ -366,6 +409,15 @@ interface ValidationGateProps {
   onStageNavigate?: (stage: StageKey) => void;  // Story 26.3
 }
 
+// Stage mapping for navigation
+const STAGE_KEY_MAP: Record<number, StageKey> = {
+  1: "policies",
+  2: "population",
+  3: "investment-decisions",
+  4: "scenario",
+  5: "results",
+};
+
 // In component body, parse stage references from messages:
 const parseStageLinks = (message: string) => {
   // Match "Stage 1", "Stage 2", etc. and wrap in clickable links
@@ -373,12 +425,12 @@ const parseStageLinks = (message: string) => {
   return parts.map((part, i) => {
     if (part.match(/Stage \d/)) {
       const stageNum = parseInt(part.split(" ")[1], 10);
-      const stageKey: StageKey[] = ["", "policies", "population", "investment-decisions", "scenario"];
+      const stageKey = STAGE_KEY_MAP[stageNum];
       return (
         <button
           key={i}
           className="text-blue-600 underline hover:text-blue-700"
-          onClick={() => props.onStageNavigate?.(stageKey[stageNum])}
+          onClick={() => props.onStageNavigate?.(stageKey)}
         >
           {part}
         </button>
@@ -387,6 +439,14 @@ const parseStageLinks = (message: string) => {
     return part;
   });
 };
+
+// In ScenarioStageScreen, pass the callback:
+<ValidationGate
+  context={validationContext}
+  onRun={() => navigateTo("results", "runner")}
+  onStageNavigate={(stage) => navigateTo(stage)}
+  runLoading={false}
+/>
 ```
 
 ### File: `frontend/src/components/help/help-content.ts` (MODIFY)
@@ -397,9 +457,9 @@ const parseStageLinks = (message: string) => {
   title: "Scenario Configuration",
   summary: "Review your inherited primary population, configure time horizon and execution settings, and run cross-stage validation. This stage is the integration gate before execution.",
   tips: [
-    "Primary population is inherited from Stage 2 — click 'Change in Stage 2' to modify your selection",
-    "Runtime shows 'Live OpenFisca' for standard web execution — no runtime selector needed",
-    "Replay badge appears for demo/replay runs from saved scenarios",
+    "Primary population is inherited from Stage 2 and cannot be edited in Stage 4 — click 'Change in Stage 2' to modify your selection",
+    "Runtime always shows 'Live OpenFisca' as the current execution mode — no runtime selector needed",
+    "A 'Replay' badge may appear to indicate that your last run used replay mode — this is historical information only",
     "Sensitivity population is optional — add it for comparison analysis",
     "Set Start and End year — the 'N-year projection' label updates automatically. Max 50 years.",
     "Investment decisions show a read-only summary here — click 'Configure in Stage 3' to edit them",
@@ -410,8 +470,8 @@ const parseStageLinks = (message: string) => {
     "The memory preflight check runs when you click Run — it estimates if your population fits in RAM.",
   ],
   concepts: [
-    { term: "Inherited Population", definition: "The primary population selected in Stage 2 that will be used for this scenario. Shown as read-only context in Stage 4 to prevent accidental changes during final review." },
-    { term: "Runtime Mode", definition: "The execution mode for the simulation: 'live' uses OpenFisca for real-time calculations (standard web path), 'replay' reuses cached results from a previous run (demo/debug path)." },
+    { term: "Inherited Population", definition: "The primary population selected in Stage 2 that will be used for this scenario. Shown as read-only context in Stage 4 to prevent accidental changes during final review. Not editable in Stage 4 — use 'Change in Stage 2' link to modify." },
+    { term: "Runtime Mode", definition: "The current execution mode is always 'Live OpenFisca' for standard web execution. An optional 'Replay' badge may appear to indicate that the scenario's last run used replay mode (historical metadata only)." },
     { term: "Cross-stage validation", definition: "A checklist that verifies portfolio, population, time horizon, investment decisions, and memory constraints are all satisfied before the simulation can run." },
     { term: "Sensitivity Population", definition: "An optional second population used for comparison analysis. Running with two populations executes the same scenario on both populations for side-by-side results." },
   ],
@@ -427,8 +487,8 @@ Required test coverage for Story 26.3:
 - Test inherited population "Change in Stage 2" link navigates to population stage
 - Test null population state shows "Go to Stage 2" button
 - Test data fusion result shows as "Generated" origin badge
-- Test runtime summary shows "Live OpenFisca" badge by default
-- Test runtime summary shows "Replay" badge when lastRunId has runtime_mode="replay"
+- Test runtime summary shows "Live OpenFisca" badge (always shown)
+- Test runtime summary shows additional "Replay" badge when lastRunRuntimeMode is "replay"
 - Test sensitivity population section still works (add/remove secondary)
 - Test time horizon controls still work
 - Test seed controls still work
@@ -440,9 +500,9 @@ Required test coverage for Story 26.3:
 **Frontend Component Tests:** `frontend/src/components/engine/__tests__/RunSummaryPanel.test.tsx` (MODIFY)
 
 Added test coverage:
-- Test runtime summary row shows "Live OpenFisca" badge
-- Test runtime summary row shows "Replay" badge when runtime_mode="replay"
-- Test runtime summary shows default when no runtime_mode provided
+- Test runtime summary row shows "Live OpenFisca" badge (always present)
+- Test runtime summary row shows additional "Replay" badge when runtime_mode="replay"
+- Test runtime summary shows only "Live OpenFisca" badge when runtime_mode is null or undefined
 
 **Frontend Component Tests:** `frontend/src/components/engine/__tests__/ValidationGate.test.tsx` (MODIFY)
 
@@ -493,10 +553,11 @@ Added test coverage:
    - Update tests for inherited population rendering
 
 3. **Phase 3: Add Runtime Summary Section** (AC-2, AC-3)
-   - Add lastRuntimeMode helper (useMemo from results)
+   - Add lastRunRuntimeMode to WorkspaceScenario type (workspace.ts)
+   - Add lastRuntimeMode helper (useMemo from activeScenario.lastRunRuntimeMode)
    - Add runtime summary section to left panel
-   - Show "Live OpenFisca" badge by default
-   - Show "Replay" badge when applicable
+   - Show "Live OpenFisca" badge (always shown)
+   - Show additional "Replay" badge when lastRuntimeMode is "replay"
    - Update tests for runtime summary rendering
 
 4. **Phase 4: Update Validation with Stage Navigation** (AC-5, AC-6)
@@ -531,14 +592,16 @@ Added test coverage:
 - All imports and tests are updated in one pass
 
 **Population Display:**
-- Primary population is read-only inherited context
+- Primary population is read-only inherited context (no editing controls)
 - Uses OriginBadge component (existing) for visual differentiation
 - "Change in Stage 2" link for easy navigation back
-- Data fusion result shows as "Generated" origin
+- Data fusion result shows as "Generated" origin (synthetic — dataFusionResult doesn't have an origin field)
 
 **Runtime Display:**
-- Standard path: Always show "Live OpenFisca" (emerald badge)
-- Replay path: Show "Replay" badge (amber) when lastRunId has runtime_mode="replay"
+- Current execution mode: Always show "Live OpenFisca" (emerald badge) — this never changes
+- Historical replay badge: Show additional "Replay" badge (amber) when the scenario's last run used replay mode
+- The replay badge is informational only — it shows historical metadata, not current execution state
+- Detection: Check `activeScenario.lastRunRuntimeMode` if available; requires adding this field to WorkspaceScenario type
 - No runtime selector added — intentional per UX spec
 
 **Sensitivity Population:**
@@ -556,6 +619,7 @@ Added test coverage:
 To avoid scope creep and conflicts with future stories:
 - **Simulation mode controls** (annual vs horizon_step) — not implemented in this story, future work
 - **Runtime selector UI** — intentionally NOT added, standard path is always live
+- **Runtime mode API changes** — this story only adds UI display of historical replay badge; backend/runtime mode persistence is handled separately
 - **Calibration UI** — separate feature, out of scope
 - **Population schema validation** — handled in Stage 2, not duplicated here
 - **Manifest viewer** — Story 26.4 will add dedicated manifest viewing in Stage 5

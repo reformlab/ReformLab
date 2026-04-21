@@ -3,9 +3,10 @@
 /** Pre-flight scenario summary card for Stage 3 (Scenario).
  *
  * Compact read-only summary of what will be computed: scenario name, portfolio,
- * population(s), time horizon, investment decisions, seed, and estimated runs.
+ * population(s), time horizon, investment decisions, seed, runtime, and estimated runs.
  *
  * Story 20.5 — AC-3.
+ * Story 26.3 — AC-2, AC-3: Added runtime summary row.
  */
 
 import type { WorkspaceScenario } from "@/types/workspace";
@@ -24,13 +25,14 @@ interface RunSummaryPanelProps {
   populations: Population[];
   portfolios: PortfolioListItem[];
   dataFusionResult: GenerationResult | null;
+  runtime_mode?: "live" | "replay" | null;  // Story 26.3: Historical runtime mode for replay badge display
 }
 
 // ============================================================================
 // Component
 // ============================================================================
 
-export function RunSummaryPanel({ scenario, populations, portfolios, dataFusionResult }: RunSummaryPanelProps) {
+export function RunSummaryPanel({ scenario, populations, portfolios, dataFusionResult, runtime_mode }: RunSummaryPanelProps) {
   if (!scenario) {
     return (
       <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
@@ -145,6 +147,21 @@ export function RunSummaryPanel({ scenario, populations, portfolios, dataFusionR
         <span className="text-slate-500">Seed</span>
         <span className="text-slate-700">
           {seed !== null ? `Fixed (seed: ${seed})` : "Random"}
+        </span>
+      </div>
+
+      {/* Runtime — Story 26.3 */}
+      <div className="flex justify-between">
+        <span className="text-slate-500">Runtime</span>
+        <span className="flex items-center gap-2">
+          <Badge variant="outline" className="text-xs border-emerald-600 text-emerald-700">
+            Live OpenFisca
+          </Badge>
+          {runtime_mode === "replay" && (
+            <Badge variant="outline" className="text-xs border-amber-600 text-amber-700">
+              Replay
+            </Badge>
+          )}
         </span>
       </div>
 
