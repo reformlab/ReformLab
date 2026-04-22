@@ -231,7 +231,7 @@ describe("getPopulationShortName()", () => {
 // ============================================================================
 
 describe("generateScenarioSuggestion()", () => {
-  it("uses portfolio name with population in parentheses", () => {
+  it("uses portfolio name with population using em dash separator (Story 26.6)", () => {
     const composition = makeComposition(["carbon-tax-flat"]);
     const result = generateScenarioSuggestion(
       "my-portfolio",
@@ -240,7 +240,7 @@ describe("generateScenarioSuggestion()", () => {
       mockTemplates,
       composition,
     );
-    expect(result).toBe("my-portfolio (FR Synthetic 2024)");
+    expect(result).toBe("my-portfolio — FR Synthetic 2024");
   });
 
   it("uses portfolio name only when no population selected", () => {
@@ -255,7 +255,7 @@ describe("generateScenarioSuggestion()", () => {
     expect(result).toBe("my-portfolio");
   });
 
-  it("generates from composition when portfolioName is null", () => {
+  it("generates from composition when portfolioName is null (Story 26.6)", () => {
     const composition = makeComposition(["carbon-tax-flat"]);
     const result = generateScenarioSuggestion(
       null,
@@ -264,10 +264,10 @@ describe("generateScenarioSuggestion()", () => {
       mockTemplates,
       composition,
     );
-    expect(result).toBe("carbon-tax-flat-rate (FR Synthetic 2024)");
+    expect(result).toBe("carbon-tax-flat-rate — FR Synthetic 2024");
   });
 
-  it("returns 'Untitled (population)' when no portfolio and empty composition", () => {
+  it("returns 'Untitled — population' when no portfolio and empty composition (Story 26.6)", () => {
     const result = generateScenarioSuggestion(
       null,
       "fr-synthetic-2024",
@@ -275,7 +275,7 @@ describe("generateScenarioSuggestion()", () => {
       mockTemplates,
       [],
     );
-    expect(result).toBe("Untitled (FR Synthetic 2024)");
+    expect(result).toBe("Untitled — FR Synthetic 2024");
   });
 
   it("returns 'Untitled Scenario' when no context at all", () => {
@@ -289,7 +289,7 @@ describe("generateScenarioSuggestion()", () => {
     expect(result).toBe("Untitled Scenario");
   });
 
-  it("handles 2-policy composition in scenario suggestion", () => {
+  it("handles 2-policy composition in scenario suggestion (Story 26.6)", () => {
     const composition = makeComposition(["carbon-tax-flat", "subsidy-energy"]);
     const result = generateScenarioSuggestion(
       null,
@@ -298,10 +298,10 @@ describe("generateScenarioSuggestion()", () => {
       mockTemplates,
       composition,
     );
-    expect(result).toBe("carbon-tax-flat-rate-plus-energy-efficiency-subsidy (FR Synthetic 2024)");
+    expect(result).toBe("carbon-tax-flat-rate-plus-energy-efficiency-subsidy — FR Synthetic 2024");
   });
 
-  it("handles 3+ policy composition in scenario suggestion", () => {
+  it("handles 3+ policy composition in scenario suggestion (Story 26.6)", () => {
     const composition = makeComposition(["carbon-tax-flat", "subsidy-energy", "feebate-vehicle"]);
     const result = generateScenarioSuggestion(
       null,
@@ -310,7 +310,63 @@ describe("generateScenarioSuggestion()", () => {
       mockTemplates,
       composition,
     );
-    expect(result).toBe("carbon-tax-flat-rate-plus-2-more (FR Synthetic 2024)");
+    expect(result).toBe("carbon-tax-flat-rate-plus-2-more — FR Synthetic 2024");
+  });
+
+  // Story 26.6 regression tests
+  it("returns 'Policy Set — Population' for full context (Story 26.6)", () => {
+    const result = generateScenarioSuggestion(
+      "Carbon Tax",
+      "fr-synthetic-2024",
+      mockPopulations,
+      mockTemplates,
+      [],
+    );
+    expect(result).toBe("Carbon Tax — FR Synthetic 2024");
+  });
+
+  it("returns 'Policy Set' for policy set only (Story 26.6)", () => {
+    const result = generateScenarioSuggestion(
+      "Carbon Tax",
+      "",
+      [],
+      mockTemplates,
+      [],
+    );
+    expect(result).toBe("Carbon Tax");
+  });
+
+  it("returns 'Untitled — Population' for population only (Story 26.6)", () => {
+    const result = generateScenarioSuggestion(
+      null,
+      "fr-synthetic-2024",
+      mockPopulations,
+      mockTemplates,
+      [],
+    );
+    expect(result).toBe("Untitled — FR Synthetic 2024");
+  });
+
+  it("returns 'Untitled Scenario' for no context (Story 26.6)", () => {
+    const result = generateScenarioSuggestion(
+      null,
+      "",
+      [],
+      mockTemplates,
+      [],
+    );
+    expect(result).toBe("Untitled Scenario");
+  });
+
+  it("handles template names with existing em dashes (Story 26.6)", () => {
+    const result = generateScenarioSuggestion(
+      "Carbon Tax — Flat Rate",
+      "fr-synthetic-2024",
+      mockPopulations,
+      mockTemplates,
+      [],
+    );
+    expect(result).toBe("Carbon Tax — Flat Rate — FR Synthetic 2024");
   });
 });
 
@@ -359,6 +415,12 @@ describe("generateScenarioCloneName()", () => {
     const existingNames = new Set<string>();
     const result = generateScenarioCloneName("My Scenario", existingNames);
     expect(result).toBe("My Scenario (copy)");
+  });
+
+  it("preserves em dash format when cloning (Story 26.6)", () => {
+    const existingNames = new Set<string>();
+    const result = generateScenarioCloneName("Carbon Tax — FR Synthetic 2024", existingNames);
+    expect(result).toBe("Carbon Tax — FR Synthetic 2024 (copy)");
   });
 
   it("appends ' (copy 2)' when ' (copy)' already exists", () => {

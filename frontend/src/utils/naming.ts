@@ -169,9 +169,11 @@ export function getPopulationShortName(population: Population): string {
 /**
  * Generate a deterministic scenario name suggestion from current context.
  *
+ * Story 26.6 — Uses em dash separator between policy set and population.
+ *
  * Naming algorithm:
- * - Has portfolio: portfolio.displayName + (population ? " (population.shortName)" : "")
- * - No portfolio: population ? "Untitled (population.shortName)" : "Untitled Scenario"
+ * - Has portfolio: portfolio.displayName + (population ? " — population.shortName" : "")
+ * - No portfolio: population ? "Untitled — population.shortName" : "Untitled Scenario"
  *
  * The portfolio.displayName follows this precedence:
  * 1. activeScenario.portfolioName (if set)
@@ -193,7 +195,7 @@ export function generateScenarioSuggestion(
   composition: readonly CompositionEntry[],
 ): string {
   const population = populations.find((p) => p.id === selectedPopulationId);
-  const populationPart = population ? ` (${getPopulationShortName(population)})` : "";
+  const populationPart = population ? ` — ${getPopulationShortName(population)}` : "";
 
   if (portfolioName) {
     // Use portfolio display name as base

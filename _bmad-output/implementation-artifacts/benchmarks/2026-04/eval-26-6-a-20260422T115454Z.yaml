@@ -1,0 +1,131 @@
+record_id: 66cd7dc6-37cd-477a-886e-3d7b90ec0d81
+created_at: '2026-04-22T11:54:54.584294+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 26
+  story_num: 6
+  title: Story 26.6
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-04-22T11:49:38.795107Z'
+  end_time: '2026-04-22T11:51:34.993107Z'
+  duration_ms: 116198
+  input_tokens: 0
+  output_tokens: 4508
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 18032
+  heading_count: 35
+  list_depth_max: 4
+  code_block_count: 14
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 7.6'
+  - 🎯 Ruthless Story Validation 26.6
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 7.6 → REJECT'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Missing Composition Fallback Case from Story Requirements
+  - 2. Incomplete Test Coverage List - Missing Tests That Need Updating
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Clarify AC-2 "Sensible Fallback Suffix"
+  - 2. Add Migration Strategy for Existing Saved Scenarios
+  - 3. Verify Template Name Em Dash Handling
+  - 4. Add Integration Test for ScenarioStageScreen Name Input
+  - 5. Document Character Encoding Considerations
+  - 6. Clarify Line Number References May Be Stale
+  - ✨ Optimizations (Nice to Have)
+  - 1. All Three Lines Using populationPart Need Updating
+  - 2. Verify Manual Edit Freeze Works With New Format
+  - 🤖 LLM Optimization Improvements
+  - 1. Dev Notes Current State Analysis Can Be Condensed
+  - 2. Redundant Auto-Update Effect Code Snippet
+  - 3. Verbose Implementation Strategy Can Be Combined
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 1df7b0c911ea
+findings:
+  total_count: 13
+  by_severity:
+    critical: 2
+    major: 6
+    minor: 2
+    nit: 3
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 1
+    completeness: 7
+    clarity: 4
+    testability: 4
+  has_fix_count: 13
+  has_location_count: 8
+  has_evidence_count: 6
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 15
+  confidence_phrases_count: 1
+linguistic:
+  avg_sentence_length: 37.301587301587304
+  vocabulary_richness: 0.25148936170212766
+  flesch_reading_ease: 9.264757819401808
+  vague_terms_count: 2
+  formality_score: 0.75
+  sentiment: neutral
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.75
+  evidence_quality: 0.6
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
