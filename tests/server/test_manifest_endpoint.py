@@ -259,7 +259,8 @@ class TestGetManifest:
 
         assert data["run_id"] == run_id
         assert data["manifest_id"] == "550e8400-e29b-41d4-a716-446655440001"
-        assert data["status"] == "metadata_only"
+        # Status should preserve the actual run status, not be corrupted
+        assert data["status"] == "completed"
         assert data["metadata_only"] is True
         # Should include warning about missing panel data
         assert any("Panel data not available" in w for w in data["warnings"])

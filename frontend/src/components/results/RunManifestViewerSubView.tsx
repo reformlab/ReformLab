@@ -7,7 +7,7 @@
  * Handles loading, error, and empty states.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 import { RunManifestViewer } from "@/components/results/RunManifestViewer";
 import { getManifest } from "@/api/results";
@@ -22,6 +22,8 @@ export function RunManifestViewerSubView({ runId, onBack }: RunManifestViewerSub
   const [manifest, setManifest] = useState<ManifestResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Track the latest runId to ignore stale responses
+  const runIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!runId) {
@@ -30,18 +32,26 @@ export function RunManifestViewerSubView({ runId, onBack }: RunManifestViewerSub
       return;
     }
 
+    // Update ref to this runId
+    runIdRef.current = runId;
     setLoading(true);
     setError(null);
 
     getManifest(runId)
       .then((data) => {
-        setManifest(data);
-        setLoading(false);
+        // Only update state if this is still the current runId
+        if (runIdRef.current === runId) {
+          setManifest(data);
+          setLoading(false);
+        }
       })
       .catch((err) => {
-        console.error("Failed to load manifest:", err);
-        setError(err instanceof Error ? err.message : "Failed to load manifest");
-        setLoading(false);
+        // Only update error state if this is still the current runId
+        if (runIdRef.current === runId) {
+          console.error("Failed to load manifest:", err);
+          setError(err instanceof Error ? err.message : "Failed to load manifest");
+          setLoading(false);
+        }
       });
   }, [runId]);
 

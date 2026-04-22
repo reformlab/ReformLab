@@ -410,7 +410,7 @@ async def get_manifest(
                 created_at=manifest.created_at,
                 started_at=meta.started_at if hasattr(meta, "started_at") else "",
                 finished_at=meta.finished_at if hasattr(meta, "finished_at") else "",
-                status="metadata_only",
+                status=meta.status if hasattr(meta, "status") else "completed",
                 engine_version=manifest.engine_version,
                 openfisca_version=manifest.openfisca_version,
                 adapter_version=manifest.adapter_version,
@@ -432,11 +432,16 @@ async def get_manifest(
                 calibration_assets=[dict(c) for c in manifest.calibration_assets],
                 validation_assets=[dict(v) for v in manifest.validation_assets],
                 evidence_summary=dict(manifest.evidence_summary),
-                runtime_mode=cast(Literal["live", "replay"], manifest.runtime_mode),
+                runtime_mode=cast(
+                    Literal["live", "replay"],
+                    manifest.runtime_mode if manifest.runtime_mode in ("live", "replay") else "live",
+                ),
                 population_id=manifest.population_id,
                 population_source=cast(
                     Literal["bundled", "uploaded", "generated"] | None,
-                    manifest.population_source or None,
+                    manifest.population_source
+                    if manifest.population_source in ("bundled", "uploaded", "generated")
+                    else None,
                 ),
                 metadata_only=True,
             )

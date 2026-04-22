@@ -1,0 +1,114 @@
+record_id: 4c6e86a4-2d23-4919-b6b3-063c19afe940
+created_at: '2026-04-22T11:10:18.518694+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 26
+  story_num: '4'
+  title: Story 26.4
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: true
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-04-22T11:07:40.536174Z'
+  end_time: '2026-04-22T11:09:15.153174Z'
+  duration_ms: 94617
+  input_tokens: 0
+  output_tokens: 2924
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 11699
+  heading_count: 14
+  list_depth_max: 2
+  code_block_count: 7
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: 8.3'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes & Readability
+  - ⚡ Performance & Scalability
+  - 🐛 Correctness & Safety
+  - 🔧 Maintainability Issues
+  - 🛠️ Suggested Fixes
+  - 1. Fix Hash Truncation Function
+  - 2. Add Safe JSON Stringify Helper
+  - 3. Add useEffect Cleanup
+  - 4. Extract Data Fetching to Custom Hook
+  - 5. Add Memoization for Large Manifests
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 713c5232f333
+findings:
+  total_count: 9
+  by_severity:
+    critical: 3
+    major: 5
+    minor: 1
+    nit: 0
+  by_category:
+    security: 1
+    performance: 2
+    correctness: 4
+    completeness: 0
+    clarity: 1
+    testability: 1
+  has_fix_count: 9
+  has_location_count: 9
+  has_evidence_count: 0
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: false
+  uses_conditionals: true
+  uncertainty_phrases_count: 1
+  confidence_phrases_count: 0
+linguistic:
+  avg_sentence_length: 48.074074074074076
+  vocabulary_richness: 0.3459167950693374
+  flesch_reading_ease: -10.237981214829489
+  vague_terms_count: 0
+  formality_score: 0.75
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.95
+  evidence_quality: 0.1
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: true
+    requires_migration: false
+  phase: code-review
+  file_count: 30
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

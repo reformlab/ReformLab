@@ -51,6 +51,14 @@ function truncateHash(hash: string): string {
   return hash.length > 16 ? `${hash.slice(0, 8)}...${hash.slice(-8)}` : hash;
 }
 
+function safeStringify(value: unknown): string {
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return "(unserializable value)";
+  }
+}
+
 function runtimeModeBadge(mode: "live" | "replay" | "") {
   if (!mode) return null;
   const variant = mode === "live" ? "success" : "warning";
@@ -281,7 +289,7 @@ export function RunManifestViewer({ manifest, loading, error, onClose }: RunMani
                 {Object.entries(manifest.policy).map(([key, value]) => (
                   <React.Fragment key={key}>
                     <dt className="text-slate-500">{key}</dt>
-                    <dd className="font-mono text-slate-800">{JSON.stringify(value)}</dd>
+                    <dd className="font-mono text-slate-800">{safeStringify(value)}</dd>
                   </React.Fragment>
                 ))}
               </dl>
@@ -306,7 +314,7 @@ export function RunManifestViewer({ manifest, loading, error, onClose }: RunMani
                     {manifest.assumptions.map((a, i) => (
                       <tr key={i} className="border-b border-slate-100">
                         <td className="py-1 text-slate-700">{a.key}</td>
-                        <td className="py-1 font-mono text-slate-800">{JSON.stringify(a.value)}</td>
+                        <td className="py-1 font-mono text-slate-800">{safeStringify(a.value)}</td>
                         <td className="py-1 text-slate-600">{a.source}</td>
                         <td className="py-1 text-slate-600">{a.is_default ? "Yes" : "No"}</td>
                       </tr>
@@ -351,7 +359,7 @@ export function RunManifestViewer({ manifest, loading, error, onClose }: RunMani
                 {Object.entries(manifest.taste_parameters).map(([key, value]) => (
                   <React.Fragment key={key}>
                     <dt className="text-slate-500">{key}</dt>
-                    <dd className="font-mono text-slate-800">{JSON.stringify(value)}</dd>
+                    <dd className="font-mono text-slate-800">{safeStringify(value)}</dd>
                   </React.Fragment>
                 ))}
               </dl>
@@ -442,62 +450,65 @@ export function RunManifestViewer({ manifest, loading, error, onClose }: RunMani
       </ManifestSection>
 
       {/* Evidence Section */}
-      {(manifest.evidence_assets.length > 0 ||
-        manifest.calibration_assets.length > 0 ||
-        manifest.validation_assets.length > 0 ||
-        hasEntries(manifest.evidence_summary)) && (
-        <ManifestSection title="Evidence & Assets" icon={<FileText className="h-4 w-4 text-slate-500" />} defaultOpen={false}>
-          <div className="space-y-3">
-            {hasEntries(manifest.evidence_summary) && (
-              <div>
-                <p className="text-xs font-semibold uppercase text-slate-500 mb-1">Evidence Summary</p>
-                <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                  {Object.entries(manifest.evidence_summary).map(([key, value]) => (
-                    <React.Fragment key={key}>
-                      <dt className="text-slate-500">{key}</dt>
-                      <dd className="font-mono text-slate-800">{JSON.stringify(value)}</dd>
-                    </React.Fragment>
-                  ))}
-                </dl>
-              </div>
-            )}
-            {manifest.evidence_assets.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold uppercase text-slate-500 mb-1">Evidence Assets</p>
-                <ul className="text-xs text-slate-700 space-y-0.5">
-                  {manifest.evidence_assets.map((asset, i) => (
-                    <li key={i} className="font-mono">{JSON.stringify(asset)}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {manifest.calibration_assets.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold uppercase text-slate-500 mb-1">Calibration Assets</p>
-                <ul className="text-xs text-slate-700 space-y-0.5">
-                  {manifest.calibration_assets.map((asset, i) => (
-                    <li key={i} className="font-mono">{JSON.stringify(asset)}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {manifest.validation_assets.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold uppercase text-slate-500 mb-1">Validation Assets</p>
-                <ul className="text-xs text-slate-700 space-y-0.5">
-                  {manifest.validation_assets.map((asset, i) => (
-                    <li key={i} className="font-mono">{JSON.stringify(asset)}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        </ManifestSection>
-      )}
+      <ManifestSection title="Evidence & Assets" icon={<FileText className="h-4 w-4 text-slate-500" />} defaultOpen={false}>
+        <div className="space-y-3">
+          {hasEntries(manifest.evidence_summary) ? (
+            <div>
+              <p className="text-xs font-semibold uppercase text-slate-500 mb-1">Evidence Summary</p>
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                {Object.entries(manifest.evidence_summary).map(([key, value]) => (
+                  <React.Fragment key={key}>
+                    <dt className="text-slate-500">{key}</dt>
+                    <dd className="font-mono text-slate-800">{safeStringify(value)}</dd>
+                  </React.Fragment>
+                ))}
+              </dl>
+            </div>
+          ) : (
+            <p className="text-xs text-slate-400">No evidence summary available.</p>
+          )}
+          {manifest.evidence_assets.length > 0 ? (
+            <div>
+              <p className="text-xs font-semibold uppercase text-slate-500 mb-1">Evidence Assets</p>
+              <ul className="text-xs text-slate-700 space-y-0.5">
+                {manifest.evidence_assets.map((asset, i) => (
+                  <li key={i} className="font-mono">{safeStringify(asset)}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {manifest.calibration_assets.length > 0 ? (
+            <div>
+              <p className="text-xs font-semibold uppercase text-slate-500 mb-1">Calibration Assets</p>
+              <ul className="text-xs text-slate-700 space-y-0.5">
+                {manifest.calibration_assets.map((asset, i) => (
+                  <li key={i} className="font-mono">{safeStringify(asset)}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {manifest.validation_assets.length > 0 ? (
+            <div>
+              <p className="text-xs font-semibold uppercase text-slate-500 mb-1">Validation Assets</p>
+              <ul className="text-xs text-slate-700 space-y-0.5">
+                {manifest.validation_assets.map((asset, i) => (
+                  <li key={i} className="font-mono">{safeStringify(asset)}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {!hasEntries(manifest.evidence_summary) &&
+           manifest.evidence_assets.length === 0 &&
+           manifest.calibration_assets.length === 0 &&
+           manifest.validation_assets.length === 0 && (
+            <p className="text-xs text-slate-400">No evidence or assets available.</p>
+          )}
+        </div>
+      </ManifestSection>
 
       {/* Warnings Section */}
-      {manifest.warnings.length > 0 && (
-        <ManifestSection title="Warnings" icon={<AlertTriangle className="h-4 w-4 text-amber-500" />} defaultOpen={true}>
+      <ManifestSection title="Warnings" icon={<AlertTriangle className="h-4 w-4 text-amber-500" />} defaultOpen={true}>
+        {manifest.warnings.length > 0 ? (
           <ul className="text-xs text-slate-700 space-y-1">
             {manifest.warnings.map((warning, i) => (
               <li key={i} className="flex items-start gap-2">
@@ -506,8 +517,10 @@ export function RunManifestViewer({ manifest, loading, error, onClose }: RunMani
               </li>
             ))}
           </ul>
-        </ManifestSection>
-      )}
+        ) : (
+          <p className="text-xs text-slate-400">No warnings.</p>
+        )}
+      </ManifestSection>
     </section>
   );
 }

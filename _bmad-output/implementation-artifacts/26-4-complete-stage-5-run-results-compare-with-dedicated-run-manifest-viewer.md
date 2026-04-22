@@ -1177,3 +1177,92 @@ Status set to: ready-for-dev
 ### Change Log
 
 - 2026-04-22: Resumed stopped Story 26.4 implementation, completed backend manifest endpoint, frontend manifest viewer integration, Stage 5 empty state, tests, validation, and moved story to review.
+- 2026-04-22: Code review synthesis applied 6 fixes (JSON.stringify error handling, race condition guard, status semantics, enum validation, always-visible sections).
+
+<!--
+CODE_REVIEW_SYNTHESIS_START
+## Synthesis Summary
+6 issues verified, 4 false positives dismissed, 6 source code fixes applied.
+
+## Validations Quality
+- **Reviewer A (Adversarial):** Score 8.3 → Mixed quality. Identified several real issues (JSON.stringify crash risk, race condition) but also included false positives (test file claim, global state over-engineering).
+- **Reviewer B (Adversarial):** Score 9.3 → Good quality with strong AC analysis. Correctly identified status semantics corruption and unsafe enum casting. False positive on test file quality (file is complete).
+
+## Issues Verified (by severity)
+
+### Critical
+- **Issue: JSON.stringify() without error handling causes component crash on circular references** | **Source:** Reviewer A | **File:** frontend/src/components/results/RunManifestViewer.tsx (lines 284, 309, 354, 458, 469, 479, 489) | **Fix:** Added `safeStringify()` helper with try-catch block that returns "(unserializable value)" for circular references. Replaced all 7 `JSON.stringify()` calls with `safeStringify(value)`.
+
+- **Issue: useEffect lacks cleanup, potential state update on unmounted component** | **Source:** Reviewer A, Reviewer B | **File:** frontend/src/components/results/RunManifestViewerSubView.tsx (lines 26-46) | **Fix:** Added `runIdRef` to track the latest runId and ignore stale responses when the user navigates away before fetch completes. Guarded state updates with `if (runIdRef.current === runId)` checks.
+
+### High
+- **Issue: Status semantics corrupted in metadata-only response** | **Source:** Reviewer B | **File:** src/reformlab/server/routes/results.py (line 413) | **Fix:** Changed from `status="metadata_only"` to `status=meta.status if hasattr(meta, "status") else "completed"`. The `metadata_only` flag now correctly indicates degraded data state without corrupting the run lifecycle status.
+
+- **Issue: Unsafe cast of runtime_mode can cause 500 errors on invalid enum values** | **Source:** Reviewer B | **File:** src/reformlab/server/routes/results.py (line 435) | **Fix:** Added validation: `manifest.runtime_mode if manifest.runtime_mode in ("live", "replay") else "live"`. Ensures only valid enum values are returned, defaulting to "live" for corrupted data.
+
+- **Issue: Evidence and Warnings sections conditionally hidden instead of always visible** | **Source:** Reviewer B | **File:** frontend/src/components/results/RunManifestViewer.tsx (lines 445-510) | **Fix:** Removed conditional rendering of Evidence and Warnings sections. Now always render with explicit empty states: "No evidence or assets available." and "No warnings." for empty data. Updated corresponding tests to reflect new behavior.
+
+- **Issue: Unsafe cast of population_source without validation** | **Source:** Reviewer B | **File:** src/reformlab/server/routes/results.py (lines 437-439) | **Fix:** Added validation: `manifest.population_source if manifest.population_source in ("bundled", "uploaded", "generated") else None`. Ensures only valid enum values or null are returned.
+
+### Medium
+- **Issue: Performance - Object.keys()/entries() called on every render without memoization** | **Source:** Reviewer A | **File:** frontend/src/components/results/RunManifestViewer.tsx (lines 226, 241, 367, 424) | **Status:** Deferred - Not critical for this story scope. Memoization would benefit large manifests but adds complexity. Can be addressed in future optimization story.
+
+### Low
+- **Issue: Hash truncation returns 19 chars instead of documented 16 chars** | **Source:** Reviewer A | **File:** frontend/src/components/results/RunManifestViewer.tsx (line 51) | **Status:** Deferred - Current format (first 8 + "..." + last 8 = 19 chars) provides better UX by showing both start and end. Documentation note would clarify actual behavior.
+
+## Issues Dismissed
+
+- **Claimed Issue:** Test file has only "stray f" and is incomplete | **Raised by:** Reviewer B | **Dismissal Reason:** The test file is complete (513 lines) with comprehensive test coverage: 200 full manifest, 200 metadata_only, 404, 409, field serialization, exogenous series conversion, timestamps, population source, child manifests, and authentication tests.
+
+- **Claimed Issue:** AC1 broken - wrong empty-state predicate uses `runResult === null` | **Raised by:** Reviewer B | **Dismissal Reason:** The ResultsOverviewScreen shows the most recent run result. The empty state is correctly shown when `runResult === null` because that means no run has completed yet. The `results` array contains past runs, but the overview screen focuses on the active/current run result.
+
+- **Claimed Issue:** Global state over-engineering with `selectedResultForManifest` | **Raised by:** Reviewer A | **Dismissal Reason:** This pattern matches established AppContext state management in the codebase (e.g., `selectedComparisonRunIds`, `selectedPortfolioName`). Using URL params would require hash parsing complexity and doesn't align with the existing routing architecture.
+
+- **Claimed Issue:** SRP violation - RunManifestViewerSubView mixes data fetching with display | **Raised by:** Reviewer A | **Dismissal Reason:** Data-fetching wrapper components are a common React pattern. Extracting to a custom hook would add indirection without benefit for this simple use case. The component has a single responsibility: manifest sub-view orchestration.
+
+## Changes Applied
+
+**File:** frontend/src/components/results/RunManifestViewer.tsx
+**Change:** Added `safeStringify()` helper function to handle circular references and replaced all `JSON.stringify()` calls.
+
+**File:** frontend/src/components/results/RunManifestViewerSubView.tsx
+**Change:** Added `runIdRef` to guard against stale response updates.
+
+**File:** src/reformlab/server/routes/results.py
+**Change:** Fixed status semantics in metadata-only branch and added enum validation for runtime_mode and population_source.
+
+**File:** tests/server/test_manifest_endpoint.py
+**Change:** Updated test to reflect corrected status behavior.
+
+**File:** frontend/src/components/results/__tests__/RunManifestViewer.test.tsx
+**Change:** Updated tests to reflect always-visible Evidence and Warnings sections.
+
+## Deep Verify Integration
+Deep Verify did not produce findings for this story.
+
+## Files Modified
+- frontend/src/components/results/RunManifestViewer.tsx
+- frontend/src/components/results/RunManifestViewerSubView.tsx
+- frontend/src/components/results/__tests__/RunManifestViewer.test.tsx
+- src/reformlab/server/routes/results.py
+- tests/server/test_manifest_endpoint.py
+
+## Suggested Future Improvements
+- **Scope:** Performance optimization for large manifests | **Rationale:** Object.keys()/entries() on every render could cause jank for manifests with 100+ assumptions. Memoization with useMemo() would help but adds complexity. | **Effort:** Low-Medium
+
+## Test Results
+- Frontend: 39/39 tests passed (RunManifestViewer.test.tsx)
+- Backend: 10/10 tests passed (test_manifest_endpoint.py)
+- Typecheck: Passed
+- Lint: Passed (1 line length issue fixed)
+CODE_REVIEW_SYNTHESIS_END
+-->
+
+## Senior Developer Review (AI)
+
+### Review: 2026-04-22
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 8.8 (combined from 2 reviewers) → REJECT
+- **Issues Found:** 6 verified (2 Critical, 4 High)
+- **Issues Fixed:** 6 (all verified issues addressed)
+- **Action Items Created:** 0 (all issues resolved)

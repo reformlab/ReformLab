@@ -322,9 +322,10 @@ describe("RunManifestViewer", () => {
       expect(screen.getByText("Evidence Assets")).toBeInTheDocument();
     });
 
-    it("does not show evidence section when all arrays are empty", () => {
+    it("shows empty state when all evidence arrays are empty", async () => {
       render(<RunManifestViewer manifest={partialManifest()} />);
-      expect(screen.queryByText("Evidence & Assets")).not.toBeInTheDocument();
+      await userEvent.click(screen.getByText("Evidence & Assets"));
+      expect(screen.getByText(/No evidence or assets available/)).toBeInTheDocument();
     });
   });
 
@@ -335,9 +336,10 @@ describe("RunManifestViewer", () => {
       expect(screen.getByText("Warning message")).toBeInTheDocument();
     });
 
-    it("does not show warnings section when empty", () => {
+    it("shows empty state when warnings array is empty", () => {
       render(<RunManifestViewer manifest={mockManifest({ warnings: [] })} />);
-      expect(screen.queryByText("Warnings")).not.toBeInTheDocument();
+      expect(screen.getByText("Warnings")).toBeInTheDocument();
+      expect(screen.getByText(/No warnings/)).toBeInTheDocument();
     });
   });
 
