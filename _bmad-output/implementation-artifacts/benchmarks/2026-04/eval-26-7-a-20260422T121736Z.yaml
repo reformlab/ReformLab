@@ -1,0 +1,134 @@
+record_id: c276e2a4-de4f-449b-94d7-ddc976204a72
+created_at: '2026-04-22T12:17:36.320901+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 26
+  story_num: 7
+  title: Story 26.7
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-04-22T12:12:54.377611Z'
+  end_time: '2026-04-22T12:14:42.652611Z'
+  duration_ms: 108275
+  input_tokens: 0
+  output_tokens: 6407
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 25629
+  heading_count: 38
+  list_depth_max: 2
+  code_block_count: 13
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 7.8'
+  - 🎯 Ruthless Story Validation 26.7
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 7.8 → MAJOR REWORK'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. AC-6 is Fundamentally Untestable
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Define Performance Expectations
+  - 2. Specify Browser Compatibility
+  - 3. Specify Mock Data Requirements
+  - 4. Add AC-1 Specificity
+  - 5. Add AC-4 Warning Format Specification
+  - 6. Add AC-2 Context Preservation Specification
+  - 7. Add Edge Case Examples for Migration
+  - ✨ Optimizations (Nice to Have)
+  - 1. Reference Specific Mock Factories
+  - 2. Define Test Helper Reusability
+  - 3. Add Test Count Targets
+  - 🤖 LLM Optimization Improvements
+  - 1. Consolidate Verbose Implementation Strategy
+  - Implementation Order
+  - 2. Remove Redundant Story References
+  - 3. Consolidate Phase Descriptions
+  - Test Coverage by Acceptance Criterion
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 2b97275d17f7
+findings:
+  total_count: 14
+  by_severity:
+    critical: 1
+    major: 7
+    minor: 6
+    nit: 0
+  by_category:
+    security: 0
+    performance: 1
+    correctness: 0
+    completeness: 6
+    clarity: 6
+    testability: 8
+  has_fix_count: 10
+  has_location_count: 4
+  has_evidence_count: 14
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 19
+  confidence_phrases_count: 8
+linguistic:
+  avg_sentence_length: 27.629032258064516
+  vocabulary_richness: 0.22883829538820782
+  flesch_reading_ease: 16.698633333333362
+  vague_terms_count: 7
+  formality_score: 0.65
+  sentiment: mixed
+quality:
+  actionable_ratio: 0.93
+  specificity_score: 0.5
+  evidence_quality: 0.9
+  follows_template: true
+  internal_consistency: 0.95
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
