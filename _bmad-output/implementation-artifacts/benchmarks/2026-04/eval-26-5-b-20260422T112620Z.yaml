@@ -1,0 +1,136 @@
+record_id: b25fe900-7dfd-426a-8cd2-04394ca0664d
+created_at: '2026-04-22T11:26:20.183888+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 26
+  story_num: 5
+  title: Story 26.5
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: codex
+  model: gpt-5.3-codex
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-04-22T11:19:24.378696Z'
+  end_time: '2026-04-22T11:25:58.051696Z'
+  duration_ms: 393673
+  input_tokens: 0
+  output_tokens: 3807
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 15228
+  heading_count: 40
+  list_depth_max: 2
+  code_block_count: 8
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: **15.8**'
+  - 🎯 Ruthless Story Validation 26.5
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 15.8 → REJECT'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Missing Resolver Contract in Descriptor Spec
+  - 2. Household Count Requirement Cannot Be Met As Written
+  - 3. Stage 2 Card Actions Likely Regress for Folder Population
+  - 4. Descriptor Minimal Spec Risks Compare Endpoint Failures
+  - 5. Canonical vs Legacy Origin Is Confused in Requirements
+  - ⚡ Enhancement Opportunities (Should Add)
+  - '1. Make AC #1 Deterministic'
+  - 2. Add Measurable Performance Bound
+  - '3. Rewrite AC #6 to Existing Product Surface'
+  - 4. Declare Real Dependencies
+  - 5. Correct Test Plan Paths and Auth Pattern
+  - 6. Add End-to-End AC for Selection-to-Run Path
+  - ✨ Optimizations (Nice to Have)
+  - 1. Add Deterministic Data Generation Script
+  - 2. Reuse Existing Frontend Constants as Single Source of Truth
+  - 3. Focus Regression Tests on New Risk Surface
+  - 🤖 LLM Optimization Improvements
+  - 1. Fix Misleading Scope Statement
+  - 2. Correct Field Terminology Once
+  - 3. Remove Duplicate Frontend Verification Tasks
+  - 4. Condense Dev Notes Into “Must-Change vs Verify-Only”
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: c145c5923a40
+findings:
+  total_count: 14
+  by_severity:
+    critical: 5
+    major: 2
+    minor: 7
+    nit: 0
+  by_category:
+    security: 0
+    performance: 1
+    correctness: 7
+    completeness: 7
+    clarity: 7
+    testability: 2
+  has_fix_count: 15
+  has_location_count: 13
+  has_evidence_count: 9
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: false
+  uses_conditionals: true
+  uncertainty_phrases_count: 4
+  confidence_phrases_count: 4
+linguistic:
+  avg_sentence_length: 15.256
+  vocabulary_richness: 0.33350812794965917
+  flesch_reading_ease: 10.22924765974767
+  vague_terms_count: 2
+  formality_score: 0.65
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.85
+  evidence_quality: 0.7
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false

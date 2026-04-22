@@ -774,3 +774,115 @@ class TestParquetFileSupport:
 
         data = response.json()
         assert data["valid"] is True
+
+
+# =============================================================================
+# Story 26.5: Quick Test Population
+# =============================================================================
+
+
+class TestQuickTestPopulation:
+    """Tests for Quick Test Population — Story 26.5."""
+
+    def test_list_populations_includes_quick_test_population(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """AC-1: GET /api/populations includes Quick Test Population with correct metadata — Story 26.5."""
+        # Use the real data directory which includes quick-test-population
+        from pathlib import Path
+
+        repo_root = Path(__file__).parent.parent.parent
+        data_dir = repo_root / "data" / "populations"
+        monkeypatch.setenv("REFORMLAB_DATA_DIR", str(data_dir.parent))
+
+        # Recreate client to pick up new data directory
+        from reformlab.server.app import create_app
+        app = create_app()
+        client = TestClient(app)
+
+        # Authenticate
+        response = client.post("/api/auth/login", json={"password": "test-password-123"})
+        assert response.status_code == 200
+        token = response.json()["token"]
+        auth_headers = {"Authorization": f"Bearer {token}"}
+
+        response = client.get("/api/populations", headers=auth_headers)
+        assert response.status_code == 200
+
+        data = response.json()
+        assert "populations" in data
+        populations = data["populations"]
+
+        # Find Quick Test Population
+        quick_test = next((p for p in populations if p["id"] == "quick-test-population"), None)
+        assert quick_test is not None, "Quick Test Population should be in the list"
+        assert quick_test["name"] == "Quick Test Population"
+        assert quick_test["households"] == 100
+        assert quick_test["trust_status"] == "demo-only"
+        assert quick_test["origin"] == "built-in"  # Folder-based populations
+        assert quick_test["canonical_origin"] == "synthetic-public"
+        assert quick_test["access_mode"] == "bundled"
+
+    def test_quick_test_population_preview_works(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """AC-5: Quick Test Population preview endpoint works — Story 26.5."""
+        from pathlib import Path
+        repo_root = Path(__file__).parent.parent.parent
+        data_dir = repo_root / "data" / "populations"
+        monkeypatch.setenv("REFORMLAB_DATA_DIR", str(data_dir.parent))
+
+        # Recreate client to pick up new data directory
+        from reformlab.server.app import create_app
+        app = create_app()
+        client = TestClient(app)
+
+        # Authenticate
+        response = client.post("/api/auth/login", json={"password": "test-password-123"})
+        assert response.status_code == 200
+        token = response.json()["token"]
+        auth_headers = {"Authorization": f"Bearer {token}"}
+
+        response = client.get("/api/populations/quick-test-population/preview", headers=auth_headers)
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data["id"] == "quick-test-population"
+        assert data["total_rows"] == 100
+        assert len(data["columns"]) == 7  # household_id, person_id, age, income, energy_*
+
+    def test_quick_test_population_profile_works(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """AC-5: Quick Test Population profile endpoint works — Story 26.5."""
+        from pathlib import Path
+        repo_root = Path(__file__).parent.parent.parent
+        data_dir = repo_root / "data" / "populations"
+        monkeypatch.setenv("REFORMLAB_DATA_DIR", str(data_dir.parent))
+
+        # Recreate client to pick up new data directory
+        from reformlab.server.app import create_app
+        app = create_app()
+        client = TestClient(app)
+
+        # Authenticate
+        response = client.post("/api/auth/login", json={"password": "test-password-123"})
+        assert response.status_code == 200
+        token = response.json()["token"]
+        auth_headers = {"Authorization": f"Bearer {token}"}
+
+        response = client.get("/api/populations/quick-test-population/profile", headers=auth_headers)
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data["id"] == "quick-test-population"
+        assert len(data["columns"]) == 7

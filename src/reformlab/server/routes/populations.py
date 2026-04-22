@@ -100,17 +100,35 @@ def _get_data_dir() -> Path:
 
 
 def _find_population_file(population_id: str) -> Path | None:
-    """Find a population file by ID, checking all directories in order."""
+    """Find a population file by ID, checking all directories in order.
+
+    Story 26.5: Also checks for folder-based populations with data.parquet/data.csv.
+    """
     data_dir = _get_data_dir()
     uploaded_dir = _get_uploaded_dir()
 
-    # Check built-in populations first
+    # Story 26.5: Check folder-based populations first (data.parquet/data.csv in subfolder)
+    for check_dir in (data_dir, uploaded_dir):
+        pop_folder = check_dir / population_id
+        if pop_folder.is_dir():
+            # Check for data.parquet or data.csv
+            for ext in _DATA_EXTENSIONS:
+                data_file = pop_folder / f"data.{ext.lstrip('.')}"
+                if data_file.exists():
+                    return data_file
+            # Check for any CSV/Parquet file in the folder
+            for ext in _DATA_EXTENSIONS:
+                candidates = list(pop_folder.glob(f"*{ext}"))
+                if len(candidates) == 1:
+                    return candidates[0]
+
+    # Check built-in file-based populations
     for ext in _DATA_EXTENSIONS:
         path = data_dir / f"{population_id}{ext}"
         if path.exists():
             return path
 
-    # Check uploaded populations
+    # Check uploaded file-based populations
     for ext in _DATA_EXTENSIONS:
         path = uploaded_dir / f"{population_id}{ext}"
         if path.exists():
@@ -325,11 +343,13 @@ def _scan_populations_with_origin() -> list[PopulationLibraryItem]:
             # Check for descriptor.json in folder
             descriptor = _read_descriptor_from_folder(pop_id, data_dir)
 
-            # Load column count from data file
+            # Load column count and row count from data file
             column_count = 0
+            households_from_data = 0
             try:
                 table = _load_population_table(data_file)
                 column_count = table.num_columns
+                households_from_data = len(table)
             except Exception:
                 column_count = 0
 
@@ -348,6 +368,10 @@ def _scan_populations_with_origin() -> list[PopulationLibraryItem]:
                     households = int(part[:-1]) * 1000
                 elif part.isdigit() and len(part) >= 3:
                     households = int(part)
+
+            # Story 26.5: Use actual row count from data if households not derived from name
+            if households == 0 and households_from_data > 0:
+                households = households_from_data
 
             # Determine canonical evidence from descriptor or use defaults
             if descriptor and all(k in descriptor for k in ("origin", "access_mode", "trust_status")):

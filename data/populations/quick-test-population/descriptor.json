@@ -1,0 +1,19 @@
+{
+  "asset_id": "quick-test-population",
+  "name": "Quick Test Population",
+  "description": "Fast demo population with 100 households for quick demos and smoke testing. Not suitable for substantive analysis.",
+  "data_class": "structural",
+  "origin": "synthetic-public",
+  "access_mode": "bundled",
+  "trust_status": "demo-only",
+  "source_url": "",
+  "license": "AGPL-3.0-or-later",
+  "version": "1.0.0",
+  "geographic_coverage": [],
+  "years": [2026],
+  "intended_use": "Fast demos and smoke testing only - not for substantive analysis",
+  "redistribution_allowed": true,
+  "redistribution_notes": "Redistribution permitted under AGPL-3.0-or-later",
+  "quality_notes": "Synthetic demo data generated deterministically with seed=42",
+  "references": []
+}
