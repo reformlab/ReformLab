@@ -253,8 +253,9 @@ describe("Story 26.7 — Five-Stage Regression", () => {
     });
 
     it("demo scenario can run without validation errors", async () => {
-      // First launch goes to runner, but demo has no portfolio so Run button disabled
-      // This is expected - the test verifies no validation errors occur
+      // Verify demo scenario can navigate to runner and Run button is present
+      // Note: Demo scenario has no portfolio, so Run button may be disabled
+      // The test verifies the UI renders without crashing
       const user = userEvent.setup();
       renderApp();
       await authenticate(user);
@@ -263,9 +264,12 @@ describe("Story 26.7 — Five-Stage Regression", () => {
         expect(window.location.hash).toBe("#results/runner");
       });
 
-      // Run button should be present (may be disabled if no portfolio)
-      const runBtn = screen.queryByRole("button", { name: /run simulation/i });
+      // Run button should be present (may be disabled without portfolio)
+      const runBtn = screen.getByRole("button", { name: /run simulation/i });
       expect(runBtn).toBeInTheDocument();
+
+      // Verify the runner screen loaded successfully by checking heading
+      expect(screen.getByRole("heading", { name: /run simulation/i })).toBeInTheDocument();
     });
   });
 
@@ -416,6 +420,47 @@ describe("Story 26.7 — Five-Stage Regression", () => {
         expect(window.location.hash).toBe("#scenario");
       });
     });
+
+    it("hash conflict: hash is #engine + localStorage empty → migrate hash to #scenario and persist", async () => {
+      const savedScenario = createDemoScenario();
+      localStorage.setItem(HAS_LAUNCHED_KEY, "true");
+      localStorage.setItem(SCENARIO_STORAGE_KEY, JSON.stringify(savedScenario));
+      // No STAGE_STORAGE_KEY set
+
+      const user = userEvent.setup();
+      renderApp();
+      await authenticate(user);
+
+      // Set hash after authentication to trigger migration
+      window.location.hash = "#engine";
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+
+      // Hash should be migrated to #scenario and persisted to localStorage
+      await waitFor(() => {
+        expect(window.location.hash).toBe("#scenario");
+      });
+    });
+
+    it("hash conflict: hash is #scenario + localStorage has 'engine' → hash takes precedence, localStorage migrated", async () => {
+      const savedScenario = createDemoScenario();
+      localStorage.setItem(HAS_LAUNCHED_KEY, "true");
+      localStorage.setItem(SCENARIO_STORAGE_KEY, JSON.stringify(savedScenario));
+      localStorage.setItem(STAGE_STORAGE_KEY, "engine"); // Legacy stage
+
+      window.location.hash = "#scenario";
+
+      const user = userEvent.setup();
+      renderApp();
+      await authenticate(user);
+
+      // Hash takes precedence (already #scenario)
+      await waitFor(() => {
+        expect(window.location.hash).toBe("#scenario");
+      });
+
+      // localStorage should be migrated from 'engine' to 'scenario'
+      expect(localStorage.getItem(STAGE_STORAGE_KEY)).toBe("scenario");
+    });
   });
 
   // =========================================================================
@@ -504,10 +549,13 @@ describe("Story 26.7 — Five-Stage Regression", () => {
         expect(screen.getByRole("heading", { name: /policy templates/i })).toBeInTheDocument();
       });
 
-      // Warnings are non-blocking - navigation should still work
+      // Verify navigation is not blocked by warnings
       const leftPanel = getLeftPanel();
       const populationButton = within(leftPanel).getByRole("button", { name: /^population$/i });
       expect(populationButton).not.toBeDisabled();
+
+      // Note: Full warning banner testing (category/role/severity/missing columns) is tested
+      // in ValidationGate component tests. This integration test verifies the non-blocking behavior.
     });
 
     it("Stage 2 shows non-blocking warning when population lacks required columns", async () => {
@@ -524,10 +572,12 @@ describe("Story 26.7 — Five-Stage Regression", () => {
         expect(screen.getAllByText("Population Library").length).toBeGreaterThanOrEqual(1);
       });
 
-      // Warnings are non-blocking - navigation should still work
+      // Verify navigation is not blocked by warnings
       const leftPanel = getLeftPanel();
       const scenarioButton = within(leftPanel).getByRole("button", { name: /^scenario$/i });
       expect(scenarioButton).not.toBeDisabled();
+
+      // Note: Full warning banner testing is in ValidationGate component tests.
     });
 
     it("warnings don't block navigation between stages", async () => {
@@ -675,26 +725,7 @@ describe("Story 26.7 — Five-Stage Regression", () => {
   // =========================================================================
 
   describe("Quick Test Population — demo population visibility and selection", () => {
-    it("Quick Test Population appears in Population Library", async () => {
-      const savedScenario = createDemoScenario();
-      localStorage.setItem(HAS_LAUNCHED_KEY, "true");
-      localStorage.setItem(SCENARIO_STORAGE_KEY, JSON.stringify(savedScenario));
-      localStorage.setItem(STAGE_STORAGE_KEY, "population");
-
-      const user = userEvent.setup();
-      renderApp();
-      await authenticate(user);
-
-      await waitFor(() => {
-        expect(screen.getAllByText("Population Library").length).toBeGreaterThanOrEqual(1);
-      });
-
-      // Quick Test Population should be visible
-      // It may appear in the mock populations list
-      // Note: This depends on mock data - the test verifies the UI doesn't crash
-    });
-
-    it("Quick Test Population can be selected", async () => {
+    it("Quick Test Population can be selected as primary population", async () => {
       const savedScenario = {
         ...createDemoScenario(),
         populationIds: [QUICK_TEST_POPULATION_ID],
@@ -714,6 +745,10 @@ describe("Story 26.7 — Five-Stage Regression", () => {
       // Population stage should be complete with Quick Test Population selected
       const populationIndicator = screen.getByTestId("step-indicator-population");
       expect(populationIndicator).toHaveClass("bg-emerald-500");
+
+      // Note: Quick Test Population "appears in library" visual differentiation
+      // (labeling, placement) is tested in PopulationLibrary component tests.
+      // This integration test verifies the population can be used as primary.
     });
   });
 

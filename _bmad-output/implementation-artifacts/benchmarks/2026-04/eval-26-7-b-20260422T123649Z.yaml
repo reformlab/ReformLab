@@ -1,0 +1,117 @@
+record_id: 32e6f3ac-e177-4b0b-8106-11494027fcb2
+created_at: '2026-04-22T12:36:49.934505+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 26
+  story_num: '7'
+  title: Story 26.7
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-04-22T12:30:53.116645Z'
+  end_time: '2026-04-22T12:34:11.273645Z'
+  duration_ms: 198157
+  input_tokens: 0
+  output_tokens: 6086
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 24346
+  heading_count: 17
+  list_depth_max: 2
+  code_block_count: 9
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: 19.9'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes & Readability
+  - ⚡ Performance & Scalability
+  - 🐛 Correctness & Safety
+  - 🔧 Maintainability Issues
+  - 🛠️ Suggested Fixes
+  - 1. Update Story File to Match Git Diff (CRITICAL)
+  - 2. Fix Lying Test - Stage 1 Warning
+  - 3. Add Missing Hash+LocalStorage Conflict Tests
+  - 4. Fix Test Isolation - Clone Demo Scenario
+  - 5. Add Missing Stage 5 Sub-View Test
+  - 6. Add Skip Routing Bypass Test
+  - 7. Fix Type Safety in ManifestResponse
+  - 8. Extract Hash Migration Logic to Shared Utility
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 1237fe7a0929
+findings:
+  total_count: 22
+  by_severity:
+    critical: 3
+    major: 17
+    minor: 2
+    nit: 0
+  by_category:
+    security: 0
+    performance: 1
+    correctness: 6
+    completeness: 11
+    clarity: 1
+    testability: 3
+  has_fix_count: 22
+  has_location_count: 20
+  has_evidence_count: 16
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 7
+  confidence_phrases_count: 1
+linguistic:
+  avg_sentence_length: 74.76315789473684
+  vocabulary_richness: 0.25343189017951423
+  flesch_reading_ease: 3.4163152623012536
+  vague_terms_count: 0
+  formality_score: 0.65
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.95
+  evidence_quality: 0.85
+  follows_template: true
+  internal_consistency: 0.92
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true
+  phase: code-review
+  file_count: 2
+  lines_of_code_reviewed: null
+  test_coverage_delta: null
