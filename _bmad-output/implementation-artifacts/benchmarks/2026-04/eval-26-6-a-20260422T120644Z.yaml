@@ -1,0 +1,117 @@
+record_id: fca98f92-6754-4675-81ea-b49135c62425
+created_at: '2026-04-22T12:06:44.390757+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 26
+  story_num: '6'
+  title: Story 26.6
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-04-22T12:01:35.764257Z'
+  end_time: '2026-04-22T12:03:13.207257Z'
+  duration_ms: 97443
+  input_tokens: 0
+  output_tokens: 2655
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 10621
+  heading_count: 17
+  list_depth_max: 2
+  code_block_count: 5
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: 2.2'
+  - 🏛️ Architectural Sins
+  - Single Responsibility Principle - Violated
+  - 🐍 Pythonic Crimes & Readability
+  - Type Safety Issues
+  - 🐛 Correctness & Safety
+  - Hidden Bugs
+  - Test Quality Issues
+  - 🛠️ Suggested Fixes
+  - 1. Fix empty string portfolioName handling
+  - 2. Add test for empty string portfolioName edge case
+  - 3. Add test for population name with em dash
+  - 4. Improve type safety for selectedPopulationId
+  - 5. Add validation for invalid population IDs
+  - Summary
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: f9f32bb75169
+findings:
+  total_count: 8
+  by_severity:
+    critical: 0
+    major: 2
+    minor: 6
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 2
+    completeness: 0
+    clarity: 2
+    testability: 4
+  has_fix_count: 5
+  has_location_count: 8
+  has_evidence_count: 8
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: false
+  uses_conditionals: true
+  uncertainty_phrases_count: 7
+  confidence_phrases_count: 1
+linguistic:
+  avg_sentence_length: 47.81481481481482
+  vocabulary_richness: 0.3067389620449264
+  flesch_reading_ease: 3.713356854838736
+  vague_terms_count: 1
+  formality_score: 0.55
+  sentiment: mixed
+quality:
+  actionable_ratio: 0.625
+  specificity_score: 0.9
+  evidence_quality: 0.9
+  follows_template: true
+  internal_consistency: 0.9
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 3
+  lines_of_code_reviewed: null
+  test_coverage_delta: null
