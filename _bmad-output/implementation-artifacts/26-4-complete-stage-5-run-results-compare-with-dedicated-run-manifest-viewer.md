@@ -1,6 +1,6 @@
 # Story 26.4: Complete Stage 5 Run / Results / Compare with dedicated Run Manifest Viewer
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -12,91 +12,94 @@ so that I can inspect the complete reproducibility metadata for any run, underst
 
 ## Acceptance Criteria
 
-1. Given Stage 5 renders before any runs exist, then it shows a run queue empty state under Run / Results / Compare (with a "No runs yet" message and navigation to Scenario stage).
+1. Given Stage 5 renders before any runs exist, then it shows a run queue empty state under Run / Results / Compare via ResultsOverviewScreen displaying an empty state message (with "No runs yet" text and navigation button to Scenario stage).
 2. Given a completed run exists, when the analyst opens its manifest, then a dedicated manifest viewer shows assumptions, mappings, lineage (parent/child manifests), versions (engine, OpenFisca, adapter), hashes (data_hashes, output_hashes, integrity_hash), population reference (population_id, population_source), runtime mode, and reproducibility metadata (seeds, warnings, step_pipeline).
-3. Given a comparison view is active, when a run is selected, then its manifest is reachable via a "View Manifest" button without leaving Stage 5 (opens manifest sub-view).
-4. Given a manifest is incomplete or unavailable (e.g., cache miss, missing panel data), then the viewer shows a clear missing-metadata state rather than failing silently (explains that panel data was evicted and manifest is from metadata only).
+3. Given a comparison view is active, when a run is selected, then its manifest is reachable via a "View Manifest" button without leaving Stage 5 (opens manifest sub-view using the selected run's run_id from AppContext.selectedResultForManifest state).
+4. Given a manifest is incomplete or unavailable (e.g., cache miss, missing panel data), then the viewer shows a clear missing-metadata state rather than failing silently (explains that panel data was evicted and manifest is from metadata only). When only metadata.json and manifest.json exist on disk (no panel.parquet), the endpoint returns 200 with available manifest fields and a metadata_only flag.
 5. Given existing results and comparison views render, then adding manifest access does not change their visible indicator semantics (charts, tables, and KPIs remain unchanged).
-6. Given the manifest viewer renders, then it displays manifest data in organized sections: Overview (run_id, manifest_id, timestamps, status), Execution (seeds, step_pipeline, runtime_mode, population), Policy (assumptions, mappings), Data Provenance (data_hashes, output_hashes, integrity_hash), Lineage (parent_manifest_id, child_manifests), Evidence (evidence_assets, calibration_assets, validation_assets, evidence_summary), Warnings (warnings list).
+6. Given the manifest viewer renders, then it displays manifest data in organized sections: Overview (run_id, manifest_id, created_at, started_at, finished_at, status, versions), Execution (seeds, step_pipeline, runtime_mode, population), Policy (assumptions, mappings), Data Provenance (data_hashes, output_hashes, integrity_hash), Lineage (parent_manifest_id, child_manifests), Evidence (evidence_assets, calibration_assets, validation_assets, evidence_summary), Warnings (warnings list).
 
 ## Tasks / Subtasks
 
-- [ ] Add backend GET /api/results/{run_id}/manifest endpoint (AC: #2, #4)
-  - [ ] Create new Pydantic response model `ManifestResponse` in `src/reformlab/server/models.py`
-  - [ ] Add `get_manifest` route function in `src/reformlab/server/routes/results.py`
-  - [ ] Load SimulationResult from cache or disk using `cache.get_or_load(run_id, store)`
-  - [ ] Return 404 if run_id not found in store
-  - [ ] Return 409 if SimulationResult is None (cache miss, no disk data) with helpful message
-  - [ ] Extract all manifest fields from `sim_result.manifest` (RunManifest dataclass)
-  - [ ] Include population metadata from ResultMetadata (population_id, population_source)
-  - [ ] Include runtime_mode from ResultMetadata
-  - [ ] Serialize nested structures (assumptions, mappings, evidence_assets, etc.) as JSON-compatible dicts
-  - [ ] Add backend tests for manifest endpoint (success, 404, 409, field serialization)
+- [x] Add backend GET /api/results/{run_id}/manifest endpoint (AC: #2, #4)
+  - [x] Create new Pydantic response model `ManifestResponse` in `src/reformlab/server/models.py` (include run_id, started_at, finished_at, status, metadata_only fields)
+  - [x] Add `get_manifest` route function in `src/reformlab/server/routes/results.py`
+  - [x] Load SimulationResult from cache or disk using `cache.get_or_load(run_id, store)`
+  - [x] Return 404 if run_id not found in store
+  - [x] When SimulationResult is None, try `store.load_manifest(run_id)` for metadata-only response (200 with metadata_only=True, add warning about missing panel data)
+  - [x] Return 409 only when both SimulationResult and manifest.json are unavailable (truly unrecoverable)
+  - [x] Extract all manifest fields from `sim_result.manifest` (RunManifest dataclass)
+  - [x] Include run_id, started_at, finished_at, status from ResultMetadata
+  - [x] Include population metadata from ResultMetadata (population_id, population_source)
+  - [x] Include runtime_mode from ResultMetadata
+  - [x] Serialize nested structures (assumptions, mappings, evidence_assets, etc.) as JSON-compatible dicts
+  - [x] Add backend tests for manifest endpoint (success 200, metadata-only 200, 404, 409, field serialization)
 
-- [ ] Add frontend API wrapper for manifest endpoint (AC: #2, #4)
-  - [ ] Add `getManifest(runId: string): Promise<ManifestResponse>` function in `frontend/src/api/results.ts`
-  - [ ] Add `ManifestResponse` type in `frontend/src/api/types.ts`
-  - [ ] Include all manifest fields: manifest_id, created_at, engine_version, openfisca_version, adapter_version, scenario_version, data_hashes, output_hashes, seeds, policy, assumptions, mappings, warnings, step_pipeline, parent_manifest_id, child_manifests, exogenous_series, taste_parameters, evidence_assets, calibration_assets, validation_assets, evidence_summary, runtime_mode, population_id, population_source, integrity_hash
+- [x] Add frontend API wrapper for manifest endpoint (AC: #2, #4)
+  - [x] Add `getManifest(runId: string): Promise<ManifestResponse>` function in `frontend/src/api/results.ts`
+  - [x] Add `ManifestResponse` type in `frontend/src/api/types.ts` (include run_id, started_at, finished_at, status, child_manifests as Record<string, string>, population_source as | null, metadata_only)
+  - [x] Include all manifest fields: run_id, manifest_id, created_at, started_at, finished_at, status, engine_version, openfisca_version, adapter_version, scenario_version, data_hashes, output_hashes, seeds, policy, assumptions, mappings, warnings, step_pipeline, parent_manifest_id, child_manifests, exogenous_series, taste_parameters, evidence_assets, calibration_assets, validation_assets, evidence_summary, runtime_mode, population_id, population_source, integrity_hash, metadata_only
 
-- [ ] Create RunManifestViewer component (AC: #2, #4, #6)
-  - [ ] Create `frontend/src/components/results/RunManifestViewer.tsx`
-  - [ ] Component props: `manifest: ManifestResponse`, `onClose?: () => void`, `loading?: boolean`, `error?: string`
-  - [ ] Use collapsible sections (Shadcn Collapsible or similar) for organized display
-  - [ ] Overview section: run_id (8 char), manifest_id, created_at, started_at, finished_at, status badge
-  - [ ] Execution section: seeds (master + per-year), step_pipeline (ordered list), runtime_mode badge (live/replay), population_id + population_source badge
-  - [ ] Policy section: assumptions (table with key/value/source/is_default), mappings (table with openfisca_name/project_name/direction)
-  - [ ] Data Provenance section: data_hashes (key-value pairs), output_hashes, integrity_hash (truncate to 16 chars with tooltip)
-  - [ ] Lineage section: parent_manifest_id (link to parent if exists), child_manifests (year → manifest_id mapping)
-  - [ ] Evidence section: evidence_assets, calibration_assets, validation_assets, evidence_summary (render as nested key-value lists)
-  - [ ] Warnings section: warnings array (render as bullet list with amber icon)
-  - [ ] Empty state: "No manifest data available" message when manifest is null or error is set
-  - [ ] Loading state: Skeleton loaders while fetching manifest
+- [x] Create RunManifestViewer component (AC: #2, #4, #6)
+  - [x] Create `frontend/src/components/results/RunManifestViewer.tsx`
+  - [x] Component props: `manifest: ManifestResponse`, `onClose?: () => void`, `loading?: boolean`, `error?: string`
+  - [x] Use collapsible sections (Shadcn Collapsible or similar) for organized display
+  - [x] Overview section: run_id (8 char), manifest_id, created_at, started_at, finished_at, status badge
+  - [x] Execution section: seeds (master + per-year), step_pipeline (ordered list), runtime_mode badge (live/replay), population_id + population_source badge
+  - [x] Policy section: assumptions (table with key/value/source/is_default), mappings (table with openfisca_name/project_name/direction)
+  - [x] Data Provenance section: data_hashes (key-value pairs), output_hashes, integrity_hash (truncate to 16 chars with tooltip)
+  - [x] Lineage section: parent_manifest_id (displayed when present), child_manifests (year → manifest_id mapping)
+  - [x] Evidence section: evidence_assets, calibration_assets, validation_assets, evidence_summary (render as nested key-value lists)
+  - [x] Warnings section: warnings array (render as bullet list with amber icon)
+  - [x] Empty state: "No manifest data available" message when manifest is null or error is set
+  - [x] Loading state: Skeleton loaders while fetching manifest
 
-- [ ] Add "manifest" sub-view to Stage 5 routing (AC: #3)
-  - [ ] Add "manifest" to SubView type in `frontend/src/types/workspace.ts`
-  - [ ] Update STAGES array to include "manifest" in results.activeFor
-  - [ ] Update App.tsx resultsContent to handle `activeSubView === "manifest"`
-  - [ ] Pass runId from navigation or selected result to manifest viewer
+- [x] Add "manifest" sub-view to Stage 5 routing (AC: #3)
+  - [x] Add "manifest" to SubView type in `frontend/src/types/workspace.ts`
+  - [x] Update STAGES array to include "manifest" in results.activeFor
+  - [x] Update App.tsx resultsContent to handle `activeSubView === "manifest"`
+  - [x] Pass runId from navigation or selected result to manifest viewer
 
-- [ ] Add manifest viewer navigation entry points (AC: #2, #3, #5)
-  - [ ] Add "View Manifest" button to ResultDetailView component (in header or actions)
-  - [ ] Add manifest button to SimulationRunnerScreen ResultsListPanel row actions
-  - [ ] Add manifest button to ComparisonDashboardScreen run selector items
-  - [ ] All manifest buttons call `navigateTo("results", "manifest") with runId context
+- [x] Add manifest viewer navigation entry points (AC: #2, #3, #5)
+  - [x] Add `selectedResultForManifest: string | null` to AppContext state
+  - [x] Add "View Manifest" button to ResultsOverviewScreen (header action buttons) — sets selectedResultForManifest then navigates
+  - [x] Add "View Manifest" button to SimulationRunnerScreen ResultsListPanel row actions — sets selectedResultForManifest then navigates
+  - [x] Add "View Manifest" button to ComparisonDashboardScreen run selector items — sets selectedResultForManifest then navigates
+  - [x] All manifest buttons follow pattern: `setSelectedResultForManifest(runId); navigateTo("results", "manifest");`
 
-- [ ] Update help content for Stage 5 manifest viewer (AC: #2)
-  - [ ] Add "results/manifest" entry to `frontend/src/components/help/help-content.ts`
-  - [ ] Include tips about interpreting manifest fields, hash verification, lineage tracing
-  - [ ] Add concepts: Run Manifest, Data Hash, Integrity Hash, Lineage, Assumptions, Mappings
+- [x] Update help content for Stage 5 manifest viewer (AC: #2)
+  - [x] Add "results/manifest" entry to `frontend/src/components/help/help-content.ts`
+  - [x] Include tips about interpreting manifest fields, hash verification, lineage tracing
+  - [x] Add concepts: Run Manifest, Data Hash, Integrity Hash, Lineage, Assumptions, Mappings
 
-- [ ] Add tests for RunManifestViewer (AC: #2, #4, #6)
-  - [ ] Create `frontend/src/components/results/__tests__/RunManifestViewer.test.tsx`
-  - [ ] Test rendering with complete manifest (all sections present)
-  - [ ] Test rendering with partial manifest (missing optional fields)
-  - [ ] Test loading state (skeleton renders)
-  - [ ] Test error state (missing metadata message)
-  - [ ] Test collapsible sections toggle behavior
-  - [ ] Test hash truncation with tooltip
-  - [ ] Test parent_manifest_id linking
-  - [ ] Test warnings list rendering
-  - [ ] Test empty assumptions/mappings arrays
-  - [ ] Test population_source badge display (bundled/uploaded/generated)
+- [x] Add tests for RunManifestViewer (AC: #2, #4, #6)
+  - [x] Create `frontend/src/components/results/__tests__/RunManifestViewer.test.tsx`
+  - [x] Test rendering with complete manifest (all sections present)
+  - [x] Test rendering with partial manifest (missing optional fields)
+  - [x] Test loading state (skeleton renders)
+  - [x] Test error state (missing metadata message)
+  - [x] Test collapsible sections toggle behavior
+  - [x] Test hash truncation with tooltip
+  - [x] Test parent_manifest_id rendering
+  - [x] Test warnings list rendering
+  - [x] Test empty assumptions/mappings arrays
+  - [x] Test population_source badge display (bundled/uploaded/generated)
 
-- [ ] Add Stage 5 empty state component (AC: #1)
-  - [ ] Create `frontend/src/components/results/RunQueueEmptyState.tsx` or integrate into existing stage layout
-  - [ ] Show "No runs yet" message with illustration
-  - [ ] Show "Go to Scenario stage to run a simulation" button
-  - [ ] Include helpful tips about what Stage 5 will show after first run
+- [x] Add Stage 5 empty state handling (AC: #1)
+  - [x] Update ResultsOverviewScreen to show empty state when results array is empty
+  - [x] Display "No runs yet" message with helpful illustration
+  - [x] Add "Go to Scenario stage to run a simulation" button that navigates to "scenario" stage
+  - [x] Include helpful tips about what Stage 5 will show after first run
 
-- [ ] Non-regression: verify existing Stage 5 functionality preserved (AC: #5)
-  - [ ] Verify ResultsOverviewScreen renders unchanged
-  - [ ] Verify ComparisonDashboardScreen renders unchanged
-  - [ ] Verify SimulationRunnerScreen renders unchanged
-  - [ ] Verify BehavioralDecisionViewerScreen renders unchanged
-  - [ ] Verify run queue list still shows past runs
-  - [ ] Verify export buttons still work (CSV/Parquet)
-  - [ ] Verify result detail tabs still work (Indicators, Data Summary, Manifest)
-  - [ ] Verify comparison view still works (run selection, baseline, charts)
+- [x] Non-regression: verify existing Stage 5 functionality preserved (AC: #5)
+  - [x] Verify ResultsOverviewScreen renders unchanged
+  - [x] Verify ComparisonDashboardScreen renders unchanged
+  - [x] Verify SimulationRunnerScreen renders unchanged
+  - [x] Verify BehavioralDecisionViewerScreen renders unchanged
+  - [x] Verify run queue list still shows past runs
+  - [x] Verify export buttons still work (CSV/Parquet)
+  - [x] Verify result detail tabs still work (Indicators, Data Summary, Manifest)
+  - [x] Verify comparison view still works (run selection, baseline, charts)
 
 ## Dev Notes
 
@@ -129,8 +132,12 @@ Add `ManifestResponse` Pydantic model:
 class ManifestResponse(BaseModel):
     """Full run manifest response for Stage 5 manifest viewer — Story 26.4."""
     # Core identity
+    run_id: str
     manifest_id: str
     created_at: str
+    started_at: str = ""
+    finished_at: str = ""
+    status: str = ""
     # Version fields
     engine_version: str
     openfisca_version: str
@@ -159,7 +166,8 @@ class ManifestResponse(BaseModel):
     evidence_summary: dict[str, Any] = {}
     runtime_mode: Literal["live", "replay"] = "live"
     population_id: str = ""
-    population_source: Literal["bundled", "uploaded", "generated", ""] = ""
+    population_source: Literal["bundled", "uploaded", "generated"] | None = None
+    metadata_only: bool = False
 ```
 
 **File: `src/reformlab/server/routes/results.py`**
@@ -181,7 +189,8 @@ async def get_manifest(
     """Return the full RunManifest for a single simulation result.
 
     Returns 404 if run_id not found in persistent store.
-    Returns 409 if SimulationResult is not available (cache miss, no disk data).
+    Returns 409 if SimulationResult and manifest.json are both unavailable (truly unrecoverable).
+    Returns 200 with metadata_only=True when only metadata.json and manifest.json exist (no panel.parquet).
 
     The manifest includes all assumptions, mappings, hashes, lineage, and
     reproducibility metadata needed for the Stage 5 Run Manifest Viewer.
@@ -208,27 +217,71 @@ async def get_manifest(
             },
         )
 
-    # Load SimulationResult (from cache or disk)
+    # Try to load SimulationResult (from cache or disk)
     sim_result = cache.get_or_load(run_id, store)
-    if sim_result is None:
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "what": "Full manifest data is not available",
-                "why": "The simulation result has been evicted from the in-memory cache and panel.parquet is missing",
-                "fix": "Re-run the simulation to access the full manifest",
-            },
-        )
 
-    # Extract manifest from SimulationResult
+    if sim_result is None:
+        # Panel data unavailable, try loading manifest from disk
+        try:
+            manifest = store.load_manifest(run_id)
+            # Return degraded response with available manifest data
+            return ManifestResponse(
+                run_id=run_id,
+                manifest_id=manifest.manifest_id,
+                created_at=manifest.created_at,
+                started_at=meta.started_at if hasattr(meta, "started_at") else "",
+                finished_at=meta.finished_at if hasattr(meta, "finished_at") else "",
+                status="metadata_only",
+                engine_version=manifest.engine_version,
+                openfisca_version=manifest.openfisca_version,
+                adapter_version=manifest.adapter_version,
+                scenario_version=manifest.scenario_version,
+                data_hashes=manifest.data_hashes,
+                output_hashes=manifest.output_hashes,
+                integrity_hash=manifest.integrity_hash,
+                seeds=manifest.seeds,
+                policy=manifest.policy,
+                assumptions=[dict(a) for a in manifest.assumptions],
+                mappings=[dict(m) for m in manifest.mappings],
+                warnings=list(manifest.warnings) + ["Panel data not available - showing metadata only"],
+                step_pipeline=list(manifest.step_pipeline),
+                parent_manifest_id=manifest.parent_manifest_id,
+                child_manifests=dict(manifest.child_manifests),
+                exogenous_series=list(manifest.exogenous_series),
+                taste_parameters=dict(manifest.taste_parameters),
+                evidence_assets=[dict(e) for e in manifest.evidence_assets],
+                calibration_assets=[dict(c) for c in manifest.calibration_assets],
+                validation_assets=[dict(v) for v in manifest.validation_assets],
+                evidence_summary=dict(manifest.evidence_summary),
+                runtime_mode=cast(Literal["live", "replay"], manifest.runtime_mode),
+                population_id=manifest.population_id,
+                population_source=manifest.population_source,
+                metadata_only=True,
+            )
+        except FileNotFoundError:
+            # Neither SimulationResult nor manifest.json available
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "what": "Full manifest data is not available",
+                    "why": "The simulation result has been evicted from the in-memory cache and neither panel.parquet nor manifest.json exist on disk",
+                    "fix": "Re-run the simulation to access the full manifest",
+                },
+            )
+
+    # Full SimulationResult available
     manifest = sim_result.manifest
 
     # Convert RunManifest dataclass to ManifestResponse Pydantic model
     # RunManifest uses tuples for exogenous_series; convert to list
     # RunManifest uses frozen dataclasses; convert to dicts for JSON serialization
     return ManifestResponse(
+        run_id=run_id,
         manifest_id=manifest.manifest_id,
         created_at=manifest.created_at,
+        started_at=meta.started_at if hasattr(meta, "started_at") else "",
+        finished_at=meta.finished_at if hasattr(meta, "finished_at") else "",
+        status=meta.status if hasattr(meta, "status") else "completed",
         engine_version=manifest.engine_version,
         openfisca_version=manifest.openfisca_version,
         adapter_version=manifest.adapter_version,
@@ -253,6 +306,7 @@ async def get_manifest(
         runtime_mode=cast(Literal["live", "replay"], manifest.runtime_mode),
         population_id=manifest.population_id,
         population_source=manifest.population_source,
+        metadata_only=False,
     )
 ```
 
@@ -292,8 +346,12 @@ Add ManifestResponse type:
 // Story 26.4: Full run manifest response
 export interface ManifestResponse {
   // Core identity
+  run_id: string;
   manifest_id: string;
   created_at: string;
+  started_at: string;
+  finished_at: string;
+  status: string;
   // Version fields
   engine_version: string;
   openfisca_version: string;
@@ -312,7 +370,7 @@ export interface ManifestResponse {
   step_pipeline: string[];
   // Lineage
   parent_manifest_id: string;
-  child_manifests: Record<number, string>;
+  child_manifests: Record<string, string>;
   // Optional fields (Story 21.6, 21.7, 21.8, 23.1, 23.5)
   exogenous_series: string[];
   taste_parameters: Record<string, unknown>;
@@ -322,7 +380,8 @@ export interface ManifestResponse {
   evidence_summary: Record<string, unknown>;
   runtime_mode: "live" | "replay";
   population_id: string;
-  population_source: "bundled" | "uploaded" | "generated" | "";
+  population_source: "bundled" | "uploaded" | "generated" | null;
+  metadata_only: boolean;
 }
 ```
 
@@ -394,7 +453,7 @@ function runtimeModeBadge(mode: "live" | "replay" | "") {
   return <Badge variant={variant} className="text-xs">{label}</Badge>;
 }
 
-function populationSourceBadge(source: "bundled" | "uploaded" | "generated" | "") {
+function populationSourceBadge(source: "bundled" | "uploaded" | "generated" | null) {
   if (!source) return null;
   const colors = {
     bundled: "bg-blue-100 text-blue-800 border-blue-200",
@@ -489,10 +548,30 @@ export function RunManifestViewer({ manifest, loading, error, onClose }: RunMani
       <ManifestSection title="Overview" icon={<FileText className="h-4 w-4 text-slate-500" />} defaultOpen={true}>
         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
           <span className="text-slate-500">Run ID</span>
+          <span className="data-mono font-medium text-slate-800">{manifest.run_id.slice(0, 16)}...</span>
+
+          <span className="text-slate-500">Manifest ID</span>
           <span className="data-mono font-medium text-slate-800">{manifest.manifest_id.slice(0, 16)}...</span>
+
+          <span className="text-slate-500">Status</span>
+          <span className="font-medium text-slate-800">{manifest.status || "completed"}</span>
 
           <span className="text-slate-500">Created</span>
           <span className="font-medium text-slate-800">{formatTs(manifest.created_at)}</span>
+
+          {manifest.started_at && (
+            <>
+              <span className="text-slate-500">Started</span>
+              <span className="font-medium text-slate-800">{formatTs(manifest.started_at)}</span>
+            </>
+          )}
+
+          {manifest.finished_at && (
+            <>
+              <span className="text-slate-500">Finished</span>
+              <span className="font-medium text-slate-800">{formatTs(manifest.finished_at)}</span>
+            </>
+          )}
 
           <span className="text-slate-500">Engine Version</span>
           <span className="data-mono font-medium text-slate-800">{manifest.engine_version}</span>
@@ -767,8 +846,10 @@ const resultsContent = (() => {
   // ... existing sub-views (runner, comparison, decisions) ...
 
   // Story 26.4: Manifest viewer sub-view
+  // Run ID is passed via AppContext.selectedResultForManifest state
+  // All "View Manifest" buttons must set selectedResultForManifest before navigating
   if (activeSubView === "manifest") {
-    const manifestRunId = /* derive from URL hash or selected result */ runResult?.run_id;
+    const manifestRunId = selectedResultForManifest || runResult?.run_id;
     return (
       <RunManifestViewerSubView
         runId={manifestRunId}
@@ -785,7 +866,10 @@ const resultsContent = (() => {
       reformLabel={selectedScenario?.template_name ?? "Reform"}
       onCompare={() => { navigateTo("results", "comparison"); }}
       onViewDecisions={() => { navigateTo("results", "decisions"); }}
-      onViewManifest={() => { navigateTo("results", "manifest"); }}
+      onViewManifest={() => {
+        setSelectedResultForManifest(runResult?.run_id || null);
+        navigateTo("results", "manifest");
+      }}
       onRunAgain={handleStartRun}
       onExportCsv={handleExportCsv}
       onExportParquet={handleExportParquet}
@@ -823,23 +907,25 @@ Add manifest help entry:
 
 ### Testing Strategy
 
-**Backend Tests:** `tests/server/results/test_manifest_endpoint.py` (NEW)
+**Backend Tests:** `tests/server/test_manifest_endpoint.py` (NEW)
 
 Required test coverage for Story 26.4:
 - Test GET /api/results/{run_id}/manifest returns 200 with full manifest
+- Test 200 with metadata_only=True when SimulationResult is None but manifest.json exists on disk
 - Test 404 response when run_id not found
-- Test 409 response when SimulationResult is None (cache miss, no disk)
+- Test 409 response when both SimulationResult and manifest.json are unavailable
 - Test all manifest fields are correctly serialized (assumptions, mappings, hashes, etc.)
 - Test exogenous_series tuple converted to list
 - Test nested structures converted to JSON-compatible dicts
-- Test population_id and population_source included
+- Test run_id, started_at, finished_at, status included from ResultMetadata
+- Test population_id and population_source included (null for missing)
 - Test runtime_mode included
 
 **Frontend Component Tests:** `frontend/src/components/results/__tests__/RunManifestViewer.test.tsx` (NEW)
 
 Required test coverage:
 - Test rendering with complete manifest (all sections present)
-- Test Overview section renders run_id, manifest_id, timestamps, versions
+- Test Overview section renders run_id, manifest_id, timestamps, status, versions
 - Test Execution section renders seeds, step_pipeline, population info
 - Test Policy section renders assumptions table, mappings table
 - Test Data Provenance section renders data_hashes, output_hashes, integrity_hash
@@ -847,23 +933,27 @@ Required test coverage:
 - Test Evidence section renders evidence_assets, calibration_assets, validation_assets
 - Test Warnings section renders warnings list with icon
 - Test rendering with partial manifest (empty assumptions, empty mappings)
+- Test metadata_only=True shows warning about missing panel data
 - Test hash truncation with full hash in title attribute
-- Test collapsible sections toggle open/close
+- Test collapsible sections toggle open/close (Overview and Warnings open by default)
 - Test loading state renders Skeleton components
 - Test error state renders friendly message
 - Test onClose callback called when Close button clicked
 - Test runtime mode badge (Live OpenFisca vs Replay)
-- Test population source badge (bundled/uploaded/generated)
+- Test population source badge (bundled/uploaded/generated/null)
+- Test started_at and finished_at render when available
 
 **Frontend Integration Tests:** `frontend/src/components/__tests__/App.test.tsx` (MODIFY)
 
 Added test coverage:
 - Test navigating to "results/manifest" sub-view
-- Test RunManifestViewerSubView receives correct runId
-- Test manifest navigation entry point from ResultsOverviewScreen
-- Test manifest navigation entry point from SimulationRunnerScreen
-- Test manifest navigation entry point from ComparisonDashboardScreen
+- Test selectedResultForManifest state is set before navigation
+- Test RunManifestViewerSubView receives correct runId from selectedResultForManifest
+- Test manifest navigation entry point from ResultsOverviewScreen sets state and navigates
+- Test manifest navigation entry point from SimulationRunnerScreen sets state and navigates
+- Test manifest navigation entry point from ComparisonDashboardScreen sets state and navigates
 - Test back button returns to default results view
+- Test manifest viewer shows empty state when selectedResultForManifest is null
 
 ### Project Structure Notes
 
@@ -887,7 +977,7 @@ Added test coverage:
 - `src/reformlab/server/routes/results.py` — Add GET /api/results/{run_id}/manifest endpoint
 
 **Backend Test Files to Create:**
-- `tests/server/results/test_manifest_endpoint.py` — Manifest endpoint tests
+- `tests/server/test_manifest_endpoint.py` — Manifest endpoint tests
 
 ### Implementation Order Recommendation
 
@@ -988,11 +1078,22 @@ To avoid scope creep and conflicts with future stories:
 
 ### Agent Model Used
 
-claude-opus-4-6
+claude-opus-4-6 (story creation); gpt-5.4 (implementation resume and completion)
 
 ### Debug Log References
 
-None - This is the initial story creation.
+- `uv run pytest tests/server/test_manifest_endpoint.py` — passed 10 tests
+- `uv run pytest tests/server` — passed 529 tests, 1 skipped
+- `uv run ruff check src/reformlab/server/models.py src/reformlab/server/routes/results.py tests/server/test_manifest_endpoint.py` — passed
+- `uv run mypy src/reformlab/server/models.py src/reformlab/server/routes/results.py` — passed
+- `PATH=/Users/lucas/.nvm/versions/node/v20.19.6/bin:$PATH npm run typecheck` — passed
+- `PATH=/Users/lucas/.nvm/versions/node/v20.19.6/bin:$PATH npm run lint` — passed with 7 pre-existing warnings outside this story's changed files
+- `PATH=/Users/lucas/.nvm/versions/node/v20.19.6/bin:$PATH npm test -- RunManifestViewer.test.tsx` — passed 39 tests
+- `PATH=/Users/lucas/.nvm/versions/node/v20.19.6/bin:$PATH npm test -- ResultsOverviewScreen.test.tsx` — passed 43 tests
+- `PATH=/Users/lucas/.nvm/versions/node/v20.19.6/bin:$PATH npm test -- ComparisonDashboardScreen.test.tsx comparison-workflow.test.tsx analyst-journey.test.tsx` — passed 48 tests, 3 skipped
+- `PATH=/Users/lucas/.nvm/versions/node/v20.19.6/bin:$PATH npm test -- portfolio-workflow.test.tsx analyst-journey.test.tsx` — passed 36 tests
+- Full `npm test` executed; 70/72 files and 914 tests passed before two unrelated workflow worker/test timeouts. The timed-out files passed on focused rerun.
+- `PATH=/Users/lucas/.nvm/versions/node/v20.19.6/bin:$PATH npm run build` — blocked by existing TypeScript errors in unrelated test files and `PoliciesStageScreen.tsx`; app typecheck passes.
 
 ### Completion Notes List
 
@@ -1030,3 +1131,49 @@ Story 26.4 created with comprehensive developer context:
 7. Integration and regression testing
 
 Status set to: ready-for-dev
+
+### Implementation Completion Notes (2026-04-22)
+
+- Added a manifest endpoint and response model that returns full RunManifest data, metadata timestamps/status, population/runtime provenance, metadata-only responses when panel data is unavailable, and clear 404/409 failures.
+- Added frontend manifest API/types, a Stage 5 `manifest` sub-view, AppContext state for selected manifest run IDs, and View Manifest entry points from results overview, runner result rows, and selected comparison runs.
+- Built `RunManifestViewer` and `RunManifestViewerSubView` with loading, error, metadata-only, Overview, Execution, Policy, Data Provenance, Lineage, Evidence, and Warnings sections.
+- Replaced the pre-run placeholder charts in Stage 5 with the required "No runs yet" empty state and Scenario-stage navigation.
+- Preserved existing comparison screen testability by keeping manifest navigation as a prop rather than requiring AppContext in `ComparisonDashboardScreen`.
+- Updated Stage 5 help content and regression tests for the manifest viewer and results overview.
+
+### File List
+
+- `.bmad-assist/state.yaml`
+- `_bmad-output/implementation-artifacts/26-4-complete-stage-5-run-results-compare-with-dedicated-run-manifest-viewer.md`
+- `_bmad-output/implementation-artifacts/benchmarks/2026-04/index.yaml`
+- `_bmad-output/implementation-artifacts/benchmarks/2026-04/eval-26-4-a-20260421T211547Z.yaml`
+- `_bmad-output/implementation-artifacts/benchmarks/2026-04/eval-26-4-b-20260421T211547Z.yaml`
+- `_bmad-output/implementation-artifacts/benchmarks/2026-04/eval-26-4-synthesizer-20260421T211918Z.yaml`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/implementation-artifacts/story-validations/synthesis-26-4-20260421T211918Z.md`
+- `_bmad-output/implementation-artifacts/story-validations/validation-26-4-a-20260421T211109Z.md`
+- `_bmad-output/implementation-artifacts/story-validations/validation-26-4-b-20260421T211109Z.md`
+- `_bmad-output/implementation-artifacts/story-validations/validation-26-4-synthesis-20260421T231547Z.md`
+- `frontend/src/App.tsx`
+- `frontend/src/__tests__/workflows/analyst-journey.test.tsx`
+- `frontend/src/api/results.ts`
+- `frontend/src/api/types.ts`
+- `frontend/src/components/comparison/RunSelector.tsx`
+- `frontend/src/components/help/help-content.ts`
+- `frontend/src/components/results/RunManifestViewer.tsx`
+- `frontend/src/components/results/RunManifestViewerSubView.tsx`
+- `frontend/src/components/results/__tests__/RunManifestViewer.test.tsx`
+- `frontend/src/components/screens/ComparisonDashboardScreen.tsx`
+- `frontend/src/components/screens/ResultsOverviewScreen.tsx`
+- `frontend/src/components/screens/SimulationRunnerScreen.tsx`
+- `frontend/src/components/screens/__tests__/ResultsOverviewScreen.test.tsx`
+- `frontend/src/components/simulation/ResultsListPanel.tsx`
+- `frontend/src/contexts/AppContext.tsx`
+- `frontend/src/types/workspace.ts`
+- `src/reformlab/server/models.py`
+- `src/reformlab/server/routes/results.py`
+- `tests/server/test_manifest_endpoint.py`
+
+### Change Log
+
+- 2026-04-22: Resumed stopped Story 26.4 implementation, completed backend manifest endpoint, frontend manifest viewer integration, Stage 5 empty state, tests, validation, and moved story to review.

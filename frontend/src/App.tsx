@@ -13,6 +13,7 @@ import { SimulationRunnerScreen } from "@/components/screens/SimulationRunnerScr
 import { BehavioralDecisionViewerScreen } from "@/components/screens/BehavioralDecisionViewerScreen";
 import { ComparisonDashboardScreen } from "@/components/screens/ComparisonDashboardScreen";
 import { ResultsOverviewScreen } from "@/components/screens/ResultsOverviewScreen";
+import { RunManifestViewerSubView } from "@/components/results/RunManifestViewerSubView";
 import { PoliciesStageScreen } from "@/components/screens/PoliciesStageScreen";
 import { PopulationStageScreen } from "@/components/screens/PopulationStageScreen";
 import { InvestmentDecisionsStageScreen } from "@/components/screens/InvestmentDecisionsStageScreen";
@@ -47,6 +48,8 @@ function Workspace() {
     activeSubView,
     navigateTo,
     activeScenario,
+    selectedResultForManifest,
+    setSelectedResultForManifest,
   } = useAppState();
 
   const [leftCollapsed, setLeftCollapsed] = useState(false);
@@ -165,6 +168,10 @@ function Workspace() {
         <ComparisonDashboardScreen
           results={results}
           onBack={() => { navigateTo("results"); }}
+          onViewManifest={(runId) => {
+            setSelectedResultForManifest(runId);
+            navigateTo("results", "manifest");
+          }}
         />
       );
     }
@@ -183,6 +190,16 @@ function Workspace() {
         />
       );
     }
+    // Story 26.4: Manifest viewer sub-view
+    if (activeSubView === "manifest") {
+      const manifestRunId = selectedResultForManifest || runResult?.run_id || null;
+      return (
+        <RunManifestViewerSubView
+          runId={manifestRunId}
+          onBack={() => { navigateTo("results"); }}
+        />
+      );
+    }
     // Default results overview (activeSubView === null)
     return (
       <ResultsOverviewScreen
@@ -191,6 +208,11 @@ function Workspace() {
         reformLabel={selectedScenario?.template_name ?? "Reform"}
         onCompare={() => { navigateTo("results", "comparison"); }}
         onViewDecisions={() => { navigateTo("results", "decisions"); }}
+        onViewManifest={() => {
+          setSelectedResultForManifest(runResult?.run_id || null);
+          navigateTo("results", "manifest");
+        }}
+        onGoToScenario={() => { navigateTo("scenario"); }}
         onRunAgain={handleStartRun}
         onExportCsv={handleExportCsv}
         onExportParquet={handleExportParquet}

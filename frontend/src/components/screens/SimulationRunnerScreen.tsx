@@ -42,6 +42,8 @@ export function SimulationRunnerScreen({ onCancel }: SimulationRunnerScreenProps
     activeScenario,
     updateExecutionCell,
     updateScenarioField,
+    navigateTo,
+    setSelectedResultForManifest,
   } = useAppState();
 
   const [subView, setSubView] = useState<SubView>("configure");
@@ -358,6 +360,10 @@ export function SimulationRunnerScreen({ onCancel }: SimulationRunnerScreenProps
             selectedRunId={selectedResultId}
             onSelect={(id) => void handleSelectResult(id)}
             onDelete={(id) => void handleDeleteResult(id)}
+            onViewManifest={(id) => {
+              setSelectedResultForManifest(id);
+              navigateTo("results", "manifest");
+            }}
           />
         ) : null}
 
@@ -425,6 +431,10 @@ export function SimulationRunnerScreen({ onCancel }: SimulationRunnerScreenProps
         selectedRunId={selectedResultId}
         onSelect={(id) => void handleSelectResult(id)}
         onDelete={(id) => void handleDeleteResult(id)}
+        onViewManifest={(id) => {
+          setSelectedResultForManifest(id);
+          navigateTo("results", "manifest");
+        }}
       />
 
       <div className="flex gap-2">

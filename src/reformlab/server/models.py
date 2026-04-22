@@ -953,3 +953,51 @@ class ExogenousAssetResponse(BaseModel):
     interpolation_method: str
     aggregation_method: str
     revision_policy: str
+
+
+# ---------------------------------------------------------------------------
+# Manifest response models — Story 26.4
+# ---------------------------------------------------------------------------
+
+
+class ManifestResponse(BaseModel):
+    """Full run manifest response for Stage 5 manifest viewer — Story 26.4."""
+
+    model_config = {"from_attributes": True}
+    # Core identity
+    run_id: str
+    manifest_id: str
+    created_at: str
+    started_at: str = ""
+    finished_at: str = ""
+    status: str = ""
+    # Version fields
+    engine_version: str
+    openfisca_version: str
+    adapter_version: str
+    scenario_version: str
+    # Hashes
+    data_hashes: dict[str, str] = {}
+    output_hashes: dict[str, str] = {}
+    integrity_hash: str = ""
+    # Execution metadata
+    seeds: dict[str, int] = {}
+    policy: dict[str, Any] = {}
+    assumptions: list[dict[str, Any]] = []
+    mappings: list[dict[str, Any]] = []
+    warnings: list[str] = []
+    step_pipeline: list[str] = []
+    # Lineage
+    parent_manifest_id: str = ""
+    child_manifests: dict[str, str] = {}  # Year as string key for JSON serialization
+    # Optional fields (Story 21.6, 21.7, 21.8, 23.1, 23.5)
+    exogenous_series: list[str] = []
+    taste_parameters: dict[str, Any] = {}
+    evidence_assets: list[dict[str, Any]] = []
+    calibration_assets: list[dict[str, Any]] = []
+    validation_assets: list[dict[str, Any]] = []
+    evidence_summary: dict[str, Any] = {}
+    runtime_mode: Literal["live", "replay"] = "live"
+    population_id: str = ""
+    population_source: Literal["bundled", "uploaded", "generated"] | None = None
+    metadata_only: bool = False

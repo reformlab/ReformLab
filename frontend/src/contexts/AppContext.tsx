@@ -147,6 +147,10 @@ interface AppState {
   selectedComparisonRunIds: string[];
   setSelectedComparisonRunIds: (ids: string[]) => void;
 
+  // Manifest viewer (Story 26.4)
+  selectedResultForManifest: string | null;
+  setSelectedResultForManifest: (runId: string | null) => void;
+
   // Execution matrix (Story 20.6, AC-1, AC-3)
   executionMatrix: Record<string, Record<string, import("@/api/types").ExecutionMatrixCell>>;
   updateExecutionCell: (
@@ -396,6 +400,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Comparison state (Story 17.4)
   const [selectedComparisonRunIds, setSelectedComparisonRunIds] = useState<string[]>([]);
+
+  // Manifest viewer state (Story 26.4)
+  const [selectedResultForManifest, setSelectedResultForManifest] = useState<string | null>(null);
 
   // Execution matrix state (Story 20.6, AC-1, AC-3)
   const [executionMatrix, setExecutionMatrix] = useState<
@@ -843,6 +850,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setSelectedPortfolioName,
       selectedComparisonRunIds,
       setSelectedComparisonRunIds,
+      selectedResultForManifest,
+      setSelectedResultForManifest,
       executionMatrix,
       updateExecutionCell,
       apiConnected,
@@ -865,6 +874,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       results, resultsLoading, refetchResults,
       selectedPortfolioName, setSelectedPortfolioName,
       selectedComparisonRunIds, setSelectedComparisonRunIds,
+      selectedResultForManifest, setSelectedResultForManifest,
       executionMatrix, updateExecutionCell,
       apiConnected,
     ],

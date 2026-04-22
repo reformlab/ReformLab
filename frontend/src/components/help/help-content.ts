@@ -282,6 +282,26 @@ export const HELP_CONTENT: Record<string, HelpEntry> = {
       { term: "Transition Probabilities", definition: "The likelihood that a household switches from one technology to another in a given year." },
     ],
   },
+  "results/manifest": {
+    title: "Run Manifest Viewer",
+    summary: "Inspect the complete reproducibility metadata for any simulation run, including assumptions, data sources, hashes, and lineage.",
+    tips: [
+      "The manifest records every assumption, data source, and computation step for full reproducibility",
+      "Hash values verify data integrity — data_hashes confirm input files, integrity_hash confirms the full computation",
+      "Lineage tracking shows parent and child manifests, enabling traceability across multi-year scenarios",
+      "When panel data is evicted from memory, the manifest remains accessible with a metadata-only flag",
+      "Use collapsible sections to navigate the comprehensive metadata display",
+      "Click truncated hashes to see full values in tooltips",
+    ],
+    concepts: [
+      { term: "Run Manifest", definition: "A comprehensive record of all metadata for a simulation run, including assumptions, data sources, hashes, versions, and lineage links." },
+      { term: "Data Hash", definition: "A SHA-256 hash of input data files that confirms the exact data version used in the computation." },
+      { term: "Integrity Hash", definition: "A SHA-256 hash of the complete computation output that verifies the reproducibility of the full simulation result." },
+      { term: "Lineage", definition: "The chain of related manifests via parent_manifest_id and child_manifests, enabling traceability across multi-year scenarios and derived runs." },
+      { term: "Assumptions", definition: "Parameter values and configuration settings that define how the reform differs from baseline, recorded with source attribution." },
+      { term: "Mappings", definition: "The bidirectional mapping between project parameter names and OpenFisca variable names used in computation." },
+    ],
+  },
 };
 
 export function getHelpEntry(activeStage: StageKey, activeSubView: SubView | null): HelpEntry {

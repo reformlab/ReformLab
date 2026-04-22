@@ -12,8 +12,9 @@ Endpoint table:
     DELETE /api/results/{run_id}              — delete from store and cache
     GET    /api/results/{run_id}/export/csv   — download panel data as CSV
     GET    /api/results/{run_id}/export/parquet — download panel data as Parquet
+    GET    /api/results/{run_id}/manifest     — get full run manifest (Story 26.4)
 
-References: Story 17.3, Story 17.7, AC-2, AC-3, AC-4
+References: Story 17.3, Story 17.7, Story 26.4, AC-2, AC-3, AC-4
 """
 
 from __future__ import annotations
@@ -26,7 +27,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
 from reformlab.server.dependencies import ResultCache, get_result_cache, get_result_store
-from reformlab.server.models import ResultDetailResponse, ResultListItem
+from reformlab.server.models import ManifestResponse, ResultDetailResponse, ResultListItem
 from reformlab.server.result_store import ResultMetadata, ResultNotFound, ResultStore, ResultStoreError
 
 logger = logging.getLogger(__name__)
@@ -350,4 +351,155 @@ async def export_parquet(
         buf,
         media_type="application/octet-stream",
         headers={"Content-Disposition": f'attachment; filename="{run_id}.parquet"'},
+    )
+
+
+# ---------------------------------------------------------------------------
+# GET /api/results/{run_id}/manifest — Story 26.4
+# ---------------------------------------------------------------------------
+
+
+@router.get("/{run_id}/manifest", response_model=ManifestResponse)
+async def get_manifest(
+    run_id: str,
+    cache: ResultCache = Depends(get_result_cache),
+    store: ResultStore = Depends(get_result_store),
+) -> ManifestResponse:
+    """Return the full RunManifest for a single simulation result.
+
+    Returns 404 if run_id not found in persistent store.
+    Returns 409 if SimulationResult and manifest.json are both unavailable (truly unrecoverable).
+    Returns 200 with metadata_only=True when only metadata.json and manifest.json exist (no panel.parquet).
+
+    The manifest includes all assumptions, mappings, hashes, lineage, and
+    reproducibility metadata needed for the Stage 5 Run Manifest Viewer.
+    """
+    # Verify run exists in persistent store
+    try:
+        meta = store.get_metadata(run_id)
+    except ResultNotFound:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "what": f"Result not found: {run_id!r}",
+                "why": "No metadata file exists for this run ID",
+                "fix": "Check the run ID or re-run the simulation",
+            },
+        )
+    except ResultStoreError:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "what": f"Invalid run_id: {run_id!r}",
+                "why": "run_id contains disallowed characters",
+                "fix": "Use a valid run ID obtained from POST /api/runs",
+            },
+        )
+
+    # Try to load SimulationResult (from cache or disk)
+    sim_result = cache.get_or_load(run_id, store)
+
+    if sim_result is None:
+        # Panel data unavailable, try loading manifest from disk
+        try:
+            manifest = store.load_manifest(run_id)
+            # Return degraded response with available manifest data
+            return ManifestResponse(
+                run_id=run_id,
+                manifest_id=manifest.manifest_id,
+                created_at=manifest.created_at,
+                started_at=meta.started_at if hasattr(meta, "started_at") else "",
+                finished_at=meta.finished_at if hasattr(meta, "finished_at") else "",
+                status="metadata_only",
+                engine_version=manifest.engine_version,
+                openfisca_version=manifest.openfisca_version,
+                adapter_version=manifest.adapter_version,
+                scenario_version=manifest.scenario_version,
+                data_hashes=manifest.data_hashes,
+                output_hashes=manifest.output_hashes,
+                integrity_hash=manifest.integrity_hash,
+                seeds=manifest.seeds,
+                policy=manifest.policy,
+                assumptions=[dict(a) for a in manifest.assumptions],
+                mappings=[dict(m) for m in manifest.mappings],
+                warnings=list(manifest.warnings) + ["Panel data not available - showing metadata only"],
+                step_pipeline=list(manifest.step_pipeline),
+                parent_manifest_id=manifest.parent_manifest_id,
+                child_manifests={str(k): v for k, v in manifest.child_manifests.items()},
+                exogenous_series=list(manifest.exogenous_series),
+                taste_parameters=dict(manifest.taste_parameters),
+                evidence_assets=[dict(e) for e in manifest.evidence_assets],
+                calibration_assets=[dict(c) for c in manifest.calibration_assets],
+                validation_assets=[dict(v) for v in manifest.validation_assets],
+                evidence_summary=dict(manifest.evidence_summary),
+                runtime_mode=cast(Literal["live", "replay"], manifest.runtime_mode),
+                population_id=manifest.population_id,
+                population_source=cast(
+                    Literal["bundled", "uploaded", "generated"] | None,
+                    manifest.population_source or None,
+                ),
+                metadata_only=True,
+            )
+        except ResultNotFound:
+            # Neither SimulationResult nor manifest.json available
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "what": "Full manifest data is not available",
+                    "why": (
+                        "The simulation result has been evicted from the "
+                        "in-memory cache and neither panel.parquet nor "
+                        "manifest.json exist on disk"
+                    ),
+                    "fix": "Re-run the simulation to access the full manifest",
+                },
+            )
+
+    # Full SimulationResult available
+    manifest = sim_result.manifest
+
+    # Convert RunManifest dataclass to ManifestResponse Pydantic model
+    # RunManifest uses tuples for exogenous_series; convert to list
+    # RunManifest uses frozen dataclasses; convert to dicts for JSON serialization
+    return ManifestResponse(
+        run_id=run_id,
+        manifest_id=manifest.manifest_id,
+        created_at=manifest.created_at,
+        started_at=meta.started_at if hasattr(meta, "started_at") else "",
+        finished_at=meta.finished_at if hasattr(meta, "finished_at") else "",
+        status=meta.status if hasattr(meta, "status") else "completed",
+        engine_version=manifest.engine_version,
+        openfisca_version=manifest.openfisca_version,
+        adapter_version=manifest.adapter_version,
+        scenario_version=manifest.scenario_version,
+        data_hashes=manifest.data_hashes,
+        output_hashes=manifest.output_hashes,
+        integrity_hash=manifest.integrity_hash,
+        seeds=manifest.seeds,
+        policy=manifest.policy,
+        assumptions=[dict(a) for a in manifest.assumptions],
+        mappings=[dict(m) for m in manifest.mappings],
+        warnings=list(manifest.warnings),
+        step_pipeline=list(manifest.step_pipeline),
+        parent_manifest_id=manifest.parent_manifest_id,
+        child_manifests={str(k): v for k, v in manifest.child_manifests.items()},
+        exogenous_series=list(manifest.exogenous_series),
+        taste_parameters=dict(manifest.taste_parameters),
+        evidence_assets=[dict(e) for e in manifest.evidence_assets],
+        calibration_assets=[dict(c) for c in manifest.calibration_assets],
+        validation_assets=[dict(v) for v in manifest.validation_assets],
+        evidence_summary=dict(manifest.evidence_summary),
+        runtime_mode=cast(Literal["live", "replay"], manifest.runtime_mode),
+        population_id=manifest.population_id,
+        population_source=cast(
+            Literal["bundled", "uploaded", "generated"] | None,
+            manifest.population_source
+            if manifest.population_source in ("bundled", "uploaded", "generated")
+            else (
+                meta.population_source
+                if meta.population_source in ("bundled", "uploaded", "generated")
+                else None
+            ),
+        ),
+        metadata_only=False,
     )

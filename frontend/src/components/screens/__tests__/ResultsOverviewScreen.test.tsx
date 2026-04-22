@@ -82,6 +82,8 @@ const defaultProps = {
   reformLabel: "Carbon Tax — With Dividend",
   onCompare: vi.fn(),
   onViewDecisions: vi.fn(),
+  onViewManifest: vi.fn(),
+  onGoToScenario: vi.fn(),
   onRunAgain: vi.fn(),
   onExportCsv: vi.fn(),
   onExportParquet: vi.fn(),
@@ -122,12 +124,10 @@ describe("AC-1: Run metadata header", () => {
     expect(screen.getByText("failed")).toBeInTheDocument();
   });
 
-  it("renders reformLabel and 'mock data' badge when runResult is null", () => {
+  it("renders the Stage 5 empty state when runResult is null", () => {
     render(<ResultsOverviewScreen {...defaultProps} runResult={null} />);
-    // AC-1: shows selected scenario name (reformLabel), not static "Results"
-    expect(screen.getByText("Carbon Tax — With Dividend")).toBeInTheDocument();
-    expect(screen.getByText("mock data")).toBeInTheDocument();
-    expect(screen.queryByText("Results")).not.toBeInTheDocument();
+    expect(screen.getByText("No runs yet")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Go to Scenario stage/i })).toBeInTheDocument();
   });
 
   it("shows '—' for year range when years array is empty", () => {
@@ -182,6 +182,12 @@ describe("AC-3: Action button hierarchy", () => {
     expect(btn).toBeInTheDocument();
   });
 
+  it("'View Manifest' is an outline button, visible when run_id exists", () => {
+    render(<ResultsOverviewScreen {...defaultProps} />);
+    const btn = screen.getByRole("button", { name: "View Manifest" });
+    expect(btn).toBeInTheDocument();
+  });
+
   it("'Run Again' is a ghost button", () => {
     render(<ResultsOverviewScreen {...defaultProps} />);
     const btn = screen.getByRole("button", { name: "Run Again" });
@@ -207,6 +213,26 @@ describe("AC-3: Action button hierarchy", () => {
     expect(onViewDecisions).toHaveBeenCalledTimes(1);
   });
 
+  it("calls onViewManifest when View Manifest is clicked", async () => {
+    const onViewManifest = vi.fn();
+    render(<ResultsOverviewScreen {...defaultProps} onViewManifest={onViewManifest} />);
+    await userEvent.click(screen.getByRole("button", { name: "View Manifest" }));
+    expect(onViewManifest).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls onGoToScenario from the empty state", async () => {
+    const onGoToScenario = vi.fn();
+    render(
+      <ResultsOverviewScreen
+        {...defaultProps}
+        runResult={null}
+        onGoToScenario={onGoToScenario}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Go to Scenario stage/i }));
+    expect(onGoToScenario).toHaveBeenCalledTimes(1);
+  });
+
   it("calls onRunAgain when Run Again is clicked", async () => {
     const onRunAgain = vi.fn();
     render(<ResultsOverviewScreen {...defaultProps} onRunAgain={onRunAgain} />);
@@ -216,9 +242,10 @@ describe("AC-3: Action button hierarchy", () => {
 
   it("export buttons do NOT appear in header", () => {
     render(<ResultsOverviewScreen {...defaultProps} />);
-    // In header there should be exactly 3 buttons (Compare, Decisions, Run Again)
-    const headerButtons = screen.getAllByRole("button", { name: /Compare Runs|Behavioral Decisions|Run Again/ });
-    expect(headerButtons).toHaveLength(3);
+    const headerButtons = screen.getAllByRole("button", {
+      name: /Compare Runs|Behavioral Decisions|View Manifest|Run Again/,
+    });
+    expect(headerButtons).toHaveLength(4);
   });
 });
 
@@ -294,11 +321,11 @@ describe("Data & Export tab", () => {
     expect(screen.getByRole("button", { name: /Export Parquet/ })).not.toBeDisabled();
   });
 
-  it("export buttons are disabled when runResult is null", async () => {
+  it("does not render export controls when runResult is null", () => {
     render(<ResultsOverviewScreen {...defaultProps} runResult={null} />);
-    await userEvent.click(screen.getByRole("tab", { name: /Data.*Export/i }));
-    expect(screen.getByRole("button", { name: /Export CSV/ })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /Export Parquet/ })).toBeDisabled();
+    expect(screen.queryByRole("tab", { name: /Data.*Export/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Export CSV/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Export Parquet/ })).not.toBeInTheDocument();
   });
 
   it("export buttons are disabled when runResult.success=false", async () => {
@@ -313,10 +340,9 @@ describe("Data & Export tab", () => {
     expect(screen.getByRole("button", { name: /Export Parquet/ })).toBeDisabled();
   });
 
-  it("shows 'Run a simulation first' message when no run result", async () => {
+  it("shows 'No runs yet' message when no run result", () => {
     render(<ResultsOverviewScreen {...defaultProps} runResult={null} />);
-    await userEvent.click(screen.getByRole("tab", { name: /Data.*Export/i }));
-    expect(screen.getByText(/Run a simulation first/i)).toBeInTheDocument();
+    expect(screen.getByText("No runs yet")).toBeInTheDocument();
   });
 
   it("calls onExportCsv when CSV button clicked", async () => {
@@ -373,10 +399,10 @@ describe("Detail tab — lazy fetch", () => {
     expect(getResult).toHaveBeenCalledTimes(1);
   });
 
-  it("shows placeholder when Detail tab is selected but no runResult", async () => {
+  it("shows the empty state and skips detail loading when no runResult exists", () => {
     render(<ResultsOverviewScreen {...defaultProps} runResult={null} />);
-    await userEvent.click(screen.getByRole("tab", { name: "Detail" }));
-    expect(screen.getByText(/Run a simulation to see detailed results/i)).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Detail" })).not.toBeInTheDocument();
+    expect(screen.getByText("No runs yet")).toBeInTheDocument();
     expect(getResult).not.toHaveBeenCalled();
   });
 

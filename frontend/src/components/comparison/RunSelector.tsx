@@ -4,6 +4,8 @@
  * Extracted from ComparisonDashboardScreen.tsx lines 135-239 — Story 18.5, AC-2.
  */
 
+import { FileText } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,6 +18,7 @@ export interface RunSelectorProps {
   selectedIds: string[];
   onToggle: (runId: string) => void;
   onCompare: () => void;
+  onViewManifest?: (runId: string) => void; // Story 26.4
   loading: boolean;
 }
 
@@ -24,6 +27,7 @@ export function RunSelector({
   selectedIds,
   onToggle,
   onCompare,
+  onViewManifest,
   loading,
 }: RunSelectorProps) {
   const completed = results.filter((r) => r.status === "completed");
@@ -88,6 +92,16 @@ export function RunSelector({
                   <Badge variant="default" className="shrink-0 text-xs">
                     baseline
                   </Badge>
+                ) : null}
+                {isSelected && onViewManifest ? (
+                  <button
+                    type="button"
+                    onClick={() => onViewManifest(item.run_id)}
+                    aria-label={`View manifest for run ${item.run_id.slice(0, 8)}`}
+                    className="h-5 w-5 p-0 shrink-0 text-slate-400 hover:text-slate-600"
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                  </button>
                 ) : null}
                 {isSelected && !isBaseline ? (
                   <span

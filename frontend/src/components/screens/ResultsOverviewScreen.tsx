@@ -11,7 +11,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Download } from "lucide-react";
+import { Download, FileText, PlayCircle } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,8 @@ export interface ResultsOverviewScreenProps {
   reformLabel: string;
   onCompare: () => void;
   onViewDecisions: () => void;
+  onViewManifest?: () => void; // Story 26.4
+  onGoToScenario: () => void;
   onRunAgain: () => void;
   onExportCsv: () => void;
   onExportParquet: () => void;
@@ -100,6 +102,8 @@ export function ResultsOverviewScreen({
   reformLabel,
   onCompare,
   onViewDecisions,
+  onViewManifest,
+  onGoToScenario,
   onRunAgain,
   onExportCsv,
   onExportParquet,
@@ -164,6 +168,30 @@ export function ResultsOverviewScreen({
   const statusLabel =
     runResult === null ? "mock data" : runResult.success ? "completed" : "failed";
 
+  if (runResult === null) {
+    return (
+      <section className="space-y-3">
+        <div className="rounded-lg border border-slate-200 bg-white p-6">
+          <div className="mx-auto flex max-w-xl flex-col items-center gap-4 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-md border border-slate-200 bg-slate-50">
+              <FileText className="h-6 w-6 text-slate-500" aria-hidden="true" />
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-base font-semibold text-slate-900">No runs yet</h2>
+              <p className="text-sm text-slate-500">
+                Stage 5 will show completed runs, exports, comparisons, and manifests after the first simulation finishes.
+              </p>
+            </div>
+            <Button size="sm" onClick={onGoToScenario}>
+              <PlayCircle className="h-3.5 w-3.5" aria-hidden="true" />
+              Go to Scenario stage to run a simulation
+            </Button>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="space-y-3">
       {/* Header — metadata left, actions right */}
@@ -197,9 +225,14 @@ export function ResultsOverviewScreen({
             Compare Runs
           </Button>
           {runResult?.run_id ? (
-            <Button variant="outline" size="sm" onClick={onViewDecisions}>
-              Behavioral Decisions
-            </Button>
+            <>
+              <Button variant="outline" size="sm" onClick={onViewDecisions}>
+                Behavioral Decisions
+              </Button>
+              <Button variant="outline" size="sm" onClick={onViewManifest}>
+                View Manifest
+              </Button>
+            </>
           ) : null}
           <Button variant="ghost" size="sm" onClick={onRunAgain}>
             Run Again

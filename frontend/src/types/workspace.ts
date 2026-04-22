@@ -21,7 +21,8 @@ export type SubView =
   | "population-explorer"
   | "comparison"
   | "decisions"
-  | "runner";
+  | "runner"
+  | "manifest"; // Story 26.4
 
 // ============================================================================
 // Population sub-step types — Story 22.4
@@ -98,7 +99,7 @@ export const STAGES: { key: StageKey; label: string; activeFor: (StageKey | SubV
   { key: "population",         label: "Population",         activeFor: ["population", "data-fusion", "population-explorer"] },
   { key: "investment-decisions", label: "Investment Decisions", activeFor: ["investment-decisions"] },
   { key: "scenario",           label: "Scenario",           activeFor: ["scenario"] },
-  { key: "results",            label: "Run / Results / Compare", activeFor: ["results", "comparison", "decisions", "runner"] },
+  { key: "results",            label: "Run / Results / Compare", activeFor: ["results", "comparison", "decisions", "runner", "manifest"] }, // Story 26.4: added "manifest"
 ];
 
 // ============================================================================
@@ -110,7 +111,7 @@ export function isValidStage(s: string): s is StageKey {
   return VALID_STAGES.has(s);
 }
 
-const VALID_SUBVIEWS = new Set<string>(["data-fusion", "population-explorer", "comparison", "decisions", "runner"]);
+const VALID_SUBVIEWS = new Set<string>(["data-fusion", "population-explorer", "comparison", "decisions", "runner", "manifest"]); // Story 26.4: added "manifest"
 export function isValidSubView(s: string): s is SubView {
   return VALID_SUBVIEWS.has(s);
 }

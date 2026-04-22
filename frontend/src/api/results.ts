@@ -3,7 +3,7 @@
 /** Result persistence API functions — Story 17.3. */
 
 import { apiFetch } from "./client";
-import type { ResultDetailResponse, ResultListItem } from "./types";
+import type { ManifestResponse, ResultDetailResponse, ResultListItem } from "./types";
 
 /** List all saved simulation results in reverse chronological order. */
 export async function listResults(): Promise<ResultListItem[]> {
@@ -13,6 +13,11 @@ export async function listResults(): Promise<ResultListItem[]> {
 /** Get the full detail for a single saved simulation result. */
 export async function getResult(runId: string): Promise<ResultDetailResponse> {
   return apiFetch<ResultDetailResponse>(`/api/results/${runId}`);
+}
+
+/** Get the full manifest for a single simulation result — Story 26.4. */
+export async function getManifest(runId: string): Promise<ManifestResponse> {
+  return apiFetch<ManifestResponse>(`/api/results/${runId}/manifest`);
 }
 
 /** Delete a saved simulation result from the persistent store. */

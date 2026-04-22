@@ -6,7 +6,7 @@
  * Clicking a run selects it; the delete button removes it from storage.
  */
 
-import { Trash2 } from "lucide-react";
+import { Trash2, FileText } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -52,6 +52,7 @@ interface ResultsListPanelProps {
   selectedRunId: string | null;
   onSelect: (runId: string) => void;
   onDelete: (runId: string) => void;
+  onViewManifest?: (runId: string) => void; // Story 26.4
 }
 
 export function ResultsListPanel({
@@ -59,6 +60,7 @@ export function ResultsListPanel({
   selectedRunId,
   onSelect,
   onDelete,
+  onViewManifest,
 }: ResultsListPanelProps) {
   if (results.length === 0) {
     return (
@@ -139,7 +141,18 @@ export function ResultsListPanel({
                 {formatTimestamp(item.timestamp)}
               </span>
 
-              {/* Delete button */}
+              {/* Action buttons */}
+              {item.status === "completed" && onViewManifest && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onViewManifest(item.run_id)}
+                  aria-label={`View manifest for run ${item.run_id.slice(0, 8)}`}
+                  className="h-6 w-6 p-0 shrink-0 text-slate-400 hover:text-slate-600"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"

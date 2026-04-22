@@ -1,0 +1,131 @@
+record_id: 86bc3275-a7eb-4631-a8ef-67a16b731035
+created_at: '2026-04-21T21:15:47.521086+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 26
+  story_num: 4
+  title: Story 26.4
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: codex
+  model: gpt-5.3-codex
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-04-21T21:11:09.997209Z'
+  end_time: '2026-04-21T21:15:29.401209Z'
+  duration_ms: 259404
+  input_tokens: 0
+  output_tokens: 3685
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 14740
+  heading_count: 35
+  list_depth_max: 3
+  code_block_count: 5
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 8.8'
+  - 🎯 Ruthless Story Validation 26.4
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 8.8 → REJECT'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Manifest Run Selection Contract Is Missing
+  - 2. Backend Endpoint Cannot Satisfy AC-4 Metadata-Only Behavior
+  - 3. AC-6 Required Fields Missing in Proposed API Schema
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 4. Define Coexistence With Existing `ResultDetailView` Manifest Tab
+  - 5. Expand Empty-State Matrix to Match Epic Notes
+  - 6. Add Accessibility Acceptance Criteria
+  - 7. Clarify “Exports Context” Entry Point
+  - 8. Specify Error-State Taxonomy for Manifest Sub-view
+  - ✨ Optimizations (Nice to Have)
+  - 9. Reduce API Duplication With Structured Reuse
+  - 10. Normalize Manifest Key Shapes at API Boundary
+  - 🤖 LLM Optimization Improvements
+  - 11. Replace Placeholder Logic With Explicit Contract
+  - 12. Collapse Redundant Implementation Blocks Into a Contract Table
+  - 13. Tighten Non-Regression Requirement Into Assertions
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: ddf8a5391557
+findings:
+  total_count: 13
+  by_severity:
+    critical: 3
+    major: 8
+    minor: 2
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 4
+    completeness: 6
+    clarity: 6
+    testability: 4
+  has_fix_count: 13
+  has_location_count: 13
+  has_evidence_count: 13
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 3
+  confidence_phrases_count: 3
+linguistic:
+  avg_sentence_length: 15.193277310924369
+  vocabulary_richness: 0.37057522123893805
+  flesch_reading_ease: 13.452625891185619
+  vague_terms_count: 2
+  formality_score: 0.7
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.85
+  evidence_quality: 0.9
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false

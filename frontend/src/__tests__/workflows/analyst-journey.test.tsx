@@ -277,8 +277,8 @@ describe("Analyst Journey — cross-screen navigation", () => {
       window.dispatchEvent(new HashChangeEvent("hashchange"));
 
       await waitFor(() => {
-        // ResultsOverviewScreen renders — it has the "Compare Runs" button
-        expect(screen.getByRole("button", { name: /compare runs/i })).toBeInTheDocument();
+        // ResultsOverviewScreen renders the Stage 5 empty state before any runs exist.
+        expect(screen.getByText(/No runs yet/i)).toBeInTheDocument();
       });
     });
   });
@@ -308,8 +308,8 @@ describe("Analyst Journey — cross-screen navigation", () => {
       window.dispatchEvent(new HashChangeEvent("hashchange"));
 
       await waitFor(() => {
-        // ResultsOverviewScreen (default results subview)
-        expect(screen.getByRole("button", { name: /compare runs/i })).toBeInTheDocument();
+        // ResultsOverviewScreen (default results subview) shows the empty state.
+        expect(screen.getByText(/No runs yet/i)).toBeInTheDocument();
       });
     });
   });

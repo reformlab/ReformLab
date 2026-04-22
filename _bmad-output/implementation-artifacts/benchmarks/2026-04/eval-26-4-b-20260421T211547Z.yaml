@@ -1,0 +1,130 @@
+record_id: a515e1f9-12b4-4d81-a0d8-16c7a2836a85
+created_at: '2026-04-21T21:15:47.501997+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 26
+  story_num: 4
+  title: Story 26.4
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-04-21T21:11:09.997209Z'
+  end_time: '2026-04-21T21:12:41.479209Z'
+  duration_ms: 91482
+  input_tokens: 0
+  output_tokens: 5621
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 22487
+  heading_count: 34
+  list_depth_max: 3
+  code_block_count: 10
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 13.9'
+  - 🎯 Ruthless Story Validation 26.4
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 13.9 → REJECT'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. population_source Type Mismatch Will Cause Runtime Errors
+  - 2. Test File Path Points to Non-Existent Directory
+  - 3. runId Context Not Specified for Manifest Sub-View Navigation
+  - 4. Empty State Component Location Conflicts with Existing Pattern
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Specify Exact Navigation Entry Point Locations
+  - 2. Help Content Key Should Follow Nested Pattern
+  - 3. Specify Collapsible Component Default Open/Closed States
+  - ✨ Optimizations (Nice to Have)
+  - 1. Consider Inlining Manifest View Logic in App.tsx
+  - 2. Evidence Assets Schema Could Be More Specific
+  - 3. Add Loading Skeleton Spec for RunManifestViewer
+  - 🤖 LLM Optimization Improvements
+  - 1. Remove Verbose Component Implementation Code
+  - 2. Consolidate Type Definitions
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: ddf8a5391557
+findings:
+  total_count: 12
+  by_severity:
+    critical: 4
+    major: 3
+    minor: 5
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 1
+    completeness: 4
+    clarity: 7
+    testability: 0
+  has_fix_count: 12
+  has_location_count: 10
+  has_evidence_count: 10
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 21
+  confidence_phrases_count: 2
+linguistic:
+  avg_sentence_length: 29.739583333333332
+  vocabulary_richness: 0.2581436077057793
+  flesch_reading_ease: 10.628072431218442
+  vague_terms_count: 1
+  formality_score: 0.65
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.83
+  evidence_quality: 0.83
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false

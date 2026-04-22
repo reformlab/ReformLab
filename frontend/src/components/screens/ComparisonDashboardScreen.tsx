@@ -52,11 +52,13 @@ import {
 interface ComparisonDashboardScreenProps {
   results: ResultListItem[];
   onBack: () => void;
+  onViewManifest?: (runId: string) => void;
 }
 
 export function ComparisonDashboardScreen({
   results,
   onBack,
+  onViewManifest,
 }: ComparisonDashboardScreenProps) {
   const [selectedRunIds, setSelectedRunIds] = useState<string[]>([]);
   const [comparisonData, setComparisonData] =
@@ -177,6 +179,7 @@ export function ComparisonDashboardScreen({
         selectedIds={selectedRunIds}
         onToggle={toggleRun}
         onCompare={() => void handleCompare()}
+        onViewManifest={onViewManifest}
         loading={loading}
       />
 

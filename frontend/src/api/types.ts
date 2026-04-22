@@ -788,3 +788,58 @@ export interface ExogenousFilters {
   unit?: string;
   source?: string;
 }
+
+// ============================================================================
+// Manifest response types — Story 26.4
+// ============================================================================
+
+export interface ManifestResponse {
+  // Core identity
+  run_id: string;
+  manifest_id: string;
+  created_at: string;
+  started_at: string;
+  finished_at: string;
+  status: string;
+  // Version fields
+  engine_version: string;
+  openfisca_version: string;
+  adapter_version: string;
+  scenario_version: string;
+  // Hashes
+  data_hashes: Record<string, string>;
+  output_hashes: Record<string, string>;
+  integrity_hash: string;
+  // Execution metadata
+  seeds: Record<string, number>;
+  policy: Record<string, unknown>;
+  assumptions: Array<{
+    key: string;
+    value: unknown;
+    source: string;
+    is_default: boolean;
+  }>;
+  mappings: Array<{
+    openfisca_name: string;
+    project_name: string;
+    direction: string;
+    source_file?: string;
+    transform?: string;
+  }>;
+  warnings: string[];
+  step_pipeline: string[];
+  // Lineage
+  parent_manifest_id: string;
+  child_manifests: Record<string, string>;
+  // Optional fields (Story 21.6, 21.7, 21.8, 23.1, 23.5)
+  exogenous_series: string[];
+  taste_parameters: Record<string, unknown>;
+  evidence_assets: Array<Record<string, unknown>>;
+  calibration_assets: Array<Record<string, unknown>>;
+  validation_assets: Array<Record<string, unknown>>;
+  evidence_summary: Record<string, unknown>;
+  runtime_mode: "live" | "replay";
+  population_id: string;
+  population_source: "bundled" | "uploaded" | "generated" | null;
+  metadata_only: boolean;
+}
