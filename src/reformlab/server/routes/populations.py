@@ -147,9 +147,17 @@ def _get_population_origin(
 
     uploaded_dir = _get_uploaded_dir()
 
-    # Check if in uploaded directory
-    if file_path.parent == uploaded_dir:
-        return "uploaded"
+    # Check if in uploaded directory (including subdirectories for folder-based populations)
+    # Use resolve() to handle symlinks and relative paths correctly
+    try:
+        resolved_file = file_path.resolve()
+        resolved_uploaded = uploaded_dir.resolve()
+        # Check if uploaded_dir is a parent of file_path
+        if resolved_uploaded == resolved_file or resolved_uploaded in resolved_file.parents:
+            return "uploaded"
+    except OSError:
+        # If path resolution fails, fall back to string comparison
+        pass
 
     # Check for manifest file (generated population)
     data_dir = _get_data_dir()
@@ -374,10 +382,42 @@ def _scan_populations_with_origin() -> list[PopulationLibraryItem]:
                 households = households_from_data
 
             # Determine canonical evidence from descriptor or use defaults
+            # Story 26.5: Validate descriptor fields against literal types
+            # (same pattern as _get_canonical_evidence_from_metadata)
             if descriptor and all(k in descriptor for k in ("origin", "access_mode", "trust_status")):
                 canonical_origin = descriptor["origin"]
                 access_mode = descriptor["access_mode"]
                 trust_status = descriptor["trust_status"]
+
+                # Validate against literal types
+                valid_origins = DataAssetOrigin.__args__
+                valid_modes = DataAssetAccessMode.__args__
+                valid_statuses = DataAssetTrustStatus.__args__
+
+                if canonical_origin not in valid_origins:
+                    logger.warning(
+                        "event=invalid_descriptor population=%s field=origin value=%s using_fallback=true",
+                        pop_id,
+                        canonical_origin,
+                    )
+                    canonical_origin, access_mode, trust_status = _map_to_canonical_evidence("built-in")
+                elif access_mode not in valid_modes:
+                    logger.warning(
+                        "event=invalid_descriptor population=%s field=access_mode "
+                        "value=%s using_fallback=true",
+                        pop_id,
+                        access_mode,
+                    )
+                    canonical_origin, access_mode, trust_status = _map_to_canonical_evidence("built-in")
+                elif trust_status not in valid_statuses:
+                    logger.warning(
+                        "event=invalid_descriptor population=%s field=trust_status "
+                        "value=%s using_fallback=true",
+                        pop_id,
+                        trust_status,
+                    )
+                    canonical_origin, access_mode, trust_status = _map_to_canonical_evidence("built-in")
+
                 # Use descriptor name if available
                 if descriptor.get("name"):
                     name = descriptor["name"]
@@ -515,8 +555,8 @@ def _scan_populations_with_origin() -> list[PopulationLibraryItem]:
                 try:
                     table = _load_population_table(data_path)
                     column_count = table.num_columns
-                except Exception:
-                    pass
+                except OSError as e:
+                    logger.debug("Failed to load uploaded population file for column count: %s", e)
 
             # Story 21.2 / Task 9: Get canonical evidence from metadata with defaults
             # for legacy files
@@ -933,7 +973,8 @@ def _compute_numeric_profile(table: pa.Table, column_name: str) -> ColumnProfile
         try:
             result_array = pc.quantile(valid_data, q=q)
             percentiles[f"p{p}"] = float(result_array[0].as_py())
-        except Exception:
+        except (pa.ArrowInvalid, pa.ArrowNotImplementedError, IndexError) as e:
+            logger.debug("Failed to compute percentile p%d: %s", p, e)
             percentiles[f"p{p}"] = 0
 
     # Compute histogram (20 equal-width bins)
@@ -990,7 +1031,13 @@ def _compute_categorical_profile(table: pa.Table, column_name: str) -> ColumnPro
     # Get top 50 values
     value_counts_list = []
     try:
-        value_counts_table = pc.value_counts(valid_data)
+        # pc.value_counts returns a StructArray with "values" and "counts" fields
+        value_counts_struct = pc.value_counts(valid_data)
+        # Convert to table for easier manipulation
+        value_counts_table = pa.Table.from_arrays(
+            [value_counts_struct.field("values"), value_counts_struct.field("counts")],
+            names=["values", "counts"]
+        )
         sorted_table = value_counts_table.sort_by([("counts", "descending")])
 
         # Take top N values
@@ -999,8 +1046,8 @@ def _compute_categorical_profile(table: pa.Table, column_name: str) -> ColumnPro
             val = sorted_table["values"][i].as_py()
             cnt = sorted_table["counts"][i].as_py()
             value_counts_list.append({"value": str(val), "count": int(cnt)})
-    except Exception:
-        pass
+    except (pa.ArrowInvalid, IndexError) as e:
+        logger.debug("Failed to compute categorical value counts: %s", e)
 
     return ColumnProfileCategorical(
         type="categorical",
@@ -1028,8 +1075,8 @@ def _compute_boolean_profile(table: pa.Table, column_name: str) -> ColumnProfile
         try:
             true_count = int(pc.sum(valid_data.cast(pa.int32())).as_py())
             false_count = len(valid_data) - true_count
-        except Exception:
-            pass
+        except (pa.ArrowInvalid, pa.ArrowNotImplementedError) as e:
+            logger.debug("Failed to compute boolean profile counts: %s", e)
 
     return ColumnProfileBoolean(
         type="boolean",

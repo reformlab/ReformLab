@@ -58,7 +58,7 @@ export function usePopulations() {
       access_mode: "bundled",
       trust_status: "demo-only",
       is_synthetic: true,
-      column_count: 8,
+      column_count: 7,  // household_id, person_id, age, income, energy_transport_fuel, energy_heating_fuel, energy_natural_gas
       created_date: "2026-01-01T00:00:00Z",
     },
     {

@@ -1,0 +1,56 @@
+record_id: 35e1b44e-6c64-4338-8cd4-ffbbb4c672a1
+created_at: '2026-04-22T11:46:02.303512+00:00'
+workflow:
+  id: code-review-synthesis
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: true
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 26
+  story_num: '5'
+  title: '26.5'
+  complexity_flags: {}
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: synthesizer
+  role_id: null
+  session_id: 17c00079-7fb9-4694-97ae-c507848a22b4
+execution:
+  start_time: '2026-04-22T11:40:36.891385Z'
+  end_time: '2026-04-22T11:46:02.277873Z'
+  duration_ms: 325386
+  input_tokens: 0
+  output_tokens: 2429
+  retries: 0
+  sequence_position: 2
+output:
+  char_count: 9717
+  heading_count: 14
+  list_depth_max: 0
+  code_block_count: 24
+  sections_detected: []
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 881a203af579
+findings: null
+reasoning: null
+linguistic: null
+quality: null
+consensus: null
+ground_truth: null
+custom:
+  phase: code-review-synthesis
+  reviewer_count: 2
+  compression_steps_applied: []
+  original_token_estimate: 25976
+  compressed_token_estimate: 25976
+  extraction_llm_calls: 0
+  extraction_duration_ms: 0
