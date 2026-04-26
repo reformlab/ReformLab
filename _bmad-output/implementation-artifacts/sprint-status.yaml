@@ -60,5 +60,38 @@ development_status:
   26-5-add-quick-test-population-to-the-population-library: done
   26-6-add-deterministic-scenario-name-suggestions-from-policy-set-and-population-context: 
     done
-  26-7-add-five-stage-migration-demo-restore-and-cross-stage-regression-coverage: 
+  26-7-add-five-stage-migration-demo-restore-and-cross-stage-regression-coverage:
     review
+  # Epic 27 — Workspace UX Stabilization (proposed 2026-04-26)
+  epic-27: backlog
+  27-0-close-out-26-7-review-patches-and-retro-epic-26: backlog
+  27-1-allow-single-policy-portfolio-runs: backlog
+  27-2-fix-popover-transparent-background: backlog
+  27-3-show-actual-parameter-values-inline-in-policy-cards: backlog
+  27-4-unify-template-vs-from-scratch-policy-card-visuals: backlog
+  27-5-auto-save-policy-set-composition-draft: backlog
+  27-6-add-not-started-nav-rail-state-and-stop-demo-presatisfying-stages: backlog
+  27-7-make-investment-decisions-wizard-step-labels-clickable: backlog
+  27-8-restructure-population-stage-as-library-or-build-then-explorer: backlog
+  27-9-improve-policy-set-auto-name-suggestion: backlog
+  27-10-consolidate-frontend-formatters: backlog
+  27-11-consolidate-portfolio-dialog-hooks-and-unify-policy-types: backlog
+  27-12-stage-5-polish-breadcrumb-palette-units-runid-nan-stale-reset: backlog
+  27-13-appcontext-naming-state-hardening: backlog
+  27-14-frontend-cleanup-sweep-deferred-work-items: backlog
+  27-15-ux-spec-amendments: backlog
+  # Epic 28 — Investment Decisions: Technology-Set as a First-Class Concept (proposed 2026-04-26)
+  epic-28: backlog
+  28-0-architect-spike-technology-set-contract-and-population-state-transition-model: backlog
+  28-1-add-technology-set-to-engine-config: backlog
+  28-2-extend-population-data-schema-with-incumbent-technology-columns: backlog
+  28-3-wire-discrete-choice-step-outputs-back-into-population-frame: backlog
+  28-4-investment-decisions-wizard-technology-step: backlog
+  28-5-regression-coverage-for-multi-period-decisions-runs: backlog
+  # Epic 29 — OpenFisca Variable Coverage and Live-Output Recovery (proposed 2026-04-26)
+  epic-29: backlog
+  29-1-implement-custom-openfisca-variables-subsidy-malus-energy-aid: backlog
+  29-2-resolve-generic-name-placeholders: backlog
+  29-3-restore-resolved-names-in-default-live-output-variables: backlog
+  29-4-sweep-test-fixtures-off-generic-names: backlog
+  29-5-add-concat-tables-schema-mismatch-regression-tests: backlog

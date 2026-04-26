@@ -29,8 +29,11 @@ Epics 1-24 are complete (see git history and implementation artifacts for detail
 
 | Epic | Title | Phase | Status | Stories |
 |------|-------|-------|--------|---------|
-| EPIC-25 | Stage 1 Policies Redesign (Revision 4.1 UX) | 3 | backlog | 6 |
-| EPIC-26 | Five-Stage Workspace Migration and Stage Completion | 3 | backlog | 7 |
+| EPIC-25 | Stage 1 Policies Redesign (Revision 4.1 UX) | 3 | done | 6 |
+| EPIC-26 | Five-Stage Workspace Migration and Stage Completion | 3 | in-progress (26.7 in review) | 7 |
+| EPIC-27 | Workspace UX Stabilization | 3 | backlog | 16 |
+| EPIC-28 | Investment Decisions — Technology-Set as a First-Class Concept | 4 | backlog (gated on 28.0 spike) | 6 |
+| EPIC-29 | OpenFisca Variable Coverage and Live-Output Recovery | 3 | backlog | 5 |
 
 ## Conventions
 
@@ -679,3 +682,118 @@ Close the workspace migration with regression coverage across first launch, retu
 - Given policies require columns missing from the selected population, when Stage 1 and Stage 2 render, then both show non-blocking warnings.
 - Given Stage 5 sub-views are used, then run queue, results, comparison, and manifest viewer all keep Run / Results / Compare active in the nav rail.
 - Given the regression suite runs, then it covers five-stage nav, skip routing, scenario validation, Quick Test Population, scenario naming, manifest access, demo flow, and restore flow.
+
+---
+
+# Epic 27: Workspace UX Stabilization
+
+**User outcome:** the analyst sees an honest "not started" workspace, can read help popovers, can run a single-policy assessment, gets useful information without expanding cards, never loses unsaved policy-set work, navigates Population and Investment Decisions in the way the UX spec already documents in prose, sees consistent units and labels in Run/Results/Compare, and benefits from a modest code consolidation that makes future polish cheaper.
+
+**Status:** backlog
+
+**Builds on:** EPIC-25, EPIC-26
+
+**PRD Refs:** FR43 (clarification: ≥1 policy), UX-DR7, UX-DR9, UX-DR10, UX-DR11, UX-DR12, UX-DR13, UX-DR15
+
+**Source documents:**
+- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-04-26.md`
+- User reports 2026-04-26 with screenshots
+- `_bmad-output/implementation-artifacts/spec-fix-passive-policy-set-autoload-for-non-portfolio-references.md`
+- `_bmad-output/implementation-artifacts/deferred-work.md`
+
+**Toast policy (durable rule):** passive / autoload / restore failures are silent; explicit user-initiated actions (Save, Load click, Run) keep their toasts.
+
+| ID | Type | Pri | SP | Title | Status | PRD Refs |
+|----|------|-----|----|-------|--------|----------|
+| BKL-2700 | Bug | P0 | 2 | Close out story-26.7 review patches and retro EPIC-26 | backlog | UX-DR15 |
+| BKL-2701 | Bug | P0 | 1 | Allow single-policy portfolio runs (drop ≥2 minimum) | backlog | FR43 |
+| BKL-2702 | Bug | P0 | 1 | Fix Popover transparent background (define `--popover` token) | backlog | UX-DR7 |
+| BKL-2703 | Story | P0 | 5 | Show actual parameter values inline in policy cards | backlog | UX-DR7, UX-DR9 |
+| BKL-2704 | Story | P0 | 3 | Unify template vs from-scratch policy-card visuals | backlog | UX-DR7, UX-DR8, UX-DR9 |
+| BKL-2705 | Story | P0 | 3 | Auto-save policy-set composition draft to localStorage | backlog | UX-DR10 |
+| BKL-2706 | Story | P0 | 3 | Add explicit "not started" nav-rail state and stop demo from pre-satisfying stages | backlog | UX-DR6 |
+| BKL-2707 | Story | P0 | 3 | Make Investment Decisions wizard step labels clickable | backlog | UX-DR11 |
+| BKL-2708 | Story | P1 | 3 | Restructure Population stage as Library-or-Build → Explorer | backlog | UX-DR14 |
+| BKL-2709 | Story | P1 | 2 | Improve policy-set auto-name suggestion | backlog | UX-DR10, UX-DR15 |
+| BKL-2710 | Story | P1 | 3 | Consolidate frontend formatters | backlog | (cross-cutting) |
+| BKL-2711 | Story | P1 | 3 | Consolidate portfolio dialog hooks and unify policy types | backlog | (cross-cutting) |
+| BKL-2712 | Story | P1 | 3 | Stage 5 polish — breadcrumb, palette, units, run-id, NaN guards, stale reset | backlog | UX-DR13 |
+| BKL-2713 | Story | P1 | 2 | AppContext naming-state hardening | backlog | UX-DR15 |
+| BKL-2714 | Story | P1 | 2 | Frontend cleanup sweep absorbing `deferred-work.md` items | backlog | (cleanup) |
+| BKL-2715 | Story | P2 | 2 | UX-spec amendments (not-started, Population IA, clickable wizard, Stage 5 breadcrumb) | backlog | UX-DR6, UX-DR11, UX-DR13 |
+
+## Epic-Level Acceptance Criteria
+
+- The Policies stage no longer emits any spurious "Could not load policy set" toast on mount.
+- A single-policy scenario can be saved and run end-to-end.
+- Help popovers are readable.
+- Policy cards show information that helps the analyst recognise a policy without expanding it.
+- The nav rail truthfully signals progress on first launch.
+- Population stage no longer presents Library, Build, and Explorer as if they were three peer choices.
+- Investment Decisions wizard step labels navigate backward on click.
+- Stage 5 displays consistent units, semantic colors for baseline/reform, and clear sub-view location.
+- Quality gates pass: ruff, mypy, pytest, npm typecheck, npm lint, npm test.
+
+---
+
+# Epic 28: Investment Decisions — Technology-Set as a First-Class Concept
+
+**User outcome:** the analyst can declare which technologies are in scope for an investment decision, the population carries an incumbent technology per household, the discrete-choice step writes chosen technologies back into the population, and multi-period runs reflect technology transitions.
+
+**Status:** backlog (gated on architect spike — story 28.0)
+
+**Builds on:** EPIC-23, EPIC-26, the existing `src/reformlab/discrete_choice/` module
+
+**PRD Refs:** likely new FRs (PM owns) around technology-set, population-state transitions, multi-period semantics. Existing FR43, FR46 expanded.
+
+**Source documents:**
+- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-04-26.md` Section 4.2
+- `src/reformlab/discrete_choice/types.py`, `step.py`, `heating.py`, `vehicle.py`
+- `src/reformlab/computation/types.py` (PopulationData)
+
+| ID | Type | Pri | SP | Title | Status | PRD Refs |
+|----|------|-----|----|-------|--------|----------|
+| BKL-2800 | Spike | P0 | 3 | Architect spike — technology-set contract and population state-transition model | backlog | (architecture) |
+| BKL-2801 | Story | P0 | 5 | Add `technology_set` to `EngineConfig`; expose API and persistence | backlog | (new FR pending) |
+| BKL-2802 | Story | P0 | 5 | Extend `PopulationData` schema with optional incumbent-technology columns | backlog | (new FR pending) |
+| BKL-2803 | Story | P0 | 5 | Wire `DiscreteChoiceStep` outputs back into the population frame | backlog | (new FR pending) |
+| BKL-2804 | Story | P0 | 3 | Investment Decisions wizard — Technology step | backlog | UX-DR11 |
+| BKL-2805 | Story | P1 | 3 | Regression and analyst-journey coverage for multi-period decisions runs | backlog | NFR9 |
+
+## Epic-Level Acceptance Criteria
+
+- An analyst configures a heating scenario over 5 years with EV/heat-pump/gas alternatives, sees transition counts in results, and the manifest captures the technology-set version.
+- Backward compatibility verified for scenarios that don't enable decisions or for populations without incumbent columns.
+- Architect spike produces an ADR that PM signs off before stories 28.1–28.5 are sized.
+
+---
+
+# Epic 29: OpenFisca Variable Coverage and Live-Output Recovery
+
+**User outcome:** the live OpenFisca path produces the full set of policy-relevant outputs (subsidies, malus, energy aid, French income variables) instead of the four currently-resolvable variables, and the test suite stops encoding the generic-name placeholders that blew up production on 2026-04-26.
+
+**Status:** backlog
+
+**Builds on:** EPIC-23 (live OpenFisca default) and the 2026-04-26 hotfix that narrowed `_DEFAULT_LIVE_OUTPUT_VARIABLES`
+
+**PRD Refs:** FR43, FR46, NFR9 (richer policy outputs and manifest fidelity)
+
+**Source documents:**
+- `_bmad-output/implementation-artifacts/deferred-work.md` lines 19–25
+- `src/reformlab/computation/result_normalizer.py:71-76`
+- 2026-04-26 hotfix commit (search git log for `_DEFAULT_LIVE_OUTPUT_VARIABLES`)
+
+| ID | Type | Pri | SP | Title | Status | PRD Refs |
+|----|------|-----|----|-------|--------|----------|
+| BKL-2901 | Story | P0 | 5 | Implement custom OpenFisca variables: subsidy_amount, subsidy_eligible, vehicle_malus, energy_poverty_aid | backlog | FR46 |
+| BKL-2902 | Story | P0 | 3 | Resolve generic-name placeholders (irpp/revenu_net/revenu_brut/taxe_carbone) | backlog | NFR21 |
+| BKL-2903 | Story | P0 | 2 | Restore resolved names in `_DEFAULT_LIVE_OUTPUT_VARIABLES` | backlog | FR43, NFR9 |
+| BKL-2904 | Story | P1 | 3 | Sweep test fixtures off the generic names | backlog | (test hygiene) |
+| BKL-2905 | Story | P1 | 3 | Add `pa.concat_tables()` schema-mismatch regression tests | backlog | (test hygiene) |
+
+## Epic-Level Acceptance Criteria
+
+- Live OpenFisca runs produce all eight intended output variables.
+- No test fixture references generic placeholder names (`irpp`, `revenu_net`, `revenu_brut`, `taxe_carbone`).
+- `pa.concat_tables()` schema-mismatch paths in `panel.py` have regression coverage.
+- Manifest version bumped if the output set has changed semantics.
