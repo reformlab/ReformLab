@@ -63,6 +63,7 @@ import { PoliciesStageScreen } from "@/components/screens/PoliciesStageScreen";
 import { mockTemplates } from "@/data/mock-data";
 import type { WorkspaceScenario } from "@/types/workspace";
 import type { PortfolioListItem } from "@/api/types";
+import { toast } from "sonner";
 
 // ============================================================================
 // Helpers
@@ -425,6 +426,7 @@ describe("PoliciesStageScreen — AC-4, AC-5: Portfolio-scenario integration", (
     // State must NOT be updated when load fails
     expect(updateScenarioField).not.toHaveBeenCalledWith("portfolioName", "missing-portfolio");
     expect(setSelectedPortfolioName).not.toHaveBeenCalledWith("missing-portfolio");
+    expect(vi.mocked(toast.warning)).toHaveBeenCalledWith("Could not load policy set 'missing-portfolio'");
   });
 
   it("deleting active portfolio delinks it from scenario (AC-5)", async () => {
@@ -505,9 +507,10 @@ describe("PoliciesStageScreen — AC-6: Validity indicator", () => {
 // ============================================================================
 
 describe("PoliciesStageScreen — auto-load on mount", () => {
-  it("auto-loads portfolio when activeScenario.portfolioName is set", async () => {
+  it("auto-loads portfolio when activeScenario.portfolioName matches a saved portfolio", async () => {
     await act(async () => {
       renderScreen({
+        portfolios: [makePortfolio("my-portfolio")],
         activeScenario: makeScenario({ portfolioName: "my-portfolio" }),
       });
     });
@@ -525,6 +528,31 @@ describe("PoliciesStageScreen — auto-load on mount", () => {
     // Brief real-timer wait to flush any pending async
     await new Promise((r) => setTimeout(r, 50));
     expect(getPortfolio).not.toHaveBeenCalled();
+  });
+
+  it("silently skips passive autoload for unmatched non-portfolio references, even across rerenders", async () => {
+    const scenario = makeScenario({ portfolioName: "carbon-plus-rebate" });
+
+    const view = renderScreen({
+      portfolios: [makePortfolio("saved-portfolio")],
+      activeScenario: scenario,
+    });
+
+    await new Promise((r) => setTimeout(r, 50));
+    expect(getPortfolio).not.toHaveBeenCalled();
+    expect(vi.mocked(toast.warning)).not.toHaveBeenCalled();
+
+    vi.mocked(useAppState).mockReturnValue(
+      makeDefaultAppState({
+        portfolios: [makePortfolio("saved-portfolio")],
+        activeScenario: scenario,
+      }) as ReturnType<typeof useAppState>,
+    );
+    view.rerender(<PoliciesStageScreen />);
+
+    await new Promise((r) => setTimeout(r, 50));
+    expect(getPortfolio).not.toHaveBeenCalled();
+    expect(vi.mocked(toast.warning)).not.toHaveBeenCalled();
   });
 });
 

@@ -77,6 +77,7 @@ export function PoliciesStageScreen() {
   const {
     templates,
     portfolios,
+    portfoliosLoading,
     refetchPortfolios,
     activeScenario,
     updateScenarioField,
@@ -551,6 +552,8 @@ export function PoliciesStageScreen() {
   } = usePortfolioLoadDialog({
     templates,
     activeScenarioPortfolioName: activeScenario?.portfolioName,
+    availablePortfolioNames: portfolios.map((portfolio) => portfolio.name),
+    portfoliosLoading,
     compositionLength: composition.length,
     validStrategies: VALID_STRATEGIES,
     defaultResolutionStrategy: "error",

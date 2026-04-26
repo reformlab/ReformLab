@@ -297,6 +297,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     () => getManuallyEditedNames(),
   );
 
+  // Loaded scenarios keep their stored name while the restored context is unchanged.
+  const loadedScenarioNameContextRef = useRef<{
+    scenarioId: string;
+    portfolioName: string | null;
+    populationId: string;
+  } | null>(null);
+
+  // Policy set selection is used by scenario auto-naming.
+  const [selectedPortfolioName, setSelectedPortfolioName] = useState<string | null>(null);
+
   const refreshSavedScenarios = useCallback(
     () => setSavedScenarios(getSavedScenarios()),
     [],
@@ -312,6 +322,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (isFirstLaunch()) {
       // First launch: load demo scenario
       const demo = createDemoScenario();
+      loadedScenarioNameContextRef.current = null;
       setActiveScenario(demo);
       setSelectedTemplateId(DEMO_TEMPLATE_ID);
       setSelectedPopulationId(DEMO_POPULATION_ID);
@@ -321,13 +332,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Returning user: restore saved scenario
       const saved = loadScenario();
       if (saved) {
+        const primaryPopulationId = saved.populationIds[0] ?? "";
+        loadedScenarioNameContextRef.current = {
+          scenarioId: saved.id,
+          portfolioName: saved.portfolioName,
+          populationId: primaryPopulationId,
+        };
         setActiveScenario(saved);
+        setSelectedPortfolioName(saved.portfolioName);
         // Sync legacy selectors so startRun() uses the restored scenario's values
         if (saved.policyType) setSelectedTemplateId(saved.policyType);
-        if (saved.populationIds.length > 0) setSelectedPopulationId(saved.populationIds[0]);
+        if (primaryPopulationId) setSelectedPopulationId(primaryPopulationId);
       } else {
         // localStorage externally cleared — fall back to demo (do NOT call markLaunched)
         const demo = createDemoScenario();
+        loadedScenarioNameContextRef.current = null;
         setActiveScenario(demo);
         setSelectedTemplateId(DEMO_TEMPLATE_ID);
         setSelectedPopulationId(DEMO_POPULATION_ID);
@@ -396,7 +415,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Results hooks (Story 17.3)
   const { results, loading: resultsLoading, refetch: refetchResults } = useResults();
-  const [selectedPortfolioName, setSelectedPortfolioName] = useState<string | null>(null);
 
   // Comparison state (Story 17.4)
   const [selectedComparisonRunIds, setSelectedComparisonRunIds] = useState<string[]>([]);
@@ -444,16 +462,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Set initial selection when populations/templates load
   useEffect(() => {
-    if (populations.length > 0 && !selectedPopulationId) {
-      setSelectedPopulationId(populations[0].id);
+    if (populations.length > 0) {
+      setSelectedPopulationId((current) => current || populations[0].id);
     }
-  }, [populations, selectedPopulationId]);
+  }, [populations]);
 
   useEffect(() => {
-    if (templates.length > 0 && !selectedTemplateId) {
-      setSelectedTemplateId(templates[0].id);
+    if (templates.length > 0) {
+      setSelectedTemplateId((current) => current || templates[0].id);
     }
-  }, [templates, selectedTemplateId]);
+  }, [templates]);
 
   // Fetch template details when template selection changes
   useEffect(() => {
@@ -495,18 +513,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Story 22.3: Auto-update scenario name when portfolio or population context changes
   // Only applies if the scenario name hasn't been manually edited and it's not the demo scenario
+  const activeScenarioId = activeScenario?.id;
+  const activeScenarioName = activeScenario?.name;
+  const activeScenarioPortfolioName = activeScenario?.portfolioName;
+  const activeScenarioPopulationIds = activeScenario?.populationIds;
+
   useEffect(() => {
-    if (!activeScenario) return; // Null guard - no active scenario to update
+    if (!activeScenarioId) return; // Null guard - no active scenario to update
 
     const demoId = DEMO_SCENARIO_ID;
-    const isManuallyEdited = manuallyEditedScenarioNames.has(activeScenario.id);
-    const isDemo = activeScenario.id === demoId;
+    const isManuallyEdited = manuallyEditedScenarioNames.has(activeScenarioId);
+    const isDemo = activeScenarioId === demoId;
 
     // Preserve the curated first-launch demo name; auto-naming is for user scenarios.
     if (isDemo) return;
 
     // Skip auto-update if name was manually edited.
     if (isManuallyEdited) return;
+
+    const loadedNameContext = loadedScenarioNameContextRef.current;
+    if (loadedNameContext?.scenarioId === activeScenarioId) {
+      const restoredContextUnchanged =
+        loadedNameContext.portfolioName === selectedPortfolioName &&
+        loadedNameContext.populationId === selectedPopulationId;
+      if (restoredContextUnchanged) return;
+      loadedScenarioNameContextRef.current = null;
+    }
 
     // Generate suggested name from current context
     const suggestedName = generateScenarioSuggestion(
@@ -518,15 +550,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
 
     // Only update if the suggested name differs from the current name
-    if (suggestedName !== activeScenario.name) {
+    if (suggestedName !== activeScenarioName) {
       setActiveScenario((prev) =>
         prev ? { ...prev, name: suggestedName } : null
       );
     }
   }, [
-    activeScenario?.portfolioName,
-    activeScenario?.populationIds,
-    activeScenario?.id,
+    activeScenarioPortfolioName,
+    activeScenarioPopulationIds,
+    activeScenarioId,
+    activeScenarioName,
     selectedPortfolioName,
     selectedPopulationId,
     populations,
@@ -549,16 +582,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const list = getSavedScenarios();
     const found = list.find((s) => s.id === id);
     if (found) {
+      const primaryPopulationId = found.populationIds[0] ?? "";
+      loadedScenarioNameContextRef.current = {
+        scenarioId: found.id,
+        portfolioName: found.portfolioName,
+        populationId: primaryPopulationId,
+      };
       setActiveScenario(found);
+      setSelectedPortfolioName(found.portfolioName);
       // Sync legacy selectors so startRun() uses the loaded scenario's values
       if (found.policyType) setSelectedTemplateId(found.policyType);
-      if (found.populationIds.length > 0) setSelectedPopulationId(found.populationIds[0]);
+      if (primaryPopulationId) setSelectedPopulationId(primaryPopulationId);
       navigateTo("policies");
     }
   }, [navigateTo]);
 
   const resetToDemo = useCallback(() => {
+    loadedScenarioNameContextRef.current = null;
     setActiveScenario(createDemoScenario());
+    setSelectedPortfolioName(null);
     setSelectedTemplateId(DEMO_TEMPLATE_ID);
     setSelectedPopulationId(DEMO_POPULATION_ID);
     navigateTo("results", "runner");
@@ -597,6 +639,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       policyType: templateId ?? null,
       lastRunId: null,
     };
+    loadedScenarioNameContextRef.current = null;
     setActiveScenario(newScenario);
     if (templateId) {
       setSelectedTemplateId(templateId);
@@ -616,6 +659,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       id: crypto.randomUUID(),
       name: cloneName,
     };
+    loadedScenarioNameContextRef.current = null;
     setActiveScenario(cloned);
 
     // Story 22.3: Mark cloned name as manually edited (cloned name is "manual" by definition)

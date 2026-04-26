@@ -26,6 +26,8 @@ interface LoadedPortfolioRef {
 interface UsePortfolioLoadDialogParams<ResolutionStrategy extends string> {
   templates: Template[];
   activeScenarioPortfolioName: string | null | undefined;
+  availablePortfolioNames: readonly string[];
+  portfoliosLoading: boolean;
   compositionLength: number;
   validStrategies: readonly ResolutionStrategy[];
   defaultResolutionStrategy: ResolutionStrategy;
@@ -42,6 +44,8 @@ interface UsePortfolioLoadDialogParams<ResolutionStrategy extends string> {
 export function usePortfolioLoadDialog<ResolutionStrategy extends string>({
   templates,
   activeScenarioPortfolioName,
+  availablePortfolioNames,
+  portfoliosLoading,
   compositionLength,
   validStrategies,
   defaultResolutionStrategy,
@@ -127,8 +131,14 @@ export function usePortfolioLoadDialog<ResolutionStrategy extends string>({
 
   useEffect(() => {
     if (!activeScenarioPortfolioName) return;
+    if (portfoliosLoading) return;
     if (compositionLength > 0) return;
     if (loadedPortfolioRef.current === activeScenarioPortfolioName) return;
+    if (!availablePortfolioNames.includes(activeScenarioPortfolioName)) {
+      // Passive restore should ignore stale or non-portfolio references silently.
+      loadedPortfolioRef.current = activeScenarioPortfolioName;
+      return;
+    }
 
     loadedPortfolioRef.current = activeScenarioPortfolioName;
     void loadPortfolioIntoComposition(activeScenarioPortfolioName).then((loaded) => {
@@ -138,9 +148,11 @@ export function usePortfolioLoadDialog<ResolutionStrategy extends string>({
     });
   }, [
     activeScenarioPortfolioName,
+    availablePortfolioNames,
     compositionLength,
     loadedPortfolioRef,
     loadPortfolioIntoComposition,
+    portfoliosLoading,
   ]);
 
   const openLoadDialog = useCallback(() => {
