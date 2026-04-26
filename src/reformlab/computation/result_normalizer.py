@@ -43,6 +43,13 @@ MAPPING_APPLIED_KEY: str = "mapping_applied"
 # Only output-direction mappings are included.
 #
 # Mapping precedence: explicit run config MappingConfig > _DEFAULT_OUTPUT_MAPPING
+#
+# This dict is a *rename ruleset*: keys may include names that don't yet exist
+# in core openfisca-france (e.g. Story 24.2 subsidy/malus/energy-aid placeholders
+# that will be added as custom variables). Rename entries for missing variables
+# are harmless no-ops at normalization time. Live-request scoping is handled by
+# _DEFAULT_LIVE_OUTPUT_VARIABLES below — keep that subset to names that actually
+# resolve in the active TaxBenefitSystem, otherwise computation will fail.
 _DEFAULT_OUTPUT_MAPPING: dict[str, str] = {
     "revenu_disponible": "disposable_income",
     "irpp": "income_tax",
@@ -52,7 +59,7 @@ _DEFAULT_OUTPUT_MAPPING: dict[str, str] = {
     "revenu_brut": "gross_income",
     "prestations_sociales": "social_benefits",
     "taxe_carbone": "carbon_tax",
-    # Story 24.2: Subsidy-family output variable mappings
+    # Story 24.2: Subsidy-family output variable mappings (custom vars, not in core)
     "montant_subvention": "subsidy_amount",
     "eligible_subvention": "subsidy_eligible",
     "malus_ecologique": "vehicle_malus",
@@ -60,10 +67,17 @@ _DEFAULT_OUTPUT_MAPPING: dict[str, str] = {
 }
 
 # OpenFisca variable names to request from the live adapter.
-# These are the keys of _DEFAULT_OUTPUT_MAPPING — the French variable names
-# that OpenFisca-France produces and that the normalizer maps to English.
+# Subset of _DEFAULT_OUTPUT_MAPPING keys that exist in core openfisca-france
+# today. Names from _DEFAULT_OUTPUT_MAPPING that point at not-yet-implemented
+# custom variables are intentionally excluded to keep live runs green; they
+# join this tuple once their custom-variable PRs land.
 # Story 23.4: Default output variables for live OpenFisca execution.
-_DEFAULT_LIVE_OUTPUT_VARIABLES: tuple[str, ...] = tuple(_DEFAULT_OUTPUT_MAPPING.keys())
+_DEFAULT_LIVE_OUTPUT_VARIABLES: tuple[str, ...] = (
+    "revenu_disponible",
+    "impots_directs",
+    "salaire_net",
+    "prestations_sociales",
+)
 
 # Minimum required indicator columns for normalization to succeed.
 # At least one of these must be present after normalization.

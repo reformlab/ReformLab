@@ -263,13 +263,20 @@ class TestNormalizationMappings:
         assert "aide_energie" in _DEFAULT_OUTPUT_MAPPING
         assert _DEFAULT_OUTPUT_MAPPING["aide_energie"] == "energy_poverty_aid"
 
-    def test_live_output_variables_include_new_french_names(self) -> None:
+    def test_live_output_variables_exclude_unimplemented_subsidy_names(self) -> None:
+        """Subsidy-family French names are placeholders for future custom
+        OpenFisca variables; they must NOT appear in the live-request set
+        until those custom variables are implemented, otherwise live runs
+        fail with 'Unknown output variables' against core openfisca-france.
+        Their rename entries in _DEFAULT_OUTPUT_MAPPING stay, so once the
+        custom variables land, results normalize correctly.
+        """
         from reformlab.computation.result_normalizer import _DEFAULT_LIVE_OUTPUT_VARIABLES
 
-        assert "montant_subvention" in _DEFAULT_LIVE_OUTPUT_VARIABLES
-        assert "eligible_subvention" in _DEFAULT_LIVE_OUTPUT_VARIABLES
-        assert "malus_ecologique" in _DEFAULT_LIVE_OUTPUT_VARIABLES
-        assert "aide_energie" in _DEFAULT_LIVE_OUTPUT_VARIABLES
+        assert "montant_subvention" not in _DEFAULT_LIVE_OUTPUT_VARIABLES
+        assert "eligible_subvention" not in _DEFAULT_LIVE_OUTPUT_VARIABLES
+        assert "malus_ecologique" not in _DEFAULT_LIVE_OUTPUT_VARIABLES
+        assert "aide_energie" not in _DEFAULT_LIVE_OUTPUT_VARIABLES
 
     def test_normalization_renames_subsidy_columns(self) -> None:
         """AC #7: Subsidy-family outputs are normalized correctly."""

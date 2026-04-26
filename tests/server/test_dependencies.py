@@ -123,16 +123,17 @@ class TestDefaultLiveOutputVariables:
     """Story 23.4: _DEFAULT_LIVE_OUTPUT_VARIABLES constant."""
 
     def test_default_live_output_variables_are_french_names(self) -> None:
-        """Default live output variables are French OpenFisca variable names."""
-        # These are the keys from _DEFAULT_OUTPUT_MAPPING
+        """Default live output variables are French OpenFisca variable names
+        that resolve in core openfisca-france today.
+        """
+        # Subset of _DEFAULT_OUTPUT_MAPPING keys that exist in the live
+        # TaxBenefitSystem. Names tied to not-yet-implemented custom variables
+        # (irpp, revenu_net, revenu_brut, taxe_carbone, subsidy/malus/aide_energie)
+        # stay in the rename map but are excluded from live requests.
         assert "revenu_disponible" in _DEFAULT_LIVE_OUTPUT_VARIABLES
-        assert "irpp" in _DEFAULT_LIVE_OUTPUT_VARIABLES
         assert "impots_directs" in _DEFAULT_LIVE_OUTPUT_VARIABLES
-        assert "revenu_net" in _DEFAULT_LIVE_OUTPUT_VARIABLES
         assert "salaire_net" in _DEFAULT_LIVE_OUTPUT_VARIABLES
-        assert "revenu_brut" in _DEFAULT_LIVE_OUTPUT_VARIABLES
         assert "prestations_sociales" in _DEFAULT_LIVE_OUTPUT_VARIABLES
-        assert "taxe_carbone" in _DEFAULT_LIVE_OUTPUT_VARIABLES
 
     def test_default_live_output_variables_is_tuple(self) -> None:
         """_DEFAULT_LIVE_OUTPUT_VARIABLES is an immutable tuple."""
