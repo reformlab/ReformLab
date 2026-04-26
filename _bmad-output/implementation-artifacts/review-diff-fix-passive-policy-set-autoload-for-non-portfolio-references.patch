@@ -1,0 +1,1146 @@
+diff --git a/frontend/src/components/screens/PoliciesStageScreen.tsx b/frontend/src/components/screens/PoliciesStageScreen.tsx
+index b5637a84..9d7cf080 100644
+--- a/frontend/src/components/screens/PoliciesStageScreen.tsx
++++ b/frontend/src/components/screens/PoliciesStageScreen.tsx
+@@ -77,6 +77,7 @@ export function PoliciesStageScreen() {
+   const {
+     templates,
+     portfolios,
++    portfoliosLoading,
+     refetchPortfolios,
+     activeScenario,
+     updateScenarioField,
+@@ -551,6 +552,8 @@ export function PoliciesStageScreen() {
+   } = usePortfolioLoadDialog({
+     templates,
+     activeScenarioPortfolioName: activeScenario?.portfolioName,
++    availablePortfolioNames: portfolios.map((portfolio) => portfolio.name),
++    portfoliosLoading,
+     compositionLength: composition.length,
+     validStrategies: VALID_STRATEGIES,
+     defaultResolutionStrategy: "error",
+diff --git a/frontend/src/components/screens/__tests__/PoliciesStageScreen.test.tsx b/frontend/src/components/screens/__tests__/PoliciesStageScreen.test.tsx
+index fe91ceef..b315a96d 100644
+--- a/frontend/src/components/screens/__tests__/PoliciesStageScreen.test.tsx
++++ b/frontend/src/components/screens/__tests__/PoliciesStageScreen.test.tsx
+@@ -63,6 +63,7 @@ import { PoliciesStageScreen } from "@/components/screens/PoliciesStageScreen";
+ import { mockTemplates } from "@/data/mock-data";
+ import type { WorkspaceScenario } from "@/types/workspace";
+ import type { PortfolioListItem } from "@/api/types";
++import { toast } from "sonner";
+ 
+ // ============================================================================
+ // Helpers
+@@ -425,6 +426,7 @@ describe("PoliciesStageScreen — AC-4, AC-5: Portfolio-scenario integration", (
+     // State must NOT be updated when load fails
+     expect(updateScenarioField).not.toHaveBeenCalledWith("portfolioName", "missing-portfolio");
+     expect(setSelectedPortfolioName).not.toHaveBeenCalledWith("missing-portfolio");
++    expect(vi.mocked(toast.warning)).toHaveBeenCalledWith("Could not load policy set 'missing-portfolio'");
+   });
+ 
+   it("deleting active portfolio delinks it from scenario (AC-5)", async () => {
+@@ -505,9 +507,10 @@ describe("PoliciesStageScreen — AC-6: Validity indicator", () => {
+ // ============================================================================
+ 
+ describe("PoliciesStageScreen — auto-load on mount", () => {
+-  it("auto-loads portfolio when activeScenario.portfolioName is set", async () => {
++  it("auto-loads portfolio when activeScenario.portfolioName matches a saved portfolio", async () => {
+     await act(async () => {
+       renderScreen({
++        portfolios: [makePortfolio("my-portfolio")],
+         activeScenario: makeScenario({ portfolioName: "my-portfolio" }),
+       });
+     });
+@@ -526,6 +529,31 @@ describe("PoliciesStageScreen — auto-load on mount", () => {
+     await new Promise((r) => setTimeout(r, 50));
+     expect(getPortfolio).not.toHaveBeenCalled();
+   });
++
++  it("silently skips passive autoload for unmatched non-portfolio references, even across rerenders", async () => {
++    const scenario = makeScenario({ portfolioName: "carbon-plus-rebate" });
++
++    const view = renderScreen({
++      portfolios: [makePortfolio("saved-portfolio")],
++      activeScenario: scenario,
++    });
++
++    await new Promise((r) => setTimeout(r, 50));
++    expect(getPortfolio).not.toHaveBeenCalled();
++    expect(vi.mocked(toast.warning)).not.toHaveBeenCalled();
++
++    vi.mocked(useAppState).mockReturnValue(
++      makeDefaultAppState({
++        portfolios: [makePortfolio("saved-portfolio")],
++        activeScenario: scenario,
++      }) as ReturnType<typeof useAppState>,
++    );
++    view.rerender(<PoliciesStageScreen />);
++
++    await new Promise((r) => setTimeout(r, 50));
++    expect(getPortfolio).not.toHaveBeenCalled();
++    expect(vi.mocked(toast.warning)).not.toHaveBeenCalled();
++  });
+ });
+ 
+ // ============================================================================
+diff --git a/frontend/src/contexts/AppContext.tsx b/frontend/src/contexts/AppContext.tsx
+index d007acfc..ed0fef96 100644
+--- a/frontend/src/contexts/AppContext.tsx
++++ b/frontend/src/contexts/AppContext.tsx
+@@ -297,6 +297,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
+     () => getManuallyEditedNames(),
+   );
+ 
++  // Loaded scenarios keep their stored name while the restored context is unchanged.
++  const loadedScenarioNameContextRef = useRef<{
++    scenarioId: string;
++    portfolioName: string | null;
++    populationId: string;
++  } | null>(null);
++
++  // Policy set selection is used by scenario auto-naming.
++  const [selectedPortfolioName, setSelectedPortfolioName] = useState<string | null>(null);
++
+   const refreshSavedScenarios = useCallback(
+     () => setSavedScenarios(getSavedScenarios()),
+     [],
+@@ -312,6 +322,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
+     if (isFirstLaunch()) {
+       // First launch: load demo scenario
+       const demo = createDemoScenario();
++      loadedScenarioNameContextRef.current = null;
+       setActiveScenario(demo);
+       setSelectedTemplateId(DEMO_TEMPLATE_ID);
+       setSelectedPopulationId(DEMO_POPULATION_ID);
+@@ -321,13 +332,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
+       // Returning user: restore saved scenario
+       const saved = loadScenario();
+       if (saved) {
++        const primaryPopulationId = saved.populationIds[0] ?? "";
++        loadedScenarioNameContextRef.current = {
++          scenarioId: saved.id,
++          portfolioName: saved.portfolioName,
++          populationId: primaryPopulationId,
++        };
+         setActiveScenario(saved);
++        setSelectedPortfolioName(saved.portfolioName);
+         // Sync legacy selectors so startRun() uses the restored scenario's values
+         if (saved.policyType) setSelectedTemplateId(saved.policyType);
+-        if (saved.populationIds.length > 0) setSelectedPopulationId(saved.populationIds[0]);
++        if (primaryPopulationId) setSelectedPopulationId(primaryPopulationId);
+       } else {
+         // localStorage externally cleared — fall back to demo (do NOT call markLaunched)
+         const demo = createDemoScenario();
++        loadedScenarioNameContextRef.current = null;
+         setActiveScenario(demo);
+         setSelectedTemplateId(DEMO_TEMPLATE_ID);
+         setSelectedPopulationId(DEMO_POPULATION_ID);
+@@ -396,7 +415,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
+ 
+   // Results hooks (Story 17.3)
+   const { results, loading: resultsLoading, refetch: refetchResults } = useResults();
+-  const [selectedPortfolioName, setSelectedPortfolioName] = useState<string | null>(null);
+ 
+   // Comparison state (Story 17.4)
+   const [selectedComparisonRunIds, setSelectedComparisonRunIds] = useState<string[]>([]);
+@@ -444,16 +462,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
+ 
+   // Set initial selection when populations/templates load
+   useEffect(() => {
+-    if (populations.length > 0 && !selectedPopulationId) {
+-      setSelectedPopulationId(populations[0].id);
++    if (populations.length > 0) {
++      setSelectedPopulationId((current) => current || populations[0].id);
+     }
+-  }, [populations, selectedPopulationId]);
++  }, [populations]);
+ 
+   useEffect(() => {
+-    if (templates.length > 0 && !selectedTemplateId) {
+-      setSelectedTemplateId(templates[0].id);
++    if (templates.length > 0) {
++      setSelectedTemplateId((current) => current || templates[0].id);
+     }
+-  }, [templates, selectedTemplateId]);
++  }, [templates]);
+ 
+   // Fetch template details when template selection changes
+   useEffect(() => {
+@@ -495,12 +513,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
+ 
+   // Story 22.3: Auto-update scenario name when portfolio or population context changes
+   // Only applies if the scenario name hasn't been manually edited and it's not the demo scenario
++  const activeScenarioId = activeScenario?.id;
++  const activeScenarioName = activeScenario?.name;
++  const activeScenarioPortfolioName = activeScenario?.portfolioName;
++  const activeScenarioPopulationIds = activeScenario?.populationIds;
++
+   useEffect(() => {
+-    if (!activeScenario) return; // Null guard - no active scenario to update
++    if (!activeScenarioId) return; // Null guard - no active scenario to update
+ 
+     const demoId = DEMO_SCENARIO_ID;
+-    const isManuallyEdited = manuallyEditedScenarioNames.has(activeScenario.id);
+-    const isDemo = activeScenario.id === demoId;
++    const isManuallyEdited = manuallyEditedScenarioNames.has(activeScenarioId);
++    const isDemo = activeScenarioId === demoId;
+ 
+     // Preserve the curated first-launch demo name; auto-naming is for user scenarios.
+     if (isDemo) return;
+@@ -508,6 +531,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
+     // Skip auto-update if name was manually edited.
+     if (isManuallyEdited) return;
+ 
++    const loadedNameContext = loadedScenarioNameContextRef.current;
++    if (loadedNameContext?.scenarioId === activeScenarioId) {
++      const restoredContextUnchanged =
++        loadedNameContext.portfolioName === selectedPortfolioName &&
++        loadedNameContext.populationId === selectedPopulationId;
++      if (restoredContextUnchanged) return;
++      loadedScenarioNameContextRef.current = null;
++    }
++
+     // Generate suggested name from current context
+     const suggestedName = generateScenarioSuggestion(
+       selectedPortfolioName,
+@@ -518,15 +550,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
+     );
+ 
+     // Only update if the suggested name differs from the current name
+-    if (suggestedName !== activeScenario.name) {
++    if (suggestedName !== activeScenarioName) {
+       setActiveScenario((prev) =>
+         prev ? { ...prev, name: suggestedName } : null
+       );
+     }
+   }, [
+-    activeScenario?.portfolioName,
+-    activeScenario?.populationIds,
+-    activeScenario?.id,
++    activeScenarioPortfolioName,
++    activeScenarioPopulationIds,
++    activeScenarioId,
++    activeScenarioName,
+     selectedPortfolioName,
+     selectedPopulationId,
+     populations,
+@@ -549,16 +582,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
+     const list = getSavedScenarios();
+     const found = list.find((s) => s.id === id);
+     if (found) {
++      const primaryPopulationId = found.populationIds[0] ?? "";
++      loadedScenarioNameContextRef.current = {
++        scenarioId: found.id,
++        portfolioName: found.portfolioName,
++        populationId: primaryPopulationId,
++      };
+       setActiveScenario(found);
++      setSelectedPortfolioName(found.portfolioName);
+       // Sync legacy selectors so startRun() uses the loaded scenario's values
+       if (found.policyType) setSelectedTemplateId(found.policyType);
+-      if (found.populationIds.length > 0) setSelectedPopulationId(found.populationIds[0]);
++      if (primaryPopulationId) setSelectedPopulationId(primaryPopulationId);
+       navigateTo("policies");
+     }
+   }, [navigateTo]);
+ 
+   const resetToDemo = useCallback(() => {
++    loadedScenarioNameContextRef.current = null;
+     setActiveScenario(createDemoScenario());
++    setSelectedPortfolioName(null);
+     setSelectedTemplateId(DEMO_TEMPLATE_ID);
+     setSelectedPopulationId(DEMO_POPULATION_ID);
+     navigateTo("results", "runner");
+@@ -597,6 +639,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
+       policyType: templateId ?? null,
+       lastRunId: null,
+     };
++    loadedScenarioNameContextRef.current = null;
+     setActiveScenario(newScenario);
+     if (templateId) {
+       setSelectedTemplateId(templateId);
+@@ -616,6 +659,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
+       id: crypto.randomUUID(),
+       name: cloneName,
+     };
++    loadedScenarioNameContextRef.current = null;
+     setActiveScenario(cloned);
+ 
+     // Story 22.3: Mark cloned name as manually edited (cloned name is "manual" by definition)
+diff --git a/frontend/src/hooks/usePortfolioLoadDialog.ts b/frontend/src/hooks/usePortfolioLoadDialog.ts
+index cd1a86d5..083f1212 100644
+--- a/frontend/src/hooks/usePortfolioLoadDialog.ts
++++ b/frontend/src/hooks/usePortfolioLoadDialog.ts
+@@ -26,6 +26,8 @@ interface LoadedPortfolioRef {
+ interface UsePortfolioLoadDialogParams<ResolutionStrategy extends string> {
+   templates: Template[];
+   activeScenarioPortfolioName: string | null | undefined;
++  availablePortfolioNames: readonly string[];
++  portfoliosLoading: boolean;
+   compositionLength: number;
+   validStrategies: readonly ResolutionStrategy[];
+   defaultResolutionStrategy: ResolutionStrategy;
+@@ -42,6 +44,8 @@ interface UsePortfolioLoadDialogParams<ResolutionStrategy extends string> {
+ export function usePortfolioLoadDialog<ResolutionStrategy extends string>({
+   templates,
+   activeScenarioPortfolioName,
++  availablePortfolioNames,
++  portfoliosLoading,
+   compositionLength,
+   validStrategies,
+   defaultResolutionStrategy,
+@@ -127,8 +131,14 @@ export function usePortfolioLoadDialog<ResolutionStrategy extends string>({
+ 
+   useEffect(() => {
+     if (!activeScenarioPortfolioName) return;
++    if (portfoliosLoading) return;
+     if (compositionLength > 0) return;
+     if (loadedPortfolioRef.current === activeScenarioPortfolioName) return;
++    if (!availablePortfolioNames.includes(activeScenarioPortfolioName)) {
++      // Passive restore should ignore stale or non-portfolio references silently.
++      loadedPortfolioRef.current = activeScenarioPortfolioName;
++      return;
++    }
+ 
+     loadedPortfolioRef.current = activeScenarioPortfolioName;
+     void loadPortfolioIntoComposition(activeScenarioPortfolioName).then((loaded) => {
+@@ -138,9 +148,11 @@ export function usePortfolioLoadDialog<ResolutionStrategy extends string>({
+     });
+   }, [
+     activeScenarioPortfolioName,
++    availablePortfolioNames,
+     compositionLength,
+     loadedPortfolioRef,
+     loadPortfolioIntoComposition,
++    portfoliosLoading,
+   ]);
+ 
+   const openLoadDialog = useCallback(() => {
+diff --git a/_bmad-output/implementation-artifacts/review-diff-fix-passive-policy-set-autoload-for-non-portfolio-references.patch b/_bmad-output/implementation-artifacts/review-diff-fix-passive-policy-set-autoload-for-non-portfolio-references.patch
+new file mode 100644
+index 00000000..8e631502
+--- /dev/null
++++ b/_bmad-output/implementation-artifacts/review-diff-fix-passive-policy-set-autoload-for-non-portfolio-references.patch
+@@ -0,0 +1,318 @@
++diff --git a/frontend/src/components/screens/PoliciesStageScreen.tsx b/frontend/src/components/screens/PoliciesStageScreen.tsx
++index b5637a84..9d7cf080 100644
++--- a/frontend/src/components/screens/PoliciesStageScreen.tsx
+++++ b/frontend/src/components/screens/PoliciesStageScreen.tsx
++@@ -77,6 +77,7 @@ export function PoliciesStageScreen() {
++   const {
++     templates,
++     portfolios,
+++    portfoliosLoading,
++     refetchPortfolios,
++     activeScenario,
++     updateScenarioField,
++@@ -551,6 +552,8 @@ export function PoliciesStageScreen() {
++   } = usePortfolioLoadDialog({
++     templates,
++     activeScenarioPortfolioName: activeScenario?.portfolioName,
+++    availablePortfolioNames: portfolios.map((portfolio) => portfolio.name),
+++    portfoliosLoading,
++     compositionLength: composition.length,
++     validStrategies: VALID_STRATEGIES,
++     defaultResolutionStrategy: "error",
++diff --git a/frontend/src/components/screens/__tests__/PoliciesStageScreen.test.tsx b/frontend/src/components/screens/__tests__/PoliciesStageScreen.test.tsx
++index fe91ceef..b315a96d 100644
++--- a/frontend/src/components/screens/__tests__/PoliciesStageScreen.test.tsx
+++++ b/frontend/src/components/screens/__tests__/PoliciesStageScreen.test.tsx
++@@ -63,6 +63,7 @@ import { PoliciesStageScreen } from "@/components/screens/PoliciesStageScreen";
++ import { mockTemplates } from "@/data/mock-data";
++ import type { WorkspaceScenario } from "@/types/workspace";
++ import type { PortfolioListItem } from "@/api/types";
+++import { toast } from "sonner";
++ 
++ // ============================================================================
++ // Helpers
++@@ -425,6 +426,7 @@ describe("PoliciesStageScreen — AC-4, AC-5: Portfolio-scenario integration", (
++     // State must NOT be updated when load fails
++     expect(updateScenarioField).not.toHaveBeenCalledWith("portfolioName", "missing-portfolio");
++     expect(setSelectedPortfolioName).not.toHaveBeenCalledWith("missing-portfolio");
+++    expect(vi.mocked(toast.warning)).toHaveBeenCalledWith("Could not load policy set 'missing-portfolio'");
++   });
++ 
++   it("deleting active portfolio delinks it from scenario (AC-5)", async () => {
++@@ -505,9 +507,10 @@ describe("PoliciesStageScreen — AC-6: Validity indicator", () => {
++ // ============================================================================
++ 
++ describe("PoliciesStageScreen — auto-load on mount", () => {
++-  it("auto-loads portfolio when activeScenario.portfolioName is set", async () => {
+++  it("auto-loads portfolio when activeScenario.portfolioName matches a saved portfolio", async () => {
++     await act(async () => {
++       renderScreen({
+++        portfolios: [makePortfolio("my-portfolio")],
++         activeScenario: makeScenario({ portfolioName: "my-portfolio" }),
++       });
++     });
++@@ -526,6 +529,31 @@ describe("PoliciesStageScreen — auto-load on mount", () => {
++     await new Promise((r) => setTimeout(r, 50));
++     expect(getPortfolio).not.toHaveBeenCalled();
++   });
+++
+++  it("silently skips passive autoload for unmatched non-portfolio references, even across rerenders", async () => {
+++    const scenario = makeScenario({ portfolioName: "carbon-plus-rebate" });
+++
+++    const view = renderScreen({
+++      portfolios: [makePortfolio("saved-portfolio")],
+++      activeScenario: scenario,
+++    });
+++
+++    await new Promise((r) => setTimeout(r, 50));
+++    expect(getPortfolio).not.toHaveBeenCalled();
+++    expect(vi.mocked(toast.warning)).not.toHaveBeenCalled();
+++
+++    vi.mocked(useAppState).mockReturnValue(
+++      makeDefaultAppState({
+++        portfolios: [makePortfolio("saved-portfolio")],
+++        activeScenario: scenario,
+++      }) as ReturnType<typeof useAppState>,
+++    );
+++    view.rerender(<PoliciesStageScreen />);
+++
+++    await new Promise((r) => setTimeout(r, 50));
+++    expect(getPortfolio).not.toHaveBeenCalled();
+++    expect(vi.mocked(toast.warning)).not.toHaveBeenCalled();
+++  });
++ });
++ 
++ // ============================================================================
++diff --git a/frontend/src/contexts/AppContext.tsx b/frontend/src/contexts/AppContext.tsx
++index d007acfc..ed0fef96 100644
++--- a/frontend/src/contexts/AppContext.tsx
+++++ b/frontend/src/contexts/AppContext.tsx
++@@ -297,6 +297,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
++     () => getManuallyEditedNames(),
++   );
++ 
+++  // Loaded scenarios keep their stored name while the restored context is unchanged.
+++  const loadedScenarioNameContextRef = useRef<{
+++    scenarioId: string;
+++    portfolioName: string | null;
+++    populationId: string;
+++  } | null>(null);
+++
+++  // Policy set selection is used by scenario auto-naming.
+++  const [selectedPortfolioName, setSelectedPortfolioName] = useState<string | null>(null);
+++
++   const refreshSavedScenarios = useCallback(
++     () => setSavedScenarios(getSavedScenarios()),
++     [],
++@@ -312,6 +322,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
++     if (isFirstLaunch()) {
++       // First launch: load demo scenario
++       const demo = createDemoScenario();
+++      loadedScenarioNameContextRef.current = null;
++       setActiveScenario(demo);
++       setSelectedTemplateId(DEMO_TEMPLATE_ID);
++       setSelectedPopulationId(DEMO_POPULATION_ID);
++@@ -321,13 +332,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
++       // Returning user: restore saved scenario
++       const saved = loadScenario();
++       if (saved) {
+++        const primaryPopulationId = saved.populationIds[0] ?? "";
+++        loadedScenarioNameContextRef.current = {
+++          scenarioId: saved.id,
+++          portfolioName: saved.portfolioName,
+++          populationId: primaryPopulationId,
+++        };
++         setActiveScenario(saved);
+++        setSelectedPortfolioName(saved.portfolioName);
++         // Sync legacy selectors so startRun() uses the restored scenario's values
++         if (saved.policyType) setSelectedTemplateId(saved.policyType);
++-        if (saved.populationIds.length > 0) setSelectedPopulationId(saved.populationIds[0]);
+++        if (primaryPopulationId) setSelectedPopulationId(primaryPopulationId);
++       } else {
++         // localStorage externally cleared — fall back to demo (do NOT call markLaunched)
++         const demo = createDemoScenario();
+++        loadedScenarioNameContextRef.current = null;
++         setActiveScenario(demo);
++         setSelectedTemplateId(DEMO_TEMPLATE_ID);
++         setSelectedPopulationId(DEMO_POPULATION_ID);
++@@ -396,7 +415,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
++ 
++   // Results hooks (Story 17.3)
++   const { results, loading: resultsLoading, refetch: refetchResults } = useResults();
++-  const [selectedPortfolioName, setSelectedPortfolioName] = useState<string | null>(null);
++ 
++   // Comparison state (Story 17.4)
++   const [selectedComparisonRunIds, setSelectedComparisonRunIds] = useState<string[]>([]);
++@@ -444,16 +462,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
++ 
++   // Set initial selection when populations/templates load
++   useEffect(() => {
++-    if (populations.length > 0 && !selectedPopulationId) {
++-      setSelectedPopulationId(populations[0].id);
+++    if (populations.length > 0) {
+++      setSelectedPopulationId((current) => current || populations[0].id);
++     }
++-  }, [populations, selectedPopulationId]);
+++  }, [populations]);
++ 
++   useEffect(() => {
++-    if (templates.length > 0 && !selectedTemplateId) {
++-      setSelectedTemplateId(templates[0].id);
+++    if (templates.length > 0) {
+++      setSelectedTemplateId((current) => current || templates[0].id);
++     }
++-  }, [templates, selectedTemplateId]);
+++  }, [templates]);
++ 
++   // Fetch template details when template selection changes
++   useEffect(() => {
++@@ -495,12 +513,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
++ 
++   // Story 22.3: Auto-update scenario name when portfolio or population context changes
++   // Only applies if the scenario name hasn't been manually edited and it's not the demo scenario
+++  const activeScenarioId = activeScenario?.id;
+++  const activeScenarioName = activeScenario?.name;
+++  const activeScenarioPortfolioName = activeScenario?.portfolioName;
+++  const activeScenarioPopulationIds = activeScenario?.populationIds;
+++
++   useEffect(() => {
++-    if (!activeScenario) return; // Null guard - no active scenario to update
+++    if (!activeScenarioId) return; // Null guard - no active scenario to update
++ 
++     const demoId = DEMO_SCENARIO_ID;
++-    const isManuallyEdited = manuallyEditedScenarioNames.has(activeScenario.id);
++-    const isDemo = activeScenario.id === demoId;
+++    const isManuallyEdited = manuallyEditedScenarioNames.has(activeScenarioId);
+++    const isDemo = activeScenarioId === demoId;
++ 
++     // Preserve the curated first-launch demo name; auto-naming is for user scenarios.
++     if (isDemo) return;
++@@ -508,6 +531,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
++     // Skip auto-update if name was manually edited.
++     if (isManuallyEdited) return;
++ 
+++    const loadedNameContext = loadedScenarioNameContextRef.current;
+++    if (loadedNameContext?.scenarioId === activeScenarioId) {
+++      const restoredContextUnchanged =
+++        loadedNameContext.portfolioName === selectedPortfolioName &&
+++        loadedNameContext.populationId === selectedPopulationId;
+++      if (restoredContextUnchanged) return;
+++      loadedScenarioNameContextRef.current = null;
+++    }
+++
++     // Generate suggested name from current context
++     const suggestedName = generateScenarioSuggestion(
++       selectedPortfolioName,
++@@ -518,15 +550,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
++     );
++ 
++     // Only update if the suggested name differs from the current name
++-    if (suggestedName !== activeScenario.name) {
+++    if (suggestedName !== activeScenarioName) {
++       setActiveScenario((prev) =>
++         prev ? { ...prev, name: suggestedName } : null
++       );
++     }
++   }, [
++-    activeScenario?.portfolioName,
++-    activeScenario?.populationIds,
++-    activeScenario?.id,
+++    activeScenarioPortfolioName,
+++    activeScenarioPopulationIds,
+++    activeScenarioId,
+++    activeScenarioName,
++     selectedPortfolioName,
++     selectedPopulationId,
++     populations,
++@@ -549,16 +582,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
++     const list = getSavedScenarios();
++     const found = list.find((s) => s.id === id);
++     if (found) {
+++      const primaryPopulationId = found.populationIds[0] ?? "";
+++      loadedScenarioNameContextRef.current = {
+++        scenarioId: found.id,
+++        portfolioName: found.portfolioName,
+++        populationId: primaryPopulationId,
+++      };
++       setActiveScenario(found);
+++      setSelectedPortfolioName(found.portfolioName);
++       // Sync legacy selectors so startRun() uses the loaded scenario's values
++       if (found.policyType) setSelectedTemplateId(found.policyType);
++-      if (found.populationIds.length > 0) setSelectedPopulationId(found.populationIds[0]);
+++      if (primaryPopulationId) setSelectedPopulationId(primaryPopulationId);
++       navigateTo("policies");
++     }
++   }, [navigateTo]);
++ 
++   const resetToDemo = useCallback(() => {
+++    loadedScenarioNameContextRef.current = null;
++     setActiveScenario(createDemoScenario());
+++    setSelectedPortfolioName(null);
++     setSelectedTemplateId(DEMO_TEMPLATE_ID);
++     setSelectedPopulationId(DEMO_POPULATION_ID);
++     navigateTo("results", "runner");
++@@ -597,6 +639,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
++       policyType: templateId ?? null,
++       lastRunId: null,
++     };
+++    loadedScenarioNameContextRef.current = null;
++     setActiveScenario(newScenario);
++     if (templateId) {
++       setSelectedTemplateId(templateId);
++@@ -616,6 +659,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
++       id: crypto.randomUUID(),
++       name: cloneName,
++     };
+++    loadedScenarioNameContextRef.current = null;
++     setActiveScenario(cloned);
++ 
++     // Story 22.3: Mark cloned name as manually edited (cloned name is "manual" by definition)
++diff --git a/frontend/src/hooks/usePortfolioLoadDialog.ts b/frontend/src/hooks/usePortfolioLoadDialog.ts
++index cd1a86d5..083f1212 100644
++--- a/frontend/src/hooks/usePortfolioLoadDialog.ts
+++++ b/frontend/src/hooks/usePortfolioLoadDialog.ts
++@@ -26,6 +26,8 @@ interface LoadedPortfolioRef {
++ interface UsePortfolioLoadDialogParams<ResolutionStrategy extends string> {
++   templates: Template[];
++   activeScenarioPortfolioName: string | null | undefined;
+++  availablePortfolioNames: readonly string[];
+++  portfoliosLoading: boolean;
++   compositionLength: number;
++   validStrategies: readonly ResolutionStrategy[];
++   defaultResolutionStrategy: ResolutionStrategy;
++@@ -42,6 +44,8 @@ interface UsePortfolioLoadDialogParams<ResolutionStrategy extends string> {
++ export function usePortfolioLoadDialog<ResolutionStrategy extends string>({
++   templates,
++   activeScenarioPortfolioName,
+++  availablePortfolioNames,
+++  portfoliosLoading,
++   compositionLength,
++   validStrategies,
++   defaultResolutionStrategy,
++@@ -127,8 +131,14 @@ export function usePortfolioLoadDialog<ResolutionStrategy extends string>({
++ 
++   useEffect(() => {
++     if (!activeScenarioPortfolioName) return;
+++    if (portfoliosLoading) return;
++     if (compositionLength > 0) return;
++     if (loadedPortfolioRef.current === activeScenarioPortfolioName) return;
+++    if (!availablePortfolioNames.includes(activeScenarioPortfolioName)) {
+++      // Passive restore should ignore stale or non-portfolio references silently.
+++      loadedPortfolioRef.current = activeScenarioPortfolioName;
+++      return;
+++    }
++ 
++     loadedPortfolioRef.current = activeScenarioPortfolioName;
++     void loadPortfolioIntoComposition(activeScenarioPortfolioName).then((loaded) => {
++@@ -138,9 +148,11 @@ export function usePortfolioLoadDialog<ResolutionStrategy extends string>({
++     });
++   }, [
++     activeScenarioPortfolioName,
+++    availablePortfolioNames,
++     compositionLength,
++     loadedPortfolioRef,
++     loadPortfolioIntoComposition,
+++    portfoliosLoading,
++   ]);
++ 
++   const openLoadDialog = useCallback(() => {
+diff --git a/_bmad-output/implementation-artifacts/spec-establish-appcontext-integration-testing.md b/_bmad-output/implementation-artifacts/spec-establish-appcontext-integration-testing.md
+new file mode 100644
+index 00000000..fa3d2d09
+--- /dev/null
++++ b/_bmad-output/implementation-artifacts/spec-establish-appcontext-integration-testing.md
+@@ -0,0 +1,102 @@
++---
++title: 'Establish AppContext Integration Testing'
++type: 'feature'
++created: '2026-04-22'
++status: 'done'
++baseline_commit: 'dbad85b7d78bfd9fbc51e5fcf9f63be32b5cdaf0'
++context:
++  - '{project-root}/_bmad-output/project-context.md'
++  - '{project-root}/_bmad-output/implementation-artifacts/retrospectives/epic-26-retro-20260422.md'
++  - '{project-root}/_bmad-output/implementation-artifacts/26-6-add-deterministic-scenario-name-suggestions-from-policy-set-and-population-context.md'
++---
++
++<frozen-after-approval reason="human-owned intent - do not modify unless human renegotiates">
++
++## Intent
++
++**Problem:** Epic 26 left AppContext naming behavior under-tested: auto-update, manual edit freeze, loaded scenario preservation, and demo scenario protection are claimed in Story 26.6 but only the pure naming utility has direct coverage. The current provider flow is stateful enough that component mocks and broad workflow tests can miss regressions.
++
++**Approach:** Add a focused AppProvider integration test harness that renders the real provider with a tiny consumer component, mocked API modules, and isolated storage. Use those tests to lock the lifecycle behavior; if the loaded-scenario preservation test fails, apply the smallest AppContext fix that preserves loaded names without changing unrelated workflow routing.
++
++## Boundaries & Constraints
++
++**Always:** Test the real `AppProvider` and `useAppState()` together; mock HTTP-facing API modules and `/api/health`; isolate `localStorage`, `sessionStorage`, and `window.location.hash` in every test; keep the test file provider-scoped rather than rendering the full `App` shell.
++
++**Ask First:** Any schema change to `WorkspaceScenario`; any new persisted storage key beyond the existing manual-name key; any UX change where loaded saved scenarios permanently opt out of future automatic naming.
++
++**Never:** Do not add real backend/network dependency; do not expand the existing five-stage workflow regression file for this narrow provider behavior; do not replace `generateScenarioSuggestion()` unit tests with provider tests.
++
++## I/O & Edge-Case Matrix
++
++| Scenario | Input / State | Expected Output / Behavior | Error Handling |
++|----------|---------------|----------------------------|----------------|
++| Auto-name active draft | Authenticated provider with a non-demo active scenario that has not been manually renamed; policy set and primary population are selected | Scenario name updates to the deterministic policy-set plus population suggestion using the current em-dash format | Failing API mocks should fall back to existing mock data without making the assertion flaky |
++| Manual edit freeze | Same scenario, then `updateScenarioField("name", "Custom label")`, then policy set or population changes | `"Custom label"` remains and `MANUALLY_EDITED_NAMES_KEY` contains the scenario id | If storage write fails, React state still preserves the name for the session |
++| Loaded scenario preservation | `SCENARIO_STORAGE_KEY` contains a saved non-demo scenario with an existing name and `HAS_LAUNCHED_KEY` is true | Initial provider restore keeps the existing name through selector sync and API refresh effects | Corrupt saved scenario JSON should keep existing fallback behavior, not be handled in this story |
++| Demo scenario protection | First-launch or reset-to-demo state with `DEMO_SCENARIO_ID` | Demo name remains unchanged after policy set or population context changes | No manual-name entry should be created for the demo id |
++
++</frozen-after-approval>
++
++## Code Map
++
++- `frontend/src/contexts/AppContext.tsx` -- Owns `activeScenario`, manual-name tracking, saved scenario restore, reset-to-demo, create/clone actions, and the auto-name effect.
++- `frontend/src/hooks/useScenarioPersistence.ts` -- Exports storage keys and manual-name persistence helpers needed for test setup and assertions.
++- `frontend/src/utils/naming.ts` -- Pure deterministic naming utility already unit-tested; provider tests should assert integration with it, not duplicate all utility cases.
++- `frontend/src/utils/__tests__/naming.test.ts` -- Existing unit coverage for slugging, em-dash suggestions, and clone naming.
++- `frontend/src/__tests__/workflows/five-stage-regression.test.tsx` -- Broad App-level regression coverage; useful pattern for API mocks but too heavy for the missing AppContext lifecycle tests.
++- `frontend/src/test/setup.ts` -- Current global test setup; provider test may need local `fetch` and browser API stubs rather than global changes.
++
++## Tasks & Acceptance
++
++**Execution:**
++- [x] `frontend/src/contexts/__tests__/AppContext.integration.test.tsx` -- Add a focused provider harness with API mocks, an authenticated-session setup helper, a `ContextProbe` consumer, and the four matrix scenarios -- closes the infrastructure gap without coupling to full-page UI.
++- [x] `frontend/src/contexts/AppContext.tsx` -- If the new loaded-scenario test fails, adjust restore/load behavior so an existing saved name is not overwritten during initial provider hydration -- addresses the actual integration bug while keeping manual edit and demo protections intact.
++- [x] `frontend/src/hooks/useScenarioPersistence.ts` or existing test helpers -- No source change needed; reused exported storage keys directly in the provider test -- keeps integration tests isolated across runs.
++
++**Acceptance Criteria:**
++- Given a non-demo scenario has not been manually renamed, when policy set and primary population context change through `useAppState()`, then `activeScenario.name` becomes the deterministic suggestion.
++- Given a non-demo scenario name was manually edited through `updateScenarioField("name", ...)`, when policy set or primary population context changes, then the manual name remains unchanged and the scenario id is persisted in the manual-name set.
++- Given a saved scenario is restored from localStorage, when AppProvider completes initialization and mocked API refresh effects settle, then the restored name remains unchanged.
++- Given the active scenario is the demo scenario, when policy set or population context changes, then the demo name remains unchanged and the demo id is not written to the manual-name set.
++
++## Design Notes
++
++The main recommendation is to test AppContext at the provider boundary: render `<AppProvider><ContextProbe /></AppProvider>` instead of `<App />`. The probe can expose buttons or callbacks for `setSelectedPortfolioName`, `setSelectedPopulationId`, `updateScenarioField`, `loadSavedScenario`, and `resetToDemo`, while the assertion reads `activeScenario` directly. This catches provider state interactions without inheriting unrelated nav rail, modal, and screen complexity.
++
++There is a likely implementation risk in the current restore flow: `activeScenario.portfolioName` is restored, but `selectedPortfolioName` is not synchronized, while the auto-name effect generates from `selectedPortfolioName`. If the preservation test exposes this, prefer a minimal provider fix over broad UI changes: synchronize selected policy-set state on restore/load and prevent the initial hydration pass from renaming an existing saved scenario.
++
++## Verification
++
++**Commands:**
++- `cd frontend && npm test -- src/contexts/__tests__/AppContext.integration.test.tsx` -- expected: new provider integration tests pass.
++- `cd frontend && npm test -- src/utils/__tests__/naming.test.ts src/__tests__/workflows/five-stage-regression.test.tsx` -- expected: existing naming and broad Epic 26 regression coverage still passes.
++- `cd frontend && npm run typecheck` -- expected: TypeScript accepts any AppContext/test changes.
++
++## Suggested Review Order
++
++**Restore Semantics**
++
++- Preserve loaded names only while the restored context is unchanged.
++  [`AppContext.tsx:300`](../../frontend/src/contexts/AppContext.tsx#L300)
++
++- Synchronize restored policy set and primary population selectors.
++  [`AppContext.tsx:332`](../../frontend/src/contexts/AppContext.tsx#L332)
++
++- Keep default selector effects from overriding restored values.
++  [`AppContext.tsx:463`](../../frontend/src/contexts/AppContext.tsx#L463)
++
++**Auto-Naming Guard**
++
++- Skip auto-name while the loaded scenario context still matches.
++  [`AppContext.tsx:521`](../../frontend/src/contexts/AppContext.tsx#L521)
++
++- Apply the same preservation rule when loading saved scenarios.
++  [`AppContext.tsx:581`](../../frontend/src/contexts/AppContext.tsx#L581)
++
++**Provider Coverage**
++
++- Use a tiny real-context consumer instead of full app rendering.
++  [`AppContext.integration.test.tsx:154`](../../frontend/src/contexts/__tests__/AppContext.integration.test.tsx#L154)
++
++- Assert auto-update, manual freeze, loaded preservation, and demo protection.
++  [`AppContext.integration.test.tsx:231`](../../frontend/src/contexts/__tests__/AppContext.integration.test.tsx#L231)
+diff --git a/_bmad-output/implementation-artifacts/spec-fix-passive-policy-set-autoload-for-non-portfolio-references.md b/_bmad-output/implementation-artifacts/spec-fix-passive-policy-set-autoload-for-non-portfolio-references.md
+new file mode 100644
+index 00000000..94dfdd36
+--- /dev/null
++++ b/_bmad-output/implementation-artifacts/spec-fix-passive-policy-set-autoload-for-non-portfolio-references.md
+@@ -0,0 +1,74 @@
++---
++title: 'Fix Passive Policy-Set Autoload for Non-Portfolio References'
++type: 'bugfix'
++created: '2026-04-26'
++status: 'in-review'
++baseline_commit: 'dbad85b7d78bfd9fbc51e5fcf9f63be32b5cdaf0'
++context:
++  - '{project-root}/_bmad-output/project-context.md'
++  - '{project-root}/_bmad-output/implementation-artifacts/24-1-publish-canonical-catalog-and-api-exposure-for-already-modeled-hidden-policy-packs.md'
++  - '{project-root}/_bmad-output/implementation-artifacts/spec-establish-appcontext-integration-testing.md'
++---
++
++<frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
++
++## Intent
++
++**Problem:** The current branch is not merge-ready because the Policies stage passively auto-loads any `activeScenario.portfolioName` through `/api/portfolios/{name}`. When restored or pre-existing scenario state contains a non-portfolio reference such as `carbon-plus-rebate`, the UI emits duplicate "Could not load policy set" warnings even though the user did not explicitly ask to load a saved policy set.
++
++**Approach:** Tighten passive autoload so it only hydrates composition from names that are known saved portfolios in the current workspace. Preserve the existing explicit load-dialog failure behavior for real user actions, add regression coverage for restored non-portfolio references, and leave the current AppContext naming work intact while making the branch safe to merge to `master`.
++
++## Boundaries & Constraints
++
++**Always:** Preserve successful autoload for real saved portfolios; preserve explicit warning toasts when the user actively selects a missing portfolio from the load dialog; keep `WorkspaceScenario.portfolioName` semantics unchanged; avoid disturbing the uncommitted AppContext integration-testing work already present in the tree.
++
++**Ask First:** Any fix that requires changing the persisted scenario schema, reinterpreting `portfolioName` as a different field, clearing user-saved scenarios automatically, or altering visible UX copy beyond the erroneous passive warning behavior.
++
++**Never:** Do not hide explicit user-triggered portfolio load failures; do not add destructive git cleanup, history rewriting, or storage wipes; do not broaden this into a catalog/portfolio architecture rewrite.
++
++## I/O & Edge-Case Matrix
++
++| Scenario | Input / State | Expected Output / Behavior | Error Handling |
++|----------|--------------|---------------------------|----------------|
++| Passive restore with non-portfolio reference | `activeScenario.portfolioName` is set, composition is empty, and the name is not present in the current saved portfolio list | Policies stage does not call portfolio detail load, does not toast a warning, and leaves composition empty for manual correction | Silent no-op for passive hydration only |
++| Passive restore with saved portfolio | `activeScenario.portfolioName` matches a saved portfolio name and composition is empty | Policies stage autoloads the saved portfolio once and hydrates composition normally | Existing failure handling remains if backend unexpectedly breaks |
++| Explicit user load failure | User opens the load dialog and clicks a portfolio that now fails to load | Existing warning toast appears and scenario state is not corrupted | Preserve current `ApiError` / generic error messaging |
++| Re-render after passive skip | Same unmatched `portfolioName` persists across subsequent renders | No repeated fetch attempts or duplicate warnings | Idempotent skip behavior |
++
++</frozen-after-approval>
++
++## Code Map
++
++- `frontend/src/hooks/usePortfolioLoadDialog.ts` -- Owns passive autoload effect and explicit load-dialog behavior; likely primary fix point.
++- `frontend/src/components/screens/PoliciesStageScreen.tsx` -- Supplies active scenario and saved portfolio context to the load-dialog hook.
++- `frontend/src/components/screens/__tests__/PoliciesStageScreen.test.tsx` -- Existing screen-level regression coverage for autoload, load failure, and scenario linkage.
++- `frontend/src/contexts/AppContext.tsx` -- Already contains local uncommitted naming-state fixes; must remain compatible and must not be reverted while making the branch merge-ready.
++- `frontend/src/contexts/__tests__/AppContext.integration.test.tsx` -- New local coverage that should continue passing after the portfolio autoload guard is introduced.
++
++## Tasks & Acceptance
++
++**Execution:**
++- [x] `frontend/src/hooks/usePortfolioLoadDialog.ts` -- Distinguish passive autoload from explicit user loads, and gate passive autoload on the current known saved-portfolio names so non-portfolio references are skipped without warning -- removes the erroneous `carbon-plus-rebate` toast while preserving intentional error feedback.
++- [x] `frontend/src/components/screens/PoliciesStageScreen.tsx` -- Pass the saved portfolio list or equivalent membership signal into the hook and preserve current load/save/clone wiring -- keeps the guard driven by real workspace state instead of hard-coded heuristics.
++- [x] `frontend/src/components/screens/__tests__/PoliciesStageScreen.test.tsx` -- Add regressions for passive skip on unmatched `portfolioName`, one-shot passive autoload for matched portfolios, and preserved explicit load failure warnings -- locks the branch against recurrence.
++
++**Acceptance Criteria:**
++- Given a restored scenario references `portfolioName: "carbon-plus-rebate"` and no saved portfolio with that name exists, when the Policies stage mounts, then no passive warning toast appears and no portfolio detail fetch is attempted for that name.
++- Given a restored scenario references a real saved portfolio and composition is empty, when the Policies stage mounts, then the saved portfolio loads into composition exactly once.
++- Given a user explicitly clicks a saved-portfolio row that fails to load, when the request rejects, then the warning toast still appears and `activeScenario.portfolioName` is not updated to a bad state.
++- Given the current AppContext naming changes are present in the working tree, when this bugfix is applied, then the branch remains compatible with those files and can be verified before merge.
++
++## Spec Change Log
++
++## Design Notes
++
++The core distinction is intent, not transport. A passive restore path should be conservative because it is replaying stored state the user may no longer control, while the explicit load dialog is a fresh user action and should continue surfacing backend problems. The simplest robust design is to give the hook enough information to answer "is this name currently a saved portfolio?" before it decides to auto-fetch.
++
++That means avoiding brittle string heuristics such as "if the name looks like a template id, skip it." A membership check against the actual portfolio list is better because it covers built-in pack names, stale deleted portfolios, and any other non-portfolio reference with one rule. If the list has not loaded yet, the passive effect should wait until it can make a correct membership decision rather than fetching optimistically and warning incorrectly.
++
++## Verification
++
++**Commands:**
++- `cd frontend && npm test -- src/components/screens/__tests__/PoliciesStageScreen.test.tsx` -- expected: new passive-autoload and explicit-failure regressions pass.
++- `cd frontend && npm test -- src/contexts/__tests__/AppContext.integration.test.tsx` -- expected: existing local AppContext integration coverage still passes.
++- `cd frontend && npm run typecheck` -- expected: TypeScript accepts the hook signature and screen wiring changes.
+diff --git a/frontend/src/contexts/__tests__/AppContext.integration.test.tsx b/frontend/src/contexts/__tests__/AppContext.integration.test.tsx
+new file mode 100644
+index 00000000..57a55d1f
+--- /dev/null
++++ b/frontend/src/contexts/__tests__/AppContext.integration.test.tsx
+@@ -0,0 +1,310 @@
++// SPDX-License-Identifier: AGPL-3.0-or-later
++// Copyright 2026 Lucas Vivier
++/**
++ * AppContext provider integration tests.
++ *
++ * Covers the scenario naming lifecycle that cannot be verified by pure
++ * naming utility tests alone: provider auto-update, manual edit freeze,
++ * loaded scenario preservation, and demo scenario protection.
++ */
++
++import { fireEvent, render, screen, waitFor } from "@testing-library/react";
++import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
++
++vi.mock("sonner", () => ({
++  toast: {
++    error: vi.fn(),
++    info: vi.fn(),
++    success: vi.fn(),
++    warning: vi.fn(),
++  },
++}));
++
++vi.mock("@/api/auth", () => ({
++  login: vi.fn(),
++  logout: vi.fn(),
++}));
++
++vi.mock("@/api/populations", () => ({
++  listPopulations: vi.fn(),
++}));
++
++vi.mock("@/api/templates", () => ({
++  getTemplate: vi.fn(),
++  listTemplates: vi.fn(),
++}));
++
++vi.mock("@/api/scenarios", () => ({
++  cloneScenario: vi.fn(),
++  createScenario: vi.fn(),
++}));
++
++vi.mock("@/api/data-fusion", () => ({
++  listDataSources: vi.fn(),
++  listMergeMethods: vi.fn(),
++}));
++
++vi.mock("@/api/portfolios", () => ({
++  listPortfolios: vi.fn(),
++}));
++
++vi.mock("@/api/results", () => ({
++  listResults: vi.fn(),
++}));
++
++vi.mock("@/api/indicators", () => ({
++  getIndicators: vi.fn(),
++}));
++
++import { setAuthToken } from "@/api/client";
++import { listDataSources, listMergeMethods } from "@/api/data-fusion";
++import { getIndicators } from "@/api/indicators";
++import { listPopulations } from "@/api/populations";
++import { listPortfolios } from "@/api/portfolios";
++import { listResults } from "@/api/results";
++import { getTemplate, listTemplates } from "@/api/templates";
++import { AppProvider, useAppState } from "@/contexts/AppContext";
++import { createDemoScenario, DEMO_SCENARIO_ID } from "@/data/demo-scenario";
++import {
++  HAS_LAUNCHED_KEY,
++  MANUALLY_EDITED_NAMES_KEY,
++  SCENARIO_STORAGE_KEY,
++  STAGE_STORAGE_KEY,
++} from "@/hooks/useScenarioPersistence";
++import type { WorkspaceScenario } from "@/types/workspace";
++
++const TEST_POPULATIONS = [
++  {
++    id: "quick-test-population",
++    name: "Quick Test Population",
++    households: 100,
++    source: "Built-in demo data",
++    year: 2026,
++    origin: "built-in",
++    canonical_origin: "synthetic-public",
++    access_mode: "bundled",
++    trust_status: "demo-only",
++    is_synthetic: true,
++    column_count: 7,
++    created_date: "2026-01-01T00:00:00Z",
++  },
++  {
++    id: "fr-synthetic-2024",
++    name: "France Synthetic 2024",
++    households: 100_000,
++    source: "INSEE marginals",
++    year: 2024,
++    origin: "built-in",
++    canonical_origin: "synthetic-public",
++    access_mode: "bundled",
++    trust_status: "exploratory",
++    is_synthetic: true,
++    column_count: 10,
++    created_date: null,
++  },
++];
++
++const TEST_TEMPLATES = [
++  {
++    id: "carbon-tax-flat",
++    name: "Carbon Tax — Flat Rate",
++    type: "carbon-tax",
++    parameter_count: 8,
++    description: "Flat carbon tax rate applied uniformly across all households",
++    parameter_groups: ["Tax Rates", "Thresholds"],
++    is_custom: false,
++    runtime_availability: "live_ready",
++    availability_reason: null,
++    category_id: "tax",
++  },
++];
++
++function makeScenario(overrides: Partial<WorkspaceScenario> = {}): WorkspaceScenario {
++  return {
++    id: "scenario-under-test",
++    name: "Initial Scenario Name",
++    version: "1.0",
++    status: "draft",
++    isBaseline: false,
++    baselineRef: null,
++    portfolioName: null,
++    populationIds: [],
++    engineConfig: {
++      startYear: 2025,
++      endYear: 2030,
++      seed: null,
++      investmentDecisionsEnabled: false,
++      logitModel: null,
++      discountRate: 0.03,
++      tasteParameters: null,
++      calibrationState: "not_configured",
++    },
++    policyType: "carbon-tax-flat",
++    lastRunId: null,
++    ...overrides,
++  };
++}
++
++function persistReturningScenario(scenario: WorkspaceScenario): void {
++  localStorage.setItem(HAS_LAUNCHED_KEY, "true");
++  localStorage.setItem(SCENARIO_STORAGE_KEY, JSON.stringify(scenario));
++  localStorage.setItem(STAGE_STORAGE_KEY, "scenario");
++}
++
++function ContextProbe() {
++  const app = useAppState();
++
++  return (
++    <div>
++      <output data-testid="scenario-id">{app.activeScenario?.id ?? ""}</output>
++      <output data-testid="scenario-name">{app.activeScenario?.name ?? ""}</output>
++      <output data-testid="selected-population">{app.selectedPopulationId}</output>
++      <button type="button" onClick={() => app.setSelectedPortfolioName("Carbon Tax")}>
++        Select Carbon Tax
++      </button>
++      <button type="button" onClick={() => app.setSelectedPortfolioName("Climate Dividend")}>
++        Select Climate Dividend
++      </button>
++      <button type="button" onClick={() => app.setSelectedPopulationId("fr-synthetic-2024")}>
++        Select France 2024
++      </button>
++      <button type="button" onClick={() => app.setSelectedPopulationId("quick-test-population")}>
++        Select Quick Test
++      </button>
++      <button type="button" onClick={() => app.updateScenarioField("name", "Custom label")}>
++        Manual Rename
++      </button>
++      <button type="button" onClick={() => app.resetToDemo()}>
++        Reset Demo
++      </button>
++    </div>
++  );
++}
++
++function renderProvider() {
++  return render(
++    <AppProvider>
++      <ContextProbe />
++    </AppProvider>,
++  );
++}
++
++function readManualNameIds(): string[] {
++  const raw = localStorage.getItem(MANUALLY_EDITED_NAMES_KEY);
++  return raw ? JSON.parse(raw) as string[] : [];
++}
++
++beforeEach(() => {
++  sessionStorage.clear();
++  localStorage.clear();
++  window.location.hash = "";
++  vi.clearAllMocks();
++
++  setAuthToken("test-token");
++
++  vi.mocked(listPopulations).mockResolvedValue(TEST_POPULATIONS);
++  vi.mocked(listTemplates).mockResolvedValue(TEST_TEMPLATES);
++  vi.mocked(getTemplate).mockResolvedValue({
++    id: "carbon-tax-flat",
++    name: "Carbon Tax — Flat Rate",
++    type: "carbon-tax",
++    description: "Flat carbon tax rate applied uniformly across all households",
++    default_policy: { carbon_tax_rate: 50 },
++    parameter_groups: ["Tax Rates"],
++    metadata: {},
++  });
++  vi.mocked(listDataSources).mockResolvedValue({});
++  vi.mocked(listMergeMethods).mockResolvedValue([]);
++  vi.mocked(listPortfolios).mockResolvedValue([]);
++  vi.mocked(listResults).mockResolvedValue([]);
++  vi.mocked(getIndicators).mockResolvedValue(null);
++  vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}", { status: 200 }));
++});
++
++afterEach(() => {
++  vi.restoreAllMocks();
++  sessionStorage.clear();
++  localStorage.clear();
++  window.location.hash = "";
++});
++
++describe("AppContext naming lifecycle", () => {
++  it("auto-updates a non-demo draft scenario name from policy set and primary population", async () => {
++    persistReturningScenario(makeScenario());
++    renderProvider();
++
++    await waitFor(() => {
++      expect(screen.getByTestId("scenario-id")).toHaveTextContent("scenario-under-test");
++    });
++
++    fireEvent.click(screen.getByRole("button", { name: "Select Carbon Tax" }));
++    fireEvent.click(screen.getByRole("button", { name: "Select France 2024" }));
++
++    await waitFor(() => {
++      expect(screen.getByTestId("scenario-name")).toHaveTextContent("Carbon Tax — FR Synthetic 2024");
++    });
++  });
++
++  it("preserves a manual scenario name after later policy set or population changes", async () => {
++    persistReturningScenario(makeScenario());
++    renderProvider();
++
++    await waitFor(() => {
++      expect(screen.getByTestId("scenario-id")).toHaveTextContent("scenario-under-test");
++    });
++
++    fireEvent.click(screen.getByRole("button", { name: "Manual Rename" }));
++    fireEvent.click(screen.getByRole("button", { name: "Select Climate Dividend" }));
++    fireEvent.click(screen.getByRole("button", { name: "Select France 2024" }));
++
++    await waitFor(() => {
++      expect(screen.getByTestId("scenario-name")).toHaveTextContent("Custom label");
++    });
++    expect(readManualNameIds()).toContain("scenario-under-test");
++  });
++
++  it("preserves a loaded scenario name through provider initialization and API refresh effects", async () => {
++    persistReturningScenario(
++      makeScenario({
++        name: "Imported Policy Analysis",
++        portfolioName: "Legacy Policy Set",
++        populationIds: ["fr-synthetic-2024"],
++      }),
++    );
++    renderProvider();
++
++    await waitFor(() => {
++      expect(screen.getByTestId("selected-population")).toHaveTextContent("fr-synthetic-2024");
++    });
++
++    await waitFor(() => {
++      expect(screen.getByTestId("scenario-name")).toHaveTextContent("Imported Policy Analysis");
++    });
++  });
++
++  it("never auto-updates the demo scenario name or marks it as manually renamed", async () => {
++    renderProvider();
++
++    await waitFor(() => {
++      expect(screen.getByTestId("scenario-id")).toHaveTextContent(DEMO_SCENARIO_ID);
++    });
++    const demoName = createDemoScenario().name;
++    expect(screen.getByTestId("scenario-name")).toHaveTextContent(demoName);
++
++    fireEvent.click(screen.getByRole("button", { name: "Select Carbon Tax" }));
++    fireEvent.click(screen.getByRole("button", { name: "Select France 2024" }));
++    fireEvent.click(screen.getByRole("button", { name: "Manual Rename" }));
++
++    await waitFor(() => {
++      expect(screen.getByTestId("scenario-name")).toHaveTextContent("Custom label");
++    });
++    expect(readManualNameIds()).not.toContain(DEMO_SCENARIO_ID);
++
++    fireEvent.click(screen.getByRole("button", { name: "Reset Demo" }));
++
++    await waitFor(() => {
++      expect(screen.getByTestId("scenario-name")).toHaveTextContent(demoName);
++    });
++    expect(readManualNameIds()).not.toContain(DEMO_SCENARIO_ID);
++  });
++});
