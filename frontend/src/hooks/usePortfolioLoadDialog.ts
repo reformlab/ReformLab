@@ -136,7 +136,6 @@ export function usePortfolioLoadDialog<ResolutionStrategy extends string>({
     if (loadedPortfolioRef.current === activeScenarioPortfolioName) return;
     if (!availablePortfolioNames.includes(activeScenarioPortfolioName)) {
       // Passive restore should ignore stale or non-portfolio references silently.
-      loadedPortfolioRef.current = activeScenarioPortfolioName;
       return;
     }
 

@@ -6,7 +6,6 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-
 # ============================================================================
 # Story 25.1 / AC-1: GET /api/categories returns categories with full schema
 # ============================================================================
@@ -74,7 +73,9 @@ class TestListCategories:
 class TestTemplateCategoryMapping:
     """Tests for category_id in TemplateListItem — Story 25.1, Task 1.6."""
 
-    def test_template_list_includes_category_id(self, client: TestClient, auth_headers: dict[str, str]) -> None:
+    def test_template_list_includes_category_id(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
         """Task 1.6: Template list items include category_id field."""
         response = client.get("/api/templates", headers=auth_headers)
         assert response.status_code == 200

@@ -544,6 +544,11 @@ export function PoliciesStageScreen() {
     refetchPortfolios,
   });
 
+  const availablePortfolioNames = useMemo(
+    () => portfolios.map((p) => p.name),
+    [portfolios],
+  );
+
   const {
     loadDialogOpen,
     openLoadDialog,
@@ -552,7 +557,7 @@ export function PoliciesStageScreen() {
   } = usePortfolioLoadDialog({
     templates,
     activeScenarioPortfolioName: activeScenario?.portfolioName,
-    availablePortfolioNames: portfolios.map((portfolio) => portfolio.name),
+    availablePortfolioNames,
     portfoliosLoading,
     compositionLength: composition.length,
     validStrategies: VALID_STRATEGIES,

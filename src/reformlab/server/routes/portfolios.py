@@ -338,7 +338,12 @@ def _build_portfolio(name: str, description: str, resolution_strategy: str,
     return portfolio
 
 
-def _portfolio_to_detail(name: str, portfolio: Any, version_id: str, metadata: dict[str, Any] | None = None) -> PortfolioDetailResponse:
+def _portfolio_to_detail(
+    name: str,
+    portfolio: Any,
+    version_id: str,
+    metadata: dict[str, Any] | None = None,
+) -> PortfolioDetailResponse:
     """Convert a PolicyPortfolio domain object to a PortfolioDetailResponse.
 
     Story 25.4: Accepts optional metadata dict containing UI-layer fields

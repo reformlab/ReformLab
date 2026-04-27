@@ -1,6 +1,6 @@
 # Story 26.7: Add Five-Stage Migration, Demo, Restore, and Cross-Stage Regression Coverage
 
-Status: ready-for-review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 

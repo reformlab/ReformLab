@@ -427,6 +427,7 @@ describe("PoliciesStageScreen — AC-4, AC-5: Portfolio-scenario integration", (
     expect(updateScenarioField).not.toHaveBeenCalledWith("portfolioName", "missing-portfolio");
     expect(setSelectedPortfolioName).not.toHaveBeenCalledWith("missing-portfolio");
     expect(vi.mocked(toast.warning)).toHaveBeenCalledWith("Could not load policy set 'missing-portfolio'");
+    expect(vi.mocked(toast.warning)).toHaveBeenCalledTimes(1);
   });
 
   it("deleting active portfolio delinks it from scenario (AC-5)", async () => {
@@ -553,6 +554,62 @@ describe("PoliciesStageScreen — auto-load on mount", () => {
     await new Promise((r) => setTimeout(r, 50));
     expect(getPortfolio).not.toHaveBeenCalled();
     expect(vi.mocked(toast.warning)).not.toHaveBeenCalled();
+  });
+
+  it("defers passive autoload while portfoliosLoading, then fires once after loading completes", async () => {
+    const scenario = makeScenario({ portfolioName: "my-portfolio" });
+
+    const view = renderScreen({
+      portfolios: [makePortfolio("my-portfolio")],
+      portfoliosLoading: true,
+      activeScenario: scenario,
+    });
+
+    expect(getPortfolio).not.toHaveBeenCalled();
+    expect(vi.mocked(toast.warning)).not.toHaveBeenCalled();
+
+    vi.mocked(useAppState).mockReturnValue(
+      makeDefaultAppState({
+        portfolios: [makePortfolio("my-portfolio")],
+        portfoliosLoading: false,
+        activeScenario: scenario,
+      }) as ReturnType<typeof useAppState>,
+    );
+    view.rerender(<PoliciesStageScreen />);
+
+    await waitFor(() => expect(getPortfolio).toHaveBeenCalledWith("my-portfolio"));
+    expect(getPortfolio).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(toast.warning)).not.toHaveBeenCalled();
+
+    view.rerender(<PoliciesStageScreen />);
+    expect(getPortfolio).toHaveBeenCalledTimes(1);
+  });
+
+  it("fires deferred autoload exactly once when matching portfolio name appears later", async () => {
+    const scenario = makeScenario({ portfolioName: "deferred-portfolio" });
+
+    const view = renderScreen({
+      portfolios: [makePortfolio("other")],
+      activeScenario: scenario,
+    });
+
+    expect(getPortfolio).not.toHaveBeenCalled();
+    expect(vi.mocked(toast.warning)).not.toHaveBeenCalled();
+
+    vi.mocked(useAppState).mockReturnValue(
+      makeDefaultAppState({
+        portfolios: [makePortfolio("other"), makePortfolio("deferred-portfolio")],
+        activeScenario: scenario,
+      }) as ReturnType<typeof useAppState>,
+    );
+    view.rerender(<PoliciesStageScreen />);
+
+    await waitFor(() => expect(getPortfolio).toHaveBeenCalledWith("deferred-portfolio"));
+    expect(getPortfolio).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(toast.warning)).not.toHaveBeenCalled();
+
+    view.rerender(<PoliciesStageScreen />);
+    expect(getPortfolio).toHaveBeenCalledTimes(1);
   });
 });
 

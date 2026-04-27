@@ -55,7 +55,7 @@ In addition, the user has explicitly asked to:
 - 26.7 outstanding review patches → folded into a small EPIC-27 close-out story (27.0).
 - 9 base UX stories under EPIC-27 from rev 1.
 - **+5 audit-driven stories** added to EPIC-27 (rev 2), covering Stage 4–5 polish and cross-cutting code consolidation.
-- **+1 frontend cleanup story** under EPIC-27 absorbing the four deferred-work items that touch frontend (circular-import risk, error-badge variant, AC-3 prose collapse, auto-name effect dep).
+- **+1 frontend cleanup story** under EPIC-27 absorbing the three frontend-local deferred-work items (circular-import risk, error-badge variant, AC-3 prose collapse). The AppContext dep-array cleanup is owned by story 27.13.
 - **+5 backend stories** under EPIC-29 covering custom variables, mapping renames, and test-fixture sweeps.
 - EPIC-28 sized as 5 stories (architecture, schema, adapter, UI, regression).
 
@@ -113,7 +113,7 @@ Apply the seven Review:Patch / Review:Decision items from `spec-fix-passive-poli
 - `PoliciesStageScreen.tsx:555` — wrap `portfolios.map((p) => p.name)` in `useMemo([portfolios])`.
 - `PoliciesStageScreen.test.tsx` — add `portfoliosLoading: true → false` rerender test, deferred-autoload test, and `toHaveBeenCalledTimes(1)` assertion on the explicit-failure regression.
 
-The four "Decision" items become EPIC-27 follow-up story 27.13 (AppContext naming-state hardening). After this, mark EPIC-26 done, run epic-26 retrospective addendum.
+The three AppContext "Decision" items plus the smaller deferred dep-array cleanup become EPIC-27 follow-up story 27.13 (AppContext naming-state hardening). After this, mark EPIC-26 done, run epic-26 retrospective addendum.
 
 ---
 
@@ -233,7 +233,7 @@ Six sub-tasks bundled because each is small:
 
 #### Story 27.13 — AppContext naming hardening
 
-Carries the four "Decision" items from `spec-fix-passive-policy-set-autoload-for-non-portfolio-references.md` lines 82–85: reset `selectedPortfolioName` on `createScenario`/`cloneScenario`; invalidate loaded-name guard on direct field mutation; handle empty `populationIds` correctly during restore; tighten the auto-name effect dep array.
+Carries the three AppContext "Decision" items from the passive-autoload review plus the smaller deferred dep-array cleanup: reset `selectedPortfolioName` on `createScenario`/`cloneScenario`; invalidate loaded-name guard on direct field mutation; handle empty `populationIds` correctly during restore; tighten the auto-name effect dep array.
 
 **AC:** integration tests cover create-then-edit, clone-then-edit, restore-with-empty-populations, and direct-mutation flows.
 
@@ -242,7 +242,7 @@ Carries the four "Decision" items from `spec-fix-passive-policy-set-autoload-for
 - Move `CompositionEntry` from `PortfolioCompositionPanel` to `api/types.ts` (circular-import risk). [deferred-work.md:3](_bmad-output/implementation-artifacts/deferred-work.md#L3)
 - Replace `variant="default"` + `bg-red-500` in [PortfolioCompositionPanel.tsx:786](frontend/src/components/simulation/PortfolioCompositionPanel.tsx#L786) with a real `destructive` variant.
 - Collapse the AC-3 warning text in [PoliciesStageScreen.tsx:760-776](frontend/src/components/screens/PoliciesStageScreen.tsx#L760-L776) to a single `<p>` if/when strict-match grading is required (otherwise leave with a comment).
-- Tighten the auto-name effect dep array in [AppContext.tsx:550-560](frontend/src/contexts/AppContext.tsx#L550-L560) (functional setter or name-ref) so `activeScenarioName` doesn't need to be a dep.
+- AppContext dep-array cleanup is owned by Story 27.13; do not duplicate it here.
 
 #### Story 27.15 — UX-spec amendments
 
