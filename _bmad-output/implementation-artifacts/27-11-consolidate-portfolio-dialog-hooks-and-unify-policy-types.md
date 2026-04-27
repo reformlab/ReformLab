@@ -17,6 +17,7 @@ so that future changes to portfolio dialog behavior land in one file and the ren
 5. Given the deprecated `useScenarioPersistence` hook export at `frontend/src/hooks/useScenarioPersistence.ts:216-228`, when this story is complete, then the deprecated hook export is removed and the module-level functions remain.
 6. Given the deprecated `PortfolioDesignerScreen.tsx`, when audited, then any inline duplicate of `validatePortfolioName` (lines 93–104) is removed in favour of the canonical import from `portfolioValidation.ts`. If the screen is unreachable from routing, delete it entirely along with its tests.
 7. Given the LOC count before and after, when measured, then this consolidation removes at least ~150 lines (target ~250) without losing functional coverage.
+8. Given a saved portfolio policy whose `templateId` does not match any current template (e.g., template was renamed or removed), when the policy is loaded into composition, then the unified adapter MUST NOT silently fall back to a generic `policy_type` / `carbon_tax` shape — instead, surface the unmatched policy with an explicit "unmatched template" marker on the `CompositionEntry` so the renderer can warn the analyst, and prevent a subsequent save from rewriting the original `policy_type` to the wrong concrete type.
 
 ## Tasks / Subtasks
 
@@ -36,6 +37,11 @@ so that future changes to portfolio dialog behavior land in one file and the ren
   - [ ] Move `CompositionEntry` from `PortfolioCompositionPanel.tsx` to `frontend/src/api/types.ts` (also closes the deferred-work circular-import risk)
   - [ ] Make `CompositionEntry` extend `PortfolioPolicy`
   - [ ] Update the conversion logic in the unified hook to set `instanceId` and `templateId` on the API shape rather than translating field names
+- [ ] Handle unmatched template on load (AC: #8)
+  - [ ] At the conversion site (formerly `usePortfolioLoadDialog.ts:66-101`), when no template matches the saved `templateId`, attach an explicit `unmatchedTemplate: true` marker on the `CompositionEntry` instead of falling back to `policy_type: "carbon_tax"`
+  - [ ] In `PortfolioCompositionPanel`, surface the unmatched marker as an inline warning ("Saved template no longer available — review before saving") and disable inline editing of `policy_type` for that entry
+  - [ ] On save, if any entry carries the `unmatchedTemplate` marker, preserve its original saved `policy_type` rather than rewriting from a guess
+  - [ ] Add a regression test covering load-with-unknown-templateId → save round trip (asserts original `policy_type` is preserved)
 - [ ] Remove deprecated hook export (AC: #5)
   - [ ] In `useScenarioPersistence.ts`, remove the deprecated hook re-export at lines 216–228
   - [ ] Audit any remaining imports; tests use module-level functions per the spec
@@ -68,6 +74,7 @@ so that future changes to portfolio dialog behavior land in one file and the ren
 
 - [Source: _bmad-output/planning-artifacts/sprint-change-proposal-2026-04-26.md#Story-27.11]
 - [Source: _bmad-output/implementation-artifacts/deferred-work.md:3] (circular-import risk)
+- [Source: _bmad-output/implementation-artifacts/deferred-work.md] (policy-type fallback on unmatched template, originally deferred from spec-extract-policies-screen-dialog-state review 2026-04-19)
 - [Source: Audit findings (frontend code redundancy report) findings #4, #11, #14, #15, #16]
 
 ## Dev Agent Record

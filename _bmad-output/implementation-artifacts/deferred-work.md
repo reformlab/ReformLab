@@ -8,14 +8,15 @@ This file tracks items deferred from code reviews, retrospectives, and incident 
 
 ## Open
 
-### Deferred from: spec-extract-policies-screen-dialog-state review (2026-04-19)
-
-- Portfolio load/save round-tripping still falls back to raw `policy_type`/`carbon_tax` when a saved portfolio policy cannot be matched to a current template. This behavior existed before the hook extraction, but it can turn an unmatched loaded policy into the wrong saved policy type if edited and saved later.
-  - **Owner:** open — candidate follow-up under EPIC-27 (story 27.11 or a separate sweep). Not yet assigned because the fix interacts with template-version semantics that may shift in EPIC-28.
+_None._
 
 ---
 
 ## Closed (migrated)
+
+### Deferred from: spec-extract-policies-screen-dialog-state review (2026-04-19)
+
+- Portfolio load/save round-tripping still falls back to raw `policy_type`/`carbon_tax` when a saved portfolio policy cannot be matched to a current template. This behavior existed before the hook extraction, but it can turn an unmatched loaded policy into the wrong saved policy type if edited and saved later. → **migrated to story 27.11** (AC #8: explicit unmatched-template marker, preserve original `policy_type` on save).
 
 ### Deferred from: code review of story 25-6 (2026-04-20)
 
