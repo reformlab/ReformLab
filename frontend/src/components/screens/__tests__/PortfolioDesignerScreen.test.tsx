@@ -120,7 +120,7 @@ describe("PortfolioDesignerScreen", () => {
     expect(screen.getByRole("button", { name: /save portfolio/i })).toBeInTheDocument();
   });
 
-  it("Save Portfolio button disabled with < 2 policies (AC-5)", () => {
+  it("Save Portfolio button disabled with 0 policies (AC-5)", () => {
     renderScreen();
     fireEvent.click(screen.getByText(/3\. Review & Save/i));
     expect(screen.getByRole("button", { name: /save portfolio/i })).toBeDisabled();

@@ -333,7 +333,6 @@ policies:
 
         conflicts = validate_compatibility(portfolio)
         assert conflicts == ()
-        assert len(conflicts) == 0
 
     def test_load_invalid_policy_type(self, temp_portfolio_dir: Path) -> None:
         """Loading portfolio with invalid policy_type raises clear error."""
