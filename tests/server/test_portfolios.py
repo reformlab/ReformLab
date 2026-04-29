@@ -124,6 +124,20 @@ _CREATE_BODY = {
 class TestValidateEndpoint:
     """AC-6: Conflict validation without saving."""
 
+    def test_validate_single_policy_succeeds(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """AC-2: Single-policy portfolio validate returns 200 + valid: true."""
+        response = client.post(
+            "/api/portfolios/validate",
+            json={"policies": [_VALID_POLICIES[0]], "resolution_strategy": "error"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["is_compatible"] is True
+        assert data["conflicts"] == []
+
     def test_validate_non_conflicting_portfolio(
         self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
@@ -139,15 +153,20 @@ class TestValidateEndpoint:
         assert isinstance(data["conflicts"], list)
         assert isinstance(data["is_compatible"], bool)
 
-    def test_validate_requires_min_2_policies(
+    def test_validate_requires_min_1_policy(
         self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
+        """AC-3: Empty policy portfolio returns 400 with new message."""
         response = client.post(
             "/api/portfolios/validate",
-            json={"policies": [_VALID_POLICIES[0]], "resolution_strategy": "error"},
+            json={"policies": [], "resolution_strategy": "error"},
             headers=auth_headers,
         )
         assert response.status_code == 400
+        detail = response.json()["detail"]
+        assert detail["what"] == "Insufficient policies"
+        assert "at least 1 policy" in detail["why"]
+        assert "got 0" in detail["why"]
 
     def test_validate_invalid_policy_type(
         self, client: TestClient, auth_headers: dict[str, str]
@@ -213,6 +232,21 @@ class TestListPortfolios:
 class TestCreatePortfolio:
     """POST /api/portfolios — creates and saves a portfolio."""
 
+    def test_create_single_policy_succeeds(
+        self, client: TestClient, auth_headers: dict[str, str], tmp_path: object
+    ) -> None:
+        """AC-1: Single-policy portfolio build returns 200."""
+        import os
+        os.environ["REFORMLAB_REGISTRY_PATH"] = str(tmp_path)
+        try:
+            body = {**_CREATE_BODY, "policies": [_VALID_POLICIES[0]]}
+            response = client.post("/api/portfolios", json=body, headers=auth_headers)
+            assert response.status_code == 201
+            data = response.json()
+            assert "version_id" in data
+        finally:
+            del os.environ["REFORMLAB_REGISTRY_PATH"]
+
     def test_create_returns_version_id(
         self, client: TestClient, auth_headers: dict[str, str], tmp_path: object
     ) -> None:
@@ -232,12 +266,17 @@ class TestCreatePortfolio:
         finally:
             del os.environ["REFORMLAB_REGISTRY_PATH"]
 
-    def test_create_requires_min_2_policies(
+    def test_create_requires_min_1_policy(
         self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
-        body = {**_CREATE_BODY, "policies": [_VALID_POLICIES[0]]}
+        """AC-3: Empty policy portfolio returns 400 with new message."""
+        body = {**_CREATE_BODY, "policies": []}
         response = client.post("/api/portfolios", json=body, headers=auth_headers)
         assert response.status_code == 400
+        detail = response.json()["detail"]
+        assert detail["what"] == "Insufficient policies"
+        assert "at least 1 policy" in detail["why"]
+        assert "got 0" in detail["why"]
 
     def test_create_rejects_invalid_name(
         self, client: TestClient, auth_headers: dict[str, str]
@@ -382,16 +421,21 @@ class TestUpdatePortfolio:
         finally:
             del os.environ["REFORMLAB_REGISTRY_PATH"]
 
-    def test_update_requires_min_2_policies(
+    def test_update_requires_min_1_policy(
         self, client: TestClient, auth_headers: dict[str, str], tmp_path: object
     ) -> None:
+        """AC-3: Empty policy portfolio update returns 400 with new message."""
         import os
         os.environ["REFORMLAB_REGISTRY_PATH"] = str(tmp_path)
         try:
             client.post("/api/portfolios", json=_CREATE_BODY, headers=auth_headers)
-            body = {"policies": [_VALID_POLICIES[0]], "resolution_strategy": "error"}
+            body = {"policies": [], "resolution_strategy": "error"}
             response = client.put("/api/portfolios/test-portfolio", json=body, headers=auth_headers)
             assert response.status_code == 400
+            detail = response.json()["detail"]
+            assert detail["what"] == "Insufficient policies"
+            assert "at least 1 policy" in detail["why"]
+            assert "got 0" in detail["why"]
         finally:
             del os.environ["REFORMLAB_REGISTRY_PATH"]
 

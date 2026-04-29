@@ -19,6 +19,7 @@ from reformlab.templates.portfolios.composition import (
     dump_portfolio,
     load_portfolio,
     portfolio_to_dict,
+    validate_compatibility,
 )
 from reformlab.templates.portfolios.exceptions import (
     PortfolioSerializationError,
@@ -308,6 +309,31 @@ policies:
         )
         portfolio = load_portfolio(file_path)
         assert len(portfolio.policies) == 1
+
+    def test_validate_compatibility_single_policy_returns_no_conflicts(
+        self, carbon_tax_params: CarbonTaxParameters
+    ) -> None:
+        """AC-6: validate_compatibility() returns no conflicts for 1 policy.
+
+        Story 27.1: Single-policy portfolios should not invoke pairwise
+        conflict detection, since the pairwise loops are naturally no-op
+        for one policy.
+        """
+        policy1 = PolicyConfig(
+            policy_type=PolicyType.CARBON_TAX,
+            policy=carbon_tax_params,
+            name="Carbon Tax",
+        )
+        portfolio = PolicyPortfolio(
+            name="Single Policy Portfolio",
+            policies=(policy1,),
+            version="1.0",
+            description="Test single policy portfolio",
+        )
+
+        conflicts = validate_compatibility(portfolio)
+        assert conflicts == ()
+        assert len(conflicts) == 0
 
     def test_load_invalid_policy_type(self, temp_portfolio_dir: Path) -> None:
         """Loading portfolio with invalid policy_type raises clear error."""

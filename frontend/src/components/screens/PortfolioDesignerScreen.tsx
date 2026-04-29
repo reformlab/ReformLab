@@ -427,7 +427,7 @@ export function PortfolioDesignerScreen({
                 <Button
                   size="sm"
                   onClick={() => setActiveStep("review")}
-                  disabled={composition.length < 2}
+                  disabled={composition.length < 1}
                 >
                   Review
                   <ChevronRight className="ml-1 h-3 w-3" />
