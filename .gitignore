@@ -36,6 +36,7 @@ npm-debug.log*
 yarn-error.log*
 
 # === Claude Code ===
+.claude/settings.json
 .claude/settings.local.json
 
 # === Grant Applications ===
