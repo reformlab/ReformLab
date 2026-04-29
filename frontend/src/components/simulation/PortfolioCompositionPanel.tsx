@@ -16,7 +16,7 @@
  * Story 27.3: Show actual parameter values inline in policy cards.
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { ArrowUp, ArrowDown, Trash2, ChevronDown, ChevronRight, CircleHelp, Settings, Plus, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -143,8 +143,8 @@ function summarizeParameterGroup(
 
   // Build parameter summaries
   const parts = groupIds.map((paramId) => {
-    const value = resolveParameterValue(paramId, entry.parameters, schemas.find((s) => s.id === paramId));
     const schema = schemas.find((s) => s.id === paramId);
+    const value = resolveParameterValue(paramId, entry.parameters, schema);
 
     if (value === null) {
       return "—";
@@ -177,11 +177,12 @@ function summarizeRateSchedule(entry: CompositionEntry, schemas: Parameter[]): s
   const sortedEntries = scheduleEntries.sort((a, b) => Number(a[0]) - Number(b[0]));
   const [firstYear, firstRate] = sortedEntries[0];
 
-  // Try to find a schedule parameter to get the unit
-  const scheduleParam = schemas.find((p) => p.id.includes("rate_schedule") || p.id.includes("rate"));
-  const unit = scheduleParam?.unit ?? "€/tonne";
+  // Try to find a schedule parameter to get the unit (more specific match to avoid false positives)
+  const scheduleParam = schemas.find((p) => p.id.includes("rate_schedule"));
+  const unit = scheduleParam?.unit ?? "";
 
-  return formatParameterValue(firstRate, unit) + ` in ${firstYear}`;
+  const formatted = formatParameterValue(firstRate, unit);
+  return unit ? formatted + ` in ${firstYear}` : `${firstRate} in ${firstYear}`;
 }
 
 export function PortfolioCompositionPanel({
@@ -206,6 +207,18 @@ export function PortfolioCompositionPanel({
   const [expandedIndices, setExpandedIndices] = useState<Set<number>>(new Set());
   // Story 27.3: Track highlighted group for click-to-preview affordance
   const [highlightedGroupId, setHighlightedGroupId] = useState<string | null>(null);
+
+  // Story 27.3: Timer cleanup ref to prevent state updates after unmount
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Story 27.3: Cleanup timers on unmount to prevent state updates on unmounted component
+  useEffect(() => {
+    return () => {
+      if (timerRef.current !== null) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, []);
 
   // Story 25.3: Auto-expand the newly created policy when autoExpandInstanceId changes
   useEffect(() => {
@@ -240,12 +253,12 @@ export function PortfolioCompositionPanel({
       setHighlightedGroupId(compositeKey);
 
       // Scroll to group (next tick after DOM update)
-      setTimeout(() => {
+      timerRef.current = setTimeout(() => {
         const el = document.querySelector(`[data-group-key="${compositeKey}"]`);
         el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
-        // Remove highlight after animation
-        setTimeout(() => setHighlightedGroupId(null), 1000);
+        // Remove highlight after animation (timerRef is reused here for cleanup)
+        timerRef.current = setTimeout(() => setHighlightedGroupId(null), 1000);
       }, 0);
     },
     []
@@ -373,7 +386,6 @@ export function PortfolioCompositionPanel({
                               <button
                                 key={group.id}
                                 type="button"
-                                role="button"
                                 tabIndex={0}
                                 aria-expanded={isExpanded}
                                 onClick={() => handleGroupChipClick(index, group.id, entry.instanceId)}
@@ -401,7 +413,6 @@ export function PortfolioCompositionPanel({
                               <button
                                 key={group}
                                 type="button"
-                                role="button"
                                 tabIndex={0}
                                 aria-expanded={isExpanded}
                                 onClick={() => handleGroupChipClick(index, groupId, entry.instanceId)}
@@ -640,8 +651,8 @@ export function PortfolioCompositionPanel({
                             {group.parameterIds.length > 0 ? (
                               <div className="text-xs text-slate-600 space-y-0.5">
                                 {group.parameterIds.map((paramId) => {
-                                  const value = resolveParameterValue(paramId, entry.parameters, schemas.find((s) => s.id === paramId));
                                   const param = schemas.find((s) => s.id === paramId);
+                                  const value = resolveParameterValue(paramId, entry.parameters, param);
 
                                   return (
                                     <div key={paramId} className="flex items-center gap-2">

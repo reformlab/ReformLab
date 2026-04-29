@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 Lucas Vivier
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 
 import { PortfolioCompositionPanel } from "@/components/simulation/PortfolioCompositionPanel";
 import type { CompositionEntry } from "@/components/simulation/PortfolioCompositionPanel";
@@ -495,12 +495,14 @@ describe("Story 27.3: PortfolioCompositionPanel", () => {
       const highlightedGroup = container.querySelector('[data-group-key="inst-highlight:mechanism"].ring-2');
       expect(highlightedGroup).toBeInTheDocument();
 
-      // Advance timers to trigger highlight removal
-      vi.advanceTimersByTime(1200);
+      // Advance timers to trigger highlight removal (past the 1000ms timeout)
+      act(() => {
+        vi.advanceTimersByTime(1200);
+      });
 
-      // Highlight should be removed (need to re-query after state update)
-      // The component re-renders, so we need to check the updated container
-      // In real test, we'd wait for state update, but here we just verify the pattern
+      // Highlight should be removed after timeout
+      expect(container.querySelector('[data-group-key="inst-highlight:mechanism"].ring-2')).not.toBeInTheDocument();
+
       vi.useRealTimers();
     });
   });
@@ -577,6 +579,43 @@ describe("Story 27.3: PortfolioCompositionPanel", () => {
 
       // Should show baseline (0) when parameter is not configured
       expect(container.textContent).toContain("0 €/tonne");
+    });
+
+    it("should show '—' when paramId is absent from schemas entirely", () => {
+      const compositionWithUnknownParam: CompositionEntry[] = [
+        {
+          templateId: "carbon-tax-flat",
+          name: "Carbon Tax",
+          parameters: {},
+          rateSchedule: {},
+          instanceId: "inst-unknown-param",
+          editableParameterGroups: [
+            { id: "mechanism", name: "Mechanism", parameterIds: ["unknown_param_id"] },
+          ],
+        },
+      ];
+
+      // parameterSchemas has no entry for "unknown_param_id" → resolveParameterValue returns null
+      const parameterSchemas = {
+        "carbon-tax-flat": [
+          { id: "tax_rate", label: "Tax Rate", value: 44, baseline: 44, unit: "€/tonne", group: "Mechanism", type: "slider" as const },
+        ],
+      };
+
+      const { container } = render(
+        <PortfolioCompositionPanel
+          templates={mockTemplates}
+          composition={compositionWithUnknownParam}
+          onReorder={() => {}}
+          onRemove={() => {}}
+          onParameterChange={() => {}}
+          onRateScheduleChange={() => {}}
+          parameterSchemas={parameterSchemas}
+        />,
+      );
+
+      // Should show "—" when parameter is not in schemas at all
+      expect(container.textContent).toContain("—");
     });
 
     it("should show '0 [unit]' for explicitly configured zero values", () => {

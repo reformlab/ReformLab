@@ -329,6 +329,33 @@ Claude Opus 4.6 (glm-4.7)
 
 None
 
+### Code Review Synthesis (2026-04-30)
+
+**Issues Verified and Fixed:**
+
+1. **Timer leak on unmount** (High): Added cleanup for nested `setTimeout` calls to prevent state updates on unmounted components. Added `useRef` and `useEffect` cleanup.
+
+2. **Hardcoded "€/tonne" fallback** (High): Fixed `summarizeRateSchedule` to use only `rate_schedule` parameter match (narrower) and empty string fallback instead of hardcoded unit. This prevents incorrect units for non-carbon-tax policies.
+
+3. **Double `schemas.find`** (Medium): Hoisted the schema lookup in `summarizeParameterGroup` to avoid redundant O(n) lookups per parameter.
+
+4. **Lying test: highlight removal not asserted** (Medium): Added assertion to verify highlight class is removed after timeout. Wrapped timer advance in `act()` for proper state update handling.
+
+5. **Missing null path test** (Low): Added test for paramId absent from schemas entirely, verifying true "—" display.
+
+6. **Redundant `role="button"`** (Low): Removed redundant `role="button"` attribute from native `<button>` elements.
+
+**Issues Dismissed:**
+
+- **"Not scheduled" path is dead**: Schedule chip only renders when `rateSchedule.length > 0` — works as designed. Empty schedules show no chip, which is correct UX.
+- **aria-expanded is vacuous**: Kept `aria-expanded` on group chips as it correctly reflects the card's expand state (multiple controls can affect same expandable region).
+- **Legacy group-name mapping brittleness**: Deferred to Story 27.4 (unify template vs from-scratch) for broader refactor.
+
+**Quality Gates After Fixes:**
+- All 832 tests pass (4 skipped)
+- TypeScript type checking passes
+- ESLint passes (7 pre-existing warnings in other files)
+
 ### Completion Notes List
 
 ✅ **AC-1**: Collapsed cards now show actual parameter values per group instead of generic chips like "6 PARAMS". Groups with 1-3 parameters show all values; groups with 4+ show first 2 + "(+N more)".
@@ -340,6 +367,7 @@ None
 - Keyboard handlers for Enter/Space keys
 - Composite key for scroll target: `data-group-key="${instanceId}:${groupId}"`
 - Highlight class (`ring-2 ring-blue-300`) that clears within 1000ms
+- Timer cleanup on unmount to prevent state update warnings
 
 ✅ **AC-4**: Hardcoded placeholders in legacy branch replaced with dynamic rendering from `entry.parameters` and schemas.
 
@@ -353,21 +381,45 @@ None
 - Click-to-preview tests with `scrollIntoView` verification
 - Keyboard activation tests (Enter/Space)
 - Empty-state and zero-value tests
+- Highlight removal assertion with `act()` wrapper
+- True null path test (paramId absent from schemas)
 
 **Implementation Notes:**
 - Helper functions added: `formatParameterValue()`, `resolveParameterValue()`, `summarizeParameterGroup()`, `summarizeRateSchedule()`
-- State added: `highlightedGroupId` for highlight tracking
+- State added: `highlightedGroupId` for highlight tracking, `timerRef` for cleanup
 - Handlers added: `handleGroupChipClick()`, `handleGroupChipKeyDown()`
+- Code review fixes applied: timer cleanup, narrower rate schedule match, hoisted schema lookup
 - Note: Did NOT use `useMemo` in map functions to avoid React hooks rules violations
 - The `editableParameterGroups` branch (already dynamic) was left unchanged as per scope
 
 **Quality Gates:**
-- All 25 tests pass
+- All 832 tests pass (4 skipped)
 - TypeScript type checking passes
-- ESLint passes (2 unused variable warnings fixed)
+- ESLint passes (7 pre-existing warnings in other files)
 
 ### File List
 
 **Modified:**
 - `frontend/src/components/simulation/PortfolioCompositionPanel.tsx` — Main implementation (collapsed card parameter summaries, click-to-preview, dynamic value rendering)
-- `frontend/src/components/simulation/__tests__/PortfolioCompositionPanel.test.tsx` — Added test block for Story 27.3 (11 new tests)
+- `frontend/src/components/simulation/__tests__/PortfolioCompositionPanel.test.tsx` — Added test block for Story 27.3 (12 new tests)
+
+## Senior Developer Review (AI)
+
+### Review: 2026-04-30
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 7.0 → PASS (after fixes applied)
+- **Issues Found:** 6 verified (2 high, 2 medium, 2 low)
+- **Issues Fixed:** 6
+- **Action Items Created:** 0
+
+**Summary:** Code review identified 6 verified issues across performance, correctness, and testing. All issues have been fixed:
+- Timer cleanup prevents state updates on unmounted components
+- Rate schedule unit fallback is now policy-agnostic
+- Schema lookup performance improved (hoisted to avoid duplicate scans)
+- Test coverage improved with highlight removal assertion and true null path test
+- Redundant ARIA role removed
+
+**Dismissed Issues:**
+- "Not scheduled" path: Works as designed — empty schedules don't show chips
+- aria-expanded on group chips: Correctly reflects card state for accessibility
+- Legacy group-name brittleness: Deferred to Story 27.4 for broader refactor
