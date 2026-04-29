@@ -471,6 +471,25 @@ describe("Story 25.1 - Category badge and help popover", () => {
       expect(screen.queryByText("emissions_co2 × tax_rate")).not.toBeInTheDocument();
     });
   });
+
+  // Story 27.2 / AC-5: Verify popover has opaque background class
+  it("popover has opaque background class", async () => {
+    const user = userEvent.setup();
+    render(<PoliciesStageScreen />);
+
+    await waitFor(() => {
+      expect(listCategories).toHaveBeenCalledTimes(1);
+    });
+
+    const helpButtons = screen.getAllByLabelText(/Formula help for/);
+    expect(helpButtons.length).toBeGreaterThan(0);
+
+    await user.click(helpButtons[0]);
+
+    // Verify the popover has the bg-popover class (opaque background)
+    const popover = screen.getByText("Formula").closest("[class*='bg-popover']");
+    expect(popover).toHaveClass('bg-popover');
+  });
 });
 
 // ============================================================================

@@ -1,0 +1,134 @@
+record_id: 2a4954ab-57e1-4e44-b03c-e60438e134ea
+created_at: '2026-04-29T22:12:17.113727+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 27
+  story_num: 2
+  title: Story 27.2
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: codex
+  model: gpt-5.3-codex
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-04-29T22:09:53.445255Z'
+  end_time: '2026-04-29T22:11:25.952255Z'
+  duration_ms: 92507
+  input_tokens: 0
+  output_tokens: 3170
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 12682
+  heading_count: 38
+  list_depth_max: 3
+  code_block_count: 8
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 8.8'
+  - 🎯 Ruthless Story Validation 27.2
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 8.8 → REJECT'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. AC5 Is Not Reliably Testable As Written
+  - 2. Story State Is Internally Inconsistent
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Canonical Theme Location Lock
+  - 2. Measurable Readability Requirement
+  - 3. Consumer Coverage Scope
+  - 4. Explicit Regression Guard For Shared Theme
+  - 5. Clarify Expected HTTP/UI Not In Scope
+  - 6. Definition of Done Should Include Evidence Artifact Type
+  - ✨ Optimizations (Nice to Have)
+  - 1. Merge AC2 + AC3 Into Single Behavioral Criterion
+  - 2. Replace Grep Task With Exact Command
+  - 3. Move Tailwind v4 explanation to short implementation note
+  - 4. Add Risk Note for `className` override precedence
+  - 🤖 LLM Optimization Improvements
+  - 1. Remove Contradictory “ready” vs “completed” Signals
+  - 2. Tighten AC1 Wording
+  - 3. Make AC2 Objective
+  - 4. Clarify AC5 Test Layer
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 23998b7813bf
+findings:
+  total_count: 16
+  by_severity:
+    critical: 2
+    major: 6
+    minor: 8
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 3
+    completeness: 3
+    clarity: 8
+    testability: 2
+  has_fix_count: 16
+  has_location_count: 16
+  has_evidence_count: 16
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 4
+  confidence_phrases_count: 6
+linguistic:
+  avg_sentence_length: 14.50925925925926
+  vocabulary_richness: 0.37332482450542437
+  flesch_reading_ease: 12.438785714285757
+  vague_terms_count: 1
+  formality_score: 0.75
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 1.0
+  evidence_quality: 0.94
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
