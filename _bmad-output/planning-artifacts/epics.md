@@ -734,6 +734,150 @@ Close the workspace migration with regression coverage across first launch, retu
 - Stage 5 displays consistent units, semantic colors for baseline/reform, and clear sub-view location.
 - Quality gates pass: ruff, mypy, pytest, npm typecheck, npm lint, npm test.
 
+## Story 27.0: Close out story-26.7 review patches and retro EPIC-26
+
+**Status:** done
+**Dependencies:** Story 26.7
+
+Close out the carried review fixes from Epic 26, mark Epic 26 complete, and capture the retrospective addendum that feeds Epic 27 follow-up work.
+
+Reference: `_bmad-output/implementation-artifacts/27-0-close-out-26-7-review-patches-and-retro-epic-26.md`
+
+## Story 27.1: Allow single-policy portfolio runs
+
+**Status:** ready-for-dev
+**Dependencies:** Story 27.0
+
+Allow a one-policy portfolio to build, validate, and run without inventing a second placeholder policy.
+
+Reference: `_bmad-output/implementation-artifacts/27-1-allow-single-policy-portfolio-runs.md`
+
+## Story 27.2: Fix Popover transparent background
+
+**Status:** ready-for-dev
+**Dependencies:** Story 27.0
+
+Define the missing popover semantic tokens so help popovers render with an opaque readable background.
+
+Reference: `_bmad-output/implementation-artifacts/27-2-fix-popover-transparent-background.md`
+
+## Story 27.3: Show actual parameter values inline in policy cards
+
+**Status:** ready-for-dev
+**Dependencies:** Story 27.1, Story 27.2
+
+Expose parameter values directly in policy cards so analysts can identify configured policies without expanding each card.
+
+Reference: `_bmad-output/implementation-artifacts/27-3-show-actual-parameter-values-inline-in-policy-cards.md`
+
+## Story 27.4: Unify template vs from-scratch policy-card visuals
+
+**Status:** ready-for-dev
+**Dependencies:** Story 27.2, Story 27.3
+
+Unify the rendering of template-based and from-scratch policies so both flows share one visual language and card structure.
+
+Reference: `_bmad-output/implementation-artifacts/27-4-unify-template-vs-from-scratch-policy-card-visuals.md`
+
+## Story 27.5: Auto-save policy-set composition draft to localStorage
+
+**Status:** ready-for-dev
+**Dependencies:** Story 27.4
+
+Persist unsaved policy-set composition drafts locally so analysts do not lose in-progress work on refresh or navigation.
+
+Reference: `_bmad-output/implementation-artifacts/27-5-auto-save-policy-set-composition-draft.md`
+
+## Story 27.6: Add explicit "not started" nav-rail state and stop demo from pre-satisfying stages
+
+**Status:** ready-for-dev
+**Dependencies:** Story 27.5
+
+Make first-launch stage state truthful by separating "not started" from "complete" and preventing the demo from pre-satisfying later stages.
+
+Reference: `_bmad-output/implementation-artifacts/27-6-add-not-started-nav-rail-state-and-stop-demo-presatisfying-stages.md`
+
+## Story 27.7: Make Investment Decisions wizard step labels clickable
+
+**Status:** ready-for-dev
+**Dependencies:** Story 27.6
+
+Let analysts navigate backward within the Investment Decisions wizard by clicking the step labels.
+
+Reference: `_bmad-output/implementation-artifacts/27-7-make-investment-decisions-wizard-step-labels-clickable.md`
+
+## Story 27.8: Restructure Population stage as Library-or-Build then Explorer
+
+**Status:** ready-for-dev
+**Dependencies:** Story 27.6
+
+Restructure Population so source selection comes first and exploration follows, matching the intended two-step information architecture.
+
+Reference: `_bmad-output/implementation-artifacts/27-8-restructure-population-stage-as-library-or-build-then-explorer.md`
+
+## Story 27.9: Improve policy-set auto-name suggestion
+
+**Status:** ready-for-dev
+**Dependencies:** Story 27.3, Story 27.5
+
+Improve auto-generated policy-set names so they reflect the actual composition more usefully while preserving the manual-edit freeze rule.
+
+Reference: `_bmad-output/implementation-artifacts/27-9-improve-policy-set-auto-name-suggestion.md`
+
+## Story 27.10: Consolidate frontend formatters
+
+**Status:** ready-for-dev
+**Dependencies:** Story 27.3
+
+Centralize number, currency, date, timestamp, and status formatting helpers so results surfaces behave consistently.
+
+Reference: `_bmad-output/implementation-artifacts/27-10-consolidate-frontend-formatters.md`
+
+## Story 27.11: Consolidate portfolio dialog hooks and unify policy types
+
+**Status:** ready-for-dev
+**Dependencies:** Story 27.4, Story 27.5
+
+Merge the save/load/clone dialog hooks and reconcile the divergent portfolio policy types into one canonical shape.
+
+Reference: `_bmad-output/implementation-artifacts/27-11-consolidate-portfolio-dialog-hooks-and-unify-policy-types.md`
+
+## Story 27.12: Stage 5 polish
+
+**Status:** ready-for-dev
+**Dependencies:** Story 27.10
+
+Polish Stage 5 with breadcrumb context, semantic palette, clearer units, run-id affordances, and guards against stale or invalid comparison output.
+
+Reference: `_bmad-output/implementation-artifacts/27-12-stage-5-polish-breadcrumb-palette-units-runid-nan-stale-reset.md`
+
+## Story 27.13: AppContext naming-state hardening
+
+**Status:** ready-for-dev
+**Dependencies:** Story 27.9
+
+Harden AppContext naming logic around clone, restore, and direct-field-mutation edge cases that were deferred from Epic 26 review.
+
+Reference: `_bmad-output/implementation-artifacts/27-13-appcontext-naming-state-hardening.md`
+
+## Story 27.14: Frontend cleanup sweep absorbing deferred-work items
+
+**Status:** ready-for-dev
+**Dependencies:** Story 27.11, Story 27.13
+
+Absorb the remaining frontend-local deferred-work items so they stop drifting outside the active backlog.
+
+Reference: `_bmad-output/implementation-artifacts/27-14-frontend-cleanup-sweep-deferred-work-items.md`
+
+## Story 27.15: UX-spec amendments
+
+**Status:** ready-for-dev
+**Dependencies:** Story 27.6, Story 27.7, Story 27.8, Story 27.12
+
+Update the UX specification so the Epic 27 interaction changes become part of the written source of truth.
+
+Reference: `_bmad-output/implementation-artifacts/27-15-ux-spec-amendments.md`
+
 ---
 
 # Epic 28: Investment Decisions — Technology-Set as a First-Class Concept
