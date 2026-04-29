@@ -13,9 +13,10 @@
  *
  * Story 25.2: Category badges and duplicate instance support.
  * Story 25.3: From-scratch policies with policy_type and category_id fields.
+ * Story 27.3: Show actual parameter values inline in policy cards.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { ArrowUp, ArrowDown, Trash2, ChevronDown, ChevronRight, CircleHelp, Settings, Plus, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -86,6 +87,103 @@ interface PortfolioCompositionPanelProps {
   validationErrors?: PolicyValidationError[];
 }
 
+// ============================================================================
+// Story 27.3: Parameter summary helper functions
+// ============================================================================
+
+/**
+ * Format a parameter value for display, matching ParameterRow.formatValue() logic.
+ */
+function formatParameterValue(value: number, unit: string): string {
+  if (unit === "%") {
+    return `${Math.round(value * 100)}%`;
+  }
+  return `${value} ${unit}`;
+}
+
+/**
+ * Resolve the effective value for a parameter using the resolution order:
+ * 1. entry.parameters[paramId] — configured value (highest priority)
+ * 2. schema.baseline — schema baseline
+ * 3. null — no value available
+ */
+function resolveParameterValue(
+  paramId: string,
+  entryParameters: Record<string, number>,
+  schema?: Parameter
+): number | null {
+  // Check configured value first
+  if (paramId in entryParameters) {
+    return entryParameters[paramId];
+  }
+  // Fall back to schema baseline
+  if (schema?.baseline !== undefined) {
+    return schema.baseline;
+  }
+  return null;
+}
+
+/**
+ * Summarize a parameter group for display in collapsed card.
+ * Shows actual values with proper formatting, truncating if too many.
+ */
+function summarizeParameterGroup(
+  group: EditableParameterGroup | string,
+  entry: CompositionEntry,
+  schemas: Parameter[]
+): string {
+  // For legacy groups (string array), map via schemas
+  const groupIds = typeof group === "string"
+    ? schemas.filter((p) => p.group === group).map((p) => p.id)
+    : group.parameterIds;
+
+  if (groupIds.length === 0) {
+    return "Parameters not yet set";
+  }
+
+  // Build parameter summaries
+  const parts = groupIds.map((paramId) => {
+    const value = resolveParameterValue(paramId, entry.parameters, schemas.find((s) => s.id === paramId));
+    const schema = schemas.find((s) => s.id === paramId);
+
+    if (value === null) {
+      return "—";
+    }
+
+    if (!schema) {
+      return `${value}`;
+    }
+
+    return formatParameterValue(value, schema.unit);
+  });
+
+  // Truncate long summaries: show first 2 + count
+  if (parts.length > 3) {
+    return `${parts.slice(0, 2).join("; ")} (+${parts.length - 2} more)`;
+  }
+  return parts.join("; ");
+}
+
+/**
+ * Summarize the rate schedule for display.
+ */
+function summarizeRateSchedule(entry: CompositionEntry, schemas: Parameter[]): string {
+  const scheduleEntries = Object.entries(entry.rateSchedule);
+  if (scheduleEntries.length === 0) {
+    return "Not scheduled";
+  }
+
+  // Find the earliest year's rate
+  const sortedEntries = scheduleEntries.sort((a, b) => Number(a[0]) - Number(b[0]));
+  const [firstYear, firstRate] = sortedEntries[0];
+
+  // Try to find a schedule parameter to get the unit
+  const scheduleParam = schemas.find((p) => p.id.includes("rate_schedule") || p.id.includes("rate"));
+  const unit = scheduleParam?.unit ?? "€/tonne";
+
+  return formatParameterValue(firstRate, unit) + ` in ${firstYear}`;
+}
+
 export function PortfolioCompositionPanel({
   templates,
   composition,
@@ -106,6 +204,8 @@ export function PortfolioCompositionPanel({
   validationErrors = [],
 }: PortfolioCompositionPanelProps) {
   const [expandedIndices, setExpandedIndices] = useState<Set<number>>(new Set());
+  // Story 27.3: Track highlighted group for click-to-preview affordance
+  const [highlightedGroupId, setHighlightedGroupId] = useState<string | null>(null);
 
   // Story 25.3: Auto-expand the newly created policy when autoExpandInstanceId changes
   useEffect(() => {
@@ -128,6 +228,39 @@ export function PortfolioCompositionPanel({
       return next;
     });
   };
+
+  // Story 27.3: Handler for group chip click (click-to-preview affordance)
+  const handleGroupChipClick = useCallback(
+    (index: number, groupId: string, entryInstanceId: string | undefined) => {
+      // Expand the card
+      setExpandedIndices((prev) => new Set(prev).add(index));
+
+      // Set highlight
+      const compositeKey = `${entryInstanceId || `index-${index}`}:${groupId}`;
+      setHighlightedGroupId(compositeKey);
+
+      // Scroll to group (next tick after DOM update)
+      setTimeout(() => {
+        const el = document.querySelector(`[data-group-key="${compositeKey}"]`);
+        el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+        // Remove highlight after animation
+        setTimeout(() => setHighlightedGroupId(null), 1000);
+      }, 0);
+    },
+    []
+  );
+
+  // Story 27.3: Keyboard handler for accessibility
+  const handleGroupChipKeyDown = useCallback(
+    (e: React.KeyboardEvent, index: number, groupId: string, entryInstanceId: string | undefined) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        handleGroupChipClick(index, groupId, entryInstanceId);
+      }
+    },
+    [handleGroupChipClick]
+  );
 
   if (composition.length === 0) {
     return (
@@ -228,6 +361,72 @@ export function PortfolioCompositionPanel({
                   )}
                   {/* Story 25.2: Category badge with neutral slate color */}
                   {/* Story 25.3: Show category badge for both template and from-scratch policies */}
+                  {/* Story 27.3: Collapsed card parameter summaries */}
+                  {!isExpanded && (entry.editableParameterGroups || parameterGroups.length > 0) && (
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {/* editableParameterGroups (Story 25.4) */}
+                      {entry.editableParameterGroups && entry.editableParameterGroups.length > 0
+                        ? entry.editableParameterGroups.map((group) => {
+                            const summary = summarizeParameterGroup(group, entry, schemas);
+
+                            return (
+                              <button
+                                key={group.id}
+                                type="button"
+                                role="button"
+                                tabIndex={0}
+                                aria-expanded={isExpanded}
+                                onClick={() => handleGroupChipClick(index, group.id, entry.instanceId)}
+                                onKeyDown={(e) => handleGroupChipKeyDown(e, index, group.id, entry.instanceId)}
+                                className={cn(
+                                  "inline-flex items-center px-2 py-0.5 text-xs font-medium rounded transition-colors",
+                                  "border border-slate-200 bg-slate-50 text-slate-700",
+                                  "hover:bg-slate-100 hover:border-slate-300",
+                                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                )}
+                              >
+                                <span className="truncate max-w-[200px]">
+                                  <span className="font-medium">{group.name}</span>: {summary}
+                                </span>
+                              </button>
+                            );
+                          })
+                        : // Legacy parameter_groups (string array)
+                          parameterGroups.map((group) => {
+                            const summary = summarizeParameterGroup(group, entry, schemas);
+                            // For legacy groups, use group name as ID since there's no explicit ID
+                            const groupId = group.toLowerCase().replace(/\s+/g, "-");
+
+                            return (
+                              <button
+                                key={group}
+                                type="button"
+                                role="button"
+                                tabIndex={0}
+                                aria-expanded={isExpanded}
+                                onClick={() => handleGroupChipClick(index, groupId, entry.instanceId)}
+                                onKeyDown={(e) => handleGroupChipKeyDown(e, index, groupId, entry.instanceId)}
+                                className={cn(
+                                  "inline-flex items-center px-2 py-0.5 text-xs font-medium rounded transition-colors",
+                                  "border border-slate-200 bg-slate-50 text-slate-700",
+                                  "hover:bg-slate-100 hover:border-slate-300",
+                                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                )}
+                              >
+                                <span className="truncate max-w-[200px]">
+                                  <span className="font-medium">{group}</span>: {summary}
+                                </span>
+                              </button>
+                            );
+                          })}
+                      {/* Story 27.3: Rate schedule summary */}
+                      {Object.keys(entry.rateSchedule).length > 0 && (
+                        <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded bg-slate-50 text-slate-600">
+                          Schedule: {summarizeRateSchedule(entry, schemas)}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   {category ? (
                     <>
                       <span className="inline-flex items-center px-1.5 py-0.5 text-xs font-medium bg-slate-100 text-slate-800">
@@ -386,11 +585,19 @@ export function PortfolioCompositionPanel({
                     {/* Story 25.4: Editable groups */}
                     {entry.editableParameterGroups && entry.editableParameterGroups.length > 0 ? (
                       <div className="space-y-2">
-                        {entry.editableParameterGroups.map((group) => (
-                          <div
-                            key={group.id}
-                            className="border border-slate-200 rounded p-2 bg-slate-50"
-                          >
+                        {entry.editableParameterGroups.map((group) => {
+                          const compositeKey = `${entry.instanceId || `index-${index}`}:${group.id}`;
+                          const isHighlighted = highlightedGroupId === compositeKey;
+
+                          return (
+                            <div
+                              key={group.id}
+                              data-group-key={compositeKey}
+                              className={cn(
+                                "border border-slate-200 rounded p-2 bg-slate-50 transition-all",
+                                isHighlighted && "ring-2 ring-blue-300"
+                              )}
+                            >
                             <div className="flex items-center gap-2 mb-1">
                               {/* Story 25.4: Edit mode - rename input */}
                               {editGroupsIndex === index && onGroupRename ? (
@@ -430,32 +637,43 @@ export function PortfolioCompositionPanel({
                               )}
                             </div>
                             {/* Story 25.4: Show parameters in group */}
-                            {group.parameterIds.length > 0 && (
+                            {group.parameterIds.length > 0 ? (
                               <div className="text-xs text-slate-600 space-y-0.5">
-                                {group.parameterIds.map((paramId) => (
-                                  <div key={paramId} className="flex items-center gap-2">
-                                    <span>{paramId}: <span className="font-mono">{String(entry.parameters[paramId] ?? 0)}</span></span>
-                                    {/* Story 25.4: Move dropdown */}
-                                    {editGroupsIndex === index && onMoveParameter && (
-                                      <select
-                                        className="text-xs h-6 border border-slate-200 rounded px-1"
-                                        aria-label={`Move parameter ${paramId} to`}
-                                        title={`Move ${paramId} to another group`}
-                                        value={group.id}
-                                        onChange={(e) => onMoveParameter(index, paramId, group.id, e.target.value)}
-                                      >
-                                        {entry.editableParameterGroups!.map((g) => (
-                                          <option key={g.id} value={g.id}>{g.name}</option>
-                                        ))}
-                                      </select>
-                                    )}
-                                  </div>
-                                ))}
+                                {group.parameterIds.map((paramId) => {
+                                  const value = resolveParameterValue(paramId, entry.parameters, schemas.find((s) => s.id === paramId));
+                                  const param = schemas.find((s) => s.id === paramId);
+
+                                  return (
+                                    <div key={paramId} className="flex items-center gap-2">
+                                      <span>{paramId}: </span>
+                                      <span className="font-mono">
+                                        {value === null ? "—" : param ? formatParameterValue(value, param.unit) : String(value)}
+                                      </span>
+                                      {/* Story 25.4: Move dropdown */}
+                                      {editGroupsIndex === index && onMoveParameter && (
+                                        <select
+                                          className="text-xs h-6 border border-slate-200 rounded px-1"
+                                          aria-label={`Move parameter ${paramId} to`}
+                                          title={`Move ${paramId} to another group`}
+                                          value={group.id}
+                                          onChange={(e) => onMoveParameter(index, paramId, group.id, e.target.value)}
+                                        >
+                                          {entry.editableParameterGroups!.map((g) => (
+                                            <option key={g.id} value={g.id}>{g.name}</option>
+                                          ))}
+                                        </select>
+                                      )}
+                                    </div>
+                                  );
+                                })}
                               </div>
+                            ) : (
+                              <div className="text-xs text-slate-500 italic">Parameters not yet set</div>
                             )}
                           </div>
-                        ))}
-                        {/* Story 25.4: Add group button */}
+                        );
+                      })}
+                          {/* Story 25.4: Add group button */}
                         {editGroupsIndex === index && onAddGroup && (
                           <button
                             type="button"
@@ -469,46 +687,58 @@ export function PortfolioCompositionPanel({
                       </div>
                     ) : (
                       /* Story 25.3: Static groups (legacy) */
+                      /* Story 27.3: Dynamic parameter values instead of hardcoded placeholders */
                       <div className="space-y-2">
-                        {parameterGroups.map((group) => (
-                          <div
-                            key={group}
-                            className="border border-slate-200 rounded p-2 bg-slate-50"
-                          >
-                            <div className="flex items-center justify-between mb-1">
-                              <p className="text-xs font-medium text-slate-900">{group}</p>
-                              <Badge variant="outline" className="text-xs">
-                                {/* Show parameter count based on group */}
-                                {group === "Mechanism" && "2 params"}
-                                {group === "Eligibility" && "2 params"}
-                                {group === "Schedule" && "0 params"}
-                                {group === "Redistribution" && "2 params"}
-                              </Badge>
+                        {parameterGroups.map((group) => {
+                          // Map group name to parameters via schemas
+                          const groupParams = schemas.filter((p) => p.group === group);
+                          // For legacy groups, use group name as ID
+                          const groupId = group.toLowerCase().replace(/\s+/g, "-");
+                          const compositeKey = `${entry.instanceId || `index-${index}`}:${groupId}`;
+                          const isHighlighted = highlightedGroupId === compositeKey;
+
+                          return (
+                            <div
+                              key={group}
+                              data-group-key={compositeKey}
+                              className={cn(
+                                "border border-slate-200 rounded p-2 bg-slate-50 transition-all",
+                                isHighlighted && "ring-2 ring-blue-300"
+                              )}
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <p className="text-xs font-medium text-slate-900">{group}</p>
+                                <Badge variant="outline" className="text-xs">
+                                  {groupParams.length} {groupParams.length === 1 ? "param" : "params"}
+                                </Badge>
+                              </div>
+                              {/* Show actual parameter values (Story 27.3) */}
+                              {groupParams.length > 0 ? (
+                                <div className="text-xs text-slate-600 space-y-0.5">
+                                  {groupParams.map((param) => {
+                                    const value = resolveParameterValue(param.id, entry.parameters, param);
+                                    if (value === null) {
+                                      return (
+                                        <div key={param.id}>
+                                          <span>{param.id}: </span>
+                                          <span className="font-mono">—</span>
+                                        </div>
+                                      );
+                                    }
+                                    return (
+                                      <div key={param.id}>
+                                        <span>{param.id}: </span>
+                                        <span className="font-mono">{formatParameterValue(value, param.unit)}</span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <div className="text-xs text-slate-500 italic">Parameters not yet set</div>
+                              )}
                             </div>
-                            {/* Show placeholder parameter values */}
-                            {group === "Mechanism" && (
-                              <div className="text-xs text-slate-600 space-y-0.5">
-                                <div>rate: <span className="font-mono">0</span></div>
-                                <div>unit: <span className="font-mono">EUR</span></div>
-                              </div>
-                            )}
-                            {group === "Eligibility" && (
-                              <div className="text-xs text-slate-600 space-y-0.5">
-                                <div>threshold: <span className="font-mono">0</span></div>
-                                <div>ceiling: <span className="font-mono">null</span></div>
-                              </div>
-                            )}
-                            {group === "Schedule" && (
-                              <div className="text-xs text-slate-500 italic">No years configured</div>
-                            )}
-                            {group === "Redistribution" && (
-                              <div className="text-xs text-slate-600 space-y-0.5">
-                                <div>divisible: <span className="font-mono">true</span></div>
-                                <div>recipients: <span className="font-mono">all</span></div>
-                              </div>
-                            )}
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>

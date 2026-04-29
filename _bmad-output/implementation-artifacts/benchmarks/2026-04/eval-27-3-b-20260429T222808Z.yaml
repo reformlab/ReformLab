@@ -1,0 +1,135 @@
+record_id: e6d9aafa-f93e-4b2d-aa35-083e32257f5d
+created_at: '2026-04-29T22:28:08.961062+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 27
+  story_num: 3
+  title: Story 27.3
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: codex
+  model: gpt-5.3-codex
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-04-29T22:25:57.097265Z'
+  end_time: '2026-04-29T22:27:31.050265Z'
+  duration_ms: 93953
+  input_tokens: 0
+  output_tokens: 3538
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 14153
+  heading_count: 39
+  list_depth_max: 3
+  code_block_count: 8
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 11.4'
+  - 🎯 Ruthless Story Validation 27.3
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 11.4 → REJECT'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Undefined Default-Value Contract
+  - 2. Non-Deterministic Expand/Scroll/Highlight Spec
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Normalize Empty-State Vocabulary
+  - 2. Define Rate-Schedule Summary Rule
+  - 3. Add Keyboard/Accessibility AC
+  - 4. Scope Boundary Guard vs Story 27.4
+  - 5. Clarify Group Precedence
+  - 6. Add Negative Regression AC for Placeholder Removal
+  - 7. Pin Test File Location and Naming
+  - ✨ Optimizations (Nice to Have)
+  - 1. Extract Summary Formatter to Utility Module
+  - 2. Memoize Derived Group Summaries
+  - 3. Add Formatting Snapshot Cases
+  - 4. Add Long-Value Truncation Rule
+  - 🤖 LLM Optimization Improvements
+  - 1. Consolidate Empty-State Rules
+  - 2. Replace Narrative Dev Notes with Decision Table
+  - 3. Remove “line-number anchored” requirements
+  - 4. Convert AC3/AC6 into explicit test matrix
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 1bb3294f039f
+findings:
+  total_count: 17
+  by_severity:
+    critical: 2
+    major: 7
+    minor: 8
+    nit: 0
+  by_category:
+    security: 0
+    performance: 2
+    correctness: 3
+    completeness: 7
+    clarity: 7
+    testability: 4
+  has_fix_count: 17
+  has_location_count: 11
+  has_evidence_count: 15
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 5
+  confidence_phrases_count: 5
+linguistic:
+  avg_sentence_length: 17.366336633663366
+  vocabulary_richness: 0.38540478905359177
+  flesch_reading_ease: 14.307328616823895
+  vague_terms_count: 1
+  formality_score: 0.75
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.75
+  evidence_quality: 0.88
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
