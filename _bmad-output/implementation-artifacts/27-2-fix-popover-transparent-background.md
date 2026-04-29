@@ -158,14 +158,58 @@ None - no debugging required for this theme token fix.
 ### Completion Notes List
 
 - Added `--color-popover` and `--color-popover-foreground` tokens to `_bmad-output/branding/theme.css` under the `@theme` block
-- Tokens defined as `var(--color-white)` and `var(--color-slate-900)` for WCAG AA contrast compliance
+- Changed `--color-popover` from `var(--color-white)` to `#ffffff` for consistency with other opaque-white surfaces (code review synthesis)
 - Verified no popover tokens in `frontend/src/index.css` (import-only pattern maintained)
 - Verified both consumers (`PortfolioTemplateBrowser.tsx`, `PortfolioCompositionPanel.tsx`) pass only sizing/typography classes (`w-64 text-xs`)
-- Added regression test `popover has opaque background class` in `PoliciesStageScreen.categories.test.tsx`
+- Added regression test in `PoliciesStageScreen.categories.test.tsx` within its own `describe("Story 27.2 - Popover theme tokens")` block (code review synthesis)
+- Fixed `.claude/settings.json` to use portable `git rev-parse --show-toplevel` instead of hardcoded absolute path (code review synthesis)
 - All quality gates pass: npm test (820 passed), typecheck (clean), lint (7 pre-existing warnings)
 - Popover components now render with opaque white background and high-contrast text
 
 ### File List
 
-- `_bmad-output/branding/theme.css` - Added popover theme tokens
-- `frontend/src/components/screens/__tests__/PoliciesStageScreen.categories.test.tsx` - Added regression test
+- `_bmad-output/branding/theme.css` - Added popover theme tokens, changed to `#ffffff` literal
+- `frontend/src/components/screens/__tests__/PoliciesStageScreen.categories.test.tsx` - Added regression test in own describe block
+- `.claude/settings.json` - Fixed Stop hook to use portable git command
+
+## Senior Developer Review (AI)
+
+### Review: 2026-04-30
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 3.1 (Reviewer A) / 7.8 (Reviewer B) → **PASS** (in-scope issues fixed)
+- **Issues Found:** 5 (within Story 27.2 scope)
+- **Issues Fixed:** 5
+- **Action Items Created:** 3 (deferred Story 27.1 scope issues)
+
+#### Review Summary
+The core popover theme fix (AC #1-#5) is correctly implemented. Code review synthesis identified and fixed:
+- Theme token inconsistency (`var(--color-white)` → `#ffffff`)
+- Test organization (moved to own describe block)
+- Portable path in `.claude/settings.json`
+
+#### Deferred Issues (Story 27.1 Scope)
+The following issues were raised but are out of scope for Story 27.2. They belong to Story 27.1 (minimum policy count 2→1) which was bundled into the same commit:
+
+1. **Scope contamination**: 5 files from Story 27.1 committed under `feat(story-27.2)`:
+   - `src/reformlab/server/routes/portfolios.py`
+   - `tests/server/test_portfolios.py`
+   - `tests/templates/portfolios/test_composition.py`
+   - `frontend/src/components/screens/PortfolioDesignerScreen.tsx`
+   - `frontend/src/components/screens/__tests__/PortfolioDesignerScreen.test.tsx`
+
+2. **Frontend rule inconsistency**: `runValidation` still short-circuits at `<2` while save/review gates allow 1 policy.
+
+3. **Server test isolation**: Registry path isolation removed from many tests, increasing flakiness risk.
+
+These should be separated into a `refactor(story-27.1)` commit and reviewed under Story 27.1's acceptance criteria.
+
+#### Review Follow-ups (AI)
+- [ ] [AI-Review] MEDIUM: Separate Story 27.1 backend changes (minimum policy 2→1) from Story 27.2 commit into dedicated `refactor(story-27.1)` commit (git rebase required)
+- [ ] [AI-Review] MEDIUM: Align `runValidation` threshold logic with save/review gates after 2→1 change in `PortfolioDesignerScreen.tsx:197`
+- [ ] [AI-Review] LOW: Restore deterministic server test isolation via per-test registry path fixture in `tests/server/test_portfolios.py`
+
+#### Test Results After Synthesis
+- Backend: 3800 passed, 2 skipped, 9 deselected, 4 warnings (pre-existing)
+- Frontend: 820 passed, 4 skipped
+- All tests pass with applied fixes
+
