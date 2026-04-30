@@ -9,7 +9,7 @@
  * AC-6: localStorage migration for legacy portfolio state
  */
 
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, fireEvent, act, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi, afterEach } from "vitest";
 
 // Story 27.5: Import draft persistence for test access
@@ -88,6 +88,7 @@ vi.mock("sonner", () => ({
 // ============================================================================
 
 import { useAppState } from "@/contexts/AppContext";
+import { createPortfolio, getPortfolio } from "@/api/portfolios";
 import { PoliciesStageScreen } from "@/components/screens/PoliciesStageScreen";
 import { mockTemplates } from "@/data/mock-data";
 import type { WorkspaceScenario } from "@/types/workspace";
@@ -130,6 +131,26 @@ function makeDefaultAppState(overrides: Partial<ReturnType<typeof useAppState>> 
     updateScenarioField: vi.fn(),
     setSelectedPortfolioName: vi.fn(),
     isAuthenticated: true,
+    ...overrides,
+  };
+}
+
+function makeDraft(overrides: Partial<NonNullable<ReturnType<typeof loadCompositionDraft>>> = {}) {
+  return {
+    composition: [
+      {
+        templateId: "carbon-tax-flat",
+        name: "Draft Carbon Tax",
+        parameters: { tax_rate: 50 },
+        rateSchedule: {},
+        instanceId: "carbon-tax-flat-ins0",
+        editableParameterGroups: [],
+      },
+    ],
+    resolutionStrategy: "sum",
+    instanceCounter: 1,
+    savedPortfolioName: null,
+    timestamp: Date.now(),
     ...overrides,
   };
 }
@@ -585,95 +606,68 @@ describe("Story 27.5: Auto-save policy set composition draft to localStorage", (
     });
 
     it("should restore draft when it exists and composition is empty", async () => {
-      // Set up a draft in localStorage
-      const testDraft = {
-        composition: [
-          {
-            templateId: "carbon-tax-flat",
-            name: "Test Carbon Tax",
-            parameters: { tax_rate: 50 },
-            rateSchedule: {},
-            instanceId: "carbon-tax-flat-ins0",
-            editableParameterGroups: [],
-          },
-        ],
-        resolutionStrategy: "sum",
-        instanceCounter: 1,
-        savedPortfolioName: null,
-        timestamp: Date.now(),
-      };
-      saveCompositionDraft(testDraft);
+      saveCompositionDraft(makeDraft({ composition: [{ ...makeDraft().composition[0], name: "Test Carbon Tax" }] }));
 
-      // Render the component
       render(<PoliciesStageScreen />);
 
-      // Wait for draft to be restored
       await vi.waitFor(() => {
-        const draft = loadCompositionDraft();
-        // The draft should still be in localStorage but composition should be restored
-        expect(draft).not.toBeNull();
+        expect(screen.getByText("Test Carbon Tax")).toBeInTheDocument();
       });
-
-      // Component should render with the restored composition
-      expect(screen.getByText("Policy Templates")).toBeInTheDocument();
     });
 
     it("should set activePortfolioName to null when restoring draft", async () => {
-      // Set up a draft with savedPortfolioName
-      const testDraft = {
-        composition: [
-          {
-            templateId: "carbon-tax-flat",
-            name: "Test Carbon Tax",
-            parameters: { tax_rate: 50 },
-            rateSchedule: {},
-            instanceId: "carbon-tax-flat-ins0",
-            editableParameterGroups: [],
-          },
-        ],
-        resolutionStrategy: "sum",
-        instanceCounter: 1,
-        savedPortfolioName: "my-saved-portfolio",
-        timestamp: Date.now(),
-      };
-      saveCompositionDraft(testDraft);
+      saveCompositionDraft(
+        makeDraft({
+          composition: [{ ...makeDraft().composition[0], name: "Test Carbon Tax" }],
+          savedPortfolioName: "my-saved-portfolio",
+        }),
+      );
 
       render(<PoliciesStageScreen />);
 
-      // Wait for restoration
       await vi.waitFor(() => {
-        expect(screen.getByText("Policy Templates")).toBeInTheDocument();
+        expect(screen.getByText("Test Carbon Tax")).toBeInTheDocument();
       });
 
-      // Should show "Unsaved policy set" since draft restores as unsaved
       expect(screen.getByText("Unsaved policy set")).toBeInTheDocument();
     });
 
-    it("should not restore draft if composition already has content", async () => {
-      // Set up a draft
-      const testDraft = {
-        composition: [
+    it("should clear the draft after scenario auto-load replaces it", async () => {
+      saveCompositionDraft(makeDraft());
+      vi.mocked(getPortfolio).mockResolvedValue({
+        name: "scenario-portfolio",
+        description: "Auto-loaded policy set",
+        version_id: "v1",
+        policies: [
           {
-            templateId: "carbon-tax-flat",
-            name: "Draft Carbon Tax",
-            parameters: { tax_rate: 50 },
-            rateSchedule: {},
-            instanceId: "carbon-tax-flat-ins0",
-            editableParameterGroups: [],
+            name: "Scenario Carbon Tax",
+            policy_type: "carbon_tax",
+            rate_schedule: {},
+            parameters: {},
           },
         ],
-        resolutionStrategy: "sum",
-        instanceCounter: 1,
-        savedPortfolioName: null,
-        timestamp: Date.now(),
-      };
-      saveCompositionDraft(testDraft);
+        resolution_strategy: "error",
+        policy_count: 1,
+      });
+      vi.mocked(useAppState).mockReturnValue(
+        makeDefaultAppState({
+          activeScenario: makeScenario({ portfolioName: "scenario-portfolio" }),
+          portfolios: [{ name: "scenario-portfolio", description: "Auto-loaded", version_id: "v1", policy_count: 1 }],
+        }),
+      );
 
-      // Render the component
       render(<PoliciesStageScreen />);
 
-      // The component should render without error
-      expect(screen.getByText("Policy Templates")).toBeInTheDocument();
+      await vi.waitFor(() => {
+        expect(getPortfolio).toHaveBeenCalledWith("scenario-portfolio");
+      });
+
+      await act(async () => {
+        vi.advanceTimersByTime(600);
+      });
+
+      expect(loadCompositionDraft()).toBeNull();
+      expect(screen.getAllByText("scenario-portfolio").length).toBeGreaterThan(0);
     });
   });
 
@@ -684,35 +678,49 @@ describe("Story 27.5: Auto-save policy set composition draft to localStorage", (
       vi.mocked(useAppState).mockReturnValue(makeDefaultAppState());
     });
 
-    it("should clear draft after successful portfolio load", async () => {
-      // Set up a draft
-      const testDraft = {
-        composition: [
+    it("should keep the draft cleared after a successful portfolio load", async () => {
+      saveCompositionDraft(makeDraft());
+      vi.mocked(getPortfolio).mockResolvedValue({
+        name: "saved-portfolio",
+        description: "Saved policy set",
+        version_id: "v1",
+        policies: [
           {
-            templateId: "carbon-tax-flat",
-            name: "Draft Carbon Tax",
-            parameters: { tax_rate: 50 },
-            rateSchedule: {},
-            instanceId: "carbon-tax-flat-ins0",
-            editableParameterGroups: [],
+            name: "Loaded Carbon Tax",
+            policy_type: "carbon_tax",
+            rate_schedule: {},
+            parameters: {},
           },
         ],
-        resolutionStrategy: "sum",
-        instanceCounter: 1,
-        savedPortfolioName: null,
-        timestamp: Date.now(),
-      };
-      saveCompositionDraft(testDraft);
+        resolution_strategy: "error",
+        policy_count: 1,
+      });
+      vi.mocked(useAppState).mockReturnValue(
+        makeDefaultAppState({
+          portfolios: [{ name: "saved-portfolio", description: "Saved policy set", version_id: "v1", policy_count: 1 }],
+        }),
+      );
 
-      expect(loadCompositionDraft()).not.toBeNull();
-
-      // Render the component
       render(<PoliciesStageScreen />);
 
-      // Draft should be cleared after mount (not restored, since we're testing load)
-      // In actual usage, the draft would be restored first, then cleared on load
-      // This test verifies the draft clear mechanism works
-      saveCompositionDraft(null);
+      await vi.waitFor(() => {
+        expect(screen.getByText("Draft Carbon Tax")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTitle("Load a saved policy set"));
+
+      const dialog = screen.getByRole("dialog", { name: /load policy set/i });
+      await act(async () => {
+        fireEvent.click(within(dialog).getByRole("button", { name: /saved-portfolio/i }));
+      });
+
+      await vi.waitFor(() => {
+        expect(getPortfolio).toHaveBeenCalledWith("saved-portfolio");
+      });
+
+      await act(async () => {
+        vi.advanceTimersByTime(600);
+      });
 
       expect(loadCompositionDraft()).toBeNull();
     });
@@ -725,30 +733,34 @@ describe("Story 27.5: Auto-save policy set composition draft to localStorage", (
       vi.mocked(useAppState).mockReturnValue(makeDefaultAppState());
     });
 
-    it("should clear draft after successful portfolio save", async () => {
-      // Set up a draft
-      const testDraft = {
-        composition: [
-          {
-            templateId: "carbon-tax-flat",
-            name: "Draft Carbon Tax",
-            parameters: { tax_rate: 50 },
-            rateSchedule: {},
-            instanceId: "carbon-tax-flat-ins0",
-            editableParameterGroups: [],
-          },
-        ],
-        resolutionStrategy: "sum",
-        instanceCounter: 1,
-        savedPortfolioName: null,
-        timestamp: Date.now(),
-      };
-      saveCompositionDraft(testDraft);
+    it("should keep the draft cleared after a successful portfolio save", async () => {
+      saveCompositionDraft(makeDraft());
+      vi.mocked(createPortfolio).mockResolvedValue("v1");
 
-      expect(loadCompositionDraft()).not.toBeNull();
+      render(<PoliciesStageScreen />);
 
-      // Simulate successful save (draft should be cleared)
-      saveCompositionDraft(null);
+      await vi.waitFor(() => {
+        expect(screen.getByText("Draft Carbon Tax")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTitle("Save policy set"));
+
+      const dialog = screen.getByRole("dialog", { name: /save policy set/i });
+      fireEvent.change(within(dialog).getByLabelText(/policy set name/i), {
+        target: { value: "saved-draft-portfolio" },
+      });
+
+      await act(async () => {
+        fireEvent.click(within(dialog).getByRole("button", { name: /^save$/i }));
+      });
+
+      await vi.waitFor(() => {
+        expect(createPortfolio).toHaveBeenCalledTimes(1);
+      });
+
+      await act(async () => {
+        vi.advanceTimersByTime(600);
+      });
 
       expect(loadCompositionDraft()).toBeNull();
     });
@@ -761,40 +773,23 @@ describe("Story 27.5: Auto-save policy set composition draft to localStorage", (
       vi.mocked(useAppState).mockReturnValue(makeDefaultAppState());
     });
 
-    it("should clear draft when Clear button is clicked", async () => {
-      // Set up a draft
-      const testDraft = {
-        composition: [
-          {
-            templateId: "carbon-tax-flat",
-            name: "Draft Carbon Tax",
-            parameters: { tax_rate: 50 },
-            rateSchedule: {},
-            instanceId: "carbon-tax-flat-ins0",
-            editableParameterGroups: [],
-          },
-        ],
-        resolutionStrategy: "sum",
-        instanceCounter: 1,
-        savedPortfolioName: null,
-        timestamp: Date.now(),
-      };
-      saveCompositionDraft(testDraft);
+    it("should keep the draft cleared after the Clear button is used", async () => {
+      saveCompositionDraft(makeDraft());
 
       render(<PoliciesStageScreen />);
 
       await vi.waitFor(() => {
-        expect(screen.getByText("Policy Templates")).toBeInTheDocument();
+        expect(screen.getByText("Draft Carbon Tax")).toBeInTheDocument();
       });
 
-      // Verify draft exists
-      expect(loadCompositionDraft()).not.toBeNull();
+      fireEvent.click(screen.getByTitle("Clear composition"));
 
-      // Find and click Clear button (it may be in a dropdown or directly visible)
-      // For this test, we'll verify the mechanism works by simulating the effect
-      saveCompositionDraft(null);
+      await act(async () => {
+        vi.advanceTimersByTime(600);
+      });
 
       expect(loadCompositionDraft()).toBeNull();
+      expect(screen.getByText("Unsaved policy set")).toBeInTheDocument();
     });
   });
 

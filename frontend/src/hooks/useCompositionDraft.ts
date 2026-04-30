@@ -43,8 +43,8 @@ export interface CompositionDraft {
   instanceCounter: number;
   /** Name of the portfolio this draft was based on (if any) */
   savedPortfolioName: string | null;
-  /** ISO timestamp of when the draft was last saved */
-  timestamp: number;
+  /** ISO timestamp of when the draft was last saved (auto-generated if omitted) */
+  timestamp?: number;
 }
 
 // ============================================================================
@@ -106,33 +106,39 @@ export function loadCompositionDraft(): CompositionDraft | null {
       typeof parsed !== "object" ||
       !Array.isArray(parsed.composition) ||
       typeof parsed.resolutionStrategy !== "string" ||
-      typeof parsed.instanceCounter !== "number" ||
-      typeof parsed.timestamp !== "number"
+      typeof parsed.instanceCounter !== "number"
     ) {
+      // AC-8: Corrupted data is discarded silently — remove bad key to prevent re-parse
+      try {
+        localStorage.removeItem(COMPOSITION_DRAFT_KEY);
+      } catch {
+        // Silently ignore removal failures
+      }
+      return null;
+    }
+
+    // timestamp is optional; if present, validate type
+    if (parsed.timestamp !== undefined && typeof parsed.timestamp !== "number") {
+      try {
+        localStorage.removeItem(COMPOSITION_DRAFT_KEY);
+      } catch {
+        // Silently ignore removal failures
+      }
       return null;
     }
 
     return parsed as CompositionDraft;
   } catch {
-    // Parse error or other exception — return null
+    // Parse error or other exception — remove bad key and return null
     // AC-8: Corrupted data is discarded silently
+    try {
+      localStorage.removeItem(COMPOSITION_DRAFT_KEY);
+    } catch {
+      // Silently ignore removal failures
+    }
     return null;
   }
 }
 
-// ============================================================================
-// Hook (thin wrapper for consistency with useScenarioPersistence pattern)
-// ============================================================================
-
-export interface CompositionDraftPersistence {
-  saveCompositionDraft: (draft: CompositionDraft | null) => void;
-  loadCompositionDraft: () => CompositionDraft | null;
-}
-
-/** @deprecated Use module-level exports directly instead. */
-export function useCompositionDraft(): CompositionDraftPersistence {
-  return {
-    saveCompositionDraft,
-    loadCompositionDraft,
-  };
-}
+// No React hook wrapper — use module-level exports directly for stable references.
+// This differs from useScenarioPersistence which needed backward compatibility.

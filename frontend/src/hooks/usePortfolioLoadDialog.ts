@@ -37,10 +37,8 @@ interface UsePortfolioLoadDialogParams<ResolutionStrategy extends string> {
   setSelectedPortfolioName: (name: string | null) => void;
   // Story 25.2: Setter for instance counter (ref-based to avoid stale closure)
   setInstanceCounter?: (value: number) => void;
-  // Story 27.5: Callbacks for draft clearing and programmatic load tracking
+  // Story 27.5: Callback for draft clearing after successful load
   onLoadedSuccessfully?: () => void;
-  onProgrammaticLoadStart?: () => void;
-  onProgrammaticLoadEnd?: () => void;
 }
 
 export function usePortfolioLoadDialog<ResolutionStrategy extends string>({
@@ -57,8 +55,6 @@ export function usePortfolioLoadDialog<ResolutionStrategy extends string>({
   setSelectedPortfolioName,
   setInstanceCounter,
   onLoadedSuccessfully,
-  onProgrammaticLoadStart,
-  onProgrammaticLoadEnd,
 }: UsePortfolioLoadDialogParams<ResolutionStrategy>) {
   const [loadDialogOpen, setLoadDialogOpen] = useState(false);
 
@@ -142,12 +138,17 @@ export function usePortfolioLoadDialog<ResolutionStrategy extends string>({
       if (!loaded && loadedPortfolioRef.current === activeScenarioPortfolioName) {
         loadedPortfolioRef.current = null;
       }
+      // Story 27.5: Clear draft after successful auto-load (AC-3)
+      if (loaded) {
+        onLoadedSuccessfully?.();
+      }
     });
   }, [
     activeScenarioPortfolioName,
     compositionLength,
     loadedPortfolioRef,
     loadPortfolioIntoComposition,
+    onLoadedSuccessfully,
   ]);
 
   const openLoadDialog = useCallback(() => {
@@ -159,14 +160,8 @@ export function usePortfolioLoadDialog<ResolutionStrategy extends string>({
   }, []);
 
   const handleLoad = useCallback(async (name: string) => {
-    // Story 27.5: Set programmatic load flag to prevent auto-save during load
-    onProgrammaticLoadStart?.();
-
     const ok = await loadPortfolioIntoComposition(name);
-    if (!ok) {
-      onProgrammaticLoadEnd?.();
-      return;
-    }
+    if (!ok) return;
 
     loadedPortfolioRef.current = name;
     updateScenarioPortfolioName(name);
@@ -176,15 +171,12 @@ export function usePortfolioLoadDialog<ResolutionStrategy extends string>({
 
     // Story 27.5: Clear draft after successful load (AC-3)
     onLoadedSuccessfully?.();
-    onProgrammaticLoadEnd?.();
   }, [
     loadPortfolioIntoComposition,
     loadedPortfolioRef,
     updateScenarioPortfolioName,
     setSelectedPortfolioName,
     onLoadedSuccessfully,
-    onProgrammaticLoadStart,
-    onProgrammaticLoadEnd,
   ]);
 
   return {

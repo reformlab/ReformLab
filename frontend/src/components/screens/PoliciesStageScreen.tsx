@@ -59,6 +59,50 @@ import {
 import { cn } from "@/lib/utils";
 
 // ============================================================================
+// Story 27.4: Helper to build editableParameterGroups from template details
+// ============================================================================
+
+/**
+ * Build editable parameter groups from template detail response.
+ * Groups parameters by their 'group' field deterministically.
+ *
+ * Used by addTemplateInstance and backward-compat scaffolding effect.
+ *
+ * @param detail - Template detail response from API
+ * @returns EditableParameterGroup array with stable IDs and sorted parameter lists
+ */
+function buildEditableParameterGroups(detail: TemplateDetailResponse): EditableParameterGroup[] {
+  const parameters = mapTemplateParameters(detail);
+
+  // Group parameters by their 'group' field, deterministically
+  const groupsMap = new Map<string, string[]>();
+  for (const param of parameters) {
+    const groupName = param.group || "Other";
+    if (!groupsMap.has(groupName)) {
+      groupsMap.set(groupName, []);
+    }
+    groupsMap.get(groupName)!.push(param.id);
+  }
+
+  // Sort group names alphabetically for stable ordering
+  const sortedGroupNames = Array.from(groupsMap.keys()).sort();
+
+  // Build editableParameterGroups with deterministic IDs
+  return sortedGroupNames.map((name, idx) => {
+    const paramIds = groupsMap.get(name)!;
+    return {
+      id: `group-${idx}`,
+      name,
+      parameterIds: paramIds.sort(), // Sort params within group for stability
+    };
+  });
+}
+
+// ============================================================================
+// PoliciesStageScreen Component
+// ============================================================================
+
+// ============================================================================
 // Constants
 // ============================================================================
 
@@ -133,6 +177,14 @@ export function PoliciesStageScreen() {
 
   // Prevent auto-load from triggering after a save (which sets portfolioName, which fires effect)
   const loadedRef = useRef<string | null>(null);
+  // Skip next auto-save cycle after explicit draft clears (load, save, clear button)
+  // This prevents auto-save from immediately recreating a just-cleared draft.
+  const skipNextDraftSaveRef = useRef(false);
+  // Keep auto-save disabled after programmatic load/save/clear until a real user edit happens.
+  const suppressDraftAutosaveRef = useRef(false);
+  const markDraftDirty = useCallback(() => {
+    suppressDraftAutosaveRef.current = false;
+  }, []);
 
   // ============================================================================
   // Computed validity
@@ -166,39 +218,11 @@ export function PoliciesStageScreen() {
   // Composition handlers
   // ============================================================================
 
-  // Story 27.4: Shared helper to build editableParameterGroups from template details
-  // Used by both addTemplateInstance and backward-compat scaffolding
-  function buildEditableParameterGroups(detail: TemplateDetailResponse): EditableParameterGroup[] {
-    const parameters = mapTemplateParameters(detail);
-
-    // Group parameters by their 'group' field, deterministically
-    const groupsMap = new Map<string, string[]>();
-    for (const param of parameters) {
-      const groupName = param.group || "Other";
-      if (!groupsMap.has(groupName)) {
-        groupsMap.set(groupName, []);
-      }
-      groupsMap.get(groupName)!.push(param.id);
-    }
-
-    // Sort group names alphabetically for stable ordering
-    const sortedGroupNames = Array.from(groupsMap.keys()).sort();
-
-    // Build editableParameterGroups with deterministic IDs
-    return sortedGroupNames.map((name, idx) => {
-      const paramIds = groupsMap.get(name)!;
-      return {
-        id: `group-${idx}`,
-        name,
-        parameterIds: paramIds.sort(), // Sort params within group for stability
-      };
-    });
-  }
-
   // Story 27.4: Add template instance - creates unique instance using monotonic counter
   // NOW ASYNC: fetches template details to populate editableParameterGroups
   const addTemplateInstance = useCallback(async (templateId: string) => {
     try {
+      markDraftDirty();
       // Fetch template details with parameter schemas
       const detail = await getTemplate(templateId);
       const t = templates.find((tmpl) => tmpl.id === templateId);
@@ -230,7 +254,7 @@ export function PoliciesStageScreen() {
       }
       // Do not add policy on failure
     }
-  }, [templates]);
+  }, [markDraftDirty, templates]);
 
   // Story 25.3: Handle blank policy creation from from-scratch flow
   const handleCreateBlankPolicy = useCallback(async (
@@ -238,6 +262,7 @@ export function PoliciesStageScreen() {
     categoryId: string,
   ) => {
     try {
+      markDraftDirty();
       const response = await createBlankPolicy({
         policy_type: policyType,
         category_id: categoryId,
@@ -285,7 +310,7 @@ export function PoliciesStageScreen() {
         toast.error("Failed to create policy from scratch", { description: err.message });
       }
     }
-  }, []);
+  }, [markDraftDirty]);
 
   // Story 27.4: Backward compatibility - scaffold editableParameterGroups for template policies
   // that were saved before this feature was implemented
@@ -306,9 +331,9 @@ export function PoliciesStageScreen() {
           const detail = await getTemplate(entry.templateId);
           const editableParameterGroups = buildEditableParameterGroups(detail);
           return { entryId: entry.instanceId || entry.templateId, editableParameterGroups };
-        } catch (err) {
-          console.error(`Failed to scaffold editableParameterGroups for ${entry.templateId}:`, err);
-          return null; // Skip this entry on error
+        } catch {
+          // Silent failure: skip this entry on error (backward-compat only, non-critical)
+          return null;
         }
       });
 
@@ -350,36 +375,40 @@ export function PoliciesStageScreen() {
   // Removed: toggleTemplate (replaced by addTemplateInstance for duplicate support)
 
   const handleReorder = useCallback((from: number, to: number) => {
+    markDraftDirty();
     setComposition((prev) => {
       const next = [...prev];
       const [item] = next.splice(from, 1);
       if (item) next.splice(to, 0, item);
       return next;
     });
-  }, []);
+  }, [markDraftDirty]);
 
   const handleRemove = useCallback((index: number) => {
+    markDraftDirty();
     setComposition((prev) => prev.filter((_, i) => i !== index));
-  }, []);
+  }, [markDraftDirty]);
 
   const handleParameterChange = useCallback(
     (index: number, paramId: string, value: number) => {
+      markDraftDirty();
       setComposition((prev) =>
         prev.map((e, i) =>
           i === index ? { ...e, parameters: { ...e.parameters, [paramId]: value } } : e,
         ),
       );
     },
-    [],
+    [markDraftDirty],
   );
 
   const handleRateScheduleChange = useCallback(
     (index: number, schedule: Record<string, number>) => {
+      markDraftDirty();
       setComposition((prev) =>
         prev.map((e, i) => (i === index ? { ...e, rateSchedule: schedule } : e)),
       );
     },
-    [],
+    [markDraftDirty],
   );
 
   // ============================================================================
@@ -391,6 +420,7 @@ export function PoliciesStageScreen() {
   }, []);
 
   const handleGroupRename = useCallback((policyIndex: number, groupId: string, newName: string) => {
+    markDraftDirty();
     setComposition((prev) =>
       prev.map((entry, i) => {
         if (i !== policyIndex || !entry.editableParameterGroups) return entry;
@@ -422,9 +452,10 @@ export function PoliciesStageScreen() {
         };
       }),
     );
-  }, []);
+  }, [markDraftDirty]);
 
   const handleAddGroup = useCallback((policyIndex: number) => {
+    markDraftDirty();
     setComposition((prev) =>
       prev.map((entry, i) =>
         i === policyIndex
@@ -443,9 +474,10 @@ export function PoliciesStageScreen() {
           : entry,
       ),
     );
-  }, []);
+  }, [markDraftDirty]);
 
   const handleDeleteGroup = useCallback((policyIndex: number, groupId: string) => {
+    markDraftDirty();
     setComposition((prev) =>
       prev.map((entry, i) => {
         if (i !== policyIndex || !entry.editableParameterGroups) return entry;
@@ -470,9 +502,10 @@ export function PoliciesStageScreen() {
         };
       }),
     );
-  }, []);
+  }, [markDraftDirty]);
 
   const handleMoveParameter = useCallback((policyIndex: number, paramId: string, fromGroupId: string, toGroupId: string) => {
+    markDraftDirty();
     setComposition((prev) =>
       prev.map((entry, i) => {
         if (i !== policyIndex || !entry.editableParameterGroups) return entry;
@@ -496,7 +529,7 @@ export function PoliciesStageScreen() {
         return { ...entry, editableParameterGroups: newGroups };
       }),
     );
-  }, []);
+  }, [markDraftDirty]);
 
   // ============================================================================
   // Validation — debounced (AC-3, Task 5.1)
@@ -555,8 +588,7 @@ export function PoliciesStageScreen() {
       try {
         const cats = await listCategories();
         setCategories(cats);
-      } catch (err) {
-        console.error("Failed to load categories:", err);
+      } catch {
         // Story 25.1 / AC-6: Non-blocking warning - templates still shown ungrouped
         setCategories([]); // Empty categories array causes ungrouped display
       }
@@ -612,10 +644,8 @@ export function PoliciesStageScreen() {
             }
           }
         } else {
-          console.error(
-            `Failed to fetch profile for population ${populationIds[i]}`,
-            result.reason,
-          );
+          // Silent failure: profile fetch is non-critical (Story 25.6)
+          // Missing columns will be tracked in warnings state
         }
       });
 
@@ -633,16 +663,19 @@ export function PoliciesStageScreen() {
   // Story 27.5: Auto-save composition draft to localStorage
   // ============================================================================
 
-  // Track if we're doing a programmatic load (portfolio load or draft restore)
-  // to prevent auto-save from firing during load
-  const isProgrammaticLoadRef = useRef(false);
-
   // AC-1: Auto-save on composition changes (debounced 500ms)
   const draftSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    // Don't auto-save during programmatic load
-    if (isProgrammaticLoadRef.current) return;
+    if (suppressDraftAutosaveRef.current) {
+      return;
+    }
+
+    // Skip this auto-save cycle if flagged (after explicit clear/load/save)
+    if (skipNextDraftSaveRef.current) {
+      skipNextDraftSaveRef.current = false;
+      return;
+    }
 
     if (draftSaveTimerRef.current) clearTimeout(draftSaveTimerRef.current);
     draftSaveTimerRef.current = setTimeout(() => {
@@ -651,6 +684,7 @@ export function PoliciesStageScreen() {
         resolutionStrategy,
         instanceCounter: instanceCounterRef.current,
         savedPortfolioName: activePortfolioName,
+        timestamp: Date.now(),
       });
     }, 500);
 
@@ -667,8 +701,8 @@ export function PoliciesStageScreen() {
     const draft = loadCompositionDraft();
     if (!draft) return;
 
-    // Restore draft
-    isProgrammaticLoadRef.current = true;
+    // Restore draft and skip next auto-save (the restored state shouldn't be immediately re-saved)
+    skipNextDraftSaveRef.current = true;
     setComposition(draft.composition);
     setResolutionStrategy(
       VALID_STRATEGIES.includes(draft.resolutionStrategy as ResolutionStrategy)
@@ -677,7 +711,6 @@ export function PoliciesStageScreen() {
     );
     instanceCounterRef.current = draft.instanceCounter;
     setActivePortfolioName(null); // AC-6: drafts are unsaved
-    isProgrammaticLoadRef.current = false;
   }, []); // Run only on mount
 
   // ============================================================================
@@ -705,8 +738,12 @@ export function PoliciesStageScreen() {
     updateScenarioPortfolioName: (name) => updateScenarioField("portfolioName", name),
     setSelectedPortfolioName,
     refetchPortfolios,
-    // Story 27.5: Clear draft after successful save (AC-4)
-    onSavedSuccessfully: () => saveCompositionDraft(null),
+    // Story 27.5: Clear draft after successful save (AC-4) and skip auto-save
+    onSavedSuccessfully: () => {
+      suppressDraftAutosaveRef.current = true;
+      skipNextDraftSaveRef.current = true;
+      saveCompositionDraft(null);
+    },
   });
 
   const {
@@ -729,11 +766,12 @@ export function PoliciesStageScreen() {
     setInstanceCounter: (value: number) => {
       instanceCounterRef.current = value;
     },
-    // Story 27.5: Clear draft after successful load (AC-3)
-    onLoadedSuccessfully: () => saveCompositionDraft(null),
-    // Story 27.5: Set programmatic load flag to prevent auto-save during load
-    onProgrammaticLoadStart: () => { isProgrammaticLoadRef.current = true; },
-    onProgrammaticLoadEnd: () => { isProgrammaticLoadRef.current = false; },
+    // Story 27.5: Clear draft after successful load (AC-3) and skip auto-save
+    onLoadedSuccessfully: () => {
+      suppressDraftAutosaveRef.current = true;
+      skipNextDraftSaveRef.current = true;
+      saveCompositionDraft(null);
+    },
   });
 
   const {
@@ -756,6 +794,8 @@ export function PoliciesStageScreen() {
 
   // Story 27.5: Clear draft on Clear button (AC-5)
   const handleClear = useCallback(() => {
+    suppressDraftAutosaveRef.current = true;
+    skipNextDraftSaveRef.current = true; // Prevent auto-save from recreating draft
     setComposition([]);
     setConflicts([]);
     setActivePortfolioName(null);
@@ -892,7 +932,10 @@ export function PoliciesStageScreen() {
               <span className="text-xs text-slate-500 shrink-0">Conflict strategy:</span>
               <Select
                 value={resolutionStrategy}
-                onChange={(e) => setResolutionStrategy(e.target.value as ResolutionStrategy)}
+                onChange={(e) => {
+                  markDraftDirty();
+                  setResolutionStrategy(e.target.value as ResolutionStrategy);
+                }}
                 className="text-xs h-8"
                 aria-label="Conflict resolution strategy"
               >
