@@ -46,7 +46,7 @@ Epics 1-24 are complete (see git history and implementation artifacts for detail
 ## Completed Epic Archive Policy
 
 To reduce agent context, this file contains only active and upcoming epics.
-Completed epics remain available through git history, story artifacts, code reviews, validations, benchmarks, and retrospectives under `_bmad-output/implementation-artifacts/`.
+Completed epics remain available through git history. Local implementation artifacts for older completed epics may be pruned once they are no longer useful for active planning or delivery.
 Current completed range: EPIC-1 through EPIC-24.
 
 ## Requirements Inventory
