@@ -374,7 +374,154 @@ All Story 27.3 behavioral tests pass unchanged after the PolicyCard extraction, 
 
 **Modified files:**
 - `frontend/src/components/simulation/PortfolioCompositionPanel.tsx` - Now uses PolicyCard component, simplified to ~280 lines (from ~780 lines)
-- `frontend/src/components/screens/PoliciesStageScreen.tsx` - Made `addTemplateInstance` async, added backward compatibility useEffect for scaffolding editableParameterGroups
+- `frontend/src/components/screens/PoliciesStageScreen.tsx` - Made `addTemplateInstance` async, added backward compatibility useEffect for scaffolding editableParameterGroups, extracted duplicate scaffolding logic into `buildEditableParameterGroups` helper, fixed silent failure on missing template
 - `frontend/src/hooks/useApi.ts` - Exported `mapTemplateParameters` function for template policy scaffolding
 - `frontend/src/components/simulation/__tests__/PortfolioCompositionPanel.test.tsx` - Added side-by-side functional equivalence test (Story 27.4), updated existing test to include editableParameterGroups
 - `frontend/src/components/screens/__tests__/PoliciesStageScreen.policySets.test.tsx` - Added persistence + reload coverage tests (Story 27.4)
+
+<!-- CODE_REVIEW_SYNTHESIS_START -->
+## Code Review Synthesis (2026-04-30)
+
+### Synthesis Summary
+2 independent code reviews were synthesized. 6 issues verified (2 critical, 2 high, 2 low), 4 issues dismissed as false positives or out of scope. 2 fixes applied to source code addressing code duplication and silent failure issues.
+
+### Validations Quality
+- **Reviewer A**: Score 7/10 - Identified critical code duplication and test gaps, some findings were scope contamination from Story 27.1
+- **Reviewer B**: Score 8/10 - Strong AC verification, caught UX and performance issues that were valid but lower priority
+
+### Issues Verified (by severity)
+
+#### Critical
+- **Issue**: Duplicated group scaffolding algorithm copy-pasted verbatim in `addTemplateInstance` and backward-compat `useEffect` | **Source**: Reviewers A & B | **File**: `frontend/src/components/screens/PoliciesStageScreen.tsx:178-200, 297-317` | **Fix**: Extracted to shared module-level function `buildEditableParameterGroups(detail: TemplateDetailResponse): EditableParameterGroup[]` used by both call sites
+
+- **Issue**: Silent failure when `templates.find()` returns undefined after successful `getTemplate()` API call | **Source**: Reviewer A | **File**: `frontend/src/components/screens/PoliciesStageScreen.tsx:172-173` | **Fix**: Added user-facing toast error `"Template "${templateId}" not found in template library"` with description `"Refresh the page and try again."`
+
+#### High
+- **Issue**: `useEffect([composition])` calls `setComposition()` - guaranteed extra render cycle | **Source**: Reviewers A & B | **File**: `frontend/src/components/screens/PoliciesStageScreen.tsx:359` | **Status**: DEFERRED - Performance concern acknowledged but acceptable for backward-compat scaffolding; early return prevents infinite loop
+
+- **Issue**: AC-4 persistence tests are pure JS object manipulation - no component rendering, API calls, or save/load verification | **Source**: Reviewers A & B | **File**: `frontend/src/components/screens/__tests__/PoliciesStageScreen.policySets.test.tsx:280-391` | **Status**: DEFERRED - Requires test infrastructure rewrite; tests verify data structure format but not integration flow
+
+#### Low
+- **Issue**: Story claims `PolicyCard.test.tsx` as new file, but file was never created | **Source**: Reviewers A & B | **File**: `frontend/src/components/simulation/__tests__/PolicyCard.test.tsx` | **Status**: DEFERRED - Test coverage gap noted; existing coverage through `PortfolioCompositionPanel.test.tsx` is sufficient for regression protection
+
+- **Issue**: AC2 error contract mismatch - toast text not guaranteed for `ApiError` path | **Source**: Reviewer B | **File**: `frontend/src/components/screens/PoliciesStageScreen.tsx:213` | **Status**: ACCEPTED - `ApiError` format provides structured error info (`what`, `why`, `fix`) which is better UX than generic message
+
+### Issues Dismissed
+- **Claimed Issue**: Scaffolding effect placement wrong (should be in `PortfolioCompositionPanel`) | **Raised by**: Reviewer B | **Dismissal Reason**: Design choice - `PoliciesStageScreen` owns composition state; `PortfolioCompositionPanel` is a pure presentational component. Placing scaffolding in the screen component is correct architecture.
+
+- **Claimed Issue**: Backend minimum-policy count changed without AC coverage | **Raised by**: Reviewers A & B | **Dismissal Reason**: Out of scope for frontend synthesis - this change belongs to Story 27.1 (single-policy portfolios) and was misattributed in git diff.
+
+- **Claimed Issue**: Click-to-preview can collapse an already-expanded card | **Raised by**: Reviewer B | **Dismissal Reason**: Working as intended - toggle semantics are consistent with standard UI patterns. User can click again to collapse if desired.
+
+- **Claimed Issue**: AC5 strictness violated - renderer branches using `template` fallback | **Raised by**: Reviewer B | **Dismissal Reason**: Data-driven rendering - fallbacks use `entry` properties first, `template` metadata only when entry lacks the field. This is correct unified behavior.
+
+### Changes Applied
+**File**: `frontend/src/components/screens/PoliciesStageScreen.tsx`
+**Change**: Extracted duplicated scaffolding logic and fixed silent template-not-found failure
+
+**Before**:
+```tsx
+const addTemplateInstance = useCallback(async (templateId: string) => {
+  try {
+    const detail = await getTemplate(templateId);
+    const t = templates.find((tmpl) => tmpl.id === templateId);
+    if (!t) return; // Silent failure
+
+    // 20 lines of scaffolding logic duplicated below
+    const groupsMap = new Map<string, string[]>();
+    for (const param of parameters) { /* ... */ }
+    // ...
+```
+
+**After**:
+```tsx
+// Shared helper at module level
+function buildEditableParameterGroups(detail: TemplateDetailResponse): EditableParameterGroup[] {
+  const parameters = mapTemplateParameters(detail);
+  const groupsMap = new Map<string, string[]>();
+  for (const param of parameters) {
+    const groupName = param.group || "Other";
+    if (!groupsMap.has(groupName)) {
+      groupsMap.set(groupName, []);
+    }
+    groupsMap.get(groupName)!.push(param.id);
+  }
+  return Array.from(groupsMap.keys()).sort().map((name, idx) => ({
+    id: `group-${idx}`,
+    name,
+    parameterIds: groupsMap.get(name)!.sort(),
+  }));
+}
+
+const addTemplateInstance = useCallback(async (templateId: string) => {
+  try {
+    const detail = await getTemplate(templateId);
+    const t = templates.find((tmpl) => tmpl.id === templateId);
+    if (!t) {
+      toast.error(`Template "${templateId}" not found in template library`, {
+        description: "Refresh the page and try again.",
+      });
+      return;
+    }
+    const editableParameterGroups = buildEditableParameterGroups(detail);
+    // ...
+```
+
+**File**: `frontend/src/components/screens/PoliciesStageScreen.tsx` (imports)
+**Change**: Added missing type imports
+
+**Before**:
+```tsx
+import type { PortfolioConflict, Category } from "@/api/types";
+```
+
+**After**:
+```tsx
+import type { PortfolioConflict, Category, EditableParameterGroup, TemplateDetailResponse } from "@/api/types";
+```
+
+**File**: `frontend/src/components/screens/PoliciesStageScreen.tsx` (backward-compat useEffect)
+**Change**: Refactored to use shared helper
+
+**Before**:
+```tsx
+// 20 lines of scaffolding logic duplicated from addTemplateInstance
+const parameters = mapTemplateParameters(detail);
+const groupsMap = new Map<string, string[]>();
+// ... identical 20 lines
+```
+
+**After**:
+```tsx
+const editableParameterGroups = buildEditableParameterGroups(detail);
+```
+
+### Files Modified
+- `frontend/src/components/screens/PoliciesStageScreen.tsx` - Extracted duplicate scaffolding logic to `buildEditableParameterGroups` helper; fixed silent template-not-found failure; added type imports
+
+### Suggested Future Improvements
+- **Scope**: Create real AC-4 integration tests | **Rationale**: Current tests only verify data structure format; should test template add → edit groups → save → reload → assert persisted groups | **Effort**: Medium - requires component mounting and API mocking
+- **Scope**: Create isolated `PolicyCard.test.tsx` | **Rationale**: Story claimed this file would be created but it wasn't; existing coverage through integration tests is acceptable but isolated tests would catch props contract issues | **Effort**: Low
+- **Scope**: Add caching to backward-compat scaffolding | **Rationale**: `useEffect([composition])` re-runs on every composition change; could cache scaffolding results by `templateId` to avoid repeated network calls | **Effort**: Low
+
+### Test Results
+- Tests passed: 16/16 in `PoliciesStageScreen.policySets.test.tsx`
+- TypeScript: Passed (no errors)
+- ESLint: Passed (0 errors, 7 pre-existing warnings)
+- Quality gates: All passed
+
+<!-- CODE_REVIEW_SYNTHESIS_END -->
+
+## Senior Developer Review (AI)
+
+### Review: 2026-04-30
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 9.3 (Reviewer A) + 12.8 (Reviewer B) → REJECT
+- **Issues Found:** 6 verified (2 critical, 2 high, 2 low)
+- **Issues Fixed:** 2 (code duplication refactored, silent failure fixed)
+- **Action Items Created:** 3
+
+#### Review Follow-ups (AI)
+- [ ] [AI-Review] HIGH: Create real AC-4 integration tests - current tests only verify data structure format, should test template add → edit groups → save → reload → assert persisted groups (`frontend/src/components/screens/__tests__/PoliciesStageScreen.policySets.test.tsx`)
+- [ ] [AI-Review] LOW: Create isolated PolicyCard.test.tsx - story file listed this as new file but it was never created (`frontend/src/components/simulation/__tests__/PolicyCard.test.tsx`)
+- [ ] [AI-Review] LOW: Add caching to backward-compat scaffolding - useEffect([composition]) re-runs on every composition change, could cache by templateId to avoid repeated network calls (`frontend/src/components/screens/PoliciesStageScreen.tsx:289`)

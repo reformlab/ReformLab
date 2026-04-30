@@ -44,7 +44,7 @@ import { mapTemplateParameters } from "@/hooks/useApi";
 // Story 25.6: Import getPopulationProfile for population column warnings
 import { getPopulationProfile } from "@/api/populations";
 import { useAppState } from "@/contexts/AppContext";
-import type { PortfolioConflict, Category } from "@/api/types";
+import type { PortfolioConflict, Category, EditableParameterGroup, TemplateDetailResponse } from "@/api/types";
 import { usePortfolioSaveDialog } from "@/hooks/usePortfolioSaveDialog";
 import { usePortfolioLoadDialog } from "@/hooks/usePortfolioLoadDialog";
 import { usePortfolioCloneDialog } from "@/hooks/usePortfolioCloneDialog";
@@ -163,6 +163,35 @@ export function PoliciesStageScreen() {
   // Composition handlers
   // ============================================================================
 
+  // Story 27.4: Shared helper to build editableParameterGroups from template details
+  // Used by both addTemplateInstance and backward-compat scaffolding
+  function buildEditableParameterGroups(detail: TemplateDetailResponse): EditableParameterGroup[] {
+    const parameters = mapTemplateParameters(detail);
+
+    // Group parameters by their 'group' field, deterministically
+    const groupsMap = new Map<string, string[]>();
+    for (const param of parameters) {
+      const groupName = param.group || "Other";
+      if (!groupsMap.has(groupName)) {
+        groupsMap.set(groupName, []);
+      }
+      groupsMap.get(groupName)!.push(param.id);
+    }
+
+    // Sort group names alphabetically for stable ordering
+    const sortedGroupNames = Array.from(groupsMap.keys()).sort();
+
+    // Build editableParameterGroups with deterministic IDs
+    return sortedGroupNames.map((name, idx) => {
+      const paramIds = groupsMap.get(name)!;
+      return {
+        id: `group-${idx}`,
+        name,
+        parameterIds: paramIds.sort(), // Sort params within group for stability
+      };
+    });
+  }
+
   // Story 27.4: Add template instance - creates unique instance using monotonic counter
   // NOW ASYNC: fetches template details to populate editableParameterGroups
   const addTemplateInstance = useCallback(async (templateId: string) => {
@@ -170,33 +199,14 @@ export function PoliciesStageScreen() {
       // Fetch template details with parameter schemas
       const detail = await getTemplate(templateId);
       const t = templates.find((tmpl) => tmpl.id === templateId);
-      if (!t) return;
-
-      // Map template response to Parameter[] with group field
-      const parameters = mapTemplateParameters(detail);
-
-      // Group parameters by their 'group' field, deterministically
-      const groupsMap = new Map<string, string[]>();
-      for (const param of parameters) {
-        const groupName = param.group || "Other";
-        if (!groupsMap.has(groupName)) {
-          groupsMap.set(groupName, []);
-        }
-        groupsMap.get(groupName)!.push(param.id);
+      if (!t) {
+        toast.error(`Template "${templateId}" not found in template library`, {
+          description: "Refresh the page and try again.",
+        });
+        return;
       }
 
-      // Sort group names alphabetically for stable ordering
-      const sortedGroupNames = Array.from(groupsMap.keys()).sort();
-
-      // Build editableParameterGroups with deterministic IDs
-      const editableParameterGroups = sortedGroupNames.map((name, idx) => {
-        const paramIds = groupsMap.get(name)!;
-        return {
-          id: `group-${idx}`,
-          name,
-          parameterIds: paramIds.sort(), // Sort params within group for stability
-        };
-      });
+      const editableParameterGroups = buildEditableParameterGroups(detail);
 
       const id = instanceCounterRef.current++;
       const newInstance: CompositionEntry = {
@@ -291,31 +301,7 @@ export function PoliciesStageScreen() {
       const scaffoldingPromises = entriesNeedingScaffolding.map(async (entry) => {
         try {
           const detail = await getTemplate(entry.templateId);
-          const parameters = mapTemplateParameters(detail);
-
-          // Group parameters by their 'group' field, deterministically
-          const groupsMap = new Map<string, string[]>();
-          for (const param of parameters) {
-            const groupName = param.group || "Other";
-            if (!groupsMap.has(groupName)) {
-              groupsMap.set(groupName, []);
-            }
-            groupsMap.get(groupName)!.push(param.id);
-          }
-
-          // Sort group names alphabetically for stable ordering
-          const sortedGroupNames = Array.from(groupsMap.keys()).sort();
-
-          // Build editableParameterGroups with deterministic IDs
-          const editableParameterGroups = sortedGroupNames.map((name, idx) => {
-            const paramIds = groupsMap.get(name)!;
-            return {
-              id: `group-${idx}`,
-              name,
-              parameterIds: paramIds.sort(),
-            };
-          });
-
+          const editableParameterGroups = buildEditableParameterGroups(detail);
           return { entryId: entry.instanceId || entry.templateId, editableParameterGroups };
         } catch (err) {
           console.error(`Failed to scaffold editableParameterGroups for ${entry.templateId}:`, err);

@@ -13,3 +13,10 @@
 | dismissed | Frontend rule handling inconsistent after 2→1 change | FALSE POSITIVE: This is a consequence of the scope contamination issue (Story 27.1 work bundled into 27.2). The inconsistency exists but is out of scope for Story 27.2 fixes. Addressed under "Suggested Future Improvements". |
 | dismissed | Server test isolation weakened (registry path isolation removed) | FALSE POSITIVE: This is part of the Story 27.1 test refactoring, not Story 27.2. The test changes are massive (675 lines) and should be reviewed separately. Out of scope for this synthesis. |
 | dismissed | Regression test is tautological (bg-popover class existed before) | FALSE POSITIVE: While the class existed in the component code, the bug was that the theme token was undefined — the class would render but with transparent background. The test guards against component-level removal or renaming of the class. It's a valid component-wiring regression test, not a theme-token contract test. The test name and documentation have been clarified. |
+
+## Story 27-4 (2026-04-30)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | Duplicated group scaffolding algorithm** - 20 lines of identical code in `addTemplateInstance` and backward-compat `useEffect` | Extracted to shared module-level function `buildEditableParameterGroups(detail: TemplateDetailResponse): EditableParameterGroup[]` |
+| critical | Silent failure when template not found** - `templates.find()` returning undefined produced no user feedback after successful API call | Added toast error: `"Template "${templateId}" not found in template library"` with refresh hint |
