@@ -843,6 +843,9 @@ describe("Story 25.2: PortfolioCompositionPanel", () => {
         parameters: {},
         rateSchedule: {},
         instanceId: "carbon-tax-flat-ins0",
+        editableParameterGroups: [
+          { id: "group-0", name: "Tax Rates", parameterIds: ["tax_rate", "rate_schedule"] },
+        ],
       };
 
       const { container } = render(
@@ -859,7 +862,7 @@ describe("Story 25.2: PortfolioCompositionPanel", () => {
       // Verify the card is rendered using instanceId
       const card = container.querySelector('.border-slate-200');
       expect(card).toBeInTheDocument();
-      expect(container.textContent).toContain("8 params");
+      expect(container.textContent).toContain("2 params");
     });
 
     it("should use instanceId as key when provided", () => {
@@ -898,6 +901,187 @@ describe("Story 25.2: PortfolioCompositionPanel", () => {
       // Should have 2 cards
       const cards = container.querySelectorAll('section[aria-label="Policy Set Composition"] > div');
       expect(cards.length).toBe(2);
+    });
+  });
+});
+
+// ============================================================================
+// Story 27.4: Side-by-side functional equivalence test (AC-1, AC-6)
+// ============================================================================
+
+describe("Story 27.4: PortfolioCompositionPanel — functional equivalence", () => {
+  describe("AC-1, AC-6: Template and from-scratch policies have identical visual treatment", () => {
+    it("should show both template and from-scratch policies with identical controls", () => {
+      const templatePolicy: CompositionEntry = {
+        templateId: "carbon-tax-flat",
+        name: "Carbon Tax — Flat Rate",
+        parameters: { tax_rate: 44 },
+        rateSchedule: {},
+        instanceId: "template-ins1",
+        editableParameterGroups: [
+          { id: "group-0", name: "Tax Rates", parameterIds: ["tax_rate"] },
+        ],
+      };
+
+      const fromScratchPolicy: CompositionEntry = {
+        templateId: "",
+        name: "Custom Carbon Tax",
+        parameters: { rate: 50 },
+        rateSchedule: {},
+        instanceId: "scratch-ins1",
+        policy_type: "tax",
+        category_id: "carbon",
+        parameter_groups: ["Mechanism"],
+        editableParameterGroups: [
+          { id: "group-0", name: "Mechanism", parameterIds: ["rate"] },
+        ],
+      };
+
+      const mockToggleEditGroups = vi.fn();
+
+      render(
+        <PortfolioCompositionPanel
+          templates={mockTemplates}
+          composition={[templatePolicy, fromScratchPolicy]}
+          onReorder={() => {}}
+          onRemove={() => {}}
+          onParameterChange={() => {}}
+          onRateScheduleChange={() => {}}
+          onToggleEditGroups={mockToggleEditGroups}
+          parameterSchemas={{
+            "carbon-tax-flat": [
+              { id: "tax_rate", label: "Tax Rate", value: 44, baseline: 44, unit: "€/tonne", group: "Tax Rates", type: "slider" as const },
+            ],
+          }}
+          categories={[
+            {
+              id: "carbon",
+              label: "Carbon Pricing",
+              columns: ["carbon_tax"],
+              compatible_types: ["carbon_tax"],
+              formula_explanation: "carbon_emissions × rate",
+              description: "Carbon-based pricing policies",
+            },
+          ]}
+        />
+      );
+
+      // Both policies should have the same controls
+      const gearIcons = screen.getAllByLabelText("Edit parameter groups");
+      expect(gearIcons.length).toBe(2); // Both have gear icon
+
+      const expandButtons = screen.getAllByLabelText(/Expand parameters|Collapse parameters/);
+      expect(expandButtons.length).toBe(2); // Both have expand button
+
+      const removeButtons = screen.getAllByLabelText("Remove policy");
+      expect(removeButtons.length).toBe(2); // Both have remove button
+
+      const moveUpButtons = screen.getAllByLabelText("Move up");
+      expect(moveUpButtons.length).toBe(2);
+
+      const moveDownButtons = screen.getAllByLabelText("Move down");
+      expect(moveDownButtons.length).toBe(2);
+
+      // Verify className matching for card borders
+      const { container } = render(
+        <PortfolioCompositionPanel
+          templates={mockTemplates}
+          composition={[templatePolicy, fromScratchPolicy]}
+          onReorder={() => {}}
+          onRemove={() => {}}
+          onParameterChange={() => {}}
+          onRateScheduleChange={() => {}}
+          onToggleEditGroups={mockToggleEditGroups}
+        />
+      );
+
+      // Both cards should have the same border class
+      const cards = container.querySelectorAll('.border-slate-200');
+      expect(cards.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("should show parameter count badge for both sources using editableParameterGroups", () => {
+      const templatePolicy: CompositionEntry = {
+        templateId: "carbon-tax-flat",
+        name: "Carbon Tax — Template",
+        parameters: { tax_rate: 44, exemption_threshold: 15000 },
+        rateSchedule: {},
+        instanceId: "template-ins2",
+        editableParameterGroups: [
+          { id: "group-0", name: "Tax Rates", parameterIds: ["tax_rate"] },
+          { id: "group-1", name: "Thresholds", parameterIds: ["exemption_threshold"] },
+        ],
+      };
+
+      const fromScratchPolicy: CompositionEntry = {
+        templateId: "",
+        name: "Carbon Tax — From Scratch",
+        parameters: { rate: 50, ceiling: 100000 },
+        rateSchedule: {},
+        instanceId: "scratch-ins2",
+        policy_type: "tax",
+        category_id: "carbon",
+        editableParameterGroups: [
+          { id: "group-0", name: "Mechanism", parameterIds: ["rate", "ceiling"] },
+        ],
+      };
+
+      const { container } = render(
+        <PortfolioCompositionPanel
+          templates={mockTemplates}
+          composition={[templatePolicy, fromScratchPolicy]}
+          onReorder={() => {}}
+          onRemove={() => {}}
+          onParameterChange={() => {}}
+          onRateScheduleChange={() => {}}
+        />
+      );
+
+      // Both should show "2 params" badge (using editableParameterGroups calculation)
+      expect(container.textContent).toContain("2 params");
+    });
+
+    it("should not assert full DOM equality - type badges and parameter counts may differ legitimately", () => {
+      // This test documents that we DON'T expect full DOM equality
+      // because type badges and parameter counts can differ based on data
+      const templatePolicy: CompositionEntry = {
+        templateId: "carbon-tax-flat",
+        name: "Template Carbon Tax",
+        parameters: { tax_rate: 44 },
+        rateSchedule: {},
+        instanceId: "template-ins3",
+        editableParameterGroups: [
+          { id: "group-0", name: "Tax Rates", parameterIds: ["tax_rate"] },
+        ],
+      };
+
+      const fromScratchPolicy: CompositionEntry = {
+        templateId: "",
+        name: "Scratch Carbon Tax",
+        parameters: { rate: 50 },
+        rateSchedule: {},
+        instanceId: "scratch-ins3",
+        policy_type: "tax",
+        category_id: "carbon",
+        editableParameterGroups: [
+          { id: "group-0", name: "Mechanism", parameterIds: ["rate"] },
+        ],
+      };
+
+      render(
+        <PortfolioCompositionPanel
+          templates={mockTemplates}
+          composition={[templatePolicy, fromScratchPolicy]}
+          onReorder={() => {}}
+          onRemove={() => {}}
+          onParameterChange={() => {}}
+          onRateScheduleChange={() => {}}
+        />
+      );
+
+      // Both policies should render
+      expect(screen.getByText("Template Carbon Tax")).toBeInTheDocument();
+      expect(screen.getByText("Scratch Carbon Tax")).toBeInTheDocument();
     });
   });
 });

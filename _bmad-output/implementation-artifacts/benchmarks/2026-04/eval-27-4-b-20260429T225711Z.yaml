@@ -1,0 +1,137 @@
+record_id: c31ee6ba-e5bc-4887-978a-21af89c767f1
+created_at: '2026-04-29T22:57:11.404760+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 27
+  story_num: 4
+  title: Story 27.4
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-04-29T22:54:32.633428Z'
+  end_time: '2026-04-29T22:56:48.233428Z'
+  duration_ms: 135600
+  input_tokens: 0
+  output_tokens: 6188
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 24755
+  heading_count: 41
+  list_depth_max: 2
+  code_block_count: 9
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 12.2'
+  - 🎯 Ruthless Story Validation 27.4
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 12.2 → MAJOR REWORK'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Missing Data Source - parameterSchemas Prop Not Passed
+  - 2. Missing Data Source - No API Integration Specified
+  - 3. Template.parameterGroups Structure Mismatch
+  - 4. No Backward Compatibility Strategy
+  - 5. State Management Conflict - Expanded State Ownership
+  - 6. Side-by-Side Test May Fail - Inherent Type Differences
+  - 7. Missing Task - Use useTemplateDetails Hook
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Migration Path for Existing Portfolios
+  - 2. Visual Specification for "Identical Cards"
+  - 3. Component Extraction Test Requirements
+  - 4. Error Handling for Template Fetch Failures
+  - 5. Performance Consideration for Template Fetching
+  - 6. EditableParameterGroups Persistence Format
+  - 7. Reference to Story 25.4 Implementation
+  - 8. Parameter Count Badge Calculation
+  - ✨ Optimizations (Nice to Have)
+  - 1. Memoization for Parameter Schemas Map
+  - 2. Early Return for Empty Parameter Groups
+  - 3. Consider LRU Cache for Template Details
+  - 🤖 LLM Optimization Improvements
+  - 1. Remove Redundant Implementation Details
+  - 2. Consolidate Data Structure Documentation
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 3ac745429cc7
+findings:
+  total_count: 20
+  by_severity:
+    critical: 3
+    major: 5
+    minor: 7
+    nit: 5
+  by_category:
+    security: 0
+    performance: 4
+    correctness: 4
+    completeness: 6
+    clarity: 5
+    testability: 2
+  has_fix_count: 20
+  has_location_count: 11
+  has_evidence_count: 14
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 10
+  confidence_phrases_count: 5
+linguistic:
+  avg_sentence_length: 24.648
+  vocabulary_richness: 0.2606296656929568
+  flesch_reading_ease: 12.38657549310841
+  vague_terms_count: 3
+  formality_score: 0.65
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.95
+  evidence_quality: 0.85
+  follows_template: true
+  internal_consistency: 0.9
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true

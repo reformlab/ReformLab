@@ -39,7 +39,8 @@ import {
 // Story 25.1 / Task 3.1: Import listCategories
 import { listCategories } from "@/api/categories";
 // Story 25.3: Import createBlankPolicy for from-scratch flow
-import { createBlankPolicy } from "@/api/templates";
+import { createBlankPolicy, getTemplate } from "@/api/templates";
+import { mapTemplateParameters } from "@/hooks/useApi";
 // Story 25.6: Import getPopulationProfile for population column warnings
 import { getPopulationProfile } from "@/api/populations";
 import { useAppState } from "@/contexts/AppContext";
@@ -162,21 +163,60 @@ export function PoliciesStageScreen() {
   // Composition handlers
   // ============================================================================
 
-  // Story 25.2: Add template instance - creates unique instance using monotonic counter
-  const addTemplateInstance = useCallback((templateId: string) => {
-    const t = templates.find((tmpl) => tmpl.id === templateId);
-    if (!t) return;
+  // Story 27.4: Add template instance - creates unique instance using monotonic counter
+  // NOW ASYNC: fetches template details to populate editableParameterGroups
+  const addTemplateInstance = useCallback(async (templateId: string) => {
+    try {
+      // Fetch template details with parameter schemas
+      const detail = await getTemplate(templateId);
+      const t = templates.find((tmpl) => tmpl.id === templateId);
+      if (!t) return;
 
-    const id = instanceCounterRef.current++;
-    const newInstance: CompositionEntry = {
-      instanceId: `${templateId}-ins${id}`, // Guaranteed unique via counter
-      templateId,
-      name: t?.name ?? templateId,
-      parameters: {},
-      rateSchedule: {},
-    };
+      // Map template response to Parameter[] with group field
+      const parameters = mapTemplateParameters(detail);
 
-    setComposition((prev) => [...prev, newInstance]);
+      // Group parameters by their 'group' field, deterministically
+      const groupsMap = new Map<string, string[]>();
+      for (const param of parameters) {
+        const groupName = param.group || "Other";
+        if (!groupsMap.has(groupName)) {
+          groupsMap.set(groupName, []);
+        }
+        groupsMap.get(groupName)!.push(param.id);
+      }
+
+      // Sort group names alphabetically for stable ordering
+      const sortedGroupNames = Array.from(groupsMap.keys()).sort();
+
+      // Build editableParameterGroups with deterministic IDs
+      const editableParameterGroups = sortedGroupNames.map((name, idx) => {
+        const paramIds = groupsMap.get(name)!;
+        return {
+          id: `group-${idx}`,
+          name,
+          parameterIds: paramIds.sort(), // Sort params within group for stability
+        };
+      });
+
+      const id = instanceCounterRef.current++;
+      const newInstance: CompositionEntry = {
+        instanceId: `${templateId}-ins${id}`, // Guaranteed unique via counter
+        templateId,
+        name: t?.name ?? templateId,
+        parameters: detail.default_policy as Record<string, number>,
+        rateSchedule: {},
+        editableParameterGroups,
+      };
+
+      setComposition((prev) => [...prev, newInstance]);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        toast.error(`${err.what} — ${err.why}`, { description: err.fix });
+      } else if (err instanceof Error) {
+        toast.error(`Failed to load template details for ${templateId}`, { description: err.message });
+      }
+      // Do not add policy on failure
+    }
   }, [templates]);
 
   // Story 25.3: Handle blank policy creation from from-scratch flow
@@ -233,6 +273,90 @@ export function PoliciesStageScreen() {
       }
     }
   }, []);
+
+  // Story 27.4: Backward compatibility - scaffold editableParameterGroups for template policies
+  // that were saved before this feature was implemented
+  useEffect(() => {
+    let cancelled = false;
+
+    const scaffoldEditableParameterGroups = async () => {
+      // Find template entries lacking editableParameterGroups
+      const entriesNeedingScaffolding = composition.filter(
+        (entry) => entry.templateId && !entry.editableParameterGroups
+      );
+
+      if (entriesNeedingScaffolding.length === 0 || cancelled) return;
+
+      // Fetch template details for each entry and scaffold groups
+      const scaffoldingPromises = entriesNeedingScaffolding.map(async (entry) => {
+        try {
+          const detail = await getTemplate(entry.templateId);
+          const parameters = mapTemplateParameters(detail);
+
+          // Group parameters by their 'group' field, deterministically
+          const groupsMap = new Map<string, string[]>();
+          for (const param of parameters) {
+            const groupName = param.group || "Other";
+            if (!groupsMap.has(groupName)) {
+              groupsMap.set(groupName, []);
+            }
+            groupsMap.get(groupName)!.push(param.id);
+          }
+
+          // Sort group names alphabetically for stable ordering
+          const sortedGroupNames = Array.from(groupsMap.keys()).sort();
+
+          // Build editableParameterGroups with deterministic IDs
+          const editableParameterGroups = sortedGroupNames.map((name, idx) => {
+            const paramIds = groupsMap.get(name)!;
+            return {
+              id: `group-${idx}`,
+              name,
+              parameterIds: paramIds.sort(),
+            };
+          });
+
+          return { entryId: entry.instanceId || entry.templateId, editableParameterGroups };
+        } catch (err) {
+          console.error(`Failed to scaffold editableParameterGroups for ${entry.templateId}:`, err);
+          return null; // Skip this entry on error
+        }
+      });
+
+      const results = await Promise.allSettled(scaffoldingPromises);
+
+      if (cancelled) return;
+
+      // Update composition with scaffolded groups
+      setComposition((prev) =>
+        prev.map((entry) => {
+          if (!entry.templateId || entry.editableParameterGroups) return entry;
+
+          // Find the scaffolding result for this entry
+          const result = results.find((r) =>
+            r.status === "fulfilled" &&
+            r.value &&
+            (r.value.entryId === entry.instanceId || r.value.entryId === entry.templateId)
+          );
+
+          if (result && result.status === "fulfilled" && result.value) {
+            return {
+              ...entry,
+              editableParameterGroups: result.value.editableParameterGroups,
+            };
+          }
+
+          return entry;
+        })
+      );
+    };
+
+    scaffoldEditableParameterGroups();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [composition]); // Re-run when composition changes (e.g., after portfolio load)
 
   // Removed: toggleTemplate (replaced by addTemplateInstance for duplicate support)
 
