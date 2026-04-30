@@ -23,3 +23,18 @@
 | dismissed | Should add manual verification steps to Tasks | FALSE POSITIVE: Manual verification is implied for any visual change. Adding explicit manual steps would create bloat across all visual stories. |
 | dismissed | Should add empty popover edge case test | FALSE POSITIVE: The bug is about missing theme tokens affecting all popovers equally. Empty popover would render identically, no edge case. |
 | dismissed | Should document CSS custom property fallback pattern | FALSE POSITIVE: `var(--color-white)` references a Tailwind v4 built-in that's guaranteed to exist. Adding fallbacks would be defensive programming for a non-existent failure mode. |
+
+## Story 27-5 (2026-04-30)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | Missing draft version field**: CompositionDraft lacks version field, breaking future schema migrations | Added `version: 1` field to interface with migration logic in load function |
+| critical | "Empty composition" undefined**: Story doesn't define what "empty" means (null? undefined? length === 0?) | Defined empty as `composition.length === 0` in AC-2, Task 3.2, and Edge Cases |
+| critical | Timestamp type contradiction**: Interface says `number` but comment says "ISO timestamp" (ISO is string) | Changed to `timestamp: number` with comment "Unix epoch milliseconds (Date.now())" |
+| critical | Debounce/clear race condition**: Pending autosave timer can re-create draft after explicit clear/load/save | Added explicit requirement to cancel pending timers in Task 2.4 and Task 4 |
+| critical | Draft validation insufficient**: AC-8 only handles unparseable JSON, not parseable-but-invalid shapes | Added schema validation requirement to Task 1.4 and AC-8 |
+| high | Race condition in instanceCounter capture**: Effect dependencies don't include instanceCounterRef, risking stale value capture | Added explicit note in Task 2.4 about capturing ref value inside debounced callback |
+| high | Missing explicit test for AC-6**: No test subtask verifies `activePortfolioName === null` after restore | Added Subtask 5.9 for explicit AC-6 assertion |
+| high | Optional affordance creates scope ambiguity**: Task 3.6 has zero specifications for badge UI | Removed Task 3.6 entirely - this affordance is out of scope for Story 27.5 |
+| medium | Silent failure scope ambiguous**: "Silent" undefined beyond toasts | Added explicit definition: "no thrown exceptions, no toast calls, no user-visible error UI" |
+| medium | Draft clear integration with activeScenario**: Unclear whether draft clear should modify scenario state | Added explicit clarification in Integration Points section |

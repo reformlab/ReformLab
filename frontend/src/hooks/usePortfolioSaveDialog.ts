@@ -27,6 +27,8 @@ interface UsePortfolioSaveDialogParams {
   updateScenarioPortfolioName: (name: string | null) => void;
   setSelectedPortfolioName: (name: string | null) => void;
   refetchPortfolios: () => Promise<void>;
+  // Story 27.5: Callback to clear draft after successful save (AC-4)
+  onSavedSuccessfully?: () => void;
 }
 
 function buildPortfolioPolicies(
@@ -64,6 +66,7 @@ export function usePortfolioSaveDialog({
   updateScenarioPortfolioName,
   setSelectedPortfolioName,
   refetchPortfolios,
+  onSavedSuccessfully,
 }: UsePortfolioSaveDialogParams) {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [portfolioSaveName, setPortfolioSaveName] = useState("");
@@ -139,6 +142,9 @@ export function usePortfolioSaveDialog({
       setPortfolioSaveName("");
       setPortfolioSaveDesc("");
       setSaveDialogNameManuallyEdited(false);
+
+      // Story 27.5: Clear draft after successful save (AC-4)
+      onSavedSuccessfully?.();
     } catch (err) {
       if (err instanceof ApiError) {
         toast.error(`${err.what} — ${err.why}`, { description: err.fix });
@@ -160,6 +166,7 @@ export function usePortfolioSaveDialog({
     updateScenarioPortfolioName,
     setSelectedPortfolioName,
     refetchPortfolios,
+    onSavedSuccessfully,
   ]);
 
   return {

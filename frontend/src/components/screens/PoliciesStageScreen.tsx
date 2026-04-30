@@ -13,6 +13,7 @@
  * - Inline conflict detection with debounce (AC-3)
  * - Portfolio ↔ activeScenario integration via updateScenarioField (AC-4, AC-5)
  * - Nav rail completion via activeScenario.portfolioName (AC-5)
+ * - Story 27.5: Auto-save composition draft to localStorage
  */
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
@@ -48,6 +49,8 @@ import type { PortfolioConflict, Category, EditableParameterGroup, TemplateDetai
 import { usePortfolioSaveDialog } from "@/hooks/usePortfolioSaveDialog";
 import { usePortfolioLoadDialog } from "@/hooks/usePortfolioLoadDialog";
 import { usePortfolioCloneDialog } from "@/hooks/usePortfolioCloneDialog";
+// Story 27.5: Import composition draft persistence
+import { saveCompositionDraft, loadCompositionDraft } from "@/hooks/useCompositionDraft";
 // Story 25.6: Import validation functions
 import {
   validateComposition,
@@ -627,6 +630,57 @@ export function PoliciesStageScreen() {
   }, [composition, activeScenario?.populationIds, categories]);
 
   // ============================================================================
+  // Story 27.5: Auto-save composition draft to localStorage
+  // ============================================================================
+
+  // Track if we're doing a programmatic load (portfolio load or draft restore)
+  // to prevent auto-save from firing during load
+  const isProgrammaticLoadRef = useRef(false);
+
+  // AC-1: Auto-save on composition changes (debounced 500ms)
+  const draftSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    // Don't auto-save during programmatic load
+    if (isProgrammaticLoadRef.current) return;
+
+    if (draftSaveTimerRef.current) clearTimeout(draftSaveTimerRef.current);
+    draftSaveTimerRef.current = setTimeout(() => {
+      saveCompositionDraft({
+        composition,
+        resolutionStrategy,
+        instanceCounter: instanceCounterRef.current,
+        savedPortfolioName: activePortfolioName,
+      });
+    }, 500);
+
+    return () => {
+      if (draftSaveTimerRef.current) clearTimeout(draftSaveTimerRef.current);
+    };
+  }, [composition, resolutionStrategy, activePortfolioName]);
+
+  // AC-2, AC-6: Restore draft on mount (only if composition is empty)
+  useEffect(() => {
+    // Skip if composition already has content (user already has work)
+    if (composition.length > 0) return;
+
+    const draft = loadCompositionDraft();
+    if (!draft) return;
+
+    // Restore draft
+    isProgrammaticLoadRef.current = true;
+    setComposition(draft.composition);
+    setResolutionStrategy(
+      VALID_STRATEGIES.includes(draft.resolutionStrategy as ResolutionStrategy)
+        ? (draft.resolutionStrategy as ResolutionStrategy)
+        : "error"
+    );
+    instanceCounterRef.current = draft.instanceCounter;
+    setActivePortfolioName(null); // AC-6: drafts are unsaved
+    isProgrammaticLoadRef.current = false;
+  }, []); // Run only on mount
+
+  // ============================================================================
   // Portfolio dialog hooks (Task 6.1 through 6.3)
   // ============================================================================
 
@@ -651,6 +705,8 @@ export function PoliciesStageScreen() {
     updateScenarioPortfolioName: (name) => updateScenarioField("portfolioName", name),
     setSelectedPortfolioName,
     refetchPortfolios,
+    // Story 27.5: Clear draft after successful save (AC-4)
+    onSavedSuccessfully: () => saveCompositionDraft(null),
   });
 
   const {
@@ -673,6 +729,11 @@ export function PoliciesStageScreen() {
     setInstanceCounter: (value: number) => {
       instanceCounterRef.current = value;
     },
+    // Story 27.5: Clear draft after successful load (AC-3)
+    onLoadedSuccessfully: () => saveCompositionDraft(null),
+    // Story 27.5: Set programmatic load flag to prevent auto-save during load
+    onProgrammaticLoadStart: () => { isProgrammaticLoadRef.current = true; },
+    onProgrammaticLoadEnd: () => { isProgrammaticLoadRef.current = false; },
   });
 
   const {
@@ -693,6 +754,7 @@ export function PoliciesStageScreen() {
   // Portfolio Clear (Task 6.4)
   // ============================================================================
 
+  // Story 27.5: Clear draft on Clear button (AC-5)
   const handleClear = useCallback(() => {
     setComposition([]);
     setConflicts([]);
@@ -701,6 +763,7 @@ export function PoliciesStageScreen() {
     updateScenarioField("portfolioName", null);
     setSelectedPortfolioName(null);
     instanceCounterRef.current = 0; // Reset counter on clear
+    saveCompositionDraft(null); // Clear draft
   }, [updateScenarioField, setSelectedPortfolioName]);
 
   // ============================================================================

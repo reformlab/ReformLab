@@ -1,0 +1,133 @@
+record_id: c3b4666c-1185-4529-83e6-a89fd402e62a
+created_at: '2026-04-30T00:42:13.500023+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 27
+  story_num: 5
+  title: Story 27.5
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: true
+    requires_migration: false
+evaluator:
+  provider: codex
+  model: gpt-5.3-codex
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-04-30T00:38:26.905753Z'
+  end_time: '2026-04-30T00:40:37.929753Z'
+  duration_ms: 131024
+  input_tokens: 0
+  output_tokens: 3162
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 12651
+  heading_count: 37
+  list_depth_max: 3
+  code_block_count: 8
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 6.3'
+  - 🎯 Ruthless Story Validation 27.5
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 6.3 → MAJOR REWORK'
+  - 🚨 Critical Issues (Must Fix)
+  - '1. Debounce/Clear Race Can Violate AC #3/#4/#5'
+  - 2. Draft Validation Is Insufficient for Parseable Corruption
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Explicit AC/Test for `activePortfolioName` Reset
+  - 2. Define Restore Precedence Contract
+  - 3. Namespace Draft Key
+  - 4. Add Idempotency Requirement for Mount Effects
+  - 5. Clarify “Silent” Error Scope
+  - 6. Add Draft Size Bound / Pruning Rule
+  - ✨ Optimizations (Nice to Have)
+  - 1. Write Coalescing Beyond Debounce
+  - 2. Central Storage Wrapper Reuse
+  - 3. Deterministic Timestamp Semantics
+  - 🤖 LLM Optimization Improvements
+  - 1. Remove Optional Scope Creep from Core Tasks
+  - 2. Resolve Timestamp Type Contradiction
+  - 3. Convert Implicit Safety Rules into AC Text
+  - 4. Separate Outcome vs Mechanism
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 39ab11102228
+findings:
+  total_count: 17
+  by_severity:
+    critical: 2
+    major: 8
+    minor: 5
+    nit: 2
+  by_category:
+    security: 1
+    performance: 1
+    correctness: 3
+    completeness: 4
+    clarity: 7
+    testability: 1
+  has_fix_count: 16
+  has_location_count: 10
+  has_evidence_count: 11
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 3
+  confidence_phrases_count: 3
+linguistic:
+  avg_sentence_length: 14.87037037037037
+  vocabulary_richness: 0.39227895392278955
+  flesch_reading_ease: 16.72171473624863
+  vague_terms_count: 2
+  formality_score: 0.75
+  sentiment: neutral
+quality:
+  actionable_ratio: 0.94
+  specificity_score: 0.65
+  evidence_quality: 0.73
+  follows_template: true
+  internal_consistency: 0.88
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: true
+    requires_migration: false

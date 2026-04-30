@@ -37,6 +37,10 @@ interface UsePortfolioLoadDialogParams<ResolutionStrategy extends string> {
   setSelectedPortfolioName: (name: string | null) => void;
   // Story 25.2: Setter for instance counter (ref-based to avoid stale closure)
   setInstanceCounter?: (value: number) => void;
+  // Story 27.5: Callbacks for draft clearing and programmatic load tracking
+  onLoadedSuccessfully?: () => void;
+  onProgrammaticLoadStart?: () => void;
+  onProgrammaticLoadEnd?: () => void;
 }
 
 export function usePortfolioLoadDialog<ResolutionStrategy extends string>({
@@ -52,6 +56,9 @@ export function usePortfolioLoadDialog<ResolutionStrategy extends string>({
   updateScenarioPortfolioName,
   setSelectedPortfolioName,
   setInstanceCounter,
+  onLoadedSuccessfully,
+  onProgrammaticLoadStart,
+  onProgrammaticLoadEnd,
 }: UsePortfolioLoadDialogParams<ResolutionStrategy>) {
   const [loadDialogOpen, setLoadDialogOpen] = useState(false);
 
@@ -152,19 +159,32 @@ export function usePortfolioLoadDialog<ResolutionStrategy extends string>({
   }, []);
 
   const handleLoad = useCallback(async (name: string) => {
+    // Story 27.5: Set programmatic load flag to prevent auto-save during load
+    onProgrammaticLoadStart?.();
+
     const ok = await loadPortfolioIntoComposition(name);
-    if (!ok) return;
+    if (!ok) {
+      onProgrammaticLoadEnd?.();
+      return;
+    }
 
     loadedPortfolioRef.current = name;
     updateScenarioPortfolioName(name);
     setSelectedPortfolioName(name);
     setLoadDialogOpen(false);
     toast.success(`Loaded policy set '${name}'`);
+
+    // Story 27.5: Clear draft after successful load (AC-3)
+    onLoadedSuccessfully?.();
+    onProgrammaticLoadEnd?.();
   }, [
     loadPortfolioIntoComposition,
     loadedPortfolioRef,
     updateScenarioPortfolioName,
     setSelectedPortfolioName,
+    onLoadedSuccessfully,
+    onProgrammaticLoadStart,
+    onProgrammaticLoadEnd,
   ]);
 
   return {

@@ -1,0 +1,51 @@
+record_id: fa4639ba-28b8-4144-8c95-e23024bd7ad2
+created_at: '2026-04-30T01:06:46.539354+00:00'
+workflow:
+  id: dev-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 27
+  story_num: 5
+  title: Story 27.5
+  complexity_flags: {}
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: master
+  role_id: null
+  session_id: 15aa9d5c-7876-4014-a9b4-d635a6f1a93e
+execution:
+  start_time: '2026-04-30T00:42:56.736873Z'
+  end_time: '2026-04-30T01:06:46.514379Z'
+  duration_ms: 1429777
+  input_tokens: 0
+  output_tokens: 0
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 8047
+  heading_count: 6
+  list_depth_max: 2
+  code_block_count: 0
+  sections_detected:
+  - 'Story 27.5: Auto-save policy-set composition draft - COMPLETE'
+  - 'Story 27.5: Auto-save policy-set composition draft - COMPLETE'
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 39ab11102228
+findings: null
+reasoning: null
+linguistic: null
+quality: null
+consensus: null
+ground_truth: null
+custom: null
