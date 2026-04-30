@@ -4,73 +4,253 @@ Status: ready-for-dev
 
 ## Story
 
-As an analyst editing a policy set,
-I want my unsaved composition changes to be auto-saved as a local draft and offered back to me on the next session,
-so that I don't lose work when I close the tab, refresh, or forget to click Save.
+As an analyst composing a policy set,
+I want my in-progress work to be automatically saved to the browser,
+so that I don't lose my composition if I accidentally refresh the page or navigate away from the Policies stage.
 
 ## Acceptance Criteria
 
-1. Given the analyst makes any change to the composition (add policy, edit parameter, rename group, change resolution strategy), when 750 ms elapse without further changes, then a draft is written to localStorage at a stable key with shape `{ composition, name, resolutionStrategy, savedAt }`.
-2. Given the Policies stage mounts and a draft newer than the loaded policy set is found, when rendered, then a non-blocking banner appears at the top of the composition panel: "You have unsaved changes from {relativeTime}. [Restore] [Discard]".
-3. Given the analyst clicks Restore, when actioned, then the draft replaces the current composition and the banner is dismissed.
-4. Given the analyst clicks Discard, when actioned, then the draft is cleared from localStorage, the loaded state remains active, and the banner is dismissed.
-5. Given the analyst clicks Save (explicit save) and the save succeeds, when complete, then the draft is cleared from localStorage automatically.
-6. Given the analyst has unsaved draft changes and attempts to close/refresh the tab, when triggered, then a `beforeunload` warning appears asking to confirm leaving (browser-native dialog).
-7. Given two scenarios are open in two tabs, when both edit independent policy sets, then the draft key is namespaced per policy-set ID (or per scenario ID) so drafts do not collide.
+1. Given the composition state changes (add, remove, reorder, parameter edit, group edit), when any change occurs, then the current composition and resolution strategy are automatically saved to localStorage under key `reformlab-policy-draft` without user action.
+2. Given the Policies stage mounts, when a draft exists in localStorage, then the draft is automatically restored into the composition panel (with silent failure if localStorage is unavailable or corrupted).
+3. Given a draft is restored, when the analyst loads a saved portfolio via the Load dialog, then the draft is cleared from localStorage and the loaded portfolio becomes the active composition (no draft interference).
+4. Given a draft is restored, when the analyst saves the composition as a named portfolio, then the draft is cleared from localStorage (successful save = draft no longer needed).
+5. Given the composition panel is cleared (Clear button), when the action completes, then the draft is cleared from localStorage.
+6. Given a restored draft has a saved portfolio name reference, when the draft loads, then the `activePortfolioName` state is set to `null` (drafts are unsaved by definition, regardless of what the previous session was working on).
+7. Given localStorage is unavailable (quota exceeded, private browsing, etc.), when composition changes occur, then the change is accepted normally without errors or toasts (silent degradation).
+8. Given localStorage contains corrupted or unparseable draft data, when the Policies stage mounts, then the draft is discarded silently and composition starts empty.
 
 ## Tasks / Subtasks
 
-- [ ] Create draft autosave hook (AC: #1)
-  - [ ] New file `frontend/src/hooks/usePolicySetDraftAutosave.ts`
-  - [ ] Subscribe to composition + name + resolutionStrategy changes via the existing AppContext or PoliciesStageScreen state
-  - [ ] Debounce writes to 750 ms
-  - [ ] Storage key: `reformlab-policy-set-draft:{policySetId | "unsaved"}`
-- [ ] Restore banner (AC: #2, #3, #4)
-  - [ ] On Policies-stage mount, read the draft and compare `savedAt` with the loaded policy set's `updatedAt`
-  - [ ] If the draft is newer, render a banner above the composition panel
-  - [ ] Restore: replace composition with draft contents
-  - [ ] Discard: clear the draft, leave loaded state
-- [ ] Clear-on-save (AC: #5)
-  - [ ] In the existing save flow (`usePortfolioSaveDialog`), on success, clear the corresponding draft key
-- [ ] Beforeunload warning (AC: #6)
-  - [ ] Add a `useEffect` that registers a `beforeunload` listener whenever the draft is dirty (composition differs from loaded state)
-  - [ ] Use the standard `event.preventDefault(); event.returnValue = ""` pattern for cross-browser support
-- [ ] Per-scenario namespacing (AC: #7)
-  - [ ] Use the active policy-set ID as part of the storage key
-  - [ ] Fallback for "unsaved new policy set": use a session-scoped UUID stored in sessionStorage so refreshes recover but new tabs don't collide
-- [ ] Tests
-  - [ ] Hook unit test: edit → 750 ms → localStorage updated
-  - [ ] Restore flow test: localStorage seeded → mount → banner → restore → composition replaced
-  - [ ] Discard flow test: localStorage seeded → mount → discard → state untouched, key cleared
-  - [ ] Save-clears-draft test: dirty draft → save → key removed
-  - [ ] Multi-tab namespacing test: two different policy-set IDs → independent drafts
-- [ ] Quality gates
-  - [ ] `npm test`, `npm run typecheck`, `npm run lint`
+- [ ] Task 1: Create `useCompositionDraft` persistence module (AC: #1, #2, #7, #8)
+  - [ ] Subtask 1.1: Create `frontend/src/hooks/useCompositionDraft.ts` following the pattern of `useScenarioPersistence.ts`
+  - [ ] Subtask 1.2: Export constant `COMPOSITION_DRAFT_KEY = "reformlab-policy-draft"` for test access
+  - [ ] Subtask 1.3: Implement `saveCompositionDraft(draft: CompositionDraft | null): void` with try/catch silent failure on quota errors
+  - [ ] Subtask 1.4: Implement `loadCompositionDraft(): CompositionDraft | null` with try/catch that returns `null` on parse errors or missing data
+  - [ ] Subtask 1.5: Define `CompositionDraft` interface with `composition: CompositionEntry[]`, `resolutionStrategy: string`, `instanceCounter: number`, `savedPortfolioName: string | null`, `timestamp: number`
+  - [ ] Subtask 1.6: Ensure timestamp is auto-generated on save (for future "restore draft" affordances)
+  - [ ] Subtask 1.7: Add module-level JSDoc explaining the draft lifecycle and silent degradation contract
+
+- [ ] Task 2: Integrate draft auto-save into `PoliciesStageScreen` (AC: #1)
+  - [ ] Subtask 2.1: Add `useEffect` with `[composition, resolutionStrategy]` dependencies that calls `saveCompositionDraft()` on any change
+  - [ ] Subtask 2.2: Include `instanceCounterRef.current` in the draft payload (prevents duplicate instanceId conflicts on restore)
+  - [ ] Subtask 2.3: Include `activePortfolioName` in the draft payload as `savedPortfolioName` (so we can show "Unsaved changes to {name}" in future UI)
+  - [ ] Subtask 2.4: Debounce the save effect by 500ms to avoid excessive localStorage writes (use `useRef` for timeout ID)
+  - [ ] Subtask 2.5: Ensure the effect does NOT run when composition is initially empty and we're loading from a saved portfolio (distinguish user edits from programmatic load)
+
+- [ ] Task 3: Integrate draft restore on mount (AC: #2, #6, #8)
+  - [ ] Subtask 3.1: Add mount effect in `PoliciesStageScreen` that calls `loadCompositionDraft()`
+  - [ ] Subtask 3.2: Only restore if draft exists AND current composition is empty (don't overwrite if user already has work)
+  - [ ] Subtask 3.3: When restoring, set `composition` from draft, set `resolutionStrategy` from draft, restore `instanceCounterRef.current` from draft
+  - [ ] Subtask 3.4: Set `activePortfolioName` to `null` explicitly (AC-6: drafts are unsaved)
+  - [ ] Subtask 3.5: Do NOT call `setSelectedPortfolioName` or update `activeScenario.portfolioName` (draft is local-only, not scenario state)
+  - [ ] Subtask 3.6: If draft contains `savedPortfolioName`, optionally show a non-intrusive "Restored unsaved changes from {name}" badge in the toolbar (optional affordance)
+
+- [ ] Task 4: Clear draft on portfolio operations (AC: #3, #4, #5)
+  - [ ] Subtask 4.1: In `usePortfolioLoadDialog.handleLoad`, after successful portfolio load, call `saveCompositionDraft(null)` to clear the draft
+  - [ ] Subtask 4.2: In `usePortfolioSaveDialog.handleSave`, after successful save, call `saveCompositionDraft(null)` to clear the draft
+  - [ ] Subtask 4.3: In `PoliciesStageScreen.handleClear`, call `saveCompositionDraft(null)` to clear the draft
+  - [ ] Subtask 4.4: Ensure draft clear happens AFTER the state updates (use `useEffect` or sequence promises correctly)
+
+- [ ] Task 5: Add test coverage for draft persistence (AC: #1, #2, #3, #4, #5, #7, #8)
+  - [ ] Subtask 5.1: Create `frontend/src/hooks/__tests__/useCompositionDraft.test.ts` with tests for save/load, quota error handling, parse error handling
+  - [ ] Subtask 5.2: Add test to `frontend/src/components/screens/__tests__/PoliciesStageScreen.policySets.test.tsx` for auto-save on composition change
+  - [ ] Subtask 5.3: Add test for draft restore on mount (draft exists → composition populated)
+  - [ ] Subtask 5.4: Add test for draft clear after portfolio load
+  - [ ] Subtask 5.5: Add test for draft clear after portfolio save
+  - [ ] Subtask 5.6: Add test for draft clear after Clear button
+  - [ ] Subtask 5.7: Add test that corrupted draft is discarded silently
+  - [ ] Subtask 5.8: Add test that localStorage quota errors are handled silently (mock `localStorage.setItem` to throw, verify no toast shown)
+
+- [ ] Task 6: Quality gates
+  - [ ] Subtask 6.1: Run `npm run typecheck` and verify no TypeScript errors
+  - [ ] Subtask 6.2: Run `npm run lint` and verify no new errors
+  - [ ] Subtask 6.3: Run `npm test` and verify all tests pass
+  - [ ] Subtask 6.4: Manual verification: Create composition, refresh page, verify composition restored
+  - [ ] Subtask 6.5: Manual verification: Save portfolio, refresh page, verify no draft restore (clean state)
 
 ## Dev Notes
 
-- This is local-only persistence. Drafts are NOT synced to the backend; only explicit Save calls hit `/api/portfolios`.
-- The `usePolicySetDraftAutosave` hook should be small and easily testable — keep persistence side-effects in the hook, render side-effects in the screen.
-- localStorage keys must be stable enough across sessions but namespaced enough to avoid collisions. The CLAUDE memory notes the existing pattern in `useScenarioPersistence` — match its export-as-constant convention.
+### Toast Policy (Critical)
+
+**This is a durable rule from the project's feedback system:**
+- Passive / autoload / restore failures MUST be silent — no toasts
+- Explicit user-initiated actions (Save, Load click, Run) keep their toasts
+
+For this story:
+- Draft save failures (quota exceeded): **SILENT**
+- Draft load failures (parse error, missing data): **SILENT**
+- Draft restore success: **SILENT** (no "Draft restored" toast)
+- Only explicit user actions (Save button, Load button) show toasts
+
+### Architecture Patterns
+
+**Module-level persistence pattern** (from `useScenarioPersistence.ts`):
+- Export constants for localStorage keys (test access)
+- Export pure functions, not hooks (stable references)
+- Use try/catch with silent failure on `localStorage` errors
+- Return `null` or empty defaults on failure
+- Never throw from persistence functions
+
+**Debouncing pattern** for auto-save:
+```tsx
+const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+useEffect(() => {
+  if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+  saveTimerRef.current = setTimeout(() => {
+    saveCompositionDraft({ /* ... */ });
+  }, 500);
+  return () => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+  };
+}, [composition, resolutionStrategy]);
+```
+
+### Key Files to Modify
+
+**New file:**
+- `frontend/src/hooks/useCompositionDraft.ts` — Draft persistence module
+
+**Modified files:**
+- `frontend/src/components/screens/PoliciesStageScreen.tsx` — Auto-save effect, restore effect, draft clear integration
+- `frontend/src/hooks/usePortfolioLoadDialog.ts` — Clear draft after load
+- `frontend/src/hooks/usePortfolioSaveDialog.ts` — Clear draft after save
+- `frontend/src/hooks/__tests__/useCompositionDraft.test.ts` — New test file
+- `frontend/src/components/screens/__tests__/PoliciesStageScreen.policySets.test.tsx` — Integration tests
+
+### Data Structures
+
+**CompositionDraft** (new interface):
+```tsx
+interface CompositionDraft {
+  composition: CompositionEntry[];
+  resolutionStrategy: string;
+  instanceCounter: number;  // Restore counter to prevent ID conflicts
+  savedPortfolioName: string | null;  // For "Unsaved changes to {name}" affordance
+  timestamp: number;  // ISO timestamp for future age indicators
+}
+```
+
+**CompositionEntry** (existing, from `PortfolioCompositionPanel.tsx`):
+```tsx
+interface CompositionEntry {
+  templateId: string;
+  name: string;
+  parameters: Record<string, number>;
+  rateSchedule: Record<string, number>;
+  instanceId?: string;
+  policy_type?: string;
+  category_id?: string;
+  parameter_groups?: string[];
+  editableParameterGroups?: EditableParameterGroup[];
+}
+```
+
+### Integration Points
+
+**With `usePortfolioSaveDialog`:**
+- After `handleSave` completes successfully, clear the draft
+- This ensures saved portfolios don't get "unsaved draft" treatment on next mount
+
+**With `usePortfolioLoadDialog`:**
+- After `handleLoad` completes successfully, clear the draft
+- This ensures loaded portfolios don't get overwritten by stale drafts
+
+**With `activeScenario` state:**
+- Drafts do NOT modify `activeScenario.portfolioName`
+- Drafts are local-only state; only explicit save operations update scenario state
+- This prevents draft restoration from falsely marking the scenario as "has portfolio"
+
+**With `loadedRef` pattern:**
+- `PoliciesStageScreen` uses `loadedRef.current` to track the currently loaded portfolio name
+- Draft restore should set `activePortfolioName` to `null` but should NOT modify `loadedRef.current`
+- This prevents auto-load loops (loadedRef prevents auto-save from triggering re-load)
+
+### Edge Cases
+
+**Empty composition on mount:**
+- If draft exists AND composition is empty → restore draft
+- If draft exists AND composition is NOT empty → don't restore (user already has work)
+- This prevents accidentally overwriting work if drafts and server state diverge
+
+**Instance counter conflicts:**
+- Draft must save `instanceCounterRef.current` value
+- On restore, set `instanceCounterRef.current = draft.instanceCounter`
+- This prevents new policies from getting duplicate instanceIds after restore
+
+**localStorage quota exceeded:**
+- `localStorage.setItem` can throw if quota is exceeded (typically ~5-10MB)
+- Catch the error and silently fail — the UI continues to work, drafts just won't persist
+- No toast, no console.error visible to user
+
+**Corrupted draft data:**
+- `JSON.parse` can throw if data is malformed
+- Catch and return `null` — composition starts fresh
+- No toast, no error indicator
+
+**Private browsing mode:**
+- Some browsers disable localStorage in private mode
+- `localStorage.setItem` may throw or be a no-op
+- Handle silently — app works, drafts just don't persist
+
+### Testing Standards
+
+**Unit tests** (`useCompositionDraft.test.ts`):
+- Test save/load round-trip
+- Test save returns `null` on quota error (mock `setItem` to throw)
+- Test load returns `null` on parse error (invalid JSON)
+- Test load returns `null` on missing data
+- Test that timestamp is included in saved draft
+
+**Integration tests** (`PoliciesStageScreen.policySets.test.tsx`):
+- Test auto-save: add policy → verify localStorage has draft
+- Test restore: set draft in localStorage → mount screen → verify composition populated
+- Test no-restore-if-not-empty: set draft + set initial composition → mount → verify initial composition preserved
+- Test clear-on-load: restore draft → load portfolio → verify draft cleared
+- Test clear-on-save: restore draft → save portfolio → verify draft cleared
+- Test clear-on-clear: restore draft → click Clear → verify draft cleared
+- Test silent-failure: mock quota error → verify no toast called
+- Test corrupted-draft: set invalid JSON in localStorage → mount → verify composition empty, no error
+
+**Test helpers:**
+- Use `localStorage.clear()` in `beforeEach` to isolate tests
+- Mock `localStorage.getItem` and `localStorage.setItem` for error scenarios
+- Verify toast mocks are NOT called for silent failures
 
 ### Project Structure Notes
 
-- New: `frontend/src/hooks/usePolicySetDraftAutosave.ts`, matching test file
-- Modified: `PoliciesStageScreen.tsx` (banner rendering), `usePortfolioSaveDialog.ts` (clear-on-save)
-- Storage key constant exported alongside other key constants in `useScenarioPersistence.ts` or a new `frontend/src/hooks/storageKeys.ts`
+**Hook location:** `frontend/src/hooks/useCompositionDraft.ts`
+- Follows pattern of `useScenarioPersistence.ts`
+- Module-level exports, not React hooks (stable references)
+- Exported constants for test access
+
+**Test location:** `frontend/src/hooks/__tests__/useCompositionDraft.test.ts`
+- Co-located with hook under `__tests__` directory
+- Uses Vitest patterns from existing tests
 
 ### References
 
-- [Source: _bmad-output/planning-artifacts/sprint-change-proposal-2026-04-26.md#Story-27.5]
-- [Source: frontend/src/hooks/useScenarioPersistence.ts] (pattern to match)
-- [Source: User report 2026-04-26 ("if we forget to save it doesn't work")]
+- [Source: frontend/src/hooks/useScenarioPersistence.ts] — Module-level persistence pattern, silent error handling
+- [Source: frontend/src/components/screens/PoliciesStageScreen.tsx] — Composition state management, instance counter pattern
+- [Source: frontend/src/hooks/usePortfolioSaveDialog.ts] — Portfolio save flow, draft clear integration point
+- [Source: frontend/src/hooks/usePortfolioLoadDialog.ts] — Portfolio load flow, draft clear integration point
+- [Source: frontend/src/components/simulation/PortfolioCompositionPanel.tsx] — CompositionEntry type definition
+- [Source: Story 27.4 completion notes] — Shows composition state structure and recent changes to editableParameterGroups
+- [Source: frontend/src/api/types.ts:323-327] — EditableParameterGroup interface
+- [Source: frontend/src/api/types.ts:382-393] — PortfolioPolicyItem interface (backend contract)
 
 ## Dev Agent Record
 
 ### Agent Model Used
 
+Claude Opus 4.6 (glm-4.7)
+
 ### Debug Log References
 
 ### Completion Notes List
 
+<!-- Populated after implementation is complete -->
+
 ### File List
+
+<!-- Populated after implementation is complete -->
