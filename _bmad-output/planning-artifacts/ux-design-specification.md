@@ -1362,10 +1362,11 @@ The five-stage shell organizes one underlying analysis model. The canonical work
   3. Investment Decisions
   4. Scenario
   5. Results
-- **Stage indicator states:**
+- **Stage indicator states:** (Story 27.6: four-state model)
   - Active: `bg-blue-500 text-white`
   - Complete: `bg-emerald-500 text-white` with check icon
-  - Incomplete: `border-2 border-slate-300 bg-white text-slate-500`
+  - Incomplete: `border-2 border-slate-300 bg-white text-slate-500` (stage has been touched but not finished)
+  - Not started: `border border-dashed border-slate-200 bg-transparent text-slate-400` with smaller dot (stage has not been touched)
 - **Summary lines** below each stage label (when expanded): e.g., "3 policies", "45k records", "2025–2035"
 - **No scenario cards in sidebar** — scenarios are managed within their respective stages
 

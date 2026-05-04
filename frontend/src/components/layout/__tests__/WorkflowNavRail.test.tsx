@@ -69,7 +69,7 @@ describe("WorkflowNavRail - completion state", () => {
 
   it("shows checkmark for Population stage when selectedPopulationId is set", () => {
     render(<WorkflowNavRail {...baseProps({ selectedPopulationId: "fr-synthetic-2024" })} />);
-    // Population (stage 2) is complete → no "2" text
+    // Population (stage 2) is complete (legacy logic, no stageTouched) → no "2" text
     expect(screen.queryByText("2")).not.toBeInTheDocument();
     // Policies (stage 1) still incomplete
     expect(screen.getByText("1")).toBeInTheDocument();
@@ -87,6 +87,7 @@ describe("WorkflowNavRail - completion state", () => {
       baselineRef: null, portfolioName: "p1", populationIds: [],
       engineConfig: { startYear: 2025, endYear: 2030, seed: null, investmentDecisionsEnabled: false, logitModel: null as null, discountRate: 0.03 },
       policyType: null, lastRunId: null,
+      stageTouched: { policies: true }, // Story 27.6: stage must be touched for completion
     };
     render(<WorkflowNavRail {...baseProps({ activeScenario })} />);
     // Policies (stage 1) is complete → no "1" text
@@ -102,8 +103,15 @@ describe("WorkflowNavRail - completion state", () => {
   });
 
   it("shows checkmark for Results stage when results exist", () => {
+    const activeScenario = {
+      id: "s1", name: "S", version: "1.0", status: "ready", isBaseline: false,
+      baselineRef: null, portfolioName: null, populationIds: [],
+      engineConfig: { startYear: 2025, endYear: 2030, seed: null, investmentDecisionsEnabled: false, logitModel: null as null, discountRate: 0.03 },
+      policyType: null, lastRunId: null,
+      stageTouched: { results: true }, // Story 27.6: stage must be touched for completion
+    };
     const results = [{ run_id: "r1", timestamp: "2026-01-01T00:00:00Z", run_kind: "scenario" as const, start_year: 2025, end_year: 2030, row_count: 1000, status: "completed" as const, data_available: true, template_name: "carbon_tax", policy_type: "carbon_tax", portfolio_name: null }];
-    render(<WorkflowNavRail {...baseProps({ results })} />);
+    render(<WorkflowNavRail {...baseProps({ activeScenario, results })} />);
     // Results (stage 4) is complete → no "4" text
     expect(screen.queryByText("4")).not.toBeInTheDocument();
   });
@@ -131,6 +139,7 @@ describe("WorkflowNavRail - summary lines", () => {
       baselineRef: null, portfolioName: "carbon-transition", populationIds: [],
       engineConfig: { startYear: 2025, endYear: 2030, seed: null, investmentDecisionsEnabled: false, logitModel: null as null, discountRate: 0.03 },
       policyType: null, lastRunId: null,
+      stageTouched: { policies: true }, // Story 27.6: stage must be touched for completion
     };
     render(<WorkflowNavRail {...baseProps({ activeScenario })} />);
     const summary = screen.getByTestId("summary-policies");
@@ -216,6 +225,103 @@ describe("WorkflowNavRail - collapsed state", () => {
     expect(screen.getByTestId("step-indicator-population")).toBeInTheDocument();
     expect(screen.getByTestId("step-indicator-engine")).toBeInTheDocument();
     expect(screen.getByTestId("step-indicator-results")).toBeInTheDocument();
+  });
+});
+
+// ============================================================================
+// Story 27.6: "Not started" state — distinct from incomplete
+// ============================================================================
+
+describe("WorkflowNavRail - Not started state (Story 27.6)", () => {
+  it("shows 'not started' visual state for untouched stages on first launch", () => {
+    // First launch: empty scenario with no stageTouched markers
+    const freshScenario = {
+      id: "s1", name: "S", version: "1.0", status: "ready", isBaseline: false,
+      baselineRef: null, portfolioName: null, populationIds: [],
+      engineConfig: {
+        startYear: 2025, endYear: 2030, seed: null,
+        investmentDecisionsEnabled: null, // NEW: null = not started
+        logitModel: null, discountRate: 0.03,
+      },
+      policyType: null, lastRunId: null,
+      stageTouched: {}, // NEW: no stages touched
+    };
+    render(<WorkflowNavRail {...baseProps({ activeScenario: freshScenario })} />);
+
+    // All stages should show "not started" state (not green)
+    // Step indicators should have the "not started" visual treatment
+    const policiesIndicator = screen.getByTestId("step-indicator-policies");
+    const populationIndicator = screen.getByTestId("step-indicator-population");
+    const engineIndicator = screen.getByTestId("step-indicator-engine");
+    const resultsIndicator = screen.getByTestId("step-indicator-results");
+
+    // None should be green (bg-emerald-500)
+    expect(policiesIndicator).not.toHaveClass("bg-emerald-500");
+    expect(populationIndicator).not.toHaveClass("bg-emerald-500");
+    expect(engineIndicator).not.toHaveClass("bg-emerald-500");
+    expect(resultsIndicator).not.toHaveClass("bg-emerald-500");
+  });
+
+  it("shows green ONLY for Population stage when population selected and stage touched", () => {
+    // User selected a population (stage 2 touched)
+    const scenarioWithPopulation = {
+      id: "s1", name: "S", version: "1.0", status: "ready", isBaseline: false,
+      baselineRef: null, portfolioName: null, populationIds: ["fr-synthetic-2024"],
+      engineConfig: {
+        startYear: 2025, endYear: 2030, seed: null,
+        investmentDecisionsEnabled: null,
+        logitModel: null, discountRate: 0.03,
+      },
+      policyType: null, lastRunId: null,
+      stageTouched: { population: true }, // Only population touched
+    };
+    render(<WorkflowNavRail {...baseProps({ activeScenario: scenarioWithPopulation })} />);
+
+    // Population (stage 2) should be green
+    expect(screen.getByTestId("step-indicator-population")).toHaveClass("bg-emerald-500");
+
+    // Other stages should NOT be green
+    expect(screen.getByTestId("step-indicator-policies")).not.toHaveClass("bg-emerald-500");
+    expect(screen.getByTestId("step-indicator-engine")).not.toHaveClass("bg-emerald-500");
+    expect(screen.getByTestId("step-indicator-results")).not.toHaveClass("bg-emerald-500");
+  });
+
+  it("shows green for Investment Decisions when explicitly skipped (investmentDecisionsEnabled=false with touched)", () => {
+    // User explicitly skipped investment decisions
+    const scenarioWithSkip = {
+      id: "s1", name: "S", version: "1.0", status: "ready", isBaseline: false,
+      baselineRef: null, portfolioName: null, populationIds: ["fr-synthetic-2024"],
+      engineConfig: {
+        startYear: 2025, endYear: 2030, seed: null,
+        investmentDecisionsEnabled: false, // Explicit false = skipped
+        logitModel: null, discountRate: 0.03,
+      },
+      policyType: null, lastRunId: null,
+      stageTouched: { population: true, engine: true }, // Engine touched (decisions skipped)
+    };
+    render(<WorkflowNavRail {...baseProps({ activeScenario: scenarioWithSkip })} />);
+
+    // Engine (stage 3) should be green (explicitly skipped)
+    expect(screen.getByTestId("step-indicator-engine")).toHaveClass("bg-emerald-500");
+  });
+
+  it("does NOT show green for Investment Decisions when null (not started)", () => {
+    // User never touched investment decisions (null = not started)
+    const scenarioWithNullDecisions = {
+      id: "s1", name: "S", version: "1.0", status: "ready", isBaseline: false,
+      baselineRef: null, portfolioName: null, populationIds: ["fr-synthetic-2024"],
+      engineConfig: {
+        startYear: 2025, endYear: 2030, seed: null,
+        investmentDecisionsEnabled: null, // null = not started
+        logitModel: null, discountRate: 0.03,
+      },
+      policyType: null, lastRunId: null,
+      stageTouched: { population: true }, // Only population touched, not engine
+    };
+    render(<WorkflowNavRail {...baseProps({ activeScenario: scenarioWithNullDecisions })} />);
+
+    // Engine should NOT be green
+    expect(screen.getByTestId("step-indicator-engine")).not.toHaveClass("bg-emerald-500");
   });
 });
 

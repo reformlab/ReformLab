@@ -53,18 +53,36 @@ export function loadScenario(): WorkspaceScenario | null {
     const needsTasteMigration = parsed.engineConfig?.tasteParameters === undefined;
     const needsCalibrationMigration = parsed.engineConfig?.calibrationState === undefined;
 
-    if (!needsTasteMigration && !needsCalibrationMigration) {
+    // Story 27.6: Migration for stageTouched field
+    const needsStageTouchedMigration = parsed.stageTouched === undefined;
+    const needsInvestmentDecisionsMigration = parsed.engineConfig?.investmentDecisionsEnabled === false;
+
+    if (!needsTasteMigration && !needsCalibrationMigration && !needsStageTouchedMigration) {
       return parsed;
+    }
+
+    // Build migrated engine config
+    const migratedEngineConfig = {
+      ...parsed.engineConfig,
+      tasteParameters: parsed.engineConfig?.tasteParameters ?? DEFAULT_TASTE_PARAMETERS,
+      calibrationState: parsed.engineConfig?.calibrationState ?? "not_configured",
+    };
+
+    // Build migrated stageTouched
+    let migratedStageTouched = parsed.stageTouched ?? {};
+    if (needsInvestmentDecisionsMigration) {
+      // Legacy false → explicitly skipped, mark stage as touched
+      migratedStageTouched = {
+        ...migratedStageTouched,
+        engine: true, // engine stage touched (investment decisions explicitly skipped)
+      };
     }
 
     // Return new object with migrated fields (don't mutate parsed)
     return {
       ...parsed,
-      engineConfig: {
-        ...parsed.engineConfig,
-        tasteParameters: parsed.engineConfig.tasteParameters ?? DEFAULT_TASTE_PARAMETERS,
-        calibrationState: parsed.engineConfig.calibrationState ?? "not_configured",
-      },
+      engineConfig: migratedEngineConfig,
+      stageTouched: migratedStageTouched,
     };
   } catch {
     return null;
@@ -107,23 +125,39 @@ export function getSavedScenarios(): WorkspaceScenario[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw) as WorkspaceScenario[];
 
-    // Story 22.6: Migration logic for legacy scenarios (immutable - returns new objects)
+    // Story 22.6 + Story 27.6: Migration logic for legacy scenarios (immutable - returns new objects)
     return parsed.map((scenario) => {
       const needsTasteMigration = scenario.engineConfig?.tasteParameters === undefined;
       const needsCalibrationMigration = scenario.engineConfig?.calibrationState === undefined;
+      const needsStageTouchedMigration = scenario.stageTouched === undefined;
+      const needsInvestmentDecisionsMigration = scenario.engineConfig?.investmentDecisionsEnabled === false;
 
-      if (!needsTasteMigration && !needsCalibrationMigration) {
+      if (!needsTasteMigration && !needsCalibrationMigration && !needsStageTouchedMigration) {
         return scenario;
+      }
+
+      // Build migrated engine config
+      const migratedEngineConfig = {
+        ...scenario.engineConfig,
+        tasteParameters: scenario.engineConfig?.tasteParameters ?? DEFAULT_TASTE_PARAMETERS,
+        calibrationState: scenario.engineConfig?.calibrationState ?? "not_configured",
+      };
+
+      // Build migrated stageTouched
+      let migratedStageTouched = scenario.stageTouched ?? {};
+      if (needsInvestmentDecisionsMigration) {
+        // Legacy false → explicitly skipped, mark stage as touched
+        migratedStageTouched = {
+          ...migratedStageTouched,
+          engine: true, // engine stage touched (investment decisions explicitly skipped)
+        };
       }
 
       // Return new object with migrated fields (don't mutate parsed)
       return {
         ...scenario,
-        engineConfig: {
-          ...scenario.engineConfig,
-          tasteParameters: scenario.engineConfig.tasteParameters ?? DEFAULT_TASTE_PARAMETERS,
-          calibrationState: scenario.engineConfig.calibrationState ?? "not_configured",
-        },
+        engineConfig: migratedEngineConfig,
+        stageTouched: migratedStageTouched,
       };
     });
   } catch {

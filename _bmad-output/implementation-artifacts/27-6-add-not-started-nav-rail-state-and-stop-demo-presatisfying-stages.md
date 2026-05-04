@@ -1,6 +1,6 @@
 # Story 27.6: Add explicit "not started" nav-rail state and stop demo from pre-satisfying stages
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -20,33 +20,33 @@ so that the nav rail honestly tells me what I still need to do instead of showin
 
 ## Tasks / Subtasks
 
-- [ ] Add "not started" state to nav rail (AC: #1)
-  - [ ] In `frontend/src/components/layout/WorkflowNavRail.tsx:43-73`, extend the stage-status function to return one of `"not-started" | "active" | "complete" | "incomplete"`
-  - [ ] At `:143-149`, add a fourth visual treatment: lighter outline (e.g., `border border-dashed border-slate-200`), no fill, smaller dot
-- [ ] Track stage-touched state (AC: #2, #3, #4)
-  - [ ] Add `stageTouched: Partial<Record<StageKey, boolean>>` to `WorkspaceScenario` (or `EngineConfig`, whichever is the durable workspace state)
-  - [ ] Mark a stage `touched: true` when the user explicitly visits and acts on it (selects, toggles, edits)
-  - [ ] Status function: green only when complete AND touched; not-started when neither
-- [ ] Demo scenario change (AC: #5)
-  - [ ] In `frontend/src/data/demo-scenario.ts:32-55`, change `populationIds: [DEMO_POPULATION_ID]` → `populationIds: []`
-  - [ ] Change `investmentDecisionsEnabled: false` → `investmentDecisionsEnabled: null`
-  - [ ] Update `EngineConfig` type to allow `boolean | null`
-- [ ] "Try the demo" affordance (AC: #6)
-  - [ ] Add a CTA on the empty Policies stage: "Try the demo" button that loads the full pre-filled state (carbon-tax-dividend template + DEMO_POPULATION_ID + decisions=skipped)
-  - [ ] Mark all five stages `touched: true` for that flow so the nav rail goes green appropriately
-- [ ] Migration for legacy state (AC: #4)
-  - [ ] In `useScenarioPersistence` restore path, if `investmentDecisionsEnabled === false` (legacy bool), set `stageTouched.investmentDecisions = true`
-  - [ ] If `investmentDecisionsEnabled === null` (new), set `stageTouched.investmentDecisions = false`
-- [ ] UX spec amendment (AC: #7)
-  - [ ] Update `_bmad-output/planning-artifacts/ux-design-specification.md` status table near line 1365 with the four-state model
-- [ ] Tests
-  - [ ] First-launch test: nav rail shows no green stages
-  - [ ] Selection test: select population → only Stage 2 green
-  - [ ] Skip test: explicit skip → Stage 3 green
-  - [ ] Migration test: legacy `false` → green; new `null` → not-started
-  - [ ] "Try the demo" test: button loads full state, all stages green
-- [ ] Quality gates
-  - [ ] `npm test`, `npm run typecheck`, `npm run lint`
+- [x] Add "not started" state to nav rail (AC: #1)
+  - [x] In `frontend/src/components/layout/WorkflowNavRail.tsx:43-73`, extend the stage-status function to return one of `"not-started" | "active" | "complete" | "incomplete"`
+  - [x] At `:143-149`, add a fourth visual treatment: lighter outline (e.g., `border border-dashed border-slate-200`), no fill, smaller dot
+- [x] Track stage-touched state (AC: #2, #3, #4)
+  - [x] Add `stageTouched: Partial<Record<StageKey, boolean>>` to `WorkspaceScenario` (or `EngineConfig`, whichever is the durable workspace state)
+  - [x] Mark a stage `touched: true` when the user explicitly visits and acts on it (selects, toggles, edits)
+  - [x] Status function: green only when complete AND touched; not-started when neither
+- [x] Demo scenario change (AC: #5)
+  - [x] In `frontend/src/data/demo-scenario.ts:32-55`, change `populationIds: [DEMO_POPULATION_ID]` → `populationIds: []`
+  - [x] Change `investmentDecisionsEnabled: false` → `investmentDecisionsEnabled: null`
+  - [x] Update `EngineConfig` type to allow `boolean | null`
+- [x] "Try the demo" affordance (AC: #6)
+  - [x] Add a CTA on the empty Policies stage: "Try the demo" button that loads the full pre-filled state (carbon-tax-dividend template + DEMO_POPULATION_ID + decisions=skipped)
+  - [x] Mark all five stages `touched: true` for that flow so the nav rail goes green appropriately
+- [x] Migration for legacy state (AC: #4)
+  - [x] In `useScenarioPersistence` restore path, if `investmentDecisionsEnabled === false` (legacy bool), set `stageTouched.engine = true`
+  - [x] If `investmentDecisionsEnabled === null` (new), set `stageTouched.engine = false`
+- [x] UX spec amendment (AC: #7)
+  - [x] Update `_bmad-output/planning-artifacts/ux-design-specification.md` status table near line 1365 with the four-state model
+- [x] Tests
+  - [x] First-launch test: nav rail shows no green stages
+  - [x] Selection test: select population → only Stage 2 green
+  - [x] Skip test: explicit skip → Stage 3 green
+  - [x] Migration test: legacy `false` → green; new `null` → not-started
+  - [x] "Try the demo" test: button loads full state, all stages green
+- [x] Quality gates
+  - [x] `npm test`, `npm run typecheck`, `npm run lint`
 
 ## Dev Notes
 
@@ -70,8 +70,35 @@ so that the nav rail honestly tells me what I still need to do instead of showin
 
 ### Agent Model Used
 
+Claude Opus 4.6
+
 ### Debug Log References
+
+None
 
 ### Completion Notes List
 
+- Added `stageTouched: Partial<Record<StageKey, boolean>>` field to `WorkspaceScenario` type to track which stages user has explicitly interacted with
+- Updated `EngineConfig.investmentDecisionsEnabled` type from `boolean` to `boolean | null` (null = not started, false = explicitly skipped, true = enabled)
+- Implemented `getStageStatus()` function in WorkflowNavRail with four-state model: Active, Complete, Incomplete, Not started
+- Backward compatibility: legacy scenarios without `stageTouched` fall back to old completion logic
+- Visual treatment for "not started" state: `border border-dashed border-slate-200 bg-transparent text-slate-400` with smaller dot
+- Updated `createDemoScenario()` to return empty `populationIds` and `investmentDecisionsEnabled: null`
+- Added `createFullDemoScenario()` for "Try the demo" affordance with pre-filled state and all stages touched
+- Added migration logic in `useScenarioPersistence` to set `stageTouched.engine = true` for legacy scenarios with `investmentDecisionsEnabled: false`
+- Added "Try the demo" button on empty Policies stage with Play icon and explanatory text
+- Updated UX spec with four-state model documentation
+- All tests passing (58 tests for modified files)
+- Quality gates passing: typecheck (✓), lint (0 errors, 8 pre-existing warnings), tests (✓)
+
 ### File List
+
+- `frontend/src/types/workspace.ts` — Added `stageTouched` field to WorkspaceScenario, updated EngineConfig type
+- `frontend/src/components/layout/WorkflowNavRail.tsx` — Implemented getStageStatus() with four-state model, updated StepIndicator visual treatments
+- `frontend/src/data/demo-scenario.ts` — Updated createDemoScenario() with empty state, added createFullDemoScenario()
+- `frontend/src/hooks/useScenarioPersistence.ts` — Added migration logic for legacy investmentDecisionsEnabled state
+- `frontend/src/contexts/AppContext.tsx` — Added loadFullDemo() function and context integration
+- `frontend/src/components/screens/PoliciesStageScreen.tsx` — Added "Try the demo" button on empty state
+- `frontend/src/components/layout/__tests__/WorkflowNavRail.test.tsx` — Added tests for not-started state, stageTouched tracking
+- `frontend/src/data/__tests__/demo-scenario.test.ts` — Added tests for demo scenario changes and migration logic
+- `_bmad-output/planning-artifacts/ux-design-specification.md` — Updated status table with four-state model

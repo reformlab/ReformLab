@@ -36,34 +36,98 @@ export interface WorkflowNavRailProps {
 }
 
 // ============================================================================
-// Completion logic
+// Completion logic (Story 27.6: four-state model with stageTouched)
 // ============================================================================
 
-function isComplete(
+type StageStatus = "not-started" | "active" | "complete" | "incomplete";
+
+/**
+ * Get the completion status for a stage.
+ *
+ * Story 27.6: A stage is "complete" (green) only when:
+ * - It has data satisfied AND
+ * - The user has explicitly touched it (stageTouched[key] === true)
+ *
+ * For backward compatibility with legacy scenarios (no stageTouched):
+ * - Falls back to old completion logic (data satisfied = complete)
+ *
+ * Otherwise:
+ * - "not-started": no data, not touched
+ * - "incomplete": has some data but not satisfied, or touched but not complete
+ * - "active": currently active stage
+ */
+function getStageStatus(
   key: StageKey,
   selectedPopulationId: string,
   dataFusionResult: GenerationResult | null,
   _portfolios: PortfolioListItem[],
   results: ResultListItem[],
   activeScenario: WorkspaceScenario | null,
-): boolean {
+  activeStage: StageKey,
+): StageStatus {
+  const isActive = key === activeStage;
+  const hasStageTouched = activeScenario?.stageTouched !== undefined;
+  const isTouched = activeScenario?.stageTouched?.[key] === true;
+
+  // Check if data requirements are satisfied
+  let dataSatisfied = false;
   switch (key) {
     case "policies":
-      // AC-5 (Story 20.3): completion requires an active portfolio linked to the scenario,
-      // not just any portfolio existing in the library.
-      return typeof activeScenario?.portfolioName === "string" && activeScenario.portfolioName.length > 0;
+      // AC-5 (Story 20.3): completion requires an active portfolio linked to the scenario
+      dataSatisfied = typeof activeScenario?.portfolioName === "string" && activeScenario.portfolioName.length > 0;
+      break;
     case "population":
-      // AC-5 (Story 20.4): primary signal is activeScenario.populationIds; legacy fallback.
-      return (
+      // AC-5 (Story 20.4): primary signal is activeScenario.populationIds; legacy fallback
+      dataSatisfied = (
         (activeScenario?.populationIds?.length ?? 0) > 0 ||
         !!selectedPopulationId ||
         dataFusionResult !== null
       );
+      break;
     case "engine":
-      return activeScenario !== null;
+      // Story 27.6: engine is complete when scenario exists AND either:
+      // - investmentDecisionsEnabled is explicitly set (true or false), OR
+      // - stageTouched.engine is true
+      if (activeScenario !== null) {
+        const { investmentDecisionsEnabled } = activeScenario.engineConfig;
+        // null = not started, false/true = explicitly decided
+        dataSatisfied = investmentDecisionsEnabled !== null || isTouched;
+      }
+      break;
     case "results":
-      return results.length > 0;
+      dataSatisfied = results.length > 0;
+      break;
   }
+
+  // Backward compatibility: legacy scenarios (no stageTouched) use old logic
+  if (!hasStageTouched) {
+    // Complete takes precedence over active for legacy scenarios too
+    if (dataSatisfied) {
+      return "complete";
+    }
+    if (isActive) {
+      return "active";
+    }
+    return "incomplete";
+  }
+
+  // Complete: data satisfied AND touched (complete takes precedence over active)
+  if (dataSatisfied && isTouched) {
+    return "complete";
+  }
+
+  // Active stage gets "active" status if not complete
+  if (isActive) {
+    return "active";
+  }
+
+  // Not started: no data, not touched
+  if (!dataSatisfied && !isTouched) {
+    return "not-started";
+  }
+
+  // Incomplete: has some data but not satisfied, or touched but not complete
+  return "incomplete";
 }
 
 // ============================================================================
@@ -116,23 +180,27 @@ function getSummary(
 interface StepIndicatorProps {
   stageKey: StageKey;
   index: number;
-  active: boolean;
-  complete: boolean;
+  status: StageStatus;
 }
 
-function StepIndicator({ stageKey, index, active, complete }: StepIndicatorProps) {
+function StepIndicator({ stageKey, index, status }: StepIndicatorProps) {
   return (
     <div
       data-testid={`step-indicator-${stageKey}`}
-      data-active={active ? "true" : "false"}
+      data-active={status === "active" ? "true" : "false"}
       className={cn(
         "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold",
-        complete && "bg-emerald-500 text-white",
-        active && !complete && "bg-blue-500 text-white",
-        !active && !complete && "border-2 border-slate-300 bg-white text-slate-500",
+        // Complete: green with checkmark
+        status === "complete" && "bg-emerald-500 text-white",
+        // Active: blue
+        status === "active" && "bg-blue-500 text-white",
+        // Incomplete: gray border, white background
+        status === "incomplete" && "border-2 border-slate-300 bg-white text-slate-500",
+        // Not started (Story 27.6): dashed border, no fill, smaller dot
+        status === "not-started" && "border border-dashed border-slate-200 bg-transparent text-slate-400",
       )}
     >
-      {complete ? <Check className="h-4 w-4" /> : <span>{index + 1}</span>}
+      {status === "complete" ? <Check className="h-4 w-4" /> : <span className={status === "not-started" ? "text-xs" : ""}>{index + 1}</span>}
     </div>
   );
 }
@@ -205,7 +273,7 @@ export function WorkflowNavRail({
     <nav aria-label="Workflow navigation" className="flex flex-col gap-0">
       {STAGES.map((stage, index) => {
         const active = stage.activeFor.includes(activeStage);
-        const complete = isComplete(stage.key, selectedPopulationId, dataFusionResult, portfolios, results, activeScenario);
+        const status = getStageStatus(stage.key, selectedPopulationId, dataFusionResult, portfolios, results, activeScenario, activeStage);
         const summary = collapsed
           ? null
           : getSummary(stage.key, selectedPopulationId, dataFusionResult, portfolios, results, activeScenario, populations);
@@ -229,8 +297,7 @@ export function WorkflowNavRail({
                   <StepIndicator
                     stageKey={stage.key}
                     index={index}
-                    active={active}
-                    complete={complete}
+                    status={status}
                   />
                 </button>
                 {!isLast && !showPopulationSubSteps && (

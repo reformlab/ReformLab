@@ -65,7 +65,7 @@ export interface EngineConfig {
   startYear: number;
   endYear: number;
   seed: number | null;
-  investmentDecisionsEnabled: boolean;
+  investmentDecisionsEnabled: boolean | null;  // Story 27.6: null = not started, false = explicitly skipped, true = enabled
   logitModel: "multinomial_logit" | "nested_logit" | "mixed_logit" | null;
   discountRate: number;  // fractional: 0.03 = 3%
   tasteParameters?: TasteParameters | null;  // Optional for backward compatibility
@@ -84,6 +84,7 @@ export interface WorkspaceScenario {
   engineConfig: EngineConfig;
   policyType: string | null;
   lastRunId: string | null;
+  stageTouched?: Partial<Record<StageKey, boolean>>;  // Story 27.6: tracks which stages user has explicitly interacted with
 }
 
 // ============================================================================

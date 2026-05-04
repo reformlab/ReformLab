@@ -45,6 +45,7 @@ import { mapTemplateParameters } from "@/hooks/useApi";
 // Story 25.6: Import getPopulationProfile for population column warnings
 import { getPopulationProfile } from "@/api/populations";
 import { useAppState } from "@/contexts/AppContext";
+import { Play } from "lucide-react";
 import type { PortfolioConflict, Category, EditableParameterGroup, TemplateDetailResponse } from "@/api/types";
 import { usePortfolioSaveDialog } from "@/hooks/usePortfolioSaveDialog";
 import { usePortfolioLoadDialog } from "@/hooks/usePortfolioLoadDialog";
@@ -129,6 +130,7 @@ export function PoliciesStageScreen() {
     activeScenario,
     updateScenarioField,
     setSelectedPortfolioName,
+    loadFullDemo,
   } = useAppState();
 
   // ============================================================================
@@ -635,7 +637,7 @@ export function PoliciesStageScreen() {
       if (cancelled) return;
 
       const missingColumns: string[] = [];
-      results.forEach((result, i) => {
+      results.forEach((result) => {
         if (result.status === "fulfilled") {
           const availableColumns = result.value.columns.map((c) => c.name);
           for (const col of uniqueRequiredColumns) {
@@ -1014,8 +1016,22 @@ export function PoliciesStageScreen() {
           <h2 className="text-sm font-semibold text-slate-900 mb-2">Policy Set Composition</h2>
           {composition.length === 0 ? (
             <div className="border border-slate-200 bg-slate-50 p-6 text-center mt-2">
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-slate-500 mb-3">
                 Add at least 1 policy template to compose a policy set.
+              </p>
+              {/* Story 27.6: "Try the demo" affordance on empty Policies stage */}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={loadFullDemo}
+                className="gap-2"
+              >
+                <Play className="h-4 w-4" />
+                Try the demo
+              </Button>
+              <p className="text-xs text-slate-400 mt-2">
+                Load a pre-filled Carbon Tax + Dividend scenario
               </p>
             </div>
           ) : (

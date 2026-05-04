@@ -56,7 +56,7 @@ import {
   getManuallyEditedNames,
   saveManuallyEditedNames,
 } from "@/hooks/useScenarioPersistence";
-import { createDemoScenario, DEMO_SCENARIO_ID, DEMO_TEMPLATE_ID, DEMO_POPULATION_ID } from "@/data/demo-scenario";
+import { createDemoScenario, createFullDemoScenario, DEMO_SCENARIO_ID, DEMO_TEMPLATE_ID, DEMO_POPULATION_ID } from "@/data/demo-scenario";
 import {
   generateScenarioSuggestion,
   generateScenarioCloneName,
@@ -88,6 +88,7 @@ interface AppState {
   saveCurrentScenario: () => void;
   loadSavedScenario: (id: string) => void;
   resetToDemo: () => void;
+  loadFullDemo: () => void;  // Story 27.6: Load demo with all stages touched (for "Try the demo" button)
   createNewScenario: (templateId?: string) => void;
   cloneCurrentScenario: () => void;
 
@@ -549,6 +550,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     toast.info("Demo scenario loaded");
   }, [navigateTo]);
 
+  const loadFullDemo = useCallback(() => {
+    // Story 27.6: Load demo with all stages touched (for "Try the demo" button)
+    const fullDemo = createFullDemoScenario();
+    setActiveScenario(fullDemo);
+    setSelectedTemplateId(DEMO_TEMPLATE_ID);
+    setSelectedPopulationId(DEMO_POPULATION_ID);
+    navigateTo("results", "runner");
+    toast.info("Demo scenario loaded — all stages marked complete");
+  }, [navigateTo]);
+
   const createNewScenario = useCallback((templateId?: string) => {
     // Story 22.3: Generate scenario name from current context
     const suggestedName = generateScenarioSuggestion(
@@ -794,6 +805,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       saveCurrentScenario,
       loadSavedScenario,
       resetToDemo,
+      loadFullDemo,
       createNewScenario,
       cloneCurrentScenario,
       populations,
@@ -842,7 +854,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isAuthenticated, authLoading, authenticate, logout,
       activeStage, activeSubView, navigateTo,
       activeScenario, setActiveScenario, updateScenarioField,
-      savedScenarios, saveCurrentScenario, loadSavedScenario, resetToDemo, createNewScenario, cloneCurrentScenario,
+      savedScenarios, saveCurrentScenario, loadSavedScenario, resetToDemo, loadFullDemo, createNewScenario, cloneCurrentScenario,
       populations, templates, templateParams, parameterValues, setParameterValue,
       scenarios, decileData,
       selectedPopulationId, selectedTemplateId, selectTemplate,

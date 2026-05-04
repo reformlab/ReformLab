@@ -5,7 +5,7 @@
  * Story 20.2 — Task 1.4, Task 7.1.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeEach } from "vitest";
 
 import {
   createDemoScenario,
@@ -13,6 +13,8 @@ import {
   DEMO_SCENARIO_ID,
   DEMO_TEMPLATE_ID,
 } from "@/data/demo-scenario";
+import { loadScenario } from "@/hooks/useScenarioPersistence";
+import { SCENARIO_STORAGE_KEY } from "@/hooks/useScenarioPersistence";
 
 describe("createDemoScenario", () => {
   it("returns a WorkspaceScenario with id === DEMO_SCENARIO_ID", () => {
@@ -31,9 +33,9 @@ describe("createDemoScenario", () => {
     expect(engineConfig.startYear).toBeLessThan(engineConfig.endYear);
   });
 
-  it("populationIds includes DEMO_POPULATION_ID", () => {
+  it("populationIds is EMPTY (Story 27.6: not pre-filled)", () => {
     const scenario = createDemoScenario();
-    expect(scenario.populationIds).toContain(DEMO_POPULATION_ID);
+    expect(scenario.populationIds).toEqual([]);
   });
 
   it("policyType is 'carbon-tax'", () => {
@@ -72,10 +74,44 @@ describe("createDemoScenario", () => {
     expect(engineConfig.seed).toBe(42);
   });
 
+  it("investmentDecisionsEnabled is NULL (Story 27.6: not started)", () => {
+    const { engineConfig } = createDemoScenario();
+    expect(engineConfig.investmentDecisionsEnabled).toBeNull();
+  });
+
   it("returns a new object on each call (not a shared reference)", () => {
     const a = createDemoScenario();
     const b = createDemoScenario();
     expect(a).not.toBe(b);
+  });
+});
+
+// ============================================================================
+// Story 27.6: Demo scenario changes — not started state
+// ============================================================================
+
+describe("createDemoScenario - Story 27.6 changes", () => {
+  it("populationIds is EMPTY array (not pre-filled)", () => {
+    const scenario = createDemoScenario();
+    expect(scenario.populationIds).toEqual([]);
+  });
+
+  it("investmentDecisionsEnabled is NULL (not false)", () => {
+    const { engineConfig } = createDemoScenario();
+    expect(engineConfig.investmentDecisionsEnabled).toBeNull();
+  });
+
+  it("stageTouched is EMPTY object (no stages pre-touched)", () => {
+    const scenario = createDemoScenario();
+    expect(scenario.stageTouched).toEqual({});
+  });
+
+  it("all other fields remain valid for demo scenario", () => {
+    const scenario = createDemoScenario();
+    expect(scenario.id).toBe(DEMO_SCENARIO_ID);
+    expect(scenario.policyType).toBe("carbon-tax");
+    expect(scenario.portfolioName).toBeNull();
+    expect(scenario.lastRunId).toBeNull();
   });
 });
 
@@ -91,5 +127,74 @@ describe("constants", () => {
 
   it("DEMO_POPULATION_ID is 'fr-synthetic-2024'", () => {
     expect(DEMO_POPULATION_ID).toBe("fr-synthetic-2024");
+  });
+});
+
+// ============================================================================
+// Story 27.6: Migration tests for legacy investmentDecisionsEnabled state
+// ============================================================================
+
+describe("loadScenario - Story 27.6 migration", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it("migrates legacy investmentDecisionsEnabled: false to stageTouched.engine: true", () => {
+    const legacyScenario = {
+      id: "s1",
+      name: "Legacy Scenario",
+      version: "1.0",
+      status: "ready",
+      isBaseline: false,
+      baselineRef: null,
+      portfolioName: null,
+      populationIds: [],
+      engineConfig: {
+        startYear: 2025,
+        endYear: 2030,
+        seed: null,
+        investmentDecisionsEnabled: false, // Legacy: explicit false
+        logitModel: null,
+        discountRate: 0.03,
+      },
+      policyType: null,
+      lastRunId: null,
+    };
+    localStorage.setItem(SCENARIO_STORAGE_KEY, JSON.stringify(legacyScenario));
+
+    const loaded = loadScenario();
+
+    expect(loaded).not.toBeNull();
+    expect(loaded?.stageTouched?.engine).toBe(true);
+  });
+
+  it("does NOT set stageTouched.engine when investmentDecisionsEnabled is null (new scenario)", () => {
+    const newScenario = {
+      id: "s1",
+      name: "New Scenario",
+      version: "1.0",
+      status: "ready",
+      isBaseline: false,
+      baselineRef: null,
+      portfolioName: null,
+      populationIds: [],
+      engineConfig: {
+        startYear: 2025,
+        endYear: 2030,
+        seed: null,
+        investmentDecisionsEnabled: null, // New: null
+        logitModel: null,
+        discountRate: 0.03,
+      },
+      policyType: null,
+      lastRunId: null,
+      stageTouched: {}, // Already has stageTouched field
+    };
+    localStorage.setItem(SCENARIO_STORAGE_KEY, JSON.stringify(newScenario));
+
+    const loaded = loadScenario();
+
+    expect(loaded).not.toBeNull();
+    expect(loaded?.stageTouched?.engine).toBeUndefined();
   });
 });
