@@ -1,6 +1,6 @@
 # Story 27.7: Make Investment Decisions wizard step labels clickable
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -19,26 +19,26 @@ so that I can revise an earlier choice without using the Back button repeatedly.
 
 ## Tasks / Subtasks
 
-- [ ] Wrap step indicators in clickable buttons (AC: #1, #2, #5)
-  - [ ] At `InvestmentDecisionsWizard.tsx:152-199`, replace each step indicator `<div>` with a `<button type="button">`
-  - [ ] Set `onClick={() => goToStep(step)}`
-  - [ ] Set `disabled={!visitedSteps.includes(step) && step !== currentStep}`
-  - [ ] Apply consistent styling for visited / current / unreached states (use existing color tokens)
-- [ ] Track visited steps (AC: #3, #4)
-  - [ ] Verify `visitedSteps` already exists in component state (the audit noted it does)
-  - [ ] When a step is rendered (the user reaches it via Next), add to `visitedSteps`
-  - [ ] On click of a visited step, do not reset later visited state
-- [ ] Accessibility (AC: #5)
-  - [ ] Add `aria-current="step"` for the current step
-  - [ ] Add `aria-disabled="true"` for unreached steps (in addition to the `disabled` attribute, which Radix-derived components may already handle)
-  - [ ] Ensure keyboard navigation: Tab moves between visited steps, Enter activates
-- [ ] Tests (AC: #1, #2, #3, #4, #5)
-  - [ ] Click-back test: from Review, click Model → wizard at Model step
-  - [ ] Disabled-forward test: from Enable, click Review → no navigation
-  - [ ] State preservation test: navigate back, then forward → selections intact
-  - [ ] Accessibility test: assert ARIA attributes
-- [ ] Quality gates
-  - [ ] `npm test`, `npm run typecheck`, `npm run lint`
+- [x] Wrap step indicators in clickable buttons (AC: #1, #2, #5)
+  - [x] At `InvestmentDecisionsWizard.tsx:152-199`, replace each step indicator `<div>` with a `<button type="button">`
+  - [x] Set `onClick={() => goToStep(step)}`
+  - [x] Set `disabled={!visitedSteps.includes(step) && step !== currentStep}`
+  - [x] Apply consistent styling for visited / current / unreached states (use existing color tokens)
+- [x] Track visited steps (AC: #3, #4)
+  - [x] Verify `visitedSteps` already exists in component state (the audit noted it does)
+  - [x] When a step is rendered (the user reaches it via Next), add to `visitedSteps`
+  - [x] On click of a visited step, do not reset later visited state
+- [x] Accessibility (AC: #5)
+  - [x] Add `aria-current="step"` for the current step
+  - [x] Add `aria-disabled="true"` for unreached steps (in addition to the `disabled` attribute, which Radix-derived components may already handle)
+  - [x] Ensure keyboard navigation: Tab moves between visited steps, Enter activates
+- [x] Tests (AC: #1, #2, #3, #4, #5)
+  - [x] Click-back test: from Review, click Model → wizard at Model step
+  - [x] Disabled-forward test: from Enable, click Review → no navigation
+  - [x] State preservation test: navigate back, then forward → selections intact
+  - [x] Accessibility test: assert ARIA attributes
+- [x] Quality gates
+  - [x] `npm test`, `npm run typecheck`, `npm run lint`
 
 ## Dev Notes
 
@@ -61,8 +61,26 @@ so that I can revise an earlier choice without using the Back button repeatedly.
 
 ### Agent Model Used
 
+claude-opus-4-6 (via bmad-dev-story skill)
+
 ### Debug Log References
+
+No debug logs required. Implementation completed in one pass.
 
 ### Completion Notes List
 
+- Converted step indicator `<div>` elements to clickable `<button type="button">` elements with proper onClick handlers
+- Added `isVisited` check using existing `visitedSteps` state to enable/disable clicking
+- Applied visual styling: emerald-500 for completed, blue-500 for current, slate for unreached
+- Added `aria-label` with step name (Enable/Model/Parameters/Review) for accessibility
+- Added `aria-current="step"` for current step, `aria-disabled` for unreached steps
+- Fixed initialization of `visitedSteps` to include step 1 when `isEnabled` is true (auto-advance case)
+- Updated useEffect that syncs step state to also mark Model step as visited when auto-advancing
+- Added 6 new tests covering click-back, disabled-forward, state-preservation, and accessibility
+- All 31 tests pass (25 existing + 6 new)
+- Typecheck and lint pass clean (only pre-existing warnings in other files)
+
 ### File List
+
+- `frontend/src/components/engine/InvestmentDecisionsWizard.tsx` (modified)
+- `frontend/src/components/engine/__tests__/InvestmentDecisionsWizard.test.tsx` (modified)

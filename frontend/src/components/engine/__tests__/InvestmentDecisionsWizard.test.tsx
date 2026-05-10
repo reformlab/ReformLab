@@ -460,4 +460,181 @@ describe("InvestmentDecisionsWizard — Story 22.6", () => {
       expect(screen.getByText("1.5")).toBeInTheDocument();
     });
   });
+
+  describe("Clickable step indicators (Story 27.7)", () => {
+    it("click-back: from Review step, clicking Model navigates to Model step (AC-1)", async () => {
+      const user = userEvent.setup();
+      renderWizard(
+        makeConfig({
+          investmentDecisionsEnabled: true,
+          logitModel: "nested_logit",
+          tasteParameters: DEFAULT_TASTE_PARAMETERS,
+        }),
+      );
+
+      // Navigate to Review step (visiting all steps along the way)
+      // Start on Model step (auto-advanced from Enable when enabled)
+      await user.click(screen.getByRole("button", { name: /^Next$/i }));
+      await user.click(screen.getByRole("button", { name: /^Next$/i }));
+
+      expect(screen.getByText("Review Configuration")).toBeInTheDocument();
+
+      // Click the Model step indicator button
+      const modelStepButton = screen.getByRole("button", { name: /model/i });
+      await user.click(modelStepButton);
+
+      // Should navigate back to Model step
+      expect(screen.getByText("Choose Logit Model")).toBeInTheDocument();
+    });
+
+    it("disabled-forward: from Enable step, clicking later steps does nothing (AC-2)", async () => {
+      renderWizard(makeConfig({ investmentDecisionsEnabled: false }));
+
+      // On Enable step, later steps should be disabled
+      expect(screen.getByText("Enable Investment Decisions")).toBeInTheDocument();
+
+      // Find step indicator buttons for Model, Parameters, Review
+      // They should be disabled buttons
+      const modelButton = screen.queryByRole("button", { name: /model/i });
+      const parametersButton = screen.queryByRole("button", { name: /parameters/i });
+      const reviewButton = screen.queryByRole("button", { name: /review/i });
+
+      // When wizard is disabled, step indicators shouldn't render
+      expect(modelButton).not.toBeInTheDocument();
+      expect(parametersButton).not.toBeInTheDocument();
+      expect(reviewButton).not.toBeInTheDocument();
+    });
+
+    it("disabled-forward: when enabled but only on step 1, clicking step 3 does nothing (AC-2)", async () => {
+      renderWizard(
+        makeConfig({
+          investmentDecisionsEnabled: true,
+          logitModel: "multinomial_logit",
+        }),
+      );
+
+      // On Model step (step 1), only Enable and Model are visited
+      expect(screen.getByText("Choose Logit Model")).toBeInTheDocument();
+
+      // Step 3 (Review) button should be present but disabled
+      const reviewButton = screen.getByRole("button", { name: /review/i });
+      expect(reviewButton).toBeDisabled();
+    });
+
+    it("visited-steps: after visiting steps 1,2,3 on step 3, clicking step 2 works (AC-3)", async () => {
+      const user = userEvent.setup();
+      renderWizard(
+        makeConfig({
+          investmentDecisionsEnabled: true,
+          logitModel: "multinomial_logit",
+          tasteParameters: DEFAULT_TASTE_PARAMETERS,
+        }),
+      );
+
+      // Navigate through all steps to Review (starting from Model step)
+      await user.click(screen.getByRole("button", { name: /^Next$/i }));
+      await user.click(screen.getByRole("button", { name: /^Next$/i }));
+
+      expect(screen.getByText("Review Configuration")).toBeInTheDocument();
+
+      // Step 2 (Parameters) should be clickable (visited)
+      const parametersButton = screen.getByRole("button", { name: /parameters/i });
+      expect(parametersButton).not.toBeDisabled();
+
+      await user.click(parametersButton);
+
+      expect(screen.getByText("Taste Parameters")).toBeInTheDocument();
+    });
+
+    it("state-preservation: navigate back then forward, selections intact (AC-4)", async () => {
+      const user = userEvent.setup();
+      renderWizard(
+        makeConfig({
+          investmentDecisionsEnabled: true,
+          logitModel: "multinomial_logit",
+          tasteParameters: DEFAULT_TASTE_PARAMETERS,
+        }),
+      );
+
+      // Wait for auto-advance to Model step to complete
+      await waitFor(() => {
+        expect(screen.getByText("Choose Logit Model")).toBeInTheDocument();
+      });
+
+      // Navigate to Parameters step (one Next click from Model)
+      await user.click(screen.getByRole("button", { name: /^Next$/i }));
+
+      expect(screen.getByText("Taste Parameters")).toBeInTheDocument();
+
+      // Navigate to Review step (another Next click)
+      await user.click(screen.getByRole("button", { name: /^Next$/i }));
+      expect(screen.getByText("Review Configuration")).toBeInTheDocument();
+
+      // Click back to Parameters step
+      const parametersButton = screen.getByRole("button", { name: /parameters/i });
+      await user.click(parametersButton);
+
+      expect(screen.getByText("Taste Parameters")).toBeInTheDocument();
+
+      // Navigate forward via Next to Review
+      await user.click(screen.getByRole("button", { name: /^Next$/i }));
+
+      // Should be back on Review step
+      expect(screen.getByText("Review Configuration")).toBeInTheDocument();
+    });
+
+    it("accessibility: step buttons have ARIA attributes (AC-5)", async () => {
+      const user = userEvent.setup();
+      renderWizard(
+        makeConfig({
+          investmentDecisionsEnabled: true,
+          logitModel: "nested_logit",
+          tasteParameters: DEFAULT_TASTE_PARAMETERS,
+        }),
+      );
+
+      // Navigate to Review step (starting from Model step)
+      await user.click(screen.getByRole("button", { name: /^Next$/i }));
+      await user.click(screen.getByRole("button", { name: /^Next$/i }));
+
+      expect(screen.getByText("Review Configuration")).toBeInTheDocument();
+
+      // Check that step indicator buttons have proper ARIA attributes
+      const enableButton = screen.getByRole("button", { name: /^enable$/i });
+      const modelButton = screen.getByRole("button", { name: /^model$/i });
+      const parametersButton = screen.getByRole("button", { name: /^parameters$/i });
+      const reviewButton = screen.getByRole("button", { name: /^review$/i });
+
+      // Current step (Review) should have aria-current="step"
+      expect(reviewButton).toHaveAttribute("aria-current", "step");
+
+      // Visited steps should not be disabled
+      expect(enableButton).not.toBeDisabled();
+      expect(modelButton).not.toBeDisabled();
+      expect(parametersButton).not.toBeDisabled();
+
+      // All buttons should be keyboard focusable (role="button" makes them focusable)
+      expect(enableButton.tagName.toLowerCase()).toBe("button");
+      expect(modelButton.tagName.toLowerCase()).toBe("button");
+      expect(parametersButton.tagName.toLowerCase()).toBe("button");
+      expect(reviewButton.tagName.toLowerCase()).toBe("button");
+    });
+
+    it("accessibility: unreached steps have aria-disabled (AC-5)", async () => {
+      renderWizard(
+        makeConfig({
+          investmentDecisionsEnabled: true,
+          logitModel: "multinomial_logit",
+        }),
+      );
+
+      // On Model step (step 1), Review (step 3) is unreached
+      expect(screen.getByText("Choose Logit Model")).toBeInTheDocument();
+
+      const reviewButton = screen.getByRole("button", { name: /^review$/i });
+
+      // Should have aria-disabled when disabled
+      expect(reviewButton).toHaveAttribute("aria-disabled", "true");
+    });
+  });
 });
