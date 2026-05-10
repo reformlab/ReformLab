@@ -1,0 +1,114 @@
+record_id: a725c696-9d67-4783-844b-fa8b6c893524
+created_at: '2026-05-04T20:45:19.744762+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 27
+  story_num: '6'
+  title: Story 27.6
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true
+evaluator:
+  provider: claude-subprocess
+  model: sonnet
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-05-04T20:40:44.141674Z'
+  end_time: '2026-05-04T20:44:56.720674Z'
+  duration_ms: 252579
+  input_tokens: 0
+  output_tokens: 3015
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 12060
+  heading_count: 14
+  list_depth_max: 2
+  code_block_count: 6
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: **7.2**'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes & Readability
+  - ⚡ Performance & Scalability
+  - 🐛 Correctness & Safety
+  - 🔧 Maintainability Issues
+  - 🛠️ Suggested Fixes
+  - 1. Fix `createNewScenario` to use `null`
+  - 2. Wire `stageTouched` on population selection
+  - 3. Fix engine `dataSatisfied` to not double-count `isTouched`
+  - 4. Fix migration early-return to include investment decisions gate
+  - 5. Add `createFullDemoScenario` tests and strengthen "not-started" visual assertions
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 24e61ac726ad
+findings:
+  total_count: 10
+  by_severity:
+    critical: 1
+    major: 4
+    minor: 5
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 4
+    completeness: 1
+    clarity: 4
+    testability: 2
+  has_fix_count: 9
+  has_location_count: 10
+  has_evidence_count: 5
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: false
+  uses_conditionals: true
+  uncertainty_phrases_count: 0
+  confidence_phrases_count: 2
+linguistic:
+  avg_sentence_length: 19.68
+  vocabulary_richness: 0.3678861788617886
+  flesch_reading_ease: 9.087722317986163
+  vague_terms_count: 1
+  formality_score: 0.45
+  sentiment: negative
+quality:
+  actionable_ratio: 0.9
+  specificity_score: 0.95
+  evidence_quality: 0.5
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true
+  phase: code-review
+  file_count: 9
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

@@ -58,9 +58,11 @@ export function createDemoScenario(): WorkspaceScenario {
   };
 }
 
-/** Create the full pre-filled demo state for "Try the demo" affordance (Story 27.6).
- * This loads the demo with population pre-selected and decisions explicitly skipped,
- * mirroring the previous first-launch behaviour.
+/** Create the pre-filled demo state for "Try the demo" affordance (Story 27.6).
+ * This restores the old first-launch shortcuts that matter for this story:
+ * population pre-selected and investment decisions explicitly skipped.
+ *
+ * It does not fabricate a saved policy set or a completed run history.
  */
 export function createFullDemoScenario(): WorkspaceScenario {
   return {
@@ -85,7 +87,7 @@ export function createFullDemoScenario(): WorkspaceScenario {
     policyType: "carbon-tax",
     lastRunId: null,
     stageTouched: {
-      // Mark all stages as touched so nav rail goes green
+      // Mark the stages this affordance explicitly pre-fills.
       population: true,
       engine: true,
     },

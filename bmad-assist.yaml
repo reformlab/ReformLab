@@ -27,10 +27,10 @@ tool_guard:
 # process is killed and retried up to `retries` times.
 timeouts:
   default: 600                         # 10 min — fallback for phases without explicit timeout
-  retries: 2                           # Number of retry attempts after a timeout or crash
+  retries: 1                           # Keep one retry for transient failures; avoid repeated long synthesis stalls
   create_story: 1200                   # 20 min — story spec generation (large context, one-shot)
   dev_story: 3600                      # 60 min — implementation (includes compiler + coding + tests)
-  code_review_synthesis: 900           # 15 min — merging multiple reviewer outputs
+  code_review_synthesis: 1500          # 25 min — give synthesis one longer pass before retrying
 
 # --- Providers ---
 # Default LLM backends. "master" is used for phases without an explicit phase_models

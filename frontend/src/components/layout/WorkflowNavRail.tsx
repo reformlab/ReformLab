@@ -77,21 +77,31 @@ function getStageStatus(
       dataSatisfied = typeof activeScenario?.portfolioName === "string" && activeScenario.portfolioName.length > 0;
       break;
     case "population":
-      // AC-5 (Story 20.4): primary signal is activeScenario.populationIds; legacy fallback
-      dataSatisfied = (
-        (activeScenario?.populationIds?.length ?? 0) > 0 ||
-        !!selectedPopulationId ||
-        dataFusionResult !== null
-      );
+      // AC-5 (Story 20.4): primary signal is activeScenario.populationIds
+      // Story 27.6: For new scenarios (with stageTouched), only use durable state,
+      // not transient UI selector. For legacy scenarios, keep selector fallback.
+      if (hasStageTouched) {
+        // New path: only durable scenario state
+        dataSatisfied = (
+          (activeScenario?.populationIds?.length ?? 0) > 0 ||
+          dataFusionResult !== null
+        );
+      } else {
+        // Legacy path: include UI selector fallback
+        dataSatisfied = (
+          (activeScenario?.populationIds?.length ?? 0) > 0 ||
+          !!selectedPopulationId ||
+          dataFusionResult !== null
+        );
+      }
       break;
     case "engine":
-      // Story 27.6: engine is complete when scenario exists AND either:
-      // - investmentDecisionsEnabled is explicitly set (true or false), OR
-      // - stageTouched.engine is true
+      // Story 27.6: engine is complete when scenario exists AND
+      // investmentDecisionsEnabled is explicitly set (true or false)
       if (activeScenario !== null) {
         const { investmentDecisionsEnabled } = activeScenario.engineConfig;
         // null = not started, false/true = explicitly decided
-        dataSatisfied = investmentDecisionsEnabled !== null || isTouched;
+        dataSatisfied = investmentDecisionsEnabled !== null;
       }
       break;
     case "results":

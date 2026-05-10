@@ -57,7 +57,7 @@ export function loadScenario(): WorkspaceScenario | null {
     const needsStageTouchedMigration = parsed.stageTouched === undefined;
     const needsInvestmentDecisionsMigration = parsed.engineConfig?.investmentDecisionsEnabled === false;
 
-    if (!needsTasteMigration && !needsCalibrationMigration && !needsStageTouchedMigration) {
+    if (!needsTasteMigration && !needsCalibrationMigration && !needsStageTouchedMigration && !needsInvestmentDecisionsMigration) {
       return parsed;
     }
 
@@ -132,7 +132,7 @@ export function getSavedScenarios(): WorkspaceScenario[] {
       const needsStageTouchedMigration = scenario.stageTouched === undefined;
       const needsInvestmentDecisionsMigration = scenario.engineConfig?.investmentDecisionsEnabled === false;
 
-      if (!needsTasteMigration && !needsCalibrationMigration && !needsStageTouchedMigration) {
+      if (!needsTasteMigration && !needsCalibrationMigration && !needsStageTouchedMigration && !needsInvestmentDecisionsMigration) {
         return scenario;
       }
 

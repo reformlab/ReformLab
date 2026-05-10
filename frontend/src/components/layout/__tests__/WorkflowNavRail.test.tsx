@@ -260,6 +260,13 @@ describe("WorkflowNavRail - Not started state (Story 27.6)", () => {
     expect(populationIndicator).not.toHaveClass("bg-emerald-500");
     expect(engineIndicator).not.toHaveClass("bg-emerald-500");
     expect(resultsIndicator).not.toHaveClass("bg-emerald-500");
+
+    // The active stage remains blue; untouched inactive stages use the distinct
+    // not-started treatment.
+    expect(policiesIndicator).toHaveClass("bg-blue-500");
+    expect(populationIndicator).toHaveClass("border-dashed", "bg-transparent");
+    expect(engineIndicator).toHaveClass("border-dashed", "bg-transparent");
+    expect(resultsIndicator).toHaveClass("border-dashed", "bg-transparent");
   });
 
   it("shows green ONLY for Population stage when population selected and stage touched", () => {

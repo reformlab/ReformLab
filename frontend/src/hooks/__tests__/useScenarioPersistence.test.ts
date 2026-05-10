@@ -41,7 +41,7 @@ function makeScenario(overrides: Partial<WorkspaceScenario> = {}): WorkspaceScen
       startYear: 2025,
       endYear: 2030,
       seed: 42,
-      investmentDecisionsEnabled: false,
+      investmentDecisionsEnabled: null,  // Use null to avoid migration in round-trip test
       logitModel: null,
       discountRate: 0.03,
       tasteParameters: DEFAULT_TASTE_PARAMETERS,  // Story 22.6
@@ -49,6 +49,7 @@ function makeScenario(overrides: Partial<WorkspaceScenario> = {}): WorkspaceScen
     },
     policyType: "carbon-tax",
     lastRunId: null,
+    stageTouched: {},  // Story 27.6: New scenarios have stageTouched
     ...overrides,
   };
 }

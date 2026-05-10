@@ -1,0 +1,114 @@
+record_id: d89bb622-508f-4795-b621-c5db127d8e0c
+created_at: '2026-05-04T20:45:19.761881+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 27
+  story_num: '6'
+  title: Story 27.6
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true
+evaluator:
+  provider: codex
+  model: gpt-5.3-codex
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-05-04T20:40:44.141674Z'
+  end_time: '2026-05-04T20:42:50.840674Z'
+  duration_ms: 126699
+  input_tokens: 0
+  output_tokens: 1880
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 7522
+  heading_count: 14
+  list_depth_max: 2
+  code_block_count: 0
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: 12.5'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes & Readability
+  - ⚡ Performance & Scalability
+  - 🐛 Correctness & Safety
+  - 🔧 Maintainability Issues
+  - 🛠️ Suggested Fixes
+  - 1. Make `stageTouched` mandatory and update all constructors
+  - 2. Remove selector fallback from completion predicates
+  - 3. Correct engine completion truth table
+  - 4. Implement explicit touch writes at user action boundaries
+  - 5. Fix AC-6 workflow contract and tests
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 24e61ac726ad
+findings:
+  total_count: 14
+  by_severity:
+    critical: 6
+    major: 8
+    minor: 0
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 10
+    completeness: 2
+    clarity: 0
+    testability: 2
+  has_fix_count: 11
+  has_location_count: 14
+  has_evidence_count: 11
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 0
+  confidence_phrases_count: 2
+linguistic:
+  avg_sentence_length: 33.464285714285715
+  vocabulary_richness: 0.3863393810032017
+  flesch_reading_ease: -43.877613861386095
+  vague_terms_count: 0
+  formality_score: 0.65
+  sentiment: negative
+quality:
+  actionable_ratio: 0.79
+  specificity_score: 0.93
+  evidence_quality: 0.79
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true
+  phase: code-review
+  file_count: 9
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

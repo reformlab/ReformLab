@@ -265,7 +265,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      return { ...current, [field]: value };
+      const nextScenario: WorkspaceScenario = { ...current, [field]: value };
+
+      // Story 27.6: mark stages as touched when the user makes an explicit
+      // durable scenario change for that stage.
+      const touchedStage =
+        field === "portfolioName" ? "policies"
+          : field === "populationIds" ? "population"
+            : field === "engineConfig" ? "engine"
+              : null;
+
+      if (touchedStage !== null) {
+        nextScenario.stageTouched = {
+          ...(current.stageTouched ?? {}),
+          [touchedStage]: true,
+        };
+      }
+
+      return nextScenario;
     });
   }, []);
 
@@ -557,7 +574,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setSelectedTemplateId(DEMO_TEMPLATE_ID);
     setSelectedPopulationId(DEMO_POPULATION_ID);
     navigateTo("results", "runner");
-    toast.info("Demo scenario loaded — all stages marked complete");
+    toast.info("Demo scenario loaded with pre-selected population and skipped decisions");
   }, [navigateTo]);
 
   const createNewScenario = useCallback((templateId?: string) => {
@@ -583,7 +600,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         startYear: 2025,
         endYear: 2030,
         seed: null,
-        investmentDecisionsEnabled: false,
+        investmentDecisionsEnabled: null,  // Story 27.6: null = not started (not false)
         logitModel: null,
         discountRate: 0.03,
         tasteParameters: null,  // Story 22.6
@@ -591,6 +608,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
       policyType: templateId ?? null,
       lastRunId: null,
+      stageTouched: {},  // Story 27.6: explicit empty stageTouched for new scenarios
     };
     setActiveScenario(newScenario);
     if (templateId) {
@@ -676,6 +694,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     let activeScenarioId = selectedScenarioId;
 
+    // Story 27.6: visiting the run flow is an explicit stage action.
+    setActiveScenario((current) => (
+      current ? {
+        ...current,
+        stageTouched: {
+          ...(current.stageTouched ?? {}),
+          results: true,
+        },
+      } : null
+    ));
+
     if (needsNewScenario) {
       const existingCount = scenarios.filter((s) => !s.isBaseline).length;
       const newId = `reform-${String.fromCharCode(97 + existingCount)}`;
@@ -721,13 +750,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      await executeRun({
+      const response = await executeRun({
         template_name: selectedTemplateId,
         policy: parameterValues,
         start_year: 2025,
         end_year: 2030,
         population_id: selectedPopulationId || null,
       });
+
+      setActiveScenario((current) => (
+        current ? {
+          ...current,
+          lastRunId: response.run_id,
+          stageTouched: {
+            ...(current.stageTouched ?? {}),
+            results: true,
+          },
+        } : null
+      ));
+      void refetchResults().catch(() => {});
 
       // Mark completed
       setScenarios((current) =>
@@ -747,7 +788,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ),
       );
     }
-  }, [templates, selectedTemplateId, templateParams, parameterValues, scenarios, selectedScenarioId, selectedPopulationId, executeRun]);
+  }, [templates, selectedTemplateId, templateParams, parameterValues, scenarios, selectedScenarioId, selectedPopulationId, executeRun, refetchResults]);
 
   const cloneScenario = useCallback((id: string) => {
     const source = scenarios.find((s) => s.id === id);

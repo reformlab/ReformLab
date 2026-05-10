@@ -9,6 +9,7 @@ import { describe, expect, it, beforeEach } from "vitest";
 
 import {
   createDemoScenario,
+  createFullDemoScenario,
   DEMO_POPULATION_ID,
   DEMO_SCENARIO_ID,
   DEMO_TEMPLATE_ID,
@@ -115,6 +116,28 @@ describe("createDemoScenario - Story 27.6 changes", () => {
   });
 });
 
+describe("createFullDemoScenario", () => {
+  it("pre-selects the demo population and explicitly skips investment decisions", () => {
+    const scenario = createFullDemoScenario();
+    expect(scenario.populationIds).toEqual([DEMO_POPULATION_ID]);
+    expect(scenario.engineConfig.investmentDecisionsEnabled).toBe(false);
+  });
+
+  it("marks only the pre-filled stages as touched", () => {
+    const scenario = createFullDemoScenario();
+    expect(scenario.stageTouched).toEqual({
+      population: true,
+      engine: true,
+    });
+  });
+
+  it("does not fabricate a saved policy set or run history", () => {
+    const scenario = createFullDemoScenario();
+    expect(scenario.portfolioName).toBeNull();
+    expect(scenario.lastRunId).toBeNull();
+  });
+});
+
 describe("constants", () => {
   it("DEMO_SCENARIO_ID is a non-empty string", () => {
     expect(typeof DEMO_SCENARIO_ID).toBe("string");
@@ -196,5 +219,107 @@ describe("loadScenario - Story 27.6 migration", () => {
 
     expect(loaded).not.toBeNull();
     expect(loaded?.stageTouched?.engine).toBeUndefined();
+  });
+});
+
+// ============================================================================
+// Story 27.6: getSavedScenarios investment decisions migration
+// ============================================================================
+
+import { getSavedScenarios, SAVED_SCENARIOS_KEY } from "@/hooks/useScenarioPersistence";
+
+describe("getSavedScenarios - Story 27.6 migration", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it("migrates legacy investmentDecisionsEnabled: false in saved scenarios list", () => {
+    const legacyScenarios = [
+      {
+        id: "s1",
+        name: "Legacy Scenario 1",
+        version: "1.0",
+        status: "ready",
+        isBaseline: false,
+        baselineRef: null,
+        portfolioName: null,
+        populationIds: [],
+        engineConfig: {
+          startYear: 2025,
+          endYear: 2030,
+          seed: null,
+          investmentDecisionsEnabled: false, // Legacy: explicit false
+          logitModel: null,
+          discountRate: 0.03,
+        },
+        policyType: null,
+        lastRunId: null,
+      },
+      {
+        id: "s2",
+        name: "New Scenario",
+        version: "1.0",
+        status: "ready",
+        isBaseline: false,
+        baselineRef: null,
+        portfolioName: null,
+        populationIds: [],
+        engineConfig: {
+          startYear: 2025,
+          endYear: 2030,
+          seed: null,
+          investmentDecisionsEnabled: null, // New: null (no migration)
+          logitModel: null,
+          discountRate: 0.03,
+        },
+        policyType: null,
+        lastRunId: null,
+        stageTouched: {}, // Already has stageTouched
+      },
+    ];
+    localStorage.setItem(SAVED_SCENARIOS_KEY, JSON.stringify(legacyScenarios));
+
+    const loaded = getSavedScenarios();
+
+    expect(loaded).toHaveLength(2);
+    // First scenario should have engine migrated to touched
+    expect(loaded[0].stageTouched?.engine).toBe(true);
+    // Second scenario should remain unchanged
+    expect(loaded[1].stageTouched?.engine).toBeUndefined();
+  });
+
+  it("does NOT migrate when all migrations are already applied", () => {
+    const modernScenarios = [
+      {
+        id: "s1",
+        name: "Modern Scenario",
+        version: "1.0",
+        status: "ready",
+        isBaseline: false,
+        baselineRef: null,
+        portfolioName: null,
+        populationIds: [],
+        engineConfig: {
+          startYear: 2025,
+          endYear: 2030,
+          seed: null,
+          investmentDecisionsEnabled: null, // Already null
+          logitModel: null,
+          discountRate: 0.03,
+          tasteParameters: { priceSensitivity: -1.5, rangeAnxiety: -0.8, envPreference: 0.5 },
+          calibrationState: "not_configured",
+        },
+        policyType: null,
+        lastRunId: null,
+        stageTouched: {}, // Already has stageTouched
+      },
+    ];
+    localStorage.setItem(SAVED_SCENARIOS_KEY, JSON.stringify(modernScenarios));
+
+    const loaded = getSavedScenarios();
+
+    expect(loaded).toHaveLength(1);
+    // Should return scenario as-is, no migration needed
+    expect(loaded[0]).toEqual(modernScenarios[0]);
   });
 });
