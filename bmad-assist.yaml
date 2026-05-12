@@ -76,6 +76,11 @@ phase_models:
     - provider: codex
       model: gpt-5.3-codex             # Second reviewer with deep reasoning
       reasoning_effort: high
+      fallbacks:
+        - provider: claude-subprocess
+          model: sonnet
+          model_name: glm-4.7
+          settings: ~/.claude/glm.json
   validate_story_synthesis:
     provider: claude-subprocess        # Runs Claude CLI as a subprocess
     model: sonnet
@@ -89,6 +94,11 @@ phase_models:
     - provider: codex
       model: gpt-5.3-codex             # Second reviewer with deep reasoning
       reasoning_effort: high
+      fallbacks:
+        - provider: claude-subprocess
+          model: sonnet
+          model_name: glm-4.7
+          settings: ~/.claude/glm.json
   code_review_synthesis:
     provider: claude-subprocess        # Last gate before code ships — upgraded model
     model: sonnet
