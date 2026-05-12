@@ -224,17 +224,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         // Story 27.8: Migrate legacy Population sub-view values
         let subView: SubView | null = null;
-        if (sub && isValidSubView(sub)) {
-          // Valid sub-view (including new "source" and "inspect")
-          subView = sub;
-        } else if (stage === "population" && sub) {
-          // Check for legacy Population sub-view values
+        // Check for legacy Population sub-view values FIRST (before isValidSubView check)
+        // This ensures migration happens even for legacy values still in VALID_SUBVIEWS
+        if (stage === "population" && sub) {
           const migrated = LEGACY_POPULATION_SUBVIEW_MAP[sub];
           if (migrated) {
             subView = migrated;
-          } else {
-            subView = null;
+          } else if (isValidSubView(sub)) {
+            subView = sub;
           }
+        } else if (sub && isValidSubView(sub)) {
+          subView = sub;
         }
 
         setActiveSubView(subView);

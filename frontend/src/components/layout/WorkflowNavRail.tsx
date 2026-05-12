@@ -232,6 +232,7 @@ function SubStepIndicator({ label, active, disabled, onClick, testId, disabledTo
     <button
       type="button"
       data-testid={testId}
+      disabled={disabled}
       aria-disabled={disabled ? "true" : undefined}
       title={disabled ? disabledTooltip : undefined}
       onClick={disabled ? undefined : onClick}

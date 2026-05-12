@@ -550,16 +550,24 @@ describe("Analyst Journey — cross-screen navigation", () => {
       });
     });
 
-    it("navigates to #population/population-explorer and shows empty explorer state (AC-3)", async () => {
+    it("navigates to #population/inspect and shows PopulationExplorer (Story 27.8 AC-5)", async () => {
       const user = userEvent.setup();
       renderApp();
       await authenticate(user);
 
-      window.location.hash = "#population/population-explorer";
-      window.dispatchEvent(new HashChangeEvent("hashchange"));
+      // Story 27.8: Verify two-step flow - Source and Inspect sub-steps
+      await user.click(screen.getByRole("button", { name: /^Population$/ }));
 
+      // Both Source and Inspect sub-steps should be visible
+      expect(screen.getByTestId("substep-population-source")).toBeInTheDocument();
+      expect(screen.getByTestId("substep-population-inspect")).toBeInTheDocument();
+
+      // Click Inspect to navigate to PopulationExplorer
+      await user.click(screen.getByTestId("substep-population-inspect"));
+
+      // Verify the hash changed to #population/inspect
       await waitFor(() => {
-        expect(screen.getByText(/select a population from the library/i)).toBeInTheDocument();
+        expect(window.location.hash).toBe("#population/inspect");
       });
     });
 

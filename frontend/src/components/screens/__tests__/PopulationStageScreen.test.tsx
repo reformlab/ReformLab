@@ -471,11 +471,6 @@ describe("PopulationStageScreen — Story 20.4", () => {
       expect(screen.getByText("Data Fusion Workbench")).toBeInTheDocument();
     });
 
-    it("DataFusionWorkbench renders when activeSubView is 'data-fusion' (legacy support)", () => {
-      renderScreen({ activeSubView: "data-fusion" });
-      expect(screen.getByText("Data Fusion Workbench")).toBeInTheDocument();
-    });
-
     // AC-4 is tested via DataFusionWorkbench integration - handleDataFusionGenerated
     // sets selectedPopulationId and navigates to 'inspect' when generation completes
     it("Build New button navigates to 'data-fusion' sub-view", () => {

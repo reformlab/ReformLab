@@ -29,6 +29,16 @@ import type { PopulationLibraryItem } from "@/api/types";
 import { deletePopulation, getPopulationPreview } from "@/api/populations";
 
 // ============================================================================
+// Constants
+// ============================================================================
+
+/** ID used for the generated population from DataFusionWorkbench.
+ * Story 27.8: This ID is used when a population is generated via data fusion
+ * and needs to be set as the selected population.
+ */
+const DATA_FUSION_RESULT_ID = "data-fusion-result" as const;
+
+// ============================================================================
 // Helpers
 // ============================================================================
 
@@ -92,7 +102,7 @@ export function PopulationStageScreen() {
     const generated: PopulationLibraryItem[] = dataFusionResult
       ? [
           {
-            id: "data-fusion-result",
+            id: DATA_FUSION_RESULT_ID,
             name: "Fused Population",
             households: dataFusionResult.summary.record_count,
             source: "Data Fusion",
@@ -116,7 +126,7 @@ export function PopulationStageScreen() {
     const localMeta: Record<string, { totalRows: number; columns: string[] }> = {};
 
     if (dataFusionResult) {
-      localMeta["data-fusion-result"] = {
+      localMeta[DATA_FUSION_RESULT_ID] = {
         totalRows: dataFusionResult.summary.record_count,
         columns: dataFusionResult.summary.columns,
       };
@@ -128,7 +138,7 @@ export function PopulationStageScreen() {
 
     const populationsToFetch = mergedPopulations.filter(
       (population) =>
-        population.id !== "data-fusion-result" &&
+        population.id !== DATA_FUSION_RESULT_ID &&
         !requestedPreviewMetaRef.current.has(population.id),
     );
 
@@ -217,7 +227,7 @@ export function PopulationStageScreen() {
       setSelectedPopulationId("");
     }
 
-    if (id === "data-fusion-result") {
+    if (id === DATA_FUSION_RESULT_ID) {
       setDataFusionResult(null);
       return;
     }
@@ -262,7 +272,7 @@ export function PopulationStageScreen() {
   function handleDataFusionGenerated(result: Parameters<typeof setDataFusionResult>[0]) {
     // Story 27.8: Set the generated population as selected and navigate to Inspect
     setDataFusionResult(result);
-    setSelectedPopulationId("data-fusion-result");
+    setSelectedPopulationId(DATA_FUSION_RESULT_ID);
     navigateTo("population", "inspect");
   }
 
