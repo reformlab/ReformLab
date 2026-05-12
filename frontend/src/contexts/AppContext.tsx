@@ -43,7 +43,7 @@ import type { DecileData, Parameter, Scenario, Template, MockDataSource, MockMer
 import { mockDecileData, mockParameters, mockScenarios } from "@/data/mock-data";
 import type { RunResponse, IndicatorResponse, GenerationResult, PortfolioListItem, ResultListItem, PopulationLibraryItem } from "@/api/types";
 import type { StageKey, SubView, WorkspaceScenario } from "@/types/workspace";
-import { isValidStage, isValidSubView } from "@/types/workspace";
+import { isValidStage, isValidSubView, LEGACY_POPULATION_SUBVIEW_MAP } from "@/types/workspace";
 import {
   isFirstLaunch,
   markLaunched,
@@ -218,9 +218,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     function onHashChange() {
       const hash = window.location.hash.slice(1); // remove leading #
       const [stage, sub] = hash.split("/");
+
       if (stage && isValidStage(stage)) {
         setActiveStage(stage);
-        setActiveSubView(sub && isValidSubView(sub) ? sub : null);
+
+        // Story 27.8: Migrate legacy Population sub-view values
+        let subView: SubView | null = null;
+        if (sub && isValidSubView(sub)) {
+          // Valid sub-view (including new "source" and "inspect")
+          subView = sub;
+        } else if (stage === "population" && sub) {
+          // Check for legacy Population sub-view values
+          const migrated = LEGACY_POPULATION_SUBVIEW_MAP[sub];
+          if (migrated) {
+            subView = migrated;
+          } else {
+            subView = null;
+          }
+        }
+
+        setActiveSubView(subView);
       } else {
         // Empty hash or unknown stage → default to policies
         setActiveStage("policies");

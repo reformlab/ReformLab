@@ -201,12 +201,12 @@ describe("Population Selection Flow", () => {
     const scenario = JSON.parse(stored!);
     expect(scenario.populationIds).toContain(selectedPopulationId);
 
-    // Navigate to explorer
-    window.location.hash = "#population/population-explorer";
+    // Navigate to explorer (Story 27.8: use "inspect" instead of "population-explorer")
+    window.location.hash = "#population/inspect";
     window.dispatchEvent(new HashChangeEvent("hashchange"));
 
     await waitFor(() => {
-      expect(window.location.hash).toBe("#population/population-explorer");
+      expect(window.location.hash).toBe("#population/inspect");
     });
   });
 

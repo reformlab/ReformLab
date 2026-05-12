@@ -31,8 +31,7 @@ export interface WorkflowNavRailProps {
   results: ResultListItem[];
   activeScenario: WorkspaceScenario | null;
   populations: PopulationItem[];
-  explorerPopulationId: string | null; // Story 22.4 - for Explorer sub-step disabled state
-  activeSubView: SubView | null; // Story 22.4 - for active sub-step indication
+  activeSubView: SubView | null; // Story 27.8 - for active sub-step indication
 }
 
 // ============================================================================
@@ -276,7 +275,6 @@ export function WorkflowNavRail({
   results,
   activeScenario,
   populations,
-  explorerPopulationId,
   activeSubView,
 }: WorkflowNavRailProps) {
   return (
@@ -289,7 +287,7 @@ export function WorkflowNavRail({
           : getSummary(stage.key, selectedPopulationId, dataFusionResult, portfolios, results, activeScenario, populations);
         const isLast = index === STAGES.length - 1;
 
-        // Story 22.4: Population sub-steps (Library, Build, Explorer)
+        // Story 27.8: Population sub-steps (Source, Inspect)
         const showPopulationSubSteps = !collapsed && stage.key === "population" && active;
 
         return (
@@ -334,12 +332,24 @@ export function WorkflowNavRail({
                       {summary}
                     </span>
                   )}
-                  {/* Story 22.4: Population sub-steps rendered under main stage label */}
+                  {/* Story 27.8: Population sub-steps rendered under main stage label */}
                   {showPopulationSubSteps && (
                     <div className="mt-2 flex flex-col gap-1 pl-6">
                       {POPULATION_SUB_STEPS.map((subStep) => {
-                        const isActive = subStep.subView === activeSubView;
-                        const isDisabled = subStep.key === "explorer" && !explorerPopulationId;
+                        // Source is active when activeSubView is null, "data-fusion", or "source"
+                        // Inspect is active when activeSubView is "inspect" or "population-explorer" (legacy)
+                        const isActive =
+                          subStep.key === "source"
+                            ? activeSubView === null || activeSubView === "data-fusion" || activeSubView === "source"
+                            : activeSubView === "inspect" || activeSubView === "population-explorer";
+
+                        // Inspect is disabled when no population is selected
+                        const hasPopulation = (
+                          (activeScenario?.populationIds?.length ?? 0) > 0 ||
+                          !!selectedPopulationId ||
+                          dataFusionResult !== null
+                        );
+                        const isDisabled = subStep.key === "inspect" && !hasPopulation;
 
                         return (
                           <SubStepIndicator
@@ -347,8 +357,12 @@ export function WorkflowNavRail({
                             label={subStep.label}
                             active={isActive}
                             disabled={isDisabled}
-                            disabledTooltip={isDisabled ? "Select a population to explore" : undefined}
-                            onClick={() => { navigateTo("population", subStep.subView); }}
+                            disabledTooltip={isDisabled ? "Select or build a population first" : undefined}
+                            onClick={() => {
+                              // Source navigates to null (Library default), Inspect navigates to "inspect"
+                              const subView = subStep.key === "source" ? null : "inspect" as const;
+                              navigateTo("population", subView);
+                            }}
                             testId={`substep-population-${subStep.key}`}
                           />
                         );

@@ -33,7 +33,6 @@ function baseProps(overrides: Partial<WorkflowNavRailProps> = {}): WorkflowNavRa
     results: [],
     activeScenario: null,
     populations: [],
-    explorerPopulationId: null,
     activeSubView: null,
     ...overrides,
   };
@@ -333,102 +332,134 @@ describe("WorkflowNavRail - Not started state (Story 27.6)", () => {
 });
 
 // ============================================================================
-// Story 22.4: Population sub-steps
+// Story 22.4 → Story 27.8: Population sub-steps (restructured to Source → Inspect)
 // ============================================================================
 
-describe("WorkflowNavRail - Population sub-steps (Story 22.4)", () => {
+describe("WorkflowNavRail - Population sub-steps (Story 27.8)", () => {
   it("does NOT show sub-steps when Population stage is NOT active", () => {
     render(<WorkflowNavRail {...baseProps({ activeStage: "policies" })} />);
-    expect(screen.queryByTestId("substep-population-library")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("substep-population-build")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("substep-population-explorer")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("substep-population-source")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("substep-population-inspect")).not.toBeInTheDocument();
   });
 
   it("shows sub-steps when Population stage is active and rail is NOT collapsed", () => {
     render(<WorkflowNavRail {...baseProps({ activeStage: "population", collapsed: false })} />);
-    expect(screen.getByTestId("substep-population-library")).toBeInTheDocument();
-    expect(screen.getByTestId("substep-population-build")).toBeInTheDocument();
-    expect(screen.getByTestId("substep-population-explorer")).toBeInTheDocument();
+    expect(screen.getByTestId("substep-population-source")).toBeInTheDocument();
+    expect(screen.getByTestId("substep-population-inspect")).toBeInTheDocument();
   });
 
   it("does NOT show sub-steps when rail is collapsed", () => {
     render(<WorkflowNavRail {...baseProps({ activeStage: "population", collapsed: true })} />);
-    expect(screen.queryByTestId("substep-population-library")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("substep-population-build")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("substep-population-explorer")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("substep-population-source")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("substep-population-inspect")).not.toBeInTheDocument();
   });
 
-  it("shows all three sub-step labels: Library, Build, Explorer", () => {
+  it("shows two sub-step labels: Source, Inspect", () => {
     render(<WorkflowNavRail {...baseProps({ activeStage: "population" })} />);
-    expect(screen.getByText("Library")).toBeInTheDocument();
-    expect(screen.getByText("Build")).toBeInTheDocument();
-    expect(screen.getByText("Explorer")).toBeInTheDocument();
+    expect(screen.getByText("Source")).toBeInTheDocument();
+    expect(screen.getByText("Inspect")).toBeInTheDocument();
   });
 
-  it("calls navigateTo with population and null subView when Library is clicked", async () => {
+  it("calls navigateTo with population and null subView when Source is clicked", async () => {
     const navigateTo = vi.fn();
     render(<WorkflowNavRail {...baseProps({ activeStage: "population", navigateTo })} />);
-    await userEvent.click(screen.getByTestId("substep-population-library"));
+    await userEvent.click(screen.getByTestId("substep-population-source"));
     expect(navigateTo).toHaveBeenCalledWith("population", null);
   });
 
-  it("calls navigateTo with population and data-fusion when Build is clicked", async () => {
+  it("calls navigateTo with population and inspect when Inspect is clicked", async () => {
     const navigateTo = vi.fn();
-    render(<WorkflowNavRail {...baseProps({ activeStage: "population", navigateTo })} />);
-    await userEvent.click(screen.getByTestId("substep-population-build"));
-    expect(navigateTo).toHaveBeenCalledWith("population", "data-fusion");
+    render(<WorkflowNavRail {...baseProps({ activeStage: "population", navigateTo, selectedPopulationId: "fr-synthetic-2024" })} />);
+    await userEvent.click(screen.getByTestId("substep-population-inspect"));
+    expect(navigateTo).toHaveBeenCalledWith("population", "inspect");
   });
 
-  it("Explorer sub-step is disabled when explorerPopulationId is null", () => {
-    render(<WorkflowNavRail {...baseProps({ activeStage: "population", explorerPopulationId: null })} />);
-    const explorerButton = screen.getByTestId("substep-population-explorer");
-    expect(explorerButton).toHaveAttribute("aria-disabled", "true");
-    expect(explorerButton).toHaveClass("cursor-not-allowed", "opacity-50");
+  it("Inspect sub-step is disabled when no population is selected (selectedPopulationId is empty)", () => {
+    render(<WorkflowNavRail {...baseProps({ activeStage: "population", selectedPopulationId: "" })} />);
+    const inspectButton = screen.getByTestId("substep-population-inspect");
+    expect(inspectButton).toHaveAttribute("aria-disabled", "true");
+    expect(inspectButton).toHaveClass("cursor-not-allowed", "opacity-50");
   });
 
-  it("Explorer sub-step shows tooltip when disabled", () => {
-    render(<WorkflowNavRail {...baseProps({ activeStage: "population", explorerPopulationId: null })} />);
-    const explorerButton = screen.getByTestId("substep-population-explorer");
-    expect(explorerButton).toHaveAttribute("title", "Select a population to explore");
+  it("Inspect sub-step is disabled when activeScenario has no populationIds", () => {
+    const activeScenario = {
+      id: "s1", name: "S", version: "1.0", status: "ready", isBaseline: false,
+      baselineRef: null, portfolioName: null, populationIds: [],
+      engineConfig: { startYear: 2025, endYear: 2030, seed: null, investmentDecisionsEnabled: false, logitModel: null as null, discountRate: 0.03 },
+      policyType: null, lastRunId: null,
+    };
+    render(<WorkflowNavRail {...baseProps({ activeStage: "population", activeScenario })} />);
+    const inspectButton = screen.getByTestId("substep-population-inspect");
+    expect(inspectButton).toHaveAttribute("aria-disabled", "true");
   });
 
-  it("Explorer sub-step is NOT disabled when explorerPopulationId is set", () => {
-    render(<WorkflowNavRail {...baseProps({ activeStage: "population", explorerPopulationId: "fr-synthetic-2024" })} />);
-    const explorerButton = screen.getByTestId("substep-population-explorer");
-    expect(explorerButton).not.toHaveAttribute("aria-disabled", "true");
-    expect(explorerButton).not.toHaveClass("cursor-not-allowed");
+  it("Inspect sub-step shows tooltip when disabled", () => {
+    render(<WorkflowNavRail {...baseProps({ activeStage: "population", selectedPopulationId: "" })} />);
+    const inspectButton = screen.getByTestId("substep-population-inspect");
+    expect(inspectButton).toHaveAttribute("title", "Select or build a population first");
   });
 
-  it("does NOT call navigateTo when Explorer is clicked with no explorerPopulationId (disabled)", async () => {
+  it("Inspect sub-step is enabled when selectedPopulationId is set", () => {
+    render(<WorkflowNavRail {...baseProps({ activeStage: "population", selectedPopulationId: "fr-synthetic-2024" })} />);
+    const inspectButton = screen.getByTestId("substep-population-inspect");
+    expect(inspectButton).not.toHaveAttribute("aria-disabled", "true");
+    expect(inspectButton).not.toHaveClass("cursor-not-allowed");
+  });
+
+  it("Inspect sub-step is enabled when activeScenario.populationIds has value", () => {
+    const activeScenario = {
+      id: "s1", name: "S", version: "1.0", status: "ready", isBaseline: false,
+      baselineRef: null, portfolioName: null, populationIds: ["fr-synthetic-2024"],
+      engineConfig: { startYear: 2025, endYear: 2030, seed: null, investmentDecisionsEnabled: false, logitModel: null as null, discountRate: 0.03 },
+      policyType: null, lastRunId: null,
+    };
+    render(<WorkflowNavRail {...baseProps({ activeStage: "population", activeScenario })} />);
+    const inspectButton = screen.getByTestId("substep-population-inspect");
+    expect(inspectButton).not.toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("Inspect sub-step is enabled when dataFusionResult exists", () => {
+    const result = { success: true, summary: { record_count: 1000, column_count: 10, columns: [] }, step_log: [], assumption_chain: [], validation_result: null };
+    render(<WorkflowNavRail {...baseProps({ activeStage: "population", dataFusionResult: result })} />);
+    const inspectButton = screen.getByTestId("substep-population-inspect");
+    expect(inspectButton).not.toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("does NOT call navigateTo when Inspect is clicked with no population selected (disabled)", async () => {
     const navigateTo = vi.fn();
-    render(<WorkflowNavRail {...baseProps({ activeStage: "population", explorerPopulationId: null, navigateTo })} />);
-    await userEvent.click(screen.getByTestId("substep-population-explorer"));
+    render(<WorkflowNavRail {...baseProps({ activeStage: "population", selectedPopulationId: "", navigateTo })} />);
+    await userEvent.click(screen.getByTestId("substep-population-inspect"));
     expect(navigateTo).not.toHaveBeenCalled();
   });
 
-  it("calls navigateTo with population and population-explorer when Explorer is clicked with explorerPopulationId set", async () => {
-    const navigateTo = vi.fn();
-    render(<WorkflowNavRail {...baseProps({ activeStage: "population", explorerPopulationId: "fr-synthetic-2024", navigateTo })} />);
-    await userEvent.click(screen.getByTestId("substep-population-explorer"));
-    expect(navigateTo).toHaveBeenCalledWith("population", "population-explorer");
-  });
-
-  it("marks Library sub-step as active when activeSubView is null", () => {
+  it("marks Source sub-step as active when activeSubView is null", () => {
     render(<WorkflowNavRail {...baseProps({ activeStage: "population", activeSubView: null })} />);
-    const libraryButton = screen.getByTestId("substep-population-library");
+    const sourceButton = screen.getByTestId("substep-population-source");
     // Active sub-step should have text-slate-900 on the span element
-    expect(libraryButton.querySelector("span")).toHaveClass("text-slate-900");
+    expect(sourceButton.querySelector("span")).toHaveClass("text-slate-900");
   });
 
-  it("marks Build sub-step as active when activeSubView is data-fusion", () => {
+  it("marks Source sub-step as active when activeSubView is data-fusion (legacy Build within Source)", () => {
     render(<WorkflowNavRail {...baseProps({ activeStage: "population", activeSubView: "data-fusion" })} />);
-    const buildButton = screen.getByTestId("substep-population-build");
-    expect(buildButton.querySelector("span")).toHaveClass("text-slate-900");
+    const sourceButton = screen.getByTestId("substep-population-source");
+    expect(sourceButton.querySelector("span")).toHaveClass("text-slate-900");
   });
 
-  it("marks Explorer sub-step as active when activeSubView is population-explorer", () => {
+  it("marks Source sub-step as active when activeSubView is source", () => {
+    render(<WorkflowNavRail {...baseProps({ activeStage: "population", activeSubView: "source" })} />);
+    const sourceButton = screen.getByTestId("substep-population-source");
+    expect(sourceButton.querySelector("span")).toHaveClass("text-slate-900");
+  });
+
+  it("marks Inspect sub-step as active when activeSubView is inspect", () => {
+    render(<WorkflowNavRail {...baseProps({ activeStage: "population", activeSubView: "inspect" })} />);
+    const inspectButton = screen.getByTestId("substep-population-inspect");
+    expect(inspectButton.querySelector("span")).toHaveClass("text-slate-900");
+  });
+
+  it("marks Inspect sub-step as active when activeSubView is population-explorer (legacy)", () => {
     render(<WorkflowNavRail {...baseProps({ activeStage: "population", activeSubView: "population-explorer" })} />);
-    const explorerButton = screen.getByTestId("substep-population-explorer");
-    expect(explorerButton.querySelector("span")).toHaveClass("text-slate-900");
+    const inspectButton = screen.getByTestId("substep-population-inspect");
+    expect(inspectButton.querySelector("span")).toHaveClass("text-slate-900");
   });
 });

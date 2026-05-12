@@ -38,3 +38,29 @@
 | high | Optional affordance creates scope ambiguity**: Task 3.6 has zero specifications for badge UI | Removed Task 3.6 entirely - this affordance is out of scope for Story 27.5 |
 | medium | Silent failure scope ambiguous**: "Silent" undefined beyond toasts | Added explicit definition: "no thrown exceptions, no toast calls, no user-visible error UI" |
 | medium | Draft clear integration with activeScenario**: Unclear whether draft clear should modify scenario state | Added explicit clarification in Integration Points section |
+
+## Story 27-8 (2026-05-12)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | URL hash separator strategy internally inconsistent: AC-8 shows `#population?source` but `navigateTo` produces `${stage}/${subView}` | Added Dev Note clarifying slash format is used; AC-8 examples were illustrative only |
+| critical | LEGACY_POPULATION_SUBVIEW_MAP null-key JavaScript bug: `{ null: "source" }` stores string `"null"` not JS `null` | Updated migration pattern to use explicit null check in Dev Notes code example |
+| critical | SubView type union missing new values: Task 1 doesn't explicitly state to add `"source"` and `"inspect"` | Added explicit subtask 1.2a to update SubView type union |
+| critical | VALID_SUBVIEWS Set not updated: Adding to type union without updating runtime Set causes `isValidSubView()` to reject new values | Added subtask 1.2b to update VALID_SUBVIEWS Set |
+| critical | POPULATION_SUB_STEPS constant structure unspecified: Task 1.2 says "replace with two items" but doesn't specify exact structure | Added exact constant structure in Task 1.2c |
+| high | Empty state for Inspect view undefined: AC-5 doesn't specify behavior when user navigates to inspect without population selection | Added AC-9 for empty state behavior with explicit requirements |
+| high | Inspect disabled state logic incomplete: AC-2 gates on `selectedPopulationId` but doesn't address durable state (`activeScenario.populationIds`) which Story 27.6 prioritizes | Updated AC-2 to check both transient and durable state signals |
+| high | handleExplore behavior after story unspecified: "Explore" button currently navigates to "population-explorer" | Added to Edge Cases section specifying Explore should select population and navigate to inspect |
+| high | Task 5 is ghost task: `useScenarioPersistence.ts` only saves `activeStage`, not `activeSubView` | Removed Task 5 entirely; added note to Task 4 clarifying sub-view is URL-only |
+| high | E2E test regression not addressed: `population-workflow.test.tsx:205` hard-codes `#population/population-explorer` hash | Added subtask 5.7 to update E2E test |
+| high | STAGES.activeFor not in "Files to Modify": Adding `"source"` and `"inspect"` requires updating STAGES constant | Added subtask 1.5 to update STAGES.activeFor array |
+| medium | AppContext.test.tsx doesn't exist but referenced in Subtask 6.5 | Changed subtask 5.5 to reference App context testing in existing test files |
+| medium | WorkflowNavRail.explorerPopulationId prop dead code after story | Added to Task 3.7: remove dead prop |
+| medium | accessibility requirements incomplete: Task 3.3 mentions disabled + title but not ARIA attributes | Added aria-disabled requirement to Task 3.3 |
+| medium | Browser back button behavior untested | Added subtask 5.8 for back button test |
+| low | PopulationSubStep type will have phantom values after changing POPULATION_SUB_STEPS | Noted but deferred; type will be updated by implementation |
+| low | Consider renaming explorerPopulationId to align with new IA vocabulary | Noted as optional suggestion |
+| dismissed | AC-3 ambiguous about "Explore" button vs "Select" button | FALSE POSITIVE: Edge Cases section now explicitly covers this; Explore selects population and navigates to inspect |
+| dismissed | ContextualHelpPanel has test for activeSubView="data-fusion" that may break | FALSE POSITIVE: Story keeps "data-fusion" in SubView for legacy support (Build New button), so test remains valid |
+| dismissed | Story is overly prescriptive about implementation (reduces Negotiable score) | FALSE POSITIVE: For IA changes, specificity is appropriate to prevent implementation drift; INVEST criteria satisfied |
+| dismissed | DataFusionResult persistence unspecified | FALSE POSITIVE: AppContext manages dataFusionResult globally; it persists across sub-view changes by existing design, no story change needed |

@@ -52,9 +52,6 @@ function Workspace() {
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const [isNarrow, setIsNarrow] = useState(false);
 
-  // Story 22.4: Track explorer population ID from PopulationStageScreen
-  const [explorerPopulationId, setExplorerPopulationId] = useState<string | null>(null);
-
   // Layout effects — Story 22.7: Mobile breakpoint at 1024px (lg), matching WorkspaceLayout CSS
   useEffect(() => {
     const onResize = () => {
@@ -201,11 +198,7 @@ function Workspace() {
   const mainPanelContent = (
     <>
       {activeStage === "policies" ? <PoliciesStageScreen /> : null}
-      {activeStage === "population" ? (
-        <PopulationStageScreen
-          onExplorerPopulationChange={setExplorerPopulationId}
-        />
-      ) : null}
+      {activeStage === "population" ? <PopulationStageScreen /> : null}
       {activeStage === "engine" ? <EngineStageScreen /> : null}
       {activeStage === "results" ? resultsContent : null}
     </>
@@ -231,7 +224,6 @@ function Workspace() {
               results={results}
               activeScenario={activeScenario}
               populations={populations}
-              explorerPopulationId={explorerPopulationId}
               activeSubView={activeSubView}
             />
           </LeftPanel>

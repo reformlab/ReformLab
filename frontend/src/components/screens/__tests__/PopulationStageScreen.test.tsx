@@ -204,7 +204,7 @@ describe("PopulationStageScreen — Story 20.4", () => {
 
     it("renders PopulationExplorer with empty state when activeSubView is population-explorer but no id set", () => {
       renderScreen({ activeSubView: "population-explorer" });
-      expect(screen.getByText(/select a population from the library/i)).toBeInTheDocument();
+      expect(screen.getByText(/select a population to explore/i)).toBeInTheDocument();
     });
   });
 
@@ -282,14 +282,15 @@ describe("PopulationStageScreen — Story 20.4", () => {
       renderScreen({ navigateTo });
       const exploreButtons = screen.getAllByTitle(/full data explorer/i);
       await user.click(exploreButtons[0]);
-      expect(navigateTo).toHaveBeenCalledWith("population", "population-explorer");
+      // Story 27.8: Explore button now navigates to "inspect" instead of "population-explorer"
+      expect(navigateTo).toHaveBeenCalledWith("population", "inspect");
     });
 
     it("PopulationExplorer shows empty state when no population id is set (integration)", () => {
-      // With no explorerPopulationId in local state, the explorer shows the empty state message.
+      // With no effectiveSelectedId, the explorer shows the empty state message.
       // The three-tabs contract is verified by the standalone PopulationExplorer test below.
       renderScreen({ activeSubView: "population-explorer" });
-      expect(screen.getByText(/select a population from the library/i)).toBeInTheDocument();
+      expect(screen.getByText(/select a population to explore/i)).toBeInTheDocument();
     });
   });
 
@@ -428,6 +429,93 @@ describe("PopulationStageScreen — Story 20.4", () => {
         },
       });
       expect(screen.getByText("[Generated]")).toBeInTheDocument();
+    });
+  });
+
+  // ============================================================================
+  // Story 27.8: New two-step flow (Source → Inspect)
+  // ============================================================================
+
+  describe("Story 27.8: Source → Inspect flow", () => {
+    it("renders PopulationLibraryScreen when activeSubView is 'source'", () => {
+      renderScreen({ activeSubView: "source" });
+      expect(screen.getByText("Population Library")).toBeInTheDocument();
+    });
+
+    it("renders PopulationExplorer when activeSubView is 'inspect' with selected population", () => {
+      renderScreen({
+        activeSubView: "inspect",
+        selectedPopulationId: mockPopulations[0].id,
+      });
+      expect(screen.getByRole("tab", { name: /table/i })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: /profile/i })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: /summary/i })).toBeInTheDocument();
+    });
+
+    it("renders empty state when activeSubView is 'inspect' without selected population (AC-9)", () => {
+      renderScreen({ activeSubView: "inspect", selectedPopulationId: "" });
+      expect(screen.getByText(/select a population to explore/i)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /back to library/i })).toBeInTheDocument();
+    });
+
+    it("navigates to 'inspect' when Back to Library button is clicked", async () => {
+      const navigateTo = vi.fn();
+      const user = userEvent.setup();
+      renderScreen({ activeSubView: "inspect", selectedPopulationId: "", navigateTo });
+      await user.click(screen.getByRole("button", { name: /back to library/i }));
+      expect(navigateTo).toHaveBeenCalledWith("population", "source");
+    });
+
+    it("DataFusionWorkbench renders when activeSubView is 'data-fusion' (legacy support)", () => {
+      renderScreen({ activeSubView: "data-fusion" });
+      expect(screen.getByText("Data Fusion Workbench")).toBeInTheDocument();
+    });
+
+    it("DataFusionWorkbench renders when activeSubView is 'data-fusion' (legacy support)", () => {
+      renderScreen({ activeSubView: "data-fusion" });
+      expect(screen.getByText("Data Fusion Workbench")).toBeInTheDocument();
+    });
+
+    // AC-4 is tested via DataFusionWorkbench integration - handleDataFusionGenerated
+    // sets selectedPopulationId and navigates to 'inspect' when generation completes
+    it("Build New button navigates to 'data-fusion' sub-view", () => {
+      const navigateTo = vi.fn();
+      renderScreen({ navigateTo });
+      const buildNewButton = screen.getByRole("button", { name: /build new/i });
+      buildNewButton.click();
+      expect(navigateTo).toHaveBeenCalledWith("population", "data-fusion");
+    });
+  });
+
+  // ============================================================================
+  // Story 27.8: URL hash migration tests (AppContext integration)
+  // ============================================================================
+
+  describe("Story 27.8: URL hash migration (via AppContext)", () => {
+    it("activeSubView 'inspect' renders PopulationExplorer when population selected", () => {
+      renderScreen({
+        activeSubView: "inspect",
+        selectedPopulationId: mockPopulations[0].id,
+      });
+      expect(screen.getByRole("tab", { name: /table/i })).toBeInTheDocument();
+    });
+
+    it("activeSubView 'source' renders PopulationLibraryScreen", () => {
+      renderScreen({ activeSubView: "source" });
+      expect(screen.getByText("Population Library")).toBeInTheDocument();
+    });
+
+    it("activeSubView null (default) renders PopulationLibraryScreen", () => {
+      renderScreen({ activeSubView: null });
+      expect(screen.getByText("Population Library")).toBeInTheDocument();
+    });
+
+    it("legacy 'population-explorer' sub-view renders PopulationExplorer", () => {
+      renderScreen({
+        activeSubView: "population-explorer",
+        selectedPopulationId: mockPopulations[0].id,
+      });
+      expect(screen.getByRole("tab", { name: /table/i })).toBeInTheDocument();
     });
   });
 });
