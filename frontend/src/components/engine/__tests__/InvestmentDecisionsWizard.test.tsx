@@ -636,5 +636,33 @@ describe("InvestmentDecisionsWizard — Story 22.6", () => {
       // Should have aria-disabled when disabled
       expect(reviewButton).toHaveAttribute("aria-disabled", "true");
     });
+
+    it("toggle-enable flow: after enabling via toggle, Model step breadcrumb is clickable from Review (AC-1, AC-3)", async () => {
+      const user = userEvent.setup();
+      // Start DISABLED — this is the gap in all other tests
+      const { rerender } = renderWizard(makeConfig({ investmentDecisionsEnabled: false }));
+
+      const toggle = screen.getByRole("checkbox");
+      await user.click(toggle);
+
+      // Simulate parent update after toggle
+      rerender(
+        <InvestmentDecisionsWizard
+          engineConfig={makeConfig({ investmentDecisionsEnabled: true, logitModel: "multinomial_logit" })}
+          onUpdateEngineConfig={mockOnUpdateEngineConfig}
+        />,
+      );
+
+      // Navigate to Review (Next × 2 from Model step)
+      await user.click(screen.getByRole("button", { name: /^Next$/i }));
+      await user.click(screen.getByRole("button", { name: /^Next$/i }));
+      expect(screen.getByText("Review Configuration")).toBeInTheDocument();
+
+      // Model breadcrumb must be clickable (was broken before fix)
+      const modelButton = screen.getByRole("button", { name: /^model$/i });
+      expect(modelButton).not.toBeDisabled();
+      await user.click(modelButton);
+      expect(screen.getByText("Choose Logit Model")).toBeInTheDocument();
+    });
   });
 });

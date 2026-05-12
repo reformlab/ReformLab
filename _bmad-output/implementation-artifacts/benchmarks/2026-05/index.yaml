@@ -53,4 +53,31 @@ records:
   provider: claude-subprocess
   created_at: '2026-05-12T22:29:47.260959+00:00'
   workflow_id: dev-story
-updated_at: '2026-05-12T22:29:47.265814+00:00'
+- record_id: 532ede3c-4f98-4448-80be-9f8ec8dc40aa
+  path: eval-27-7-a-20260512T223521Z.yaml
+  epic: 27
+  story: '7'
+  role: validator
+  role_id: a
+  provider: claude-subprocess
+  created_at: '2026-05-12T22:35:21.975494+00:00'
+  workflow_id: code-review
+- record_id: f315bf94-baec-45ff-92d7-2f4e7e5abb11
+  path: eval-27-7-b-20260512T223521Z.yaml
+  epic: 27
+  story: '7'
+  role: validator
+  role_id: b
+  provider: claude-subprocess
+  created_at: '2026-05-12T22:35:21.994297+00:00'
+  workflow_id: code-review
+- record_id: 5d37e2aa-5baa-4e81-9824-3d193d2789c7
+  path: eval-27-7-synthesizer-20260512T223835Z.yaml
+  epic: 27
+  story: '7'
+  role: synthesizer
+  role_id: null
+  provider: claude-subprocess
+  created_at: '2026-05-12T22:38:35.704968+00:00'
+  workflow_id: code-review-synthesis
+updated_at: '2026-05-12T22:38:35.711069+00:00'

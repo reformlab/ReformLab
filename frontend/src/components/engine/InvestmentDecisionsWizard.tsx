@@ -50,9 +50,7 @@ const LOGIT_MODEL_DESCRIPTIONS = {
 
 export function InvestmentDecisionsWizard({ engineConfig, onUpdateEngineConfig }: InvestmentDecisionsWizardProps) {
   const [activeStep, setActiveStep] = useState<WizardStep>(0);
-  const [visitedSteps, setVisitedSteps] = useState<Set<WizardStep>>(
-    new Set(engineConfig.investmentDecisionsEnabled ? [0, 1] : [0])
-  );
+  const [visitedSteps, setVisitedSteps] = useState<Set<WizardStep>>(new Set([0]));
 
   // Track the previous model value to preserve it on re-enable
   const previousLogitModelRef = useRef<EngineConfig["logitModel"]>(engineConfig.logitModel);
@@ -75,7 +73,7 @@ export function InvestmentDecisionsWizard({ engineConfig, onUpdateEngineConfig }
     () => {
       if (isEnabled && activeStep === 0) {
         setActiveStep(1);  // Move to Model step when enabled externally
-        setVisitedSteps((prev) => new Set([...prev, 1]));  // Mark Model as visited
+        setVisitedSteps((prev) => prev.has(1) ? prev : new Set([...prev, 1]));  // Mark Model as visited only if not already
       } else if (!isEnabled && activeStep > 0) {
         setActiveStep(0);  // Return to Enable step when disabled
       }
@@ -124,9 +122,10 @@ export function InvestmentDecisionsWizard({ engineConfig, onUpdateEngineConfig }
       investmentDecisionsEnabled: enabled,
       logitModel: newLogitModel,
     });
-    // When enabling, auto-advance to Model step
+    // When enabling, auto-advance to Model step and mark as visited
     if (enabled && activeStep === 0) {
       setActiveStep(1);
+      setVisitedSteps((prev) => new Set([...prev, 1]));
     }
   };
 
@@ -161,21 +160,20 @@ export function InvestmentDecisionsWizard({ engineConfig, onUpdateEngineConfig }
       <div className="flex items-center gap-3 mb-4">
         {STEP_LABELS.map((label, idx) => {
           const step = idx as WizardStep;
-          const isCompleted = step < activeStep || (step === activeStep && visitedSteps.has(step) && step > 0);
+          const isCompleted = step < activeStep;
           const isCurrent = step === activeStep;
           const isVisited = visitedSteps.has(step);
-          const isClickable = isEnabled && isVisited;
           const isDisabled = !isEnabled || (!isVisited && step !== activeStep);
 
           return (
             <div key={label} className="flex items-center gap-1">
               <button
                 type="button"
-                onClick={() => isClickable && goToStep(step)}
+                onClick={() => goToStep(step)}
                 disabled={isDisabled}
                 aria-label={label}
                 aria-current={isCurrent ? "step" : undefined}
-                aria-disabled={isDisabled}
+                aria-disabled={isDisabled ? true : undefined}
                 className={`
                   flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium border-2
                   ${isDisabled
@@ -186,7 +184,6 @@ export function InvestmentDecisionsWizard({ engineConfig, onUpdateEngineConfig }
                         ? "bg-blue-500 border-blue-500 text-white"
                         : "bg-white border-slate-300 text-slate-600 hover:border-slate-400 transition-colors"
                   }
-                  ${isClickable ? "cursor-pointer" : ""}
                 `}
               >
                 {isCompleted ? <Check className="h-4 w-4" /> : idx + 1}
