@@ -746,6 +746,8 @@ export function PoliciesStageScreen() {
       skipNextDraftSaveRef.current = true;
       saveCompositionDraft(null);
     },
+    // Story 27.9: Pass categories for type-category naming
+    categories,
   });
 
   const {

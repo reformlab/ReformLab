@@ -64,3 +64,23 @@
 | dismissed | ContextualHelpPanel has test for activeSubView="data-fusion" that may break | FALSE POSITIVE: Story keeps "data-fusion" in SubView for legacy support (Build New button), so test remains valid |
 | dismissed | Story is overly prescriptive about implementation (reduces Negotiable score) | FALSE POSITIVE: For IA changes, specificity is appropriate to prevent implementation drift; INVEST criteria satisfied |
 | dismissed | DataFusionResult persistence unspecified | FALSE POSITIVE: AppContext manages dataFusionResult globally; it persists across sub-view changes by existing design, no story change needed |
+
+## Story 27-9 (2026-05-13)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | AC-7 regex typo: `[a-z7-9]` excludes digits 0-6 | Changed to `[a-z0-9]` in AC-7 |
+| critical | Parameter schemas source not specified - blocks AC-5 implementation | Added ParameterSchema interface specification and resolution notes |
+| critical | TYPE_SLUGS mapping incomplete - "Add more as needed" is vague | Added canonical source reference and fallback rules |
+| critical | "{Type} — {Category}" pattern detection underspecified | Added exact regex pattern and matching rules |
+| critical | Template.type values not documented | Added template type specification section |
+| critical | Policy type fallback conditions undefined | Added explicit fallback rules with examples |
+| high | AC-4 says "first policy's category" but algorithm uses `getDominantCategory()` | Clarified algorithm uses dominant category for consistency |
+| high | Task 3.4 contradicts Dev Notes on AC-6 | Removed Task 3.4, added note that AC-6 already satisfied |
+| high | Category state handling (null vs []) not fully specified | Added explicit null/empty handling in algorithm |
+| high | generateScenarioSuggestion not addressed post-signature change | Added note about intentional behavior preservation |
+| medium | Truncation strategy for 48-char limit unclear | Added explicit truncation strategy (skip enrichment if exceeds) |
+| medium | Percentage decimal convention not explicit | Added explicit note about decimal storage (0.2 = 20%) |
+| medium | naming.test.ts file creation instruction misleading | Changed to "Add to existing file" not "NEW FILE" |
+| low | Category label vs ID terminology inconsistency | Clarified usage (slugify label, use ID for lookups) |
+| low | Validation test examples missing | Added concrete validation test examples |

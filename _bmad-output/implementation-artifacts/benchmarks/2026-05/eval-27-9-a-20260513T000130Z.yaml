@@ -1,0 +1,144 @@
+record_id: bce42a50-6bf3-4531-b16c-94288b5a9b94
+created_at: '2026-05-13T00:01:30.793055+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 27
+  story_num: 9
+  title: Story 27.9
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-05-12T23:54:31.124731Z'
+  end_time: '2026-05-12T23:55:39.206731Z'
+  duration_ms: 68082
+  input_tokens: 0
+  output_tokens: 6045
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 24181
+  heading_count: 48
+  list_depth_max: 2
+  code_block_count: 27
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 19.4'
+  - 🎯 Ruthless Story Validation 27.9
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 19.4 → REJECT'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Missing Type-to-Slug Mapping Specification
+  - 2. Ambiguous "{Type} — {Category}" Pattern Detection
+  - 3. No Parameter Schema Source Specified
+  - 4. Undefined Fallback Policy Types
+  - 5. Missing Template.type Format Specification
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Add Truncation Strategy for Parameter Enrichment
+  - 2. Specify Schema Fallback in Parameter Extraction
+  - 3. Add Parameter Priority Examples
+  - 4. Clarify Category Label vs ID Usage
+  - 5. Add Freeze Rule Reset Timing Specification
+  - 6. Specify Null vs Empty Categories Handling
+  - 7. Add Validation Error Example
+  - ✨ Optimizations (Nice to Have)
+  - 1. Memoization Opportunity for Category Lookup
+  - 2. Early Exit for Single Policy Without Parameters
+  - 3. Slug Caching for Repeated Calls
+  - 🤖 LLM Optimization Improvements
+  - 1. Reduce Verbose Edge Cases Section
+  - Edge Cases
+  - Edge Cases
+  - 2. Consolidate Type Normalization Section
+  - Type Normalization
+  - Type Normalization
+  - 3. Simplify New Naming Algorithm
+  - New Naming Algorithm
+  - 4. Condense Manual-Edit Freeze Section
+  - Manual-Edit Freeze Implementation
+  - Manual-Edit Freeze (AC-6)
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 9208c26e66eb
+findings:
+  total_count: 22
+  by_severity:
+    critical: 5
+    major: 7
+    minor: 3
+    nit: 7
+  by_category:
+    security: 0
+    performance: 3
+    correctness: 2
+    completeness: 8
+    clarity: 9
+    testability: 2
+  has_fix_count: 22
+  has_location_count: 20
+  has_evidence_count: 18
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 15
+  confidence_phrases_count: 4
+linguistic:
+  avg_sentence_length: 28.22222222222222
+  vocabulary_richness: 0.2555774278215223
+  flesch_reading_ease: 12.182090981970134
+  vague_terms_count: 3
+  formality_score: 0.7
+  sentiment: neutral
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.85
+  evidence_quality: 0.82
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false

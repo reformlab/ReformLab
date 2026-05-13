@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 import { ApiError } from "@/api/client";
 import { createPortfolio, updatePortfolio } from "@/api/portfolios";
-import type { PortfolioConflict } from "@/api/types";
+import type { PortfolioConflict, Category } from "@/api/types";
 import type { CompositionEntry } from "@/components/simulation/PortfolioCompositionPanel";
 import { validatePortfolioName } from "@/components/simulation/portfolioValidation";
 import type { Template } from "@/data/mock-data";
@@ -29,6 +29,8 @@ interface UsePortfolioSaveDialogParams {
   refetchPortfolios: () => Promise<void>;
   // Story 27.5: Callback to clear draft after successful save (AC-4)
   onSavedSuccessfully?: () => void;
+  // Story 27.9: Categories for type-category naming
+  categories?: Category[] | null;
 }
 
 function buildPortfolioPolicies(
@@ -67,6 +69,7 @@ export function usePortfolioSaveDialog({
   setSelectedPortfolioName,
   refetchPortfolios,
   onSavedSuccessfully,
+  categories,
 }: UsePortfolioSaveDialogParams) {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [portfolioSaveName, setPortfolioSaveName] = useState("");
@@ -77,18 +80,18 @@ export function usePortfolioSaveDialog({
 
   useEffect(() => {
     if (!saveDialogOpen || saveDialogNameManuallyEdited) return;
-    const suggestion = generatePortfolioSuggestion(templates, composition);
+    const suggestion = generatePortfolioSuggestion(templates, composition, categories);
     setPortfolioSaveName(suggestion);
-  }, [composition, templates, saveDialogOpen, saveDialogNameManuallyEdited]);
+  }, [composition, templates, saveDialogOpen, saveDialogNameManuallyEdited, categories]);
 
   const openSaveDialog = useCallback(() => {
-    const suggestion = generatePortfolioSuggestion(templates, composition);
+    const suggestion = generatePortfolioSuggestion(templates, composition, categories);
     setPortfolioSaveName(suggestion);
     setPortfolioSaveDesc("");
     setSaveNameError(null);
     setSaveDialogNameManuallyEdited(false);
     setSaveDialogOpen(true);
-  }, [composition, templates]);
+  }, [composition, templates, categories]);
 
   const closeSaveDialog = useCallback(() => {
     setSaveDialogOpen(false);

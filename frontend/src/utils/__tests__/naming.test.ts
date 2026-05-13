@@ -24,11 +24,16 @@ import {
   generateScenarioSuggestion,
   generatePortfolioCloneName,
   generateScenarioCloneName,
+  extractTypeAndCategory,
+  getDominantCategory,
+  extractPrimaryParameterValue,
+  formatParameterForName,
 } from "@/utils/naming";
 import { validatePortfolioName } from "@/components/simulation/portfolioValidation";
 import type { Template } from "@/data/mock-data";
 import type { Population } from "@/data/mock-data";
 import type { CompositionEntry } from "@/components/simulation/PortfolioCompositionPanel";
+import type { Category } from "@/api/types";
 
 // ============================================================================
 // Mock data
@@ -47,6 +52,22 @@ const mockPopulations: Population[] = [
   { id: "eu-silc-2022", name: "EU-SILC France Extract 2022", households: 50_000, source: "Eurostat", year: 2022 },
 ];
 
+// Story 27.9: Mock categories for type-category naming
+const mockCategories: Category[] = [
+  { id: "carbon-emissions", label: "Carbon Emissions", columns: [], compatible_types: ["tax"], formula_explanation: "", description: "" },
+  { id: "vehicle-emissions", label: "Vehicle Emissions", columns: [], compatible_types: ["tax", "subsidy"], formula_explanation: "", description: "" },
+  { id: "energy-consumption", label: "Energy Consumption", columns: [], compatible_types: ["subsidy"], formula_explanation: "", description: "" },
+  { id: "income", label: "Income", columns: [], compatible_types: ["tax", "transfer"], formula_explanation: "", description: "" },
+];
+
+// Story 27.9: Templates with category_id for testing
+const mockTemplatesWithCategories: Template[] = [
+  { id: "carbon-tax-flat", name: "Carbon Tax — Flat Rate", type: "carbon-tax", parameterCount: 8, description: "Flat carbon tax", parameterGroups: ["Rates"], is_custom: false, runtime_availability: "live_ready", availability_reason: null, category_id: "carbon-emissions" },
+  { id: "carbon-tax-progressive", name: "Carbon Tax — Progressive", type: "carbon-tax", parameterCount: 12, description: "Progressive carbon tax", parameterGroups: ["Rates"], is_custom: false, runtime_availability: "live_ready", availability_reason: null, category_id: "carbon-emissions" },
+  { id: "subsidy-energy", name: "Energy Efficiency Subsidy", type: "subsidy", parameterCount: 6, description: "Energy subsidy", parameterGroups: ["Redistribution"], is_custom: false, runtime_availability: "live_ready", availability_reason: null, category_id: "energy-consumption" },
+  { id: "feebate-vehicle", name: "Vehicle Feebate", type: "feebate", parameterCount: 9, description: "Vehicle feebate", parameterGroups: ["Redistribution"], is_custom: false, runtime_availability: "live_ready", availability_reason: null, category_id: "vehicle-emissions" },
+];
+
 const makeComposition = (templateIds: string[]): CompositionEntry[] =>
   templateIds.map((id) => {
     const template = mockTemplates.find((t) => t.id === id);
@@ -57,6 +78,18 @@ const makeComposition = (templateIds: string[]): CompositionEntry[] =>
       rateSchedule: {},
     };
   });
+
+// Story 27.9: Helper to create composition with from-scratch policy
+const makeFromScratchComposition = (policyType: string, categoryId: string): CompositionEntry[] => [
+  {
+    templateId: "",
+    name: `${policyType.charAt(0).toUpperCase() + policyType.slice(1)} — Test`,
+    parameters: {},
+    rateSchedule: {},
+    policy_type: policyType,
+    category_id: categoryId,
+  },
+];
 
 // ============================================================================
 // slugify() tests
@@ -347,6 +380,342 @@ describe("generatePortfolioCloneName()", () => {
     const existingNames = new Set(["other-portfolio-copy"]);
     const result = generatePortfolioCloneName("my-portfolio", existingNames);
     expect(result).toBe("my-portfolio-copy");
+  });
+});
+
+// ============================================================================
+// Story 27.9: extractTypeAndCategory() tests
+// ============================================================================
+
+describe("extractTypeAndCategory()", () => {
+  it("extracts type and category from template policy", () => {
+    const entry: CompositionEntry = {
+      templateId: "carbon-tax-flat",
+      name: "Carbon Tax — Flat Rate",
+      parameters: {},
+      rateSchedule: {},
+    };
+    const result = extractTypeAndCategory(entry, mockTemplatesWithCategories, mockCategories);
+    expect(result).toEqual({
+      policyType: "tax",
+      categoryId: "carbon-emissions",
+      categoryLabel: "Carbon Emissions",
+    });
+  });
+
+  it("extracts type and category from from-scratch policy", () => {
+    const entry: CompositionEntry = {
+      templateId: "",
+      name: "Tax — Test",
+      parameters: {},
+      rateSchedule: {},
+      policy_type: "tax",
+      category_id: "income",
+    };
+    const result = extractTypeAndCategory(entry, mockTemplatesWithCategories, mockCategories);
+    expect(result).toEqual({
+      policyType: "tax",
+      categoryId: "income",
+      categoryLabel: "Income",
+    });
+  });
+
+  it("returns 'policy' type when template.type not recognized", () => {
+    const entry: CompositionEntry = {
+      templateId: "unknown-template",
+      name: "Unknown Template",
+      parameters: {},
+      rateSchedule: {},
+    };
+    const templatesWithUnknown: Template[] = [
+      { id: "unknown-template", name: "Unknown", type: "unknown-type", parameterCount: 0, description: "", parameterGroups: [], is_custom: false, runtime_availability: "live_ready", availability_reason: null },
+    ];
+    const result = extractTypeAndCategory(entry, templatesWithUnknown, mockCategories);
+    expect(result.policyType).toBe("policy");
+  });
+
+  it("returns 'other' category when category_id not found", () => {
+    const entry: CompositionEntry = {
+      templateId: "carbon-tax-flat",
+      name: "Carbon Tax",
+      parameters: {},
+      rateSchedule: {},
+    };
+    const templatesWithBadCategory: Template[] = [
+      { ...mockTemplatesWithCategories[0]!, category_id: "non-existent" },
+    ];
+    const result = extractTypeAndCategory(entry, templatesWithBadCategory, mockCategories);
+    expect(result.categoryLabel).toBe("other");
+  });
+
+  it("handles null categories gracefully", () => {
+    const entry: CompositionEntry = {
+      templateId: "carbon-tax-flat",
+      name: "Carbon Tax",
+      parameters: {},
+      rateSchedule: {},
+    };
+    const result = extractTypeAndCategory(entry, mockTemplatesWithCategories, null);
+    expect(result.policyType).toBe("tax");
+    expect(result.categoryId).toBeUndefined();
+    expect(result.categoryLabel).toBe("other");
+  });
+});
+
+// ============================================================================
+// Story 27.9: getDominantCategory() tests
+// ============================================================================
+
+describe("getDominantCategory()", () => {
+  it("returns most common category when clear winner", () => {
+    const composition = makeComposition(["carbon-tax-flat", "carbon-tax-progressive", "subsidy-energy"]);
+    const result = getDominantCategory(composition, mockTemplatesWithCategories, mockCategories);
+    expect(result.categoryLabel).toBe("Carbon Emissions"); // 2 carbon, 1 energy
+  });
+
+  it("returns first policy's category on tie", () => {
+    const composition = makeComposition(["carbon-tax-flat", "subsidy-energy"]);
+    const result = getDominantCategory(composition, mockTemplatesWithCategories, mockCategories);
+    expect(result.categoryLabel).toBe("Carbon Emissions"); // First policy's category
+  });
+
+  it("handles single policy composition", () => {
+    const composition = makeComposition(["subsidy-energy"]);
+    const result = getDominantCategory(composition, mockTemplatesWithCategories, mockCategories);
+    expect(result.categoryLabel).toBe("Energy Consumption");
+  });
+
+  it("handles null categories", () => {
+    const composition = makeComposition(["carbon-tax-flat", "subsidy-energy"]);
+    const result = getDominantCategory(composition, mockTemplatesWithCategories, null);
+    expect(result.categoryLabel).toBe("other");
+  });
+
+  it("handles from-scratch policies", () => {
+    const composition: CompositionEntry[] = [
+      { templateId: "", name: "Tax — Income", parameters: {}, rateSchedule: {}, policy_type: "tax", category_id: "income" },
+      { templateId: "carbon-tax-flat", name: "Carbon Tax", parameters: {}, rateSchedule: {} },
+    ];
+    const templatesWithCarbon: Template[] = [mockTemplatesWithCategories[0]!];
+    const result = getDominantCategory(composition, templatesWithCarbon, mockCategories);
+    expect(result.categoryLabel).toBe("Income"); // First policy's category (tie)
+  });
+});
+
+// ============================================================================
+// Story 27.9: generatePortfolioSuggestion() with type-category tests
+// ============================================================================
+
+describe("generatePortfolioSuggestion() - Story 27.9 type-category naming", () => {
+  describe("single policy naming", () => {
+    it("uses 'type-category' pattern for single template policy", () => {
+      const composition = makeComposition(["carbon-tax-flat"]);
+      const result = generatePortfolioSuggestion(mockTemplatesWithCategories, composition, mockCategories);
+      expect(result).toBe("tax-carbon-emissions");
+    });
+
+    it("uses 'type-category' pattern for single subsidy policy", () => {
+      const composition = makeComposition(["subsidy-energy"]);
+      const result = generatePortfolioSuggestion(mockTemplatesWithCategories, composition, mockCategories);
+      expect(result).toBe("subsidy-energy-consumption");
+    });
+
+    it("reuses from-scratch policy name when already in '{Type} — {Category}' format", () => {
+      const composition = makeFromScratchComposition("tax", "income");
+      const result = generatePortfolioSuggestion([], composition, mockCategories);
+      expect(result).toBe("tax-income");
+    });
+
+    it("falls back to entry name when template not found", () => {
+      const composition: CompositionEntry[] = [
+        { templateId: "unknown", name: "Custom Policy Name", parameters: {}, rateSchedule: {} },
+      ];
+      const result = generatePortfolioSuggestion([], composition, mockCategories);
+      expect(result).toBe("custom-policy-name");
+    });
+  });
+
+  describe("multi-policy naming", () => {
+    it("uses '{category}-policies' for same-category compositions", () => {
+      const composition = makeComposition(["carbon-tax-flat", "carbon-tax-progressive"]);
+      const result = generatePortfolioSuggestion(mockTemplatesWithCategories, composition, mockCategories);
+      expect(result).toBe("carbon-emissions-policies");
+    });
+
+    it("uses '{dominant-category}-plus-{N-1}-more' for mixed categories", () => {
+      const composition = makeComposition(["carbon-tax-flat", "subsidy-energy"]);
+      const result = generatePortfolioSuggestion(mockTemplatesWithCategories, composition, mockCategories);
+      expect(result).toBe("carbon-emissions-plus-1-more");
+    });
+
+    it("correctly counts 'more' for 3+ mixed policies", () => {
+      const composition = makeComposition(["carbon-tax-flat", "carbon-tax-progressive", "subsidy-energy", "feebate-vehicle"]);
+      const result = generatePortfolioSuggestion(mockTemplatesWithCategories, composition, mockCategories);
+      expect(result).toBe("carbon-emissions-plus-2-more"); // 2 carbon, 2 others
+    });
+  });
+
+  describe("backward compatibility", () => {
+    it("falls back to old naming when categories is null", () => {
+      const composition = makeComposition(["carbon-tax-flat"]);
+      const result = generatePortfolioSuggestion(mockTemplatesWithCategories, composition, null);
+      expect(result).toBe("carbon-tax-flat-rate"); // Old behavior: slugified template name
+    });
+
+    it("falls back to old naming when categories is empty array", () => {
+      const composition = makeComposition(["carbon-tax-flat"]);
+      const result = generatePortfolioSuggestion(mockTemplatesWithCategories, composition, []);
+      expect(result).toBe("carbon-tax-flat-rate"); // Old behavior: slugified template name
+    });
+
+    it("generateScenarioSuggestion still works with updated signature", () => {
+      const composition = makeComposition(["carbon-tax-flat"]);
+      const result = generateScenarioSuggestion(
+        null,
+        "fr-synthetic-2024",
+        mockPopulations,
+        mockTemplates,
+        composition,
+      );
+      expect(result).toBe("carbon-tax-flat-rate (FR Synthetic 2024)");
+    });
+  });
+
+  describe("validation compliance", () => {
+    it("all suggestions pass validatePortfolioName regex", () => {
+      const testCases = [
+        { composition: makeComposition(["carbon-tax-flat"]), desc: "single policy" },
+        { composition: makeComposition(["carbon-tax-flat", "carbon-tax-progressive"]), desc: "same category" },
+        { composition: makeComposition(["carbon-tax-flat", "subsidy-energy"]), desc: "mixed category" },
+        { composition: makeFromScratchComposition("tax", "income"), desc: "from-scratch" },
+        { composition: [], desc: "empty" },
+      ];
+
+      for (const { composition, desc } of testCases) {
+        const suggestion = generatePortfolioSuggestion(mockTemplatesWithCategories, composition, mockCategories);
+        const validationError = validatePortfolioName(suggestion);
+        expect(validationError, `Suggestion "${suggestion}" (${desc}) should pass validation`).toBeNull();
+      }
+    });
+
+    it("all suggestions are <= 64 characters", () => {
+      const composition = makeComposition(["carbon-tax-flat", "carbon-tax-progressive", "subsidy-energy"]);
+      const result = generatePortfolioSuggestion(mockTemplatesWithCategories, composition, mockCategories);
+      expect(result.length).toBeLessThanOrEqual(64);
+    });
+
+    it("all suggestions are lowercase", () => {
+      const composition = makeComposition(["carbon-tax-flat"]);
+      const result = generatePortfolioSuggestion(mockTemplatesWithCategories, composition, mockCategories);
+      expect(result).toBe(result.toLowerCase());
+    });
+
+    it("all suggestions contain only alphanumeric and hyphens", () => {
+      const composition = makeComposition(["carbon-tax-flat", "subsidy-energy"]);
+      const result = generatePortfolioSuggestion(mockTemplatesWithCategories, composition, mockCategories);
+      expect(result).toMatch(/^[a-z0-9-]+$/);
+    });
+  });
+
+  describe("Story 27.9: parameter-based enrichment", () => {
+    // Mock parameter schemas for testing
+    const mockParameterSchemas: Record<string, ReturnType<typeof import("@/data/mock-data").Parameter>[]> = {
+      "carbon-tax-flat": [
+        { id: "tax_rate", label: "Tax Rate", value: 44, baseline: 44, unit: "€/tonne", group: "Rates", type: "slider" },
+        { id: "exemption_threshold", label: "Exemption Threshold", value: 15000, baseline: 10000, unit: "€", group: "Exemptions", type: "number" },
+      ],
+      "subsidy-energy": [
+        { id: "subsidy_rate", label: "Subsidy Rate", value: 0.2, baseline: 0.15, unit: "%", group: "Rates", type: "slider" },
+      ],
+      "feebate-vehicle": [
+        { id: "budget", label: "Program Budget", value: 500000, baseline: 1000000, unit: "€", group: "Funding", type: "number" },
+      ],
+    };
+
+    it("includes rate parameter in name for single policy", () => {
+      const composition: CompositionEntry[] = [
+        { templateId: "carbon-tax-flat", name: "Carbon Tax", parameters: { tax_rate: 44 }, rateSchedule: {} },
+      ];
+      const result = generatePortfolioSuggestion(mockTemplatesWithCategories, composition, mockCategories, mockParameterSchemas);
+      expect(result).toBe("tax-carbon-emissions-44eur");
+    });
+
+    it("includes threshold parameter in name for single policy", () => {
+      const composition: CompositionEntry[] = [
+        { templateId: "carbon-tax-flat", name: "Carbon Tax", parameters: { exemption_threshold: 15000 }, rateSchedule: {} },
+      ];
+      const result = generatePortfolioSuggestion(mockTemplatesWithCategories, composition, mockCategories, mockParameterSchemas);
+      expect(result).toBe("tax-carbon-emissions-15000eur");
+    });
+
+    it("includes percentage unit as 'pct' for rate parameters", () => {
+      const composition: CompositionEntry[] = [
+        { templateId: "subsidy-energy", name: "Energy Subsidy", parameters: { subsidy_rate: 0.2 }, rateSchedule: {} },
+      ];
+      const result = generatePortfolioSuggestion(mockTemplatesWithCategories, composition, mockCategories, mockParameterSchemas);
+      expect(result).toBe("subsidy-energy-consumption-20pct");
+    });
+
+    it("skips enrichment if adding parameter would exceed 48 chars", () => {
+      const composition: CompositionEntry[] = [
+        { templateId: "carbon-tax-flat", name: "Carbon Tax", parameters: { exemption_threshold: 15000 }, rateSchedule: {} },
+      ];
+      // Create a very long category label
+      const longCategories: Category[] = [
+        { id: "long", label: "Very Long Category Name That Would Exceed Limit", columns: [], compatible_types: [], formula_explanation: "", description: "" },
+      ];
+      const templatesWithLongCategory: Template[] = [
+        { ...mockTemplatesWithCategories[0]!, category_id: "long" },
+      ];
+      const longSchemas: Record<string, ReturnType<typeof import("@/data/mock-data").Parameter>[]> = {
+        "carbon-tax-flat": [
+          { id: "exemption_threshold", label: "Exemption", value: 15000, baseline: 10000, unit: "€", group: "Exemptions", type: "number" },
+        ],
+      };
+      const result = generatePortfolioSuggestion(templatesWithLongCategory, composition, longCategories, longSchemas);
+      // Base name is already > 48 chars, so enrichment is skipped
+      expect(result).toBe("tax-very-long-category-name-that-would-exceed-limit");
+    });
+
+    it("returns null when no parameters configured", () => {
+      const composition: CompositionEntry[] = [
+        { templateId: "carbon-tax-flat", name: "Carbon Tax", parameters: {}, rateSchedule: {} },
+      ];
+      const result = extractPrimaryParameterValue(composition[0]!, mockParameterSchemas);
+      expect(result).toBeNull();
+    });
+
+    it("returns null when parameter schemas not available", () => {
+      const composition: CompositionEntry[] = [
+        { templateId: "carbon-tax-flat", name: "Carbon Tax", parameters: { tax_rate: 44 }, rateSchedule: {} },
+      ];
+      const result = extractPrimaryParameterValue(composition[0]!, null);
+      expect(result).toBeNull();
+    });
+
+    it("formats percentage unit correctly (0.2 → '20pct')", () => {
+      const result = formatParameterForName(0.2, "%");
+      expect(result).toBe("20pct");
+    });
+
+    it("formats currency unit correctly (44 → '44eur')", () => {
+      const result = formatParameterForName(44, "€/tonne");
+      expect(result).toBe("44eur");
+    });
+
+    it("handles zero values", () => {
+      const result = formatParameterForName(0, "%");
+      expect(result).toBe("0pct");
+    });
+
+    it("parameter enrichment passes validation", () => {
+      const composition: CompositionEntry[] = [
+        { templateId: "carbon-tax-flat", name: "Carbon Tax", parameters: { tax_rate: 44 }, rateSchedule: {} },
+      ];
+      const result = generatePortfolioSuggestion(mockTemplatesWithCategories, composition, mockCategories, mockParameterSchemas);
+      const validationError = validatePortfolioName(result);
+      expect(validationError).toBeNull();
+    });
   });
 });
 
