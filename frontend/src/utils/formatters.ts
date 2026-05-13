@@ -186,6 +186,7 @@ export function formatTimestamp(
 export function formatLargeNumber(value: number | null | undefined): string {
   if (value === null || value === undefined) return "—";
   if (Number.isNaN(value)) return "NaN";
+  if (!Number.isFinite(value)) return value > 0 ? "∞" : "-∞";
 
   const abs = Math.abs(value);
 
