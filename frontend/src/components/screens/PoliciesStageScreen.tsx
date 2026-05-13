@@ -37,6 +37,7 @@ import {
   deletePortfolio,
   validatePortfolio,
 } from "@/api/portfolios";
+import { normalizePolicyType } from "@/utils/policyTypes";
 // Story 25.1 / Task 3.1: Import listCategories
 import { listCategories } from "@/api/categories";
 // Story 25.3: Import createBlankPolicy for from-scratch flow
@@ -47,9 +48,8 @@ import { getPopulationProfile } from "@/api/populations";
 import { useAppState } from "@/contexts/AppContext";
 import { Play } from "lucide-react";
 import type { PortfolioConflict, Category, EditableParameterGroup, TemplateDetailResponse } from "@/api/types";
-import { usePortfolioSaveDialog } from "@/hooks/usePortfolioSaveDialog";
-import { usePortfolioLoadDialog } from "@/hooks/usePortfolioLoadDialog";
-import { usePortfolioCloneDialog } from "@/hooks/usePortfolioCloneDialog";
+// Story 27.11: Use unified portfolio dialog hook
+import { usePortfolioDialog } from "@/hooks/usePortfolioDialog";
 // Story 27.5: Import composition draft persistence
 import { saveCompositionDraft, loadCompositionDraft } from "@/hooks/useCompositionDraft";
 // Story 25.6: Import validation functions
@@ -549,7 +549,7 @@ export function PoliciesStageScreen() {
           const t = templates.find((tmpl) => tmpl.id === e.templateId);
           return {
             name: e.name,
-            policy_type: (t?.type ?? "carbon_tax").replace(/-/g, "_"),
+            policy_type: normalizePolicyType(t?.type ?? "carbon_tax"),
             rate_schedule: e.rateSchedule,
             exemptions: [],
             thresholds: [],
@@ -713,12 +713,14 @@ export function PoliciesStageScreen() {
     );
     instanceCounterRef.current = draft.instanceCounter;
     setActivePortfolioName(null); // AC-6: drafts are unsaved
-  }, []); // Run only on mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- Restore draft only once on mount.
+  }, []);
 
   // ============================================================================
   // Portfolio dialog hooks (Task 6.1 through 6.3)
   // ============================================================================
 
+  // Story 27.11: Unified portfolio dialog hook - save mode
   const {
     saveDialogOpen,
     portfolioSaveName,
@@ -730,7 +732,7 @@ export function PoliciesStageScreen() {
     handleSaveNameChange,
     setPortfolioSaveDesc,
     handleSave,
-  } = usePortfolioSaveDialog({
+  } = usePortfolioDialog("save", {
     templates,
     composition,
     resolutionStrategy,
@@ -750,12 +752,13 @@ export function PoliciesStageScreen() {
     categories,
   });
 
+  // Story 27.11: Unified portfolio dialog hook - load mode
   const {
     loadDialogOpen,
     openLoadDialog,
     closeLoadDialog,
     handleLoad,
-  } = usePortfolioLoadDialog({
+  } = usePortfolioDialog("load", {
     templates,
     activeScenarioPortfolioName: activeScenario?.portfolioName,
     compositionLength: composition.length,
@@ -778,6 +781,7 @@ export function PoliciesStageScreen() {
     },
   });
 
+  // Story 27.11: Unified portfolio dialog hook - clone mode
   const {
     cloneDialogName,
     cloneNewName,
@@ -787,7 +791,7 @@ export function PoliciesStageScreen() {
     closeCloneDialog,
     handleCloneNameChange,
     handleClone,
-  } = usePortfolioCloneDialog({
+  } = usePortfolioDialog("clone", {
     portfolios,
     refetchPortfolios,
   });

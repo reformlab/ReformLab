@@ -392,6 +392,28 @@ export interface PortfolioPolicyItem {
   editable_parameter_groups?: EditableParameterGroup[];
 }
 
+/**
+ * Composition entry extends portfolio policy with UI-only fields.
+ *
+ * This is the UI composition layer over PortfolioPolicyItem. It includes
+ * additional fields needed for the portfolio composition panel, such as
+ * instanceId for duplicate policy support and templateId for template
+ * association.
+ *
+ * Story 27.11: Moved from PortfolioCompositionPanel to api/types for
+ * type system unification and to resolve circular import risks.
+ */
+export interface CompositionEntry extends PortfolioPolicyItem {
+  /** Unique instance ID for duplicate policy support (Story 25.2) */
+  instanceId: string;
+  /** Template ID for template-instantiated policies (empty for from-scratch) */
+  templateId: string;
+  /** Year-indexed rate schedule; keys are year strings for JSON wire format. */
+  rateSchedule: Record<string, number>;
+  /** Editable parameter groups (Story 25.4) */
+  editableParameterGroups?: EditableParameterGroup[];
+}
+
 export interface PortfolioDetailResponse {
   name: string;
   description: string;

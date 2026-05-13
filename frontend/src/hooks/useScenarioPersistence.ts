@@ -224,32 +224,3 @@ export function removeManuallyEditedName(id: string): void {
   current.delete(id);
   saveManuallyEditedNames(current);
 }
-
-// ============================================================================
-// Hook (thin wrapper for backward-compatibility with existing call sites)
-// ============================================================================
-
-export interface ScenarioPersistence {
-  saveScenario: (scenario: WorkspaceScenario | null) => void;
-  loadScenario: () => WorkspaceScenario | null;
-  saveStage: (stage: StageKey) => void;
-  loadStage: () => StageKey | null;
-  isFirstLaunch: () => boolean;
-  markLaunched: () => void;
-  getSavedScenarios: () => WorkspaceScenario[];
-  saveScenarioToList: (scenario: WorkspaceScenario) => void;
-}
-
-/** @deprecated Use module-level exports directly instead. */
-export function useScenarioPersistence(): ScenarioPersistence {
-  return {
-    saveScenario,
-    loadScenario,
-    saveStage,
-    loadStage,
-    isFirstLaunch,
-    markLaunched,
-    getSavedScenarios,
-    saveScenarioToList,
-  };
-}

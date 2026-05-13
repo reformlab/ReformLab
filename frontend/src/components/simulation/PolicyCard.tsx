@@ -22,6 +22,7 @@ import {
 import { ParameterRow } from "@/components/simulation/ParameterRow";
 import { YearScheduleEditor } from "@/components/simulation/YearScheduleEditor";
 import { TYPE_COLORS, TYPE_LABELS } from "@/components/simulation/typeConstants";
+import { normalizePolicyType } from "@/utils/policyTypes";
 import { cn } from "@/lib/utils";
 import type { Template, Parameter } from "@/data/mock-data";
 import type { Category, EditableParameterGroup } from "@/api/types";
@@ -506,7 +507,7 @@ export function PolicyCard({
                   ),
                 );
               }}
-              unit={policyType?.replace(/-/g, "_") === "carbon_tax" || policyType === "tax" ? "€/tonne" : "€"}
+              unit={normalizePolicyType(policyType) === "carbon_tax" || policyType === "tax" ? "€/tonne" : "€"}
             />
           </div>
 

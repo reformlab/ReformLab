@@ -1,0 +1,124 @@
+record_id: 1e45e49b-8bcc-47fe-8523-c4637cc68aea
+created_at: '2026-05-13T02:21:14.691431+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 27
+  story_num: 11
+  title: Story 27.11
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: sonnet
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-05-13T02:14:20.992845Z'
+  end_time: '2026-05-13T02:19:26.145845Z'
+  duration_ms: 305153
+  input_tokens: 0
+  output_tokens: 4514
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 18057
+  heading_count: 28
+  list_depth_max: 2
+  code_block_count: 6
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Evidence Score Summary
+  - 'Evidence Score: 3.2'
+  - 🎯 Ruthless Story Validation 27.11
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Specify the unified hook INPUT parameter interface
+  - 2. Backward-compatibility re-export must be a wrapper function, not a re-export alias
+  - 3. Add PolicyCard.tsx to the `.replace(/-/g, "_")` cleanup sweep
+  - 4. Fix deprecated hook line number reference
+  - ✨ Optimizations (Nice to Have)
+  - 1. PortfolioDesignerScreen deletion is a confirmed fact, not an audit task
+  - 2. Task 5.3 "manual testing" clause should be automated
+  - 3. Update Task 8.5 to reflect actual test file state
+  - 4. Clarify that `portfolioValidation.ts` import must also be updated (CompositionEntry move)
+  - 🤖 LLM Optimization Improvements
+  - 1. Story dependencies description is confusing
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 64266d3f867d
+findings:
+  total_count: 12
+  by_severity:
+    critical: 0
+    major: 4
+    minor: 4
+    nit: 4
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 1
+    completeness: 3
+    clarity: 4
+    testability: 4
+  has_fix_count: 12
+  has_location_count: 10
+  has_evidence_count: 9
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 3
+  confidence_phrases_count: 4
+linguistic:
+  avg_sentence_length: 30.72222222222222
+  vocabulary_richness: 0.31600361663652804
+  flesch_reading_ease: 7.696861564249701
+  vague_terms_count: 0
+  formality_score: 0.65
+  sentiment: positive
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.83
+  evidence_quality: 0.75
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false

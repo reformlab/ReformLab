@@ -1,23 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 Lucas Vivier
-/** Dialog state and submit handler for saving composed policy portfolios. */
+/**
+ * @deprecated Use `usePortfolioDialog({ mode: "save", ... })` directly (Story 27.11).
+ * This thin wrapper is provided for backward compatibility.
+ */
 
-import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
-
-import { ApiError } from "@/api/client";
-import { createPortfolio, updatePortfolio } from "@/api/portfolios";
-import type { PortfolioConflict, Category } from "@/api/types";
-import type { CompositionEntry } from "@/components/simulation/PortfolioCompositionPanel";
-import { validatePortfolioName } from "@/components/simulation/portfolioValidation";
+import type { Category, CompositionEntry, PortfolioConflict } from "@/api/types";
 import type { Template } from "@/data/mock-data";
-import { generatePortfolioSuggestion } from "@/utils/naming";
+import { usePortfolioDialog, type LoadedPortfolioRef, type SaveDialogState } from "./usePortfolioDialog";
 
-interface LoadedPortfolioRef {
-  current: string | null;
-}
-
-interface UsePortfolioSaveDialogParams {
+export interface UsePortfolioSaveDialogParams {
   templates: Template[];
   composition: CompositionEntry[];
   resolutionStrategy: string;
@@ -27,161 +19,14 @@ interface UsePortfolioSaveDialogParams {
   updateScenarioPortfolioName: (name: string | null) => void;
   setSelectedPortfolioName: (name: string | null) => void;
   refetchPortfolios: () => Promise<void>;
-  // Story 27.5: Callback to clear draft after successful save (AC-4)
   onSavedSuccessfully?: () => void;
-  // Story 27.9: Categories for type-category naming
   categories?: Category[] | null;
 }
 
-function buildPortfolioPolicies(
-  composition: CompositionEntry[],
-  templates: Template[],
-) {
-  return composition.map((entry) => {
-    const template = templates.find((tmpl) => tmpl.id === entry.templateId);
-    // Story 25.5: Use entry.policy_type for from-scratch policies; fallback to template.type
-    const policyType = entry.policy_type ?? template?.type ?? "carbon_tax";
-    return {
-      name: entry.name,
-      policy_type: policyType.replace(/-/g, "_"),
-      rate_schedule: entry.rateSchedule,
-      exemptions: [],
-      thresholds: [],
-      covered_categories: [],
-      extra_params: entry.parameters as Record<string, unknown>,
-      // Story 25.3: Optional fields for from-scratch policies
-      category_id: entry.category_id,
-      parameter_groups: entry.parameter_groups,
-      // Story 25.4: Editable parameter groups
-      editable_parameter_groups: entry.editableParameterGroups,
-    };
-  });
-}
-
-export function usePortfolioSaveDialog({
-  templates,
-  composition,
-  resolutionStrategy,
-  conflicts,
-  loadedPortfolioRef,
-  setActivePortfolioName,
-  updateScenarioPortfolioName,
-  setSelectedPortfolioName,
-  refetchPortfolios,
-  onSavedSuccessfully,
-  categories,
-}: UsePortfolioSaveDialogParams) {
-  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
-  const [portfolioSaveName, setPortfolioSaveName] = useState("");
-  const [portfolioSaveDesc, setPortfolioSaveDesc] = useState("");
-  const [saveNameError, setSaveNameError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [saveDialogNameManuallyEdited, setSaveDialogNameManuallyEdited] = useState(false);
-
-  useEffect(() => {
-    if (!saveDialogOpen || saveDialogNameManuallyEdited) return;
-    const suggestion = generatePortfolioSuggestion(templates, composition, categories);
-    setPortfolioSaveName(suggestion);
-  }, [composition, templates, saveDialogOpen, saveDialogNameManuallyEdited, categories]);
-
-  const openSaveDialog = useCallback(() => {
-    const suggestion = generatePortfolioSuggestion(templates, composition, categories);
-    setPortfolioSaveName(suggestion);
-    setPortfolioSaveDesc("");
-    setSaveNameError(null);
-    setSaveDialogNameManuallyEdited(false);
-    setSaveDialogOpen(true);
-  }, [composition, templates, categories]);
-
-  const closeSaveDialog = useCallback(() => {
-    setSaveDialogOpen(false);
-    setSaveDialogNameManuallyEdited(false);
-  }, []);
-
-  const handleSaveNameChange = useCallback((name: string) => {
-    setSaveDialogNameManuallyEdited(true);
-    setPortfolioSaveName(name);
-    setSaveNameError(validatePortfolioName(name));
-  }, []);
-
-  const handleSave = useCallback(async () => {
-    const err = validatePortfolioName(portfolioSaveName);
-    setSaveNameError(err);
-    if (err) return;
-
-    if (resolutionStrategy === "error" && conflicts.length > 0) {
-      toast.error("Resolve conflicts before saving", {
-        description: "Change resolution strategy or remove conflicting policies",
-      });
-      return;
-    }
-
-    setSaving(true);
-    try {
-      // Story 25.5: Update existing portfolio if re-saving with same name
-      const isUpdate = portfolioSaveName === loadedPortfolioRef.current;
-      const portfolioData = {
-        name: portfolioSaveName,
-        description: portfolioSaveDesc,
-        policies: buildPortfolioPolicies(composition, templates),
-        resolution_strategy: resolutionStrategy,
-      };
-
-      if (isUpdate) {
-        await updatePortfolio(portfolioSaveName, portfolioData);
-        toast.success(`Policy set '${portfolioSaveName}' updated`);
-      } else {
-        await createPortfolio(portfolioData);
-        toast.success(`Policy set '${portfolioSaveName}' saved`);
-      }
-
-      loadedPortfolioRef.current = portfolioSaveName;
-      setActivePortfolioName(portfolioSaveName);
-      updateScenarioPortfolioName(portfolioSaveName);
-      setSelectedPortfolioName(portfolioSaveName);
-      void refetchPortfolios();
-
-      setSaveDialogOpen(false);
-      setPortfolioSaveName("");
-      setPortfolioSaveDesc("");
-      setSaveDialogNameManuallyEdited(false);
-
-      // Story 27.5: Clear draft after successful save (AC-4)
-      onSavedSuccessfully?.();
-    } catch (err) {
-      if (err instanceof ApiError) {
-        toast.error(`${err.what} — ${err.why}`, { description: err.fix });
-      } else if (err instanceof Error) {
-        toast.error("Save failed", { description: err.message });
-      }
-    } finally {
-      setSaving(false);
-    }
-  }, [
-    portfolioSaveName,
-    portfolioSaveDesc,
-    composition,
-    templates,
-    resolutionStrategy,
-    conflicts,
-    loadedPortfolioRef,
-    setActivePortfolioName,
-    updateScenarioPortfolioName,
-    setSelectedPortfolioName,
-    refetchPortfolios,
-    onSavedSuccessfully,
-  ]);
-
-  return {
-    saveDialogOpen,
-    portfolioSaveName,
-    portfolioSaveDesc,
-    saveNameError,
-    saving,
-    openSaveDialog,
-    closeSaveDialog,
-    handleSaveNameChange,
-    setPortfolioSaveDesc,
-    handleSave,
-  };
+/**
+ * @deprecated Use `usePortfolioDialog({ mode: "save", ... })` directly.
+ * Returns the same state as the unified hook's save mode.
+ */
+export function usePortfolioSaveDialog(params: UsePortfolioSaveDialogParams): SaveDialogState {
+  return usePortfolioDialog("save", params);
 }

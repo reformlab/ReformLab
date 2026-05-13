@@ -1,6 +1,6 @@
 # Story 27.11: Consolidate portfolio dialog hooks and unify policy types
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -30,21 +30,29 @@ so that future changes to portfolio dialog behavior land in one file, the codeba
    - `TYPE_LABELS` and `TYPE_COLORS` have duplicate entries for both formats
 
 3. **Deprecated exports** lingering from previous refactors:
-   - `useScenarioPersistence.ts` has deprecated hook export (lines 216-228)
-   - `PortfolioDesignerScreen.tsx` has inline `validatePortfolioName` duplicate (lines 93-104)
+   - `useScenarioPersistence.ts` has deprecated hook export (lines 232-255: the `ScenarioPersistence` interface and `useScenarioPersistence()` function)
+   - `PortfolioDesignerScreen.tsx` is unreachable dead code (deprecated since Story 20.3, not referenced in routing) with inline `validatePortfolioName` duplicate (lines 93-104)
 
 ## Acceptance Criteria
 
 1. **AC-1 (unified dialog hook):** Given the new `usePortfolioDialog` hook with `mode: "save" | "load" | "clone"`, when imported with any mode, then it returns the appropriate dialog state and handlers matching the previous three separate hooks.
-2. **AC-2 (hook consolidation - PoliciesStageScreen):** Given `PoliciesStageScreen.tsx` uses the unified hook, when all three dialog flows (save, load, clone) are exercised, then behavior is identical to before with shorter wiring and a single source of error-handling logic.
+2. **AC-2 (hook consolidation - PoliciesStageScreen):** Given `PoliciesStageScreen.tsx` uses the unified hook, when all three dialog flows are exercised, then behavior is identical to before with shorter wiring and a single source of error-handling logic. Specific test scenarios:
+   - Save flow: open dialog → enter name → save → verify portfolio created with identical name and policies as before
+   - Load flow: open dialog → select portfolio → load → verify composition updated identically
+   - Clone flow: open dialog → enter name → clone → verify new portfolio created with identical policies
+   - Error handling: API errors show toasts identically; autoload failures remain silent (no toast)
 3. **AC-3 (policy type normalization utility):** Given a `normalizePolicyType()` utility function, when called with any policy type format, then it returns snake_case (canonical): `normalizePolicyType("carbon-tax")` → `"carbon_tax"`, `normalizePolicyType("carbon_tax")` → `"carbon_tax"`, `normalizePolicyType("tax")` → `"tax"`.
 4. **AC-4 (policy type constants unified):** Given `typeConstants.ts`, when updated, then `TYPE_LABELS` and `TYPE_COLORS` use only snake_case keys and duplicate kebab-case entries are removed.
 5. **AC-5 (inline conversions replaced):** Given the codebase, when searched for `.replace(/-/g, "_")` in portfolio-related code, then all occurrences are replaced with `normalizePolicyType()` calls.
-6. **AC-6 (type unification - CompositionEntry):** Given `frontend/src/api/types.ts`, when updated, then `CompositionEntry` is exported alongside `PortfolioPolicyItem` with a clear relationship (either `extends` or JSDoc), and the circular-import risk from `PortfolioCompositionPanel.tsx` is resolved.
-7. **AC-7 (deprecated exports removed):** Given `useScenarioPersistence.ts`, when this story is complete, then the deprecated hook export (lines 216-228) is removed and only the module-level functions remain.
-8. **AC-8 (PortfolioDesignerScreen cleanup):** Given `PortfolioDesignerScreen.tsx`, when audited for reachability, then either (a) if unreachable: deleted with its tests, or (b) if reachable: inline `validatePortfolioName` duplicate removed in favor of import from `portfolioValidation.ts`.
+6. **AC-6 (type unification - CompositionEntry):** Given `frontend/src/api/types.ts`, when updated, then:
+   - `PortfolioPolicyItem` remains unchanged (backend API type)
+   - `CompositionEntry` extends `PortfolioPolicyItem` with UI-only fields: `instanceId`, `templateId`, `editableParameterGroups`, `category_id`, `parameter_groups`
+   - JSDoc on `CompositionEntry` explains it's the UI composition layer over `PortfolioPolicyItem`
+   - The circular-import risk from `PortfolioCompositionPanel.tsx` is resolved (import path now one-way: api/types → PortfolioCompositionPanel)
+7. **AC-7 (deprecated exports removed):** Given `useScenarioPersistence.ts`, when this story is complete, then the deprecated hook export (lines 232-255 (the `ScenarioPersistence` interface and `useScenarioPersistence()` function, both `@deprecated`)) is removed and only the module-level functions remain.
+8. **AC-8 (PortfolioDesignerScreen cleanup):** Given `PortfolioDesignerScreen.tsx` is confirmed unreachable (deprecated since Story 20.3, not referenced in routing), when deleted with its tests, then dead code is removed and no portfolio dialog functionality is lost.
 9. **AC-9 (comprehensive tests):** Given the consolidated hook and policy type utilities, when tests run, then `usePortfolioDialog.test.ts` covers all three modes and `policyTypes.test.ts` covers normalization edge cases.
-10. **AC-10 (LOC reduction):** Given before/after LOC measurement, when compared, then the consolidation removes at least 150 lines (target ~250) without losing functional coverage.
+10. **AC-10 (LOC reduction):** Given before/after LOC measurement, when compared, then the consolidation achieves net reduction of ~100 lines (with ~250 lines removed from old hooks and ~150 lines added for new unified hook and tests) without losing functional coverage.
 
 ## Tasks / Subtasks
 
@@ -60,7 +68,8 @@ so that future changes to portfolio dialog behavior land in one file, the codeba
   - [ ] Subtask 2.2: Update `usePortfolioLoadDialog.ts:66` to use `normalizePolicyType()`
   - [ ] Subtask 2.3: Update `PoliciesStageScreen.tsx:552` to use `normalizePolicyType()`
   - [ ] Subtask 2.4: Update `PortfolioDesignerScreen.tsx:209,267,318` to use `normalizePolicyType()`
-  - [ ] Subtask 2.5: Verify `PolicyCard.tsx` correctly displays normalized types (uses `TYPE_LABELS` and `TYPE_COLORS`)
+  - [ ] Subtask 2.5: Update `PolicyCard.tsx:509` to use `normalizePolicyType()` in the type comparison
+  - [ ] Subtask 2.6: Verify no other `.replace(/-/g, "_")` conversions remain in portfolio-related code (grep check)
 
 - [ ] Task 3: Design unified hook signature (AC: #1, #2)
   - [ ] Subtask 3.1: Define `PortfolioDialogMode = "save" | "load" | "clone"` type
@@ -76,29 +85,29 @@ so that future changes to portfolio dialog behavior land in one file, the codeba
   - [ ] Subtask 4.6: Add backward compatibility re-exports in old hook files
 
 - [ ] Task 5: Migrate consumers to unified hook (AC: #2)
-  - [ ] Subtask 5.1: Update `PoliciesStageScreen.tsx` to use `usePortfolioDialog` with mode parameter
-  - [ ] Subtask 5.2: Grep for other consumers of the three old hooks; update any found
-  - [ ] Subtask 5.3: Verify all three dialog flows work identically via manual testing
+  - [ ] Subtask 5.1: Verify hook consumer scope BEFORE development: run `grep -rn "usePortfolio(Save|Load|Clone)Dialog" frontend/src --exclude-dir=__tests__` and document findings (expected: `PoliciesStageScreen.tsx` is primary consumer)
+  - [ ] Subtask 5.2: Update `PoliciesStageScreen.tsx` to use `usePortfolioDialog` with mode parameter
+  - [ ] Subtask 5.3: If additional consumers found in Subtask 5.1, update them to use the unified hook
+  - [ ] Subtask 5.4: Verify all three dialog flows work identically via integration tests in `PoliciesStageScreen.test.tsx` (save→create, load→update, clone→duplicate)
 
 - [ ] Task 6: Unify policy types in type system (AC: #6)
   - [ ] Subtask 6.1: In `frontend/src/api/types.ts`, ensure `PortfolioPolicyItem` is the canonical portfolio policy type
   - [ ] Subtask 6.2: Move `CompositionEntry` from `PortfolioCompositionPanel.tsx` to `frontend/src/api/types.ts`
-  - [ ] Subtask 6.3: Add JSDoc or `extends` relationship between `CompositionEntry` and `PortfolioPolicyItem`
-  - [ ] Subtask 6.4: Update conversion logic in unified hook to set `instanceId`/`templateId` without field name translation
+  - [ ] Subtask 6.3: Define `CompositionEntry` as extending `PortfolioPolicyItem` with UI-only fields (instanceId, templateId, editableParameterGroups) and add JSDoc explaining it's the UI composition layer
+  - [ ] Subtask 6.4: Update `portfolioValidation.ts` import of `CompositionEntry` from `PortfolioCompositionPanel` to `@/api/types`
+  - [ ] Subtask 6.5: Update conversion logic in unified hook to set `instanceId`/`templateId` without field name translation
 
 - [ ] Task 7: Remove deprecated exports and clean up (AC: #7, #8)
-  - [ ] Subtask 7.1: In `useScenarioPersistence.ts`, remove deprecated hook export (lines 216-228)
+  - [ ] Subtask 7.1: In `useScenarioPersistence.ts`, remove deprecated hook export (lines 232-255: the `ScenarioPersistence` interface and `useScenarioPersistence()` function, both `@deprecated`)
   - [ ] Subtask 7.2: Audit remaining imports of deprecated export; update tests to use module-level functions
-  - [ ] Subtask 7.3: Audit `PortfolioDesignerScreen.tsx` for routing reachability
-  - [ ] Subtask 7.4: If reachable: remove inline `validatePortfolioName` duplicate, import from `portfolioValidation.ts`
-  - [ ] Subtask 7.5: If unreachable: delete `PortfolioDesignerScreen.tsx` and its tests
+  - [ ] Subtask 7.3: Delete `PortfolioDesignerScreen.tsx` and `PortfolioDesignerScreen.test.tsx` (confirmed unreachable since Story 20.3: file header says `@deprecated … is no longer used in routing` and no routing references exist)
 
 - [ ] Task 8: Consolidate and update tests (AC: #9)
   - [ ] Subtask 8.1: Create `frontend/src/hooks/__tests__/usePortfolioDialog.test.ts`
   - [ ] Subtask 8.2: Add tests for save mode: name suggestion, manual edit freeze, draft clearing, validation
   - [ ] Subtask 8.3: Add tests for load mode: autoload, draft clearing, error handling
   - [ ] Subtask 8.4: Add tests for clone mode: name generation, duplicate validation, error handling
-  - [ ] Subtask 8.5: Update old hook test files to re-export from consolidated test (backward compatibility)
+  - [ ] Subtask 8.5: Verify `usePortfolioSaveDialog.nameFreeze.test.ts` continues to pass via the backward-compat wrapper (these tests import the old hook and must still work)
   - [ ] Subtask 8.6: Add type-system test verifying `CompositionEntry` relationship to `PortfolioPolicyItem`
 
 - [ ] Task 9: Quality gates and LOC measurement (AC: #10)
@@ -171,6 +180,45 @@ export const TYPE_LABELS: Record<string, string> = {
 ```typescript
 type PortfolioDialogMode = "save" | "load" | "clone";
 
+// INPUT discriminated union (mirrors output):
+type PortfolioDialogParams =
+  | {
+      mode: "save";
+      templates: Template[];
+      composition: CompositionEntry[];
+      resolutionStrategy: string;
+      conflicts: PortfolioConflict[];
+      loadedPortfolioRef: { current: string | null };
+      setActivePortfolioName: (name: string | null) => void;
+      updateScenarioPortfolioName: (name: string | null) => void;
+      setSelectedPortfolioName: (name: string | null) => void;
+      refetchPortfolios: () => Promise<void>;
+      onSavedSuccessfully?: () => void;
+      categories?: Category[] | null;
+    }
+  | {
+      mode: "load";
+      templates: Template[];
+      activeScenarioPortfolioName: string | null | undefined;
+      compositionLength: number;
+      validStrategies: readonly string[];
+      defaultResolutionStrategy: string;
+      loadedPortfolioRef: { current: string | null };
+      setComposition: (composition: CompositionEntry[]) => void;
+      setResolutionStrategy: (strategy: string) => void;
+      setActivePortfolioName: (name: string | null) => void;
+      updateScenarioPortfolioName: (name: string | null) => void;
+      setSelectedPortfolioName: (name: string | null) => void;
+      setInstanceCounter?: (value: number) => void;
+      onLoadedSuccessfully?: () => void;
+    }
+  | {
+      mode: "clone";
+      portfolios: PortfolioListItem[];
+      refetchPortfolios: () => Promise<void>;
+    };
+
+// RETURN discriminated union:
 interface SaveDialogState {
   mode: "save";
   saveDialogOpen: boolean;
@@ -213,11 +261,18 @@ type PortfolioDialogState =
 
 export function usePortfolioDialog<T extends PortfolioDialogMode>(
   mode: T,
-  // ... params
+  params: Omit<PortfolioDialogParams & { mode: T }, "mode">,
 ): PortfolioDialogState {
   // Implementation returns discriminated union based on mode
 }
+
+// Usage in PoliciesStageScreen (three separate calls, NOT conditional):
+const saveState = usePortfolioDialog("save", { templates, composition, ... });
+const loadState = usePortfolioDialog("load", { templates, activeScenarioPortfolioName, ... });
+const cloneState = usePortfolioDialog("clone", { portfolios, refetchPortfolios });
 ```
+
+**Architecture Note:** Discriminated unions for mode-specific returns are an intentional exception to the project's protocol-driven pattern because: (1) mode-specific return types have EXCLUSIVE state (only one dialog open at a time), (2) type safety is more valuable than flexibility for this internal hook, and (3) external consumers don't implement these types (not a public API).
 
 ### Type Unification Strategy
 
@@ -247,6 +302,25 @@ export interface CompositionEntry extends PortfolioPolicyItem {
 
 This resolves the circular-import risk noted in `deferred-work.md` by moving `CompositionEntry` to a shared location.
 
+**Circular Import Resolution:**
+
+BEFORE (circular risk):
+```
+PortfolioCompositionPanel → defines CompositionEntry
+PortfolioCompositionPanel → imports EditableParameterGroup from api/types
+[If api/types tried to import CompositionEntry, would create cycle]
+```
+
+AFTER (clean one-way dependency):
+```
+api/types → exports CompositionEntry (moved)
+api/types → exports EditableParameterGroup (existing)
+PortfolioCompositionPanel → imports CompositionEntry from api/types
+PortfolioCompositionPanel → imports EditableParameterGroup from api/types
+portfolioValidation.ts → imports CompositionEntry from api/types (updated from PortfolioCompositionPanel)
+Result: No circular dependency, clear layering (types.ts → components)
+```
+
 ### Integration Points
 
 - **PoliciesStageScreen**: Primary consumer of all three hooks; will switch to unified hook with mode parameter
@@ -256,19 +330,39 @@ This resolves the circular-import risk noted in `deferred-work.md` by moving `Co
 
 ### Backward Compatibility Strategy
 
-Old hook files become thin re-exports:
+Old hook files become thin wrapper functions for backward compatibility:
 ```typescript
 // usePortfolioSaveDialog.ts (after refactoring)
-export { usePortfolioDialog as usePortfolioSaveDialog } from './usePortfolioDialog';
-// Re-export types for backward compatibility
-export type { UsePortfolioSaveDialogParams } from './usePortfolioDialog';
+import { usePortfolioDialog } from './usePortfolioDialog';
+
+/** @deprecated Use `usePortfolioDialog({ mode: "save", ... })` directly. */
+export function usePortfolioSaveDialog(params: Omit<SaveDialogParams, "mode">) {
+  return usePortfolioDialog({ mode: "save", ...params });
+}
+
+// usePortfolioLoadDialog.ts (after refactoring)
+import { usePortfolioDialog } from './usePortfolioDialog';
+
+/** @deprecated Use `usePortfolioDialog({ mode: "load", ... })` directly. */
+export function usePortfolioLoadDialog(params: Omit<LoadDialogParams, "mode">) {
+  return usePortfolioDialog({ mode: "load", ...params });
+}
+
+// usePortfolioCloneDialog.ts (after refactoring)
+import { usePortfolioDialog } from './usePortfolioDialog';
+
+/** @deprecated Use `usePortfolioDialog({ mode: "clone", ... })` directly. */
+export function usePortfolioCloneDialog(params: Omit<CloneDialogParams, "mode">) {
+  return usePortfolioDialog({ mode: "clone", ...params });
+}
 ```
 
 Benefits:
 1. Zero breaking changes for consumers during transition
-2. Gradual migration at importer's convenience
-3. Future deprecation warning can be added in JSDoc
-4. Eventual removal in a separate breaking-change PR
+2. Existing tests (e.g., `usePortfolioSaveDialog.nameFreeze.test.ts`) continue to pass
+3. Gradual migration at importer's convenience
+4. JSDoc `@deprecated` tags signal migration path
+5. Future deprecation: remove old hooks in EPIC-28 or after 2 production releases
 
 ### Testing Strategy
 
@@ -298,7 +392,7 @@ Benefits:
 
 ### Migration Notes
 
-- **Story dependencies**: This story depends on Story 27.4 (unified policy card visuals) and Story 27.5 (auto-save draft) for the base functionality it consolidates
+- **Prior context**: Stories 27.4 and 27.5 are already completed. This story refactors the functionality they introduced — no blocking dependency, just implementation context for understanding the base code
 - **Future cleanup**: Consider removing the old hook files entirely in a future breaking-change release after this has been in production for a while
 - **PortfolioDesignerScreen**: If reachable from routing, it should also use the unified hook; otherwise delete it
 - **Type import cleanup**: After moving `CompositionEntry` to `api/types.ts`, update imports throughout the codebase
@@ -326,31 +420,31 @@ This consolidated hook must maintain this policy for all three modes.
 - `frontend/src/hooks/__tests__/usePortfolioDialog.test.ts` - Consolidated hook tests
 
 **Modified files:**
-- `frontend/src/hooks/usePortfolioSaveDialog.ts` - Becomes thin re-export for backward compatibility
-- `frontend/src/hooks/usePortfolioLoadDialog.ts` - Becomes thin re-export for backward compatibility
-- `frontend/src/hooks/usePortfolioCloneDialog.ts` - Becomes thin re-export for backward compatibility
+- `frontend/src/hooks/usePortfolioSaveDialog.ts` - Becomes thin wrapper function for backward compatibility (5-10 lines)
+- `frontend/src/hooks/usePortfolioLoadDialog.ts` - Becomes thin wrapper function for backward compatibility (5-10 lines)
+- `frontend/src/hooks/usePortfolioCloneDialog.ts` - Becomes thin wrapper function for backward compatibility (5-10 lines)
 - `frontend/src/components/simulation/typeConstants.ts` - Remove duplicate kebab-case entries from TYPE_LABELS/TYPE_COLORS
 - `frontend/src/components/screens/PoliciesStageScreen.tsx` - Use unified hook with mode parameter
 - `frontend/src/api/types.ts` - Move CompositionEntry here; clarify relationship to PortfolioPolicyItem
 - `frontend/src/components/simulation/PortfolioCompositionPanel.tsx` - Remove CompositionEntry export (moved to api/types.ts)
-- `frontend/src/hooks/useScenarioPersistence.ts` - Remove deprecated hook export (lines 216-228)
-- `frontend/src/components/screens/PortfolioDesignerScreen.tsx` - Either remove inline validatePortfolioName duplicate OR delete entire screen if unreachable
-- `frontend/src/components/simulation/PolicyCard.tsx` - Verify type display works correctly (no changes expected if normalization applied everywhere)
+- `frontend/src/hooks/useScenarioPersistence.ts` - Remove deprecated hook export (lines 232-255 (the `ScenarioPersistence` interface and `useScenarioPersistence()` function, both `@deprecated`))
+- `frontend/src/components/screens/PortfolioDesignerScreen.tsx` - DELETE (confirmed unreachable)
+- `frontend/src/components/simulation/PolicyCard.tsx` - Update type comparison at line 509 to use `normalizePolicyType()`
 
 **Test files modified:**
-- `frontend/src/hooks/__tests__/usePortfolioSaveDialog.nameFreeze.test.ts` - Update to import from consolidated hook or keep as separate test
+- `frontend/src/hooks/__tests__/usePortfolioSaveDialog.nameFreeze.test.ts` - Verify continues to pass via backward-compat wrapper
 - `frontend/src/components/screens/__tests__/PoliciesStageScreen.test.tsx` - Update hook imports
 - Any E2E tests that reference the three hooks by name
 
-**Files potentially deleted (if unreachable):**
-- `frontend/src/components/screens/PortfolioDesignerScreen.tsx`
-- `frontend/src/components/screens/__tests__/PortfolioDesignerScreen.test.tsx`
+**Files to delete:**
+- `frontend/src/components/screens/PortfolioDesignerScreen.tsx` (confirmed unreachable)
+- `frontend/src/components/screens/__tests__/PortfolioDesignerScreen.test.tsx` (confirmed unreachable)
 
-**Deprecated files (backward compatibility re-exports only):**
-After migration is complete, these files become thin wrappers:
-- `frontend/src/hooks/usePortfolioSaveDialog.ts` (~5 lines of re-exports)
-- `frontend/src/hooks/usePortfolioLoadDialog.ts` (~5 lines of re-exports)
-- `frontend/src/hooks/usePortfolioCloneDialog.ts` (~5 lines of re-exports)
+**Deprecated files (backward compatibility wrappers):**
+After migration is complete, these files become thin wrapper functions:
+- `frontend/src/hooks/usePortfolioSaveDialog.ts` (~5-10 lines: wrapper function with @deprecated JSDoc)
+- `frontend/src/hooks/usePortfolioLoadDialog.ts` (~5-10 lines: wrapper function with @deprecated JSDoc)
+- `frontend/src/hooks/usePortfolioCloneDialog.ts` (~5-10 lines: wrapper function with @deprecated JSDoc)
 
 ### References
 
@@ -364,10 +458,10 @@ After migration is complete, these files become thin wrappers:
 - [Source: frontend/src/components/screens/PoliciesStageScreen.tsx] - Primary consumer of all three hooks
 - [Source: frontend/src/api/types.ts] - PortfolioPolicyItem, future home of CompositionEntry
 - [Source: frontend/src/components/simulation/PortfolioCompositionPanel.tsx] - Current location of CompositionEntry (circular-import risk)
-- [Source: frontend/src/hooks/useScenarioPersistence.ts] - Deprecated hook export at lines 216-228
-- [Source: frontend/src/components/screens/PortfolioDesignerScreen.tsx] - Inline validatePortfolioName duplicate at lines 93-104
-- [Source: Story 27.4] - Unified policy card visuals (dependency for clean type unification)
-- [Source: Story 27.5] - Auto-save draft (dependency for draft clearing integration)
+- [Source: frontend/src/hooks/useScenarioPersistence.ts] - Deprecated hook export at lines 232-255 (the `ScenarioPersistence` interface and `useScenarioPersistence()` function, both `@deprecated`)
+- [Source: frontend/src/components/screens/PortfolioDesignerScreen.tsx] - Dead code (deprecated since Story 20.3, unreachable) with inline validatePortfolioName duplicate at lines 93-104
+- [Source: Story 27.4] - Unified policy card visuals (already completed; provides context for this refactoring)
+- [Source: Story 27.5] - Auto-save draft (already completed; provides context for draft clearing integration)
 - [Source: feedback_error_toasts_user_initiated_only.md] - Toast policy reference
 
 ## Dev Agent Record

@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 Lucas Vivier
 /**
- * Unit tests for useScenarioPersistence hook.
+ * Unit tests for scenario persistence utilities.
  * Story 20.2 — Task 2, Task 7.2.
  */
 
-import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import {
@@ -13,7 +12,14 @@ import {
   SAVED_SCENARIOS_KEY,
   SCENARIO_STORAGE_KEY,
   STAGE_STORAGE_KEY,
-  useScenarioPersistence,
+  getSavedScenarios,
+  isFirstLaunch,
+  loadScenario,
+  loadStage,
+  markLaunched,
+  saveScenario,
+  saveScenarioToList,
+  saveStage,
 } from "@/hooks/useScenarioPersistence";
 import type { WorkspaceScenario } from "@/types/workspace";
 import { DEFAULT_TASTE_PARAMETERS } from "@/types/workspace";
@@ -54,9 +60,17 @@ function makeScenario(overrides: Partial<WorkspaceScenario> = {}): WorkspaceScen
   };
 }
 
-function getHook() {
-  const { result } = renderHook(() => useScenarioPersistence());
-  return result.current;
+function getPersistence() {
+  return {
+    saveScenario,
+    loadScenario,
+    saveStage,
+    loadStage,
+    isFirstLaunch,
+    markLaunched,
+    getSavedScenarios,
+    saveScenarioToList,
+  };
 }
 
 // ============================================================================
@@ -73,7 +87,7 @@ beforeEach(() => {
 
 describe("saveScenario / loadScenario", () => {
   it("round-trip preserves all fields", () => {
-    const { saveScenario, loadScenario } = getHook();
+    const { saveScenario, loadScenario } = getPersistence();
     const scenario = makeScenario();
     saveScenario(scenario);
     const loaded = loadScenario();
@@ -81,25 +95,25 @@ describe("saveScenario / loadScenario", () => {
   });
 
   it("loadScenario returns null on empty localStorage", () => {
-    const { loadScenario } = getHook();
+    const { loadScenario } = getPersistence();
     expect(loadScenario()).toBeNull();
   });
 
   it("loadScenario returns null on corrupted JSON (never throws)", () => {
     localStorage.setItem(SCENARIO_STORAGE_KEY, "{not valid json");
-    const { loadScenario } = getHook();
+    const { loadScenario } = getPersistence();
     expect(() => loadScenario()).not.toThrow();
     expect(loadScenario()).toBeNull();
   });
 
   it("saveScenario(null) stores null and loadScenario returns null", () => {
-    const { saveScenario, loadScenario } = getHook();
+    const { saveScenario, loadScenario } = getPersistence();
     saveScenario(null);
     expect(loadScenario()).toBeNull();
   });
 
   it("preserves engineConfig fields in round-trip", () => {
-    const { saveScenario, loadScenario } = getHook();
+    const { saveScenario, loadScenario } = getPersistence();
     const scenario = makeScenario({
       engineConfig: {
         startYear: 2026,
@@ -127,7 +141,7 @@ describe("saveScenario / loadScenario", () => {
 
       localStorage.setItem(SCENARIO_STORAGE_KEY, JSON.stringify(legacyScenario));
 
-      const { loadScenario } = getHook();
+      const { loadScenario } = getPersistence();
       const loaded = loadScenario();
 
       expect(loaded?.engineConfig.tasteParameters).toEqual(DEFAULT_TASTE_PARAMETERS);
@@ -142,7 +156,7 @@ describe("saveScenario / loadScenario", () => {
       const rawJson = JSON.stringify(legacyScenario);
       localStorage.setItem(SCENARIO_STORAGE_KEY, rawJson);
 
-      const { loadScenario } = getHook();
+      const { loadScenario } = getPersistence();
       const loaded = loadScenario();
 
       // The stored JSON should remain unchanged
@@ -164,7 +178,7 @@ describe("saveScenario / loadScenario", () => {
 
       localStorage.setItem(SAVED_SCENARIOS_KEY, JSON.stringify(legacyScenarios));
 
-      const { getSavedScenarios } = getHook();
+      const { getSavedScenarios } = getPersistence();
       const loaded = getSavedScenarios();
 
       expect(loaded).toHaveLength(2);
@@ -182,18 +196,18 @@ describe("saveScenario / loadScenario", () => {
 
 describe("saveStage / loadStage", () => {
   it("round-trip preserves stage key", () => {
-    const { saveStage, loadStage } = getHook();
+    const { saveStage, loadStage } = getPersistence();
     saveStage("engine");
     expect(loadStage()).toBe("engine");
   });
 
   it("loadStage returns null on empty localStorage", () => {
-    const { loadStage } = getHook();
+    const { loadStage } = getPersistence();
     expect(loadStage()).toBeNull();
   });
 
   it("writes under STAGE_STORAGE_KEY constant", () => {
-    const { saveStage } = getHook();
+    const { saveStage } = getPersistence();
     saveStage("population");
     expect(localStorage.getItem(STAGE_STORAGE_KEY)).toBe("population");
   });
@@ -205,25 +219,25 @@ describe("saveStage / loadStage", () => {
 
 describe("isFirstLaunch / markLaunched", () => {
   it("isFirstLaunch returns true when HAS_LAUNCHED_KEY is absent", () => {
-    const { isFirstLaunch } = getHook();
+    const { isFirstLaunch } = getPersistence();
     expect(isFirstLaunch()).toBe(true);
   });
 
   it("isFirstLaunch returns false after markLaunched()", () => {
-    const { isFirstLaunch, markLaunched } = getHook();
+    const { isFirstLaunch, markLaunched } = getPersistence();
     markLaunched();
     expect(isFirstLaunch()).toBe(false);
   });
 
   it("markLaunched sets HAS_LAUNCHED_KEY to 'true'", () => {
-    const { markLaunched } = getHook();
+    const { markLaunched } = getPersistence();
     markLaunched();
     expect(localStorage.getItem(HAS_LAUNCHED_KEY)).toBe("true");
   });
 
   it("isFirstLaunch returns false even if key is set externally", () => {
     localStorage.setItem(HAS_LAUNCHED_KEY, "true");
-    const { isFirstLaunch } = getHook();
+    const { isFirstLaunch } = getPersistence();
     expect(isFirstLaunch()).toBe(false);
   });
 });
@@ -234,12 +248,12 @@ describe("isFirstLaunch / markLaunched", () => {
 
 describe("getSavedScenarios / saveScenarioToList", () => {
   it("getSavedScenarios returns empty array when localStorage is empty", () => {
-    const { getSavedScenarios } = getHook();
+    const { getSavedScenarios } = getPersistence();
     expect(getSavedScenarios()).toEqual([]);
   });
 
   it("saveScenarioToList appends a new scenario", () => {
-    const { saveScenarioToList, getSavedScenarios } = getHook();
+    const { saveScenarioToList, getSavedScenarios } = getPersistence();
     const s = makeScenario({ id: "s1" });
     saveScenarioToList(s);
     const list = getSavedScenarios();
@@ -248,7 +262,7 @@ describe("getSavedScenarios / saveScenarioToList", () => {
   });
 
   it("saveScenarioToList upserts by id (replaces existing)", () => {
-    const { saveScenarioToList, getSavedScenarios } = getHook();
+    const { saveScenarioToList, getSavedScenarios } = getPersistence();
     const original = makeScenario({ id: "s1", name: "Original" });
     const updated = makeScenario({ id: "s1", name: "Updated" });
     saveScenarioToList(original);
@@ -259,7 +273,7 @@ describe("getSavedScenarios / saveScenarioToList", () => {
   });
 
   it("saveScenarioToList caps at 20 entries (oldest dropped)", () => {
-    const { saveScenarioToList, getSavedScenarios } = getHook();
+    const { saveScenarioToList, getSavedScenarios } = getPersistence();
     for (let i = 0; i < 25; i++) {
       saveScenarioToList(makeScenario({ id: `s${i}`, name: `Scenario ${i}` }));
     }
@@ -272,13 +286,13 @@ describe("getSavedScenarios / saveScenarioToList", () => {
 
   it("getSavedScenarios returns empty array on corrupted JSON (never throws)", () => {
     localStorage.setItem(SAVED_SCENARIOS_KEY, "{bad json");
-    const { getSavedScenarios } = getHook();
+    const { getSavedScenarios } = getPersistence();
     expect(() => getSavedScenarios()).not.toThrow();
     expect(getSavedScenarios()).toEqual([]);
   });
 
   it("multiple different scenarios are all stored", () => {
-    const { saveScenarioToList, getSavedScenarios } = getHook();
+    const { saveScenarioToList, getSavedScenarios } = getPersistence();
     saveScenarioToList(makeScenario({ id: "a" }));
     saveScenarioToList(makeScenario({ id: "b" }));
     saveScenarioToList(makeScenario({ id: "c" }));

@@ -20,27 +20,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { PolicyCard } from "@/components/simulation/PolicyCard";
 import type { Template, Parameter } from "@/data/mock-data";
-import type { Category, EditableParameterGroup } from "@/api/types";
+// Story 27.11: Import CompositionEntry from api/types (moved from PortfolioCompositionPanel)
+import type { CompositionEntry, Category } from "@/api/types";
 // Story 25.6: Import validation error type
 import type { PolicyValidationError } from "@/components/simulation/portfolioValidation";
-
-export interface CompositionEntry {
-  templateId: string;
-  name: string;
-  parameters: Record<string, number>;
-  /** Year-indexed rate schedule; keys are year strings for JSON wire format. */
-  rateSchedule: Record<string, number>;
-  /** Story 25.2: Unique instance ID for duplicate policy support */
-  instanceId?: string;
-  /** Story 25.3: Policy type for from-scratch policies (optional, inferred from template for templates) */
-  policy_type?: string;
-  /** Story 25.3: Category ID for from-scratch policies (optional) */
-  category_id?: string;
-  /** Story 25.3: Parameter groups for from-scratch policies */
-  parameter_groups?: string[];
-  /** Story 25.4: Editable parameter groups */
-  editableParameterGroups?: EditableParameterGroup[];
-}
 
 interface PortfolioCompositionPanelProps {
   templates: Template[];
