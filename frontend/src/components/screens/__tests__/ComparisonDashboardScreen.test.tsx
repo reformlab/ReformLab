@@ -147,13 +147,13 @@ describe("ComparisonDashboardScreen", () => {
         }),
       ];
       render(
-        <ComparisonDashboardScreen results={resultsWithEvicted} onBack={vi.fn()} />,
+        <ComparisonDashboardScreen results={resultsWithEvicted} onBack={vi.fn()} activeScenarioId={null} />,
       );
       expect(screen.getByText("(evicted)")).toBeInTheDocument();
     });
 
     it("shows empty state when no completed results", () => {
-      render(<ComparisonDashboardScreen results={[]} onBack={vi.fn()} />);
+      render(<ComparisonDashboardScreen results={[]} onBack={vi.fn()} activeScenarioId={null} />);
       expect(
         screen.getByText(/No completed runs/i),
       ).toBeInTheDocument();
@@ -277,7 +277,7 @@ describe("ComparisonDashboardScreen", () => {
     it("calls onBack when Back button is clicked", async () => {
       const onBack = vi.fn();
       const user = userEvent.setup();
-      render(<ComparisonDashboardScreen results={mockResults} onBack={onBack} />);
+      render(<ComparisonDashboardScreen results={mockResults} onBack={onBack} activeScenarioId={null} />);
       await user.click(screen.getByRole("button", { name: /Back/i }));
       expect(onBack).toHaveBeenCalledOnce();
     });

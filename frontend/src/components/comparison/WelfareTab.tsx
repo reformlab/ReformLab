@@ -53,7 +53,8 @@ export function WelfareTab({
     const vals = data.data[col];
     if (Array.isArray(vals)) {
       for (const v of vals) {
-        if (typeof v === "number") {
+        // AC-5: Guard against NaN/Infinity in summary statistics
+        if (typeof v === "number" && Number.isFinite(v)) {
           if (v > 0) winners++;
           else if (v < 0) losers++;
           netChange += v;
@@ -64,6 +65,9 @@ export function WelfareTab({
   const hasSummary = deltaCols.length > 0;
 
   // Story 27.12, AC-3: Map column names to unit labels
+  // Non-monetary meta columns that should NOT get (€) suffix
+  const NON_MONETARY_META = new Set(["year", "metric", "category", "decile", "name", "type", "label", "winners", "losers"]);
+
   const getColumnLabel = (col: string): string => {
     // Meta columns (e.g., "winners", "losers", "net_change")
     if (metaCols.includes(col)) {
@@ -75,7 +79,7 @@ export function WelfareTab({
       if (col === "net_change" || col === "netChange") {
         return `${col} (€)`;
       }
-      return `${col} (€)`;
+      return NON_MONETARY_META.has(col) ? col : `${col} (€)`;
     }
     // Portfolio value columns
     if (viewMode === "absolute") {

@@ -47,10 +47,13 @@ export function FiscalTab({
   const displayCols = [...metaCols, ...valueCols];
 
   // Story 27.12, AC-3: Map column names to unit labels
+  // Non-monetary meta columns that should NOT get (€) suffix
+  const NON_MONETARY_META = new Set(["year", "metric", "category", "decile", "name", "type", "label"]);
+
   const getColumnLabel = (col: string): string => {
     // Meta columns typically describe the metric type (e.g., "revenue", "cost", "balance")
     if (metaCols.includes(col)) {
-      return `${col} (€)`;
+      return NON_MONETARY_META.has(col) ? col : `${col} (€)`;
     }
     // Portfolio value columns
     if (viewMode === "absolute") {

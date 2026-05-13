@@ -93,6 +93,12 @@ None - implementation was straightforward.
 - Detail-tab skeleton shows immediately when tab opened with valid runResult
 - Test fixes: Added toast mock to ResultsListPanel.test.tsx, corrected run-id display expectation (12 chars), simplified clipboard test to verify button clickability
 - All quality gates passed: npm test (frontend), npm run typecheck, npm run lint, uv run pytest tests/, uv run mypy src/
+- **Code Review Synthesis fixes (2026-05-13)**:
+  - Fixed WelfareTab winners/losers count missing NaN guard
+  - Fixed FiscalTab unit labels to exclude non-monetary meta columns (year, metric, etc.)
+  - Fixed WelfareTab unit labels to exclude non-monetary meta columns
+  - Fixed clipboard test to verify visual feedback instead of mock
+  - Fixed missing activeScenarioId prop in ComparisonDashboardScreen test renders
 
 ### File List
 
@@ -111,3 +117,21 @@ None - implementation was straightforward.
 - `frontend/src/components/simulation/__tests__/CrossMetricPanel.test.tsx` - Added NaN guard tests
 - `frontend/src/components/simulation/__tests__/MultiRunChart.test.tsx` - Added NaN guard tests
 - `frontend/src/components/screens/__tests__/ResultsOverviewScreen.test.tsx` - Added Detail-tab skeleton tests, updated run-id test
+- `frontend/src/components/comparison/FiscalTab.tsx` - Code review fix: Added NON_MONETARY_META allowlist
+- `frontend/src/components/comparison/WelfareTab.tsx` - Code review fix: Added NON_MONETARY_META allowlist and NaN guard
+- `frontend/src/components/simulation/__tests__/ResultsListPanel.test.tsx` - Code review fix: Updated clipboard test
+- `frontend/src/components/screens/__tests__/ComparisonDashboardScreen.test.tsx` - Code review fix: Added missing activeScenarioId props
+
+## Senior Developer Review (AI)
+
+### Review: 2026-05-13
+- **Reviewer:** AI Code Review Synthesis (2 validators)
+- **Evidence Score:** 10.9 (Reviewer A), 7.2 (Reviewer B) → REJECT
+- **Issues Found:** 10 total (3 Critical, 5 High, 2 Medium)
+- **Issues Fixed:** 5
+- **Action Items Created:** 2
+
+#### Review Follow-ups (AI)
+- [ ] [AI-Review] MEDIUM: Extract RunIdDisplay component to shared module (frontend/src/components/simulation/ResultsListPanel.tsx, frontend/src/components/comparison/RunSelector.tsx, frontend/src/components/screens/ResultsOverviewScreen.tsx)
+- [ ] [AI-Review] LOW: Add unit tests for FiscalTab and WelfareTab covering AC-3 column header unit labels (frontend/src/components/comparison/FiscalTab.tsx, frontend/src/components/comparison/WelfareTab.tsx)
+

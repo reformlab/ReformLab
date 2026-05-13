@@ -4,9 +4,9 @@
  * Story 27.12, AC-4: Run-id width (≥12 chars) and copy-to-clipboard button.
  */
 
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { vi } from "vitest";
+import { vi, beforeEach } from "vitest";
 
 // Mock sonner toast to prevent errors in tests
 vi.mock("sonner", () => ({
@@ -16,16 +16,19 @@ vi.mock("sonner", () => ({
   },
 }));
 
-// Mock navigator.clipboard.writeText before importing the component
-const mockWriteText = vi.fn().mockResolvedValue(undefined);
-Object.defineProperty(navigator, "clipboard", {
-  value: { writeText: mockWriteText },
-  writable: true,
-  configurable: true,
-});
-
 import { ResultsListPanel } from "@/components/simulation/ResultsListPanel";
 import type { ResultListItem } from "@/api/types";
+
+// Mock navigator.clipboard.writeText
+const mockWriteText = vi.fn();
+beforeEach(() => {
+  mockWriteText.mockReset();
+  Object.defineProperty(navigator, "clipboard", {
+    value: { writeText: mockWriteText },
+    writable: true,
+    configurable: true,
+  });
+});
 
 const mockItem = (overrides: Partial<ResultListItem> = {}): ResultListItem => ({
   run_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
@@ -196,8 +199,7 @@ describe("ResultsListPanel", () => {
 
   describe("Story 27.12, AC-4: Run-id width and copy button", () => {
     beforeEach(() => {
-      // Clear mock before each test
-      mockWriteText.mockClear();
+      mockWriteText.mockResolvedValue(undefined);
     });
 
     it("shows at least 12 characters of run_id in monospace font", () => {
@@ -241,11 +243,16 @@ describe("ResultsListPanel", () => {
       );
 
       const copyButton = screen.getByLabelText(/copy full run ID/i);
-      // Click the button - should not throw an error
+      // Verify the aria-label contains the full run ID
+      expect(copyButton).toHaveAttribute("aria-label", `Copy full run ID: ${fullRunId}`);
+
+      // Click the copy button - should not throw
       await user.click(copyButton);
 
-      // The aria-label contains the full run ID, which is verified in the "renders copy button" test
-      // The actual clipboard write is verified in integration tests with real browser APIs
+      // Visual feedback: lucide-check icon with emerald-500 color appears after successful copy
+      // This verifies the handleCopy function executed successfully
+      const checkIcon = document.querySelector(".lucide-check.text-emerald-500");
+      expect(checkIcon).toBeInTheDocument();
     });
 
     it("shows checkmark icon briefly after successful copy", async () => {
