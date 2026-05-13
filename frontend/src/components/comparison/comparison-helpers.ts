@@ -7,6 +7,7 @@
 import type { ResultListItem, PortfolioComparisonResponse } from "@/api/types";
 import { CHART_COLORS } from "@/components/simulation/MultiRunChart";
 import type { SeriesSpec } from "@/components/simulation/MultiRunChart";
+import { statusVariant } from "@/lib/status-variants";
 
 // ============================================================================
 // Types
@@ -47,13 +48,8 @@ export function runLabel(item: ResultListItem): string {
   return item.run_id.slice(0, 8);
 }
 
-export function statusVariant(
-  status: string,
-): "success" | "destructive" | "warning" | "default" {
-  if (status === "completed") return "success";
-  if (status === "failed") return "destructive";
-  return "warning";
-}
+// Re-export from consolidated module (Story 27.10, AC-8)
+export { statusVariant };
 
 /** Build series specs for a given ordered list of portfolio labels. */
 export function buildSeries(labels: string[]): SeriesSpec[] {

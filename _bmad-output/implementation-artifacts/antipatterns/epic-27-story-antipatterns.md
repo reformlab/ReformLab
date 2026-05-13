@@ -84,3 +84,27 @@
 | medium | naming.test.ts file creation instruction misleading | Changed to "Add to existing file" not "NEW FILE" |
 | low | Category label vs ID terminology inconsistency | Clarified usage (slugify label, use ID for lookups) |
 | low | Validation test examples missing | Added concrete validation test examples |
+
+## Story 27-10 (2026-05-13)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | statusVariant "Current State" contains factual errors**: Story claimed ResultDetailView returns "default" for failed and comparison-helpers returns "warning", but actual code returns "destructive" in both files. This would cause developer confusion and wrong reconciliation. | Corrected "Current State" section to show actual return values |
+| critical | AC-8 proposes wrong reconciliation direction**: Story says "reconcile to 'warning' (the most common variant)" but all three files return "destructive" for failed. The only divergence is in the default case (warning vs default). This conflicts with AC-11 (no visual regressions). | Changed AC-8 and Implementation Specification to preserve `failed → "destructive"` and reconcile default case to `"warning"` |
+| critical | 4th statusVariant in ExecutionMatrix.tsx undocumented**: Uses uppercase ExecutionStatus enum values, incompatible with proposed lowercase-string helper. Silently breaking this would cause wrong badge colors. | Added ExecutionMatrix to "Status Badge Mappings" with note about type incompatibility and special handling |
+| critical | Tasks 4 and 5 orphaned (no AC coverage)**: Loading-state component references "AC: #4" but AC-4 is formatDate; Canonical icons references "AC: #5" but AC-5 is formatTimestamp. These are truly orphaned. | Removed Tasks 4 and 5 entirely along with related new files from Project Structure Notes |
+| high | policyLabel interface type mismatch**: Story specifies `scenarioName`/`portfolioName` (camelCase) but API types use `portfolio_name`/`template_name` (snake_case) and `run_kind`. Also loses "Scenario" vs "Scenario run" distinction. | Updated policyLabel interface and implementation to use snake_case matching API types |
+| high | 11 files missing from migration target list**: Grep finds 26 files with toLocaleString(), story only lists 15. AC-9 would fail if not addressed. | Added comprehensive list by using grep output pattern |
+| high | Two wrong file paths**: RunSummaryPanel is in `engine/` not `screens/`, ExecutionMatrix is in `comparison/` not `simulation/`. | Corrected paths throughout story |
+| high | Task AC reference numbers wrong**: Tasks reference AC: #2, #3, #7 but should reference AC: #9, #8, #12 respectively. | Corrected AC reference numbers in task labels |
+| high | comparison/index.ts barrel export missing from file list**: Re-exports statusVariant, needs update when moving to status-variants.ts. | Added comparison/index.ts to modified files list |
+| medium | formatTimestamp interface not clear in AC-5**: Shows single-param usage but spec has two params. | Updated AC-5 to clarify optional style parameter |
+| medium | Locale preservation guidance missing**: AC-9 has exception clause but no guidance on identifying intentional locale differences. | Added Dev Notes section on locale exception identification |
+| medium | ResultDetailView formatTs includes seconds**: Current behavior includes seconds, default formatTimestamp is "short" (no seconds). Migration risk. | Added note in migration targets to use "full" style for ResultDetailView |
+| medium | statusVariant placement ambiguous**: AC-8 says formatters.ts, Tasks say status-variants.ts, Notes say "or include in formatters.ts". | Chose status-variants.ts as canonical location per Tasks section |
+| medium | Task AC cross-references misnumbered**: "Sweep .toLocaleString() (AC: #2)" should be AC-9, etc. | Already addressed above |
+| low | Story size concern**: Touching 25-30 files is large but work is mechanical. Not splitting as the work is straightforward. | None - keeping as-is, work is parallelizable |
+| low | Performance considerations missing**: No requirements for Intl formatter memoization. | None - defer to implementation; formatters are simple utilities |
+| dismissed | "can land in parallel with most P0/P1 stories" contradicts touching 25-30 files | FALSE POSITIVE: While merge conflicts are possible, the changes are mechanical and isolated to formatting. Component-level commits make conflict resolution straightforward. This is not a blocker. |
+| dismissed | Verbose Dev Notes repeat implementation specifications | FALSE POSITIVE: The duplication provides context for developers without scrolling. Token optimization is not critical here since story file is not heavily token-constrained for this workflow. |
+| dismissed | Test migration strategy missing | FALSE POSITIVE: AC-10 requires unit tests for new utilities; snapshot test updates are implied by AC-11 (no visual regressions). Additional guidance not required. |

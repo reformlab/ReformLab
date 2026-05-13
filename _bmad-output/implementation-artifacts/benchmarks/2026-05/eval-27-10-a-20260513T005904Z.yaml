@@ -1,0 +1,138 @@
+record_id: dc71091d-beb5-4a65-afe3-e2431ab3adcb
+created_at: '2026-05-13T00:59:04.449391+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 27
+  story_num: 10
+  title: Story 27.10
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-05-13T00:52:12.992628Z'
+  end_time: '2026-05-13T00:54:38.132628Z'
+  duration_ms: 145140
+  input_tokens: 0
+  output_tokens: 4555
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 18222
+  heading_count: 42
+  list_depth_max: 2
+  code_block_count: 10
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 7.3'
+  - 🎯 Ruthless Story Validation 27.10
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 7.3 → REJECT'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Story Size Violation - Must Split
+  - 2. AC-Tasks Mapping Broken
+  - 3. Interface Mismatch in AC-5
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Performance Requirements Missing
+  - 2. Test Migration Strategy Missing
+  - 3. Locale Preservation Guidance Missing
+  - Locale Exception Identification
+  - 4. Behavior Change Should Be Explicit
+  - ✨ Optimizations (Nice to Have)
+  - 1. Commit Strategy Guidance
+  - Commit Strategy
+  - 2. Edge Case Test Coverage
+  - Edge Case Test Matrix
+  - 🤖 LLM Optimization Improvements
+  - 1. Reduce Dev Notes Verbosity
+  - Implementation Specifications
+  - Implementation Specifications
+  - 2. Remove Redundant "Current State" Section
+  - Current State (Pre-Consolidation)
+  - Current State
+  - 3. Consolidate "Target Files for Migration" Lists
+  - Target Files for Migration
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 7f8363355414
+findings:
+  total_count: 12
+  by_severity:
+    critical: 3
+    major: 4
+    minor: 2
+    nit: 3
+  by_category:
+    security: 0
+    performance: 1
+    correctness: 1
+    completeness: 4
+    clarity: 5
+    testability: 1
+  has_fix_count: 12
+  has_location_count: 8
+  has_evidence_count: 9
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 10
+  confidence_phrases_count: 7
+linguistic:
+  avg_sentence_length: 22.561904761904763
+  vocabulary_richness: 0.28619670747150694
+  flesch_reading_ease: 19.945970453999564
+  vague_terms_count: 3
+  formality_score: 0.75
+  sentiment: neutral
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.85
+  evidence_quality: 0.95
+  follows_template: true
+  internal_consistency: 0.97
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false

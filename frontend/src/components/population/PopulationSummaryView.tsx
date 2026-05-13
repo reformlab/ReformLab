@@ -12,6 +12,7 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { PopulationSummaryData } from "@/api/types";
+import { formatNumber } from "@/utils/formatters";
 
 // ============================================================================
 // Types
@@ -49,7 +50,7 @@ export function PopulationSummaryView({ summary }: PopulationSummaryViewProps) {
         <div className="grid grid-cols-3 gap-3">
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-center">
             <p className="text-2xl font-bold text-slate-900">
-              {summary.record_count.toLocaleString()}
+              {formatNumber(summary.record_count)}
             </p>
             <p className="text-xs text-slate-500">rows</p>
           </div>
@@ -133,7 +134,7 @@ export function PopulationSummaryView({ summary }: PopulationSummaryViewProps) {
                     {col.null_pct.toFixed(1)}%
                   </td>
                   <td className="px-3 py-1.5 text-right font-mono text-slate-500">
-                    {col.cardinality !== null ? col.cardinality.toLocaleString() : "—"}
+                    {col.cardinality !== null ? formatNumber(col.cardinality) : "—"}
                   </td>
                 </tr>
               ))}

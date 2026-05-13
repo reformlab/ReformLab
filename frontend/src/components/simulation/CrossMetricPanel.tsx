@@ -3,6 +3,7 @@
 /** Cross-comparison metric ranking panel — Story 17.4, AC-5. */
 
 import type { CrossMetricItem } from "@/api/types";
+import { formatLargeNumber } from "@/utils/formatters";
 
 /** Human-readable labels for cross-metric criterion keys. */
 const CRITERION_LABELS: Record<string, string> = {
@@ -14,12 +15,12 @@ const CRITERION_LABELS: Record<string, string> = {
   min_total_losers: "Fewest Losers",
 };
 
+/**
+ * Format a large number for compact display.
+ * Uses centralized formatLargeNumber (Story 27.10, AC-6).
+ */
 function formatValue(v: number): string {
-  const abs = Math.abs(v);
-  if (abs >= 1e9) return `${(v / 1e9).toFixed(1)}B`;
-  if (abs >= 1e6) return `${(v / 1e6).toFixed(1)}M`;
-  if (abs >= 1e3) return `${(v / 1e3).toFixed(1)}k`;
-  return v.toFixed(0);
+  return formatLargeNumber(v);
 }
 
 interface CrossMetricCardProps {

@@ -21,6 +21,7 @@ import {
   AXIS_TICK,
   TOOLTIP_STYLE,
 } from "./chart-theme";
+import { formatLargeNumber } from "@/utils/formatters";
 
 export { CHART_COLORS };
 
@@ -64,15 +65,11 @@ export function columnarToRows(
 
 /**
  * Format a large number for compact display in tooltips/tables.
- * E.g. 2_100_000_000 → "2.1B"
+ * Uses centralized formatLargeNumber (Story 27.10, AC-6).
  */
 function formatValue(v: unknown): string {
   if (typeof v !== "number") return String(v ?? "");
-  const abs = Math.abs(v);
-  if (abs >= 1e9) return `${(v / 1e9).toFixed(1)}B`;
-  if (abs >= 1e6) return `${(v / 1e6).toFixed(1)}M`;
-  if (abs >= 1e3) return `${(v / 1e3).toFixed(1)}k`;
-  return v.toFixed(0);
+  return formatLargeNumber(v);
 }
 
 export function MultiRunChart({

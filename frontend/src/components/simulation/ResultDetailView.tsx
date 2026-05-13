@@ -18,6 +18,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { ResultDetailResponse } from "@/api/types";
+import { statusVariant } from "@/lib/status-variants";
+import { formatTimestamp, formatNumber } from "@/utils/formatters";
+import { policyLabel } from "@/utils/run-labels";
 
 // ============================================================================
 // Types
@@ -29,33 +32,6 @@ interface ResultDetailViewProps {
   detail: ResultDetailResponse;
   onExportCsv?: () => void;
   onExportParquet?: () => void;
-}
-
-// ============================================================================
-// Helpers
-// ============================================================================
-
-function formatTs(ts: string): string {
-  try {
-    return new Date(ts).toLocaleString(undefined, {
-      year: "numeric", month: "short", day: "2-digit",
-      hour: "2-digit", minute: "2-digit", second: "2-digit",
-    });
-  } catch {
-    return ts;
-  }
-}
-
-function policyLabel(detail: ResultDetailResponse): string {
-  if (detail.portfolio_name) return detail.portfolio_name;
-  if (detail.template_name) return detail.template_name;
-  return detail.run_kind === "portfolio" ? "Portfolio run" : "Scenario run";
-}
-
-function statusVariant(status: string): "success" | "destructive" | "warning" | "default" {
-  if (status === "completed") return "success";
-  if (status === "failed") return "destructive";
-  return "default";
 }
 
 // ============================================================================
@@ -88,7 +64,7 @@ function IndicatorsTab({ detail }: { detail: ResultDetailResponse }) {
               <div key={key} className="contents">
                 <span className="text-slate-500">{key}</span>
                 <span className="data-mono font-medium text-slate-800">
-                  {typeof val === "number" ? val.toLocaleString() : String(val)}
+                  {typeof val === "number" ? formatNumber(val) : String(val)}
                 </span>
               </div>
             ))}
@@ -121,7 +97,7 @@ function DataSummaryTab({
         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
           <span className="text-slate-500">Rows</span>
           <span className="data-mono font-medium text-slate-800">
-            {detail.row_count.toLocaleString()}
+            {formatNumber(detail.row_count)}
           </span>
           <span className="text-slate-500">Columns</span>
           <span className="data-mono font-medium text-slate-800">
@@ -188,8 +164,8 @@ function ManifestTab({ detail }: { detail: ResultDetailResponse }) {
     ["Adapter version", detail.adapter_version || "—"],
     ["Seed", detail.seed !== null && detail.seed !== undefined ? String(detail.seed) : "random"],
     ["Population ID", detail.population_id ?? "—"],
-    ["Started", formatTs(detail.started_at)],
-    ["Finished", formatTs(detail.finished_at)],
+    ["Started", formatTimestamp(detail.started_at, "full")],
+    ["Finished", formatTimestamp(detail.finished_at, "full")],
     ["Status", detail.status],
   ];
 

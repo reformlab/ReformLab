@@ -11,37 +11,9 @@ import { Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { ResultListItem } from "@/api/types";
-
-// ============================================================================
-// Helpers
-// ============================================================================
-
-function statusVariant(status: string): "success" | "destructive" | "warning" | "default" {
-  if (status === "completed") return "success";
-  if (status === "failed") return "destructive";
-  return "warning";
-}
-
-function formatTimestamp(ts: string): string {
-  try {
-    const d = new Date(ts);
-    return d.toLocaleString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return ts;
-  }
-}
-
-function policyLabel(item: ResultListItem): string {
-  if (item.portfolio_name) return item.portfolio_name;
-  if (item.template_name) return item.template_name;
-  return item.run_kind === "portfolio" ? "Portfolio" : "Scenario";
-}
+import { statusVariant } from "@/lib/status-variants";
+import { formatTimestamp, formatNumber } from "@/utils/formatters";
+import { policyLabel } from "@/utils/run-labels";
 
 // ============================================================================
 // ResultsListPanel
@@ -119,7 +91,7 @@ export function ResultsListPanel({
                 {/* Row count */}
                 {item.row_count > 0 ? (
                   <span className="text-xs text-slate-500 shrink-0 data-mono">
-                    {item.row_count.toLocaleString()}
+                    {formatNumber(item.row_count)}
                   </span>
                 ) : null}
 
