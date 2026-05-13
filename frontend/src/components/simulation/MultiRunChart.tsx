@@ -66,9 +66,12 @@ export function columnarToRows(
 /**
  * Format a large number for compact display in tooltips/tables.
  * Uses centralized formatLargeNumber (Story 27.10, AC-6).
+ * Story 27.12, AC-5: Returns "—" for NaN/Infinity instead of raw "NaN"/"∞".
  */
 function formatValue(v: unknown): string {
   if (typeof v !== "number") return String(v ?? "");
+  // AC-5: Guard against NaN/Infinity - return "—" instead
+  if (!Number.isFinite(v)) return "—";
   return formatLargeNumber(v);
 }
 

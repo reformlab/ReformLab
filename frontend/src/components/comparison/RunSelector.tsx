@@ -2,7 +2,11 @@
 // Copyright 2026 Lucas Vivier
 /** Run selector sub-component for ComparisonDashboardScreen.
  * Extracted from ComparisonDashboardScreen.tsx lines 135-239 — Story 18.5, AC-2.
+ * Story 27.12, AC-4: Shows ≥12 chars of run-id with copy-to-clipboard button.
  */
+
+import { Copy, Check } from "lucide-react";
+import { useState, useCallback } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +14,64 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { CHART_COLORS } from "@/components/simulation/MultiRunChart";
 import type { ResultListItem } from "@/api/types";
 import { MAX_RUNS, runLabel, statusVariant } from "./comparison-helpers";
+import { toast } from "sonner";
+import { formatNumber } from "@/utils/formatters";
+
+// ============================================================================
+// RunIdDisplay sub-component with copy button (Story 27.12, AC-4)
+// ============================================================================
+
+interface RunIdDisplayProps {
+  runId: string;
+}
+
+function RunIdDisplay({ runId }: RunIdDisplayProps) {
+  const [copied, setCopied] = useState(false);
+
+  // Show at least 12 characters of the run-id
+  const displayId = runId.slice(0, 12);
+
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(runId);
+      setCopied(true);
+      toast.success("Run ID copied");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy");
+    }
+  }, [runId]);
+
+  return (
+    <div className="flex items-center gap-1 shrink-0">
+      <span
+        className="font-mono text-xs text-slate-500 tabular-nums"
+        title={runId} // Full ID available via tooltip
+      >
+        {displayId}
+      </span>
+      <span
+        role="button"
+        tabIndex={0}
+        onClick={handleCopy}
+        aria-label={`Copy full run ID: ${runId}`}
+        className="text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded p-0.5 cursor-pointer"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handleCopy();
+          }
+        }}
+      >
+        {copied ? (
+          <Check className="h-3 w-3 text-emerald-500" />
+        ) : (
+          <Copy className="h-3 w-3" />
+        )}
+      </span>
+    </div>
+  );
+}
 
 export interface RunSelectorProps {
   results: ResultListItem[];
@@ -57,14 +119,11 @@ export function RunSelector({
                   checked={isSelected}
                   disabled={isDisabled}
                   onChange={() => !isDisabled && onToggle(item.run_id)}
-                  aria-label={`Select run ${item.run_id.slice(0, 8)}`}
+                  aria-label={`Select run ${item.run_id.slice(0, 12)}`}
                   className="h-3.5 w-3.5"
                 />
-                <span
-                  className={`data-mono w-16 shrink-0 text-xs ${isDisabled ? "text-slate-400" : "text-slate-500"}`}
-                >
-                  {item.run_id.slice(0, 8)}
-                </span>
+                {/* Run ID with copy button (Story 27.12, AC-4) */}
+                <RunIdDisplay runId={item.run_id} />
                 <span
                   className={`min-w-0 flex-1 truncate text-xs font-medium ${isDisabled ? "text-slate-400" : "text-slate-800"}`}
                 >
@@ -75,7 +134,7 @@ export function RunSelector({
                 </Badge>
                 {item.row_count > 0 ? (
                   <span className="data-mono shrink-0 text-xs text-slate-500">
-                    {item.row_count.toLocaleString()}
+                    {formatNumber(item.row_count)}
                   </span>
                 ) : null}
                 <Badge variant={statusVariant(item.status)} className="shrink-0 text-xs">

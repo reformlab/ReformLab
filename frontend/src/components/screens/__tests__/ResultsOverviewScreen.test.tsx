@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 Lucas Vivier
-/** Tests for ResultsOverviewScreen — Story 18.4, AC-1 through AC-5. */
+/** Tests for ResultsOverviewScreen — Story 18.4, AC-1 through AC-5.
+ * Story 27.12, AC-4: Run-id width (≥12 chars) with copy button.
+ * Story 27.12, AC-8: Detail tab skeleton appears immediately on first open.
+ */
 
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -92,9 +95,12 @@ const defaultProps = {
 // ============================================================================
 
 describe("AC-1: Run metadata header", () => {
-  it("renders run_id (first 8 chars) in monospace", () => {
+  it("renders run_id with copy button (Story 27.12, AC-4)", () => {
     render(<ResultsOverviewScreen {...defaultProps} />);
-    expect(screen.getByText("abcd1234")).toBeInTheDocument();
+    // The copy button has aria-label containing the full run ID
+    expect(screen.getByLabelText(/copy full run ID/i)).toBeInTheDocument();
+    // The RunIdDisplay component contains the first 12 chars in a span with title attribute
+    expect(screen.getByTitle("abcd1234-5678-90ab-cdef-123456789012")).toBeInTheDocument();
   });
 
   it("renders policy label", () => {
@@ -417,6 +423,47 @@ describe("Detail tab — lazy fetch", () => {
     await userEvent.click(screen.getByRole("tab", { name: "Detail" }));
     await waitFor(() => expect(getResult).toHaveBeenCalledWith("run-B"));
     expect(getResult).toHaveBeenCalledTimes(2);
+  });
+
+  describe("Story 27.12, AC-8: Detail tab skeleton", () => {
+    it("shows skeleton immediately when Detail tab is opened with a valid run", async () => {
+      // Mock a slow API response to test skeleton appears immediately
+      vi.mocked(getResult).mockImplementationOnce(
+        () => new Promise((resolve) => setTimeout(() => resolve(mockDetail()), 1000))
+      );
+      render(<ResultsOverviewScreen {...defaultProps} />);
+
+      // Click Detail tab - skeleton should appear immediately
+      await userEvent.click(screen.getByRole("tab", { name: "Detail" }));
+
+      // Skeleton should be present immediately (before API resolves)
+      expect(screen.getByText("Loading detail")).toBeInTheDocument();
+      // Check for skeleton elements (at least one Skeleton component)
+      const skeletonElements = document.querySelectorAll(".animate-pulse");
+      expect(skeletonElements.length).toBeGreaterThan(0);
+    });
+
+    it("shows skeleton instead of placeholder when runResult exists", async () => {
+      vi.mocked(getResult).mockImplementationOnce(
+        () => new Promise((resolve) => setTimeout(() => resolve(mockDetail()), 100))
+      );
+      render(<ResultsOverviewScreen {...defaultProps} />);
+
+      await userEvent.click(screen.getByRole("tab", { name: "Detail" }));
+
+      // Should show skeleton, NOT "Run a simulation to see detailed results"
+      expect(screen.queryByText(/Run a simulation to see detailed results/i)).not.toBeInTheDocument();
+      expect(screen.getByText("Loading detail")).toBeInTheDocument();
+    });
+
+    it("shows placeholder when no runResult exists", async () => {
+      render(<ResultsOverviewScreen {...defaultProps} runResult={null} />);
+      await userEvent.click(screen.getByRole("tab", { name: "Detail" }));
+
+      // Should show placeholder, NOT skeleton
+      expect(screen.getByText(/Run a simulation to see detailed results/i)).toBeInTheDocument();
+      expect(screen.queryByText("Loading detail")).not.toBeInTheDocument();
+    });
   });
 });
 

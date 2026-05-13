@@ -4,9 +4,11 @@
  *
  * Displays all past simulation runs in reverse chronological order.
  * Clicking a run selects it; the delete button removes it from storage.
+ * Story 27.12, AC-4: Shows ≥12 chars of run-id with copy-to-clipboard button.
  */
 
-import { Trash2 } from "lucide-react";
+import { Copy, Trash2, Check } from "lucide-react";
+import { useState, useCallback } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +16,63 @@ import type { ResultListItem } from "@/api/types";
 import { statusVariant } from "@/lib/status-variants";
 import { formatTimestamp, formatNumber } from "@/utils/formatters";
 import { policyLabel } from "@/utils/run-labels";
+import { toast } from "sonner";
+
+// ============================================================================
+// RunIdDisplay sub-component with copy button (Story 27.12, AC-4)
+// ============================================================================
+
+interface RunIdDisplayProps {
+  runId: string;
+}
+
+function RunIdDisplay({ runId }: RunIdDisplayProps) {
+  const [copied, setCopied] = useState(false);
+
+  // Show at least 12 characters of the run-id
+  const displayId = runId.slice(0, 12);
+
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(runId);
+      setCopied(true);
+      toast.success("Run ID copied", { description: "Full run ID copied to clipboard" });
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy run ID");
+    }
+  }, [runId]);
+
+  return (
+    <div className="flex items-center gap-1 shrink-0">
+      <span
+        className="font-mono text-xs text-slate-500 tabular-nums"
+        title={runId} // Full ID available via tooltip
+      >
+        {displayId}
+      </span>
+      <span
+        role="button"
+        tabIndex={0}
+        onClick={handleCopy}
+        aria-label={`Copy full run ID: ${runId}`}
+        className="text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded p-0.5 cursor-pointer"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handleCopy();
+          }
+        }}
+      >
+        {copied ? (
+          <Check className="h-3 w-3 text-emerald-500" />
+        ) : (
+          <Copy className="h-3 w-3" />
+        )}
+      </span>
+    </div>
+  );
+}
 
 // ============================================================================
 // ResultsListPanel
@@ -71,12 +130,10 @@ export function ResultsListPanel({
                 className="flex flex-1 items-center gap-3 min-w-0 text-left"
                 onClick={() => onSelect(item.run_id)}
                 aria-pressed={isSelected}
-                aria-label={`Select run ${item.run_id.slice(0, 8)}`}
+                aria-label={`Select run ${item.run_id.slice(0, 12)}`}
               >
-                {/* Run ID */}
-                <span className="data-mono text-xs text-slate-500 shrink-0 w-16">
-                  {item.run_id.slice(0, 8)}
-                </span>
+                {/* Run ID with copy button (Story 27.12, AC-4) */}
+                <RunIdDisplay runId={item.run_id} />
 
                 {/* Policy label */}
                 <span className="flex-1 min-w-0 truncate text-xs font-medium text-slate-800">
@@ -116,7 +173,7 @@ export function ResultsListPanel({
                 variant="ghost"
                 size="sm"
                 onClick={() => onDelete(item.run_id)}
-                aria-label={`Delete run ${item.run_id.slice(0, 8)}`}
+                aria-label={`Delete run ${item.run_id.slice(0, 12)}`}
                 className="h-6 w-6 p-0 shrink-0 text-slate-400 hover:text-red-500"
               >
                 <Trash2 className="h-3.5 w-3.5" />

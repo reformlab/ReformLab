@@ -6,12 +6,14 @@
  * screen component following the ComparisonDashboardScreen pattern.
  *
  * Layout:
- *   - Metadata header: run_id (8 chars), policy label, year range badge, status badge, action buttons
+ *   - Metadata header: run_id (12+ chars with copy), policy label, year range badge, status badge, action buttons
  *   - Tabbed content: Overview | Data & Export | Detail
+ * Story 27.12, AC-4: Shows ≥12 chars of run-id with copy-to-clipboard button.
+ * Story 27.12, AC-8: Detail tab shows skeleton immediately on first open.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Download } from "lucide-react";
+import { Copy, Check, Download } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,6 +25,63 @@ import { ResultDetailView } from "@/components/simulation/ResultDetailView";
 import type { DecileData, SummaryStatistic } from "@/data/mock-data";
 import type { ResultDetailResponse, RunResponse } from "@/api/types";
 import { getResult } from "@/api/results";
+import { toast } from "sonner";
+
+// ============================================================================
+// RunIdDisplay sub-component with copy button (Story 27.12, AC-4)
+// ============================================================================
+
+interface RunIdDisplayProps {
+  runId: string;
+}
+
+function RunIdDisplay({ runId }: RunIdDisplayProps) {
+  const [copied, setCopied] = useState(false);
+
+  // Show at least 12 characters of the run-id
+  const displayId = runId.slice(0, 12);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(runId);
+      setCopied(true);
+      toast.success("Run ID copied");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy");
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-1">
+      <span
+        className="font-mono text-xs text-slate-500 tabular-nums"
+        title={runId} // Full ID available via tooltip
+      >
+        {displayId}
+      </span>
+      <span
+        role="button"
+        tabIndex={0}
+        onClick={handleCopy}
+        aria-label={`Copy full run ID: ${runId}`}
+        className="text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded p-0.5 cursor-pointer"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handleCopy();
+          }
+        }}
+      >
+        {copied ? (
+          <Check className="h-3 w-3 text-emerald-500" />
+        ) : (
+          <Copy className="h-3 w-3" />
+        )}
+      </span>
+    </div>
+  );
+}
 
 // ============================================================================
 // Types
@@ -60,10 +119,14 @@ function computeSummaryStats(data: DecileData[]): SummaryStatistic[] {
   const allZero = deltas.every((d) => d === 0);
   if (allZero) return placeholderStats();
 
-  const meanDelta = deltas.reduce((a, b) => a + b, 0) / deltas.length;
+  // Story 27.12, AC-5: Guard against NaN/Infinity in delta values
+  const validDeltas = deltas.filter(d => Number.isFinite(d));
+  if (validDeltas.length === 0) return placeholderStats();
+
+  const meanDelta = validDeltas.reduce((a, b) => a + b, 0) / validDeltas.length;
   const roundedMean = Math.round(meanDelta);
-  const maxPos = data.reduce((best, d) => (d.delta > best.delta ? d : best), data[0]);
-  const maxNeg = data.reduce((best, d) => (d.delta < best.delta ? d : best), data[0]);
+  const maxPos = data.reduce((best, d) => (Number.isFinite(d.delta) && d.delta > best.delta ? d : best), data[0]);
+  const maxNeg = data.reduce((best, d) => (Number.isFinite(d.delta) && d.delta < best.delta ? d : best), data[0]);
 
   return [
     {
@@ -171,9 +234,8 @@ export function ResultsOverviewScreen({
         <div className="flex min-w-0 items-center gap-3">
           {runResult !== null ? (
             <>
-              <span className="font-mono text-xs text-slate-500">
-                {runResult.run_id.slice(0, 8)}
-              </span>
+              {/* Run ID with copy button (Story 27.12, AC-4) */}
+              <RunIdDisplay runId={runResult.run_id} />
               <span className="truncate text-sm font-semibold text-slate-900">{reformLabel}</span>
               <Badge variant="secondary" className="text-xs">
                 {yearRange ?? "—"}
@@ -292,6 +354,15 @@ export function ResultsOverviewScreen({
                 <p className="text-xs text-slate-400">Detail unavailable.</p>
               ) : resultDetail !== null ? (
                 <ResultDetailView detail={resultDetail} />
+              ) : runResult ? (
+                // Story 27.12, AC-8: Show skeleton immediately when Detail tab is opened with a valid run
+                <div aria-busy="true" role="status" className="space-y-2">
+                  <span className="sr-only">Loading detail</span>
+                  <Skeleton className="h-3 w-full" />
+                  <Skeleton className="h-3 w-5/6" />
+                  <Skeleton className="h-3 w-full" />
+                  <Skeleton className="h-3 w-2/3" />
+                </div>
               ) : (
                 <p className="text-xs text-slate-400">
                   Run a simulation to see detailed results.

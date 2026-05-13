@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 Lucas Vivier
-/** Cross-comparison metric ranking panel — Story 17.4, AC-5. */
+/** Cross-comparison metric ranking panel — Story 17.4, AC-5.
+ * Story 27.12, AC-5: NaN/Infinity guards return "—" instead of raw values.
+ */
 
 import type { CrossMetricItem } from "@/api/types";
 import { formatLargeNumber } from "@/utils/formatters";
@@ -18,8 +20,11 @@ const CRITERION_LABELS: Record<string, string> = {
 /**
  * Format a large number for compact display.
  * Uses centralized formatLargeNumber (Story 27.10, AC-6).
+ * Story 27.12, AC-5: Returns "—" for NaN/Infinity instead of raw "NaN"/"∞".
  */
 function formatValue(v: number): string {
+  // AC-5: Guard against NaN/Infinity - return "—" instead
+  if (!Number.isFinite(v)) return "—";
   return formatLargeNumber(v);
 }
 
