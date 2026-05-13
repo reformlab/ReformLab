@@ -45,6 +45,53 @@ These are used within the SKILL.md body — never in frontmatter:
 | `config-variables`       | Beyond core vars                  | `planning_artifacts`, `output_folder` |
 | `output-artifacts`       | What it creates (output-location) | "PRD document", "agent skill"         |
 
+## Customization Surface (`customize.toml`, opt-in)
+
+Emitted only when the skill author opts in during Phase 3.5 (Configurability Discovery). The file sits next to SKILL.md and is loaded via `{project-root}/_bmad/scripts/resolve_customization.py` at activation.
+
+### Always-present fields (when opted in)
+
+| Field                      | Type          | Purpose                                                                    |
+| -------------------------- | ------------- | -------------------------------------------------------------------------- |
+| `activation_steps_prepend` | array[string] | Steps run before standard activation. Overrides append.                    |
+| `activation_steps_append`  | array[string] | Steps run after greet, before the workflow's first stage. Overrides append. |
+| `persistent_facts`         | array[string] | Facts (literal or `file:` prefixed paths/globs) loaded on activation. Overrides append. |
+
+### Workflow-specific scalars (lifted during Phase 3.5)
+
+Named by purpose and suffix. Override wins (scalar merge rule).
+
+| Naming pattern      | Use for                                              | Example                                             |
+| ------------------- | ---------------------------------------------------- | --------------------------------------------------- |
+| `<purpose>_template` | File path for templates the workflow loads          | `brief_template = "assets/brief-template.md"`    |
+| `<purpose>_output_path` | Writable destination paths                       | `output_path = "{project-root}/docs/briefs"`        |
+| `on_<event>`        | Prompt or command executed at a hook point           | `on_complete = ""`                                  |
+
+**Path resolution within scalar values:**
+
+- Bare paths (e.g. `assets/brief-template.md`) resolve from the skill root.
+- `{project-root}/...` resolves from the project working directory — use for org-owned overrides.
+- Never mix `{project-root}` with config variables that already contain it (no double-prefix).
+
+### How SKILL.md references the resolved values
+
+After the resolver step runs, read customized values as `{workflow.<name>}`:
+
+```markdown
+Load the brief template from `{workflow.brief_template}`.
+```
+
+At runtime, that resolves to whatever the merged `[workflow].brief_template` scalar is — the default, a team override, or a personal override.
+
+### Override files
+
+Teams and users override without editing `customize.toml` in the skill, and instead modify the following:
+
+- Team: `{project-root}/_bmad/custom/{skill-name}.toml`
+- Personal: `{project-root}/_bmad/custom/{skill-name}.user.toml`
+
+Both use the same `[workflow]` block shape. Merge order: base (skill's `customize.toml`) → team → user.
+
 ## Overview Section Format
 
 The Overview is the first section after the title — it primes the AI for everything that follows.
@@ -114,22 +161,16 @@ This provides quick prompt priming for expertise and tone. Workflows may also us
 
 ## Path Rules
 
-### Same-Folder References
+### Skill-Internal References
 
-Use `./` only when referencing a file in the same directory as the file containing the reference:
-
-- From `references/build-process.md` → `./classification-reference.md` (both in references/)
-- From `scripts/scan.py` → `./utils.py` (both in scripts/)
-
-### Cross-Directory References
-
-Use bare paths relative to the skill root — no `./` prefix:
+Use bare paths from the skill root for any file inside this skill — including same-folder references between two files in `references/` or two files in `scripts/`:
 
 - `references/build-process.md`
+- `references/standard-fields.md` (referenced from another file in `references/` — still bare path)
 - `scripts/validate.py`
 - `assets/template.md`
 
-These work from any file in the skill because they're always resolved from the skill root. **Never use `./` for cross-directory paths** — `./scripts/foo.py` from a file in `references/` is misleading because `scripts/` is not next to that file.
+The convention is universal: bare paths from skill root. Never use `./` prefixes — they cause inconsistency and break under context compaction when the working directory shifts.
 
 ### Project-Scope Paths
 
@@ -145,7 +186,11 @@ Use directly — they already contain `{project-root}` in their resolved values:
 - `{output_folder}/file.md`
 - `{planning_artifacts}/prd.md`
 
-**Never:**
+### Anti-patterns (negative examples — fenced so the linter doesn't fire on them)
 
-- `{project-root}/{output_folder}/file.md` (WRONG — double-prefix, config var already has path)
-- `_bmad/planning/prd.md` (WRONG — bare `_bmad` must have `{project-root}` prefix)
+```text
+{project-root}/{output_folder}/file.md   # WRONG — double-prefix; config var already has {project-root}
+_bmad/planning/prd.md                    # WRONG — bare _bmad must have {project-root} prefix
+./references/foo.md                      # WRONG — never use ./ for skill-internal paths
+./scripts/foo.py                         # WRONG — same; bare paths from skill root only
+```
