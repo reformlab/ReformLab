@@ -268,14 +268,14 @@ export function PolicyCard({
           <div className="flex items-center gap-2 flex-wrap">
             {/* Story 25.6: Error badge */}
             {validationError && (
-              <Badge variant="default" className="text-xs shrink-0 bg-red-500 text-white flex items-center gap-1">
+              <Badge variant="destructive" className="text-xs shrink-0 flex items-center gap-1">
                 <AlertCircle className="h-3 w-3" />
                 Error
               </Badge>
             )}
             {/* Story 25.4: Editing badge */}
             {editGroupsIndex === index && (
-              <Badge variant="default" className="text-xs shrink-0 bg-blue-500 text-white">
+              <Badge variant="info" className="text-xs shrink-0">
                 Editing
               </Badge>
             )}

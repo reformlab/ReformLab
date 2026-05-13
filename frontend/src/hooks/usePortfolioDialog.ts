@@ -280,10 +280,18 @@ export function usePortfolioDialog<ResolutionStrategy extends string>(
     try {
       const detail = await getPortfolio(name);
       const entries: CompositionEntry[] = detail.policies.map((policy, index) => {
+        // Fallback: when saved portfolio references a policy type that doesn't
+        // match any current template, use policy_type as templateId. This allows
+        // the portfolio to load but may cause issues if the policy is edited and
+        // saved (will save with wrong templateId). Unmatched policies should be rare.
         const template = loadParams.templates.find(
           (tmpl) => normalizePolicyType(tmpl.type) === policy.policy_type,
         );
         const templateId = template?.id ?? policy.policy_type;
+
+        if (!template) {
+          console.warn(`Template not found for policy type "${policy.policy_type}", using fallback`);
+        }
         const policyParameterGroups = (
           policy as PortfolioPolicyItem & { parameter_groups?: string[] }
         ).parameter_groups;

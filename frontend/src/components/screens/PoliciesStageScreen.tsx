@@ -987,19 +987,24 @@ export function PoliciesStageScreen() {
 
       {/* Story 25.6 / Task 3: Population column compatibility warning (non-blocking) */}
       {populationColumnWarnings.length > 0 ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 flex items-start gap-2">
-          <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-          <div className="text-xs text-amber-700">
-            <p className="font-semibold mb-1">Population data compatibility warning</p>
-            <p>
-              Some policies require population columns that may not be available in the selected population:{" "}
-              <strong>{populationColumnWarnings.join(", ")}</strong>.
-            </p>
-            <p className="mt-1">
-              Validate data compatibility in Stage 2 (Population) before running.
-            </p>
+        <>
+          {/* Multi-paragraph structure intentional: heading improves scannability,
+           * separate <p> elements group related information for accessibility.
+           * Collapsed to single <p> would reduce readability. */}
+          <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 flex items-start gap-2">
+            <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+            <div className="text-xs text-amber-700">
+              <p className="font-semibold mb-1">Population data compatibility warning</p>
+              <p>
+                Some policies require population columns that may not be available in the selected population:{" "}
+                <strong>{populationColumnWarnings.join(", ")}</strong>.
+              </p>
+              <p className="mt-1">
+                Validate data compatibility in Stage 2 (Population) before running.
+              </p>
+            </div>
           </div>
-        </div>
+        </>
       ) : null}
 
       {/* Main two-column layout (AC-1) - Story 22.2: 50/50 equal split */}
@@ -1083,7 +1088,7 @@ export function PoliciesStageScreen() {
                   <span className="text-slate-400 truncate flex-1">{p.description}</span>
                 ) : null}
                 {activeScenario?.portfolioName === p.name ? (
-                  <Badge variant="default" className="text-xs shrink-0 bg-blue-100 text-blue-700">
+                  <Badge variant="secondary" className="text-xs shrink-0">
                     active
                   </Badge>
                 ) : null}
