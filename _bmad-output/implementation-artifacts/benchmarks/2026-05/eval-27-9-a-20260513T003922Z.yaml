@@ -1,0 +1,118 @@
+record_id: ae094c9b-71a5-4819-a194-6214d49e117d
+created_at: '2026-05-13T00:39:22.125923+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 27
+  story_num: '9'
+  title: Story 27.9
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: sonnet
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-05-13T00:32:44.228758Z'
+  end_time: '2026-05-13T00:38:58.067758Z'
+  duration_ms: 373839
+  input_tokens: 0
+  output_tokens: 2857
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 11429
+  heading_count: 18
+  list_depth_max: 3
+  code_block_count: 6
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: **6.4**'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes & Readability
+  - ⚡ Performance & Scalability
+  - 🐛 Correctness & Safety
+  - Bug 1 — `formatParameterForName` produces non-slug-safe strings for decimals
+  - Bug 2 — `slugifyTypeAndCategory` has no length cap; single-policy path skips `truncateSlug`
+  - Bug 3 — AC-5 parameter enrichment is dead code in the actual UI
+  - Lying Test — Hook tests exercise legacy path only
+  - 🔧 Maintainability Issues
+  - 🛠️ Suggested Fixes
+  - 1. Fix `formatParameterForName` to produce valid slugs for all numeric values
+  - 2. Add `truncateSlug` to `slugifyTypeAndCategory` output in `generatePortfolioSuggestion`
+  - 3. Fix `extractTypeAndCategory` discriminator to not misclassify template entries
+  - 4. Wire `parameterSchemas` through to the hook (or drop AC-5 from the story completion claim)
+  - 5. Add hook-level tests with `categories` to cover Story 27.9 behavior
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 70c8e8a3d265
+findings:
+  total_count: 9
+  by_severity:
+    critical: 0
+    major: 5
+    minor: 4
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 5
+    completeness: 1
+    clarity: 1
+    testability: 2
+  has_fix_count: 9
+  has_location_count: 9
+  has_evidence_count: 9
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 0
+  confidence_phrases_count: 2
+linguistic:
+  avg_sentence_length: 23.24590163934426
+  vocabulary_richness: 0.3540197461212976
+  flesch_reading_ease: -3.535659370173846
+  vague_terms_count: 0
+  formality_score: 0.65
+  sentiment: neutral
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.92
+  evidence_quality: 0.72
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 5
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

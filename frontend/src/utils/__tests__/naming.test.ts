@@ -521,9 +521,20 @@ describe("generatePortfolioSuggestion() - Story 27.9 type-category naming", () =
     });
 
     it("reuses from-scratch policy name when already in '{Type} — {Category}' format", () => {
-      const composition = makeFromScratchComposition("tax", "income");
+      // Create a from-scratch policy with a custom name that matches the pattern
+      const composition: CompositionEntry[] = [
+        {
+          templateId: "",
+          name: "Tax — Carbon Emissions",  // Matches "{Type} — {Category}" pattern
+          parameters: {},
+          rateSchedule: {},
+          policy_type: "tax",
+          category_id: "carbon-emissions",  // Category matches the name
+        },
+      ];
       const result = generatePortfolioSuggestion([], composition, mockCategories);
-      expect(result).toBe("tax-income");
+      // AC-2: Should reuse the slugified name, not extract type-category again
+      expect(result).toBe("tax-carbon-emissions");
     });
 
     it("falls back to entry name when template not found", () => {

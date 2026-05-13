@@ -38,3 +38,15 @@
 | dismissed | disabled attribute removes breadcrumb from tab order, violating AC-5 keyboard requirements | FALSE POSITIVE: ACCEPTED BEHAVIOR - AC-2 states clicking unreached steps should have no effect. Using the `disabled` attribute (which removes from tab order) is the correct implementation for this requirement. Unreached steps should not be keyboard-focusable. |
 | dismissed | Test doesn't verify actual non-existence of disabled buttons | FALSE POSITIVE: FALSE POSITIVE - The test correctly validates that step indicator buttons don't exist when wizard is disabled (breadcrumb is hidden). Using `queryByRole` and asserting `.not.toBeInTheDocument()` is the correct approach for this verification. |
 | dismissed | Test count discrepancy (claims 31 tests but 30 it() blocks) | FALSE POSITIVE: RESOLVED - After adding the toggle-enable flow test, there are now 32 tests. The original count was slightly off but this is a documentation issue, not a code issue. |
+
+## Story 27-9 (2026-05-13)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | AC-5 parameter enrichment completely non-functional in production - `parameterSchemas` never passed from hook | DEFERRED - Requires API integration to fetch parameter schemas via `getTemplate()` calls. Too complex for synthesis scope. Added as [AI-Review] task. |
+| high | `formatParameterForName` produces period-containing slugs for decimal values, violating AC-7 | Applied `Math.round()` to all numeric values to ensure slug-safe output (44.5 → 44eur). |
+| high | `slugifyTypeAndCategory` lacks truncation; single-policy path can produce >64-char slugs | Applied `truncateSlug()` to all single-policy return paths. |
+| high | `extractTypeAndCategory` condition misclassifies template entries when `policy_type` is set | Changed condition from `entry.templateId === "" \|\| entry.policy_type` to `entry.templateId === ""` only. |
+| high | AC-2 from-scratch name pattern detection not implemented | Implemented pattern detection with regex `/^(Tax\|Subsidy\|Transfer) — /` to reuse existing names. |
+| medium | Inconsistent from-scratch handling - parameter enrichment only for templates | Applied parameter enrichment to from-scratch policies with category_id. |
+| low | `getDominantCategory` tie-breaking relies on Map insertion order without documentation | Added comment documenting ES2015+ Map iteration order behavior. |

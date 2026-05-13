@@ -169,7 +169,7 @@ export function extractTypeAndCategory(
   let categoryId: string | undefined;
   let categoryLabel = "other";
 
-  if (entry.templateId === "" || entry.policy_type) {
+  if (entry.templateId === "") {
     // From-scratch policy: use entry fields directly
     policyType = entry.policy_type ?? "policy";
     categoryId = entry.category_id;
@@ -251,7 +251,9 @@ export function getDominantCategory(
     return { policyType: "policy", categoryLabel: "other" };
   }
 
-  // Find category with max count
+  // Find category with max count.
+  // Tie-breaking: Map iteration preserves insertion order (ES2015+ spec),
+  // so the first policy's category wins on tie (count > maxCount, not >=).
   let dominantCategoryId = "";
   let maxCount = 0;
 
@@ -357,17 +359,17 @@ export function formatParameterForName(value: number, unit: string): string {
   }
 
   if (unit.includes("€") || unit.includes("EUR")) {
-    // Currency: strip symbol, append "eur"
-    return `${value}eur`;
+    // Currency: strip symbol, append "eur" - round to avoid decimal periods in slug
+    return `${Math.round(value)}eur`;
   }
 
-  // Other units: slugify the unit name
+  // Other units: slugify the unit name - round value to avoid decimal periods
   const slugifiedUnit = slugify(unit);
   if (slugifiedUnit) {
-    return `${value}${slugifiedUnit}`;
+    return `${Math.round(value)}${slugifiedUnit}`;
   }
 
-  return `${value}`;
+  return `${Math.round(value)}`;
 }
 
 // ============================================================================
@@ -423,9 +425,21 @@ export function generatePortfolioSuggestion(
     const entry = composition[0]!;
     const { policyType, categoryLabel } = extractTypeAndCategory(entry, templates, categories);
 
+    // AC-2: From-scratch pattern detection - avoid double-naming
+    // Regex matches "Tax — Category", "Subsidy — Category", "Transfer — Category"
+    if (entry.templateId === "" && /^(Tax|Subsidy|Transfer) — /.test(entry.name)) {
+      return slugify(entry.name);
+    }
+
     // For from-scratch policies, if entry has category_id, use category label
     if (entry.templateId === "" && entry.category_id) {
-      return slugifyTypeAndCategory(policyType, categoryLabel);
+      const baseName = truncateSlug(slugifyTypeAndCategory(policyType, categoryLabel));
+      // AC-5: Parameter enrichment should also apply to from-scratch policies
+      const paramValue = extractPrimaryParameterValue(entry, parameterSchemas ?? null);
+      if (paramValue && (baseName.length + paramValue.formatted.length + 1) <= 48) {
+        return truncateSlug(`${baseName}-${paramValue.formatted}`);
+      }
+      return baseName;
     }
 
     // For template policies, always use type-category
@@ -437,18 +451,18 @@ export function generatePortfolioSuggestion(
       }
 
       // Story 27.9 / Task 2: Parameter-based enrichment
-      const baseName = slugifyTypeAndCategory(policyType, categoryLabel);
+      const baseName = truncateSlug(slugifyTypeAndCategory(policyType, categoryLabel));
 
       // Only add parameter if total length would be ≤ 48 chars
       const paramValue = extractPrimaryParameterValue(entry, parameterSchemas ?? null);
       if (paramValue && (baseName.length + paramValue.formatted.length + 1) <= 48) {
-        return `${baseName}-${paramValue.formatted}`;
+        return truncateSlug(`${baseName}-${paramValue.formatted}`);
       }
 
       return baseName;
     }
 
-    return slugifyTypeAndCategory(policyType, categoryLabel);
+    return truncateSlug(slugifyTypeAndCategory(policyType, categoryLabel));
   }
 
   // Multi-policy: check if all same category or mixed
