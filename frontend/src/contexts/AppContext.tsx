@@ -282,6 +282,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      // Story 27.13: Clear manual-edit lock when portfolioName changes
+      // When a user explicitly changes the portfolio, this signals intent to
+      // re-enable auto-naming for that scenario.
+      if (field === "portfolioName" && current.id) {
+        setManuallyEditedScenarioNames((prev) => {
+          const updated = new Set(prev);
+          updated.delete(current.id);
+          // Persist to localStorage
+          saveManuallyEditedNames(updated);
+          return updated;
+        });
+      }
+      // Note: We do NOT clear the lock for populationIds changes - those are more
+      // exploratory and shouldn't override manual name curation (regression test in Task 2.4)
+
       const nextScenario: WorkspaceScenario = { ...current, [field]: value };
 
       // Story 27.6: mark stages as touched when the user makes an explicit
@@ -310,6 +325,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Gate that ensures the initialization effect fires exactly once per auth session
   // and prevents persistence effects from overwriting restored state before init completes.
   const initializedRef = useRef(false);
+
+  // Story 27.13: Track when the default-selection effect is running
+  // This prevents auto-renaming restored scenarios when the default population is selected
+  const isDefaultPopulationSelection = useRef(false);
 
   // Saved scenarios React state (lazy-initialized from localStorage)
   const [savedScenarios, setSavedScenarios] = useState<WorkspaceScenario[]>(() => getSavedScenarios());
@@ -464,6 +483,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Set initial selection when populations/templates load
   useEffect(() => {
     if (populations.length > 0 && !selectedPopulationId) {
+      // Story 27.13: Mark this as a default selection (implicit, not user action)
+      isDefaultPopulationSelection.current = true;
       setSelectedPopulationId(populations[0].id);
     }
   }, [populations, selectedPopulationId]);
@@ -527,6 +548,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Skip auto-update if name was manually edited.
     if (isManuallyEdited) return;
 
+    // Story 27.13: Skip auto-rename for default population selection (implicit, not user action)
+    // This prevents overwriting restored scenario names when the default population is selected
+    const isDefaultSelection = isDefaultPopulationSelection.current;
+    const isDefaultName = activeScenario.name === "Untitled Scenario" ||
+                        activeScenario.name.startsWith("Untitled (");
+
+    if (isDefaultSelection && !isDefaultName) {
+      // Don't auto-rename - this is a restored scenario with a curated name
+      // Clear the flag so subsequent explicit user changes can trigger renames
+      isDefaultPopulationSelection.current = false;
+      return;
+    }
+
     // Generate suggested name from current context
     const suggestedName = generateScenarioSuggestion(
       selectedPortfolioName,
@@ -536,12 +570,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       [], // Composition not available in AppContext
     );
 
-    // Only update if the suggested name differs from the current name
-    if (suggestedName !== activeScenario.name) {
-      setActiveScenario((prev) =>
-        prev ? { ...prev, name: suggestedName } : null
-      );
-    }
+    // Story 27.13: Move equality check inside functional updater to avoid stale closure
+    // The effect reads activeScenario.name for the equality check, but uses functional
+    // state update. Moving the check inside ensures we read the latest prev.name.
+    setActiveScenario((prev) => {
+      if (!prev || suggestedName === prev.name) return prev;
+      return { ...prev, name: suggestedName };
+    });
+
+    // Clear the flag after the effect completes
+    isDefaultPopulationSelection.current = false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Story 27.13: activeScenario is intentionally omitted to avoid stale closure.
+    // We use functional updater to read prev.name instead of activeScenario.name.
   }, [
     activeScenario?.portfolioName,
     activeScenario?.populationIds,
@@ -596,8 +637,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const createNewScenario = useCallback((templateId?: string) => {
     // Story 22.3: Generate scenario name from current context
+    // Story 27.13: Pass null for portfolioName since new scenarios have no portfolio
     const suggestedName = generateScenarioSuggestion(
-      selectedPortfolioName,
+      null, // Story 27.13: New scenarios have no portfolio, use null instead of selectedPortfolioName
       selectedPopulationId,
       populations,
       templates,
@@ -628,11 +670,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       stageTouched: {},  // Story 27.6: explicit empty stageTouched for new scenarios
     };
     setActiveScenario(newScenario);
+    // Story 27.13: Reset selectedPortfolioName for UI state hygiene
+    setSelectedPortfolioName(null);
     if (templateId) {
       setSelectedTemplateId(templateId);
     }
     navigateTo("policies");
-  }, [navigateTo, selectedPortfolioName, selectedPopulationId, populations, templates]);
+  }, [navigateTo, selectedPopulationId, populations, templates]);
 
   const cloneCurrentScenario = useCallback(() => {
     if (!activeScenario) return;
@@ -647,6 +691,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       name: cloneName,
     };
     setActiveScenario(cloned);
+
+    // Story 27.13: Reset selectedPortfolioName for UI state hygiene
+    setSelectedPortfolioName(null);
 
     // Story 22.3: Mark cloned name as manually edited (cloned name is "manual" by definition)
     setManuallyEditedScenarioNames((prev) => {
