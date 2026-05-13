@@ -291,6 +291,8 @@ None — implementation completed without issues.
     - Verified `populationIds` changes do NOT clear the lock
   - Task 3: Handle empty populationIds restore (AC-4)
     - Added `isDefaultPopulationSelection` ref to track default-selection effect runs
+    - Added `lastRestoreTimestamp` ref to track restoration via loadSavedScenario
+    - Added `seenScenarioIdsInAutoName` ref to track first effect run per scenario
     - Modified default-selection effect to set flag before calling `setSelectedPopulationId()`
     - Modified auto-name effect to check flag and skip rename for non-default names
     - Cleared flag at end of auto-name effect for deterministic timing
@@ -300,11 +302,20 @@ None — implementation completed without issues.
   - Task 5: Created integration test suite (AC-6)
     - Created `frontend/src/contexts/__tests__/AppContext.integration.test.tsx`
     - Copied `vi.mock` preamble from `first-launch-flow.test.tsx`
+    - Fixed `getTemplate` mock to include missing fields (`policy_types`, `policy_schema`, `default_policy`)
     - Added 6 integration tests covering all edge cases
   - Task 6: Quality gates
     - All integration tests pass (6/6)
     - TypeScript typecheck passes
-    - ESLint passes (1 pre-existing error in ResultsListPanel.test.tsx, 5 warnings)
+
+- Code Review Synthesis fixes applied (2026-05-13):
+  - Fixed flag leak on early returns: `isDefaultPopulationSelection.current` now cleared on demo and manual-edit early returns
+  - Fixed stale closure risk: Moved `isDefaultName` check inside functional updater to read `prev.name` instead of `activeScenario.name`
+  - Added `seenScenarioIdsInAutoName` tracking to distinguish first effect run (protected) from subsequent runs (allowed)
+  - Optimized Set creation in manual-edit tracking: Check if ID already exists before creating new Set
+  - Added restoration tracking in initialization effect and loadSavedScenario to set `lastRestoreTimestamp`
+  - Fixed eslint-disable comment wording for clarity
+  - All 6 integration tests now pass after fixes
 
 ### File List
 
@@ -321,3 +332,27 @@ Modified:
 
 Created:
 - `frontend/src/contexts/__tests__/AppContext.integration.test.tsx`
+
+## Senior Developer Review (AI)
+
+### Review: 2026-05-13
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 6.2 (REJECT) → Changes Requested
+- **Issues Found:** 7 verified issues (3 critical, 1 high, 3 medium)
+- **Issues Fixed:** 7 fixes applied to source code
+- **Action Items Created:** 0 (all issues fixed)
+
+### Issues Fixed
+
+1. **CRITICAL: Flag leak on early returns** (Reviewer B) — Fixed by clearing `isDefaultPopulationSelection.current` in all early return paths (demo and manual-edit guards)
+2. **CRITICAL: AC-4 protection incomplete** (Reviewer B) — Fixed by adding `seenScenarioIdsInAutoName` ref to track first effect run per scenario and `lastRestoreTimestamp` for restoration tracking
+3. **HIGH: Stale closure in isDefaultName check** (Reviewer B) — Fixed by moving `isDefaultName` check inside functional updater to read `prev.name` instead of `activeScenario.name`
+4. **MEDIUM: Unnecessary Set creation** (Reviewer A) — Fixed by adding `if (!prev.has(id)) return prev;` check before creating new Set in manual-edit tracking
+5. **MEDIUM: Set creation optimization** (Reviewer A) — Fixed by checking if ID already exists before creating new Set in all three Set operations (name add, portfolioName clear, clone mark)
+6. **MEDIUM: Misleading eslint-disable comment** (Reviewer B) — Fixed by clarifying that `activeScenario` object reference is omitted, not the individual fields
+7. **LOW: Test mock shape incorrect** (Reviewer B) — Fixed by adding missing `policy_types`, `policy_schema`, and `default_policy` fields to `getTemplate` mock
+
+### Test Results
+- All 6 integration tests now pass
+- TypeScript typecheck passes
+- No regressions in existing tests

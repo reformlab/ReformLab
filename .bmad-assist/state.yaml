@@ -1,6 +1,6 @@
 current_epic: 27
 current_story: '27.13'
-current_phase: dev_story
+current_phase: code_review_synthesis
 completed_stories:
 - '25.3'
 - '25.4'
@@ -19,9 +19,9 @@ completed_stories:
 - '27.12'
 completed_epics: []
 started_at: '2026-03-01T16:24:33.601834'
-updated_at: '2026-05-13T12:30:12.104189'
+updated_at: '2026-05-13T13:12:18.352690'
 story_started_at: '2026-05-13T12:16:37.801186'
-phase_started_at: '2026-05-13T12:30:12.104189'
+phase_started_at: '2026-05-13T13:12:18.352690'
 epic_started_at: '2026-04-19T10:29:08'
 project_started_at: '2026-03-01T16:24:33.836467'
 anomalies: []

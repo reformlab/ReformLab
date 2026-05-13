@@ -151,6 +151,9 @@ function setupDefaultMocks() {
   vi.mocked(getTemplate).mockResolvedValue({
     parameters: [],
     defaultValues: {},
+    default_policy: {},
+    policy_types: [],
+    policy_schema: {},
   });
   vi.mocked(listResults).mockResolvedValue([]);
   vi.mocked(listPortfolios).mockResolvedValue([]);

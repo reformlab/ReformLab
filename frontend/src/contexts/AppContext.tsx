@@ -273,6 +273,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // Don't mark demo scenario as manually edited (should always get auto-updates)
         if (current.id !== DEMO_SCENARIO_ID) {
           setManuallyEditedScenarioNames((prev) => {
+            // Avoid creating new Set if ID already exists (performance optimization)
+            if (prev.has(current.id)) return prev;
+
             const updated = new Set(prev);
             updated.add(current.id);
             // Persist to localStorage
@@ -287,6 +290,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // re-enable auto-naming for that scenario.
       if (field === "portfolioName" && current.id) {
         setManuallyEditedScenarioNames((prev) => {
+          // Avoid creating new Set if ID is not present (performance optimization)
+          if (!prev.has(current.id)) return prev;
+
           const updated = new Set(prev);
           updated.delete(current.id);
           // Persist to localStorage
@@ -329,6 +335,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Story 27.13: Track when the default-selection effect is running
   // This prevents auto-renaming restored scenarios when the default population is selected
   const isDefaultPopulationSelection = useRef(false);
+  // Story 27.13: Track restoration timestamp to detect scenarios just loaded from storage
+  // This prevents auto-renaming during the race condition window between activation and default selection
+  const lastRestoreTimestamp = useRef(0);
+  // Story 27.13: Track whether we've seen the current scenario ID in the auto-name effect
+  // This allows us to protect the FIRST effect run after activation (for default selection)
+  // but allow subsequent runs (for explicit user actions)
+  const seenScenarioIdsInAutoName = useRef(new Set<string>());
 
   // Saved scenarios React state (lazy-initialized from localStorage)
   const [savedScenarios, setSavedScenarios] = useState<WorkspaceScenario[]>(() => getSavedScenarios());
@@ -362,6 +375,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Returning user: restore saved scenario
       const saved = loadScenario();
       if (saved) {
+        // Story 27.13: Record restoration timestamp to prevent auto-renaming
+        lastRestoreTimestamp.current = Date.now();
         setActiveScenario(saved);
         // Sync legacy selectors so startRun() uses the restored scenario's values
         if (saved.policyType) setSelectedTemplateId(saved.policyType);
@@ -384,6 +399,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!isAuthenticated || !initializedRef.current) return;
     persistScenario(activeScenario);
   }, [activeScenario, isAuthenticated]);
+
+  // Story 27.13: Clear seen scenario IDs when activeScenario changes to null
+  // This resets the tracking for the next scenario
+  useEffect(() => {
+    if (!activeScenario) {
+      seenScenarioIdsInAutoName.current.clear();
+    }
+  }, [activeScenario?.id]);
 
   // Persist activeStage to localStorage whenever it changes (after init)
   useEffect(() => {
@@ -543,23 +566,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const isDemo = activeScenario.id === demoId;
 
     // Preserve the curated first-launch demo name; auto-naming is for user scenarios.
-    if (isDemo) return;
-
-    // Skip auto-update if name was manually edited.
-    if (isManuallyEdited) return;
-
-    // Story 27.13: Skip auto-rename for default population selection (implicit, not user action)
-    // This prevents overwriting restored scenario names when the default population is selected
-    const isDefaultSelection = isDefaultPopulationSelection.current;
-    const isDefaultName = activeScenario.name === "Untitled Scenario" ||
-                        activeScenario.name.startsWith("Untitled (");
-
-    if (isDefaultSelection && !isDefaultName) {
-      // Don't auto-rename - this is a restored scenario with a curated name
-      // Clear the flag so subsequent explicit user changes can trigger renames
+    if (isDemo) {
+      // Story 27.13: Clear flag on early return to prevent leak
       isDefaultPopulationSelection.current = false;
       return;
     }
+
+    // Skip auto-update if name was manually edited.
+    if (isManuallyEdited) {
+      // Story 27.13: Clear flag on early return to prevent leak
+      isDefaultPopulationSelection.current = false;
+      return;
+    }
+
+    // Story 27.13: Capture default selection flag at effect execution time
+    // This prevents race conditions where the flag is cleared before the updater runs
+    const capturedIsDefaultSelection = isDefaultPopulationSelection.current;
+
+    // Story 27.13: Detect recently restored scenarios (via loadSavedScenario within 100ms)
+    const now = Date.now();
+    const isRecentlyRestored = (now - lastRestoreTimestamp.current) < 100;
+
+    // Story 27.13: Track whether this is the first time we're seeing this scenario ID
+    // This allows us to protect the FIRST effect run after activation (for default selection)
+    // but allow subsequent runs (for explicit user actions like population/portfolio changes)
+    const isFirstRunForScenario = !seenScenarioIdsInAutoName.current.has(activeScenario.id);
 
     // Generate suggested name from current context
     const suggestedName = generateScenarioSuggestion(
@@ -570,18 +601,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
       [], // Composition not available in AppContext
     );
 
-    // Story 27.13: Move equality check inside functional updater to avoid stale closure
-    // The effect reads activeScenario.name for the equality check, but uses functional
-    // state update. Moving the check inside ensures we read the latest prev.name.
+    // Story 27.13: Move equality check AND isDefaultName check inside functional updater
+    // to avoid stale closure on activeScenario.name. Using prev.name ensures we read
+    // the latest scenario state, not the closure-captured value.
     setActiveScenario((prev) => {
       if (!prev || suggestedName === prev.name) return prev;
+
+      // Check if this is a default name using prev.name (stale-closure-safe)
+      const isDefaultName = prev.name === "Untitled Scenario" ||
+                          prev.name.startsWith("Untitled (");
+
+      // Skip auto-rename for default population selection with curated name
+      // This prevents overwriting restored scenario names when the default population is selected
+      if (capturedIsDefaultSelection && !isDefaultName) return prev;
+
+      // Skip auto-rename for first effect run after activation/restore with non-default names
+      // This prevents race conditions between scenario activation and default selection
+      // Subsequent runs (for explicit user actions) are allowed
+      if ((isRecentlyRestored || isFirstRunForScenario) && !isDefaultName) return prev;
+
       return { ...prev, name: suggestedName };
     });
+
+    // Story 27.13: Mark this scenario ID as seen in auto-name effect
+    // This allows subsequent effect runs to proceed with renames
+    seenScenarioIdsInAutoName.current.add(activeScenario.id);
 
     // Clear the flag after the effect completes
     isDefaultPopulationSelection.current = false;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    // Story 27.13: activeScenario is intentionally omitted to avoid stale closure.
+    // Story 27.13: activeScenario object reference is intentionally omitted to avoid stale closure.
+    // Individual derived fields (id, portfolioName, populationIds) are in the dep array.
     // We use functional updater to read prev.name instead of activeScenario.name.
   }, [
     activeScenario?.portfolioName,
@@ -609,6 +659,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const list = getSavedScenarios();
     const found = list.find((s) => s.id === id);
     if (found) {
+      // Story 27.13: Record restoration timestamp to prevent auto-renaming during
+      // the race condition window between scenario activation and default selection
+      lastRestoreTimestamp.current = Date.now();
       setActiveScenario(found);
       // Sync legacy selectors so startRun() uses the loaded scenario's values
       if (found.policyType) setSelectedTemplateId(found.policyType);
@@ -697,6 +750,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     // Story 22.3: Mark cloned name as manually edited (cloned name is "manual" by definition)
     setManuallyEditedScenarioNames((prev) => {
+      // Avoid creating new Set if ID already exists (performance optimization)
+      if (prev.has(cloned.id)) return prev;
+
       const updated = new Set(prev);
       updated.add(cloned.id);
       // Persist to localStorage
