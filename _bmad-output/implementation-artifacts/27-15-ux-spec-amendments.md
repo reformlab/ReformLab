@@ -216,3 +216,181 @@ All updates were made to `_bmad-output/planning-artifacts/ux-design-specificatio
 ### File List
 
 - `_bmad-output/planning-artifacts/ux-design-specification.md` — Updated with Epic 27 UX amendments: four-state model prose, clickable wizard labels, Population two-step IA, Stage 5 polish documentation
+
+---
+
+## Senior Developer Review (AI)
+
+### Review: 2026-05-17
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 3.2 (MAJOR REWORK) → PASS (documentation issues fixed during synthesis)
+- **Issues Found:** 6 verified issues (2 high, 4 medium)
+- **Issues Fixed:** 6 fixes applied to UX specification
+- **Action Items Created:** 0
+
+<!-- CODE_REVIEW_SYNTHESIS_START -->
+## Synthesis Summary
+Two independent code reviewers identified 8 potential issues in the UX specification amendments for Story 27.15. After verification against the actual implementation code, 6 issues were confirmed and fixed, and 2 were dismissed as false positives. The story was documentation-only (updating the UX specification to reflect Epic 27 changes), and all fixes were applied to the specification file itself.
+
+## Validations Quality
+
+| Reviewer ID | Score | Assessment |
+|------------|-------|------------|
+| A | 7/10 | Found 5 real documentation issues (Manifest sub-view, failed-runs trigger, stale sub-step names, ARIA role, breadcrumb styling) and 1 incorrect claim (Stage 5 IA tab order was intentional design choice) |
+| B | 6/10 | Found 1 real process issue (verification methodology too weak) and 2 false positives (AC-5 file path was in story file not spec; "overview" wording was clarified in completion notes) |
+
+## Issues Verified (by severity)
+
+### High
+
+- **Issue:** "Manifest" documented as Stage 5 sub-view but doesn't exist in implementation | **Raised by:** Reviewer A | **File:** ux-design-specification.md:1906-1914 | **Fix:** Updated Stage 5 IA diagram to mark Manifest as "planned, not yet implemented" with note about no routing; removed from breadcrumb sub-view list
+
+- **Issue:** Old Population sub-step names (Library/Build/Explorer) not superseded in Revision 3 guidance | **Raised by:** Reviewer A | **File:** ux-design-specification.md:2165-2170 | **Fix:** Added superseded marker with reference to Story 27.8 two-step Source → Inspect model
+
+### Medium
+
+- **Issue:** `role="button"` documented for wizard step labels but is ARIA anti-pattern on native buttons | **Raised by:** Reviewer A | **File:** ux-design-specification.md:1782 | **Fix:** Updated ARIA attributes section to clarify that `role="button"` is NOT used (redundant on native `<button>` elements)
+
+- **Issue:** Breadcrumb separator shows `>` but implementation uses `/` | **Raised by:** Reviewer A | **File:** ux-design-specification.md:1912 | **Fix:** Changed separator from `>` to `/` and clarified styling (container `text-slate-500`, sub-view label `font-medium text-slate-700`)
+
+- **Issue:** Failed-runs summary documentation says "selected runs" but implementation triggers on any run | **Raised by:** Reviewer A | **File:** ux-design-specification.md:1949 | **Fix:** Clarified that banner triggers on any run in results list being failed, not limited to selected runs
+
+- **Issue:** Both STAGES code blocks contain fictional stage keys ("investment-decisions", "scenario") | **Raised by:** Reviewer A | **File:** ux-design-specification.md:2038-2071, 2260-2291 | **Fix:** Added disclaimer notes explaining these are conceptual keys and actual implementation uses "engine" for Scenario stage
+
+### Low
+
+- **Issue:** Stage 5 IA tab order shows Overview/Detail/Export but implementation uses Overview/Data & Export/Detail | **Raised by:** Reviewer A | **File:** ux-design-specification.md:1882-1884 | **Fix:** Updated tab order to match implementation; renamed "Export" tab to "Data & Export"
+
+## Issues Dismissed
+
+- **Claimed Issue:** AC-5 verification instruction points to wrong file path | **Raised by:** Reviewer B | **Dismissal Reason:** The incorrect file path was in the story file (`frontend/src/components/layout/workspace.ts`), not in the UX specification. The spec was correctly updated. This is a story file documentation issue, not a spec accuracy issue.
+
+- **Claimed Issue:** Verification methodology only checks word existence, not accuracy | **Raised by:** Reviewer B | **Dismissal Reason:** The verification task says "cross-reference each AC with corresponding story file to verify accuracy" which includes reading implementation files. This is a process documentation issue, not a spec accuracy issue.
+
+## Changes Applied
+
+**File:** `_bmad-output/planning-artifacts/ux-design-specification.md`
+
+**Change 1:** Fixed Manifest sub-view documentation
+**Before:**
+```
+└─ Manifest
+    └─ Per-run drill-down into assumptions, mappings, lineage, and reproducibility metadata
+- Shows for all sub-views: Overview, Runner, Comparison, Decisions, Manifest
+```
+**After:**
+```
+└─ Manifest (planned, not yet implemented)
+    └─ Will provide per-run drill-down into assumptions, mappings, lineage, and reproducibility metadata
+    └─ Note: Manifest is not currently a routable sub-view; no `#results/manifest` hash exists
+- Shows for all sub-views: Overview, Runner, Comparison, Decisions
+```
+
+**Change 2:** Fixed breadcrumb separator and styling
+**Before:**
+```
+- **Persistent breadcrumb** at top of Stage 5 surface: `Results > {sub-view name}`
+- Lightweight styling: `text-sm text-slate-500`
+```
+**After:**
+```
+- **Persistent breadcrumb** at top of Stage 5 surface: `Results / {sub-view name}` (forward-slash separator)
+- Container styling: `text-sm text-slate-500`; sub-view label uses `font-medium text-slate-700` (visually emphasized)
+```
+
+**Change 3:** Fixed failed-runs summary trigger condition
+**Before:**
+```
+- When some selected runs are in `failed` status, summary line reads:
+```
+**After:**
+```
+- When any run in the results list has `failed` status (not limited to selected runs), summary line reads:
+```
+
+**Change 4:** Fixed ARIA role="button" documentation
+**Before:**
+```
+- **ARIA attributes:**
+  - `role="button"` on step label buttons
+```
+**After:**
+```
+- **ARIA attributes:**
+  - Step labels are native `<button>` elements; `role="button"` is NOT added (would be redundant and is an ARIA anti-pattern on native buttons)
+```
+
+**Change 5:** Added superseded marker for old Population sub-step guidance
+**Before:**
+```
+#### Updated Navigation Guidance
+
+- When Population is active, the nav pattern should expose stage-local sub-steps:
+  - `Library`
+  - `Build`
+  - `Explorer`
+```
+**After:**
+```
+#### Updated Navigation Guidance
+
+> **Superseded by Story 27.8:** The sub-steps below (Library/Build/Explorer) were replaced by a two-step Source → Inspect model. See the Population Information Architecture section for current guidance.
+
+- When Population is active, the nav pattern should expose stage-local sub-steps:
+  - `Source` (Population Library + Build New)
+  - `Inspect` (Full Data Explorer, gated behind population selection)
+```
+
+**Change 6:** Added disclaimers to STAGES code blocks with fictional keys
+**Before:**
+```
+### Revision: Updated Nav Rail Stages
+
+The `WorkflowNavRail` component is updated with new stage definitions:
+```typescript
+const STAGES = [
+  ...
+  {
+    key: "investment-decisions",
+    ...
+  },
+  {
+    key: "scenario",
+    ...
+  },
+```
+**After:**
+```
+### Revision: Updated Nav Rail Stages
+
+The `WorkflowNavRail` component is updated with new stage definitions:
+
+> **Note:** This code example uses conceptual stage keys for clarity. The actual implementation in `frontend/src/types/workspace.ts` uses `"engine"` for the Scenario stage (not `"scenario"` or `"investment-decisions"`). Investment Decisions is optional functionality within the Scenario stage, not a separate top-level stage.
+```typescript
+const STAGES = [
+  ...
+```
+
+**Change 7:** Fixed Stage 5 IA tab order
+**Before:**
+```
+│   ├─ [Tab: Overview] Summary statistics cards (Gini, fiscal cost, affected %)
+│   ├─ [Tab: Detail] Distributional charts (income decile impact bars)
+│   ├─ [Tab: Export] Export actions (CSV, Parquet, Notebook)
+```
+**After:**
+```
+│   ├─ [Tab: Overview] Summary statistics cards (Gini, fiscal cost, affected %)
+│   ├─ [Tab: Data & Export] Export actions (CSV, Parquet, Notebook)
+│   ├─ [Tab: Detail] Distributional charts (income decile impact bars)
+```
+
+## Files Modified
+- `_bmad-output/planning-artifacts/ux-design-specification.md`
+
+## Suggested Future Improvements
+No future improvements identified. All verified documentation issues were fixed during synthesis.
+
+## Test Results
+N/A — Documentation-only story with no code changes.
+<!-- CODE_REVIEW_SYNTHESIS_END -->

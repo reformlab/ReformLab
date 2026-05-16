@@ -1779,7 +1779,7 @@ The wizard step labels (Enable, Model, Parameters, Review) are clickable for bac
 - **Disabled state:** Unreached steps have the `disabled` attribute and `aria-disabled="true"` for screen readers. Clicking has no effect.
 - **State preservation:** When navigating back to an earlier step then forward via Next, previous selections on intermediate steps remain intact.
 - **ARIA attributes:**
-  - `role="button"` on step label buttons
+  - Step labels are native `<button>` elements; `role="button"` is NOT added (would be redundant and is an ARIA anti-pattern on native buttons)
   - `aria-current="step"` on the current active step
   - `aria-disabled="true"` on unreached steps
 
@@ -1880,8 +1880,8 @@ Stage 5: RUN / RESULTS / COMPARE
 │
 ├─ Overview (default view, when at least one run is completed)
 │   ├─ [Tab: Overview] Summary statistics cards (Gini, fiscal cost, affected %)
+│   ├─ [Tab: Data & Export] Export actions (CSV, Parquet, Notebook)
 │   ├─ [Tab: Detail] Distributional charts (income decile impact bars)
-│   ├─ [Tab: Export] Export actions (CSV, Parquet, Notebook)
 │   └─ Skeleton placeholder loads immediately before API resolves
 │
 ├─ Runner (simulation queue)
@@ -1903,16 +1903,17 @@ Stage 5: RUN / RESULTS / COMPARE
 ├─ Decisions (behavioral decision results)
 │   └─ Agent-based decision outcomes (when enabled)
 │
-└─ Manifest
-    └─ Per-run drill-down into assumptions, mappings, lineage, and reproducibility metadata
+└─ Manifest (planned, not yet implemented)
+    └─ Will provide per-run drill-down into assumptions, mappings, lineage, and reproducibility metadata
+    └─ Note: Manifest is not currently a routable sub-view; no `#results/manifest` hash exists
 ```
 
 #### Sub-View Breadcrumb (Story 27.12, AC-1)
 
-- **Persistent breadcrumb** at top of Stage 5 surface: `Results > {sub-view name}`
-- Lightweight styling: `text-sm text-slate-500`
-- Shows for all sub-views: Overview, Runner, Comparison, Decisions, Manifest
-- Example: "Results > Comparison", "Results > Overview"
+- **Persistent breadcrumb** at top of Stage 5 surface: `Results / {sub-view name}` (forward-slash separator)
+- Container styling: `text-sm text-slate-500`; sub-view label uses `font-medium text-slate-700` (visually emphasized)
+- Shows for all sub-views: Overview, Runner, Comparison, Decisions
+- Example: "Results / Comparison", "Results / Overview"
 
 #### Semantic Comparison Palette (Story 27.12, AC-2)
 
@@ -1945,9 +1946,9 @@ Stage 5: RUN / RESULTS / COMPARE
 
 #### Failed Runs Summary (Story 27.12, AC-7)
 
-- When some selected runs are in `failed` status, summary line reads:
+- When any run in the results list has `failed` status (not limited to selected runs), summary line reads:
   - "{N} runs completed, {M} failed (excluded from comparison)"
-- Failed runs are excluded from comparison tables and charts
+- Failed runs are excluded from comparison tables and charts (via RunSelector filtering)
 
 #### Skeleton Loading (Story 27.12, AC-8)
 
@@ -2033,6 +2034,8 @@ App
 ### Revision: Updated Nav Rail Stages
 
 The `WorkflowNavRail` component is updated with new stage definitions:
+
+> **Note:** This code example uses conceptual stage keys for clarity. The actual implementation in `frontend/src/types/workspace.ts` uses `"engine"` for the Scenario stage (not `"scenario"` or `"investment-decisions"`). Investment Decisions is optional functionality within the Scenario stage, not a separate top-level stage.
 
 ```typescript
 const STAGES = [
@@ -2162,11 +2165,12 @@ Revision 2 treated the logo as sidebar chrome and the top bar as a pure stage he
 
 #### Updated Navigation Guidance
 
+> **Superseded by Story 27.8:** The sub-steps below (Library/Build/Explorer) were replaced by a two-step Source → Inspect model. See the Population Information Architecture section for current guidance.
+
 - The top-level nav remains the five-stage workflow.
 - When Population is active, the nav pattern should expose stage-local sub-steps:
-  - `Library`
-  - `Build`
-  - `Explorer`
+  - `Source` (Population Library + Build New)
+  - `Inspect` (Full Data Explorer, gated behind population selection)
 - These are sub-steps, not additional top-level stages.
 
 ### Revision: Stage 1 — Policies
@@ -2255,6 +2259,8 @@ This remains optional, but it is now handled in the dedicated `Investment Decisi
 ### Revision: Updated Nav Rail Labels
 
 Revision 3 user-facing labels are:
+
+> **Note:** This code example uses conceptual stage keys for clarity. The actual implementation in `frontend/src/types/workspace.ts` uses `"engine"` for the Scenario stage (not `"scenario"` or `"investment-decisions"`). Investment Decisions is optional functionality within the Scenario stage, not a separate top-level stage.
 
 ```typescript
 const STAGES = [
