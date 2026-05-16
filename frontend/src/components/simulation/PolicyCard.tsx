@@ -25,8 +25,7 @@ import { TYPE_COLORS, TYPE_LABELS } from "@/components/simulation/typeConstants"
 import { normalizePolicyType } from "@/utils/policyTypes";
 import { cn } from "@/lib/utils";
 import type { Template, Parameter } from "@/data/mock-data";
-import type { Category, EditableParameterGroup } from "@/api/types";
-import type { CompositionEntry } from "./PortfolioCompositionPanel";
+import type { Category, EditableParameterGroup, CompositionEntry } from "@/api/types";
 import type { PolicyValidationError } from "./portfolioValidation";
 import { Input } from "@/components/ui/input";
 

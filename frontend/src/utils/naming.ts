@@ -13,7 +13,7 @@
 
 import type { Template } from "@/data/mock-data";
 import type { Population } from "@/data/mock-data";
-import type { CompositionEntry } from "@/components/simulation/PortfolioCompositionPanel";
+import type { CompositionEntry } from "@/api/types";
 import type { Category } from "@/api/types";
 import type { Parameter } from "@/data/mock-data";
 

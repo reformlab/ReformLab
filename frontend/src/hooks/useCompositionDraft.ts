@@ -18,7 +18,7 @@
  * Story 27.5 — AC-1, AC-2, AC-7, AC-8.
  */
 
-import type { CompositionEntry } from "@/components/simulation/PortfolioCompositionPanel";
+import type { CompositionEntry } from "@/api/types";
 
 // ============================================================================
 // localStorage key constants (exported for test access)

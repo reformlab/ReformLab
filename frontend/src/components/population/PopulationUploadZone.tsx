@@ -123,7 +123,7 @@ function ValidationReport({ report }: { report: PopulationUploadResponse }) {
           </p>
           <div className="flex flex-wrap gap-1">
             {report.matched_columns.map((c) => (
-              <Badge key={c} variant="secondary" className="text-[10px] text-green-700 bg-green-50">
+              <Badge key={c} variant="success" className="text-[10px]">
                 {c}
               </Badge>
             ))}
@@ -158,7 +158,7 @@ function ValidationReport({ report }: { report: PopulationUploadResponse }) {
           </p>
           <div className="flex flex-wrap gap-1">
             {report.missing_required.map((c) => (
-              <Badge key={c} variant="secondary" className="text-[10px] text-red-700 bg-red-50">
+              <Badge key={c} variant="destructive" className="text-[10px]">
                 {c}
               </Badge>
             ))}

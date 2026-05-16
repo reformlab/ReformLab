@@ -22,7 +22,7 @@ export function CalibrationPanel() {
       {/* Status */}
       <div className="flex items-center justify-between">
         <span className="font-medium text-slate-700">Calibration</span>
-        <Badge variant="outline" className="text-amber-700 border-amber-300 bg-amber-50">
+        <Badge variant="warning">
           Not configured
         </Badge>
       </div>

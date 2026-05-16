@@ -30,7 +30,7 @@ import { PortfolioTemplateBrowser } from "@/components/simulation/PortfolioTempl
 import { PortfolioCompositionPanel } from "@/components/simulation/PortfolioCompositionPanel";
 // Story 25.3: Import CreateFromScratchDialog for from-scratch flow
 import { CreateFromScratchDialog } from "@/components/simulation/CreateFromScratchDialog";
-import type { CompositionEntry } from "@/components/simulation/PortfolioCompositionPanel";
+import type { CompositionEntry } from "@/api/types";
 import { ConflictList } from "@/components/simulation/ConflictList";
 import { ApiError } from "@/api/client";
 import {
@@ -985,13 +985,13 @@ export function PoliciesStageScreen() {
         </div>
       ) : null}
 
-      {/* Story 25.6 / Task 3: Population column compatibility warning (non-blocking) */}
+      {/* Story 25.6 / Task 3: Population column compatibility warning (non-blocking)
+       * Story 27.14 AC-5: Multi-paragraph warning structure is intentional:
+       * heading improves scannability; separate <p> elements group problem statement
+       * from action item for screen-reader navigation; collapsing to a single <p>
+       * would reduce readability and break the action item grouping. */}
       {populationColumnWarnings.length > 0 ? (
-        <>
-          {/* Multi-paragraph structure intentional: heading improves scannability,
-           * separate <p> elements group related information for accessibility.
-           * Collapsed to single <p> would reduce readability. */}
-          <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 flex items-start gap-2">
+        <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 flex items-start gap-2">
             <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
             <div className="text-xs text-amber-700">
               <p className="font-semibold mb-1">Population data compatibility warning</p>
@@ -1004,7 +1004,6 @@ export function PoliciesStageScreen() {
               </p>
             </div>
           </div>
-        </>
       ) : null}
 
       {/* Main two-column layout (AC-1) - Story 22.2: 50/50 equal split */}
