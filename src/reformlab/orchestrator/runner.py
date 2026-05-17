@@ -23,6 +23,7 @@ from reformlab.governance.capture import (
     capture_discrete_choice_parameters,
     capture_mappings,
     capture_policy,
+    capture_technology_set,
     capture_unsupported_config_warning,
     capture_warnings,
 )
@@ -692,8 +693,10 @@ class OrchestratorRunner:
             "child_manifests": child_manifests,
             "data_hashes": data_hashes,
             "output_hashes": output_hashes,
-            # Story 28.1 / AC-6: Capture technology_set if provided
-            "technology_set": request.get("technology_set"),
+            # Story 28.3 / AC-6: Capture technology_set with proper serialization
+            "technology_set": capture_technology_set(
+                request.get("technology_set")
+            ),
         }
 
 

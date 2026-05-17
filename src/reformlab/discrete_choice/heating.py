@@ -15,6 +15,7 @@ import logging
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
+from reformlab.discrete_choice.decision_record import TRANSITION_LOG_KEY, TransitionRecord
 from reformlab.discrete_choice.domain_utils import (
     apply_choices_to_population,
     create_vintage_entries,
@@ -316,13 +317,50 @@ class HeatingStateUpdateStep:
             n,
         )
 
+        # Story 28.3 / Task 2.4: Read incumbent column BEFORE writeback (for TransitionRecord)
+        # Check entity_key exists first (for error handling in test_entity_key_not_found_raises)
+        if config.entity_key not in population.tables:
+            raise DiscreteChoiceError(
+                f"Entity key '{config.entity_key}' not found in population tables. "
+                f"Available keys: {sorted(population.tables.keys())}",
+                year=year,
+                step_name=self._name,
+            )
+
+        entity_table = population.tables[config.entity_key]
+        incumbent_col_name = "incumbent_heating"
+        from_alternatives = None
+        if incumbent_col_name in entity_table.column_names:
+            from_alternatives = entity_table.column(incumbent_col_name)
+
         # Apply per-household choices to population (AC-6, AC-7)
+        # Story 28.3 / Task 1.8: Pass domain_key for incumbent writeback
         updated_population = apply_choices_to_population(
             population,
             choice_result,
             config.alternatives,
             config.entity_key,
+            domain_key="heating",  # Story 28.3: Write incumbent_heating column
         )
+
+        # Story 28.3 / Task 2.5-2.6: Emit TransitionRecord if we had incumbents
+        if from_alternatives is not None:
+            transition_record = TransitionRecord(
+                domain_name="heating",
+                year=year,
+                household_ids=entity_table.column("household_id"),
+                from_alternative_ids=from_alternatives,
+                to_alternative_ids=choice_result.chosen,
+            )
+
+            # Multi-domain safe: append to tuple
+            existing_transitions = state.data.get(TRANSITION_LOG_KEY, ())
+            new_transitions = (*existing_transitions, transition_record)
+
+            # Store for later use in panel output
+            # Will be written to new_data below along with other state updates
+        else:
+            new_transitions = None
 
         # Create vintage entries for new installations (AC-8)
         new_cohorts = create_vintage_entries(
@@ -381,6 +419,10 @@ class HeatingStateUpdateStep:
 
         if merged_vintage is not None:
             new_data[self._vintage_key] = merged_vintage
+
+        # Story 28.3 / Task 2.6: Store transition record in state
+        if new_transitions is not None:
+            new_data[TRANSITION_LOG_KEY] = new_transitions
 
         # Extend metadata — preserve existing keys (including vehicle domain)
         existing_metadata = state.data.get(DISCRETE_CHOICE_METADATA_KEY, {})

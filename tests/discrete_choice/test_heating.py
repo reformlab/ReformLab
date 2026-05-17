@@ -379,17 +379,21 @@ class TestHeatingStateUpdateStep:
         assert registry.get("heating_state_update") is step
 
     def test_execute_all_keep_current(self) -> None:
-        """AC-7: all keep_current → population unchanged, no vintage."""
+        """AC-7: all keep_current → population unchanged, no vintage.
+
+        Story 28.3: incumbent_heating column is added but original columns unchanged.
+        """
         config = default_heating_domain_config()
         domain = HeatingInvestmentDomain(config)
         step = HeatingStateUpdateStep(domain=domain)
         state = self._make_state(n=3, chosen=["keep_current"] * 3)
         result = step.execute(2025, state)
 
-        # Population unchanged — verify ALL columns, not just heating_type (AC-7)
+        # Population unchanged — verify original columns unchanged (AC-7)
         orig = state.data["population_data"].tables["menage"]  # type: ignore[union-attr]
         updated = result.data["population_data"].tables["menage"]  # type: ignore[union-attr]
-        assert updated.column_names == orig.column_names
+        # Story 28.3: incumbent_heating column is added
+        assert "incumbent_heating" in updated.column_names
         for col_name in orig.column_names:
             assert (
                 updated.column(col_name).to_pylist() == orig.column(col_name).to_pylist()

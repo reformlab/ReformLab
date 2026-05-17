@@ -11,8 +11,10 @@ loses earlier domain results.
 Types:
 - DecisionRecord: Frozen dataclass capturing one domain's choice snapshot
 - DecisionRecordStep: OrchestratorStep that snapshots ChoiceResult into log
+- TransitionRecord: Frozen dataclass capturing technology transitions (Story 28.3)
 
 Story 14-6: Extend Panel Output and Manifests with Decision Records (FR50/FR51).
+Story 28.3: Wire DiscreteChoiceStep outputs back into population frame (AC-3, AC-5).
 """
 
 from __future__ import annotations
@@ -37,6 +39,7 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 DECISION_LOG_KEY = "discrete_choice_decision_log"
+TRANSITION_LOG_KEY = "discrete_choice_transitions"  # Story 28.3: Technology transitions
 
 # ============================================================================
 # DecisionRecord type — AC-1
@@ -72,6 +75,36 @@ class DecisionRecord:
     seed: int | None
     taste_parameters: dict[str, float]
     eligibility_summary: dict[str, int] | None
+
+
+# ============================================================================
+# TransitionRecord type — Story 28.3 / AC-3, AC-5
+# ============================================================================
+
+
+@dataclass(frozen=True)
+class TransitionRecord:
+    """Capture from→to technology transitions per household.
+
+    Story 28.3 / AC-3: Transition record for multi-period decision tracking.
+
+    Records each household's technology transition in a given year for
+    a specific domain. Used for panel output ({domain}_from, {domain}_to)
+    and manifest capture.
+
+    Fields:
+        domain_name: Domain identifier (e.g., "heating", "vehicle").
+        year: Simulation year when the transition occurred.
+        household_ids: Household identifiers (length N).
+        from_alternative_ids: Incumbent technologies before choice (length N).
+        to_alternative_ids: Chosen technologies after discrete choice (length N).
+    """
+
+    domain_name: str
+    year: int
+    household_ids: pa.Array
+    from_alternative_ids: pa.Array
+    to_alternative_ids: pa.Array
 
 
 # ============================================================================

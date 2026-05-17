@@ -67,6 +67,7 @@ def apply_choices_to_population(
     choice_result: ChoiceResult,
     alternatives: tuple[Alternative, ...],
     entity_key: str,
+    domain_key: str | None = None,
 ) -> PopulationData:
     """Apply per-household choice results to population entity table.
 
@@ -74,14 +75,20 @@ def apply_choices_to_population(
     Columns present in the table are replaced (preserving existing type).
     Columns absent from the table are appended with inferred type.
 
+    Story 28.3 / AC-1: Extended to write incumbent_<domain> columns
+    for multi-year technology transition tracking.
+
     Args:
         population: Current population data.
         choice_result: Logit choice result with chosen alternatives.
         alternatives: Tuple of all alternatives in the domain.
         entity_key: Key in population.tables to update.
+        domain_key: Domain name for incumbent column (e.g., "heating", "vehicle").
+            If None, skips incumbent writeback (backward compatible with legacy call sites).
 
     Returns:
-        New PopulationData with updated entity table.
+        New PopulationData with incumbent_<domain> column written (if domain_key provided),
+        otherwise unchanged population data.
 
     Raises:
         DiscreteChoiceError: On length mismatch or unknown alternative IDs.
@@ -166,6 +173,63 @@ def apply_choices_to_population(
             table = table.set_column(idx, attr_key, new_col)
         else:
             table = table.append_column(attr_key, new_col)
+
+    # Story 28.3 / AC-1, AC-2, AC-3, AC-7, AC-8: Write incumbent_<domain> column
+    # Only perform writeback if domain_key is provided (backward compatibility)
+    if domain_key is not None:
+        incumbent_col_name = f"incumbent_{domain_key}"
+        n_table = table.num_rows
+
+        # Type validation: if column exists, must be dictionary-encoded string
+        if incumbent_col_name in table.column_names:
+            incumbent_col = table.column(incumbent_col_name)
+            if not isinstance(incumbent_col.type, pa.DictionaryType):
+                raise DiscreteChoiceError(
+                    f"Incumbent column '{incumbent_col_name}' has wrong type: "
+                    f"{incumbent_col.type}. Expected pa.dictionary() for efficiency.",
+                )
+            # Validate index type is int32 (not int8, int16, uint32)
+            if incumbent_col.type.index_type != pa.int32():
+                raise DiscreteChoiceError(
+                    f"Incumbent column '{incumbent_col_name}' has wrong dictionary index type: "
+                    f"{incumbent_col.type.index_type}. Expected pa.int32().",
+                )
+
+        # Build incumbent values: skip writeback for "keep_current" to preserve actual technology
+        # For AC-2: ensures year 2 sees actual technology from year 1
+        # For AC-7: ensures ineligible households keep their original technology
+        incumbent_values = []
+        existing_incumbents = (
+            table.column(incumbent_col_name).to_pylist()
+            if incumbent_col_name in table.column_names
+            else [None] * n_table
+        )
+
+        for i in range(n_table):
+            chosen = chosen_list[i]
+            if chosen == "keep_current":
+                # Retain existing incumbent (don't overwrite with "keep_current" string)
+                incumbent_values.append(
+                    existing_incumbents[i]
+                    if existing_incumbents[i] is not None
+                    else "keep_current"
+                )
+            else:
+                incumbent_values.append(chosen)
+
+        if incumbent_col_name in table.column_names:
+            # Column exists: preserve dictionary encoding (set_column path)
+            existing_type = table.column(incumbent_col_name).type
+            incumbent_col = pa.array(incumbent_values, type=existing_type)
+            col_idx = table.column_names.index(incumbent_col_name)
+            table = table.set_column(col_idx, incumbent_col_name, incumbent_col)
+        else:
+            # Column missing: create with dictionary encoding (append_column path)
+            incumbent_col = pa.array(
+                incumbent_values,
+                type=pa.dictionary(pa.int32(), pa.utf8()),
+            )
+            table = table.append_column(incumbent_col_name, incumbent_col)
 
     new_tables = dict(population.tables)
     new_tables[entity_key] = table
