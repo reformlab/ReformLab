@@ -22,6 +22,29 @@ from reformlab.discrete_choice.technology_set import TechnologySet
 logger = logging.getLogger(__name__)
 
 
+# ============================================================================
+# Module-level constants for incumbent column migration
+# ============================================================================
+
+# Story 28.2 / AC-3: Migration mapping for existing attribute columns
+HEATING_TYPE_TO_INCUMBENT: dict[str, str] = {
+    "gas": "condensing_boiler",      # Modern gas boiler
+    "oil": "condensing_boiler",      # Fallback (oil banned in new installs)
+    "electric": "heat_pump_air",     # Assumed heat pump
+    "heat_pump": "heat_pump_air",    # Explicit heat pump
+    "district": "district_heating",  # District heating
+}
+
+VEHICLE_TYPE_TO_INCUMBENT: dict[str, str] = {
+    "petrol": "petrol",
+    "diesel": "diesel",
+    "hybrid": "hybrid",
+    "electric": "ev",
+    "plug_in_hybrid": "plug_in_hybrid",
+    "none": "keep_current",  # No vehicle
+}
+
+
 def validate_population_for_technology_set(
     population: PopulationData,
     technology_set: TechnologySet | None,
@@ -130,6 +153,9 @@ def add_incumbent_columns_to_population(
     vehicle_type columns. This function defaults all households to "keep_current"
     when source columns are absent.
 
+    This function is idempotent: if incumbent columns already exist, they are
+    preserved and not re-added (prevents duplicate column corruption).
+
     Args:
         population: Population data to modify.
         entity_key: Entity table key (default: "menage").
@@ -140,24 +166,6 @@ def add_incumbent_columns_to_population(
         New PopulationData with incumbent columns added. Does not
         modify the original (PopulationData is frozen).
     """
-    # Story 28.2 / AC-3: Migration mapping for existing attribute columns
-    HEATING_TYPE_TO_INCUMBENT = {
-        "gas": "condensing_boiler",      # Modern gas boiler
-        "oil": "condensing_boiler",      # Fallback (oil banned in new installs)
-        "electric": "heat_pump_air",     # Assumed heat pump
-        "heat_pump": "heat_pump_air",    # Explicit heat pump
-        "district": "district_heating",  # District heating
-    }
-
-    VEHICLE_TYPE_TO_INCUMBENT = {
-        "petrol": "petrol",
-        "diesel": "diesel",
-        "hybrid": "hybrid",
-        "electric": "ev",
-        "plug_in_hybrid": "plug_in_hybrid",
-        "none": "keep_current",  # No vehicle
-    }
-
     if entity_key not in population.tables:
         logger.warning(
             "Entity key '%s' not found, skipping incumbent column migration",
@@ -168,8 +176,11 @@ def add_incumbent_columns_to_population(
     table = population.tables[entity_key]
     n = table.num_rows
 
-    # Migrate heating incumbent (default to keep_current if source column missing)
-    if heating_type_col in table.column_names:
+    # Migrate heating incumbent (skip if already present — idempotent)
+    if "incumbent_heating" in table.column_names:
+        # Column already exists, preserve it
+        pass
+    elif heating_type_col in table.column_names:
         heating_types = table.column(heating_type_col).to_pylist()
         heating_incumbents = [
             HEATING_TYPE_TO_INCUMBENT.get(ht, "keep_current")
@@ -188,8 +199,11 @@ def add_incumbent_columns_to_population(
         )
         table = table.append_column("incumbent_heating", default_col)
 
-    # Migrate vehicle incumbent (default to keep_current if source column missing)
-    if vehicle_type_col in table.column_names:
+    # Migrate vehicle incumbent (skip if already present — idempotent)
+    if "incumbent_vehicle" in table.column_names:
+        # Column already exists, preserve it
+        pass
+    elif vehicle_type_col in table.column_names:
         vehicle_types = table.column(vehicle_type_col).to_pylist()
         vehicle_incumbents = [
             VEHICLE_TYPE_TO_INCUMBENT.get(vt, "keep_current")
@@ -208,14 +222,18 @@ def add_incumbent_columns_to_population(
         )
         table = table.append_column("incumbent_vehicle", default_col)
 
-    from reformlab.computation.types import PopulationData as _PopulationData
     new_tables = dict(population.tables)
     new_tables[entity_key] = table
 
-    return _PopulationData(
+    return PopulationData(
         tables=new_tables,
         metadata=dict(population.metadata),
     )
 
 
-__all__ = ["validate_population_for_technology_set", "add_incumbent_columns_to_population"]
+__all__ = [
+    "HEATING_TYPE_TO_INCUMBENT",
+    "VEHICLE_TYPE_TO_INCUMBENT",
+    "validate_population_for_technology_set",
+    "add_incumbent_columns_to_population",
+]

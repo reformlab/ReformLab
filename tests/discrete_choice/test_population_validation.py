@@ -12,6 +12,7 @@ import pytest
 from reformlab.computation.types import PopulationData
 from reformlab.discrete_choice.errors import DiscreteChoiceError
 from reformlab.discrete_choice.population_validation import (
+    add_incumbent_columns_to_population,
     validate_population_for_technology_set,
 )
 from reformlab.discrete_choice.technology_set import DEFAULT_TECHNOLOGY_SET
@@ -312,3 +313,148 @@ class TestPopulationValidation:
         # Should return warnings, not raise
         assert len(warnings) == 2  # heating and vehicle
         assert all("not found" in w for w in warnings)
+
+
+class TestAddIncumbentColumnsToPopulation:
+    """Tests for add_incumbent_columns_to_population utility function."""
+
+    def test_adds_columns_to_empty_population(self):
+        """Should add default keep_current columns when source columns missing."""
+        import pyarrow as pa
+
+        population = PopulationData(
+            tables={"menage": pa.table({"household_id": [1, 2, 3]})},
+            metadata={},
+        )
+
+        result = add_incumbent_columns_to_population(population)
+
+        assert "incumbent_heating" in result.tables["menage"].column_names
+        assert "incumbent_vehicle" in result.tables["menage"].column_names
+        assert result.tables["menage"].column("incumbent_heating").to_pylist() == [
+            "keep_current",
+            "keep_current",
+            "keep_current",
+        ]
+        assert result.tables["menage"].column("incumbent_vehicle").to_pylist() == [
+            "keep_current",
+            "keep_current",
+            "keep_current",
+        ]
+
+    def test_maps_heating_type_to_incumbent(self):
+        """Should map heating_type values to incumbent alternatives."""
+        import pyarrow as pa
+
+        population = PopulationData(
+            tables={
+                "menage": pa.table({
+                    "household_id": [1, 2, 3, 4, 5],
+                    "heating_type": ["gas", "electric", "heat_pump", "district", "unknown"],
+                })
+            },
+            metadata={},
+        )
+
+        result = add_incumbent_columns_to_population(population)
+
+        incumbents = result.tables["menage"].column("incumbent_heating").to_pylist()
+        assert incumbents == [
+            "condensing_boiler",  # gas
+            "heat_pump_air",  # electric
+            "heat_pump_air",  # heat_pump
+            "district_heating",  # district
+            "keep_current",  # unknown -> default
+        ]
+
+    def test_maps_vehicle_type_to_incumbent(self):
+        """Should map vehicle_type values to incumbent alternatives."""
+        import pyarrow as pa
+
+        population = PopulationData(
+            tables={
+                "menage": pa.table({
+                    "household_id": [1, 2, 3, 4],
+                    "vehicle_type": ["petrol", "diesel", "hybrid", "electric"],
+                })
+            },
+            metadata={},
+        )
+
+        result = add_incumbent_columns_to_population(population)
+
+        incumbents = result.tables["menage"].column("incumbent_vehicle").to_pylist()
+        assert incumbents == ["petrol", "diesel", "hybrid", "ev"]
+
+    def test_idempotent_when_columns_already_exist(self):
+        """Should be idempotent - skip if columns already present."""
+        import pyarrow as pa
+
+        population = PopulationData(
+            tables={
+                "menage": pa.table({
+                    "household_id": [1, 2, 3],
+                    "incumbent_heating": pa.array(
+                        ["gas_boiler", "heat_pump", "electric"],
+                        type=pa.dictionary(pa.int32(), pa.utf8()),
+                    ),
+                    "incumbent_vehicle": pa.array(
+                        ["petrol", "diesel", "ev"],
+                        type=pa.dictionary(pa.int32(), pa.utf8()),
+                    ),
+                })
+            },
+            metadata={},
+        )
+
+        result = add_incumbent_columns_to_population(population)
+
+        # Should preserve existing columns, not add duplicates
+        assert result.tables["menage"].num_columns == 3  # household_id + 2 incumbents
+        assert result.tables["menage"].column("incumbent_heating").to_pylist() == [
+            "gas_boiler",
+            "heat_pump",
+            "electric",
+        ]
+        assert result.tables["menage"].column("incumbent_vehicle").to_pylist() == [
+            "petrol",
+            "diesel",
+            "ev",
+        ]
+
+    def test_missing_entity_key_returns_unchanged(self):
+        """Should return population unchanged when entity key missing."""
+        import pyarrow as pa
+
+        population = PopulationData(
+            tables={
+                "individu": pa.table({  # Wrong entity key
+                    "person_id": [1, 2],
+                })
+            },
+            metadata={},
+        )
+
+        result = add_incumbent_columns_to_population(population)
+
+        # Should return unchanged population
+        assert result.tables == population.tables
+        assert "incumbent_heating" not in result.tables.get("individu", {}).column_names
+
+    def test_returns_new_population_without_mutation(self):
+        """Should return new PopulationData without modifying original."""
+        import pyarrow as pa
+
+        population = PopulationData(
+            tables={"menage": pa.table({"household_id": [1, 2, 3]})},
+            metadata={"seed": 42},
+        )
+
+        original_tables = population.tables
+        result = add_incumbent_columns_to_population(population)
+
+        # Original unchanged
+        assert "incumbent_heating" not in population.tables["menage"].column_names
+        assert population.tables is original_tables
+        # Result has new columns
+        assert "incumbent_heating" in result.tables["menage"].column_names

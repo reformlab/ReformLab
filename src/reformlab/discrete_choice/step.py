@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from reformlab.computation.types import PolicyConfig
     from reformlab.discrete_choice.domain import DecisionDomain
     from reformlab.discrete_choice.eligibility import EligibilityFilter
+    from reformlab.discrete_choice.technology_set import TechnologySet
     from reformlab.discrete_choice.types import ExpansionResult
     from reformlab.orchestrator.types import YearState
 
@@ -146,7 +147,8 @@ class DiscreteChoiceStep:
         description: str | None = None,
         population_key: str = "population_data",
         eligibility_filter: EligibilityFilter | None = None,
-        technology_set: Any | None = None,  # Story 28.2 / AC-1: Technology set for incumbent validation
+        # Story 28.2 / AC-1: Technology set for incumbent validation
+        technology_set: TechnologySet | None = None,
     ) -> None:
         """Initialize the discrete choice step.
 
@@ -235,7 +237,9 @@ class DiscreteChoiceStep:
 
         # Story 28.2 / AC-1, AC-8: Validate population incumbents when technology_set provided
         if self._technology_set is not None:
-            from reformlab.discrete_choice import validate_population_for_technology_set
+            from reformlab.discrete_choice.population_validation import (
+                validate_population_for_technology_set,
+            )
 
             warnings = validate_population_for_technology_set(
                 population, self._technology_set, entity_key="menage"
