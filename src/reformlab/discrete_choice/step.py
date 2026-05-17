@@ -200,7 +200,20 @@ class DiscreteChoiceStep:
 
         Raises:
             DiscreteChoiceError: If any phase fails.
+
+        Story 28.1 / AC-5: Short-circuit when investment decisions disabled.
         """
+        # Story 28.1 / AC-5: Short-circuit when investment decisions disabled
+        investment_decisions_enabled = state.metadata.get("investment_decisions_enabled", True)
+        if investment_decisions_enabled is False:
+            logger.debug(
+                "year=%d step_name=%s event=short_circuit investment_decisions_enabled=false",
+                year,
+                self._name,
+            )
+            # Return state unchanged, no validation, no manifest capture
+            return state
+
         domain = self._domain
         alternatives = domain.alternatives
         choice_set = ChoiceSet(alternatives=alternatives)

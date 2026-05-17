@@ -33,6 +33,7 @@ from reformlab.server.routes.portfolios import router as portfolios_router
 from reformlab.server.routes.results import router as results_router
 from reformlab.server.routes.runs import router as runs_router
 from reformlab.server.routes.scenarios import router as scenarios_router
+from reformlab.server.routes.technology_sets import router as technology_sets_router
 from reformlab.server.routes.templates import router as templates_router
 from reformlab.server.routes.validation import router as validation_router
 
@@ -102,6 +103,11 @@ def create_app() -> FastAPI:
     app.include_router(results_router, prefix="/api/results", tags=["results"])
     app.include_router(decisions_router, prefix="/api/decisions", tags=["decisions"])
     app.include_router(validation_router, prefix="/api/validation", tags=["validation"])
+    app.include_router(
+        technology_sets_router,
+        prefix="/api/discrete-choice/technology-sets",
+        tags=["technology-sets"],
+    )
 
     # Register exception handlers
     _register_exception_handlers(app)

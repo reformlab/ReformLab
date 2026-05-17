@@ -692,6 +692,8 @@ class OrchestratorRunner:
             "child_manifests": child_manifests,
             "data_hashes": data_hashes,
             "output_hashes": output_hashes,
+            # Story 28.1 / AC-6: Capture technology_set if provided
+            "technology_set": request.get("technology_set"),
         }
 
 

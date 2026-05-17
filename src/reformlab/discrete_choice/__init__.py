@@ -68,6 +68,13 @@ from reformlab.discrete_choice.step import (
     DISCRETE_CHOICE_METADATA_KEY,
     DiscreteChoiceStep,
 )
+from reformlab.discrete_choice.technology_set import (
+    DEFAULT_HEATING_TECHNOLOGY_SET,
+    DEFAULT_TECHNOLOGY_SET,
+    DEFAULT_VEHICLE_TECHNOLOGY_SET,
+    DomainTechnologySet,
+    TechnologySet,
+)
 from reformlab.discrete_choice.types import (
     Alternative,
     ChoiceResult,
@@ -87,6 +94,11 @@ __all__ = [
     "Alternative",
     "ChoiceResult",
     "ChoiceSet",
+    "DEFAULT_HEATING_TECHNOLOGY_SET",
+    "DEFAULT_TECHNOLOGY_SET",
+    "DEFAULT_VEHICLE_TECHNOLOGY_SET",
+    "DomainTechnologySet",
+    "TechnologySet",
     "apply_choices_to_population",
     "compute_probabilities",
     "compute_utilities",

@@ -1,0 +1,154 @@
+record_id: 6e2bc437-cf46-475c-9331-253b53769c49
+created_at: '2026-05-17T15:04:16.887634+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 28
+  story_num: 1
+  title: Story 28.1
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-05-17T14:58:14.355116Z'
+  end_time: '2026-05-17T15:01:06.405116Z'
+  duration_ms: 172050
+  input_tokens: 0
+  output_tokens: 9215
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 36863
+  heading_count: 58
+  list_depth_max: 4
+  code_block_count: 30
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 23.2'
+  - 🎯 Ruthless Story Validation 28.1
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 23.2 → MAJOR REWORK'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Schema Mismatch Between Story and Spike ADR
+  - 2. Missing Pydantic API Models for TechnologySet Serialization
+  - Add to src/reformlab/server/models.py
+  - 3. Orchestrator Short-Circuit Implementation Undefined
+  - In src/reformlab/orchestrator/runner.py or discrete_choice/step.py
+  - 4. Manifest Integration Location Unspecified
+  - Modify src/reformlab/governance/manifest.py
+  - 5. Migration Path Implementation Undefined
+  - Add to src/reformlab/discrete_choice/technology_set.py
+  - 6. API Error Response Specification Incomplete
+  - In src/reformlab/server/routes/technology_sets.py
+  - 7. Frontend Test Coverage Gaps
+  - 8. Missing Frontend API Client Specification
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Backend Serialization Format for Nested Dataclasses
+  - In src/reformlab/discrete_choice/technology_set.py
+  - 2. Type Safety for Optional TechnologySet Field
+  - 3. Alternative Domain Validation in TechnologySet
+  - 4. API Endpoint Route Registration
+  - In src/reformlab/server/main.py or app initialization
+  - Register the technology sets router
+  - 5. Version String Format and Validation
+  - In src/reformlab/discrete_choice/technology_set.py
+  - ✨ Optimizations (Nice to Have)
+  - 1. Consider Caching Default Technology Set Response
+  - Add simple in-memory cache with TTL
+  - 2. TechnologySet Hash for Equality Comparison
+  - 🤖 LLM Optimization Improvements
+  - 1. Reduce Spike ADR Summary Verbosity
+  - 'Spike ADR Specifications (Source: Story 28.0 output)'
+  - Spike ADR Reference
+  - 2. Consolidate Architecture Constraints
+  - Architecture Constraints
+  - 3. Remove Duplicate Code Pattern Examples
+  - Relevant Code Patterns
+  - 4. Simplify Quality Gates Section
+  - Quality Gates
+  - Backend
+  - Frontend
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 6611ffb1ffec
+findings:
+  total_count: 19
+  by_severity:
+    critical: 8
+    major: 5
+    minor: 2
+    nit: 4
+  by_category:
+    security: 0
+    performance: 2
+    correctness: 8
+    completeness: 6
+    clarity: 3
+    testability: 0
+  has_fix_count: 19
+  has_location_count: 17
+  has_evidence_count: 14
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 20
+  confidence_phrases_count: 10
+linguistic:
+  avg_sentence_length: 31.542857142857144
+  vocabulary_richness: 0.21807065217391305
+  flesch_reading_ease: 2.059148377228013
+  vague_terms_count: 2
+  formality_score: 0.7
+  sentiment: neutral
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.85
+  evidence_quality: 0.75
+  follows_template: true
+  internal_consistency: 0.95
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true
