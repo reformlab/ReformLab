@@ -228,28 +228,38 @@ describe("InvestmentDecisionsWizard — Story 22.6", () => {
   });
 
   describe("Taste parameters persistence (AC-4)", () => {
-    it("wizard receives EngineConfig.tasteParameters as prop", () => {
+    it("wizard receives EngineConfig.tasteParameters as prop", async () => {
+      const user = userEvent.setup();
       const customTasteParams = { priceSensitivity: -3.0, rangeAnxiety: -1.5, envPreference: 2.0 };
       renderWizard(
         makeConfig({
           investmentDecisionsEnabled: true,
           logitModel: "multinomial_logit",
           tasteParameters: customTasteParams,
+          technologySet: { version: "test", domains: {} },
         }),
       );
+
+      // Auto-advances to Technology step, navigate to Model step
+      await user.click(screen.getByRole("button", { name: /^Next$/i }));
 
       // Verify the wizard component is rendered (taste parameters are passed as props)
       expect(screen.getByRole("combobox", { name: /logit model/i })).toBeInTheDocument();
     });
 
-    it("wizard uses DEFAULT_TASTE_PARAMETERS when EngineConfig.tasteParameters is null", () => {
+    it("wizard uses DEFAULT_TASTE_PARAMETERS when EngineConfig.tasteParameters is null", async () => {
+      const user = userEvent.setup();
       renderWizard(
         makeConfig({
           investmentDecisionsEnabled: true,
           logitModel: "multinomial_logit",
           tasteParameters: null,
+          technologySet: { version: "test", domains: {} },
         }),
       );
+
+      // Auto-advances to Technology step, navigate to Model step
+      await user.click(screen.getByRole("button", { name: /^Next$/i }));
 
       // Verify the wizard component is rendered
       expect(screen.getByRole("combobox", { name: /logit model/i })).toBeInTheDocument();

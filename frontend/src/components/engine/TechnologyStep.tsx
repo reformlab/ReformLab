@@ -14,14 +14,13 @@
  * - Inline-only warnings (no toasts)
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ChevronDown, ChevronUp, Plus, Trash2, CheckCircle2, AlertTriangle, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Separator } from "@/components/ui/separator";
-import type { EngineConfig, TechnologySet, DecisionDomainKey, TechnologyAlternative, DomainTechnologySet } from "@/types/workspace";
+import type { EngineConfig, TechnologySet, DecisionDomainKey, TechnologyAlternative } from "@/types/workspace";
 import { getAllDefaultTechnologySets } from "@/api/technology-sets";
 
 // ============================================================================
@@ -31,7 +30,6 @@ import { getAllDefaultTechnologySets } from "@/api/technology-sets";
 interface TechnologyStepProps {
   engineConfig: EngineConfig;
   onUpdateEngineConfig: (config: EngineConfig) => void;
-  populationId: string | null;
   populationIncumbents: Record<DecisionDomainKey, Set<string>>;
 }
 
@@ -61,7 +59,6 @@ const DOMAIN_DESCRIPTIONS: Record<DecisionDomainKey, string> = {
 export function TechnologyStep({
   engineConfig,
   onUpdateEngineConfig,
-  populationId,
   populationIncumbents,
 }: TechnologyStepProps) {
   // Local state for UI interactions
@@ -142,16 +139,12 @@ export function TechnologyStep({
 
     const orphans: string[] = [];
 
-    for (const domain of ["heating", "vehicle"] as DecisionDomainKey[]) {
-      const domainSet = technologySet.domains[domain];
-      if (!domainSet) continue;
-
-      const alternativeIds = new Set(domainSet.alternatives.map((a) => a.id));
-
-      // Check if any ASC keys reference alternatives not in the set
-      // This is a simplified check - full implementation would parse taste parameters
-      // for ASC keys and validate them against the technology set
-    }
+    // TODO: Implement full orphan-ASC validation (requires tasteParameters schema extension)
+    // Current TasteParameters type has priceSensitivity, rangeAnxiety, envPreference
+    // but no per-alternative ASC keys (e.g., "heating_ASC_gas_boiler")
+    // To implement: add alternativeSpecificConstants?: Record<string, number> to TasteParameters
+    // Then parse those keys and validate against technology set alternatives
+    // For now, this returns empty (no validation)
 
     return orphans;
   };
@@ -208,11 +201,6 @@ export function TechnologyStep({
       }
       return next;
     });
-  };
-
-  const handleToggleAlternative = (domain: DecisionDomainKey, alternativeId: string, checked: boolean) => {
-    // For now, alternatives are always included - checkbox is visual only
-    // Full implementation would support include/exclude per alternative
   };
 
   const handleSetReference = (domain: DecisionDomainKey, alternativeId: string) => {
@@ -332,13 +320,17 @@ export function TechnologyStep({
     if (!domainSet) return null;
 
     return (
-      <div key={domain} className="border border-slate-200 rounded-lg overflow-hidden">
+      <Collapsible
+        key={domain}
+        open={isExpanded}
+        onOpenChange={() => handleToggleExpanded(domain)}
+        className="border border-slate-200 rounded-lg overflow-hidden"
+      >
         {/* Domain header */}
         <div className="flex items-center justify-between p-4 bg-slate-50 border-b border-slate-200">
           <div className="flex items-center gap-3 flex-1">
             <CollapsibleTrigger
               asChild
-              onClick={() => handleToggleExpanded(domain)}
               className="flex items-center gap-2 hover:bg-slate-100 rounded px-2 py-1 -ml-2 transition-colors cursor-pointer"
             >
               <button type="button" className="flex items-center gap-2">
@@ -371,7 +363,7 @@ export function TechnologyStep({
           </div>
         </div>
 
-        <CollapsibleContent open={isExpanded}>
+        <CollapsibleContent>
           <div className="p-4 space-y-4">
             {/* Incumbent match status */}
             {analysis.hasIncumbentColumn && (
@@ -461,20 +453,18 @@ export function TechnologyStep({
             </div>
           </div>
         </CollapsibleContent>
-      </div>
+      </Collapsible>
     );
   };
 
   const renderMismatchBanner = (mismatch: DomainMismatch) => {
-    const domainLabel = DOMAIN_LABELS[mismatch.domain];
-
     return (
       <div key={mismatch.domain} className="flex items-center justify-between p-3 rounded border border-amber-200 bg-amber-50">
         <div className="flex items-center gap-2 text-sm text-amber-900">
           <AlertTriangle className="h-4 w-4" />
           <span>
             {mismatch.unmatchedValues.length} household{mismatch.unmatchedValues.length > 1 ? "s" : ""} have{" "}
-            {mismatch.unmatchedValues.map((v) => v.value).join(", ")} technology not in your {domainLabel} set; they will start at the reference alternative.
+            {mismatch.unmatchedValues.map((v) => v.value).join(", ")} technology not in your {DOMAIN_LABELS[mismatch.domain]} set; they will start at the reference alternative.
           </span>
         </div>
         <Button

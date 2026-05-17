@@ -1,0 +1,114 @@
+record_id: be679452-79ed-46c8-b4ac-e0427b92ea75
+created_at: '2026-05-17T21:08:14.658541+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 28
+  story_num: '4'
+  title: Story 28.4
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: sonnet
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-05-17T21:04:08.039688Z'
+  end_time: '2026-05-17T21:07:34.367688Z'
+  duration_ms: 206328
+  input_tokens: 0
+  output_tokens: 3163
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 12655
+  heading_count: 14
+  list_depth_max: 2
+  code_block_count: 4
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: **11.9**'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes & Readability
+  - ⚡ Performance & Scalability
+  - 🐛 Correctness & Safety
+  - 🔧 Maintainability Issues
+  - 🛠️ Suggested Fixes
+  - 1. Fix Collapsible wrapper (Critical — broken UX)
+  - 2. Fix `findOrphanASCs` to actually validate
+  - 3. Fix `canGoNext` null check
+  - 4. Fix lying test helper signature
+  - 5. Remove dead imports
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 77fd5d414a23
+findings:
+  total_count: 11
+  by_severity:
+    critical: 2
+    major: 6
+    minor: 3
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 3
+    completeness: 6
+    clarity: 1
+    testability: 1
+  has_fix_count: 6
+  has_location_count: 11
+  has_evidence_count: 4
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 2
+  confidence_phrases_count: 10
+linguistic:
+  avg_sentence_length: 24.476190476190474
+  vocabulary_richness: 0.3476005188067445
+  flesch_reading_ease: 5.802727413366341
+  vague_terms_count: 1
+  formality_score: 0.45
+  sentiment: mixed
+quality:
+  actionable_ratio: 0.545
+  specificity_score: 0.909
+  evidence_quality: 0.364
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 6
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

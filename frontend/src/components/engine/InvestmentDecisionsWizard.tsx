@@ -56,7 +56,8 @@ export function InvestmentDecisionsWizard({ engineConfig, onUpdateEngineConfig }
   // Track the previous model value to preserve it on re-enable
   const previousLogitModelRef = useRef<EngineConfig["logitModel"]>(engineConfig.logitModel);
 
-  // Track population incumbents for TechnologyStep (simplified - would be from AppContext in full implementation)
+  // TODO: Integrate with AppContext to get actual population incumbents (Story 28.4 deferred)
+  // For now, use empty sets - population-aware features (AC-4, AC-5, AC-6, AC-7) require population profile API extension
   const [populationIncumbents] = useState<Record<DecisionDomainKey, Set<string>>>({
     heating: new Set(),
     vehicle: new Set(),
@@ -445,7 +446,6 @@ export function InvestmentDecisionsWizard({ engineConfig, onUpdateEngineConfig }
           <TechnologyStep
             engineConfig={engineConfig}
             onUpdateEngineConfig={onUpdateEngineConfig}
-            populationId={null}
             populationIncumbents={populationIncumbents}
           />
         );
@@ -468,7 +468,7 @@ export function InvestmentDecisionsWizard({ engineConfig, onUpdateEngineConfig }
 
     const canGoNext =
       activeStep === 0 ? isEnabled // Enable step: can proceed if enabled (will auto-advance)
-      : activeStep === 1 ? engineConfig.technologySet !== null // Technology step: require technology set (Story 28.4)
+      : activeStep === 1 ? engineConfig.technologySet != null // Technology step: require technology set (Story 28.4)
       : activeStep === 2 ? engineConfig.logitModel !== null // Model step: require selection
       : true; // Parameters step: always can proceed
 

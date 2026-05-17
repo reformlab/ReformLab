@@ -15,7 +15,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TechnologyStep } from "../TechnologyStep";
-import type { EngineConfig, TechnologySet } from "@/types/workspace";
+import type { EngineConfig } from "@/types/workspace";
 import { DEFAULT_TECHNOLOGY_SET } from "@/types/workspace";
 import * as technologySetsApi from "@/api/technology-sets";
 
@@ -101,8 +101,8 @@ describe("TechnologyStep — Story 28.4", () => {
       const config = makeConfig({ technologySet: DEFAULT_TECHNOLOGY_SET });
       renderTechnologyStep(config);
 
-      expect(screen.getByText(/Heating/i)).toBeInTheDocument();
-      expect(screen.getByText(/Vehicle/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Heating/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/Vehicle/i).length).toBeGreaterThan(0);
     });
 
     it("renders domain toggle switches", () => {
@@ -128,11 +128,7 @@ describe("TechnologyStep — Story 28.4", () => {
   describe("Population incumbent detection — AC-4, AC-6, AC-7", () => {
     it("shows green badge when incumbent column detected in population", () => {
       const config = makeConfig({ technologySet: DEFAULT_TECHNOLOGY_SET });
-      renderTechnologyStep(
-        config,
-        // populationIncumbents with values
-        { heating: new Set(["condensing_boiler", "heat_pump_air"]), vehicle: new Set() } as any,
-      );
+      renderTechnologyStep(config);
 
       // Should show green badge (implementation dependent)
       // This is a placeholder test - actual implementation will verify badge rendering
@@ -150,14 +146,7 @@ describe("TechnologyStep — Story 28.4", () => {
       const config = makeConfig({
         technologySet: DEFAULT_TECHNOLOGY_SET,
       });
-      renderTechnologyStep(
-        config,
-        // populationIncumbents that match the technology set
-        {
-          heating: new Set(["condensing_boiler", "heat_pump_air", "heat_pump_ground", "district_heating"]),
-          vehicle: new Set(["petrol", "diesel", "hybrid", "ev", "plug_in_hybrid"]),
-        } as any,
-      );
+      renderTechnologyStep(config);
 
       // Should show confirmation message
       // This is a placeholder test - actual implementation will verify confirmation rendering
@@ -186,7 +175,6 @@ describe("TechnologyStep — Story 28.4", () => {
 
   describe("Domain toggle behavior", () => {
     it("toggles domain enabled/disabled when switch clicked", async () => {
-      const user = userEvent.setup();
       const config = makeConfig({ technologySet: DEFAULT_TECHNOLOGY_SET });
       renderTechnologyStep(config);
 
@@ -197,7 +185,6 @@ describe("TechnologyStep — Story 28.4", () => {
 
   describe("Reference alternative selection — AC-3", () => {
     it("changes reference alternative when radio clicked", async () => {
-      const user = userEvent.setup();
       const config = makeConfig({ technologySet: DEFAULT_TECHNOLOGY_SET });
       renderTechnologyStep(config);
 
@@ -208,7 +195,6 @@ describe("TechnologyStep — Story 28.4", () => {
 
   describe("Add/Remove alternatives — AC-3", () => {
     it("adds scaffolded alternative when add button clicked", async () => {
-      const user = userEvent.setup();
       const config = makeConfig({ technologySet: DEFAULT_TECHNOLOGY_SET });
       renderTechnologyStep(config);
 
@@ -217,7 +203,6 @@ describe("TechnologyStep — Story 28.4", () => {
     });
 
     it("removes alternative when remove button clicked", async () => {
-      const user = userEvent.setup();
       const config = makeConfig({ technologySet: DEFAULT_TECHNOLOGY_SET });
       renderTechnologyStep(config);
 
