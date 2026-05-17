@@ -23,15 +23,15 @@ source_documents:
 Consolidated source of truth for the active backlog.
 Completed epics are intentionally not reintroduced here to keep bmad-assist context small.
 
-## Epic Index
+## Roadmap Index
 
 Epics 1-24 are complete (see git history and implementation artifacts for details).
 
 | Epic | Title | Phase | Status | Stories |
 |------|-------|-------|--------|---------|
 | EPIC-25 | Stage 1 Policies Redesign (Revision 4.1 UX) | 3 | done | 6 |
-| EPIC-26 | Five-Stage Workspace Migration and Stage Completion | 3 | in-progress (26.7 in review) | 7 |
-| EPIC-27 | Workspace UX Stabilization | 3 | backlog | 16 |
+| EPIC-26 | Five-Stage Workspace Migration and Stage Completion | 3 | done | 7 |
+| EPIC-27 | Workspace UX Stabilization | 3 | done | 16 |
 | EPIC-28 | Investment Decisions — Technology-Set as a First-Class Concept | 4 | backlog (gated on 28.0 spike) | 6 |
 | EPIC-29 | OpenFisca Variable Coverage and Live-Output Recovery | 3 | backlog | 5 |
 
@@ -110,7 +110,7 @@ Current completed range: EPIC-1 through EPIC-24.
 - UX-DR14: EPIC-26 - Quick Test Population in the Population Library.
 - UX-DR15: EPIC-26 - deterministic scenario name suggestions that freeze after manual edit.
 
-## Epic List
+## Active Backlog
 
 ### Epic 25: Stage 1 Policies Redesign (Revision 4.1 UX)
 Analyst can build reusable policy sets in the redesigned Policies stage using three policy types, API-driven categories, formula help, from-template or from-scratch creation, editable parameter groups, and policy set save/load independent from scenarios.
@@ -910,6 +910,60 @@ Reference: `_bmad-output/implementation-artifacts/27-15-ux-spec-amendments.md`
 - Backward compatibility verified for scenarios that don't enable decisions or for populations without incumbent columns.
 - Architect spike produces an ADR that PM signs off before stories 28.1–28.5 are sized.
 
+## Story 28.0: Architect spike — technology-set contract and population state-transition model
+
+**Status:** backlog
+**Dependencies:** None
+
+Define the architecture and data-contract decisions for technology-set configuration, incumbent-technology state, and multi-period transition writes so implementation stories can proceed against one approved model.
+
+Reference: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-04-26.md`
+
+## Story 28.1: Add `technology_set` to `EngineConfig`; expose API and persistence
+
+**Status:** backlog
+**Dependencies:** Story 28.0
+
+Add `technology_set` to the engine/scenario contract, expose it through API and persistence layers, and keep existing scenarios backward compatible when decisions are disabled.
+
+Reference: `_bmad-output/implementation-artifacts/28-1-add-technology-set-to-engine-config.md`
+
+## Story 28.2: Extend `PopulationData` schema with optional incumbent-technology columns
+
+**Status:** backlog
+**Dependencies:** Story 28.0
+
+Extend population data so households can carry incumbent technology state needed by later discrete-choice transitions without breaking populations that do not provide the new columns.
+
+Reference: `_bmad-output/implementation-artifacts/28-2-extend-population-data-schema-with-incumbent-technology-columns.md`
+
+## Story 28.3: Wire `DiscreteChoiceStep` outputs back into the population frame
+
+**Status:** backlog
+**Dependencies:** Story 28.1, Story 28.2
+
+Persist discrete-choice outputs back into the population frame so multi-period runs reflect chosen technologies and later steps operate on updated household state.
+
+Reference: `_bmad-output/implementation-artifacts/28-3-wire-discrete-choice-step-outputs-back-into-population-frame.md`
+
+## Story 28.4: Investment Decisions wizard — Technology step
+
+**Status:** backlog
+**Dependencies:** Story 28.0, Story 28.1
+
+Add the dedicated Technology step in the Investment Decisions wizard so analysts can declare which technologies are in scope before running decision-enabled scenarios.
+
+Reference: `_bmad-output/implementation-artifacts/28-4-investment-decisions-wizard-technology-step.md`
+
+## Story 28.5: Regression and analyst-journey coverage for multi-period decisions runs
+
+**Status:** backlog
+**Dependencies:** Story 28.2, Story 28.3, Story 28.4
+
+Lock down the new decision flow with regression coverage across technology-set configuration, incumbent-state updates, and multi-period result behavior.
+
+Reference: `_bmad-output/implementation-artifacts/28-5-regression-coverage-for-multi-period-decisions-runs.md`
+
 ---
 
 # Epic 29: OpenFisca Variable Coverage and Live-Output Recovery
@@ -941,3 +995,48 @@ Reference: `_bmad-output/implementation-artifacts/27-15-ux-spec-amendments.md`
 - No test fixture references generic placeholder names (`irpp`, `revenu_net`, `revenu_brut`, `taxe_carbone`).
 - `pa.concat_tables()` schema-mismatch paths in `panel.py` have regression coverage.
 - Manifest version bumped if the output set has changed semantics.
+
+## Story 29.1: Implement custom OpenFisca variables: subsidy_amount, subsidy_eligible, vehicle_malus, energy_poverty_aid
+
+**Status:** backlog
+**Dependencies:** None
+
+Implement the missing custom OpenFisca variables so live runs once again expose the intended policy outputs needed by analysts and downstream manifests.
+
+Reference: `_bmad-output/implementation-artifacts/29-1-implement-custom-openfisca-variables-subsidy-malus-energy-aid.md`
+
+## Story 29.2: Resolve generic-name placeholders (`irpp`, `revenu_net`, `revenu_brut`, `taxe_carbone`)
+
+**Status:** backlog
+**Dependencies:** Story 29.1
+
+Replace the remaining generic-name placeholders with resolved variables and restore explicit naming discipline in the live execution path.
+
+Reference: `_bmad-output/implementation-artifacts/29-2-resolve-generic-name-placeholders.md`
+
+## Story 29.3: Restore resolved names in `_DEFAULT_LIVE_OUTPUT_VARIABLES`
+
+**Status:** backlog
+**Dependencies:** Story 29.1, Story 29.2
+
+Restore the default live output set now that the missing variables and resolved names are back in place.
+
+Reference: `_bmad-output/implementation-artifacts/29-3-restore-resolved-names-in-default-live-output-variables.md`
+
+## Story 29.4: Sweep test fixtures off the generic names
+
+**Status:** backlog
+**Dependencies:** Story 29.2
+
+Remove generic-name placeholders from fixtures and supporting test data so the suite stops encoding the broken naming contract.
+
+Reference: `_bmad-output/implementation-artifacts/29-4-sweep-test-fixtures-off-generic-names.md`
+
+## Story 29.5: Add `pa.concat_tables()` schema-mismatch regression tests
+
+**Status:** backlog
+**Dependencies:** Story 29.3, Story 29.4
+
+Add regression coverage for schema-mismatch handling in `panel.py` so future output-shape regressions are caught early.
+
+Reference: `_bmad-output/implementation-artifacts/29-5-add-concat-tables-schema-mismatch-regression-tests.md`
