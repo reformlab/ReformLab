@@ -7,30 +7,14 @@
  */
 
 // ============================================================================
-// Types
+// Types imported from workspace.ts to avoid duplication
 // ============================================================================
-
-export type DecisionDomainKey = "heating" | "vehicle";
-
-export interface TechnologyAlternative {
-  id: string;
-  name: string;
-  attributes: Record<string, string | number>;
-  isIncumbentOnly?: boolean;
-}
-
-export interface DomainTechnologySet {
-  domain: DecisionDomainKey;
-  enabled: boolean;
-  alternatives: TechnologyAlternative[];
-  referenceAlternativeId: string | null;
-  costColumn?: string;
-}
-
-export interface TechnologySet {
-  version: string;
-  domains: Partial<Record<DecisionDomainKey, DomainTechnologySet>>;
-}
+export type {
+  DecisionDomainKey,
+  TechnologyAlternative,
+  DomainTechnologySet,
+  TechnologySet,
+} from "@/types/workspace";
 
 // ============================================================================
 // API client

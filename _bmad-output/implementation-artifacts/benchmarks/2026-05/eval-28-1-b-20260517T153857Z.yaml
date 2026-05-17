@@ -1,0 +1,114 @@
+record_id: 74c2b917-0139-4d35-9ef9-d5f62d3f831a
+created_at: '2026-05-17T15:38:57.171876+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 28
+  story_num: '1'
+  title: Story 28.1
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true
+evaluator:
+  provider: claude-subprocess
+  model: sonnet
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-05-17T15:34:55.178734Z'
+  end_time: '2026-05-17T15:38:31.378734Z'
+  duration_ms: 216200
+  input_tokens: 0
+  output_tokens: 2886
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 11547
+  heading_count: 14
+  list_depth_max: 2
+  code_block_count: 6
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: **12.4**'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes & Readability
+  - ⚡ Performance & Scalability
+  - 🐛 Correctness & Safety
+  - 🔧 Maintainability Issues
+  - 🛠️ Suggested Fixes
+  - '1. Fix the AC #5 short-circuit: write `investment_decisions_enabled` into `state.metadata`'
+  - 2. Fix `referenceAlternativeId` nullability parity
+  - 3. Remove type duplication in `technology-sets.ts`
+  - 4. Add the missing backend API tests (task marked done but not done)
+  - 5. Fix mutable dict in frozen dataclass
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 8a0d1ce0140e
+findings:
+  total_count: 11
+  by_severity:
+    critical: 3
+    major: 4
+    minor: 4
+    nit: 0
+  by_category:
+    security: 1
+    performance: 0
+    correctness: 5
+    completeness: 3
+    clarity: 1
+    testability: 2
+  has_fix_count: 10
+  has_location_count: 10
+  has_evidence_count: 11
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 0
+  confidence_phrases_count: 2
+linguistic:
+  avg_sentence_length: 27.980392156862745
+  vocabulary_richness: 0.34548002803083394
+  flesch_reading_ease: 8.84196586599245
+  vague_terms_count: 0
+  formality_score: 0.75
+  sentiment: mixed
+quality:
+  actionable_ratio: 0.91
+  specificity_score: 0.91
+  evidence_quality: 0.73
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true
+  phase: code-review
+  file_count: 14
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

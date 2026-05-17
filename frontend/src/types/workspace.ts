@@ -205,5 +205,23 @@ export function isValidSubView(s: string): s is SubView {
 // ============================================================================
 
 export function hasTechnologySet(config: EngineConfig): config is EngineConfig & { technologySet: TechnologySet } {
-  return config.technologySet !== null && config.technologySet !== undefined;
+  if (!config.technologySet) return false;
+
+  // Validate structure: must have version and at least one domain
+  const ts = config.technologySet;
+  if (typeof ts.version !== "string" || !ts.version) return false;
+  if (!ts.domains || typeof ts.domains !== "object") return false;
+
+  const domainKeys = Object.keys(ts.domains);
+  if (domainKeys.length === 0) return false;
+
+  // Validate at least one domain has required structure
+  return domainKeys.some((key) => {
+    const domain = ts.domains[key as DecisionDomainKey];
+    return (
+      domain &&
+      typeof domain.enabled === "boolean" &&
+      Array.isArray(domain.alternatives)
+    );
+  });
 }

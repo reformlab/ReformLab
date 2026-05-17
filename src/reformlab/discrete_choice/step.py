@@ -205,7 +205,7 @@ class DiscreteChoiceStep:
         """
         # Story 28.1 / AC-5: Short-circuit when investment decisions disabled
         investment_decisions_enabled = state.metadata.get("investment_decisions_enabled", True)
-        if investment_decisions_enabled is False:
+        if not investment_decisions_enabled:
             logger.debug(
                 "year=%d step_name=%s event=short_circuit investment_decisions_enabled=false",
                 year,

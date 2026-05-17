@@ -14,13 +14,11 @@ frozen dataclasses, to_choice_set method, version validation.
 from __future__ import annotations
 
 import re
+import types as builtin_types
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from reformlab.discrete_choice.types import Alternative, ChoiceSet
-
-if TYPE_CHECKING:
-    pass
 
 _VERSION_RE = re.compile(r"^[a-z]{2}-default-\d{4}-\d{2}-\d{2}$")
 
@@ -64,7 +62,9 @@ class TechnologySet:
     Attributes:
         version: Version string in format "{cc}-default-{YYYY}-{MM}-{DD}"
             (e.g., "fr-default-2026-04-26").
-        domains: Dict mapping domain names to DomainTechnologySet instances.
+        domains: Mapping from domain names to DomainTechnologySet instances.
+            Accepts dict for initialization, converts to MappingProxyType
+            for true immutability.
 
     Story 28.1, AC-2: TechnologySet frozen dataclass with to_choice_set method.
     """
@@ -73,7 +73,14 @@ class TechnologySet:
     domains: dict[str, DomainTechnologySet]
 
     def __post_init__(self) -> None:
-        """Validate version format."""
+        """Validate version format and freeze domains dict."""
+        # Freeze the dict to enforce true immutability
+        # MappingProxyType provides read-only view of the dict
+        if isinstance(self.domains, dict):
+            object.__setattr__(
+                self, "domains", builtin_types.MappingProxyType(self.domains)
+            )
+
         if not _VERSION_RE.match(self.version):
             raise ValueError(
                 f"Invalid version format: {self.version}. "

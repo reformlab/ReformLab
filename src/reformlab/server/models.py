@@ -982,7 +982,7 @@ class DomainTechnologySetResponse(BaseModel):
     domain: str  # "heating" | "vehicle"
     enabled: bool
     alternatives: list[TechnologyAlternativeModel]
-    referenceAlternativeId: str
+    referenceAlternativeId: str | None = None
     costColumn: str | None = None
 
 
