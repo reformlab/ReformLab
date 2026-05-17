@@ -1,6 +1,6 @@
 # Story 28.0: Architect spike — technology-set contract and population state-transition model
 
-Status: ready-for-dev
+Status: pending-pm-review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -12,18 +12,20 @@ so that implementation stories 28.1–28.5 can proceed against one approved mode
 
 ## Acceptance Criteria
 
-1. Deliver an ADR document answering all technology-set contract questions (see spike questions below)
-2. Define `TechnologySet` schema with per-domain alternative selection
-3. Define population schema delta for incumbent-technology columns
-4. Specify the writeback contract for `DiscreteChoiceStep` → population updates
-5. Specify orchestrator multi-period state threading
-6. Specify manifest provenance fields for technology-set versioning
-7. Define backward compatibility path for populations without incumbent columns
-8. Size stories 28.1–28.5 concretely (within ±2 SP accuracy)
+1. **ADR document with complete decisions** — Deliver `_bmad-output/planning-artifacts/spike-investment-decisions-technology-set.md` with one section per spike question (8 sections minimum). Each section states: chosen option with rationale, rejected alternatives with reasoning, and concrete type/schema definition or pseudocode example.
+2. **TechnologySet schema defined** — Frozen dataclass definition with field names and types, validation rules, `to_choice_set(domain: str) -> ChoiceSet` method, and construction example.
+3. **Population schema delta specified** — Column naming convention (e.g., `incumbent_heating`, `incumbent_vehicle`), PyArrow dictionary encoding type `pa.dictionary(pa.int32(), pa.utf8())`, optional/required semantics, default value strategy, and validation that values are in domain's alternative_ids set.
+4. **Writeback contract specified** — Method signature, return type, sequence diagram showing orchestrator step chain, and interaction with existing `*StateUpdateStep` classes.
+5. **Multi-period state threading specified** — State key naming convention to prevent collisions (`{domain}_{key}` pattern), 2-year state diagram showing `YearState.data` keys before/after each period, multi-domain step ordering rules, and error recovery strategy for state corruption.
+6. **Manifest provenance fields specified** — List of new fields with name/type, JSON example manifest snippet, and version bump strategy.
+7. **Backward compatibility path defined** — Validation behavior (error/warning/silent) for populations without incumbent columns, default assignment algorithm, and migration strategy for bundled populations.
+8. **Stories 28.1–28.5 sized concretely** — Each story includes task breakdown (5-15 subtasks), complexity assessment (Low/Med/High), risk factors, and SP estimate with rationale.
+9. **PM sign-off obtained** — ADR reviewed by PM and either new FR entries created in PRD or explicit approval recorded before story is marked done (per epics.md governance requirement).
+10. **Error handling specified** — Each failure mode (invalid incumbents, missing columns, unknown alternatives, state collisions, transition failures) specifies error type, message format, and recovery strategy following project error response pattern `{what, why, fix}`.
 
 ## Spike Questions (from sprint-change-proposal)
 
-The ADR must answer:
+The ADR must answer all 8 questions:
 
 1. **What does `EngineConfig.technology_set` look like?**
    - Per-domain list of alternative IDs?
@@ -52,74 +54,102 @@ The ADR must answer:
 6. **Adapter contract — does `ComputationAdapter` change?**
    - Or does the change live entirely above it?
 
+7. **Error handling — what are the failure modes?**
+   - Invalid incumbent technology IDs in population
+   - Missing incumbent columns when decisions enabled
+   - Unknown alternative IDs in technology set
+   - Multi-domain state key collisions
+   - Transition record merge failures
+   - Manifest serialization failures
+
+8. **TasteParameters type reconciliation** — How do per-domain taste parameter overrides in `TechnologySet` relate to existing `TasteParameters` types? The frontend has a 3-field vehicle-specific `TasteParameters`; the backend has a generalized 7-field structure. Should the frontend type be generalized? Should `TechnologySet` define its own schema? Or should overrides be deferred to story 28.4?
+
 ## Tasks / Subtasks
 
-- [ ] Task 1: Analyze existing discrete choice domain contracts (AC: 1, 3, 6)
-  - [ ] 1.1 Review `DecisionDomain` protocol in `src/reformlab/discrete_choice/domain.py`
-  - [ ] 1.2 Review existing domain implementations (`heating.py`, `vehicle.py`)
-  - [ ] 1.3 Review `*StateUpdateStep` patterns and `apply_choices_to_population` utility
-  - [ ] 1.4 Review `Alternative` and `ChoiceSet` types in `types.py`
-- [ ] Task 2: Analyze orchestrator state threading (AC: 3, 4)
-  - [ ] 2.1 Review `YearState` in `src/reformlab/orchestrator/types.py`
-  - [ ] 2.2 Review `OrchestratorConfig` and step pipeline execution
-  - [ ] 2.3 Review `PopulationData` schema in `src/reformlab/computation/types.py`
-  - [ ] 2.4 Review multi-period result handling in `panel.py`
-- [ ] Task 3: Analyze frontend workspace types (AC: 1)
-  - [ ] 3.1 Review `EngineConfig` in `frontend/src/types/workspace.ts`
-  - [ ] 3.2 Review investment decisions wizard structure
-  - [ ] 3.3 Review Pydantic models in `src/reformlab/server/models.py`
-- [ ] Task 4: Design `TechnologySet` schema (AC: 1)
-  - [ ] 4.1 Define backend `TechnologySet` dataclass/frozen type
-  - [ ] 4.2 Define per-domain `TechnologySelection` type
-  - [ ] 4.3 Define taste parameter override structure
-  - [ ] 4.4 Define default/empty technology-set semantics
-- [ ] Task 5: Design population schema delta (AC: 2, 5)
-  - [ ] 5.1 Choose column naming convention for incumbents
-  - [ ] 5.2 Define PyArrow schema for optional incumbent columns
-  - [ ] 5.3 Define validation rules for missing/invalid incumbents
-  - [ ] 5.4 Define backward compatibility path
-- [ ] Task 6: Design writeback contract (AC: 3, 4)
-  - [ ] 6.1 Specify choice-result → population update pattern
-  - [ ] 6.2 Define transition record structure (household_id, period, from_tech, to_tech)
-  - [ ] 6.3 Specify orchestrator state threading for multi-period
-  - [ ] 6.4 Define interaction with existing `*StateUpdateStep` classes
-- [ ] Task 7: Design manifest provenance (AC: 4)
-  - [ ] 7.1 Define technology-set version/hash field
-  - [ ] 7.2 Define incumbent distribution metadata
-  - [ ] 7.3 Define transition count metadata structure
-  - [ ] 7.4 Define manifest version bump strategy
-- [ ] Task 8: Design API and persistence (AC: 1)
-  - [ ] 8.1 Define `GET /api/technology-alternatives?domain={domain}` endpoint
-  - [ ] 8.2 Define technology-set persistence in `EngineConfig`
-  - [ ] 8.3 Define migration path for existing scenarios
-- [ ] Task 9: Size stories 28.1–28.5 (AC: 8)
-  - [ ] 9.1 Break down story 28.1 with concrete tasks and SP estimate
-  - [ ] 9.2 Break down story 28.2 with concrete tasks and SP estimate
-  - [ ] 9.3 Break down story 28.3 with concrete tasks and SP estimate
-  - [ ] 9.4 Break down story 28.4 with concrete tasks and SP estimate
-  - [ ] 9.5 Break down story 28.5 with concrete tasks and SP estimate
-- [ ] Task 10: Write ADR document (AC: 1-7)
-  - [ ] 10.1 Create `_bmad-output/planning-artifacts/adr-technology-set-and-population-state-transitions.md`
-  - [ ] 10.2 Document all design decisions with rationale
-  - [ ] 10.3 Include schema definitions and code examples
-  - [ ] 10.4 Include backward compatibility strategy
-  - [ ] 10.5 Include manifest provenance specification
+- [x] Task 1: Analyze existing discrete choice domain contracts (AC: 1, 3, 6)
+  - [x] 1.1 Review `DecisionDomain` protocol in `src/reformlab/discrete_choice/domain.py`
+  - [x] 1.2 Review existing domain implementations (`heating.py`, `vehicle.py`)
+  - [x] 1.3 Review `*StateUpdateStep` patterns and `apply_choices_to_population` utility
+  - [x] 1.4 Review `Alternative` and `ChoiceSet` types in `types.py`
+  - [x] 1.5 Review `decision_record.py` — `DecisionRecord`, `DecisionRecordStep`, `DECISION_LOG_KEY` and assess whether incumbent→chosen transition tracking extends this type or requires a new parallel type
+- [x] Task 2: Analyze orchestrator state threading (AC: 3, 4)
+  - [x] 2.1 Review `YearState` in `src/reformlab/orchestrator/types.py`
+  - [x] 2.2 Review `OrchestratorConfig` and step pipeline execution
+  - [x] 2.3 Review `PopulationData` schema in `src/reformlab/computation/types.py`
+  - [x] 2.4 Review multi-period result handling in `panel.py`
+- [x] Task 3: Analyze frontend workspace types (AC: 1)
+  - [x] 3.1 Review `EngineConfig` in `frontend/src/types/workspace.ts`
+  - [x] 3.2 Review investment decisions wizard structure
+  - [x] 3.3 Review Pydantic models in `src/reformlab/server/models.py`
+  - [x] 3.4 Compare frontend vs backend `TasteParameters` types and document incompatibility
+- [x] Task 4: Design `TechnologySet` schema (AC: 1)
+  - [x] 4.1 Define backend `TechnologySet` dataclass/frozen type
+  - [x] 4.2 Define per-domain `TechnologySelection` type
+  - [x] 4.3 Define taste parameter override structure — decide whether to use frontend type (3-field vehicle-specific), backend type (7-field generalized), or new domain-specific schema
+  - [x] 4.4 Define default/empty technology-set semantics
+- [x] Task 5: Design population schema delta (AC: 2, 5)
+  - [x] 5.1 Choose column naming convention for incumbents
+  - [x] 5.2 Define PyArrow schema for optional incumbent columns (use `pa.dictionary(pa.int32(), pa.utf8())` for efficient categorical filtering)
+  - [x] 5.3 Define validation rules for missing/invalid incumbents
+  - [x] 5.4 Define backward compatibility path
+- [x] Task 6: Design writeback contract (AC: 3, 4, 5)
+  - [x] 6.1 Specify choice-result → population update pattern
+  - [x] 6.2 Define transition record structure (household_id, period, from_tech, to_tech)
+  - [x] 6.3 Specify orchestrator state threading for multi-period
+  - [x] 6.4 Define interaction with existing `*StateUpdateStep` classes
+  - [x] 6.5 Specify state key naming convention to prevent multi-domain collisions
+  - [x] 6.6 Specify multi-domain step ordering rules (all steps for one domain before next domain)
+- [x] Task 7: Design manifest provenance (AC: 4)
+  - [x] 7.1 Define technology-set version/hash field
+  - [x] 7.2 Define incumbent distribution metadata
+  - [x] 7.3 Define transition count metadata structure
+  - [x] 7.4 Define manifest version bump strategy
+- [x] Task 8: Design API and persistence (AC: 1)
+  - [x] 8.1 Define `GET /api/technology-alternatives?domain={domain}` endpoint
+  - [x] 8.2 Define technology-set persistence in `EngineConfig`
+  - [x] 8.3 Define migration path for existing scenarios
+- [x] Task 9: Size stories 28.1–28.5 (AC: 8)
+  - [x] 9.1 Break down story 28.1 with concrete tasks and SP estimate
+  - [x] 9.2 Break down story 28.2 with concrete tasks and SP estimate
+  - [x] 9.3 Break down story 28.3 with concrete tasks and SP estimate
+  - [x] 9.4 Break down story 28.4 with concrete tasks and SP estimate
+  - [x] 9.5 Break down story 28.5 with concrete tasks and SP estimate
+- [x] Task 10: Write ADR document (AC: 1-7)
+  - [x] 10.1 Create `_bmad-output/planning-artifacts/spike-investment-decisions-technology-set.md` (filename matches sprint-change-proposal Section 4.2)
+  - [x] 10.2 Document all design decisions with rationale
+  - [x] 10.3 Include schema definitions and code examples
+  - [x] 10.4 Include backward compatibility strategy
+  - [x] 10.5 Include manifest provenance specification
+  - [x] 10.6 Follow ADR structure: Context, Decision Drivers, Decisions Made (one per spike question), Schema Definitions, Sequence Diagrams, Backward Compatibility, Error Handling, Story 28.1–28.5 Sizing
+- [x] Task 11: Design error handling (AC: 10)
+  - [x] 11.1 Specify error types for each failure mode (DiscreteChoiceError, ValidationError, StateCorruptionError, etc.)
+  - [x] 11.2 Define error message format following project pattern `{what, why, fix}`
+  - [x] 11.3 Define recovery strategies (fail-loud vs graceful degradation)
+  - [x] 11.4 Document logging levels and structured log format
+- [x] Task 12: Obtain PM sign-off (AC: 9)
+  - [x] 12.1 Hand off ADR to PM for review
+  - [x] 12.2 Update sprint-status.yaml to 'pending-pm-review'
+  - [ ] 12.3 Wait for PM sign-off before marking story 28.0 done
+  - [ ] 12.4 Ensure new FR entries are created in PRD if required by PM
 
 ## Dev Notes
 
 ### Relevant Architecture Patterns and Constraints
 
-**Source Tree Components to Touch:**
+**Source Tree Components to Analyze (Read-Only):**
 - `src/reformlab/discrete_choice/types.py` — `Alternative`, `ChoiceSet`, domain types
 - `src/reformlab/discrete_choice/step.py` — `DiscreteChoiceStep` orchestrator integration
 - `src/reformlab/discrete_choice/heating.py` — `HeatingInvestmentDomain`, `HeatingStateUpdateStep`
 - `src/reformlab/discrete_choice/vehicle.py` — `VehicleInvestmentDomain`, `VehicleStateUpdateStep`
 - `src/reformlab/discrete_choice/domain_utils.py` — `apply_choices_to_population`, `create_vintage_entries`
+- `src/reformlab/discrete_choice/decision_record.py` — `DecisionRecord`, `DecisionRecordStep`, `DECISION_LOG_KEY`
 - `src/reformlab/orchestrator/types.py` — `YearState`, `OrchestratorConfig`
 - `src/reformlab/computation/types.py` — `PopulationData` schema
 - `src/reformlab/server/models.py` — Pydantic request/response models
 - `frontend/src/types/workspace.ts` — `EngineConfig`, workspace types
 - `frontend/src/components/engine/InvestmentDecisionsWizard.tsx` — wizard UI
+
+> **Note:** This spike produces ONE output file: the ADR at `_bmad-output/planning-artifacts/spike-investment-decisions-technology-set.md`. No source code is modified.
 
 **Key Patterns to Follow:**
 1. **Frozen dataclasses for domain types** — All types must use `@dataclass(frozen=True)` and be mutated via `dataclasses.replace()`
@@ -173,15 +203,9 @@ export interface EngineConfig {
 }
 ```
 
-### Testing Standards Summary
+### Testing Standards
 
-- **Mirror source structure** — `tests/{subsystem}/` matches `src/reformlab/{subsystem}/`
-- **Class-based test grouping** — Group tests by feature or acceptance criterion
-- **Fixtures in conftest.py** — Subsystem-specific fixtures per `conftest.py`
-- **Direct assertions** — Use plain `assert`; no custom assertion helpers
-- **Test helpers are explicit** — Import shared callables from conftest directly
-- **Golden file tests** — Use YAML fixtures in `tests/fixtures/`
-- **MockAdapter for unit tests** — Never use real OpenFisca in orchestrator/template/indicator unit tests
+No tests are produced by this spike. The deliverable is an ADR document, not code. Testing guidance for implementation stories 28.1–28.5 is in CLAUDE.md and project-context.md.
 
 ### Project Structure Notes
 
@@ -207,6 +231,7 @@ export interface EngineConfig {
 1. **Per-domain columns** — `incumbent_heating: string`, `incumbent_vehicle: string`
    - Pros: Simple, queryable, aligns with existing domain pattern
    - Cons: N columns for N domains, sparse if not all domains used
+   - Implementation: Use `pa.dictionary(pa.int32(), pa.utf8())` for O(1) categorical filtering and efficient storage
 2. **Single structured column** — `incumbent_technologies: map<domain, alternative_id>`
    - Pros: One column, extensible
    - Cons: PyArrow map type is less common, requires special handling
@@ -233,6 +258,23 @@ export interface EngineConfig {
 - Should capture transition counts per domain per year
 - Must be backward compatible with existing manifests
 
+**TasteParameters Type Consideration:**
+- Frontend `TasteParameters` (workspace.ts) is vehicle-specific with 3 fields: `priceSensitivity`, `rangeAnxiety`, `envPreference`
+- Backend `TasteParameters` (types.py) is generalized with 7 fields: `beta_cost`, `asc`, `betas`, `calibrate`, `fixed`, `reference_alternative`
+- Spike must decide whether `TechnologySet.taste_parameter_overrides` uses frontend type, backend type, or a new domain-specific schema
+- Decision affects story 28.4 (wizard UI) implementation
+
+**State Key Management Consideration:**
+- Domain-specific keys should use `{domain}_{key}` pattern (e.g., `heating_incumbent`, `vehicle_incumbent`) to prevent collisions
+- Existing shared keys: `DISCRETE_CHOICE_RESULT_KEY`, `DISCRETE_CHOICE_METADATA_KEY`, `DECISION_LOG_KEY`
+- New keys to consider: `TRANSITION_LOG_KEY`, `TECHNOLOGY_SET_KEY`
+- Step ordering must prevent interleaving domain steps (e.g., all heating steps before vehicle steps)
+
+**Multi-Domain Considerations:**
+- When multiple domains are enabled (e.g., heating + vehicle), state updates must not overwrite each other
+- DecisionRecordStep must capture per-domain results to prevent data loss
+- EngineConfigCompiler should order steps by domain to respect dependencies
+
 ## References
 
 - [Source: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-04-26.md`](../planning-artifacts/sprint-change-proposal-2026-04-26.md) Section 4.2 — EPIC-28 story list and spike questions
@@ -242,6 +284,7 @@ export interface EngineConfig {
 - [Source: `src/reformlab/discrete_choice/step.py`](../../src/reformlab/discrete_choice/step.py) — DiscreteChoiceStep orchestrator integration
 - [Source: `src/reformlab/discrete_choice/heating.py`](../../src/reformlab/discrete_choice/heating.py) — Heating domain and state update pattern
 - [Source: `src/reformlab/discrete_choice/vehicle.py`](../../src/reformlab/discrete_choice/vehicle.py) — Vehicle domain and state update pattern
+- [Source: `src/reformlab/discrete_choice/decision_record.py`](../../src/reformlab/discrete_choice/decision_record.py) — DecisionRecord and DecisionRecordStep
 - [Source: `src/reformlab/orchestrator/types.py`](../../src/reformlab/orchestrator/types.py) — YearState and OrchestratorConfig
 - [Source: `src/reformlab/computation/types.py`](../../src/reformlab/computation/types.py) — PopulationData schema
 - [Source: `src/reformlab/server/models.py`](../../src/reformlab/server/models.py) — Pydantic API models
@@ -251,18 +294,23 @@ export interface EngineConfig {
 ## Dev Agent Record
 
 ### Agent Model Used
-
-glm-4.7 (Claude Opus 4.6 equivalent)
+Claude Opus 4.6 (claude-opus-4-6)
 
 ### Debug Log References
+No debugging required — this is an architect spike, not implementation.
 
 ### Completion Notes List
-
 - Story 28.0 is an architect spike, not implementation
-- Deliverable is ADR document, not code
-- Stories 28.1–28.5 will be sized concretely after this spike completes
-- This spike must produce actionable guidance for implementation agents
+- Deliverable is ADR document at `_bmad-output/planning-artifacts/spike-investment-decisions-technology-set.md`
+- All 8 spike questions answered with chosen options, rejected alternatives, and concrete schema definitions
+- Stories 28.1–28.5 sized concretely with SP estimates (5+5+5+3+3 = 21 SP)
+- Error handling specified for all failure modes with `{what, why, fix}` pattern
+- Backward compatibility path defined for populations without incumbent columns
+- Taste parameter override decision deferred to Story 28.4 per sprint-change-proposal guidance
+- ADR pending PM sign-off before implementation stories proceed
+- sprint-status.yaml updated to `pending-pm-review`
 
 ### File List
-
-Analysis complete. Ready for architect agent to execute spike.
+_bmad-output/planning-artifacts/spike-investment-decisions-technology-set.md (created)
+_bmad-output/implementation-artifacts/sprint-status.yaml (modified)
+_bmad-output/implementation-artifacts/28-0-architect-spike-technology-set-contract-and-population-state-transition-model.md (modified)

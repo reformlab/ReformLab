@@ -1,0 +1,136 @@
+record_id: 0635d204-9e56-421f-9505-203c3513ad6f
+created_at: '2026-05-17T14:37:05.442434+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 28
+  story_num: 0
+  title: Story 28.0
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: sonnet
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-05-17T14:31:22.310146Z'
+  end_time: '2026-05-17T14:36:04.431146Z'
+  duration_ms: 282121
+  input_tokens: 0
+  output_tokens: 5722
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 22891
+  heading_count: 40
+  list_depth_max: 3
+  code_block_count: 5
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Evidence Score Summary
+  - 'Evidence Score: **7.1**'
+  - 🎯 Ruthless Story Validation 28.0
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 7.1 → REJECT'
+  - 🚨 Critical Issues (Must Fix)
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Resolve output file path conflict with sprint-change-proposal
+  - 2. Add PM sign-off AC and task
+  - 3. Add `decision_record.py` to Task 1 analysis targets
+  - 4. Add concrete completeness criteria to ACs 1–7
+  - 5. Rename "Source Tree Components to Touch" to "Source Tree Components to Analyze"
+  - '6. Add spike question #7: TasteParameters type reconciliation'
+  - 7. Specify minimum ADR structure (template)
+  - 8. Correct hallucinated model identifier in Dev Agent Record
+  - Agent Model Used
+  - Debug Log References
+  - Completion Notes List
+  - File List
+  - ✨ Optimizations (Nice to Have)
+  - 1. Remove "Testing Standards Summary" section
+  - 2. Constrain Task 8 (API and persistence design) scope
+  - 🤖 LLM Optimization Improvements
+  - 1. Collapse Dev Notes Project Structure and Testing sections
+  - Testing Standards Summary
+  - Project Structure Notes
+  - Code Standards
+  - 2. Consolidate "Design Considerations for Spike" and "Spike Questions" sections
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 8a718ca7d965
+findings:
+  total_count: 14
+  by_severity:
+    critical: 0
+    major: 9
+    minor: 4
+    nit: 1
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 0
+    completeness: 7
+    clarity: 5
+    testability: 2
+  has_fix_count: 14
+  has_location_count: 12
+  has_evidence_count: 14
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: true
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 11
+  confidence_phrases_count: 6
+linguistic:
+  avg_sentence_length: 29.798165137614678
+  vocabulary_richness: 0.2601600985221675
+  flesch_reading_ease: 30.356425128710725
+  vague_terms_count: 0
+  formality_score: 0.82
+  sentiment: neutral
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.86
+  evidence_quality: 0.93
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
