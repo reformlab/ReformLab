@@ -20,7 +20,7 @@ from reformlab.discrete_choice.types import Alternative, ChoiceResult
 from reformlab.orchestrator.types import YearState
 
 if TYPE_CHECKING:
-    pass
+    from reformlab.discrete_choice.types import Alternative
 
 
 # ============================================================================
@@ -637,12 +637,19 @@ class TestStateUpdateStepIntegration:
         })
 
         # Execute VehicleStateUpdateStep
-        state.data["discrete_choice_result"] = vehicle_choice
-        state_after_vehicle = vehicle_step.execute(2025, state)
+        from dataclasses import replace
+        state_for_vehicle = replace(
+            state,
+            data={**state.data, "discrete_choice_result": vehicle_choice},
+        )
+        state_after_vehicle = vehicle_step.execute(2025, state_for_vehicle)
 
         # Execute HeatingStateUpdateStep (uses state after vehicle)
-        state_after_vehicle.data["discrete_choice_result"] = heating_choice
-        state_final = heating_step.execute(2025, state_after_vehicle)
+        state_for_heating = replace(
+            state_after_vehicle,
+            data={**state_after_vehicle.data, "discrete_choice_result": heating_choice},
+        )
+        state_final = heating_step.execute(2025, state_for_heating)
 
         # Assert both incumbent columns present and correct
         final_pop = state_final.data["population_data"]

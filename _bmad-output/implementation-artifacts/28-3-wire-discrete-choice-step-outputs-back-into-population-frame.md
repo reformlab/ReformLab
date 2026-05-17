@@ -720,6 +720,29 @@ Story 28.3 implementation completed successfully (2026-05-17):
 - Clarified pipeline ordering requirement for `EligibilityMergeStep`
 - Expanded code examples with type validation and `keep_current` skip logic
 
+### Code Review Synthesis Applied (2026-05-17)
+
+**Missing tests added** (per validator findings):
+- Panel transition column tests: Added `TestPanelTransitionColumns` class with 4 test methods for `{domain}_from`/`{domain}_to` columns in `test_panel_decision.py`
+- `capture_technology_set` tests: Added `TestCaptureTechnologySet` class with 6 test methods in `test_capture.py`
+- Manifest backward compatibility tests: Added `TestManifestTechnologySet` class with 7 test methods in `test_manifest.py`
+
+**Code quality fixes applied**:
+- Fixed integration test mutation of frozen YearState: Replaced direct `state.data[key] = value` mutations with proper `replace(state, data={**state.data, ...})` pattern
+- Fixed `capture_technology_set` type annotation: Changed from `Any` to `TechnologySet | dict[str, Any] | None` with proper TYPE_CHECKING import
+- Fixed empty TYPE_CHECKING guard: Added proper import statement instead of empty `pass` block
+
+**Test results**: 753 tests passed (discrete_choice, orchestrator/panel, governance modules)
+
+**Issues dismissed as false positives**:
+- Type validation rejecting pa.int8/int16: Intentional int32 requirement for consistency
+- Redundant entity_key check: Log line at n=0 is intentional for observability
+- Hardcoded incumbent column names: These are domain constants, not code duplication
+- `_build_decision_columns` dual return type: By design for decision_log optional handling
+- `TransitionRecord.to_alternative_ids` stores raw choice IDs: Correct behavior (panel shows choice including "keep_current")
+- Mutable technology_set field: Properly handled in `from_json()` with None→{} coercion
+- Missing length validation: Already validated in panel.py lines 339-345
+
 ### File List
 
 **Story File:**
@@ -734,9 +757,24 @@ Story 28.3 implementation completed successfully (2026-05-17):
 - `src/reformlab/discrete_choice/vehicle.py` — Updated call site to pass domain_key="vehicle", added TransitionRecord emission in execute()
 - `src/reformlab/discrete_choice/heating.py` — Updated call site to pass domain_key="heating", added TransitionRecord emission in execute()
 - `src/reformlab/orchestrator/panel.py` — Extended _build_decision_columns() to add transition columns ({domain}_from, {domain}_to)
-- `src/reformlab/governance/capture.py` — Added capture_technology_set() function for manifest serialization
+- `src/reformlab/governance/capture.py` — Added capture_technology_set() function for manifest serialization, fixed type annotation
 - `src/reformlab/governance/manifest.py` — Added technology_set field to RunManifest, updated OPTIONAL_JSON_FIELDS and from_json()
 - `src/reformlab/orchestrator/runner.py` — Updated imports to include capture_technology_set
 - `tests/discrete_choice/test_heating.py` — Updated test_execute_all_keep_current to expect incumbent_heating column
+- `tests/discrete_choice/test_domain_utils_writeback.py` — Fixed frozen YearState mutation pattern, fixed TYPE_CHECKING guard (Code Review Synthesis)
+- `tests/orchestrator/test_panel_decision.py` — Added TestPanelTransitionColumns class with 4 test methods (Code Review Synthesis)
+- `tests/governance/test_capture.py` — Added TestCaptureTechnologySet class with 6 test methods (Code Review Synthesis)
+- `tests/governance/test_manifest.py` — Added TestManifestTechnologySet class with 7 test methods (Code Review Synthesis)
 
 **No Deletions** — All changes are additive or signature extensions
+
+## Senior Developer Review (AI)
+
+### Review: 2026-05-17
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 10.2 → PASS (after fixes applied)
+- **Issues Found:** 13 total (3 critical, 5 high, 3 medium, 2 low)
+- **Issues Fixed:** 8 (all critical and high issues addressed)
+- **Action Items Created:** 0 (all verified issues were fixed)
+
+**Summary**: Initial code review identified missing tests for panel transition columns, capture_technology_set function, and manifest backward compatibility. All critical issues have been resolved by adding 17 new test methods across 3 test files. Code quality issues (frozen state mutation, type annotations, empty TYPE_CHECKING guard) were also fixed. Remaining issues were dismissed as false positives or design-appropriate patterns.

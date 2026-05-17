@@ -21,6 +21,8 @@ from reformlab.computation.types import ComputationResult
 from reformlab.discrete_choice.decision_record import (
     DECISION_LOG_KEY,
     DecisionRecord,
+    TRANSITION_LOG_KEY,
+    TransitionRecord,
 )
 from reformlab.discrete_choice.errors import DiscreteChoiceError
 from reformlab.orchestrator.computation_step import COMPUTATION_RESULT_KEY
@@ -398,3 +400,194 @@ class TestPanelDecisionSchemaConsistency:
         # First 3 rows (2025) have values, next 3 (2026) are null
         assert all(v is not None for v in chosen_col[:3])
         assert all(v is None for v in chosen_col[3:])
+
+
+# ============================================================================
+# TestPanelTransitionColumns — Story 28.3 / AC-5, Task 5.9
+# ============================================================================
+
+
+class TestPanelTransitionColumns:
+    """Story 28.3 / AC-5: Panel includes {domain}_from and {domain}_to columns."""
+
+    def test_panel_includes_transition_from_and_to_columns(self) -> None:
+        """TransitionRecord in yearly_state produces heating_from and heating_to columns."""
+        # Create computation result
+        comp_result = _make_computation_result(n=3, year=2025)
+
+        # Create transition record
+        transition = TransitionRecord(
+            domain_name="heating",
+            year=2025,
+            household_ids=pa.array([0, 1, 2], type=pa.int64()),
+            from_alternative_ids=pa.array(
+                ["gas_boiler", "oil_boiler", "electric"], type=pa.string()
+            ),
+            to_alternative_ids=pa.array(
+                ["heat_pump", "heat_pump", "condensing_boiler"], type=pa.string()
+            ),
+        )
+
+        # Build result with transition log
+        data = {
+            COMPUTATION_RESULT_KEY: comp_result,
+            TRANSITION_LOG_KEY: (transition,),
+        }
+        yearly_states = {
+            2025: YearState(year=2025, data=data, seed=42, metadata={})
+        }
+
+        result = OrchestratorResult(
+            success=True,
+            yearly_states=yearly_states,
+            errors=[],
+            metadata={
+                "start_year": 2025,
+                "end_year": 2025,
+                "seed": 42,
+                "step_pipeline": [],
+            },
+        )
+
+        panel = PanelOutput.from_orchestrator_result(result)
+
+        # Assert transition columns present
+        assert "heating_from" in panel.table.column_names
+        assert "heating_to" in panel.table.column_names
+
+        # Assert values correct
+        assert panel.table.column("heating_from").to_pylist() == [
+            "gas_boiler",
+            "oil_boiler",
+            "electric",
+        ]
+        assert panel.table.column("heating_to").to_pylist() == [
+            "heat_pump",
+            "heat_pump",
+            "condensing_boiler",
+        ]
+
+    def test_panel_transitions_only_no_decision_log(self) -> None:
+        """Transitions work when DECISION_LOG_KEY is absent (no DecisionRecord)."""
+        comp_result = _make_computation_result(n=2, year=2025)
+
+        transition = TransitionRecord(
+            domain_name="vehicle",
+            year=2025,
+            household_ids=pa.array([0, 1], type=pa.int64()),
+            from_alternative_ids=pa.array(["petrol", "diesel"], type=pa.string()),
+            to_alternative_ids=pa.array(["ev", "hybrid"], type=pa.string()),
+        )
+
+        data = {
+            COMPUTATION_RESULT_KEY: comp_result,
+            TRANSITION_LOG_KEY: (transition,),
+        }
+        yearly_states = {
+            2025: YearState(year=2025, data=data, seed=42, metadata={})
+        }
+
+        result = OrchestratorResult(
+            success=True,
+            yearly_states=yearly_states,
+            errors=[],
+            metadata={
+                "start_year": 2025,
+                "end_year": 2025,
+                "seed": 42,
+                "step_pipeline": [],
+            },
+        )
+
+        panel = PanelOutput.from_orchestrator_result(result)
+
+        assert "vehicle_from" in panel.table.column_names
+        assert "vehicle_to" in panel.table.column_names
+        # Decision columns should NOT be present (no DECISION_LOG_KEY)
+        assert "vehicle_chosen" not in panel.table.column_names
+
+    def test_panel_multi_domain_transitions_no_clobber(self) -> None:
+        """Both heating_from/to and vehicle_from/to present with correct values."""
+        comp_result = _make_computation_result(n=2, year=2025)
+
+        heating_transition = TransitionRecord(
+            domain_name="heating",
+            year=2025,
+            household_ids=pa.array([0, 1], type=pa.int64()),
+            from_alternative_ids=pa.array(["gas", "oil"], type=pa.string()),
+            to_alternative_ids=pa.array(["heat_pump", "electric"], type=pa.string()),
+        )
+
+        vehicle_transition = TransitionRecord(
+            domain_name="vehicle",
+            year=2025,
+            household_ids=pa.array([0, 1], type=pa.int64()),
+            from_alternative_ids=pa.array(["petrol", "diesel"], type=pa.string()),
+            to_alternative_ids=pa.array(["ev", "hybrid"], type=pa.string()),
+        )
+
+        data = {
+            COMPUTATION_RESULT_KEY: comp_result,
+            TRANSITION_LOG_KEY: (heating_transition, vehicle_transition),
+        }
+        yearly_states = {
+            2025: YearState(year=2025, data=data, seed=42, metadata={})
+        }
+
+        result = OrchestratorResult(
+            success=True,
+            yearly_states=yearly_states,
+            errors=[],
+            metadata={
+                "start_year": 2025,
+                "end_year": 2025,
+                "seed": 42,
+                "step_pipeline": [],
+            },
+        )
+
+        panel = PanelOutput.from_orchestrator_result(result)
+
+        # All four transition columns present
+        assert "heating_from" in panel.table.column_names
+        assert "heating_to" in panel.table.column_names
+        assert "vehicle_from" in panel.table.column_names
+        assert "vehicle_to" in panel.table.column_names
+
+        # Values correct for each domain
+        assert panel.table.column("heating_from").to_pylist() == ["gas", "oil"]
+        assert panel.table.column("heating_to").to_pylist() == ["heat_pump", "electric"]
+        assert panel.table.column("vehicle_from").to_pylist() == ["petrol", "diesel"]
+        assert panel.table.column("vehicle_to").to_pylist() == ["ev", "hybrid"]
+
+    def test_panel_empty_transitions_tuple_no_columns_added(self) -> None:
+        """Empty TRANSITION_LOG_KEY tuple produces no transition columns."""
+        comp_result = _make_computation_result(n=2, year=2025)
+
+        data = {
+            COMPUTATION_RESULT_KEY: comp_result,
+            TRANSITION_LOG_KEY: (),
+        }
+        yearly_states = {
+            2025: YearState(year=2025, data=data, seed=42, metadata={})
+        }
+
+        result = OrchestratorResult(
+            success=True,
+            yearly_states=yearly_states,
+            errors=[],
+            metadata={
+                "start_year": 2025,
+                "end_year": 2025,
+                "seed": 42,
+                "step_pipeline": [],
+            },
+        )
+
+        panel = PanelOutput.from_orchestrator_result(result)
+
+        # No transition columns
+        assert "heating_from" not in panel.table.column_names
+        assert "heating_to" not in panel.table.column_names
+        assert "vehicle_from" not in panel.table.column_names
+        assert "vehicle_to" not in panel.table.column_names

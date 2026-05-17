@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from reformlab.computation.mapping import MappingConfig
+    from reformlab.discrete_choice.technology_set import TechnologySet
 
 
 def capture_assumptions(
@@ -379,14 +380,15 @@ def capture_discrete_choice_parameters(
 
 
 def capture_technology_set(
-    technology_set: Any,
+    technology_set: TechnologySet | dict[str, Any] | None,
 ) -> dict[str, Any]:
     """Capture technology set configuration for manifest.
 
     Story 28.3 / AC-6: Serialize TechnologySet to manifest-compatible dict.
 
     Args:
-        technology_set: TechnologySet with domain alternatives, or None.
+        technology_set: TechnologySet with domain alternatives, dict representation,
+            or None. Dict input is for backward compatibility with legacy code paths.
 
     Returns:
         Dict with domains, alternatives, reference IDs for reproducibility.

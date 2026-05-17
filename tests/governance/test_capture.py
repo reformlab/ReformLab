@@ -16,6 +16,7 @@ from reformlab.governance.capture import (
     capture_assumptions,
     capture_mappings,
     capture_policy,
+    capture_technology_set,
     capture_unsupported_config_warning,
     capture_unvalidated_mapping_warning,
     capture_unvalidated_template_warning,
@@ -501,3 +502,147 @@ class TestCaptureUnsupportedConfigWarning:
             f"standard test coverage ({TESTED_MAX_POPULATION_SIZE:,}). Action: "
             "Review memory usage and consider chunked processing."
         )
+
+
+class TestCaptureTechnologySet:
+    """Story 28.3 / AC-6: Tests for capture_technology_set()."""
+
+    def test_capture_technology_set_with_dict(self) -> None:
+        """Serialize technology set dict to manifest-compatible format."""
+        tech_set_dict = {
+            "version": "fr-default-2026-04-26",
+            "domains": {
+                "heating": {
+                    "enabled": True,
+                    "alternatives": [
+                        {
+                            "id": "keep_current",
+                            "name": "Keep Current System",
+                            "attributes": {},
+                        },
+                        {
+                            "id": "heat_pump_air",
+                            "name": "Air Source Heat Pump",
+                            "attributes": {},
+                        },
+                    ],
+                    "reference_alternative_id": "keep_current",
+                },
+                "vehicle": {
+                    "enabled": True,
+                    "alternatives": [
+                        {
+                            "id": "keep_current",
+                            "name": "Keep Current Vehicle",
+                            "attributes": {},
+                        },
+                        {
+                            "id": "ev",
+                            "name": "Electric Vehicle",
+                            "attributes": {},
+                        },
+                    ],
+                    "reference_alternative_id": "keep_current",
+                },
+            },
+        }
+
+        result = capture_technology_set(tech_set_dict)
+
+        assert result == {
+            "version": "fr-default-2026-04-26",
+            "domains": {
+                "heating": {
+                    "reference_alternative_id": "keep_current",
+                    "alternatives": [
+                        {
+                            "id": "keep_current",
+                            "name": "Keep Current System",
+                            "attributes": {},
+                        },
+                        {
+                            "id": "heat_pump_air",
+                            "name": "Air Source Heat Pump",
+                            "attributes": {},
+                        },
+                    ],
+                },
+                "vehicle": {
+                    "reference_alternative_id": "keep_current",
+                    "alternatives": [
+                        {
+                            "id": "keep_current",
+                            "name": "Keep Current Vehicle",
+                            "attributes": {},
+                        },
+                        {
+                            "id": "ev",
+                            "name": "Electric Vehicle",
+                            "attributes": {},
+                        },
+                    ],
+                },
+            },
+        }
+
+    def test_capture_technology_set_with_none(self) -> None:
+        """capture_technology_set returns empty dict for None input."""
+        result = capture_technology_set(None)
+        assert result == {}
+
+    def test_capture_technology_set_skips_disabled_domains(self) -> None:
+        """Disabled domains are not included in output."""
+        tech_set_dict = {
+            "version": "test-2026-01-01",
+            "domains": {
+                "heating": {
+                    "enabled": True,
+                    "alternatives": [
+                        {"id": "keep_current", "name": "Keep", "attributes": {}}
+                    ],
+                    "reference_alternative_id": "keep_current",
+                },
+                "vehicle": {
+                    "enabled": False,  # Disabled
+                    "alternatives": [
+                        {"id": "keep_current", "name": "Keep", "attributes": {}}
+                    ],
+                    "reference_alternative_id": "keep_current",
+                },
+            },
+        }
+
+        result = capture_technology_set(tech_set_dict)
+
+        # Only heating domain present (vehicle disabled, skipped)
+        assert "heating" in result["domains"]
+        assert "vehicle" not in result["domains"]
+
+    def test_capture_technology_set_with_empty_dict(self) -> None:
+        """Empty dict returns minimal structure with empty version and domains."""
+        result = capture_technology_set({})
+        # Empty dict is serialized with empty version and domains (not {} entirely)
+        assert result == {"version": "", "domains": {}}
+
+    def test_capture_technology_set_with_missing_fields(self) -> None:
+        """Handles dicts with missing optional fields gracefully."""
+        tech_set_dict = {
+            "version": "minimal",
+            "domains": {
+                "heating": {
+                    "enabled": True,
+                    "alternatives": [],
+                    "reference_alternative_id": "",
+                },
+            },
+        }
+
+        result = capture_technology_set(tech_set_dict)
+
+        assert result["version"] == "minimal"
+        assert result["domains"] == {
+            "heating": {
+                "reference_alternative_id": "",
+                "alternatives": [],
+            },
+        }
