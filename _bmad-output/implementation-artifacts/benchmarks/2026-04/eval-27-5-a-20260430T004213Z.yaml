@@ -1,0 +1,137 @@
+record_id: 37b7d59b-062d-4378-98fb-92b94b431caf
+created_at: '2026-04-30T00:42:13.483232+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 27
+  story_num: 5
+  title: Story 27.5
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-04-30T00:38:26.905753Z'
+  end_time: '2026-04-30T00:41:47.988753Z'
+  duration_ms: 201083
+  input_tokens: 0
+  output_tokens: 5400
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 21602
+  heading_count: 41
+  list_depth_max: 3
+  code_block_count: 17
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 20.5'
+  - 🎯 Ruthless Story Validation 27.5
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 20.5 → MAJOR REWORK'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Missing Draft Version Field (Schema Migration Risk)
+  - 2. Optional Affordance Ambiguity (UI Inconsistency Risk)
+  - 3. Race Condition in Save Effect (Data Corruption Risk)
+  - 4. Portfolio Rename/Delete Orphaning (Confusing UX)
+  - 5. "Empty Composition" Undefined (Implementation Ambiguity)
+  - 6. Silent Failure Timing Undefined (Error Handling Ambiguity)
+  - 7. Timestamp Type Contradiction (Schema Confusion)
+  - 8. Draft Clear Integration with activeScenario (State Consistency Risk)
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Add Draft Migration Path
+  - Draft Schema Migration
+  - 2. Precise "Empty Composition" Definition
+  - 3. Specify Optional Badge Affordance
+  - '3.6: If draft contains savedPortfolioName and portfolio exists, show yellow warning badge:'
+  - 4. Clarify Timestamp Format
+  - 5. Document Race Condition Mitigation
+  - ✨ Optimizations (Nice to Have)
+  - 1. Draft Expiration Consideration
+  - 2. Draft Size Monitoring
+  - 🤖 LLM Optimization Improvements
+  - 1. Condense Integration Points Section
+  - Integration Points
+  - Integration Points
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 39ab11102228
+findings:
+  total_count: 8
+  by_severity:
+    critical: 8
+    major: 0
+    minor: 0
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 4
+    completeness: 2
+    clarity: 2
+    testability: 0
+  has_fix_count: 8
+  has_location_count: 8
+  has_evidence_count: 7
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 15
+  confidence_phrases_count: 4
+linguistic:
+  avg_sentence_length: 30.49438202247191
+  vocabulary_richness: 0.2726602800294768
+  flesch_reading_ease: 17.82990587349397
+  vague_terms_count: 5
+  formality_score: 0.7
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.94
+  evidence_quality: 0.88
+  follows_template: true
+  internal_consistency: 0.9
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false

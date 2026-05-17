@@ -43,7 +43,7 @@ import type { DecileData, Parameter, Scenario, Template, MockDataSource, MockMer
 import { mockDecileData, mockParameters, mockScenarios } from "@/data/mock-data";
 import type { RunResponse, IndicatorResponse, GenerationResult, PortfolioListItem, ResultListItem, PopulationLibraryItem } from "@/api/types";
 import type { StageKey, SubView, WorkspaceScenario } from "@/types/workspace";
-import { isValidStage, isValidSubView } from "@/types/workspace";
+import { isValidStage, isValidSubView, LEGACY_POPULATION_SUBVIEW_MAP } from "@/types/workspace";
 import {
   isFirstLaunch,
   markLaunched,
@@ -56,7 +56,7 @@ import {
   getManuallyEditedNames,
   saveManuallyEditedNames,
 } from "@/hooks/useScenarioPersistence";
-import { createDemoScenario, DEMO_SCENARIO_ID, DEMO_TEMPLATE_ID, DEMO_POPULATION_ID } from "@/data/demo-scenario";
+import { createDemoScenario, createFullDemoScenario, DEMO_SCENARIO_ID, DEMO_TEMPLATE_ID, DEMO_POPULATION_ID } from "@/data/demo-scenario";
 import {
   generateScenarioSuggestion,
   generateScenarioCloneName,
@@ -88,6 +88,7 @@ interface AppState {
   saveCurrentScenario: () => void;
   loadSavedScenario: (id: string) => void;
   resetToDemo: () => void;
+  loadFullDemo: () => void;  // Story 27.6: Load demo with all stages touched (for "Try the demo" button)
   createNewScenario: (templateId?: string) => void;
   cloneCurrentScenario: () => void;
 
@@ -217,9 +218,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     function onHashChange() {
       const hash = window.location.hash.slice(1); // remove leading #
       const [stage, sub] = hash.split("/");
+
       if (stage && isValidStage(stage)) {
         setActiveStage(stage);
-        setActiveSubView(sub && isValidSubView(sub) ? sub : null);
+
+        // Story 27.8: Migrate legacy Population sub-view values
+        let subView: SubView | null = null;
+        // Check for legacy Population sub-view values FIRST (before isValidSubView check)
+        // This ensures migration happens even for legacy values still in VALID_SUBVIEWS
+        if (stage === "population" && sub) {
+          const migrated = LEGACY_POPULATION_SUBVIEW_MAP[sub];
+          if (migrated) {
+            subView = migrated;
+          } else if (isValidSubView(sub)) {
+            subView = sub;
+          }
+        } else if (sub && isValidSubView(sub)) {
+          subView = sub;
+        }
+
+        setActiveSubView(subView);
       } else {
         // Empty hash or unknown stage → default to policies
         setActiveStage("policies");
@@ -255,6 +273,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // Don't mark demo scenario as manually edited (should always get auto-updates)
         if (current.id !== DEMO_SCENARIO_ID) {
           setManuallyEditedScenarioNames((prev) => {
+            // Avoid creating new Set if ID already exists (performance optimization)
+            if (prev.has(current.id)) return prev;
+
             const updated = new Set(prev);
             updated.add(current.id);
             // Persist to localStorage
@@ -264,7 +285,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      return { ...current, [field]: value };
+      // Story 27.13: Clear manual-edit lock when portfolioName changes
+      // When a user explicitly changes the portfolio, this signals intent to
+      // re-enable auto-naming for that scenario.
+      if (field === "portfolioName" && current.id) {
+        setManuallyEditedScenarioNames((prev) => {
+          // Avoid creating new Set if ID is not present (performance optimization)
+          if (!prev.has(current.id)) return prev;
+
+          const updated = new Set(prev);
+          updated.delete(current.id);
+          // Persist to localStorage
+          saveManuallyEditedNames(updated);
+          return updated;
+        });
+      }
+      // Note: We do NOT clear the lock for populationIds changes - those are more
+      // exploratory and shouldn't override manual name curation (regression test in Task 2.4)
+
+      const nextScenario: WorkspaceScenario = { ...current, [field]: value };
+
+      // Story 27.6: mark stages as touched when the user makes an explicit
+      // durable scenario change for that stage.
+      const touchedStage =
+        field === "portfolioName" ? "policies"
+          : field === "populationIds" ? "population"
+            : field === "engineConfig" ? "engine"
+              : null;
+
+      if (touchedStage !== null) {
+        nextScenario.stageTouched = {
+          ...(current.stageTouched ?? {}),
+          [touchedStage]: true,
+        };
+      }
+
+      return nextScenario;
     });
   }, []);
 
@@ -275,6 +331,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Gate that ensures the initialization effect fires exactly once per auth session
   // and prevents persistence effects from overwriting restored state before init completes.
   const initializedRef = useRef(false);
+
+  // Story 27.13: Track when the default-selection effect is running
+  // This prevents auto-renaming restored scenarios when the default population is selected
+  const isDefaultPopulationSelection = useRef(false);
+  // Story 27.13: Track restoration timestamp to detect scenarios just loaded from storage
+  // This prevents auto-renaming during the race condition window between activation and default selection
+  const lastRestoreTimestamp = useRef(0);
+  // Story 27.13: Track whether we've seen the current scenario ID in the auto-name effect
+  // This allows us to protect the FIRST effect run after activation (for default selection)
+  // but allow subsequent runs (for explicit user actions)
+  const seenScenarioIdsInAutoName = useRef(new Set<string>());
 
   // Saved scenarios React state (lazy-initialized from localStorage)
   const [savedScenarios, setSavedScenarios] = useState<WorkspaceScenario[]>(() => getSavedScenarios());
@@ -308,6 +375,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Returning user: restore saved scenario
       const saved = loadScenario();
       if (saved) {
+        // Story 27.13: Record restoration timestamp to prevent auto-renaming
+        lastRestoreTimestamp.current = Date.now();
         setActiveScenario(saved);
         // Sync legacy selectors so startRun() uses the restored scenario's values
         if (saved.policyType) setSelectedTemplateId(saved.policyType);
@@ -330,6 +399,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!isAuthenticated || !initializedRef.current) return;
     persistScenario(activeScenario);
   }, [activeScenario, isAuthenticated]);
+
+  // Story 27.13: Clear seen scenario IDs when activeScenario changes to null
+  // This resets the tracking for the next scenario
+  useEffect(() => {
+    if (!activeScenario) {
+      seenScenarioIdsInAutoName.current.clear();
+    }
+  }, [activeScenario?.id]);
 
   // Persist activeStage to localStorage whenever it changes (after init)
   useEffect(() => {
@@ -429,6 +506,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Set initial selection when populations/templates load
   useEffect(() => {
     if (populations.length > 0 && !selectedPopulationId) {
+      // Story 27.13: Mark this as a default selection (implicit, not user action)
+      isDefaultPopulationSelection.current = true;
       setSelectedPopulationId(populations[0].id);
     }
   }, [populations, selectedPopulationId]);
@@ -487,10 +566,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const isDemo = activeScenario.id === demoId;
 
     // Preserve the curated first-launch demo name; auto-naming is for user scenarios.
-    if (isDemo) return;
+    if (isDemo) {
+      // Story 27.13: Clear flag on early return to prevent leak
+      isDefaultPopulationSelection.current = false;
+      return;
+    }
 
     // Skip auto-update if name was manually edited.
-    if (isManuallyEdited) return;
+    if (isManuallyEdited) {
+      // Story 27.13: Clear flag on early return to prevent leak
+      isDefaultPopulationSelection.current = false;
+      return;
+    }
+
+    // Story 27.13: Capture default selection flag at effect execution time
+    // This prevents race conditions where the flag is cleared before the updater runs
+    const capturedIsDefaultSelection = isDefaultPopulationSelection.current;
+
+    // Story 27.13: Detect recently restored scenarios (via loadSavedScenario within 100ms)
+    const now = Date.now();
+    const isRecentlyRestored = (now - lastRestoreTimestamp.current) < 100;
+
+    // Story 27.13: Track whether this is the first time we're seeing this scenario ID
+    // This allows us to protect the FIRST effect run after activation (for default selection)
+    // but allow subsequent runs (for explicit user actions like population/portfolio changes)
+    const isFirstRunForScenario = !seenScenarioIdsInAutoName.current.has(activeScenario.id);
 
     // Generate suggested name from current context
     const suggestedName = generateScenarioSuggestion(
@@ -501,12 +601,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
       [], // Composition not available in AppContext
     );
 
-    // Only update if the suggested name differs from the current name
-    if (suggestedName !== activeScenario.name) {
-      setActiveScenario((prev) =>
-        prev ? { ...prev, name: suggestedName } : null
-      );
-    }
+    // Story 27.13: Move equality check AND isDefaultName check inside functional updater
+    // to avoid stale closure on activeScenario.name. Using prev.name ensures we read
+    // the latest scenario state, not the closure-captured value.
+    setActiveScenario((prev) => {
+      if (!prev || suggestedName === prev.name) return prev;
+
+      // Check if this is a default name using prev.name (stale-closure-safe)
+      const isDefaultName = prev.name === "Untitled Scenario" ||
+                          prev.name.startsWith("Untitled (");
+
+      // Skip auto-rename for default population selection with curated name
+      // This prevents overwriting restored scenario names when the default population is selected
+      if (capturedIsDefaultSelection && !isDefaultName) return prev;
+
+      // Skip auto-rename for first effect run after activation/restore with non-default names
+      // This prevents race conditions between scenario activation and default selection
+      // Subsequent runs (for explicit user actions) are allowed
+      if ((isRecentlyRestored || isFirstRunForScenario) && !isDefaultName) return prev;
+
+      return { ...prev, name: suggestedName };
+    });
+
+    // Story 27.13: Mark this scenario ID as seen in auto-name effect
+    // This allows subsequent effect runs to proceed with renames
+    seenScenarioIdsInAutoName.current.add(activeScenario.id);
+
+    // Clear the flag after the effect completes
+    isDefaultPopulationSelection.current = false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Story 27.13: activeScenario object reference is intentionally omitted to avoid stale closure.
+    // Individual derived fields (id, portfolioName, populationIds) are in the dep array.
+    // We use functional updater to read prev.name instead of activeScenario.name.
   }, [
     activeScenario?.portfolioName,
     activeScenario?.populationIds,
@@ -533,6 +659,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const list = getSavedScenarios();
     const found = list.find((s) => s.id === id);
     if (found) {
+      // Story 27.13: Record restoration timestamp to prevent auto-renaming during
+      // the race condition window between scenario activation and default selection
+      lastRestoreTimestamp.current = Date.now();
       setActiveScenario(found);
       // Sync legacy selectors so startRun() uses the loaded scenario's values
       if (found.policyType) setSelectedTemplateId(found.policyType);
@@ -549,10 +678,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     toast.info("Demo scenario loaded");
   }, [navigateTo]);
 
+  const loadFullDemo = useCallback(() => {
+    // Story 27.6: Load demo with all stages touched (for "Try the demo" button)
+    const fullDemo = createFullDemoScenario();
+    setActiveScenario(fullDemo);
+    setSelectedTemplateId(DEMO_TEMPLATE_ID);
+    setSelectedPopulationId(DEMO_POPULATION_ID);
+    navigateTo("results", "runner");
+    toast.info("Demo scenario loaded with pre-selected population and skipped decisions");
+  }, [navigateTo]);
+
   const createNewScenario = useCallback((templateId?: string) => {
     // Story 22.3: Generate scenario name from current context
+    // Story 27.13: Pass null for portfolioName since new scenarios have no portfolio
     const suggestedName = generateScenarioSuggestion(
-      selectedPortfolioName,
+      null, // Story 27.13: New scenarios have no portfolio, use null instead of selectedPortfolioName
       selectedPopulationId,
       populations,
       templates,
@@ -572,7 +712,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         startYear: 2025,
         endYear: 2030,
         seed: null,
-        investmentDecisionsEnabled: false,
+        investmentDecisionsEnabled: null,  // Story 27.6: null = not started (not false)
         logitModel: null,
         discountRate: 0.03,
         tasteParameters: null,  // Story 22.6
@@ -580,13 +720,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
       policyType: templateId ?? null,
       lastRunId: null,
+      stageTouched: {},  // Story 27.6: explicit empty stageTouched for new scenarios
     };
     setActiveScenario(newScenario);
+    // Story 27.13: Reset selectedPortfolioName for UI state hygiene
+    setSelectedPortfolioName(null);
     if (templateId) {
       setSelectedTemplateId(templateId);
     }
     navigateTo("policies");
-  }, [navigateTo, selectedPortfolioName, selectedPopulationId, populations, templates]);
+  }, [navigateTo, selectedPopulationId, populations, templates]);
 
   const cloneCurrentScenario = useCallback(() => {
     if (!activeScenario) return;
@@ -602,8 +745,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     setActiveScenario(cloned);
 
+    // Story 27.13: Reset selectedPortfolioName for UI state hygiene
+    setSelectedPortfolioName(null);
+
     // Story 22.3: Mark cloned name as manually edited (cloned name is "manual" by definition)
     setManuallyEditedScenarioNames((prev) => {
+      // Avoid creating new Set if ID already exists (performance optimization)
+      if (prev.has(cloned.id)) return prev;
+
       const updated = new Set(prev);
       updated.add(cloned.id);
       // Persist to localStorage
@@ -665,6 +814,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     let activeScenarioId = selectedScenarioId;
 
+    // Story 27.6: visiting the run flow is an explicit stage action.
+    setActiveScenario((current) => (
+      current ? {
+        ...current,
+        stageTouched: {
+          ...(current.stageTouched ?? {}),
+          results: true,
+        },
+      } : null
+    ));
+
     if (needsNewScenario) {
       const existingCount = scenarios.filter((s) => !s.isBaseline).length;
       const newId = `reform-${String.fromCharCode(97 + existingCount)}`;
@@ -710,13 +870,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      await executeRun({
+      const response = await executeRun({
         template_name: selectedTemplateId,
         policy: parameterValues,
         start_year: 2025,
         end_year: 2030,
         population_id: selectedPopulationId || null,
       });
+
+      setActiveScenario((current) => (
+        current ? {
+          ...current,
+          lastRunId: response.run_id,
+          stageTouched: {
+            ...(current.stageTouched ?? {}),
+            results: true,
+          },
+        } : null
+      ));
+      void refetchResults().catch(() => {});
 
       // Mark completed
       setScenarios((current) =>
@@ -736,7 +908,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ),
       );
     }
-  }, [templates, selectedTemplateId, templateParams, parameterValues, scenarios, selectedScenarioId, selectedPopulationId, executeRun]);
+  }, [templates, selectedTemplateId, templateParams, parameterValues, scenarios, selectedScenarioId, selectedPopulationId, executeRun, refetchResults]);
 
   const cloneScenario = useCallback((id: string) => {
     const source = scenarios.find((s) => s.id === id);
@@ -794,6 +966,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       saveCurrentScenario,
       loadSavedScenario,
       resetToDemo,
+      loadFullDemo,
       createNewScenario,
       cloneCurrentScenario,
       populations,
@@ -842,7 +1015,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isAuthenticated, authLoading, authenticate, logout,
       activeStage, activeSubView, navigateTo,
       activeScenario, setActiveScenario, updateScenarioField,
-      savedScenarios, saveCurrentScenario, loadSavedScenario, resetToDemo, createNewScenario, cloneCurrentScenario,
+      savedScenarios, saveCurrentScenario, loadSavedScenario, resetToDemo, loadFullDemo, createNewScenario, cloneCurrentScenario,
       populations, templates, templateParams, parameterValues, setParameterValue,
       scenarios, decileData,
       selectedPopulationId, selectedTemplateId, selectTemplate,

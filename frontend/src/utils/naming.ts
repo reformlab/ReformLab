@@ -13,7 +13,64 @@
 
 import type { Template } from "@/data/mock-data";
 import type { Population } from "@/data/mock-data";
-import type { CompositionEntry } from "@/components/simulation/PortfolioCompositionPanel";
+import type { CompositionEntry } from "@/api/types";
+import type { Category } from "@/api/types";
+import type { Parameter } from "@/data/mock-data";
+
+// ============================================================================
+// Type Constants
+// ============================================================================
+
+/**
+ * Story 27.9: Semantic policy types.
+ */
+const SEMANTIC_TYPES = ["tax", "subsidy", "transfer"] as const;
+
+/**
+ * Story 27.9: Policy type slug mapping.
+ * Maps template.type hyphenated forms to semantic types.
+ * Extracts first part before hyphen for unmapped types.
+ */
+const TYPE_SLUGS: Record<string, string> = {
+  "carbon-tax": "tax",
+  "vehicle-tax": "tax",
+  "income-tax": "tax",
+  "vehicle-subsidy": "subsidy",
+  "energy-subsidy": "subsidy",
+  "housing-subsidy": "subsidy",
+  "housing-transfer": "transfer",
+  "feebate": "subsidy",
+};
+
+/**
+ * Extract semantic policy type from template type string.
+ * @param templateType - Template type (e.g., "carbon-tax", "vehicle-subsidy", "tax")
+ * @returns Semantic type ("tax" | "subsidy" | "transfer" | "policy")
+ */
+function extractSemanticType(templateType: string): string {
+  // Direct semantic type check (e.g., "tax", "subsidy", "transfer")
+  if (SEMANTIC_TYPES.includes(templateType as "tax" | "subsidy" | "transfer")) {
+    return templateType;
+  }
+
+  // Direct mapping lookup
+  if (templateType in TYPE_SLUGS) {
+    return TYPE_SLUGS[templateType]!;
+  }
+
+  // Extract first part before hyphen (e.g., "consumption-tax" → "consumption")
+  const hyphenIndex = templateType.indexOf("-");
+  if (hyphenIndex !== -1) {
+    const firstPart = templateType.slice(0, hyphenIndex);
+    // Only use first part if it's a recognized semantic type
+    if (SEMANTIC_TYPES.includes(firstPart as "tax" | "subsidy" | "transfer")) {
+      return firstPart;
+    }
+  }
+
+  // Fallback for unrecognized types
+  return "policy";
+}
 
 // ============================================================================
 // slugify()
@@ -78,26 +135,364 @@ function truncateSlug(slug: string): string {
 }
 
 // ============================================================================
+// Story 27.9: Type-Category Helper Functions
+// ============================================================================
+
+/**
+ * Result type for extractTypeAndCategory helper.
+ */
+interface TypeAndCategory {
+  policyType: string;
+  categoryId?: string;
+  categoryLabel: string;
+}
+
+/**
+ * Extract policy type and category from a composition entry.
+ *
+ * Story 27.9 / Task 1.2
+ *
+ * For from-scratch policies: uses entry.policy_type and entry.category_id
+ * For template policies: uses template.type and template.category_id
+ *
+ * @param entry - Composition entry to extract from
+ * @param templates - All available templates for lookup
+ * @param categories - All available categories for label lookup
+ * @returns Policy type and category info
+ */
+export function extractTypeAndCategory(
+  entry: CompositionEntry,
+  templates: readonly Template[],
+  categories: Category[] | null,
+): TypeAndCategory {
+  let policyType: string;
+  let categoryId: string | undefined;
+  let categoryLabel = "other";
+
+  if (entry.templateId === "") {
+    // From-scratch policy: use entry fields directly
+    policyType = entry.policy_type ?? "policy";
+    categoryId = entry.category_id;
+  } else {
+    // Template policy: look up from template
+    const template = templates.find((t) => t.id === entry.templateId);
+    if (template) {
+      policyType = extractSemanticType(template.type);
+      categoryId = template.category_id;
+    } else {
+      policyType = "policy";
+    }
+  }
+
+  // Look up category label
+  if (categories && categoryId) {
+    const category = categories.find((c) => c.id === categoryId);
+    if (category) {
+      categoryLabel = category.label;
+    } else {
+      // Category ID not found in categories list
+      categoryId = undefined;
+    }
+  } else if (categoryId && !categories) {
+    // categories is null but categoryId exists: clear it
+    categoryId = undefined;
+  }
+
+  return { policyType, categoryId, categoryLabel };
+}
+
+/**
+ * Generate slug from policy type and category label.
+ *
+ * Story 27.9 / Task 1.3
+ *
+ * @param policyType - Semantic policy type (tax, subsidy, transfer, policy)
+ * @param categoryLabel - Human-readable category label
+ * @returns Slugified "{type}-{category}" string
+ */
+export function slugifyTypeAndCategory(policyType: string, categoryLabel: string): string {
+  const categorySlug = slugify(categoryLabel);
+  return `${policyType}-${categorySlug}`;
+}
+
+/**
+ * Find the dominant (most common) category in a composition.
+ *
+ * Story 27.9 / Task 1.4
+ *
+ * Returns the category with the most policies. On tie, returns the first
+ * policy's category.
+ *
+ * @param composition - Current portfolio composition
+ * @param templates - All available templates for lookup
+ * @param categories - All available categories for label lookup
+ * @returns Dominant category info
+ */
+export function getDominantCategory(
+  composition: readonly CompositionEntry[],
+  templates: readonly Template[],
+  categories: Category[] | null,
+): TypeAndCategory {
+  if (composition.length === 0) {
+    return { policyType: "policy", categoryLabel: "other" };
+  }
+
+  // Count policies by category
+  const categoryCounts = new Map<string, number>();
+
+  for (const entry of composition) {
+    const { categoryId } = extractTypeAndCategory(entry, templates, categories);
+    if (categoryId) {
+      categoryCounts.set(categoryId, (categoryCounts.get(categoryId) ?? 0) + 1);
+    }
+  }
+
+  if (categoryCounts.size === 0) {
+    return { policyType: "policy", categoryLabel: "other" };
+  }
+
+  // Find category with max count.
+  // Tie-breaking: Map iteration preserves insertion order (ES2015+ spec),
+  // so the first policy's category wins on tie (count > maxCount, not >=).
+  let dominantCategoryId = "";
+  let maxCount = 0;
+
+  for (const [categoryId, count] of categoryCounts) {
+    if (count > maxCount) {
+      maxCount = count;
+      dominantCategoryId = categoryId;
+    }
+  }
+
+  // Look up category label
+  let categoryLabel = "other";
+  if (categories && dominantCategoryId) {
+    const category = categories.find((c) => c.id === dominantCategoryId);
+    if (category) {
+      categoryLabel = category.label;
+    }
+  }
+
+  return { policyType: "policy", categoryId: dominantCategoryId, categoryLabel };
+}
+
+/**
+ * Story 27.9: Parameter enrichment result type.
+ */
+interface ParameterValue {
+  paramId: string;
+  value: number;
+  unit: string;
+  formatted: string;
+}
+
+/**
+ * Story 27.9 / Task 2.1: Extract primary parameter value for name enrichment.
+ *
+ * Priority order for "headline" parameter:
+ * 1. Parameters containing "rate" (e.g., tax_rate, subsidy_rate)
+ * 2. Parameters containing "threshold" (e.g., exemption_threshold)
+ * 3. Parameters containing "budget" (e.g., program_budget)
+ * 4. Parameters containing "exemption" (fallback)
+ *
+ * Resolution order:
+ * 1. Configured value (entry.parameters[paramId]) - highest priority
+ * 2. Schema baseline (template default)
+ * 3. null (no value available)
+ *
+ * @param entry - Composition entry to extract from
+ * @param schemas - Parameter schemas per template (templateId → Parameter[])
+ * @returns Parameter value info or null if none found
+ */
+export function extractPrimaryParameterValue(
+  entry: CompositionEntry,
+  schemas: Record<string, Parameter[]> | null,
+): ParameterValue | null {
+  if (!schemas) {
+    return null;
+  }
+
+  const templateParams = schemas[entry.templateId];
+  if (!templateParams) {
+    return null;
+  }
+
+  // Priority order for parameter ID
+  const priorityPatterns = [/rate/, /threshold/, /budget/, /exemption/];
+
+  for (const pattern of priorityPatterns) {
+    // Find first parameter matching the pattern
+    const param = templateParams.find((p) => pattern.test(p.id));
+    if (!param) {
+      continue;
+    }
+
+    // Only use explicitly configured value (key exists in entry.parameters)
+    if (param.id in entry.parameters) {
+      const value = entry.parameters[param.id];
+      const formatted = formatParameterForName(value, param.unit);
+      return { paramId: param.id, value, unit: param.unit, formatted };
+    }
+
+    // Parameter found but not configured: try next priority
+  }
+
+  return null;
+}
+
+/**
+ * Story 27.9 / Task 2.2: Format parameter value for inclusion in slug.
+ *
+ * Formatting rules:
+ * - Unit "%" → Math.round(value * 100) + "pct" (e.g., 0.2 → "20pct")
+ * - Currency-like units (€/tonne, €/vehicle) → strip symbol, append "eur"
+ * - Other units → slugify unit name
+ *
+ * @param value - Parameter value to format
+ * @param unit - Unit string (e.g., "%", "€/tonne", "km")
+ * @returns Formatted string suitable for slug inclusion
+ */
+export function formatParameterForName(value: number, unit: string): string {
+  if (unit === "%") {
+    // Percentage: convert decimal to integer (e.g., 0.2 → 20)
+    return `${Math.round(value * 100)}pct`;
+  }
+
+  if (unit.includes("€") || unit.includes("EUR")) {
+    // Currency: strip symbol, append "eur" - round to avoid decimal periods in slug
+    return `${Math.round(value)}eur`;
+  }
+
+  // Other units: slugify the unit name - round value to avoid decimal periods
+  const slugifiedUnit = slugify(unit);
+  if (slugifiedUnit) {
+    return `${Math.round(value)}${slugifiedUnit}`;
+  }
+
+  return `${Math.round(value)}`;
+}
+
+// ============================================================================
 // generatePortfolioSuggestion()
 // ============================================================================
 
 /**
  * Generate a deterministic portfolio name suggestion from the current composition.
  *
- * Naming algorithm:
+ * Story 27.9 / Task 1: Enhanced type-category naming algorithm.
+ * Story 27.9 / Task 2: Parameter-based enrichment for single policies.
+ *
+ * New naming algorithm (when categories provided):
  * - 0 policies: "untitled-portfolio"
+ * - 1 policy: "{type}-{category}" (e.g., "tax-carbon-emissions")
+ *   - From-scratch: reuses existing "{Type} — {Category}" name pattern
+ *   - With parameter value (if ≤ 48 chars): "{type}-{category}-{value}" (e.g., "tax-carbon-emissions-44eur")
+ * - 2+ same-category: "{category}-policies" (e.g., "carbon-emissions-policies")
+ * - 2+ mixed categories: "{dominant-category}-plus-{non-dominant-count}-more" (e.g., "carbon-emissions-plus-1-more")
+ *
+ * Legacy algorithm (when categories not provided):
  * - 1 policy: slugified template name
- * - 2 policies: "slug1-plus-slug2" (MUST pass validatePortfolioName)
- * - 3+ policies: "first-slug-plus-(N-1)-more" (MUST pass validatePortfolioName)
+ * - 2 policies: "slug1-plus-slug2"
+ * - 3+ policies: "first-slug-plus-(N-1)-more"
  *
  * All suggestions pass validatePortfolioName validation (lowercase, alphanumeric,
  * hyphens only, max 64 chars).
  *
  * @param templates - All available templates (for looking up names by templateId)
  * @param composition - Current portfolio composition
+ * @param categories - Optional categories for type-category naming (Story 27.9)
+ * @param parameterSchemas - Optional parameter schemas for enrichment (Story 27.9)
  * @returns A validation-compatible portfolio name suggestion
  */
 export function generatePortfolioSuggestion(
+  templates: readonly Template[],
+  composition: readonly CompositionEntry[],
+  categories?: Category[] | null,
+  parameterSchemas?: Record<string, Parameter[]> | null,
+): string {
+  // Empty composition: always "untitled-portfolio"
+  if (composition.length === 0) {
+    return "untitled-portfolio";
+  }
+
+  // Story 27.9: If categories not provided, fall back to legacy behavior
+  if (!categories || categories.length === 0) {
+    return generateLegacySuggestion(templates, composition);
+  }
+
+  // Single policy: use type-category pattern
+  if (composition.length === 1) {
+    const entry = composition[0]!;
+    const { policyType, categoryLabel } = extractTypeAndCategory(entry, templates, categories);
+
+    // AC-2: From-scratch pattern detection - avoid double-naming
+    // Regex matches "Tax — Category", "Subsidy — Category", "Transfer — Category"
+    if (entry.templateId === "" && /^(Tax|Subsidy|Transfer) — /.test(entry.name)) {
+      return slugify(entry.name);
+    }
+
+    // For from-scratch policies, if entry has category_id, use category label
+    if (entry.templateId === "" && entry.category_id) {
+      const baseName = truncateSlug(slugifyTypeAndCategory(policyType, categoryLabel));
+      // AC-5: Parameter enrichment should also apply to from-scratch policies
+      const paramValue = extractPrimaryParameterValue(entry, parameterSchemas ?? null);
+      if (paramValue && (baseName.length + paramValue.formatted.length + 1) <= 48) {
+        return truncateSlug(`${baseName}-${paramValue.formatted}`);
+      }
+      return baseName;
+    }
+
+    // For template policies, always use type-category
+    if (entry.templateId !== "") {
+      const template = templates.find((t) => t.id === entry.templateId);
+      if (!template) {
+        // Template not found: fall back to legacy behavior
+        return slugify(entry.name);
+      }
+
+      // Story 27.9 / Task 2: Parameter-based enrichment
+      const baseName = truncateSlug(slugifyTypeAndCategory(policyType, categoryLabel));
+
+      // Only add parameter if total length would be ≤ 48 chars
+      const paramValue = extractPrimaryParameterValue(entry, parameterSchemas ?? null);
+      if (paramValue && (baseName.length + paramValue.formatted.length + 1) <= 48) {
+        return truncateSlug(`${baseName}-${paramValue.formatted}`);
+      }
+
+      return baseName;
+    }
+
+    return truncateSlug(slugifyTypeAndCategory(policyType, categoryLabel));
+  }
+
+  // Multi-policy: check if all same category or mixed
+  const dominantCategory = getDominantCategory(composition, templates, categories);
+  const dominantCategorySlug = slugify(dominantCategory.categoryLabel);
+
+  // Count how many policies have the dominant category
+  let dominantCount = 0;
+  for (const entry of composition) {
+    const { categoryId } = extractTypeAndCategory(entry, templates, categories);
+    if (categoryId === dominantCategory.categoryId) {
+      dominantCount++;
+    }
+  }
+
+  // All policies same category: "{category}-policies"
+  if (dominantCount === composition.length) {
+    return truncateSlug(`${dominantCategorySlug}-policies`);
+  }
+
+  // Mixed categories: "{dominant-category}-plus-{non-dominant-count}-more"
+  const nonDominantCount = composition.length - dominantCount;
+  return truncateSlug(`${dominantCategorySlug}-plus-${nonDominantCount}-more`);
+}
+
+/**
+ * Legacy naming algorithm (pre-Story 27.9).
+ * Used when categories not provided.
+ */
+function generateLegacySuggestion(
   templates: readonly Template[],
   composition: readonly CompositionEntry[],
 ): string {

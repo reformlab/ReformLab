@@ -1,0 +1,121 @@
+record_id: 24acdc7b-2512-46a8-86f8-8b2216ee2dff
+created_at: '2026-05-16T23:02:25.527244+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 27
+  story_num: '14'
+  title: Story 27.14
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-05-16T22:53:48.978319Z'
+  end_time: '2026-05-16T22:55:48.060319Z'
+  duration_ms: 119082
+  input_tokens: 0
+  output_tokens: 2609
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 10437
+  heading_count: 21
+  list_depth_max: 2
+  code_block_count: 5
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: 10.5'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes & Readability
+  - ⚡ Performance & Scalability
+  - 🐛 Correctness & Safety
+  - '🔴 [CRITICAL] Bug: AC-4 VIOLATED - Badge variant bypass pattern still exists'
+  - '🔴 [CRITICAL] Bug: Task 3.1 FAILED - Audit was fundamentally incomplete'
+  - '🔴 [CRITICAL] Missing: AC-6 console.warn has no test coverage'
+  - 🔧 Maintainability Issues
+  - '💣 Tech Debt: False claims about comprehensive audit'
+  - '💣 Tech Debt: Architectural inconsistency in badge usage'
+  - 🛠️ Suggested Fixes
+  - 1. Fix Badge Variant Bypasses in PopulationUploadZone
+  - 2. Fix Badge Variant Bypass in CalibrationPanel
+  - 3. Add Test for console.warn Behavior
+  - 4. Run Comprehensive Badge Audit
+  - Check ALL variant usages with color overrides
+  - Specific checks for each problematic pattern
+  - 📝 Final Notes
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 7c0360c4e706
+findings:
+  total_count: 11
+  by_severity:
+    critical: 3
+    major: 4
+    minor: 1
+    nit: 3
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 5
+    completeness: 3
+    clarity: 2
+    testability: 1
+  has_fix_count: 8
+  has_location_count: 8
+  has_evidence_count: 10
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 3
+  confidence_phrases_count: 0
+linguistic:
+  avg_sentence_length: 36.45945945945946
+  vocabulary_richness: 0.2920681986656783
+  flesch_reading_ease: 16.882361613541747
+  vague_terms_count: 0
+  formality_score: 0.65
+  sentiment: negative
+quality:
+  actionable_ratio: 0.91
+  specificity_score: 0.82
+  evidence_quality: 0.73
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 4
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

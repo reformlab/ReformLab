@@ -52,9 +52,6 @@ function Workspace() {
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const [isNarrow, setIsNarrow] = useState(false);
 
-  // Story 22.4: Track explorer population ID from PopulationStageScreen
-  const [explorerPopulationId, setExplorerPopulationId] = useState<string | null>(null);
-
   // Layout effects — Story 22.7: Mobile breakpoint at 1024px (lg), matching WorkspaceLayout CSS
   useEffect(() => {
     const onResize = () => {
@@ -154,7 +151,12 @@ function Workspace() {
     [results, runResult],
   );
 
-  // Stage 4 sub-view content
+  // Stage 5 sub-view breadcrumb label (Story 27.12, AC-1)
+  const subViewLabel = activeSubView
+    ? activeSubView.charAt(0).toUpperCase() + activeSubView.slice(1)
+    : "Overview";
+
+  // Stage 5 sub-view content
   const resultsContent = (() => {
     if (activeSubView === "runner") {
       return <SimulationRunnerScreen onCancel={() => { navigateTo("results"); }} />;
@@ -164,6 +166,7 @@ function Workspace() {
         <ComparisonDashboardScreen
           results={results}
           onBack={() => { navigateTo("results"); }}
+          activeScenarioId={activeScenario?.id ?? null}
         />
       );
     }
@@ -201,13 +204,19 @@ function Workspace() {
   const mainPanelContent = (
     <>
       {activeStage === "policies" ? <PoliciesStageScreen /> : null}
-      {activeStage === "population" ? (
-        <PopulationStageScreen
-          onExplorerPopulationChange={setExplorerPopulationId}
-        />
-      ) : null}
+      {activeStage === "population" ? <PopulationStageScreen /> : null}
       {activeStage === "engine" ? <EngineStageScreen /> : null}
-      {activeStage === "results" ? resultsContent : null}
+      {activeStage === "results" ? (
+        <>
+          {/* Story 27.12, AC-1: Sub-view breadcrumb */}
+          <div className="mb-3 flex items-center gap-1 text-sm text-slate-500">
+            <span>Results</span>
+            <span className="text-slate-400">/</span>
+            <span className="font-medium text-slate-700">{subViewLabel}</span>
+          </div>
+          {resultsContent}
+        </>
+      ) : null}
     </>
   );
 
@@ -231,7 +240,6 @@ function Workspace() {
               results={results}
               activeScenario={activeScenario}
               populations={populations}
-              explorerPopulationId={explorerPopulationId}
               activeSubView={activeSubView}
             />
           </LeftPanel>

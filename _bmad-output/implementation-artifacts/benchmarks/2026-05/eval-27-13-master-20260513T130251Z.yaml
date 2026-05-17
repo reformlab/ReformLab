@@ -1,0 +1,51 @@
+record_id: 6e4d84f1-6b42-45a3-a33a-c394c981f33e
+created_at: '2026-05-13T13:02:51.227912+00:00'
+workflow:
+  id: dev-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 27
+  story_num: 13
+  title: Story 27.13
+  complexity_flags: {}
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: master
+  role_id: null
+  session_id: c013e4bf-fc83-45ce-b214-69016ef5fb82
+execution:
+  start_time: '2026-05-13T12:30:12.112450Z'
+  end_time: '2026-05-13T13:02:51.187045Z'
+  duration_ms: 1959074
+  input_tokens: 0
+  output_tokens: 0
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 11127
+  heading_count: 6
+  list_depth_max: 1
+  code_block_count: 2
+  sections_detected:
+  - 'Step 1: Detect Review Continuation'
+  - 'Step 2: Implement Tasks'
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: a58ff9149aec
+findings: null
+reasoning: null
+linguistic: null
+quality: null
+consensus: null
+ground_truth: null
+custom: null

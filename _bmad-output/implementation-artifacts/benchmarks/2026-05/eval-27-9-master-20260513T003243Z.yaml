@@ -1,0 +1,51 @@
+record_id: 22f18ada-d5e7-42dd-b98d-cf28e438006f
+created_at: '2026-05-13T00:32:43.909626+00:00'
+workflow:
+  id: dev-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 27
+  story_num: 9
+  title: Story 27.9
+  complexity_flags: {}
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: master
+  role_id: null
+  session_id: 65d7cc0f-9d82-411f-a946-4d95478d33e5
+execution:
+  start_time: '2026-05-13T00:03:16.921191Z'
+  end_time: '2026-05-13T00:32:43.880351Z'
+  duration_ms: 1766959
+  input_tokens: 0
+  output_tokens: 0
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 10315
+  heading_count: 10
+  list_depth_max: 1
+  code_block_count: 0
+  sections_detected:
+  - Summary
+  - Summary
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 9208c26e66eb
+findings: null
+reasoning: null
+linguistic: null
+quality: null
+consensus: null
+ground_truth: null
+custom: null

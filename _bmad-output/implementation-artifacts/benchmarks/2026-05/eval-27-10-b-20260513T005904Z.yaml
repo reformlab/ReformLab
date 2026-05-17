@@ -1,0 +1,129 @@
+record_id: ba2a9e51-fdf8-4ea0-8286-9a48b63cc05e
+created_at: '2026-05-13T00:59:04.432302+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 27
+  story_num: 10
+  title: Story 27.10
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: sonnet
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-05-13T00:52:12.992628Z'
+  end_time: '2026-05-13T00:58:35.821628Z'
+  duration_ms: 382829
+  input_tokens: 0
+  output_tokens: 5565
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 22261
+  heading_count: 33
+  list_depth_max: 3
+  code_block_count: 7
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Evidence Score Summary
+  - 'Evidence Score: **17.9**'
+  - 🎯 Ruthless Story Validation 27.10
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 🚨 Critical Issues (Must Fix)
+  - 1. statusVariant "Current State" Is Factually Wrong → Silent Visual Regression
+  - 2. Undiscovered 4th statusVariant in ExecutionMatrix.tsx — Type-Incompatible
+  - 3. Tasks 4 and 5 Are Orphaned Scope (No Acceptance Criteria)
+  - 4. policyLabel Helper Type Signature Incompatible with Actual API Types
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Add 11 Missing Files to .toLocaleString() Migration Target List
+  - 2. Fix Two Wrong File Paths
+  - 3. Explicitly Call Out formatTimestamp "full" Style for ResultDetailView
+  - 4. Add comparison/index.ts to the File List
+  - 5. Correct Task AC Reference Numbers
+  - ✨ Optimizations (Nice to Have)
+  - 1. Clarify statusVariant File Placement — Three Conflicting Locations
+  - 2. Note that ExecutionMatrix.statusVariant Cannot Be Naively Consolidated
+  - 🤖 LLM Optimization Improvements
+  - 1. "Current State" Section Contains Wrong Information
+  - 2. Tasks Section Mixes In-Scope and Out-of-Scope Work Without Marking the Difference
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 7f8363355414
+findings:
+  total_count: 13
+  by_severity:
+    critical: 4
+    major: 5
+    minor: 2
+    nit: 2
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 4
+    completeness: 5
+    clarity: 2
+    testability: 2
+  has_fix_count: 13
+  has_location_count: 13
+  has_evidence_count: 11
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 0
+  confidence_phrases_count: 4
+linguistic:
+  avg_sentence_length: 26.435185185185187
+  vocabulary_richness: 0.2381786339754816
+  flesch_reading_ease: 7.813240740740781
+  vague_terms_count: 0
+  formality_score: 0.65
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.95
+  evidence_quality: 0.85
+  follows_template: true
+  internal_consistency: 0.95
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false

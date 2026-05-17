@@ -67,15 +67,20 @@ export function InvestmentDecisionsWizard({ engineConfig, onUpdateEngineConfig }
   // For Review step, we check if tasteParameters is actually configured
   const tasteParams = engineConfig.tasteParameters ?? DEFAULT_TASTE_PARAMETERS;
 
-  // Sync step state when investment decisions are enabled from outside the component
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (isEnabled && activeStep === 0) {
-      setActiveStep(1);  // Move to Model step when enabled externally
-    } else if (!isEnabled && activeStep > 0) {
-      setActiveStep(0);  // Return to Enable step when disabled
-    }
-  }, [isEnabled]);  // Only depend on isEnabled, not activeStep
+  // Sync step state when investment decisions are enabled from outside the component.
+  // We only depend on isEnabled to avoid re-running when activeStep changes.
+  useEffect(
+    () => {
+      if (isEnabled && activeStep === 0) {
+        setActiveStep(1);  // Move to Model step when enabled externally
+        setVisitedSteps((prev) => prev.has(1) ? prev : new Set([...prev, 1]));  // Mark Model as visited only if not already
+      } else if (!isEnabled && activeStep > 0) {
+        setActiveStep(0);  // Return to Enable step when disabled
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isEnabled],
+  );
 
   // ============================================================================
   // Step navigation
@@ -117,9 +122,10 @@ export function InvestmentDecisionsWizard({ engineConfig, onUpdateEngineConfig }
       investmentDecisionsEnabled: enabled,
       logitModel: newLogitModel,
     });
-    // When enabling, auto-advance to Model step
+    // When enabling, auto-advance to Model step and mark as visited
     if (enabled && activeStep === 0) {
       setActiveStep(1);
+      setVisitedSteps((prev) => new Set([...prev, 1]));
     }
   };
 
@@ -154,27 +160,34 @@ export function InvestmentDecisionsWizard({ engineConfig, onUpdateEngineConfig }
       <div className="flex items-center gap-3 mb-4">
         {STEP_LABELS.map((label, idx) => {
           const step = idx as WizardStep;
-          const isCompleted = step < activeStep || (step === activeStep && visitedSteps.has(step) && step > 0);
+          const isCompleted = step < activeStep;
           const isCurrent = step === activeStep;
-          const isDisabled = !isEnabled && step > 0;
+          const isVisited = visitedSteps.has(step);
+          const isDisabled = !isEnabled || (!isVisited && step !== activeStep);
 
           return (
             <div key={label} className="flex items-center gap-1">
-              <div
+              <button
+                type="button"
+                onClick={() => goToStep(step)}
+                disabled={isDisabled}
+                aria-label={label}
+                aria-current={isCurrent ? "step" : undefined}
+                aria-disabled={isDisabled ? true : undefined}
                 className={`
                   flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium border-2
                   ${isDisabled
-                    ? "bg-slate-100 border-slate-200 text-slate-400"
+                    ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
                     : isCompleted
-                      ? "bg-emerald-500 border-emerald-500 text-white"
+                      ? "bg-emerald-500 border-emerald-500 text-white hover:bg-emerald-600 transition-colors"
                       : isCurrent
                         ? "bg-blue-500 border-blue-500 text-white"
-                        : "bg-white border-slate-300 text-slate-600"
+                        : "bg-white border-slate-300 text-slate-600 hover:border-slate-400 transition-colors"
                   }
                 `}
               >
                 {isCompleted ? <Check className="h-4 w-4" /> : idx + 1}
-              </div>
+              </button>
               <span
                 className={`
                   text-xs font-medium

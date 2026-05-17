@@ -1,0 +1,62 @@
+record_id: f6c9fd90-71c5-41d3-8f9f-9e8ca56d8f8a
+created_at: '2026-05-13T14:07:35.995198+00:00'
+workflow:
+  id: dev-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 27
+  story_num: 14
+  title: Story 27.14
+  complexity_flags: {}
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: master
+  role_id: null
+  session_id: 4d532e74-0c77-40d7-9235-23cd5012804d
+execution:
+  start_time: '2026-05-13T13:42:16.828698Z'
+  end_time: '2026-05-13T14:07:35.966538Z'
+  duration_ms: 1519137
+  input_tokens: 0
+  output_tokens: 0
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 7381
+  heading_count: 8
+  list_depth_max: 1
+  code_block_count: 0
+  sections_detected:
+  - 'Step 2: Implement Task 1 - Fix Badge variant bypasses in PolicyCard## Step 2: Implement Task 2 - Fix Badge variant bypass
+    in PoliciesStageScreen## Step 2: Implement Task 3 - Audit remaining Badge bypassesTask 3 complete - no remaining Badge
+    bypasses found.'
+  - 'Step 2: Implement Task 4 - Document warning text structureTask 4 complete. Now let me implement Task 5 - Document portfolio
+    template-matching fallbackTask 5 complete. Now let me implement Task 6 - Update deferred-work.mdTask 6 complete. Now let
+    me implement Task 7 - Quality gatesI see there are pre-existing test failures. Let me verify that my changes didn''t introduce
+    any new failures by checking if the same error existed before:The test failures are pre-existing and unrelated to my changes
+    (they''re about `template.parameterGroups` in PortfolioTemplateBrowser). Let me run the typecheck and lint:TypeScript
+    typecheck passes. Now let me run the linter:The lint errors and warnings are pre-existing and unrelated to my changes.
+    Let me verify my specific files are lint-free:My modified files pass lint checks. Let me update the story file to mark
+    tasks complete:Now let me update the Dev Agent Record section:## Story 27.14 Implementation Complete'
+  - 'Summary: Story 27.14 Complete ✅'
+  - 'Summary: Story 27.14 Complete ✅'
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 575eaf302f44
+findings: null
+reasoning: null
+linguistic: null
+quality: null
+consensus: null
+ground_truth: null
+custom: null

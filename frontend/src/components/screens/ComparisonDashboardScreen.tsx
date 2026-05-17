@@ -11,9 +11,10 @@
  * - Behavioral response awareness via indicator data (AC-6)
  *
  * Sub-components extracted to frontend/src/components/comparison/ — Story 18.5, AC-2.
+ * Story 27.12, AC-6: Resets selectedRunIds and comparisonData when activeScenario.id changes.
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 
 import { Download } from "lucide-react";
 import { ErrorAlert, type ErrorState } from "@/components/simulation/ErrorAlert";
@@ -52,11 +53,13 @@ import {
 interface ComparisonDashboardScreenProps {
   results: ResultListItem[];
   onBack: () => void;
+  activeScenarioId: string | null; // Story 27.12, AC-6: For stale-comparison reset
 }
 
 export function ComparisonDashboardScreen({
   results,
   onBack,
+  activeScenarioId,
 }: ComparisonDashboardScreenProps) {
   const [selectedRunIds, setSelectedRunIds] = useState<string[]>([]);
   const [comparisonData, setComparisonData] =
@@ -66,6 +69,13 @@ export function ComparisonDashboardScreen({
   const [viewMode, setViewMode] = useState<ViewMode>("absolute");
   const [activeTab, setActiveTab] = useState<ActiveTab>("distributional");
   const [detailTarget, setDetailTarget] = useState<DetailTarget | null>(null);
+
+  // Story 27.12, AC-6: Reset comparison state when activeScenario.id changes
+  useEffect(() => {
+    setSelectedRunIds([]);
+    setComparisonData(null);
+    setError(null);
+  }, [activeScenarioId]);
 
   const toggleRun = useCallback((runId: string) => {
     setSelectedRunIds((prev) => {
@@ -179,6 +189,16 @@ export function ComparisonDashboardScreen({
         onCompare={() => void handleCompare()}
         loading={loading}
       />
+
+      {/* Story 27.12, AC-7: Failed-runs summary */}
+      {results.filter((r) => r.status === "failed").length > 0 ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+          <p className="text-xs text-amber-700">
+            {results.filter((r) => r.status === "completed").length} runs completed,{" "}
+            {results.filter((r) => r.status === "failed").length} failed (excluded from comparison)
+          </p>
+        </div>
+      ) : null}
 
       {/* Error display */}
       {error ? (

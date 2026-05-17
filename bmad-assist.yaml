@@ -27,10 +27,10 @@ tool_guard:
 # process is killed and retried up to `retries` times.
 timeouts:
   default: 600                         # 10 min — fallback for phases without explicit timeout
-  retries: 2                           # Number of retry attempts after a timeout or crash
+  retries: 1                           # Keep one retry for transient failures; avoid repeated long synthesis stalls
   create_story: 1200                   # 20 min — story spec generation (large context, one-shot)
   dev_story: 3600                      # 60 min — implementation (includes compiler + coding + tests)
-  code_review_synthesis: 900           # 15 min — merging multiple reviewer outputs
+  code_review_synthesis: 1500          # 25 min — give synthesis one longer pass before retrying
 
 # --- Providers ---
 # Default LLM backends. "master" is used for phases without an explicit phase_models
@@ -70,12 +70,12 @@ phase_models:
   # Validation: GLM-4.7 + Codex dual reviewers
   validate_story:
     - provider: claude-subprocess
-      model: sonnet                    # First reviewer 
+      model: sonnet                    # First reviewer
+    - provider: claude-subprocess
+      model: sonnet
       model_name: glm-4.7
       settings: ~/.claude/glm.json
-    - provider: codex
-      model: gpt-5.3-codex             # Second reviewer with deep reasoning
-      reasoning_effort: high
+
   validate_story_synthesis:
     provider: claude-subprocess        # Runs Claude CLI as a subprocess
     model: sonnet
@@ -86,9 +86,11 @@ phase_models:
   code_review:
     - provider: claude-subprocess
       model: sonnet                    # First reviewer
-    - provider: codex
-      model: gpt-5.3-codex             # Second reviewer with deep reasoning
-      reasoning_effort: high
+    - provider: claude-subprocess
+      model: sonnet
+      model_name: glm-4.7
+      settings: ~/.claude/glm.json
+
   code_review_synthesis:
     provider: claude-subprocess        # Last gate before code ships — upgraded model
     model: sonnet

@@ -1,0 +1,132 @@
+record_id: 5fbddcf3-5971-45b9-8613-5a10b667496c
+created_at: '2026-04-29T22:57:11.420361+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 27
+  story_num: 4
+  title: Story 27.4
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: codex
+  model: gpt-5.3-codex
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-04-29T22:54:32.633428Z'
+  end_time: '2026-04-29T22:56:00.997428Z'
+  duration_ms: 88364
+  input_tokens: 0
+  output_tokens: 3281
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 13125
+  heading_count: 36
+  list_depth_max: 3
+  code_block_count: 6
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 13.1'
+  - 🎯 Ruthless Story Validation 27.4
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 13.1 → REJECT'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Scaffolding Logic Contradiction
+  - 2. Non-Testable Visual/Parity Criteria
+  - 3. Missing Explicit 27.3 Non-Regression Contract
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 4. Define Persistence Contract Explicitly
+  - 5. Deterministic Ordering Rules
+  - 6. Clarify AC5 Scope
+  - 7. Add Error/Empty Schema Case
+  - 8. Require A11y Parity Checks
+  - 9. Split Scope or Stage Delivery
+  - ✨ Optimizations (Nice to Have)
+  - 10. Shared Test Harness for Parity
+  - 11. Reuse Group Scaffolding Utility in One Module
+  - 12. Explicit "Do Not Change" List
+  - 🤖 LLM Optimization Improvements
+  - 13. Replace Narrative Blocks With Normative Rules
+  - 14. Remove Line-Number Coupling
+  - 15. Normalize Terminology
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 3ac745429cc7
+findings:
+  total_count: 15
+  by_severity:
+    critical: 3
+    major: 6
+    minor: 6
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 3
+    completeness: 4
+    clarity: 5
+    testability: 3
+  has_fix_count: 15
+  has_location_count: 5
+  has_evidence_count: 12
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 3
+  confidence_phrases_count: 3
+linguistic:
+  avg_sentence_length: 15.792079207920793
+  vocabulary_richness: 0.39373040752351096
+  flesch_reading_ease: 5.105978016293847
+  vague_terms_count: 0
+  formality_score: 0.75
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.53
+  evidence_quality: 0.8
+  follows_template: true
+  internal_consistency: 0.9
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false

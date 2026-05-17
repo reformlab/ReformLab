@@ -1362,10 +1362,11 @@ The five-stage shell organizes one underlying analysis model. The canonical work
   3. Investment Decisions
   4. Scenario
   5. Results
-- **Stage indicator states:**
-  - Active: `bg-blue-500 text-white`
-  - Complete: `bg-emerald-500 text-white` with check icon
-  - Incomplete: `border-2 border-slate-300 bg-white text-slate-500`
+- **Stage indicator states:** (Story 27.6: four-state model)
+  - **Active:** Current stage where the user is located. Visual: `bg-blue-500 text-white`.
+  - **Complete:** Stage was finished successfully by the user. Visual: `bg-emerald-500 text-white` with check icon.
+  - **Incomplete:** Stage was touched (user visited and made some choices) but not finished before navigating away. Visual: `border-2 border-slate-300 bg-white text-slate-500`.
+  - **Not started:** Stage has not been touched yet — no user interaction occurred. Visual: `border border-dashed border-slate-200 bg-transparent text-slate-400` with smaller dot.
 - **Summary lines** below each stage label (when expanded): e.g., "3 policies", "45k records", "2025–2035"
 - **No scenario cards in sidebar** — scenarios are managed within their respective stages
 
@@ -1603,78 +1604,93 @@ These are warnings, not blockers — the user can proceed, but the simulation wi
 
 #### Information Architecture
 
+The Population stage follows a two-step flow: **Source → Inspect**. First, pick or build a population; then, inspect it in detail.
+
 ```
 Stage 2: POPULATION
 │
-├─ Population Library
-│   ├─ List of available populations
-│   │   ├─ [Built-in] Pre-loaded synthetic populations (FR-2023-SILC, etc.)
-│   │   ├─ [Generated] Populations built via Data Fusion
-│   │   └─ [Uploaded] User-provided CSV/Parquet files
-│   ├─ Per-population metadata: name, source, row count, column count, created date
-│   └─ Per-population actions:
-│       ├─ 👁 Quick Preview (slide-over sheet)
-│       ├─ 📊 Full Data Explorer (full-screen)
-│       ├─ ✏️ Edit as New Version via Data Fusion
-│       ├─ 📤 Upload New
-│       └─ 🗑 Delete
+├─ Sub-step 1: SOURCE
+│   ├─ Population Library (default view)
+│   │   ├─ List of available populations
+│   │   │   ├─ [Built-in] Pre-loaded synthetic populations (FR-2023-SILC, etc.)
+│   │   │   ├─ [Generated] Populations built via Data Fusion
+│   │   │   └─ [Uploaded] User-provided CSV/Parquet files
+│   │   ├─ Per-population metadata: name, source, row count, column count, created date
+│   │   └─ Per-population actions:
+│   │       ├─ 👁 Quick Preview (slide-over sheet)
+│   │       ├─ 📊 Explore (opens Inspect sub-step)
+│   │       ├─ ✏️ Edit as New Version via Data Fusion
+│   │       ├─ 📤 Upload New
+│   │       └─ 🗑 Delete
+│   │
+│   ├─ Build New (Data Fusion Workbench)
+│   │   └─ Creates a new population in the library when complete
+│   │       and auto-selects it for exploration
+│   │
+│   └─ Upload Flow
+│       ├─ Drop zone: drag CSV/Parquet or click to browse
+│       │   └─ Style: `border-2 border-dashed border-slate-300` idle,
+│       │     `border-blue-500 bg-blue-50` on drag-over
+│       ├─ Import report:
+│       │   ├─ ✓ Row count, column count
+│       │   ├─ ✓ Matched columns (mapped to expected schema)
+│       │   ├─ ⚠ Unrecognized columns (retained, not ignored)
+│       │   ├─ ⚠ Missing required columns (import allowed as draft)
+│       │   └─ Next step link → "Open mapping and remediation"
+│       └─ Confirm → draft population version added to library
 │
-├─ Data Fusion Workbench (existing, for building new populations)
-│   └─ Creates a new population in the library when complete
-│
-├─ Upload Flow
-│   ├─ Drop zone: drag CSV/Parquet or click to browse
-│   │   └─ Style: `border-2 border-dashed border-slate-300` idle,
-│   │     `border-blue-500 bg-blue-50` on drag-over
-│   ├─ Import report:
-│   │   ├─ ✓ Row count, column count
-│   │   ├─ ✓ Matched columns (mapped to expected schema)
-│   │   ├─ ⚠ Unrecognized columns (retained, not ignored)
-│   │   ├─ ⚠ Missing required columns (import allowed as draft)
-│   │   └─ Next step link → "Open mapping and remediation"
-│   └─ Confirm → draft population version added to library
-│
-├─ Quick Preview (slide-over Sheet component)
-│   ├─ First 100 rows in a sortable table
-│   ├─ Column headers with sort arrows
-│   ├─ Per-column filter row
-│   ├─ Row count indicator
-│   └─ "Open full view" link → Full Data Explorer
-│
-└─ Full Data Explorer (replaces main content area)
-    ├─ [Tab 1: Table View]
-    │   ├─ Paginated data table (TanStack Table)
-    │   ├─ Server-side pagination: 50-100 rows per page
-    │   ├─ Sortable columns (click header)
-    │   ├─ Per-column filters (text/range)
-    │   ├─ Column resize
-    │   ├─ IBM Plex Mono for all data values
-    │   └─ Total rows / current view count
-    │
-    ├─ [Tab 2: Profile View]
-    │   ├─ Column list (left sidebar within the view)
-    │   │   └─ Click any column to profile it
-    │   ├─ Column profile panel (right)
-    │   │   ├─ For NUMERIC columns:
-    │   │   │   ├─ Histogram (20 bins, horizontal bars, Slate 400 fill)
-    │   │   │   ├─ Percentile bar (P10/P25/P50/P75/P90)
-    │   │   │   ├─ Stats card: min, max, mean, median, std, null count
-    │   │   │   └─ Cross-tab selector → pick second column for stacked/grouped bars
-    │   │   ├─ For CATEGORICAL columns:
-    │   │   │   ├─ Horizontal bar chart of value counts (top 20)
-    │   │   │   ├─ Cardinality badge ("10 unique values")
-    │   │   │   └─ Cross-tab selector → stacked bars with another categorical
-    │   │   └─ For BOOLEAN columns:
-    │   │       └─ True/False proportion bar with counts
-    │   └─ Chart colors: Slate 400 primary, Blue 500 secondary,
-    │     Violet 500 tertiary (from brand chart palette)
-    │
-    └─ [Tab 3: Summary View]
-        ├─ Dataset overview: row count, column count, memory size
-        ├─ Column type breakdown (N numeric, M categorical, K boolean)
-        ├─ Completeness heatmap (columns × null percentage)
-        └─ Top-level stats per column in a compact table
+└─ Sub-step 2: INSPECT (gated behind population selection)
+    └─ Full Data Explorer (three tabs)
+        ├─ [Tab 1: Table View]
+        │   ├─ Paginated data table (TanStack Table)
+        │   ├─ Server-side pagination: 50-100 rows per page
+        │   ├─ Sortable columns (click header)
+        │   ├─ Per-column filters (text/range)
+        │   ├─ Column resize
+        │   ├─ IBM Plex Mono for all data values
+        │   └─ Total rows / current view count
+        │
+        ├─ [Tab 2: Profile View]
+        │   ├─ Column list (left sidebar within the view)
+        │   │   └─ Click any column to profile it
+        │   ├─ Column profile panel (right)
+        │   │   ├─ For NUMERIC columns:
+        │   │   │   ├─ Histogram (20 bins, horizontal bars, Slate 400 fill)
+        │   │   │   ├─ Percentile bar (P10/P25/P50/P75/P90)
+        │   │   │   ├─ Stats card: min, max, mean, median, std, null count
+        │   │   │   └─ Cross-tab selector → pick second column for stacked/grouped bars
+        │   │   ├─ For CATEGORICAL columns:
+        │   │   │   ├─ Horizontal bar chart of value counts (top 20)
+        │   │   │   ├─ Cardinality badge ("10 unique values")
+        │   │   │   └─ Cross-tab selector → stacked bars with another categorical
+        │   │   └─ For BOOLEAN columns:
+        │   │       └─ True/False proportion bar with counts
+        │   └─ Chart colors: Slate 400 primary, Blue 500 secondary,
+        │     Violet 500 tertiary (from brand chart palette)
+        │
+        └─ [Tab 3: Summary View]
+            ├─ Dataset overview: row count, column count, memory size
+            ├─ Column type breakdown (N numeric, M categorical, K boolean)
+            ├─ Completeness heatmap (columns × null percentage)
+            └─ Top-level stats per column in a compact table
 ```
+
+#### Two-Step Flow
+
+- **Source:** Pick or build a population. The nav rail shows "Source" as the first sub-step under Population.
+- **Inspect:** Explore the selected population in detail. This sub-step is **disabled** (visibly grayed out, with tooltip) when no population is selected.
+- **Navigation:** Selecting a population in Source automatically enables Inspect; clicking Inspect opens the Full Data Explorer.
+
+#### URL Hash Patterns
+
+- `#population` → Source (Population Library, default)
+- `#population/source` → Source (Population Library)
+- `#population/inspect` → Inspect (Full Data Explorer, gated behind population selection)
+
+Legacy hashes are migrated on app load:
+- `"" → "source"`
+- `"data-fusion" → "source"`
+- `"population-explorer" → "inspect"`
 
 #### Backend Support
 
@@ -1750,6 +1766,22 @@ Stage 3: INVESTMENT DECISIONS
     ├─ Missing calibration or required parameters are surfaced clearly
     └─ User can continue directly to Scenario when decisions are disabled
 ```
+
+#### Clickable Step Labels
+
+The wizard step labels (Enable, Model, Parameters, Review) are clickable for backward navigation:
+
+- **Step labels are `<button>` elements** with `onClick` handlers calling `goToStep(stepIndex)`.
+- **Visual styling:**
+  - Visited steps: `text-emerald-600 cursor-pointer` (green, clickable)
+  - Current step: `text-blue-600 font-medium` (blue, medium weight)
+  - Unreached steps: `text-slate-400 cursor-not-allowed` (gray, not clickable)
+- **Disabled state:** Unreached steps have the `disabled` attribute and `aria-disabled="true"` for screen readers. Clicking has no effect.
+- **State preservation:** When navigating back to an earlier step then forward via Next, previous selections on intermediate steps remain intact.
+- **ARIA attributes:**
+  - Step labels are native `<button>` elements; `role="button"` is NOT added (would be redundant and is an ARIA anti-pattern on native buttons)
+  - `aria-current="step"` on the current active step
+  - `aria-disabled="true"` on unreached steps
 
 #### Key Design Decisions
 
@@ -1846,36 +1878,88 @@ flowchart TD
 ```
 Stage 5: RUN / RESULTS / COMPARE
 │
-├─ Run Queue
+├─ Overview (default view, when at least one run is completed)
+│   ├─ [Tab: Overview] Summary statistics cards (Gini, fiscal cost, affected %)
+│   ├─ [Tab: Data & Export] Export actions (CSV, Parquet, Notebook)
+│   ├─ [Tab: Detail] Distributional charts (income decile impact bars)
+│   └─ Skeleton placeholder loads immediately before API resolves
+│
+├─ Runner (simulation queue)
 │   ├─ List of queued runs (Scenario × Population matrix)
 │   ├─ Per-run: status (queued / running / completed / failed)
 │   ├─ Progress bar per running simulation (RunProgressBar component)
 │   └─ Cancel individual runs or cancel all
 │
-├─ Results View (when at least one run is completed)
-│   ├─ Run selector: dropdown or tabs for completed runs
-│   ├─ Distributional charts (income decile impact bars)
-│   ├─ Summary statistics cards (Gini, fiscal cost, affected %)
-│   ├─ Waterfall contribution chart
-│   ├─ Run manifest / lineage access
-│   └─ Export actions (CSV, Parquet, Notebook)
-│
-├─ Comparison View
+├─ Comparison
 │   ├─ Select 2-5 completed runs to compare
 │   ├─ [Tab: Side-by-side] — columns per run, indicator rows
-│   ├─ [Tab: Overlay] — all runs on same chart axes
-│   ├─ [Tab: Delta table] — difference from baseline per indicator
+│   ├─ [Tab: Overlay] — all runs on same chart axes (semantic palette)
+│   ├─ [Tab: Fiscal] — fiscal impact by decile with unit labels
+│   ├─ [Tab: Welfare] — welfare impact by decile with unit labels
 │   ├─ Absolute / relative toggle
+│   ├─ Failed-runs summary when applicable
 │   └─ Export comparison data (CSV, Notebook manifest)
 │
-└─ Run Manifest Viewer
-    └─ Per-run drill-down into assumptions, mappings, lineage, and reproducibility metadata
+├─ Decisions (behavioral decision results)
+│   └─ Agent-based decision outcomes (when enabled)
+│
+└─ Manifest (planned, not yet implemented)
+    └─ Will provide per-run drill-down into assumptions, mappings, lineage, and reproducibility metadata
+    └─ Note: Manifest is not currently a routable sub-view; no `#results/manifest` hash exists
 ```
+
+#### Sub-View Breadcrumb (Story 27.12, AC-1)
+
+- **Persistent breadcrumb** at top of Stage 5 surface: `Results / {sub-view name}` (forward-slash separator)
+- Container styling: `text-sm text-slate-500`; sub-view label uses `font-medium text-slate-700` (visually emphasized)
+- Shows for all sub-views: Overview, Runner, Comparison, Decisions
+- Example: "Results / Comparison", "Results / Overview"
+
+#### Semantic Comparison Palette (Story 27.12, AC-2)
+
+- **Baseline run:** Uses darker semantic color token `--chart-baseline` for visual distinction
+- **Reform runs:** Use `--chart-reform-a` through `--chart-reform-d` tokens
+- Rainbow palette replaced with semantic baseline/reform distinction
+
+#### Unit Labels and Number Formatting (Story 27.12, AC-3)
+
+- **Fiscal and Welfare tabs** include unit labels in column headers (e.g., "Revenue (€)", "Average Welfare Change (€/month)")
+- **Large numeric values** use `formatLargeNumber()` helper (e.g., `€1.2M` instead of `1234567`)
+- Non-monetary meta columns (year, metric name, etc.) exclude unit labels
+
+#### Run Identifiers (Story 27.12, AC-4)
+
+- **Minimum 12 characters** displayed in monospace font (IBM Plex Mono)
+- **Copy-to-clipboard button** adjacent to run-id displays
+- **Full ID available** via tooltip and clipboard for unambiguous reference
+
+#### Numeric Display Guards (Story 27.12, AC-5)
+
+- All numeric displays fall back to `"—"` (em dash) for `NaN` or `Infinity` values
+- Applies to comparison tables, charts, metric panels, and result displays
+- Raw `NaN` or `Infinity` strings are never rendered
+
+#### Stale Comparison Reset (Story 27.12, AC-6)
+
+- When `activeScenario.id` changes, `selectedRunIds` and `comparisonData` are reset
+- No stale comparison from previous scenario is shown
+
+#### Failed Runs Summary (Story 27.12, AC-7)
+
+- When any run in the results list has `failed` status (not limited to selected runs), summary line reads:
+  - "{N} runs completed, {M} failed (excluded from comparison)"
+- Failed runs are excluded from comparison tables and charts (via RunSelector filtering)
+
+#### Skeleton Loading (Story 27.12, AC-8)
+
+- **Detail tab** in Results Overview renders a skeleton placeholder immediately
+- Skeleton appears before the API call resolves (~16ms target)
+- Prevents apparent hang while data loads
 
 #### Key Design Decisions
 
 - **Run Queue handles the multi-population matrix.** If the user selected 2 populations in Stage 4, they see 2 runs queued. Each run is independently cancellable.
-- **Results and Comparison are sub-views within Stage 5**, not separate stages. The nav rail shows Stage 5 as active for all three.
+- **Results and Comparison are sub-views within Stage 5**, not separate stages. The nav rail shows Stage 5 as active for all sub-views.
 - **Scenario remains the durable analysis object.** Stage 5 executes scenario versions and compares their runs; it does not replace the scenario registry.
 - **The core loop lives here.** Quick parameter tweaks cycle between the owning scenario context and Stage 5; stale results stay visible until reruns complete, so the analyst never loses orientation.
 
@@ -1951,6 +2035,8 @@ App
 
 The `WorkflowNavRail` component is updated with new stage definitions:
 
+> **Note:** This code example uses conceptual stage keys for clarity. The actual implementation in `frontend/src/types/workspace.ts` uses `"engine"` for the Scenario stage (not `"scenario"` or `"investment-decisions"`). Investment Decisions is optional functionality within the Scenario stage, not a separate top-level stage.
+
 ```typescript
 const STAGES = [
   {
@@ -1963,7 +2049,8 @@ const STAGES = [
     key: "population",
     label: "Population",
     targetMode: "population",
-    activeFor: ["population", "data-fusion", "population-explorer"],
+    // Story 27.8: Added "source" and "inspect" for two-step flow
+    activeFor: ["population", "source", "inspect", "data-fusion", "population-explorer"],
   },
   {
     key: "investment-decisions",
@@ -1981,7 +2068,8 @@ const STAGES = [
     key: "results",
     label: "Run / Results / Compare",
     targetMode: "results",
-    activeFor: ["results", "comparison", "decisions", "runner"],
+    // Story 27.12: activeFor includes "runner", "comparison", "decisions"
+    activeFor: ["results", "runner", "comparison", "decisions"],
   },
 ];
 ```
@@ -2077,11 +2165,12 @@ Revision 2 treated the logo as sidebar chrome and the top bar as a pure stage he
 
 #### Updated Navigation Guidance
 
+> **Superseded by Story 27.8:** The sub-steps below (Library/Build/Explorer) were replaced by a two-step Source → Inspect model. See the Population Information Architecture section for current guidance.
+
 - The top-level nav remains the five-stage workflow.
 - When Population is active, the nav pattern should expose stage-local sub-steps:
-  - `Library`
-  - `Build`
-  - `Explorer`
+  - `Source` (Population Library + Build New)
+  - `Inspect` (Full Data Explorer, gated behind population selection)
 - These are sub-steps, not additional top-level stages.
 
 ### Revision: Stage 1 — Policies
@@ -2171,6 +2260,8 @@ This remains optional, but it is now handled in the dedicated `Investment Decisi
 
 Revision 3 user-facing labels are:
 
+> **Note:** This code example uses conceptual stage keys for clarity. The actual implementation in `frontend/src/types/workspace.ts` uses `"engine"` for the Scenario stage (not `"scenario"` or `"investment-decisions"`). Investment Decisions is optional functionality within the Scenario stage, not a separate top-level stage.
+
 ```typescript
 const STAGES = [
   {
@@ -2181,7 +2272,9 @@ const STAGES = [
   {
     key: "population",
     label: "Population",
-    activeFor: ["population", "data-fusion", "population-explorer"],
+    // Story 27.8: Added "source" and "inspect" for two-step flow
+    // "data-fusion" retained for legacy Build New button support
+    activeFor: ["population", "source", "inspect", "data-fusion", "population-explorer"],
   },
   {
     key: "investment-decisions",
@@ -2196,10 +2289,14 @@ const STAGES = [
   {
     key: "results",
     label: "Run / Results / Compare",
-    activeFor: ["results", "comparison", "decisions", "runner"],
+    // Story 27.12: activeFor includes "runner", "comparison", "decisions"
+    // "overview" is the default view (activeSubView === null)
+    activeFor: ["results", "runner", "comparison", "decisions"],
   },
 ];
 ```
+
+**Legacy hash migration** (Story 27.8): On app load, legacy Population sub-view values are migrated: `"" → "source"`, `"data-fusion" → "source"`, `"population-explorer" → "inspect"`.
 
 The persistence and routing model does not need a full internal rename in this revision if that adds unnecessary implementation risk.
 

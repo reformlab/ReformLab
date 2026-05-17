@@ -1,0 +1,146 @@
+record_id: 4e9620f2-7546-4a56-bf7b-7c62bcb1789e
+created_at: '2026-05-13T02:21:14.706919+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 27
+  story_num: 11
+  title: Story 27.11
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-05-13T02:14:20.992845Z'
+  end_time: '2026-05-13T02:20:31.561845Z'
+  duration_ms: 370569
+  input_tokens: 0
+  output_tokens: 7996
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 31986
+  heading_count: 50
+  list_depth_max: 3
+  code_block_count: 26
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 28.9'
+  - 🎯 Ruthless Story Validation 27.11
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 28.9 → 🚨 REJECT'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. AC-2 is Fundamentally Untestable
+  - 2. Task 7.3 Lacks Decision Criteria for Reachability
+  - 3. No Verification That All Hook Consumers Are Identified
+  - 4. Re-Export Pattern Has No Deprecation Path
+  - 5. AC-10 Has Contradictory Numbers
+  - 6. Discriminated Union Pattern Conflicts with Protocol-Driven Architecture
+  - 7. AC-6 Type Relationship Specification is Ambiguous
+  - 8. Missing Backward Compatibility Verification for Re-Exports
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Specify Exact Test Scenarios for Mode Switching
+  - 2. Explain Discriminated Union Rationale
+  - 3. Complete Consumer Search Before Development
+  - 4. Add Integration Test Specification
+  - 5. Document Circular Import Resolution
+  - 6. Add Performance Considerations
+  - 7. Specify Alternative if Discriminated Unions Rejected
+  - ✨ Optimizations (Nice to Have)
+  - 1. Bundle Size Optimization
+  - 2. Type Inference Hints
+  - 3. Migration Safety Tips
+  - 4. Error Handling Patterns
+  - 🤖 LLM Optimization Improvements
+  - 1. Reduce Verbose Story Context
+  - Story
+  - Story
+  - 2. Consolidate Duplicate Task Breakdowns
+  - 3. Remove Repetitive "Policy Type Normalization" Explanations
+  - 4. Simplify Acceptance Criteria Language
+  - 5. Condense "Architecture Patterns" Section
+  - Architecture Patterns
+  - Key Decisions
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 64266d3f867d
+findings:
+  total_count: 24
+  by_severity:
+    critical: 8
+    major: 7
+    minor: 4
+    nit: 5
+  by_category:
+    security: 0
+    performance: 1
+    correctness: 4
+    completeness: 9
+    clarity: 8
+    testability: 5
+  has_fix_count: 24
+  has_location_count: 21
+  has_evidence_count: 20
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 16
+  confidence_phrases_count: 5
+linguistic:
+  avg_sentence_length: 22.98324022346369
+  vocabulary_richness: 0.23432182790471562
+  flesch_reading_ease: 11.801833021134541
+  vague_terms_count: 2
+  formality_score: 0.75
+  sentiment: negative
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.92
+  evidence_quality: 0.85
+  follows_template: true
+  internal_consistency: 0.92
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true

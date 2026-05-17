@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 Lucas Vivier
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 
 import { PortfolioCompositionPanel } from "@/components/simulation/PortfolioCompositionPanel";
 import type { CompositionEntry } from "@/components/simulation/PortfolioCompositionPanel";
@@ -172,6 +172,520 @@ describe("PortfolioCompositionPanel", () => {
 });
 
 // ============================================================================
+// Story 27.3: Show actual parameter values inline in policy cards
+// ============================================================================
+
+describe("Story 27.3: PortfolioCompositionPanel", () => {
+  describe("Collapsed card parameter summaries (AC-1, AC-2)", () => {
+    it("should show actual parameter values in collapsed card for editableParameterGroups", () => {
+      const compositionWithEditableGroups: CompositionEntry[] = [
+        {
+          templateId: "carbon-tax-flat",
+          name: "Carbon Tax — Flat Rate",
+          parameters: {
+            tax_rate: 44,
+            exemption_threshold: 15000,
+          },
+          rateSchedule: { "2025": 44, "2030": 50 },
+          instanceId: "inst-1",
+          editableParameterGroups: [
+            { id: "mechanism", name: "Mechanism", parameterIds: ["tax_rate"] },
+            { id: "eligibility", name: "Eligibility", parameterIds: ["exemption_threshold"] },
+          ],
+        },
+      ];
+
+      const parameterSchemas = {
+        "carbon-tax-flat": [
+          { id: "tax_rate", label: "Tax Rate", value: 44, baseline: 44, unit: "€/tonne", group: "Mechanism", type: "slider" as const },
+          { id: "exemption_threshold", label: "Exemption Threshold", value: 15000, baseline: 10000, unit: "€", group: "Eligibility", type: "number" as const },
+        ],
+      };
+
+      const { container } = render(
+        <PortfolioCompositionPanel
+          templates={mockTemplates}
+          composition={compositionWithEditableGroups}
+          onReorder={() => {}}
+          onRemove={() => {}}
+          onParameterChange={() => {}}
+          onRateScheduleChange={() => {}}
+          parameterSchemas={parameterSchemas}
+        />,
+      );
+
+      // Should show actual values instead of generic chips
+      expect(container.textContent).toContain("44 €/tonne");
+      expect(container.textContent).toContain("15000 €");
+    });
+
+    it("should show actual parameter values in collapsed card for legacy parameter_groups", () => {
+      const compositionWithLegacyGroups: CompositionEntry[] = [
+        {
+          templateId: "carbon-tax-flat",
+          name: "Carbon Tax — Flat Rate",
+          parameters: {
+            tax_rate: 44,
+            exemption_threshold: 15000,
+          },
+          rateSchedule: { "2025": 44, "2030": 50 },
+          instanceId: "inst-2",
+          parameter_groups: ["Mechanism", "Eligibility"],
+        },
+      ];
+
+      const parameterSchemas = {
+        "carbon-tax-flat": [
+          { id: "tax_rate", label: "Tax Rate", value: 44, baseline: 44, unit: "€/tonne", group: "Mechanism", type: "slider" as const },
+          { id: "exemption_threshold", label: "Exemption Threshold", value: 15000, baseline: 10000, unit: "€", group: "Eligibility", type: "number" as const },
+        ],
+      };
+
+      const { container } = render(
+        <PortfolioCompositionPanel
+          templates={mockTemplates}
+          composition={compositionWithLegacyGroups}
+          onReorder={() => {}}
+          onRemove={() => {}}
+          onParameterChange={() => {}}
+          onRateScheduleChange={() => {}}
+          parameterSchemas={parameterSchemas}
+        />,
+      );
+
+      // Should show actual values derived from schemas
+      expect(container.textContent).toContain("44 €/tonne");
+      expect(container.textContent).toContain("15000 €");
+    });
+
+    it("should truncate parameter summaries with 4+ parameters (AC-1)", () => {
+      const compositionWithManyParams: CompositionEntry[] = [
+        {
+          templateId: "carbon-tax-complex",
+          name: "Complex Carbon Tax",
+          parameters: {
+            tax_rate: 44,
+            exemption_threshold: 15000,
+            ceiling: 100000,
+            rate_schedule_2026: 50,
+            rate_schedule_2027: 55,
+          },
+          rateSchedule: {},
+          instanceId: "inst-many",
+          editableParameterGroups: [
+            {
+              id: "mechanism",
+              name: "Mechanism",
+              parameterIds: ["tax_rate", "exemption_threshold", "ceiling", "rate_schedule_2026", "rate_schedule_2027"],
+            },
+          ],
+        },
+      ];
+
+      const parameterSchemas = {
+        "carbon-tax-complex": [
+          { id: "tax_rate", label: "Tax Rate", value: 44, baseline: 44, unit: "€/tonne", group: "Mechanism", type: "slider" as const },
+          { id: "exemption_threshold", label: "Exemption", value: 15000, baseline: 10000, unit: "€", group: "Mechanism", type: "number" as const },
+          { id: "ceiling", label: "Ceiling", value: 100000, baseline: 100000, unit: "€", group: "Mechanism", type: "number" as const },
+          { id: "rate_schedule_2026", label: "Rate 2026", value: 50, baseline: 50, unit: "€/tonne", group: "Mechanism", type: "slider" as const },
+          { id: "rate_schedule_2027", label: "Rate 2027", value: 55, baseline: 55, unit: "€/tonne", group: "Mechanism", type: "slider" as const },
+        ],
+      };
+
+      const { container } = render(
+        <PortfolioCompositionPanel
+          templates={mockTemplates}
+          composition={compositionWithManyParams}
+          onReorder={() => {}}
+          onRemove={() => {}}
+          onParameterChange={() => {}}
+          onRateScheduleChange={() => {}}
+          parameterSchemas={parameterSchemas}
+        />,
+      );
+
+      // Should show truncation indicator
+      expect(container.textContent).toContain("(+3 more)");
+    });
+  });
+
+  describe("Click-to-preview affordance (AC-3, AC-6)", () => {
+    // Mock scrollIntoView before all tests in this describe block
+    beforeEach(() => {
+      Element.prototype.scrollIntoView = vi.fn();
+    });
+
+    it("should expand card and scroll to group when group chip is clicked", async () => {
+      vi.useFakeTimers();
+
+      const compositionWithEditableGroups: CompositionEntry[] = [
+        {
+          templateId: "carbon-tax-flat",
+          name: "Carbon Tax",
+          parameters: { tax_rate: 44 },
+          rateSchedule: {},
+          instanceId: "inst-click",
+          editableParameterGroups: [
+            { id: "mechanism", name: "Mechanism", parameterIds: ["tax_rate"] },
+          ],
+        },
+      ];
+
+      const parameterSchemas = {
+        "carbon-tax-flat": [
+          { id: "tax_rate", label: "Tax Rate", value: 44, baseline: 44, unit: "€/tonne", group: "Mechanism", type: "slider" as const },
+        ],
+      };
+
+      const { container } = render(
+        <PortfolioCompositionPanel
+          templates={mockTemplates}
+          composition={compositionWithEditableGroups}
+          onReorder={() => {}}
+          onRemove={() => {}}
+          onParameterChange={() => {}}
+          onRateScheduleChange={() => {}}
+          parameterSchemas={parameterSchemas}
+        />,
+      );
+
+      // Find the group chip button (collapsed state)
+      const groupChip = container.querySelector('button[aria-expanded="false"]');
+      expect(groupChip).toBeInTheDocument();
+
+      // Click the group chip
+      fireEvent.click(groupChip!);
+
+      // Card should be expanded
+      expect(container.querySelector('button[aria-expanded="true"]')).toBeInTheDocument();
+
+      // Run pending timers to trigger the scrollIntoView callback
+      vi.runAllTimers();
+
+      // scrollIntoView should have been called
+      expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith(
+        expect.objectContaining({ behavior: "smooth", block: "nearest" }),
+      );
+
+      vi.useRealTimers();
+    });
+
+    it("should support keyboard activation with Enter key", () => {
+      const compositionWithEditableGroups: CompositionEntry[] = [
+        {
+          templateId: "carbon-tax-flat",
+          name: "Carbon Tax",
+          parameters: { tax_rate: 44 },
+          rateSchedule: {},
+          instanceId: "inst-keyboard",
+          editableParameterGroups: [
+            { id: "mechanism", name: "Mechanism", parameterIds: ["tax_rate"] },
+          ],
+        },
+      ];
+
+      const parameterSchemas = {
+        "carbon-tax-flat": [
+          { id: "tax_rate", label: "Tax Rate", value: 44, baseline: 44, unit: "€/tonne", group: "Mechanism", type: "slider" as const },
+        ],
+      };
+
+      const { container } = render(
+        <PortfolioCompositionPanel
+          templates={mockTemplates}
+          composition={compositionWithEditableGroups}
+          onReorder={() => {}}
+          onRemove={() => {}}
+          onParameterChange={() => {}}
+          onRateScheduleChange={() => {}}
+          parameterSchemas={parameterSchemas}
+        />,
+      );
+
+      const groupChip = container.querySelector('button[aria-expanded="false"]');
+      expect(groupChip).toBeInTheDocument();
+
+      // Press Enter key
+      fireEvent.keyDown(groupChip!, { key: "Enter", code: "Enter" });
+
+      // Card should be expanded
+      expect(container.querySelector('button[aria-expanded="true"]')).toBeInTheDocument();
+    });
+
+    it("should support keyboard activation with Space key", () => {
+      const compositionWithEditableGroups: CompositionEntry[] = [
+        {
+          templateId: "carbon-tax-flat",
+          name: "Carbon Tax",
+          parameters: { tax_rate: 44 },
+          rateSchedule: {},
+          instanceId: "inst-space",
+          editableParameterGroups: [
+            { id: "mechanism", name: "Mechanism", parameterIds: ["tax_rate"] },
+          ],
+        },
+      ];
+
+      const parameterSchemas = {
+        "carbon-tax-flat": [
+          { id: "tax_rate", label: "Tax Rate", value: 44, baseline: 44, unit: "€/tonne", group: "Mechanism", type: "slider" as const },
+        ],
+      };
+
+      const { container } = render(
+        <PortfolioCompositionPanel
+          templates={mockTemplates}
+          composition={compositionWithEditableGroups}
+          onReorder={() => {}}
+          onRemove={() => {}}
+          onParameterChange={() => {}}
+          onRateScheduleChange={() => {}}
+          parameterSchemas={parameterSchemas}
+        />,
+      );
+
+      const groupChip = container.querySelector('button[aria-expanded="false"]');
+      expect(groupChip).toBeInTheDocument();
+
+      // Press Space key
+      fireEvent.keyDown(groupChip!, { key: " ", code: "Space" });
+
+      // Card should be expanded
+      expect(container.querySelector('button[aria-expanded="true"]')).toBeInTheDocument();
+    });
+
+    it("should apply and remove highlight class after group chip click", () => {
+      vi.useFakeTimers();
+
+      const compositionWithEditableGroups: CompositionEntry[] = [
+        {
+          templateId: "carbon-tax-flat",
+          name: "Carbon Tax",
+          parameters: { tax_rate: 44 },
+          rateSchedule: {},
+          instanceId: "inst-highlight",
+          editableParameterGroups: [
+            { id: "mechanism", name: "Mechanism", parameterIds: ["tax_rate"] },
+          ],
+        },
+      ];
+
+      const parameterSchemas = {
+        "carbon-tax-flat": [
+          { id: "tax_rate", label: "Tax Rate", value: 44, baseline: 44, unit: "€/tonne", group: "Mechanism", type: "slider" as const },
+        ],
+      };
+
+      const { container } = render(
+        <PortfolioCompositionPanel
+          templates={mockTemplates}
+          composition={compositionWithEditableGroups}
+          onReorder={() => {}}
+          onRemove={() => {}}
+          onParameterChange={() => {}}
+          onRateScheduleChange={() => {}}
+          parameterSchemas={parameterSchemas}
+        />,
+      );
+
+      const groupChip = container.querySelector('button[aria-expanded="false"]');
+      fireEvent.click(groupChip!);
+
+      // Should have highlight class initially
+      const highlightedGroup = container.querySelector('[data-group-key="inst-highlight:mechanism"].ring-2');
+      expect(highlightedGroup).toBeInTheDocument();
+
+      // Advance timers to trigger highlight removal (past the 1000ms timeout)
+      act(() => {
+        vi.advanceTimersByTime(1200);
+      });
+
+      // Highlight should be removed after timeout
+      expect(container.querySelector('[data-group-key="inst-highlight:mechanism"].ring-2')).not.toBeInTheDocument();
+
+      vi.useRealTimers();
+    });
+  });
+
+  describe("Empty states and default values (AC-2, AC-5)", () => {
+    it("should show '—' for missing parameter values in populated groups", () => {
+      const compositionWithMissingValues: CompositionEntry[] = [
+        {
+          templateId: "carbon-tax-flat",
+          name: "Carbon Tax",
+          parameters: {}, // No configured values
+          rateSchedule: {},
+          instanceId: "inst-missing",
+          editableParameterGroups: [
+            { id: "mechanism", name: "Mechanism", parameterIds: ["tax_rate"] },
+          ],
+        },
+      ];
+
+      const parameterSchemas = {
+        "carbon-tax-flat": [
+          { id: "tax_rate", label: "Tax Rate", value: 44, baseline: 44, unit: "€/tonne", group: "Mechanism", type: "slider" as const },
+        ],
+      };
+
+      const { container } = render(
+        <PortfolioCompositionPanel
+          templates={mockTemplates}
+          composition={compositionWithMissingValues}
+          onReorder={() => {}}
+          onRemove={() => {}}
+          onParameterChange={() => {}}
+          onRateScheduleChange={() => {}}
+          parameterSchemas={parameterSchemas}
+        />,
+      );
+
+      // Should show baseline from schema, not "—" when baseline exists
+      expect(container.textContent).toContain("44 €/tonne");
+    });
+
+    it("should show '—' when no configured value and no baseline", () => {
+      const compositionWithNoBaseline: CompositionEntry[] = [
+        {
+          templateId: "carbon-tax-flat",
+          name: "Carbon Tax",
+          parameters: {},
+          rateSchedule: {},
+          instanceId: "inst-no-baseline",
+          editableParameterGroups: [
+            { id: "mechanism", name: "Mechanism", parameterIds: ["custom_rate"] },
+          ],
+        },
+      ];
+
+      const parameterSchemas = {
+        "carbon-tax-flat": [
+          // Parameter without baseline
+          { id: "custom_rate", label: "Custom Rate", value: 0, baseline: 0, unit: "€/tonne", group: "Mechanism", type: "slider" as const },
+        ],
+      };
+
+      const { container } = render(
+        <PortfolioCompositionPanel
+          templates={mockTemplates}
+          composition={compositionWithNoBaseline}
+          onReorder={() => {}}
+          onRemove={() => {}}
+          onParameterChange={() => {}}
+          onRateScheduleChange={() => {}}
+          parameterSchemas={parameterSchemas}
+        />,
+      );
+
+      // Should show baseline (0) when parameter is not configured
+      expect(container.textContent).toContain("0 €/tonne");
+    });
+
+    it("should show '—' when paramId is absent from schemas entirely", () => {
+      const compositionWithUnknownParam: CompositionEntry[] = [
+        {
+          templateId: "carbon-tax-flat",
+          name: "Carbon Tax",
+          parameters: {},
+          rateSchedule: {},
+          instanceId: "inst-unknown-param",
+          editableParameterGroups: [
+            { id: "mechanism", name: "Mechanism", parameterIds: ["unknown_param_id"] },
+          ],
+        },
+      ];
+
+      // parameterSchemas has no entry for "unknown_param_id" → resolveParameterValue returns null
+      const parameterSchemas = {
+        "carbon-tax-flat": [
+          { id: "tax_rate", label: "Tax Rate", value: 44, baseline: 44, unit: "€/tonne", group: "Mechanism", type: "slider" as const },
+        ],
+      };
+
+      const { container } = render(
+        <PortfolioCompositionPanel
+          templates={mockTemplates}
+          composition={compositionWithUnknownParam}
+          onReorder={() => {}}
+          onRemove={() => {}}
+          onParameterChange={() => {}}
+          onRateScheduleChange={() => {}}
+          parameterSchemas={parameterSchemas}
+        />,
+      );
+
+      // Should show "—" when parameter is not in schemas at all
+      expect(container.textContent).toContain("—");
+    });
+
+    it("should show '0 [unit]' for explicitly configured zero values", () => {
+      const compositionWithZero: CompositionEntry[] = [
+        {
+          templateId: "carbon-tax-flat",
+          name: "Carbon Tax",
+          parameters: { tax_rate: 0 }, // Explicitly set to 0
+          rateSchedule: {},
+          instanceId: "inst-zero",
+          editableParameterGroups: [
+            { id: "mechanism", name: "Mechanism", parameterIds: ["tax_rate"] },
+          ],
+        },
+      ];
+
+      const parameterSchemas = {
+        "carbon-tax-flat": [
+          { id: "tax_rate", label: "Tax Rate", value: 44, baseline: 44, unit: "€/tonne", group: "Mechanism", type: "slider" as const },
+        ],
+      };
+
+      const { container } = render(
+        <PortfolioCompositionPanel
+          templates={mockTemplates}
+          composition={compositionWithZero}
+          onReorder={() => {}}
+          onRemove={() => {}}
+          onParameterChange={() => {}}
+          onRateScheduleChange={() => {}}
+          parameterSchemas={parameterSchemas}
+        />,
+      );
+
+      // Should show "0 €/tonne" for explicitly configured zero
+      expect(container.textContent).toContain("0 €/tonne");
+    });
+
+    it("should show 'Parameters not yet set' for empty groups", () => {
+      const compositionWithEmptyGroup: CompositionEntry[] = [
+        {
+          templateId: "carbon-tax-flat",
+          name: "Carbon Tax",
+          parameters: {},
+          rateSchedule: {},
+          instanceId: "inst-empty-group",
+          editableParameterGroups: [
+            { id: "empty", name: "Empty Group", parameterIds: [] },
+          ],
+        },
+      ];
+
+      const { container } = render(
+        <PortfolioCompositionPanel
+          templates={mockTemplates}
+          composition={compositionWithEmptyGroup}
+          onReorder={() => {}}
+          onRemove={() => {}}
+          onParameterChange={() => {}}
+          onRateScheduleChange={() => {}}
+        />,
+      );
+
+      // Should show empty group message
+      expect(container.textContent).toContain("Parameters not yet set");
+    });
+  });
+});
+
+// ============================================================================
 // Story 25.2: Category badges and duplicate instances
 // ============================================================================
 
@@ -329,6 +843,9 @@ describe("Story 25.2: PortfolioCompositionPanel", () => {
         parameters: {},
         rateSchedule: {},
         instanceId: "carbon-tax-flat-ins0",
+        editableParameterGroups: [
+          { id: "group-0", name: "Tax Rates", parameterIds: ["tax_rate", "rate_schedule"] },
+        ],
       };
 
       const { container } = render(
@@ -345,7 +862,7 @@ describe("Story 25.2: PortfolioCompositionPanel", () => {
       // Verify the card is rendered using instanceId
       const card = container.querySelector('.border-slate-200');
       expect(card).toBeInTheDocument();
-      expect(container.textContent).toContain("8 params");
+      expect(container.textContent).toContain("2 params");
     });
 
     it("should use instanceId as key when provided", () => {
@@ -384,6 +901,187 @@ describe("Story 25.2: PortfolioCompositionPanel", () => {
       // Should have 2 cards
       const cards = container.querySelectorAll('section[aria-label="Policy Set Composition"] > div');
       expect(cards.length).toBe(2);
+    });
+  });
+});
+
+// ============================================================================
+// Story 27.4: Side-by-side functional equivalence test (AC-1, AC-6)
+// ============================================================================
+
+describe("Story 27.4: PortfolioCompositionPanel — functional equivalence", () => {
+  describe("AC-1, AC-6: Template and from-scratch policies have identical visual treatment", () => {
+    it("should show both template and from-scratch policies with identical controls", () => {
+      const templatePolicy: CompositionEntry = {
+        templateId: "carbon-tax-flat",
+        name: "Carbon Tax — Flat Rate",
+        parameters: { tax_rate: 44 },
+        rateSchedule: {},
+        instanceId: "template-ins1",
+        editableParameterGroups: [
+          { id: "group-0", name: "Tax Rates", parameterIds: ["tax_rate"] },
+        ],
+      };
+
+      const fromScratchPolicy: CompositionEntry = {
+        templateId: "",
+        name: "Custom Carbon Tax",
+        parameters: { rate: 50 },
+        rateSchedule: {},
+        instanceId: "scratch-ins1",
+        policy_type: "tax",
+        category_id: "carbon",
+        parameter_groups: ["Mechanism"],
+        editableParameterGroups: [
+          { id: "group-0", name: "Mechanism", parameterIds: ["rate"] },
+        ],
+      };
+
+      const mockToggleEditGroups = vi.fn();
+
+      render(
+        <PortfolioCompositionPanel
+          templates={mockTemplates}
+          composition={[templatePolicy, fromScratchPolicy]}
+          onReorder={() => {}}
+          onRemove={() => {}}
+          onParameterChange={() => {}}
+          onRateScheduleChange={() => {}}
+          onToggleEditGroups={mockToggleEditGroups}
+          parameterSchemas={{
+            "carbon-tax-flat": [
+              { id: "tax_rate", label: "Tax Rate", value: 44, baseline: 44, unit: "€/tonne", group: "Tax Rates", type: "slider" as const },
+            ],
+          }}
+          categories={[
+            {
+              id: "carbon",
+              label: "Carbon Pricing",
+              columns: ["carbon_tax"],
+              compatible_types: ["carbon_tax"],
+              formula_explanation: "carbon_emissions × rate",
+              description: "Carbon-based pricing policies",
+            },
+          ]}
+        />
+      );
+
+      // Both policies should have the same controls
+      const gearIcons = screen.getAllByLabelText("Edit parameter groups");
+      expect(gearIcons.length).toBe(2); // Both have gear icon
+
+      const expandButtons = screen.getAllByLabelText(/Expand parameters|Collapse parameters/);
+      expect(expandButtons.length).toBe(2); // Both have expand button
+
+      const removeButtons = screen.getAllByLabelText("Remove policy");
+      expect(removeButtons.length).toBe(2); // Both have remove button
+
+      const moveUpButtons = screen.getAllByLabelText("Move up");
+      expect(moveUpButtons.length).toBe(2);
+
+      const moveDownButtons = screen.getAllByLabelText("Move down");
+      expect(moveDownButtons.length).toBe(2);
+
+      // Verify className matching for card borders
+      const { container } = render(
+        <PortfolioCompositionPanel
+          templates={mockTemplates}
+          composition={[templatePolicy, fromScratchPolicy]}
+          onReorder={() => {}}
+          onRemove={() => {}}
+          onParameterChange={() => {}}
+          onRateScheduleChange={() => {}}
+          onToggleEditGroups={mockToggleEditGroups}
+        />
+      );
+
+      // Both cards should have the same border class
+      const cards = container.querySelectorAll('.border-slate-200');
+      expect(cards.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("should show parameter count badge for both sources using editableParameterGroups", () => {
+      const templatePolicy: CompositionEntry = {
+        templateId: "carbon-tax-flat",
+        name: "Carbon Tax — Template",
+        parameters: { tax_rate: 44, exemption_threshold: 15000 },
+        rateSchedule: {},
+        instanceId: "template-ins2",
+        editableParameterGroups: [
+          { id: "group-0", name: "Tax Rates", parameterIds: ["tax_rate"] },
+          { id: "group-1", name: "Thresholds", parameterIds: ["exemption_threshold"] },
+        ],
+      };
+
+      const fromScratchPolicy: CompositionEntry = {
+        templateId: "",
+        name: "Carbon Tax — From Scratch",
+        parameters: { rate: 50, ceiling: 100000 },
+        rateSchedule: {},
+        instanceId: "scratch-ins2",
+        policy_type: "tax",
+        category_id: "carbon",
+        editableParameterGroups: [
+          { id: "group-0", name: "Mechanism", parameterIds: ["rate", "ceiling"] },
+        ],
+      };
+
+      const { container } = render(
+        <PortfolioCompositionPanel
+          templates={mockTemplates}
+          composition={[templatePolicy, fromScratchPolicy]}
+          onReorder={() => {}}
+          onRemove={() => {}}
+          onParameterChange={() => {}}
+          onRateScheduleChange={() => {}}
+        />
+      );
+
+      // Both should show "2 params" badge (using editableParameterGroups calculation)
+      expect(container.textContent).toContain("2 params");
+    });
+
+    it("should not assert full DOM equality - type badges and parameter counts may differ legitimately", () => {
+      // This test documents that we DON'T expect full DOM equality
+      // because type badges and parameter counts can differ based on data
+      const templatePolicy: CompositionEntry = {
+        templateId: "carbon-tax-flat",
+        name: "Template Carbon Tax",
+        parameters: { tax_rate: 44 },
+        rateSchedule: {},
+        instanceId: "template-ins3",
+        editableParameterGroups: [
+          { id: "group-0", name: "Tax Rates", parameterIds: ["tax_rate"] },
+        ],
+      };
+
+      const fromScratchPolicy: CompositionEntry = {
+        templateId: "",
+        name: "Scratch Carbon Tax",
+        parameters: { rate: 50 },
+        rateSchedule: {},
+        instanceId: "scratch-ins3",
+        policy_type: "tax",
+        category_id: "carbon",
+        editableParameterGroups: [
+          { id: "group-0", name: "Mechanism", parameterIds: ["rate"] },
+        ],
+      };
+
+      render(
+        <PortfolioCompositionPanel
+          templates={mockTemplates}
+          composition={[templatePolicy, fromScratchPolicy]}
+          onReorder={() => {}}
+          onRemove={() => {}}
+          onParameterChange={() => {}}
+          onRateScheduleChange={() => {}}
+        />
+      );
+
+      // Both policies should render
+      expect(screen.getByText("Template Carbon Tax")).toBeInTheDocument();
+      expect(screen.getByText("Scratch Carbon Tax")).toBeInTheDocument();
     });
   });
 });

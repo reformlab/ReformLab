@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 Lucas Vivier
+/** Tests for MultiRunChart — Story 17.4, AC-2.
+ * Story 27.12, AC-5: NaN/Infinity guards return "—" in tooltips and table cells.
+ */
 import { render, screen, waitFor } from "@testing-library/react";
 
 import {
@@ -151,6 +154,37 @@ describe("MultiRunChart", () => {
       );
       // In relative mode, baseline column header ("Baseline") should not appear
       expect(screen.queryByText("Baseline")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Story 27.12, AC-5: NaN/Infinity guards", () => {
+    it("returns '—' in table cells for NaN values", () => {
+      const nanData = [
+        { decile: 1, "Run A": NaN, "Run B": -80 },
+      ];
+      render(<MultiRunChart data={nanData} xKey="decile" series={mockSeries} />);
+      // Should show "—" instead of "NaN"
+      expect(screen.getByText("—")).toBeInTheDocument();
+      expect(screen.queryByText("NaN")).not.toBeInTheDocument();
+    });
+
+    it("returns '—' in table cells for Infinity values", () => {
+      const infData = [
+        { decile: 1, "Run A": Infinity, "Run B": -80 },
+      ];
+      render(<MultiRunChart data={infData} xKey="decile" series={mockSeries} />);
+      // Should show "—" instead of "Infinity"
+      expect(screen.getByText("—")).toBeInTheDocument();
+      expect(screen.queryByText("∞")).not.toBeInTheDocument();
+    });
+
+    it("returns '—' in table cells for negative Infinity values", () => {
+      const negInfData = [
+        { decile: 1, "Run A": -Infinity, "Run B": -80 },
+      ];
+      render(<MultiRunChart data={negInfData} xKey="decile" series={mockSeries} />);
+      // Should show "—" instead of "-Infinity"
+      expect(screen.getByText("—")).toBeInTheDocument();
     });
   });
 });

@@ -47,6 +47,10 @@
   --color-surface-collapsed: var(--color-slate-100);
   --color-surface-dark: #0f172a;
   --color-surface-darker: #020617;
+
+  /* Popover — Story 27.2 */
+  --color-popover: var(--color-white);
+  --color-popover-foreground: var(--color-slate-900);
 }
 
 /* ── Chart Palette (application) ───────────────────────────────────── */

@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 Lucas Vivier
+/** Tests for CrossMetricPanel — Story 17.4, AC-5.
+ * Story 27.12, AC-5: NaN/Infinity guards return "—" instead of raw values.
+ */
 import { render, screen } from "@testing-library/react";
 
 import { CrossMetricPanel } from "@/components/simulation/CrossMetricPanel";
@@ -77,5 +80,51 @@ describe("CrossMetricPanel", () => {
     ];
     render(<CrossMetricPanel metrics={unknown} />);
     expect(screen.getByText("some_custom_metric")).toBeInTheDocument();
+  });
+
+  describe("Story 27.12, AC-5: NaN/Infinity guards", () => {
+    it("returns '—' for NaN values", () => {
+      const nanMetrics: CrossMetricItem[] = [
+        {
+          criterion: "max_fiscal_revenue",
+          best_portfolio: "Run A",
+          value: NaN,
+          all_values: { "Run A": NaN },
+        },
+      ];
+      render(<CrossMetricPanel metrics={nanMetrics} />);
+      // Should show "—" instead of "NaN"
+      expect(screen.getByText("—")).toBeInTheDocument();
+      expect(screen.queryByText("NaN")).not.toBeInTheDocument();
+    });
+
+    it("returns '—' for Infinity values", () => {
+      const infMetrics: CrossMetricItem[] = [
+        {
+          criterion: "max_fiscal_revenue",
+          best_portfolio: "Run A",
+          value: Infinity,
+          all_values: { "Run A": Infinity },
+        },
+      ];
+      render(<CrossMetricPanel metrics={infMetrics} />);
+      // Should show "—" instead of "Infinity"
+      expect(screen.getByText("—")).toBeInTheDocument();
+      expect(screen.queryByText("∞")).not.toBeInTheDocument();
+    });
+
+    it("returns '—' for negative Infinity values", () => {
+      const negInfMetrics: CrossMetricItem[] = [
+        {
+          criterion: "min_fiscal_cost",
+          best_portfolio: "Run A",
+          value: -Infinity,
+          all_values: { "Run A": -Infinity },
+        },
+      ];
+      render(<CrossMetricPanel metrics={negInfMetrics} />);
+      // Should show "—" instead of "-Infinity"
+      expect(screen.getByText("—")).toBeInTheDocument();
+    });
   });
 });

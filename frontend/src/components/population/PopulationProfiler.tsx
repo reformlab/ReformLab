@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import type { ColumnProfile, PopulationProfileResponse, PopulationCrosstabResponse } from "@/api/types";
+import { formatNumber } from "@/utils/formatters";
 
 // ============================================================================
 // Types
@@ -39,7 +40,7 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="flex flex-col rounded border border-slate-200 bg-slate-50 px-2 py-1.5">
       <span className="text-[10px] font-medium uppercase tracking-wide text-slate-400">{label}</span>
-      <span className="text-xs font-semibold text-slate-800">{typeof value === "number" ? value.toLocaleString() : value}</span>
+      <span className="text-xs font-semibold text-slate-800">{typeof value === "number" ? formatNumber(value) : value}</span>
     </div>
   );
 }
@@ -105,7 +106,7 @@ function NumericProfile({
   const [crosstabCol, setCrosstabCol] = useState("");
 
   const histData = profile.histogram_buckets.map((b) => ({
-    bin: `${b.bin_start.toLocaleString()}`,
+    bin: `${formatNumber(b.bin_start)}`,
     count: b.count,
   }));
 
@@ -119,7 +120,7 @@ function NumericProfile({
             <XAxis dataKey="bin" tick={{ fontSize: 9 }} interval="preserveStartEnd" />
             <YAxis tick={{ fontSize: 9 }} width={40} />
             <Tooltip
-              formatter={(v) => [Number(v).toLocaleString(), "count"]}
+              formatter={(v) => [formatNumber(Number(v)), "count"]}
               contentStyle={{ fontSize: 11 }}
             />
             <Bar dataKey="count" fill="#94a3b8" radius={[2, 2, 0, 0]} />
@@ -144,11 +145,11 @@ function NumericProfile({
 
       {/* Stats grid */}
       <div className="grid grid-cols-3 gap-1.5">
-        <StatCard label="min" value={profile.min.toLocaleString()} />
-        <StatCard label="max" value={profile.max.toLocaleString()} />
-        <StatCard label="mean" value={Math.round(profile.mean).toLocaleString()} />
-        <StatCard label="median" value={Math.round(profile.median).toLocaleString()} />
-        <StatCard label="std" value={Math.round(profile.std).toLocaleString()} />
+        <StatCard label="min" value={profile.min} />
+        <StatCard label="max" value={profile.max} />
+        <StatCard label="mean" value={Math.round(profile.mean)} />
+        <StatCard label="median" value={Math.round(profile.median)} />
+        <StatCard label="std" value={Math.round(profile.std)} />
         <StatCard label="nulls" value={`${profile.null_pct.toFixed(1)}%`} />
       </div>
 
@@ -199,7 +200,7 @@ function CategoricalProfile({
         <div className="mb-2 flex items-center gap-2">
           <p className="text-xs font-semibold text-slate-700">Value counts</p>
           <Badge variant="secondary" className="text-[10px]">
-            {profile.cardinality.toLocaleString()} unique
+            {formatNumber(profile.cardinality)} unique
           </Badge>
         </div>
         <div aria-label={`Value counts for ${name}`}>
@@ -212,7 +213,7 @@ function CategoricalProfile({
             <XAxis type="number" tick={{ fontSize: 9 }} />
             <YAxis type="category" dataKey="value" tick={{ fontSize: 9 }} width={80} />
             <Tooltip
-              formatter={(v) => [Number(v).toLocaleString(), "count"]}
+              formatter={(v) => [formatNumber(Number(v)), "count"]}
               contentStyle={{ fontSize: 11 }}
             />
             <Bar dataKey="count" fill="#94a3b8" radius={[0, 2, 2, 0]} />
@@ -276,8 +277,8 @@ function BooleanProfile({ profile }: { profile: Extract<ColumnProfile, { type: "
           </div>
         </div>
         <div className="mt-1 flex justify-between text-[10px] text-slate-400">
-          <span>True ({profile.true_count.toLocaleString()})</span>
-          <span>False ({profile.false_count.toLocaleString()})</span>
+          <span>True ({formatNumber(profile.true_count)})</span>
+          <span>False ({formatNumber(profile.false_count)})</span>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-1.5">

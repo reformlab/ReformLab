@@ -1,0 +1,126 @@
+record_id: 6754be41-7206-4b7a-a17d-ab10d545d174
+created_at: '2026-05-16T23:26:46.518330+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 27
+  story_num: 15
+  title: Story 27.15
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: sonnet
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-05-16T23:20:39.746716Z'
+  end_time: '2026-05-16T23:26:17.122716Z'
+  duration_ms: 337376
+  input_tokens: 0
+  output_tokens: 4773
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 19092
+  heading_count: 30
+  list_depth_max: 2
+  code_block_count: 4
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Evidence Score Summary
+  - 'Evidence Score: 4.2'
+  - 🎯 Ruthless Story Validation 27.15
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Missing `results.activeFor` Update for Story 27.12 Sub-views
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. AC-1 Pre-Completion Status Clarification
+  - 2. Stage 5 IA Diagram Update Required
+  - 3. Population IA Replacement Scope Clarification
+  - ✨ Optimizations (Nice to Have)
+  - 1. Line Number Drift Warning
+  - 2. AC-12 Timing Spec Clarification
+  - 3. AC-2 Visual Styling Gap
+  - 4. Task 5 Actionable Verification Criteria
+  - 🤖 LLM Optimization Improvements
+  - 1. Background Section Contradicts Task Design
+  - 2. AC-4 Scope Insufficient as Written
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: af6ba6eef41f
+findings:
+  total_count: 10
+  by_severity:
+    critical: 1
+    major: 3
+    minor: 4
+    nit: 2
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 2
+    completeness: 4
+    clarity: 4
+    testability: 1
+  has_fix_count: 10
+  has_location_count: 10
+  has_evidence_count: 7
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 5
+  confidence_phrases_count: 4
+linguistic:
+  avg_sentence_length: 38.21621621621622
+  vocabulary_richness: 0.2591937765205092
+  flesch_reading_ease: 34.92454212361653
+  vague_terms_count: 1
+  formality_score: 0.75
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.95
+  evidence_quality: 0.7
+  follows_template: true
+  internal_consistency: 0.9
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false

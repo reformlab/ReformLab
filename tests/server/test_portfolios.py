@@ -124,6 +124,20 @@ _CREATE_BODY = {
 class TestValidateEndpoint:
     """AC-6: Conflict validation without saving."""
 
+    def test_validate_single_policy_succeeds(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """AC-2: Single-policy portfolio validate returns 200 + valid: true."""
+        response = client.post(
+            "/api/portfolios/validate",
+            json={"policies": [_VALID_POLICIES[0]], "resolution_strategy": "error"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["is_compatible"] is True
+        assert data["conflicts"] == []
+
     def test_validate_non_conflicting_portfolio(
         self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
@@ -139,15 +153,20 @@ class TestValidateEndpoint:
         assert isinstance(data["conflicts"], list)
         assert isinstance(data["is_compatible"], bool)
 
-    def test_validate_requires_min_2_policies(
+    def test_validate_requires_min_1_policy(
         self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
+        """AC-3: Empty policy portfolio returns 400 with new message."""
         response = client.post(
             "/api/portfolios/validate",
-            json={"policies": [_VALID_POLICIES[0]], "resolution_strategy": "error"},
+            json={"policies": [], "resolution_strategy": "error"},
             headers=auth_headers,
         )
         assert response.status_code == 400
+        detail = response.json()["detail"]
+        assert detail["what"] == "Insufficient policies"
+        assert "at least 1 policy" in detail["why"]
+        assert "got 0" in detail["why"]
 
     def test_validate_invalid_policy_type(
         self, client: TestClient, auth_headers: dict[str, str]
@@ -213,31 +232,41 @@ class TestListPortfolios:
 class TestCreatePortfolio:
     """POST /api/portfolios — creates and saves a portfolio."""
 
-    def test_create_returns_version_id(
-        self, client: TestClient, auth_headers: dict[str, str], tmp_path: object
-    ) -> None:
-        import os
-        os.environ["REFORMLAB_REGISTRY_PATH"] = str(tmp_path)
-        try:
-            response = client.post(
-                "/api/portfolios",
-                json=_CREATE_BODY,
-                headers=auth_headers,
-            )
-            assert response.status_code == 201
-            data = response.json()
-            assert "version_id" in data
-            assert isinstance(data["version_id"], str)
-            assert len(data["version_id"]) > 0
-        finally:
-            del os.environ["REFORMLAB_REGISTRY_PATH"]
-
-    def test_create_requires_min_2_policies(
+    def test_create_single_policy_succeeds(
         self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
+        """AC-1: Single-policy portfolio build returns 201."""
         body = {**_CREATE_BODY, "policies": [_VALID_POLICIES[0]]}
         response = client.post("/api/portfolios", json=body, headers=auth_headers)
+        assert response.status_code == 201
+        assert "version_id" in response.json()
+
+    def test_create_returns_version_id(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """AC-1: Portfolio creation returns version_id."""
+        response = client.post(
+            "/api/portfolios",
+            json=_CREATE_BODY,
+            headers=auth_headers,
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert "version_id" in data
+        assert isinstance(data["version_id"], str)
+        assert len(data["version_id"]) > 0
+
+    def test_create_requires_min_1_policy(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
+        """AC-3: Empty policy portfolio returns 400 with new message."""
+        body = {**_CREATE_BODY, "policies": []}
+        response = client.post("/api/portfolios", json=body, headers=auth_headers)
         assert response.status_code == 400
+        detail = response.json()["detail"]
+        assert detail["what"] == "Insufficient policies"
+        assert "at least 1 policy" in detail["why"]
+        assert "got 0" in detail["why"]
 
     def test_create_rejects_invalid_name(
         self, client: TestClient, auth_headers: dict[str, str]
@@ -269,19 +298,15 @@ class TestCreatePortfolio:
         assert response.status_code == 422
 
     def test_create_conflict_409_on_duplicate_name(
-        self, client: TestClient, auth_headers: dict[str, str], tmp_path: object
+        self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
-        import os
-        os.environ["REFORMLAB_REGISTRY_PATH"] = str(tmp_path)
-        try:
-            # First create
-            r1 = client.post("/api/portfolios", json=_CREATE_BODY, headers=auth_headers)
-            assert r1.status_code == 201
-            # Second create same name
-            r2 = client.post("/api/portfolios", json=_CREATE_BODY, headers=auth_headers)
-            assert r2.status_code == 409
-        finally:
-            del os.environ["REFORMLAB_REGISTRY_PATH"]
+        """POST /api/portfolios returns 409 when portfolio name already exists."""
+        # First create
+        r1 = client.post("/api/portfolios", json=_CREATE_BODY, headers=auth_headers)
+        assert r1.status_code == 201
+        # Second create same name
+        r2 = client.post("/api/portfolios", json=_CREATE_BODY, headers=auth_headers)
+        assert r2.status_code == 409
 
 
 # ---------------------------------------------------------------------------
@@ -293,52 +318,40 @@ class TestGetPortfolio:
     """GET /api/portfolios/{name} — returns portfolio detail."""
 
     def test_get_nonexistent_returns_404(
-        self, client: TestClient, auth_headers: dict[str, str], tmp_path: object
+        self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
-        import os
-        os.environ["REFORMLAB_REGISTRY_PATH"] = str(tmp_path)
-        try:
-            response = client.get("/api/portfolios/does-not-exist", headers=auth_headers)
-            assert response.status_code == 404
-        finally:
-            del os.environ["REFORMLAB_REGISTRY_PATH"]
+        """GET /api/portfolios/{name} returns 404 for nonexistent portfolio."""
+        response = client.get("/api/portfolios/does-not-exist", headers=auth_headers)
+        assert response.status_code == 404
 
     def test_get_returns_portfolio_detail(
-        self, client: TestClient, auth_headers: dict[str, str], tmp_path: object
+        self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
-        import os
-        os.environ["REFORMLAB_REGISTRY_PATH"] = str(tmp_path)
-        try:
-            # Create first
-            client.post("/api/portfolios", json=_CREATE_BODY, headers=auth_headers)
-            # Then get
-            response = client.get("/api/portfolios/test-portfolio", headers=auth_headers)
-            assert response.status_code == 200
-            data = response.json()
-            assert data["name"] == "test-portfolio"
-            assert "version_id" in data
-            assert "policies" in data
-            assert data["policy_count"] == 2
-            assert data["resolution_strategy"] == "error"
-        finally:
-            del os.environ["REFORMLAB_REGISTRY_PATH"]
+        """GET /api/portfolios/{name} returns portfolio detail."""
+        # Create first
+        client.post("/api/portfolios", json=_CREATE_BODY, headers=auth_headers)
+        # Then get
+        response = client.get("/api/portfolios/test-portfolio", headers=auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["name"] == "test-portfolio"
+        assert "version_id" in data
+        assert "policies" in data
+        assert data["policy_count"] == 2
+        assert data["resolution_strategy"] == "error"
 
     def test_get_detail_policy_structure(
-        self, client: TestClient, auth_headers: dict[str, str], tmp_path: object
+        self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
-        import os
-        os.environ["REFORMLAB_REGISTRY_PATH"] = str(tmp_path)
-        try:
-            client.post("/api/portfolios", json=_CREATE_BODY, headers=auth_headers)
-            response = client.get("/api/portfolios/test-portfolio", headers=auth_headers)
-            data = response.json()
-            policy = data["policies"][0]
-            assert "name" in policy
-            assert "policy_type" in policy
-            assert "rate_schedule" in policy
-            assert "parameters" in policy
-        finally:
-            del os.environ["REFORMLAB_REGISTRY_PATH"]
+        """GET /api/portfolios/{name} returns policy structure in detail."""
+        client.post("/api/portfolios", json=_CREATE_BODY, headers=auth_headers)
+        response = client.get("/api/portfolios/test-portfolio", headers=auth_headers)
+        data = response.json()
+        policy = data["policies"][0]
+        assert "name" in policy
+        assert "policy_type" in policy
+        assert "rate_schedule" in policy
+        assert "parameters" in policy
 
 
 # ---------------------------------------------------------------------------
@@ -350,50 +363,42 @@ class TestUpdatePortfolio:
     """PUT /api/portfolios/{name} — updates portfolio."""
 
     def test_update_nonexistent_returns_404(
-        self, client: TestClient, auth_headers: dict[str, str], tmp_path: object
+        self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
-        import os
-        os.environ["REFORMLAB_REGISTRY_PATH"] = str(tmp_path)
-        try:
-            body = {"policies": _VALID_POLICIES, "resolution_strategy": "error"}
-            response = client.put("/api/portfolios/does-not-exist", json=body, headers=auth_headers)
-            assert response.status_code == 404
-        finally:
-            del os.environ["REFORMLAB_REGISTRY_PATH"]
+        """PUT /api/portfolios/{name} returns 404 for nonexistent portfolio."""
+        body = {"policies": _VALID_POLICIES, "resolution_strategy": "error"}
+        response = client.put("/api/portfolios/does-not-exist", json=body, headers=auth_headers)
+        assert response.status_code == 404
 
     def test_update_returns_updated_detail(
-        self, client: TestClient, auth_headers: dict[str, str], tmp_path: object
+        self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
-        import os
-        os.environ["REFORMLAB_REGISTRY_PATH"] = str(tmp_path)
-        try:
-            # Create
-            client.post("/api/portfolios", json=_CREATE_BODY, headers=auth_headers)
-            # Update with new description
-            update_body = {
-                "description": "Updated description",
-                "policies": _VALID_POLICIES,
-                "resolution_strategy": "sum",
-            }
-            response = client.put("/api/portfolios/test-portfolio", json=update_body, headers=auth_headers)
-            assert response.status_code == 200
-            data = response.json()
-            assert data["resolution_strategy"] == "sum"
-        finally:
-            del os.environ["REFORMLAB_REGISTRY_PATH"]
+        """PUT /api/portfolios/{name} returns updated portfolio detail."""
+        # Create
+        client.post("/api/portfolios", json=_CREATE_BODY, headers=auth_headers)
+        # Update with new description
+        update_body = {
+            "description": "Updated description",
+            "policies": _VALID_POLICIES,
+            "resolution_strategy": "sum",
+        }
+        response = client.put("/api/portfolios/test-portfolio", json=update_body, headers=auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["resolution_strategy"] == "sum"
 
-    def test_update_requires_min_2_policies(
-        self, client: TestClient, auth_headers: dict[str, str], tmp_path: object
+    def test_update_requires_min_1_policy(
+        self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
-        import os
-        os.environ["REFORMLAB_REGISTRY_PATH"] = str(tmp_path)
-        try:
-            client.post("/api/portfolios", json=_CREATE_BODY, headers=auth_headers)
-            body = {"policies": [_VALID_POLICIES[0]], "resolution_strategy": "error"}
-            response = client.put("/api/portfolios/test-portfolio", json=body, headers=auth_headers)
-            assert response.status_code == 400
-        finally:
-            del os.environ["REFORMLAB_REGISTRY_PATH"]
+        """AC-3: Empty policy portfolio update returns 400 with new message."""
+        client.post("/api/portfolios", json=_CREATE_BODY, headers=auth_headers)
+        body = {"policies": [], "resolution_strategy": "error"}
+        response = client.put("/api/portfolios/test-portfolio", json=body, headers=auth_headers)
+        assert response.status_code == 400
+        detail = response.json()["detail"]
+        assert detail["what"] == "Insufficient policies"
+        assert "at least 1 policy" in detail["why"]
+        assert "got 0" in detail["why"]
 
 
 # ---------------------------------------------------------------------------
@@ -405,32 +410,24 @@ class TestDeletePortfolio:
     """DELETE /api/portfolios/{name} — removes a portfolio."""
 
     def test_delete_nonexistent_returns_404(
-        self, client: TestClient, auth_headers: dict[str, str], tmp_path: object
+        self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
-        import os
-        os.environ["REFORMLAB_REGISTRY_PATH"] = str(tmp_path)
-        try:
-            response = client.delete("/api/portfolios/does-not-exist", headers=auth_headers)
-            assert response.status_code == 404
-        finally:
-            del os.environ["REFORMLAB_REGISTRY_PATH"]
+        """DELETE /api/portfolios/{name} returns 404 for nonexistent portfolio."""
+        response = client.delete("/api/portfolios/does-not-exist", headers=auth_headers)
+        assert response.status_code == 404
 
     def test_delete_returns_204(
-        self, client: TestClient, auth_headers: dict[str, str], tmp_path: object
+        self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
-        import os
-        os.environ["REFORMLAB_REGISTRY_PATH"] = str(tmp_path)
-        try:
-            # Create
-            client.post("/api/portfolios", json=_CREATE_BODY, headers=auth_headers)
-            # Delete
-            response = client.delete("/api/portfolios/test-portfolio", headers=auth_headers)
-            assert response.status_code == 204
-            # Confirm gone
-            get_resp = client.get("/api/portfolios/test-portfolio", headers=auth_headers)
-            assert get_resp.status_code == 404
-        finally:
-            del os.environ["REFORMLAB_REGISTRY_PATH"]
+        """DELETE /api/portfolios/{name} removes portfolio and returns 204."""
+        # Create
+        client.post("/api/portfolios", json=_CREATE_BODY, headers=auth_headers)
+        # Delete
+        response = client.delete("/api/portfolios/test-portfolio", headers=auth_headers)
+        assert response.status_code == 204
+        # Confirm gone
+        get_resp = client.get("/api/portfolios/test-portfolio", headers=auth_headers)
+        assert get_resp.status_code == 404
 
 
 # ---------------------------------------------------------------------------
@@ -442,73 +439,57 @@ class TestClonePortfolio:
     """POST /api/portfolios/{name}/clone — clones a portfolio."""
 
     def test_clone_source_not_found_returns_404(
-        self, client: TestClient, auth_headers: dict[str, str], tmp_path: object
+        self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
-        import os
-        os.environ["REFORMLAB_REGISTRY_PATH"] = str(tmp_path)
-        try:
-            response = client.post(
-                "/api/portfolios/does-not-exist/clone",
-                json={"new_name": "cloned-portfolio"},
-                headers=auth_headers,
-            )
-            assert response.status_code == 404
-        finally:
-            del os.environ["REFORMLAB_REGISTRY_PATH"]
+        """POST /api/portfolios/{name}/clone returns 404 for nonexistent source."""
+        response = client.post(
+            "/api/portfolios/does-not-exist/clone",
+            json={"new_name": "cloned-portfolio"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 404
 
     def test_clone_returns_201_with_detail(
-        self, client: TestClient, auth_headers: dict[str, str], tmp_path: object
+        self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
-        import os
-        os.environ["REFORMLAB_REGISTRY_PATH"] = str(tmp_path)
-        try:
-            client.post("/api/portfolios", json=_CREATE_BODY, headers=auth_headers)
-            response = client.post(
-                "/api/portfolios/test-portfolio/clone",
-                json={"new_name": "cloned-portfolio"},
-                headers=auth_headers,
-            )
-            assert response.status_code == 201
-            data = response.json()
-            assert data["name"] == "cloned-portfolio"
-            assert data["policy_count"] == 2
-        finally:
-            del os.environ["REFORMLAB_REGISTRY_PATH"]
+        """POST /api/portfolios/{name}/clone returns 201 with cloned portfolio detail."""
+        client.post("/api/portfolios", json=_CREATE_BODY, headers=auth_headers)
+        response = client.post(
+            "/api/portfolios/test-portfolio/clone",
+            json={"new_name": "cloned-portfolio"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["name"] == "cloned-portfolio"
+        assert data["policy_count"] == 2
 
     def test_clone_conflict_409_if_target_exists(
-        self, client: TestClient, auth_headers: dict[str, str], tmp_path: object
+        self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
-        import os
-        os.environ["REFORMLAB_REGISTRY_PATH"] = str(tmp_path)
-        try:
-            client.post("/api/portfolios", json=_CREATE_BODY, headers=auth_headers)
-            second_body = {**_CREATE_BODY, "name": "second-portfolio"}
-            client.post("/api/portfolios", json=second_body, headers=auth_headers)
-            # Clone to existing name
-            response = client.post(
-                "/api/portfolios/test-portfolio/clone",
-                json={"new_name": "second-portfolio"},
-                headers=auth_headers,
-            )
-            assert response.status_code == 409
-        finally:
-            del os.environ["REFORMLAB_REGISTRY_PATH"]
+        """POST /api/portfolios/{name}/clone returns 409 if target name already exists."""
+        client.post("/api/portfolios", json=_CREATE_BODY, headers=auth_headers)
+        second_body = {**_CREATE_BODY, "name": "second-portfolio"}
+        client.post("/api/portfolios", json=second_body, headers=auth_headers)
+        # Clone to existing name
+        response = client.post(
+            "/api/portfolios/test-portfolio/clone",
+            json={"new_name": "second-portfolio"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 409
 
     def test_clone_invalid_new_name_returns_422(
-        self, client: TestClient, auth_headers: dict[str, str], tmp_path: object
+        self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
-        import os
-        os.environ["REFORMLAB_REGISTRY_PATH"] = str(tmp_path)
-        try:
-            client.post("/api/portfolios", json=_CREATE_BODY, headers=auth_headers)
-            response = client.post(
-                "/api/portfolios/test-portfolio/clone",
-                json={"new_name": "INVALID"},
-                headers=auth_headers,
-            )
-            assert response.status_code == 422
-        finally:
-            del os.environ["REFORMLAB_REGISTRY_PATH"]
+        """POST /api/portfolios/{name}/clone returns 422 for invalid new name."""
+        client.post("/api/portfolios", json=_CREATE_BODY, headers=auth_headers)
+        response = client.post(
+            "/api/portfolios/test-portfolio/clone",
+            json={"new_name": "INVALID"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 422
 
 
 # ---------------------------------------------------------------------------
@@ -527,17 +508,12 @@ class TestPortfolioNameValidation:
         "ab",
     ])
     def test_valid_names_accepted(
-        self, client: TestClient, auth_headers: dict[str, str], valid_name: str,
-        tmp_path: object,
+        self, client: TestClient, auth_headers: dict[str, str], valid_name: str
     ) -> None:
-        import os
-        os.environ["REFORMLAB_REGISTRY_PATH"] = str(tmp_path)
-        try:
-            body = {**_CREATE_BODY, "name": valid_name}
-            response = client.post("/api/portfolios", json=body, headers=auth_headers)
-            assert response.status_code in {201, 409}  # 409 if name already exists
-        finally:
-            del os.environ["REFORMLAB_REGISTRY_PATH"]
+        """Valid portfolio names are accepted (201) or conflict with existing (409)."""
+        body = {**_CREATE_BODY, "name": valid_name}
+        response = client.post("/api/portfolios", json=body, headers=auth_headers)
+        assert response.status_code in {201, 409}  # 409 if name already exists
 
     @pytest.mark.parametrize("invalid_name", [
         "UPPERCASE",
@@ -567,18 +543,13 @@ class TestResolutionStrategy:
 
     @pytest.mark.parametrize("strategy", ["error", "sum", "first_wins", "last_wins", "max"])
     def test_valid_strategies_accepted(
-        self, client: TestClient, auth_headers: dict[str, str], strategy: str,
-        tmp_path: object,
+        self, client: TestClient, auth_headers: dict[str, str], strategy: str
     ) -> None:
-        import os
-        os.environ["REFORMLAB_REGISTRY_PATH"] = str(tmp_path)
-        try:
-            slug = strategy.replace("_", "-")
-            body = {**_CREATE_BODY, "name": f"test-{slug}", "resolution_strategy": strategy}
-            response = client.post("/api/portfolios", json=body, headers=auth_headers)
-            assert response.status_code == 201
-        finally:
-            del os.environ["REFORMLAB_REGISTRY_PATH"]
+        """Valid resolution strategies are accepted."""
+        slug = strategy.replace("_", "-")
+        body = {**_CREATE_BODY, "name": f"test-{slug}", "resolution_strategy": strategy}
+        response = client.post("/api/portfolios", json=body, headers=auth_headers)
+        assert response.status_code == 201
 
     def test_invalid_strategy_rejected(
         self, client: TestClient, auth_headers: dict[str, str]
@@ -601,111 +572,93 @@ class TestCustomPolicyTypeSupport:
     """
 
     def test_create_portfolio_with_vehicle_malus_succeeds(
-        self, client: TestClient, auth_headers: dict[str, str], tmp_path: Path
+        self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
         """AC: Portfolio creation with vehicle_malus (CustomPolicyType) succeeds."""
-        import os
-
         import reformlab.templates.vehicle_malus  # noqa: F401
 
-        os.environ["REFORMLAB_REGISTRY_PATH"] = str(tmp_path)
-        try:
-            vehicle_malus_policy = {
-                "name": "Vehicle Malus",
-                "policy_type": "vehicle_malus",
-                "rate_schedule": {"2025": 50.0},
-                "exemptions": [],
-                "thresholds": [],
-                "covered_categories": [],
-                "extra_params": {
-                    "emission_threshold": 118.0,
-                    "malus_rate_per_gkm": 50.0,
-                },
-            }
+        vehicle_malus_policy = {
+            "name": "Vehicle Malus",
+            "policy_type": "vehicle_malus",
+            "rate_schedule": {"2025": 50.0},
+            "exemptions": [],
+            "thresholds": [],
+            "covered_categories": [],
+            "extra_params": {
+                "emission_threshold": 118.0,
+                "malus_rate_per_gkm": 50.0,
+            },
+        }
 
-            body = {
-                "name": "test-vehicle-malus-portfolio",
-                "description": "Portfolio with vehicle malus",
-                "policies": [_VALID_POLICIES[0], vehicle_malus_policy],
-                "resolution_strategy": "error",
-            }
+        body = {
+            "name": "test-vehicle-malus-portfolio",
+            "description": "Portfolio with vehicle malus",
+            "policies": [_VALID_POLICIES[0], vehicle_malus_policy],
+            "resolution_strategy": "error",
+        }
 
-            response = client.post("/api/portfolios", json=body, headers=auth_headers)
-            assert response.status_code == 201
-        finally:
-            del os.environ["REFORMLAB_REGISTRY_PATH"]
+        response = client.post("/api/portfolios", json=body, headers=auth_headers)
+        assert response.status_code == 201
 
     def test_create_portfolio_with_energy_poverty_aid_succeeds(
-        self, client: TestClient, auth_headers: dict[str, str], tmp_path: Path
+        self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
         """AC: Portfolio creation with energy_poverty_aid (CustomPolicyType) succeeds."""
-        import os
-
         import reformlab.templates.energy_poverty_aid  # noqa: F401
 
-        os.environ["REFORMLAB_REGISTRY_PATH"] = str(tmp_path)
-        try:
-            energy_aid_policy = {
-                "name": "Energy Poverty Aid",
-                "policy_type": "energy_poverty_aid",
-                "rate_schedule": {"2025": 150.0},
-                "exemptions": [],
-                "thresholds": [],
-                "covered_categories": [],
-                "extra_params": {
-                    "income_ceiling": 11000.0,
-                    "energy_share_threshold": 0.08,
-                    "base_aid_amount": 150.0,
-                },
-            }
+        energy_aid_policy = {
+            "name": "Energy Poverty Aid",
+            "policy_type": "energy_poverty_aid",
+            "rate_schedule": {"2025": 150.0},
+            "exemptions": [],
+            "thresholds": [],
+            "covered_categories": [],
+            "extra_params": {
+                "income_ceiling": 11000.0,
+                "energy_share_threshold": 0.08,
+                "base_aid_amount": 150.0,
+            },
+        }
 
-            body = {
-                "name": "test-energy-aid-portfolio",
-                "description": "Portfolio with energy poverty aid",
-                "policies": [_VALID_POLICIES[0], energy_aid_policy],
-                "resolution_strategy": "error",
-            }
+        body = {
+            "name": "test-energy-aid-portfolio",
+            "description": "Portfolio with energy poverty aid",
+            "policies": [_VALID_POLICIES[0], energy_aid_policy],
+            "resolution_strategy": "error",
+        }
 
-            response = client.post("/api/portfolios", json=body, headers=auth_headers)
-            assert response.status_code == 201
-        finally:
-            del os.environ["REFORMLAB_REGISTRY_PATH"]
+        response = client.post("/api/portfolios", json=body, headers=auth_headers)
+        assert response.status_code == 201
 
     def test_create_portfolio_with_invalid_custom_type_fails(
-        self, client: TestClient, auth_headers: dict[str, str], tmp_path: Path
+        self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
         """AC: Portfolio creation with unavailable custom type fails with 422."""
-        import os
+        invalid_policy = {
+            "name": "Invalid Policy",
+            "policy_type": "unavailable_custom_type",
+            "rate_schedule": {"2025": 100.0},
+            "exemptions": [],
+            "thresholds": [],
+            "covered_categories": [],
+            "extra_params": {},
+        }
 
-        os.environ["REFORMLAB_REGISTRY_PATH"] = str(tmp_path)
-        try:
-            invalid_policy = {
-                "name": "Invalid Policy",
-                "policy_type": "unavailable_custom_type",
-                "rate_schedule": {"2025": 100.0},
-                "exemptions": [],
-                "thresholds": [],
-                "covered_categories": [],
-                "extra_params": {},
-            }
+        body = {
+            "name": "test-invalid-custom-portfolio",
+            "description": "Portfolio with unavailable type",
+            "policies": [_VALID_POLICIES[0], invalid_policy],
+            "resolution_strategy": "error",
+        }
 
-            body = {
-                "name": "test-invalid-custom-portfolio",
-                "description": "Portfolio with unavailable type",
-                "policies": [_VALID_POLICIES[0], invalid_policy],
-                "resolution_strategy": "error",
-            }
-
-            response = client.post("/api/portfolios", json=body, headers=auth_headers)
-            assert response.status_code == 422
-            detail = response.json()["detail"]
-            assert "Invalid policy_type" in detail["what"]
-            assert "unavailable_custom_type" in detail["what"]
-        finally:
-            del os.environ["REFORMLAB_REGISTRY_PATH"]
+        response = client.post("/api/portfolios", json=body, headers=auth_headers)
+        assert response.status_code == 422
+        detail = response.json()["detail"]
+        assert "Invalid policy_type" in detail["what"]
+        assert "unavailable_custom_type" in detail["what"]
 
     def test_error_message_identifies_unavailable_policy(
-        self, client: TestClient, auth_headers: dict[str, str], tmp_path: Path
+        self, client: TestClient, auth_headers: dict[str, str]
     ) -> None:
         """AC: Error message clearly identifies the unavailable policy type.
 
@@ -714,58 +667,54 @@ class TestCustomPolicyTypeSupport:
         This test verifies that portfolio creation with a custom type succeeds
         when the type is properly registered.
         """
-        import os
         import uuid
 
-        os.environ["REFORMLAB_REGISTRY_PATH"] = str(tmp_path)
         unique_suffix = uuid.uuid4().hex[:8]
         portfolio_name = f"test-unavail-rt-{unique_suffix}"
-        try:
-            # Create a new custom type for testing
-            from dataclasses import dataclass
 
-            from reformlab.templates.schema import (
-                PolicyParameters,
-                register_custom_template,
-                register_policy_type,
-            )
+        # Create a new custom type for testing
+        from dataclasses import dataclass
 
-            custom_type = register_policy_type("test_unavailable_runtime")
+        from reformlab.templates.schema import (
+            PolicyParameters,
+            register_custom_template,
+            register_policy_type,
+        )
 
-            @dataclass(frozen=True)
-            class TestUnavailableParams(PolicyParameters):
-                rate_schedule: dict[int, float]
-                exemptions: tuple = ()
-                thresholds: tuple = ()
-                covered_categories: tuple = ()
+        custom_type = register_policy_type("test_unavailable_runtime")
 
-            register_custom_template(custom_type, TestUnavailableParams)
+        @dataclass(frozen=True)
+        class TestUnavailableParams(PolicyParameters):
+            rate_schedule: dict[int, float]
+            exemptions: tuple = ()
+            thresholds: tuple = ()
+            covered_categories: tuple = ()
 
-            unavailable_policy = {
-                "name": "Test Unavailable",
-                "policy_type": "test_unavailable_runtime",
-                "rate_schedule": {"2025": 100.0},
-                "exemptions": [],
-                "thresholds": [],
-                "covered_categories": [],
-                "extra_params": {},
-            }
+        register_custom_template(custom_type, TestUnavailableParams)
 
-            body = {
-                "name": portfolio_name,
-                "description": "Portfolio with custom type",
-                "policies": [_VALID_POLICIES[0], unavailable_policy],
-                "resolution_strategy": "error",
-            }
+        unavailable_policy = {
+            "name": "Test Unavailable",
+            "policy_type": "test_unavailable_runtime",
+            "rate_schedule": {"2025": 100.0},
+            "exemptions": [],
+            "thresholds": [],
+            "covered_categories": [],
+            "extra_params": {},
+        }
 
-            # Portfolio creation should succeed — runtime availability is
-            # enforced at preflight time, not at portfolio creation
-            response = client.post("/api/portfolios", json=body, headers=auth_headers)
-            assert response.status_code == 201
+        body = {
+            "name": portfolio_name,
+            "description": "Portfolio with custom type",
+            "policies": [_VALID_POLICIES[0], unavailable_policy],
+            "resolution_strategy": "error",
+        }
 
-            # Clean up
-            from reformlab.templates.schema import unregister_policy_type
+        # Portfolio creation should succeed — runtime availability is
+        # enforced at preflight time, not at portfolio creation
+        response = client.post("/api/portfolios", json=body, headers=auth_headers)
+        assert response.status_code == 201
 
-            unregister_policy_type("test_unavailable_runtime")
-        finally:
-            del os.environ["REFORMLAB_REGISTRY_PATH"]
+        # Clean up
+        from reformlab.templates.schema import unregister_policy_type
+
+        unregister_policy_type("test_unavailable_runtime")

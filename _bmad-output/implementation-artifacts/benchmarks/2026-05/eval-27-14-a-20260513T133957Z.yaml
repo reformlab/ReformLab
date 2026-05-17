@@ -1,0 +1,126 @@
+record_id: 23297432-0dec-44b9-92d4-7a5ac13fb0ff
+created_at: '2026-05-13T13:39:57.331683+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 27
+  story_num: 14
+  title: Story 27.14
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-05-13T13:31:29.813106Z'
+  end_time: '2026-05-13T13:34:08.438106Z'
+  duration_ms: 158625
+  input_tokens: 0
+  output_tokens: 4373
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 17495
+  heading_count: 30
+  list_depth_max: 3
+  code_block_count: 13
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 6.1'
+  - 🎯 Ruthless Story Validation 27.14
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 6.1 → MAJOR REWORK'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Badge appearance changes not validated for user acceptability
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. AC-3 decision point not resolved
+  - 2. AC-5 documentation scope ambiguous
+  - 3. AC-6 uses incorrect console API name
+  - 4. Missing test requirements for visual changes
+  - 5. PortfolioCompositionPanel reference in deferred-work.md is outdated
+  - ✨ Optimizations (Nice to Have)
+  - 🤖 LLM Optimization Improvements
+  - 1. Verbose appearance change notes repeated across ACs
+  - 2. Dev Notes Badge variant section duplicates AC content
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 575eaf302f44
+findings:
+  total_count: 8
+  by_severity:
+    critical: 1
+    major: 5
+    minor: 2
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 1
+    completeness: 4
+    clarity: 3
+    testability: 1
+  has_fix_count: 5
+  has_location_count: 7
+  has_evidence_count: 4
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 11
+  confidence_phrases_count: 3
+linguistic:
+  avg_sentence_length: 20.07377049180328
+  vocabulary_richness: 0.24458962841976317
+  flesch_reading_ease: 28.00086355660386
+  vague_terms_count: 5
+  formality_score: 0.65
+  sentiment: mixed
+quality:
+  actionable_ratio: 0.875
+  specificity_score: 0.85
+  evidence_quality: 0.75
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false

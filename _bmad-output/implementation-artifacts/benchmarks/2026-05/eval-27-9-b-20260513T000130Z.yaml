@@ -1,0 +1,128 @@
+record_id: 2f82cc62-6908-4f3c-b0a3-0776cb76af25
+created_at: '2026-05-13T00:01:30.778862+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 27
+  story_num: 9
+  title: Story 27.9
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: sonnet
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-05-12T23:54:31.124731Z'
+  end_time: '2026-05-13T00:00:55.522731Z'
+  duration_ms: 384398
+  input_tokens: 0
+  output_tokens: 4912
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 19648
+  heading_count: 32
+  list_depth_max: 3
+  code_block_count: 1
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Evidence Score Summary
+  - 'Evidence Score: **9.7**'
+  - 🎯 Ruthless Story Validation 27.9
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 🚨 Critical Issues (Must Fix)
+  - 1. AC-7 Regex Typo — Wrong Character Class in Acceptance Criterion
+  - 2. Parameter Schemas Not Wired — AC-5 Has No Data Source for Units
+  - ⚡ Enhancement Opportunities (Should Add)
+  - '1. Reconcile AC-4 vs Algorithm: "First Policy''s Category" vs `getDominantCategory()`'
+  - 2. Document `generateScenarioSuggestion` Intent After Signature Change
+  - 3. Clarify Percentage Decimal Convention for `formatParameterForName`
+  - 4. Resolve Task 3.4 vs Dev Notes Contradiction on AC-6
+  - ✨ Optimizations (Nice to Have)
+  - 1. Clarify TYPE_SLUGS Scope — Only for Template `type` Field, Not `entry.policy_type`
+  - 2. Reference `formatParameterValue` in PolicyCard as Design Reference
+  - 3. Note That `naming.test.ts` Already Exists (Not a New File)
+  - 4. Flag From-Scratch Name Detection False Positive Risk
+  - 🤖 LLM Optimization Improvements
+  - 1. Consolidate Duplicate Parameter Resolution Pseudocode
+  - 2. Move TYPE_SLUGS Close to the Usage Description
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 9208c26e66eb
+findings:
+  total_count: 12
+  by_severity:
+    critical: 2
+    major: 4
+    minor: 4
+    nit: 2
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 4
+    completeness: 2
+    clarity: 5
+    testability: 1
+  has_fix_count: 12
+  has_location_count: 12
+  has_evidence_count: 10
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 4
+  confidence_phrases_count: 6
+linguistic:
+  avg_sentence_length: 22.436974789915965
+  vocabulary_richness: 0.2812734082397004
+  flesch_reading_ease: 20.38862031162529
+  vague_terms_count: 1
+  formality_score: 0.75
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.95
+  evidence_quality: 0.92
+  follows_template: true
+  internal_consistency: 0.98
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false

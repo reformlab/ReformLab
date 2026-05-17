@@ -20,19 +20,39 @@ export type SubView =
   | "population-explorer"
   | "comparison"
   | "decisions"
-  | "runner";
+  | "runner"
+  | "source"  // Story 27.8: New Source sub-view for Population
+  | "inspect"; // Story 27.8: New Inspect sub-view for Population
 
 // ============================================================================
-// Population sub-step types — Story 22.4
+// Population sub-step types — Story 27.8 (restructured from Story 22.4)
 // ============================================================================
 
-export type PopulationSubStep = "library" | "build" | "explorer";
+export type PopulationSubStep = "source" | "inspect";
 
 export const POPULATION_SUB_STEPS = [
-  { key: "library" as const, label: "Library", subView: null },
-  { key: "build" as const, label: "Build", subView: "data-fusion" as const },
-  { key: "explorer" as const, label: "Explorer", subView: "population-explorer" as const },
+  { key: "source" as const, label: "Source", subView: null as const | "source" },
+  { key: "inspect" as const, label: "Inspect", subView: "inspect" as const },
 ] as const;
+
+// ============================================================================
+// Legacy sub-view migration — Story 27.8
+// ============================================================================
+
+/** Maps legacy Population sub-view values to new values.
+ *
+ * Story 27.8: Used for URL hash migration and activeSubView migration.
+ * - Empty string (null sub-view) → "source" (Library default)
+ * - "data-fusion" (Build) → "source" (Build is within Source)
+ * - "population-explorer" (Explorer) → "inspect"
+ *
+ * Note: Object keys are always strings, so we use "" for null.
+ */
+export const LEGACY_POPULATION_SUBVIEW_MAP: Record<string, SubView> = {
+  "": "source",
+  "data-fusion": "source",
+  "population-explorer": "inspect",
+};
 
 // ============================================================================
 // Scenario types
@@ -65,7 +85,7 @@ export interface EngineConfig {
   startYear: number;
   endYear: number;
   seed: number | null;
-  investmentDecisionsEnabled: boolean;
+  investmentDecisionsEnabled: boolean | null;  // Story 27.6: null = not started, false = explicitly skipped, true = enabled
   logitModel: "multinomial_logit" | "nested_logit" | "mixed_logit" | null;
   discountRate: number;  // fractional: 0.03 = 3%
   tasteParameters?: TasteParameters | null;  // Optional for backward compatibility
@@ -84,6 +104,7 @@ export interface WorkspaceScenario {
   engineConfig: EngineConfig;
   policyType: string | null;
   lastRunId: string | null;
+  stageTouched?: Partial<Record<StageKey, boolean>>;  // Story 27.6: tracks which stages user has explicitly interacted with
 }
 
 // ============================================================================
@@ -93,8 +114,8 @@ export interface WorkspaceScenario {
 // Import this in WorkflowNavRail, TopBar, and tests.
 export const STAGES: { key: StageKey; label: string; activeFor: (StageKey | SubView)[] }[] = [
   { key: "policies",   label: "Policy",    activeFor: ["policies"] },
-  { key: "population", label: "Population",              activeFor: ["population", "data-fusion", "population-explorer"] },
-  { key: "engine",     label: "Scenario",                activeFor: ["engine"] },
+  { key: "population", label: "Population", activeFor: ["population", "data-fusion", "population-explorer", "source", "inspect"] }, // Story 27.8: added source, inspect
+  { key: "engine",     label: "Scenario",  activeFor: ["engine"] },
   { key: "results",    label: "Run / Results / Compare", activeFor: ["results", "comparison", "decisions", "runner"] },
 ];
 
@@ -107,7 +128,15 @@ export function isValidStage(s: string): s is StageKey {
   return VALID_STAGES.has(s);
 }
 
-const VALID_SUBVIEWS = new Set<string>(["data-fusion", "population-explorer", "comparison", "decisions", "runner"]);
+const VALID_SUBVIEWS = new Set<string>([
+  "data-fusion",
+  "population-explorer",
+  "comparison",
+  "decisions",
+  "runner",
+  "source",   // Story 27.8
+  "inspect", // Story 27.8
+]);
 export function isValidSubView(s: string): s is SubView {
   return VALID_SUBVIEWS.has(s);
 }

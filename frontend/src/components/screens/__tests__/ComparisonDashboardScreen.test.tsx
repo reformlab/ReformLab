@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 Lucas Vivier
-/** Tests for ComparisonDashboardScreen — Story 17.4, AC-1 through AC-5. */
+/** Tests for ComparisonDashboardScreen — Story 17.4, AC-1 through AC-5.
+ * Story 27.12, AC-6: Stale-comparison reset when activeScenario.id changes.
+ * Story 27.12, AC-7: Failed-runs summary display.
+ */
 
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -90,6 +93,7 @@ const mockComparisonResponse: PortfolioComparisonResponse = {
 const defaultProps = {
   results: mockResults,
   onBack: vi.fn(),
+  activeScenarioId: null,
 };
 
 // ============================================================================
@@ -143,13 +147,13 @@ describe("ComparisonDashboardScreen", () => {
         }),
       ];
       render(
-        <ComparisonDashboardScreen results={resultsWithEvicted} onBack={vi.fn()} />,
+        <ComparisonDashboardScreen results={resultsWithEvicted} onBack={vi.fn()} activeScenarioId={null} />,
       );
       expect(screen.getByText("(evicted)")).toBeInTheDocument();
     });
 
     it("shows empty state when no completed results", () => {
-      render(<ComparisonDashboardScreen results={[]} onBack={vi.fn()} />);
+      render(<ComparisonDashboardScreen results={[]} onBack={vi.fn()} activeScenarioId={null} />);
       expect(
         screen.getByText(/No completed runs/i),
       ).toBeInTheDocument();
@@ -273,7 +277,7 @@ describe("ComparisonDashboardScreen", () => {
     it("calls onBack when Back button is clicked", async () => {
       const onBack = vi.fn();
       const user = userEvent.setup();
-      render(<ComparisonDashboardScreen results={mockResults} onBack={onBack} />);
+      render(<ComparisonDashboardScreen results={mockResults} onBack={onBack} activeScenarioId={null} />);
       await user.click(screen.getByRole("button", { name: /Back/i }));
       expect(onBack).toHaveBeenCalledOnce();
     });
@@ -293,6 +297,112 @@ describe("ComparisonDashboardScreen", () => {
       await waitFor(() => {
         expect(screen.getByRole("button", { name: /Export CSV/i })).toBeInTheDocument();
       });
+    });
+  });
+
+  describe("Story 27.12, AC-6: Stale-comparison reset", () => {
+    it("resets selectedRunIds and comparisonData when activeScenarioId changes", async () => {
+      vi.mocked(comparePortfolios).mockResolvedValueOnce(mockComparisonResponse);
+      const { rerender } = render(<ComparisonDashboardScreen {...defaultProps} activeScenarioId="scenario-1" />);
+      const user = userEvent.setup();
+
+      // Select runs and compare
+      const checkboxes = screen.getAllByRole("checkbox");
+      await user.click(checkboxes[0]);
+      await user.click(checkboxes[1]);
+      await user.click(screen.getByRole("button", { name: /Compare/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText("Distributional")).toBeInTheDocument();
+      });
+
+      // Change scenario ID - should reset comparison state
+      rerender(<ComparisonDashboardScreen {...defaultProps} activeScenarioId="scenario-2" />);
+
+      // Comparison data should be cleared
+      expect(screen.queryByText("Distributional")).not.toBeInTheDocument();
+    });
+
+    it("clears comparison state when switching from one scenario to another", async () => {
+      vi.mocked(comparePortfolios).mockResolvedValueOnce(mockComparisonResponse);
+      const { rerender } = render(<ComparisonDashboardScreen {...defaultProps} activeScenarioId="scenario-a" />);
+      const user = userEvent.setup();
+
+      // Select runs and compare
+      const checkboxes = screen.getAllByRole("checkbox");
+      await user.click(checkboxes[0]);
+      await user.click(checkboxes[1]);
+      await user.click(screen.getByRole("button", { name: /Compare/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText("Distributional")).toBeInTheDocument();
+      });
+
+      // Rerender with same scenario ID - comparison should persist
+      rerender(<ComparisonDashboardScreen {...defaultProps} activeScenarioId="scenario-a" />);
+      expect(screen.getByText("Distributional")).toBeInTheDocument();
+
+      // Rerender with different scenario ID - comparison should clear
+      rerender(<ComparisonDashboardScreen {...defaultProps} activeScenarioId="scenario-b" />);
+      expect(screen.queryByText("Distributional")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Story 27.12, AC-7: Failed-runs summary", () => {
+    it("shows summary when there are failed runs in the results list", () => {
+      const resultsWithFailed: ResultListItem[] = [
+        makeResult({ run_id: "run-1", status: "completed" }),
+        makeResult({ run_id: "run-2", status: "completed" }),
+        makeResult({ run_id: "run-3", status: "failed" }),
+      ];
+      render(
+        <ComparisonDashboardScreen
+          results={resultsWithFailed}
+          onBack={vi.fn()}
+          activeScenarioId="scenario-1"
+        />
+      );
+
+      // Should show the failed-runs summary
+      expect(screen.getByText(/2 runs completed/i)).toBeInTheDocument();
+      expect(screen.getByText(/1 failed \(excluded from comparison\)/i)).toBeInTheDocument();
+    });
+
+    it("does not show summary when all runs are completed", () => {
+      const resultsAllCompleted: ResultListItem[] = [
+        makeResult({ run_id: "run-1", status: "completed" }),
+        makeResult({ run_id: "run-2", status: "completed" }),
+      ];
+      render(
+        <ComparisonDashboardScreen
+          results={resultsAllCompleted}
+          onBack={vi.fn()}
+          activeScenarioId="scenario-1"
+        />
+      );
+
+      // Should not show the failed-runs summary
+      expect(screen.queryByText(/failed \(excluded from comparison\)/i)).not.toBeInTheDocument();
+    });
+
+    it("shows correct count when multiple runs are failed", () => {
+      const resultsWithManyFailed: ResultListItem[] = [
+        makeResult({ run_id: "run-1", status: "completed" }),
+        makeResult({ run_id: "run-2", status: "failed" }),
+        makeResult({ run_id: "run-3", status: "failed" }),
+        makeResult({ run_id: "run-4", status: "failed" }),
+      ];
+      render(
+        <ComparisonDashboardScreen
+          results={resultsWithManyFailed}
+          onBack={vi.fn()}
+          activeScenarioId="scenario-1"
+        />
+      );
+
+      // Should show the failed-runs summary with correct counts
+      expect(screen.getByText(/1 runs completed/i)).toBeInTheDocument();
+      expect(screen.getByText(/3 failed \(excluded from comparison\)/i)).toBeInTheDocument();
     });
   });
 });

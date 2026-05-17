@@ -1,0 +1,113 @@
+record_id: f315bf94-baec-45ff-92d7-2f4e7e5abb11
+created_at: '2026-05-12T22:35:21.994297+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 27
+  story_num: '7'
+  title: Story 27.7
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-05-12T22:30:25.996255Z'
+  end_time: '2026-05-12T22:32:27.071255Z'
+  duration_ms: 121075
+  input_tokens: 0
+  output_tokens: 2213
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 8853
+  heading_count: 13
+  list_depth_max: 2
+  code_block_count: 9
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: 4.9'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes & Readability
+  - ⚡ Performance & Scalability
+  - 🐛 Correctness & Safety
+  - 🔧 Maintainability Issues
+  - 🛠️ Suggested Fixes
+  - 1. Fix visitedSteps initialization
+  - 2. Fix useEffect dependency and race condition
+  - 3. Remove redundant isClickable variable
+  - 4. Fix test to properly verify disabled state
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: d22689c3dce7
+findings:
+  total_count: 8
+  by_severity:
+    critical: 1
+    major: 3
+    minor: 4
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 4
+    completeness: 0
+    clarity: 4
+    testability: 0
+  has_fix_count: 7
+  has_location_count: 8
+  has_evidence_count: 4
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 4
+  confidence_phrases_count: 0
+linguistic:
+  avg_sentence_length: 28.605263157894736
+  vocabulary_richness: 0.35878564857405704
+  flesch_reading_ease: 7.847156940584881
+  vague_terms_count: 1
+  formality_score: 0.7
+  sentiment: neutral
+quality:
+  actionable_ratio: 0.875
+  specificity_score: 0.9
+  evidence_quality: 0.5
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 2
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

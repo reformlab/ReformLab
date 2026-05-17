@@ -1,0 +1,121 @@
+record_id: c3c2cad8-4498-4a02-ae53-1038900ec175
+created_at: '2026-05-12T23:30:08.770992+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 27
+  story_num: '8'
+  title: Story 27.8
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-05-12T23:25:49.846190Z'
+  end_time: '2026-05-12T23:28:29.083190Z'
+  duration_ms: 159237
+  input_tokens: 0
+  output_tokens: 2779
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 11116
+  heading_count: 21
+  list_depth_max: 3
+  code_block_count: 10
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: 11.3'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes & Readability
+  - ⚡ Performance & Scalability
+  - 🐛 Correctness & Safety
+  - '🐛 Bug: URL Hash Migration Broken Due to Early Validation Check'
+  - '🐛 Bug: Task 4.5 One-Time Migration Flag Not Implemented'
+  - '🔒 [HIGH] Accessibility: Disabled Button Missing Native Attribute'
+  - '🎭 Lying Test: Duplicate Test Masks Coverage Gaps'
+  - '🎭 Missing Test Coverage: Critical User Flows Untested'
+  - 🔧 Maintainability Issues
+  - '💣 Tech Debt: Magic String "data-fusion-result" Duplicated'
+  - '💣 Tech Debt: Awkward Type Definition'
+  - 🛠️ Suggested Fixes
+  - 1. Fix URL Hash Migration Bug
+  - 2. Add Native Disabled Attribute for Accessibility
+  - 3. Remove Duplicate Test
+  - 4. Define Magic String as Constant
+  - 5. Add Missing Test for handleDataFusionGenerated
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 87230248024f
+findings:
+  total_count: 11
+  by_severity:
+    critical: 2
+    major: 7
+    minor: 2
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 1
+    completeness: 1
+    clarity: 3
+    testability: 6
+  has_fix_count: 11
+  has_location_count: 11
+  has_evidence_count: 11
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 1
+  confidence_phrases_count: 0
+linguistic:
+  avg_sentence_length: 31.463414634146343
+  vocabulary_richness: 0.3372093023255814
+  flesch_reading_ease: -0.14093587284185105
+  vague_terms_count: 0
+  formality_score: 0.65
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.95
+  evidence_quality: 0.95
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true
+  phase: code-review
+  file_count: 8
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

@@ -53,18 +53,36 @@ export function loadScenario(): WorkspaceScenario | null {
     const needsTasteMigration = parsed.engineConfig?.tasteParameters === undefined;
     const needsCalibrationMigration = parsed.engineConfig?.calibrationState === undefined;
 
-    if (!needsTasteMigration && !needsCalibrationMigration) {
+    // Story 27.6: Migration for stageTouched field
+    const needsStageTouchedMigration = parsed.stageTouched === undefined;
+    const needsInvestmentDecisionsMigration = parsed.engineConfig?.investmentDecisionsEnabled === false;
+
+    if (!needsTasteMigration && !needsCalibrationMigration && !needsStageTouchedMigration && !needsInvestmentDecisionsMigration) {
       return parsed;
+    }
+
+    // Build migrated engine config
+    const migratedEngineConfig = {
+      ...parsed.engineConfig,
+      tasteParameters: parsed.engineConfig?.tasteParameters ?? DEFAULT_TASTE_PARAMETERS,
+      calibrationState: parsed.engineConfig?.calibrationState ?? "not_configured",
+    };
+
+    // Build migrated stageTouched
+    let migratedStageTouched = parsed.stageTouched ?? {};
+    if (needsInvestmentDecisionsMigration) {
+      // Legacy false → explicitly skipped, mark stage as touched
+      migratedStageTouched = {
+        ...migratedStageTouched,
+        engine: true, // engine stage touched (investment decisions explicitly skipped)
+      };
     }
 
     // Return new object with migrated fields (don't mutate parsed)
     return {
       ...parsed,
-      engineConfig: {
-        ...parsed.engineConfig,
-        tasteParameters: parsed.engineConfig.tasteParameters ?? DEFAULT_TASTE_PARAMETERS,
-        calibrationState: parsed.engineConfig.calibrationState ?? "not_configured",
-      },
+      engineConfig: migratedEngineConfig,
+      stageTouched: migratedStageTouched,
     };
   } catch {
     return null;
@@ -107,23 +125,39 @@ export function getSavedScenarios(): WorkspaceScenario[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw) as WorkspaceScenario[];
 
-    // Story 22.6: Migration logic for legacy scenarios (immutable - returns new objects)
+    // Story 22.6 + Story 27.6: Migration logic for legacy scenarios (immutable - returns new objects)
     return parsed.map((scenario) => {
       const needsTasteMigration = scenario.engineConfig?.tasteParameters === undefined;
       const needsCalibrationMigration = scenario.engineConfig?.calibrationState === undefined;
+      const needsStageTouchedMigration = scenario.stageTouched === undefined;
+      const needsInvestmentDecisionsMigration = scenario.engineConfig?.investmentDecisionsEnabled === false;
 
-      if (!needsTasteMigration && !needsCalibrationMigration) {
+      if (!needsTasteMigration && !needsCalibrationMigration && !needsStageTouchedMigration && !needsInvestmentDecisionsMigration) {
         return scenario;
+      }
+
+      // Build migrated engine config
+      const migratedEngineConfig = {
+        ...scenario.engineConfig,
+        tasteParameters: scenario.engineConfig?.tasteParameters ?? DEFAULT_TASTE_PARAMETERS,
+        calibrationState: scenario.engineConfig?.calibrationState ?? "not_configured",
+      };
+
+      // Build migrated stageTouched
+      let migratedStageTouched = scenario.stageTouched ?? {};
+      if (needsInvestmentDecisionsMigration) {
+        // Legacy false → explicitly skipped, mark stage as touched
+        migratedStageTouched = {
+          ...migratedStageTouched,
+          engine: true, // engine stage touched (investment decisions explicitly skipped)
+        };
       }
 
       // Return new object with migrated fields (don't mutate parsed)
       return {
         ...scenario,
-        engineConfig: {
-          ...scenario.engineConfig,
-          tasteParameters: scenario.engineConfig.tasteParameters ?? DEFAULT_TASTE_PARAMETERS,
-          calibrationState: scenario.engineConfig.calibrationState ?? "not_configured",
-        },
+        engineConfig: migratedEngineConfig,
+        stageTouched: migratedStageTouched,
       };
     });
   } catch {
@@ -189,33 +223,4 @@ export function removeManuallyEditedName(id: string): void {
   const current = getManuallyEditedNames();
   current.delete(id);
   saveManuallyEditedNames(current);
-}
-
-// ============================================================================
-// Hook (thin wrapper for backward-compatibility with existing call sites)
-// ============================================================================
-
-export interface ScenarioPersistence {
-  saveScenario: (scenario: WorkspaceScenario | null) => void;
-  loadScenario: () => WorkspaceScenario | null;
-  saveStage: (stage: StageKey) => void;
-  loadStage: () => StageKey | null;
-  isFirstLaunch: () => boolean;
-  markLaunched: () => void;
-  getSavedScenarios: () => WorkspaceScenario[];
-  saveScenarioToList: (scenario: WorkspaceScenario) => void;
-}
-
-/** @deprecated Use module-level exports directly instead. */
-export function useScenarioPersistence(): ScenarioPersistence {
-  return {
-    saveScenario,
-    loadScenario,
-    saveStage,
-    loadStage,
-    isFirstLaunch,
-    markLaunched,
-    getSavedScenarios,
-    saveScenarioToList,
-  };
 }

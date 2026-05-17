@@ -7,9 +7,10 @@
  * Used by PoliciesStageScreen save/clone dialogs.
  *
  * Story 25.6: Added per-policy validation with field-level error messages.
+ * Story 27.11: Import CompositionEntry from api/types (moved from PortfolioCompositionPanel).
  */
 
-import type { CompositionEntry } from "@/components/simulation/PortfolioCompositionPanel";
+import type { CompositionEntry } from "@/api/types";
 
 /** Same regex as backend: lowercase slug, letters/digits/hyphens, max 64 chars. */
 export const NAME_RE = /^(?:[a-z0-9]{1,64}|[a-z0-9][a-z0-9-]{0,62}[a-z0-9])$/;

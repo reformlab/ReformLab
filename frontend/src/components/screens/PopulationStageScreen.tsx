@@ -3,14 +3,17 @@
 /**
  * PopulationStageScreen — stateful coordinator for Stage 2 (Population).
  *
- * Reads activeSubView from AppContext and renders:
- *   - null/undefined: PopulationLibraryScreen (default)
- *   - "data-fusion":  DataFusionWorkbench (existing)
- *   - "population-explorer": PopulationExplorer (new)
+ * Story 27.8: Restructured from three peer tabs (Library/Build/Explorer)
+ * to two-step flow (Source → Inspect).
  *
- * Also manages local state: Quick Preview overlay, explorer population, uploaded populations.
+ * Reads activeSubView from AppContext and renders:
+ *   - "source" or null or "data-fusion": Source flow (Library default, Build via button)
+ *   - "inspect" or "population-explorer": PopulationExplorer (gated behind selection)
+ *
+ * Also manages local state: Quick Preview overlay, uploaded populations.
  *
  * Story 20.4 — AC-1 through AC-6.
+ * Story 27.8 — AC-1 through AC-9.
  */
 
 import { useMemo, useState, useEffect, useRef } from "react";
@@ -24,6 +27,16 @@ import { PopulationExplorer } from "@/components/population/PopulationExplorer";
 import { PopulationUploadZone } from "@/components/population/PopulationUploadZone";
 import type { PopulationLibraryItem } from "@/api/types";
 import { deletePopulation, getPopulationPreview } from "@/api/populations";
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+/** ID used for the generated population from DataFusionWorkbench.
+ * Story 27.8: This ID is used when a population is generated via data fusion
+ * and needs to be set as the selected population.
+ */
+const DATA_FUSION_RESULT_ID = "data-fusion-result" as const;
 
 // ============================================================================
 // Helpers
@@ -51,16 +64,13 @@ let _uploadedPopulationsCache: PopulationLibraryItem[] = [];
 // Types
 // ============================================================================
 
-export interface PopulationStageScreenProps {
-  /** Story 22.4: Callback when explorer population ID changes */
-  onExplorerPopulationChange?: (populationId: string | null) => void;
-}
+// Story 27.8: No props needed — all state comes from AppContext
 
 // ============================================================================
 // Main component
 // ============================================================================
 
-export function PopulationStageScreen({ onExplorerPopulationChange }: PopulationStageScreenProps) {
+export function PopulationStageScreen() {
   const {
     populations,
     populationsLoading,
@@ -78,7 +88,6 @@ export function PopulationStageScreen({ onExplorerPopulationChange }: Population
 
   // Local state
   const [previewPopulationId, setPreviewPopulationId] = useState<string | null>(null);
-  const [explorerPopulationId, setExplorerPopulationId] = useState<string | null>(null);
   const [uploadedPopulations, setUploadedPopulations] = useState<PopulationLibraryItem[]>(() => _uploadedPopulationsCache);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [populationPreviewMeta, setPopulationPreviewMeta] = useState<
@@ -93,7 +102,7 @@ export function PopulationStageScreen({ onExplorerPopulationChange }: Population
     const generated: PopulationLibraryItem[] = dataFusionResult
       ? [
           {
-            id: "data-fusion-result",
+            id: DATA_FUSION_RESULT_ID,
             name: "Fused Population",
             households: dataFusionResult.summary.record_count,
             source: "Data Fusion",
@@ -117,7 +126,7 @@ export function PopulationStageScreen({ onExplorerPopulationChange }: Population
     const localMeta: Record<string, { totalRows: number; columns: string[] }> = {};
 
     if (dataFusionResult) {
-      localMeta["data-fusion-result"] = {
+      localMeta[DATA_FUSION_RESULT_ID] = {
         totalRows: dataFusionResult.summary.record_count,
         columns: dataFusionResult.summary.columns,
       };
@@ -129,7 +138,7 @@ export function PopulationStageScreen({ onExplorerPopulationChange }: Population
 
     const populationsToFetch = mergedPopulations.filter(
       (population) =>
-        population.id !== "data-fusion-result" &&
+        population.id !== DATA_FUSION_RESULT_ID &&
         !requestedPreviewMetaRef.current.has(population.id),
     );
 
@@ -183,11 +192,6 @@ export function PopulationStageScreen({ onExplorerPopulationChange }: Population
     return mergedPopulations.find((p) => p.id === previewPopulationId)?.name ?? previewPopulationId;
   }, [previewPopulationId, mergedPopulations]);
 
-  // Story 22.4: Notify parent when explorer population ID changes
-  useEffect(() => {
-    onExplorerPopulationChange?.(explorerPopulationId);
-  }, [explorerPopulationId, onExplorerPopulationChange]);
-
   // ============================================================================
   // Callbacks
   // ============================================================================
@@ -197,8 +201,9 @@ export function PopulationStageScreen({ onExplorerPopulationChange }: Population
   }
 
   function handleExplore(id: string) {
-    setExplorerPopulationId(id);
-    navigateTo("population", "population-explorer");
+    // Story 27.8: Select the population and navigate to Inspect
+    setSelectedPopulationId(id);
+    navigateTo("population", "inspect");
   }
 
   function handleSelect(id: string) {
@@ -222,7 +227,7 @@ export function PopulationStageScreen({ onExplorerPopulationChange }: Population
       setSelectedPopulationId("");
     }
 
-    if (id === "data-fusion-result") {
+    if (id === DATA_FUSION_RESULT_ID) {
       setDataFusionResult(null);
       return;
     }
@@ -253,19 +258,22 @@ export function PopulationStageScreen({ onExplorerPopulationChange }: Population
   }
 
   function handleOpenFullView(id: string) {
+    // Story 27.8: Select the population and navigate to Inspect
     setPreviewPopulationId(null);
-    setExplorerPopulationId(id);
-    navigateTo("population", "population-explorer");
+    setSelectedPopulationId(id);
+    navigateTo("population", "inspect");
   }
 
   function handleBackToLibrary() {
-    navigateTo("population");
+    // Story 27.8: Navigate back to Source
+    navigateTo("population", "source");
   }
 
   function handleDataFusionGenerated(result: Parameters<typeof setDataFusionResult>[0]) {
+    // Story 27.8: Set the generated population as selected and navigate to Inspect
     setDataFusionResult(result);
-    // Navigate back to library to show the new generated population
-    navigateTo("population");
+    setSelectedPopulationId(DATA_FUSION_RESULT_ID);
+    navigateTo("population", "inspect");
   }
 
   // ============================================================================
@@ -276,10 +284,36 @@ export function PopulationStageScreen({ onExplorerPopulationChange }: Population
     (activeScenario?.populationIds?.[0] ?? "") || selectedPopulationId;
 
   // ============================================================================
-  // Sub-view routing
+  // Sub-view routing (Story 27.8: Source → Inspect flow)
   // ============================================================================
 
   const content = (() => {
+    // Inspect sub-view: render PopulationExplorer (gated behind population selection)
+    if (activeSubView === "inspect" || activeSubView === "population-explorer") {
+      // Story 27.8 AC-9: Empty state when no population is selected
+      if (!effectiveSelectedId) {
+        return (
+          <div className="flex h-full flex-col items-center justify-center gap-4 p-12 text-center">
+            <p className="text-sm text-slate-500">Select a population to explore</p>
+            <button
+              type="button"
+              onClick={() => navigateTo("population", "source")}
+              className="rounded-md bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200"
+            >
+              Back to Library
+            </button>
+          </div>
+        );
+      }
+      return (
+        <PopulationExplorer
+          populationId={effectiveSelectedId}
+          onBack={handleBackToLibrary}
+        />
+      );
+    }
+
+    // Source sub-view: render DataFusionWorkbench or PopulationLibraryScreen
     if (activeSubView === "data-fusion") {
       return (
         <DataFusionWorkbench
@@ -291,16 +325,7 @@ export function PopulationStageScreen({ onExplorerPopulationChange }: Population
       );
     }
 
-    if (activeSubView === "population-explorer") {
-      return (
-        <PopulationExplorer
-          populationId={explorerPopulationId}
-          onBack={handleBackToLibrary}
-        />
-      );
-    }
-
-    // Default: Population Library
+    // Default (activeSubView === null || "source"): Population Library
     return (
       <PopulationLibraryScreen
         populations={mergedPopulations}

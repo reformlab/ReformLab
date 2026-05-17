@@ -2,12 +2,14 @@
 // Copyright 2026 Lucas Vivier
 /**
  * App tests — Story 20.1, AC-1, AC-2, AC-4.
+ * Story 27.12, AC-1: Sub-view breadcrumb in Stage 5.
  *
  * Verifies:
  * - Auth prompt renders before login
  * - Post-auth workspace renders 4-stage navigation (AC-1)
  * - Gradient header removed (AC-1 brand compliance)
  * - Hash routing defaults and invalid hash handling (AC-4)
+ * - Stage 5 breadcrumb shows correct sub-view name (AC-1)
  */
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -166,6 +168,77 @@ describe("App", () => {
 
     await waitFor(() => {
       expect(screen.getAllByText("Population Library").length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  describe("Story 27.12, AC-1: Sub-view breadcrumb", () => {
+    it("shows breadcrumb with sub-view name when in Stage 5 results sub-views", async () => {
+      vi.mocked(login).mockResolvedValueOnce({ token: "test-token" });
+      const user = userEvent.setup();
+      renderApp();
+
+      await user.type(screen.getByPlaceholderText(/password/i), "secret");
+      await user.click(screen.getByRole("button", { name: /enter/i }));
+
+      await waitFor(() => {
+        expect(screen.getAllByText("Policy").length).toBeGreaterThanOrEqual(1);
+      });
+
+      // Navigate to comparison sub-view
+      window.location.hash = "#results/comparison";
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+
+      await waitFor(() => {
+        // Breadcrumb shows "Results > Comparison"
+        expect(screen.getByText(/results/i)).toBeInTheDocument();
+        expect(screen.getByText(/comparison/i)).toBeInTheDocument();
+      });
+    });
+
+    it("shows 'Results > Overview' breadcrumb when on results overview", async () => {
+      vi.mocked(login).mockResolvedValueOnce({ token: "test-token" });
+      const user = userEvent.setup();
+      renderApp();
+
+      await user.type(screen.getByPlaceholderText(/password/i), "secret");
+      await user.click(screen.getByRole("button", { name: /enter/i }));
+
+      await waitFor(() => {
+        expect(screen.getAllByText("Policy").length).toBeGreaterThanOrEqual(1);
+      });
+
+      // Navigate to results overview (default)
+      window.location.hash = "#results";
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+
+      await waitFor(() => {
+        // Breadcrumb shows "Results > Overview"
+        expect(screen.getByText(/results/i)).toBeInTheDocument();
+        expect(screen.getByText(/overview/i)).toBeInTheDocument();
+      });
+    });
+
+    it("shows 'Results > Runner' breadcrumb when on simulation runner", async () => {
+      vi.mocked(login).mockResolvedValueOnce({ token: "test-token" });
+      const user = userEvent.setup();
+      renderApp();
+
+      await user.type(screen.getByPlaceholderText(/password/i), "secret");
+      await user.click(screen.getByRole("button", { name: /enter/i }));
+
+      await waitFor(() => {
+        expect(screen.getAllByText("Policy").length).toBeGreaterThanOrEqual(1);
+      });
+
+      // Navigate to runner sub-view
+      window.location.hash = "#results/runner";
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+
+      await waitFor(() => {
+        // Breadcrumb shows "Results > Runner"
+        expect(screen.getByText(/results/i)).toBeInTheDocument();
+        expect(screen.getByText(/runner/i)).toBeInTheDocument();
+      });
     });
   });
 });

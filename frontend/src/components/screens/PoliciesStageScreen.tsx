@@ -13,6 +13,7 @@
  * - Inline conflict detection with debounce (AC-3)
  * - Portfolio ↔ activeScenario integration via updateScenarioField (AC-4, AC-5)
  * - Nav rail completion via activeScenario.portfolioName (AC-5)
+ * - Story 27.5: Auto-save composition draft to localStorage
  */
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
@@ -29,30 +30,78 @@ import { PortfolioTemplateBrowser } from "@/components/simulation/PortfolioTempl
 import { PortfolioCompositionPanel } from "@/components/simulation/PortfolioCompositionPanel";
 // Story 25.3: Import CreateFromScratchDialog for from-scratch flow
 import { CreateFromScratchDialog } from "@/components/simulation/CreateFromScratchDialog";
-import type { CompositionEntry } from "@/components/simulation/PortfolioCompositionPanel";
+import type { CompositionEntry } from "@/api/types";
 import { ConflictList } from "@/components/simulation/ConflictList";
 import { ApiError } from "@/api/client";
 import {
   deletePortfolio,
   validatePortfolio,
 } from "@/api/portfolios";
+import { normalizePolicyType } from "@/utils/policyTypes";
 // Story 25.1 / Task 3.1: Import listCategories
 import { listCategories } from "@/api/categories";
 // Story 25.3: Import createBlankPolicy for from-scratch flow
-import { createBlankPolicy } from "@/api/templates";
+import { createBlankPolicy, getTemplate } from "@/api/templates";
+import { mapTemplateParameters } from "@/hooks/useApi";
 // Story 25.6: Import getPopulationProfile for population column warnings
 import { getPopulationProfile } from "@/api/populations";
 import { useAppState } from "@/contexts/AppContext";
-import type { PortfolioConflict, Category } from "@/api/types";
-import { usePortfolioSaveDialog } from "@/hooks/usePortfolioSaveDialog";
-import { usePortfolioLoadDialog } from "@/hooks/usePortfolioLoadDialog";
-import { usePortfolioCloneDialog } from "@/hooks/usePortfolioCloneDialog";
+import { Play } from "lucide-react";
+import type { PortfolioConflict, Category, EditableParameterGroup, TemplateDetailResponse } from "@/api/types";
+// Story 27.11: Use unified portfolio dialog hook
+import { usePortfolioDialog } from "@/hooks/usePortfolioDialog";
+// Story 27.5: Import composition draft persistence
+import { saveCompositionDraft, loadCompositionDraft } from "@/hooks/useCompositionDraft";
 // Story 25.6: Import validation functions
 import {
   validateComposition,
   type PolicyValidationError,
 } from "@/components/simulation/portfolioValidation";
 import { cn } from "@/lib/utils";
+
+// ============================================================================
+// Story 27.4: Helper to build editableParameterGroups from template details
+// ============================================================================
+
+/**
+ * Build editable parameter groups from template detail response.
+ * Groups parameters by their 'group' field deterministically.
+ *
+ * Used by addTemplateInstance and backward-compat scaffolding effect.
+ *
+ * @param detail - Template detail response from API
+ * @returns EditableParameterGroup array with stable IDs and sorted parameter lists
+ */
+function buildEditableParameterGroups(detail: TemplateDetailResponse): EditableParameterGroup[] {
+  const parameters = mapTemplateParameters(detail);
+
+  // Group parameters by their 'group' field, deterministically
+  const groupsMap = new Map<string, string[]>();
+  for (const param of parameters) {
+    const groupName = param.group || "Other";
+    if (!groupsMap.has(groupName)) {
+      groupsMap.set(groupName, []);
+    }
+    groupsMap.get(groupName)!.push(param.id);
+  }
+
+  // Sort group names alphabetically for stable ordering
+  const sortedGroupNames = Array.from(groupsMap.keys()).sort();
+
+  // Build editableParameterGroups with deterministic IDs
+  return sortedGroupNames.map((name, idx) => {
+    const paramIds = groupsMap.get(name)!;
+    return {
+      id: `group-${idx}`,
+      name,
+      parameterIds: paramIds.sort(), // Sort params within group for stability
+    };
+  });
+}
+
+// ============================================================================
+// PoliciesStageScreen Component
+// ============================================================================
 
 // ============================================================================
 // Constants
@@ -81,6 +130,7 @@ export function PoliciesStageScreen() {
     activeScenario,
     updateScenarioField,
     setSelectedPortfolioName,
+    loadFullDemo,
   } = useAppState();
 
   // ============================================================================
@@ -129,6 +179,14 @@ export function PoliciesStageScreen() {
 
   // Prevent auto-load from triggering after a save (which sets portfolioName, which fires effect)
   const loadedRef = useRef<string | null>(null);
+  // Skip next auto-save cycle after explicit draft clears (load, save, clear button)
+  // This prevents auto-save from immediately recreating a just-cleared draft.
+  const skipNextDraftSaveRef = useRef(false);
+  // Keep auto-save disabled after programmatic load/save/clear until a real user edit happens.
+  const suppressDraftAutosaveRef = useRef(false);
+  const markDraftDirty = useCallback(() => {
+    suppressDraftAutosaveRef.current = false;
+  }, []);
 
   // ============================================================================
   // Computed validity
@@ -162,22 +220,43 @@ export function PoliciesStageScreen() {
   // Composition handlers
   // ============================================================================
 
-  // Story 25.2: Add template instance - creates unique instance using monotonic counter
-  const addTemplateInstance = useCallback((templateId: string) => {
-    const t = templates.find((tmpl) => tmpl.id === templateId);
-    if (!t) return;
+  // Story 27.4: Add template instance - creates unique instance using monotonic counter
+  // NOW ASYNC: fetches template details to populate editableParameterGroups
+  const addTemplateInstance = useCallback(async (templateId: string) => {
+    try {
+      markDraftDirty();
+      // Fetch template details with parameter schemas
+      const detail = await getTemplate(templateId);
+      const t = templates.find((tmpl) => tmpl.id === templateId);
+      if (!t) {
+        toast.error(`Template "${templateId}" not found in template library`, {
+          description: "Refresh the page and try again.",
+        });
+        return;
+      }
 
-    const id = instanceCounterRef.current++;
-    const newInstance: CompositionEntry = {
-      instanceId: `${templateId}-ins${id}`, // Guaranteed unique via counter
-      templateId,
-      name: t?.name ?? templateId,
-      parameters: {},
-      rateSchedule: {},
-    };
+      const editableParameterGroups = buildEditableParameterGroups(detail);
 
-    setComposition((prev) => [...prev, newInstance]);
-  }, [templates]);
+      const id = instanceCounterRef.current++;
+      const newInstance: CompositionEntry = {
+        instanceId: `${templateId}-ins${id}`, // Guaranteed unique via counter
+        templateId,
+        name: t?.name ?? templateId,
+        parameters: detail.default_policy as Record<string, number>,
+        rateSchedule: {},
+        editableParameterGroups,
+      };
+
+      setComposition((prev) => [...prev, newInstance]);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        toast.error(`${err.what} — ${err.why}`, { description: err.fix });
+      } else if (err instanceof Error) {
+        toast.error(`Failed to load template details for ${templateId}`, { description: err.message });
+      }
+      // Do not add policy on failure
+    }
+  }, [markDraftDirty, templates]);
 
   // Story 25.3: Handle blank policy creation from from-scratch flow
   const handleCreateBlankPolicy = useCallback(async (
@@ -185,6 +264,7 @@ export function PoliciesStageScreen() {
     categoryId: string,
   ) => {
     try {
+      markDraftDirty();
       const response = await createBlankPolicy({
         policy_type: policyType,
         category_id: categoryId,
@@ -232,41 +312,105 @@ export function PoliciesStageScreen() {
         toast.error("Failed to create policy from scratch", { description: err.message });
       }
     }
-  }, []);
+  }, [markDraftDirty]);
+
+  // Story 27.4: Backward compatibility - scaffold editableParameterGroups for template policies
+  // that were saved before this feature was implemented
+  useEffect(() => {
+    let cancelled = false;
+
+    const scaffoldEditableParameterGroups = async () => {
+      // Find template entries lacking editableParameterGroups
+      const entriesNeedingScaffolding = composition.filter(
+        (entry) => entry.templateId && !entry.editableParameterGroups
+      );
+
+      if (entriesNeedingScaffolding.length === 0 || cancelled) return;
+
+      // Fetch template details for each entry and scaffold groups
+      const scaffoldingPromises = entriesNeedingScaffolding.map(async (entry) => {
+        try {
+          const detail = await getTemplate(entry.templateId);
+          const editableParameterGroups = buildEditableParameterGroups(detail);
+          return { entryId: entry.instanceId || entry.templateId, editableParameterGroups };
+        } catch {
+          // Silent failure: skip this entry on error (backward-compat only, non-critical)
+          return null;
+        }
+      });
+
+      const results = await Promise.allSettled(scaffoldingPromises);
+
+      if (cancelled) return;
+
+      // Update composition with scaffolded groups
+      setComposition((prev) =>
+        prev.map((entry) => {
+          if (!entry.templateId || entry.editableParameterGroups) return entry;
+
+          // Find the scaffolding result for this entry
+          const result = results.find((r) =>
+            r.status === "fulfilled" &&
+            r.value &&
+            (r.value.entryId === entry.instanceId || r.value.entryId === entry.templateId)
+          );
+
+          if (result && result.status === "fulfilled" && result.value) {
+            return {
+              ...entry,
+              editableParameterGroups: result.value.editableParameterGroups,
+            };
+          }
+
+          return entry;
+        })
+      );
+    };
+
+    scaffoldEditableParameterGroups();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [composition]); // Re-run when composition changes (e.g., after portfolio load)
 
   // Removed: toggleTemplate (replaced by addTemplateInstance for duplicate support)
 
   const handleReorder = useCallback((from: number, to: number) => {
+    markDraftDirty();
     setComposition((prev) => {
       const next = [...prev];
       const [item] = next.splice(from, 1);
       if (item) next.splice(to, 0, item);
       return next;
     });
-  }, []);
+  }, [markDraftDirty]);
 
   const handleRemove = useCallback((index: number) => {
+    markDraftDirty();
     setComposition((prev) => prev.filter((_, i) => i !== index));
-  }, []);
+  }, [markDraftDirty]);
 
   const handleParameterChange = useCallback(
     (index: number, paramId: string, value: number) => {
+      markDraftDirty();
       setComposition((prev) =>
         prev.map((e, i) =>
           i === index ? { ...e, parameters: { ...e.parameters, [paramId]: value } } : e,
         ),
       );
     },
-    [],
+    [markDraftDirty],
   );
 
   const handleRateScheduleChange = useCallback(
     (index: number, schedule: Record<string, number>) => {
+      markDraftDirty();
       setComposition((prev) =>
         prev.map((e, i) => (i === index ? { ...e, rateSchedule: schedule } : e)),
       );
     },
-    [],
+    [markDraftDirty],
   );
 
   // ============================================================================
@@ -278,6 +422,7 @@ export function PoliciesStageScreen() {
   }, []);
 
   const handleGroupRename = useCallback((policyIndex: number, groupId: string, newName: string) => {
+    markDraftDirty();
     setComposition((prev) =>
       prev.map((entry, i) => {
         if (i !== policyIndex || !entry.editableParameterGroups) return entry;
@@ -309,9 +454,10 @@ export function PoliciesStageScreen() {
         };
       }),
     );
-  }, []);
+  }, [markDraftDirty]);
 
   const handleAddGroup = useCallback((policyIndex: number) => {
+    markDraftDirty();
     setComposition((prev) =>
       prev.map((entry, i) =>
         i === policyIndex
@@ -330,9 +476,10 @@ export function PoliciesStageScreen() {
           : entry,
       ),
     );
-  }, []);
+  }, [markDraftDirty]);
 
   const handleDeleteGroup = useCallback((policyIndex: number, groupId: string) => {
+    markDraftDirty();
     setComposition((prev) =>
       prev.map((entry, i) => {
         if (i !== policyIndex || !entry.editableParameterGroups) return entry;
@@ -357,9 +504,10 @@ export function PoliciesStageScreen() {
         };
       }),
     );
-  }, []);
+  }, [markDraftDirty]);
 
   const handleMoveParameter = useCallback((policyIndex: number, paramId: string, fromGroupId: string, toGroupId: string) => {
+    markDraftDirty();
     setComposition((prev) =>
       prev.map((entry, i) => {
         if (i !== policyIndex || !entry.editableParameterGroups) return entry;
@@ -383,7 +531,7 @@ export function PoliciesStageScreen() {
         return { ...entry, editableParameterGroups: newGroups };
       }),
     );
-  }, []);
+  }, [markDraftDirty]);
 
   // ============================================================================
   // Validation — debounced (AC-3, Task 5.1)
@@ -401,7 +549,7 @@ export function PoliciesStageScreen() {
           const t = templates.find((tmpl) => tmpl.id === e.templateId);
           return {
             name: e.name,
-            policy_type: (t?.type ?? "carbon_tax").replace(/-/g, "_"),
+            policy_type: normalizePolicyType(t?.type ?? "carbon_tax"),
             rate_schedule: e.rateSchedule,
             exemptions: [],
             thresholds: [],
@@ -442,8 +590,7 @@ export function PoliciesStageScreen() {
       try {
         const cats = await listCategories();
         setCategories(cats);
-      } catch (err) {
-        console.error("Failed to load categories:", err);
+      } catch {
         // Story 25.1 / AC-6: Non-blocking warning - templates still shown ungrouped
         setCategories([]); // Empty categories array causes ungrouped display
       }
@@ -490,7 +637,7 @@ export function PoliciesStageScreen() {
       if (cancelled) return;
 
       const missingColumns: string[] = [];
-      results.forEach((result, i) => {
+      results.forEach((result) => {
         if (result.status === "fulfilled") {
           const availableColumns = result.value.columns.map((c) => c.name);
           for (const col of uniqueRequiredColumns) {
@@ -499,10 +646,8 @@ export function PoliciesStageScreen() {
             }
           }
         } else {
-          console.error(
-            `Failed to fetch profile for population ${populationIds[i]}`,
-            result.reason,
-          );
+          // Silent failure: profile fetch is non-critical (Story 25.6)
+          // Missing columns will be tracked in warnings state
         }
       });
 
@@ -517,9 +662,65 @@ export function PoliciesStageScreen() {
   }, [composition, activeScenario?.populationIds, categories]);
 
   // ============================================================================
+  // Story 27.5: Auto-save composition draft to localStorage
+  // ============================================================================
+
+  // AC-1: Auto-save on composition changes (debounced 500ms)
+  const draftSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (suppressDraftAutosaveRef.current) {
+      return;
+    }
+
+    // Skip this auto-save cycle if flagged (after explicit clear/load/save)
+    if (skipNextDraftSaveRef.current) {
+      skipNextDraftSaveRef.current = false;
+      return;
+    }
+
+    if (draftSaveTimerRef.current) clearTimeout(draftSaveTimerRef.current);
+    draftSaveTimerRef.current = setTimeout(() => {
+      saveCompositionDraft({
+        composition,
+        resolutionStrategy,
+        instanceCounter: instanceCounterRef.current,
+        savedPortfolioName: activePortfolioName,
+        timestamp: Date.now(),
+      });
+    }, 500);
+
+    return () => {
+      if (draftSaveTimerRef.current) clearTimeout(draftSaveTimerRef.current);
+    };
+  }, [composition, resolutionStrategy, activePortfolioName]);
+
+  // AC-2, AC-6: Restore draft on mount (only if composition is empty)
+  useEffect(() => {
+    // Skip if composition already has content (user already has work)
+    if (composition.length > 0) return;
+
+    const draft = loadCompositionDraft();
+    if (!draft) return;
+
+    // Restore draft and skip next auto-save (the restored state shouldn't be immediately re-saved)
+    skipNextDraftSaveRef.current = true;
+    setComposition(draft.composition);
+    setResolutionStrategy(
+      VALID_STRATEGIES.includes(draft.resolutionStrategy as ResolutionStrategy)
+        ? (draft.resolutionStrategy as ResolutionStrategy)
+        : "error"
+    );
+    instanceCounterRef.current = draft.instanceCounter;
+    setActivePortfolioName(null); // AC-6: drafts are unsaved
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- Restore draft only once on mount.
+  }, []);
+
+  // ============================================================================
   // Portfolio dialog hooks (Task 6.1 through 6.3)
   // ============================================================================
 
+  // Story 27.11: Unified portfolio dialog hook - save mode
   const {
     saveDialogOpen,
     portfolioSaveName,
@@ -531,7 +732,7 @@ export function PoliciesStageScreen() {
     handleSaveNameChange,
     setPortfolioSaveDesc,
     handleSave,
-  } = usePortfolioSaveDialog({
+  } = usePortfolioDialog("save", {
     templates,
     composition,
     resolutionStrategy,
@@ -541,14 +742,23 @@ export function PoliciesStageScreen() {
     updateScenarioPortfolioName: (name) => updateScenarioField("portfolioName", name),
     setSelectedPortfolioName,
     refetchPortfolios,
+    // Story 27.5: Clear draft after successful save (AC-4) and skip auto-save
+    onSavedSuccessfully: () => {
+      suppressDraftAutosaveRef.current = true;
+      skipNextDraftSaveRef.current = true;
+      saveCompositionDraft(null);
+    },
+    // Story 27.9: Pass categories for type-category naming
+    categories,
   });
 
+  // Story 27.11: Unified portfolio dialog hook - load mode
   const {
     loadDialogOpen,
     openLoadDialog,
     closeLoadDialog,
     handleLoad,
-  } = usePortfolioLoadDialog({
+  } = usePortfolioDialog("load", {
     templates,
     activeScenarioPortfolioName: activeScenario?.portfolioName,
     compositionLength: composition.length,
@@ -563,8 +773,15 @@ export function PoliciesStageScreen() {
     setInstanceCounter: (value: number) => {
       instanceCounterRef.current = value;
     },
+    // Story 27.5: Clear draft after successful load (AC-3) and skip auto-save
+    onLoadedSuccessfully: () => {
+      suppressDraftAutosaveRef.current = true;
+      skipNextDraftSaveRef.current = true;
+      saveCompositionDraft(null);
+    },
   });
 
+  // Story 27.11: Unified portfolio dialog hook - clone mode
   const {
     cloneDialogName,
     cloneNewName,
@@ -574,7 +791,7 @@ export function PoliciesStageScreen() {
     closeCloneDialog,
     handleCloneNameChange,
     handleClone,
-  } = usePortfolioCloneDialog({
+  } = usePortfolioDialog("clone", {
     portfolios,
     refetchPortfolios,
   });
@@ -583,7 +800,10 @@ export function PoliciesStageScreen() {
   // Portfolio Clear (Task 6.4)
   // ============================================================================
 
+  // Story 27.5: Clear draft on Clear button (AC-5)
   const handleClear = useCallback(() => {
+    suppressDraftAutosaveRef.current = true;
+    skipNextDraftSaveRef.current = true; // Prevent auto-save from recreating draft
     setComposition([]);
     setConflicts([]);
     setActivePortfolioName(null);
@@ -591,6 +811,7 @@ export function PoliciesStageScreen() {
     updateScenarioField("portfolioName", null);
     setSelectedPortfolioName(null);
     instanceCounterRef.current = 0; // Reset counter on clear
+    saveCompositionDraft(null); // Clear draft
   }, [updateScenarioField, setSelectedPortfolioName]);
 
   // ============================================================================
@@ -719,7 +940,10 @@ export function PoliciesStageScreen() {
               <span className="text-xs text-slate-500 shrink-0">Conflict strategy:</span>
               <Select
                 value={resolutionStrategy}
-                onChange={(e) => setResolutionStrategy(e.target.value as ResolutionStrategy)}
+                onChange={(e) => {
+                  markDraftDirty();
+                  setResolutionStrategy(e.target.value as ResolutionStrategy);
+                }}
                 className="text-xs h-8"
                 aria-label="Conflict resolution strategy"
               >
@@ -761,21 +985,25 @@ export function PoliciesStageScreen() {
         </div>
       ) : null}
 
-      {/* Story 25.6 / Task 3: Population column compatibility warning (non-blocking) */}
+      {/* Story 25.6 / Task 3: Population column compatibility warning (non-blocking)
+       * Story 27.14 AC-5: Multi-paragraph warning structure is intentional:
+       * heading improves scannability; separate <p> elements group problem statement
+       * from action item for screen-reader navigation; collapsing to a single <p>
+       * would reduce readability and break the action item grouping. */}
       {populationColumnWarnings.length > 0 ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 flex items-start gap-2">
-          <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-          <div className="text-xs text-amber-700">
-            <p className="font-semibold mb-1">Population data compatibility warning</p>
-            <p>
-              Some policies require population columns that may not be available in the selected population:{" "}
-              <strong>{populationColumnWarnings.join(", ")}</strong>.
-            </p>
-            <p className="mt-1">
-              Validate data compatibility in Stage 2 (Population) before running.
-            </p>
+            <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+            <div className="text-xs text-amber-700">
+              <p className="font-semibold mb-1">Population data compatibility warning</p>
+              <p>
+                Some policies require population columns that may not be available in the selected population:{" "}
+                <strong>{populationColumnWarnings.join(", ")}</strong>.
+              </p>
+              <p className="mt-1">
+                Validate data compatibility in Stage 2 (Population) before running.
+              </p>
+            </div>
           </div>
-        </div>
       ) : null}
 
       {/* Main two-column layout (AC-1) - Story 22.2: 50/50 equal split */}
@@ -798,8 +1026,22 @@ export function PoliciesStageScreen() {
           <h2 className="text-sm font-semibold text-slate-900 mb-2">Policy Set Composition</h2>
           {composition.length === 0 ? (
             <div className="border border-slate-200 bg-slate-50 p-6 text-center mt-2">
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-slate-500 mb-3">
                 Add at least 1 policy template to compose a policy set.
+              </p>
+              {/* Story 27.6: "Try the demo" affordance on empty Policies stage */}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={loadFullDemo}
+                className="gap-2"
+              >
+                <Play className="h-4 w-4" />
+                Try the demo
+              </Button>
+              <p className="text-xs text-slate-400 mt-2">
+                Load a pre-filled Carbon Tax + Dividend scenario
               </p>
             </div>
           ) : (
@@ -845,7 +1087,7 @@ export function PoliciesStageScreen() {
                   <span className="text-slate-400 truncate flex-1">{p.description}</span>
                 ) : null}
                 {activeScenario?.portfolioName === p.name ? (
-                  <Badge variant="default" className="text-xs shrink-0 bg-blue-100 text-blue-700">
+                  <Badge variant="secondary" className="text-xs shrink-0">
                     active
                   </Badge>
                 ) : null}

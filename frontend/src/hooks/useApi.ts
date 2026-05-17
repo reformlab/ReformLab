@@ -180,7 +180,8 @@ export function useTemplateDetails(templateId: string) {
   return { parameters, defaultValues, loading, error, refetch: fetch };
 }
 
-function mapTemplateParameters(detail: TemplateDetailResponse): Parameter[] {
+/** Map template detail response to Parameter[] with group field — exported for template policy scaffolding (Story 27.4). */
+export function mapTemplateParameters(detail: TemplateDetailResponse): Parameter[] {
   const params: Parameter[] = [];
   const defaults = detail.default_policy;
 
