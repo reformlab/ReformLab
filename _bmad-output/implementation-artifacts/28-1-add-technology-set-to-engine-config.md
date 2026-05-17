@@ -48,31 +48,268 @@ so that future stories (population schema, choice writeback, wizard UI, multi-pe
 
 ## Dev Notes
 
-- **No `ComputationAdapter` change** in this story (or in EPIC-28 at all). The spike's Section 5 confirms the adapter is invariant.
-- **No OpenFisca change** in this story.
-- The canonical-set API intentionally returns the **fully-resolved** snapshot, not a reference. This is the same pattern `RunManifest.policy` uses (snapshot, not reference) and it is mandatory for reproducibility.
-- The version string format `fr-default-{date}` is human traceability only. The snapshot is the source of truth. Bumping the version without changing the snapshot is meaningless.
-- Story 28.4 (wizard) consumes the canonical-set API; do not block 28.4 on UX wireframes — the API contract is sufficient.
+### Critical Architecture Constraints (Source: project-context.md)
+
+**Python Language Rules** (MUST follow — no exceptions):
+- **Every file starts with** `from __future__ import annotations` — this is non-negotiable
+- **Use `if TYPE_CHECKING:` guards** for imports only needed for annotations or would create circular dependencies
+- **Frozen dataclasses are the default** — all domain types use `@dataclass(frozen=True)`; mutate via `dataclasses.replace()`
+- **Protocols, not ABCs** — interfaces are `Protocol` + `@runtime_checkable`; structural (duck) typing only
+- **Union syntax** — use `X | None` not `Optional[X]`; use `dict[str, int]` not `Dict[str, int]`
+- **Subsystem-specific exceptions** — each module defines its own error hierarchy; never raise bare `Exception`
+
+**API Error Pattern** (MUST follow):
+```python
+raise HTTPException(
+    status_code=422,
+    detail={
+        "what": "Invalid technology_set configuration",
+        "why": f"Unknown domain: {domain}",
+        "fix": f"Use one of: {', '.join(VALID_DOMAINS)}",
+    },
+)
+```
+
+**Critical Don't-Miss Rules**:
+- **Never import OpenFisca outside adapter modules** — absolute architectural boundary
+- **Determinism is non-negotiable** — every run must be reproducible; seeds explicit and logged
+- **Data contracts fail loudly** — validation at ingestion boundaries is blocking
+- **Assumption transparency** — every run produces a manifest (JSON) with assumptions, versions, seeds
+
+### Existing Code Patterns (Reference for Implementation)
+
+**Backend Frozen Dataclass Pattern** (from `src/reformlab/discrete_choice/types.py:24-38`):
+```python
+@dataclass(frozen=True)
+class Alternative:
+    """A single alternative in a decision domain."""
+    id: str
+    name: str
+    attributes: dict[str, Any] = field(default_factory=dict)
+```
+
+**ChoiceSet Pattern** (from `src/reformlab/discrete_choice/types.py:40-76`):
+```python
+@dataclass(frozen=True)
+class ChoiceSet:
+    """An ordered set of alternatives for a decision domain."""
+    alternatives: tuple[Alternative, ...]
+
+    def __post_init__(self) -> None:
+        # Validates uniqueness and non-empty
+        # MUST follow similar pattern for DomainTechnologySet
+```
+
+**Domain Config Pattern** (from `src/reformlab/discrete_choice/vehicle.py:52-91`):
+```python
+@dataclass(frozen=True)
+class VehicleDomainConfig:
+    alternatives: tuple[Alternative, ...]
+    cost_column: str = "total_vehicle_cost"
+    entity_key: str = "menage"
+    taste_parameters: TasteParameters | None = None
+```
+
+**Frontend EngineConfig Pattern** (from `frontend/src/types/workspace.ts`):
+```typescript
+export interface EngineConfig {
+  startYear: number;
+  endYear: number;
+  seed?: number;
+  investmentDecisionsEnabled: boolean | null;
+  logitModel: "multinomial_logit" | "nested_logit" | "mixed_logit" | null;
+  discountRate: number;
+  // ADD: technologySet?: TechnologySet | null;
+}
+```
+
+**API Route Pattern** (from `src/reformlab/server/routes/categories.py`):
+```python
+router = APIRouter()
+
+@router.get("", response_model=list[CategoryItem])
+async def list_categories() -> list[CategoryItem]:
+    """Return all policy categories with metadata."""
+    # Returns canonical data as Pydantic models
+```
+
+**Pydantic Model Pattern** (from `src/reformlab/server/models.py:196-209`):
+```python
+class CategoryItem(BaseModel):
+    """Policy category metadata — Story 25.1, AC-1."""
+    id: str
+    label: str
+    columns: list[str]
+    compatible_types: list[str]
+    formula_explanation: str
+    description: str
+```
+
+### Testing Standards Summary
+
+**Backend Testing** (from project-context.md):
+- Mirror source structure: `tests/discrete_choice/test_technology_set.py`
+- Class-based test grouping: `TestTechnologySetValidation`, `TestTechnologySetAPI`
+- Fixtures in `conftest.py` — build PyArrow tables inline
+- Direct assertions: `assert result == expected`
+- Use `pytest.raises(DiscreteChoiceError, match="...")` for errors
+- Reference story/AC in docstrings: `# Story 28.1 / AC-7`
+
+**Frontend Testing** (from MEMORY.md):
+- Vitest with `vi.mock("@/api/technology-sets")` for API mocks
+- `ResizeObserver` polyfill needed for Recharts tests
+- Test localStorage round-trip with `beforeEach` cleanup
+
+**Quality Gates** (must all pass before marking done):
+```bash
+uv run ruff check src/ tests/
+uv run mypy src/
+npm run typecheck  # in frontend/
+npm run lint       # in frontend/
+uv run pytest tests/
+npm test           # in frontend/
+```
+
+### Spike ADR Specifications (Source: Story 28.0 output)
+
+The architect spike produced an ADR at `_bmad-output/planning-artifacts/spike-investment-decisions-technology-set.md` with:
+
+**Section 2: Backend TechnologySet Schema**:
+```python
+@dataclass(frozen=True)
+class TechnologySet:
+    version: str  # e.g., "fr-default-2026-04-26"
+    domains: dict[str, DomainTechnologySet]
+
+    def to_choice_set(self, domain: str) -> ChoiceSet:
+        """Materialize ChoiceSet for domain from stored alternatives."""
+```
+
+**Section 2.1: Frontend TypeScript Types**:
+```typescript
+type DecisionDomainKey = "heating" | "vehicle";
+
+interface TechnologyAlternative {
+  id: string;
+  name: string;
+}
+
+interface DomainTechnologySet {
+  domain: DecisionDomainKey;
+  alternatives: TechnologyAlternative[];
+  referenceAlternativeId: string;
+}
+
+interface TechnologySet {
+  version: string;
+  domains: Record<DecisionDomainKey, DomainTechnologySet>;
+}
+```
+
+**Section 5: Adapter Invariance** — No `ComputationAdapter` change in this story
+
+**Section 6: Error Handling** — Use `{what, why, fix}` pattern for all errors
+
+**Section 7: Backward Compatibility** — Scenarios without `technologySet` use legacy defaults
 
 ### Project Structure Notes
 
-- New files: `src/reformlab/discrete_choice/technology_set.py`, `src/reformlab/server/routes/technology_sets.py` (or co-located), `tests/server/test_technology_set_roundtrip.py`, `tests/discrete_choice/test_technology_set.py`
-- Modified: `frontend/src/types/workspace.ts`, `frontend/src/hooks/useScenarioPersistence.ts`, possibly `src/reformlab/discrete_choice/__init__.py`
-- No deletions
+**New Files** (to create):
+- `src/reformlab/discrete_choice/technology_set.py` — Backend frozen dataclasses
+- `src/reformlab/server/routes/technology_sets.py` — Canonical-set API endpoint
+- `tests/server/test_technology_set_roundtrip.py` — Contract round-trip tests
+- `tests/discrete_choice/test_technology_set.py` — Unit tests for value objects
+
+**Modified Files**:
+- `frontend/src/types/workspace.ts` — Add `TechnologySet` types and extend `EngineConfig`
+- `frontend/src/hooks/useScenarioPersistence.ts` — Serialize/deserialize `technologySet`
+- `src/reformlab/discrete_choice/__init__.py` — Re-export new types (if public API)
+- `src/reformlab/orchestrator/runner.py` — Short-circuit when disabled (AC-5)
+
+**No Deletions** — All changes are additive
+
+### Backward Compatibility Strategy
+
+Per spike ADR Section 7:
+1. **Scenarios without `technologySet`** → Use legacy default domain configs
+2. **Populations without incumbent columns** → Graceful degradation (Story 28.2)
+3. **Empty `technologySet`** → Treated as "use all alternatives"
+4. **Disabled decisions** → No validation, no writeback, short-circuit in orchestrator
+
+### Implementation Sequence Recommendation
+
+1. **Start with backend types** — `technology_set.py` with frozen dataclasses
+2. **Add canonical-set API** — Simple GET endpoint returning default sets
+3. **Add frontend types** — TypeScript interfaces matching backend schema
+4. **Implement persistence** — localStorage round-trip in useScenarioPersistence
+5. **Add orchestrator short-circuit** — Skip when decisions disabled
+6. **Write contract test** — TS↔Python parity validation
+7. **Add migration path** — Legacy default fallback for old scenarios
+
+### Dependencies Between Stories
+
+- **Story 28.0** (architect spike) — DONE — provides ADR with schema definitions
+- **Story 28.1** (this story) — IN PROGRESS — EngineConfig + API + persistence
+- **Story 28.2** (population schema) — BACKLOG — extends PopulationData with incumbents
+- **Story 28.3** (writeback) — BACKLOG — wires DiscreteChoiceStep outputs to population
+- **Story 28.4** (wizard) — BACKLOG — consumes canonical-set API from this story
+- **Story 28.5** (regression) — BACKLOG — multi-period decision runs
 
 ### References
 
-- [Source: _bmad-output/planning-artifacts/spike-investment-decisions-technology-set-2026-04-26.md#Section-2]
-- [Source: _bmad-output/planning-artifacts/spike-investment-decisions-technology-set-2026-04-26.md#Section-9] (sized story breakdown)
-- [Source: src/reformlab/discrete_choice/types.py] (existing Alternative, ChoiceSet)
-- [Source: src/reformlab/governance/manifest.py:154] (manifest extension target — covered by 28.3, but 28.1 must keep the contract compatible)
+- [Source: `_bmad-output/planning-artifacts/spike-investment-decisions-technology-set.md`](../planning-artifacts/spike-investment-decisions-technology-set.md) — ADR with complete schema definitions
+- [Source: `src/reformlab/discrete_choice/types.py`](../../src/reformlab/discrete_choice/types.py) — Alternative, ChoiceSet patterns
+- [Source: `src/reformlab/discrete_choice/vehicle.py`](../../src/reformlab/discrete_choice/vehicle.py) — VehicleDomainConfig pattern
+- [Source: `src/reformlab/server/models.py`](../../src/reformlab/server/models.py) — Pydantic v2 patterns
+- [Source: `frontend/src/types/workspace.ts`](../../frontend/src/types/workspace.ts) — EngineConfig structure
+- [Source: `_bmad-output/project-context.md`](../project-context.md) — Project architecture rules
+- [Source: `.claude/projects/-Users-lucas-Workspace-reformlab/memory/MEMORY.md`](../../../../.claude/projects/-Users-lucas-Workspace-reformlab/memory/MEMORY.md) — Development conventions
 
 ## Dev Agent Record
 
 ### Agent Model Used
 
+Claude Opus 4.6 (claude-opus-4-6)
+
 ### Debug Log References
+
+None — story creation phase only.
 
 ### Completion Notes List
 
+- Story 28.1 has been enhanced with comprehensive developer context from project-context.md, MEMORY.md, and existing code analysis
+- All architecture patterns, existing code references, and implementation standards have been documented
+- The story includes detailed ACs with specific file locations and code patterns
+- Backend and frontend testing standards are specified with quality gate commands
+- Spike ADR references provide complete schema definitions for implementation
+- Backward compatibility strategy is clearly defined
+- Implementation sequence recommendation provides logical development order
+- Story status is `ready-for-dev` — awaiting developer agent to begin implementation
+
 ### File List
+
+**Story File**:
+- `_bmad-output/implementation-artifacts/28-1-add-technology-set-to-engine-config.md` (enhanced with comprehensive context)
+
+**New Files to Create** (per implementation):
+- `src/reformlab/discrete_choice/technology_set.py` — Backend frozen dataclasses
+- `src/reformlab/server/routes/technology_sets.py` — Canonical-set API endpoint
+- `tests/server/test_technology_set_roundtrip.py` — Contract round-trip tests
+- `tests/discrete_choice/test_technology_set.py` — Unit tests for value objects
+
+**Files to Modify** (per implementation):
+- `frontend/src/types/workspace.ts` — Add `TechnologySet` types and extend `EngineConfig`
+- `frontend/src/hooks/useScenarioPersistence.ts` — Serialize/deserialize `technologySet`
+- `src/reformlab/discrete_choice/__init__.py` — Re-export new types
+- `src/reformlab/orchestrator/runner.py` — Short-circuit when decisions disabled
+
+**Reference Files Analyzed**:
+- `src/reformlab/discrete_choice/types.py` — Alternative, ChoiceSet patterns
+- `src/reformlab/discrete_choice/vehicle.py` — VehicleDomainConfig pattern
+- `src/reformlab/discrete_choice/heating.py` — Heating domain patterns
+- `src/reformlab/discrete_choice/step.py` — DiscreteChoiceStep orchestrator integration
+- `src/reformlab/server/models.py` — Pydantic v2 API patterns
+- `src/reformlab/server/routes/categories.py` — Simple GET endpoint pattern
+- `frontend/src/types/workspace.ts` — Frontend workspace types
+- `_bmad-output/project-context.md` — Project architecture rules
+- `.claude/projects/-Users-lucas-Workspace-reformlab/memory/MEMORY.md` — Development conventions
