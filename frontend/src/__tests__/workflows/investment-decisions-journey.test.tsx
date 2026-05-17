@@ -338,7 +338,8 @@ describe("Investment Decisions Analyst Journey — Story 28.5 / AC-10", () => {
     render(<InvestmentDecisionsJourney />);
 
     // Trigger technology set fetch
-    await userEvent.setup().click(
+    const user = userEvent.setup();
+    await user.click(
       screen.getByRole("button", { name: /use default french set/i })
     );
 
@@ -367,8 +368,10 @@ describe("Investment Decisions Analyst Journey — Story 28.5 / AC-10", () => {
 
 /**
  * Helper function for userEvent (compatibility layer).
+ *
+ * Note: Named userEventHelper to avoid shadowing the imported userEvent from @testing-library/user-event.
  */
-async function userEvent() {
+async function userEventHelper() {
   return {
     click: async (element: HTMLElement) => {
       element.click();

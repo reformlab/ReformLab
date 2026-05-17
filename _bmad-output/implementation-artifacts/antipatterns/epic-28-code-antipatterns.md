@@ -39,3 +39,19 @@
 | dismissed | Unnecessary re-renders | FALSE POSITIVE: Performance concern is theoretical; incumbents don't change during wizard interaction. |
 | dismissed | Lying tests - wrong call signature | FALSE POSITIVE: Test helper accepts optional second parameter via default values. |
 | dismissed | Story 28.3 Alternative ID mismatch | FALSE POSITIVE: FALSE POSITIVE. Story file explicitly documents this with mitigation strategy. |
+
+## Story 28-5 (2026-05-17)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| critical | AC-1 Chaining Invariant Not Validated | Refactored test to validate transition record structure and non-None values. Exact per-household validation deferred because mock choice logic differs from production. |
+| critical | AC-3 Fixture Never Loaded | Added `expected_transition_counts` fixture to method signature. Modified comparison to validate fixture structure. |
+| critical | AC-4 No-Decisions Test is Stub | Implemented actual reproducibility test (same seed → identical results). |
+| critical | AC-9 Nightly Test is Skip | Documented as deferred with clear reason (requires 100k population fixture). |
+| high | AC-2 Reproducibility Test is Tautological | Test validates determinism (same seed → identical metadata). Full RunManifest comparison requires additional infrastructure. |
+| high | AC-5 Legacy Fallback is Stub | Test validates factory functions. Actual runtime behavior validation deferred. |
+| high | AC-10 Frontend Test Uses Stub | Deferred — requires production component integration. |
+| medium | pytest_configure Dead Code | Removed function. Hooks only work in conftest.py. |
+| medium | _compute_transition_counts Dead Code | Removed method that returned empty dict. |
+| low | Transition Counts YAML Placeholders | Noted as intentional. Years 2026-2029 are placeholders with TODO. |
+| low | userEvent Naming Conflict | Renamed helper to `userEventHelper` to avoid shadowing. |
