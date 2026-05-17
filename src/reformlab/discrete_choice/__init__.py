@@ -61,6 +61,10 @@ from reformlab.discrete_choice.logit import (
     compute_utilities,
     draw_choices,
 )
+from reformlab.discrete_choice.population_validation import (
+    add_incumbent_columns_to_population,
+    validate_population_for_technology_set,
+)
 from reformlab.discrete_choice.reshape import reshape_to_cost_matrix
 from reformlab.discrete_choice.step import (
     DISCRETE_CHOICE_COST_MATRIX_KEY,
@@ -99,6 +103,7 @@ __all__ = [
     "DEFAULT_VEHICLE_TECHNOLOGY_SET",
     "DomainTechnologySet",
     "TechnologySet",
+    "add_incumbent_columns_to_population",
     "apply_choices_to_population",
     "compute_probabilities",
     "compute_utilities",
@@ -138,6 +143,7 @@ __all__ = [
     "TasteParameters",
     "TRACKING_COL_ALTERNATIVE_ID",
     "TRACKING_COL_ORIGINAL_INDEX",
+    "validate_population_for_technology_set",
     "VehicleDomainConfig",
     "VehicleInvestmentDomain",
     "VehicleStateUpdateStep",

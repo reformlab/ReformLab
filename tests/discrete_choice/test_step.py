@@ -422,3 +422,175 @@ class TestDiscreteChoiceStepLogging:
         assert any("event=step_complete" in m for m in info_messages)
         assert any("n_households=3" in m for m in info_messages)
         assert any("n_alternatives=3" in m for m in info_messages)
+
+
+class TestDiscreteChoiceStepTechnologySet:
+    """Story 28.2 / AC-1, AC-8: Integration tests for technology_set parameter."""
+
+    def test_step_with_technology_set_validates_incumbents(
+        self,
+        mock_adapter: MockAdapter,
+        mock_domain: MockDomain,
+        sample_policy: PolicyConfig,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Step with technology_set validates incumbent columns and logs warnings."""
+        from reformlab.discrete_choice import DEFAULT_TECHNOLOGY_SET
+
+        # Population without incumbent columns (but with required columns for adapter)
+        population = PopulationData(
+            tables={
+                "menage": pa.table({
+                    "household_id": [1, 2, 3],
+                    "income": [30000.0, 45000.0, 60000.0],
+                    "fuel_cost": [0.15, 0.18, 0.12],
+                })
+            },
+            metadata={},
+        )
+
+        step = DiscreteChoiceStep(
+            adapter=mock_adapter,
+            domain=mock_domain,
+            policy=sample_policy,
+            technology_set=DEFAULT_TECHNOLOGY_SET,
+        )
+        state = YearState(year=2025, data={"population_data": population})
+
+        with caplog.at_level(logging.WARNING, logger="reformlab.discrete_choice.step"):
+            result = step.execute(2025, state)
+
+        # Should log warnings for missing incumbent columns
+        warning_messages = [r.message for r in caplog.records if r.levelno == logging.WARNING]
+        assert any("incumbent_heating" in m for m in warning_messages)
+        assert any("incumbent_vehicle" in m for m in warning_messages)
+        assert any("event=population_validation" in m for m in warning_messages)
+
+        # Step should still complete successfully
+        assert DISCRETE_CHOICE_COST_MATRIX_KEY in result.data
+
+    def test_step_without_technology_set_skips_validation(
+        self,
+        mock_adapter: MockAdapter,
+        mock_domain: MockDomain,
+        sample_policy: PolicyConfig,
+        sample_population: PopulationData,
+    ) -> None:
+        """Step without technology_set skips validation (backward compatible)."""
+        step = DiscreteChoiceStep(
+            adapter=mock_adapter,
+            domain=mock_domain,
+            policy=sample_policy,
+            technology_set=None,  # Explicitly None
+        )
+        state = YearState(year=2025, data={"population_data": sample_population})
+
+        # Should not raise even if population has no incumbent columns
+        result = step.execute(2025, state)
+        assert DISCRETE_CHOICE_COST_MATRIX_KEY in result.data
+
+    def test_step_with_incumbents_validates_successfully(
+        self,
+        mock_adapter: MockAdapter,
+        mock_domain: MockDomain,
+        sample_policy: PolicyConfig,
+    ) -> None:
+        """Step with valid incumbent columns passes validation without warnings."""
+        from reformlab.discrete_choice import DEFAULT_TECHNOLOGY_SET
+
+        # Population with valid incumbent columns (plus required columns for adapter)
+        population = PopulationData(
+            tables={
+                "menage": pa.table({
+                    "household_id": [1, 2, 3],
+                    "income": [30000.0, 45000.0, 60000.0],
+                    "fuel_cost": [0.15, 0.18, 0.12],
+                    "incumbent_heating": pa.array(
+                        ["condensing_boiler", "heat_pump_air", "keep_current"],
+                        type=pa.dictionary(pa.int32(), pa.utf8()),
+                    ),
+                    "incumbent_vehicle": pa.array(
+                        ["diesel", "ev", "keep_current"],
+                        type=pa.dictionary(pa.int32(), pa.utf8()),
+                    ),
+                })
+            },
+            metadata={},
+        )
+
+        step = DiscreteChoiceStep(
+            adapter=mock_adapter,
+            domain=mock_domain,
+            policy=sample_policy,
+            technology_set=DEFAULT_TECHNOLOGY_SET,
+        )
+        state = YearState(year=2025, data={"population_data": population})
+
+        # Should complete without warnings
+        result = step.execute(2025, state)
+        assert DISCRETE_CHOICE_COST_MATRIX_KEY in result.data
+
+    def test_step_with_unknown_incumbent_ids_raises(
+        self,
+        mock_adapter: MockAdapter,
+        mock_domain: MockDomain,
+        sample_policy: PolicyConfig,
+    ) -> None:
+        """Step with unknown incumbent IDs raises DiscreteChoiceError."""
+        from reformlab.discrete_choice import DEFAULT_TECHNOLOGY_SET
+
+        # Population with unknown incumbent ID (plus required columns for adapter)
+        population = PopulationData(
+            tables={
+                "menage": pa.table({
+                    "household_id": [1, 2],
+                    "income": [30000.0, 45000.0],
+                    "fuel_cost": [0.15, 0.18],
+                    "incumbent_heating": pa.array(
+                        ["condensing_boiler", "unknown_tech"],
+                        type=pa.dictionary(pa.int32(), pa.utf8()),
+                    ),
+                })
+            },
+            metadata={},
+        )
+
+        step = DiscreteChoiceStep(
+            adapter=mock_adapter,
+            domain=mock_domain,
+            policy=sample_policy,
+            technology_set=DEFAULT_TECHNOLOGY_SET,
+        )
+        state = YearState(year=2025, data={"population_data": population})
+
+        # Should raise DiscreteChoiceError
+        with pytest.raises(DiscreteChoiceError, match="unknown incumbent technology IDs"):
+            step.execute(2025, state)
+
+    def test_step_short_circuits_when_decisions_disabled(
+        self,
+        mock_adapter: MockAdapter,
+        mock_domain: MockDomain,
+        sample_policy: PolicyConfig,
+        sample_population: PopulationData,
+    ) -> None:
+        """Step short-circuits when investment_decisions_enabled=false (Story 28.2 / AC-8)."""
+        from reformlab.discrete_choice import DEFAULT_TECHNOLOGY_SET
+
+        step = DiscreteChoiceStep(
+            adapter=mock_adapter,
+            domain=mock_domain,
+            policy=sample_policy,
+            technology_set=DEFAULT_TECHNOLOGY_SET,
+        )
+        state = YearState(
+            year=2025,
+            data={"population_data": sample_population},
+            metadata={"investment_decisions_enabled": False},
+        )
+
+        result = step.execute(2025, state)
+
+        # Should return state unchanged, no validation performed
+        assert result == state
+        assert DISCRETE_CHOICE_COST_MATRIX_KEY not in result.data

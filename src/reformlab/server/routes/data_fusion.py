@@ -696,6 +696,21 @@ async def generate_population(request: GeneratePopulationRequest) -> GeneratePop
             ),
         ) from exc
 
+    # Story 28.2 / AC-7: Add incumbent columns to data-fusion output
+    from reformlab.computation.types import PopulationData
+    from reformlab.discrete_choice import add_incumbent_columns_to_population
+
+    # Wrap result table in PopulationData and add incumbent columns
+    population = PopulationData.from_table(result.table, entity_type="menage")
+    population_with_incumbents = add_incumbent_columns_to_population(population)
+    result_table = population_with_incumbents.primary_table
+
+    logger.debug(
+        "event=incumbent_columns_added rows=%d columns=%d",
+        result_table.num_rows,
+        result_table.num_columns,
+    )
+
     # Serialize step log
     step_log = [
         StepLogItem(
@@ -723,7 +738,7 @@ async def generate_population(request: GeneratePopulationRequest) -> GeneratePop
     ]
 
     # Build population summary from the result table
-    table = result.table
+    table = result_table  # Story 28.2: Use table with incumbent columns
     summary = PopulationSummary(
         record_count=table.num_rows,
         column_count=table.num_columns,

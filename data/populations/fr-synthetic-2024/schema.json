@@ -6,6 +6,8 @@
     {"name": "income", "type": "double", "required": true},
     {"name": "energy_transport_fuel", "type": "double", "required": true},
     {"name": "energy_heating_fuel", "type": "double", "required": true},
-    {"name": "energy_natural_gas", "type": "double", "required": true}
+    {"name": "energy_natural_gas", "type": "double", "required": true},
+    {"name": "incumbent_heating", "type": "dictionary(int32, utf8)", "required": true, "description": "Incumbent heating technology ID (Story 28.2)"},
+    {"name": "incumbent_vehicle", "type": "dictionary(int32, utf8)", "required": true, "description": "Incumbent vehicle technology ID (Story 28.2)"}
   ]
 }
