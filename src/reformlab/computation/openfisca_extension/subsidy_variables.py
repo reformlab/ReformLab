@@ -52,7 +52,7 @@ def _montant_subvention_formula(
         income = menage("revenu_disponible", period)
     except Exception:
         # If revenu_disponible not available, use zero (no subsidy)
-        income = np.zeros(len(menage.household_index), dtype=float)
+        income = np.zeros(menage.count, dtype=float)
 
     # Income cap for eligibility (EUR)
     income_cap = 20000.0
@@ -80,7 +80,7 @@ def _eligible_subvention_formula(
         income = menage("revenu_disponible", period)
     except Exception:
         # If revenu_disponible not available, no one is eligible
-        return np.zeros(len(menage.household_index), dtype=bool)
+        return np.zeros(menage.count, dtype=bool)
 
     # Income cap for eligibility (EUR)
     income_cap = 20000.0

@@ -1,0 +1,120 @@
+record_id: bcb24c7b-237a-4425-aac7-d991ca45af56
+created_at: '2026-05-18T10:32:13.140644+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 29
+  story_num: '1'
+  title: Story 29.1
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: sonnet
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-05-18T10:26:35.873071Z'
+  end_time: '2026-05-18T10:31:09.815071Z'
+  duration_ms: 273942
+  input_tokens: 0
+  output_tokens: 3109
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 12438
+  heading_count: 20
+  list_depth_max: 2
+  code_block_count: 6
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: **10.6**'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes & Readability
+  - ⚡ Performance & Scalability
+  - 🐛 Correctness & Safety
+  - Bug 1 — `malus_ecologique` is permanently broken at runtime
+  - Bug 2 — Exception fallback handlers reference non-existent attribute
+  - 'AC #5 — Formula behavior not actually tested (task marked `[x]` is a lie)'
+  - 'AC #6 — Manifest update deferred (tasks unchecked)'
+  - 🔧 Maintainability Issues
+  - 🛠️ Suggested Fixes
+  - 1. Fix `menage.household_index` — use correct OpenFisca API
+  - 2. Register `reformlab_malus_emissions` as an input Variable (or use `vehicle_emissions_gkm`)
+  - 'In vehicle_variables.py, add:'
+  - 'In extension.py load_extension(), add to variables_to_add:'
+  - 3. Fix the lying test assertion
+  - 4. Re-raise as `CompatibilityError` in `_load_extension`
+  - 5. Remove duplicate `_EXTENSION_VERSION`, import from source
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: cb8bc0233def
+findings:
+  total_count: 9
+  by_severity:
+    critical: 2
+    major: 5
+    minor: 2
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 5
+    completeness: 3
+    clarity: 1
+    testability: 0
+  has_fix_count: 7
+  has_location_count: 9
+  has_evidence_count: 4
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: false
+  uses_conditionals: true
+  uncertainty_phrases_count: 0
+  confidence_phrases_count: 3
+linguistic:
+  avg_sentence_length: 24.8
+  vocabulary_richness: 0.37298387096774194
+  flesch_reading_ease: 4.5829964788732696
+  vague_terms_count: 1
+  formality_score: 0.72
+  sentiment: negative
+quality:
+  actionable_ratio: 0.78
+  specificity_score: 0.93
+  evidence_quality: 0.44
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 8
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

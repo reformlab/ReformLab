@@ -48,7 +48,7 @@ def _aide_energie_formula(
         return menage("cheque_energie", period)
     except Exception as exc:
         # Log error but return zeros to avoid breaking the simulation
-        household_count = len(menage.household_index)
+        household_count = menage.count
         logger.warning(
             "event=cheque_energie_fallback error=%s households=%d",
             exc,

@@ -154,7 +154,10 @@ class TestIntegrationWithAdapter:
 
         # Verify adapter is initialized without error
         assert adapter is not None
-        assert adapter.version() != "unknown" or adapter.version() == "unknown"
+        # Verify custom variables are registered in the TBS
+        tbs = adapter._get_tax_benefit_system()
+        assert "montant_subvention" in tbs.variables
+        assert "eligible_subvention" in tbs.variables
 
     def test_custom_variables_in_live_computation(self):
         """Test that custom variables produce values in live computation."""

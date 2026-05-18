@@ -41,16 +41,24 @@ from reformlab.computation.types import ComputationResult, PolicyConfig, Populat
 
 logger = logging.getLogger(__name__)
 
-# Story 29.1: Extension metadata for manifest tracking
-# Loaded lazily when extension is actually used
-_EXTENSION_NAME = "reformlab-openfisca-extend-fr"
-_EXTENSION_VERSION = "1.0.0"
-_EXTENSION_VARIABLES = (
-    "montant_subvention",
-    "eligible_subvention",
-    "malus_ecologique",
-    "aide_energie",
-)
+# Story 29.1: Extension metadata imported from extension module
+# Import at module level is safe - extension handles OpenFisca import gracefully
+try:
+    from reformlab.computation.openfisca_extension.extension import (
+        CUSTOM_VARIABLES as _EXTENSION_VARIABLES,
+        EXTENSION_NAME as _EXTENSION_NAME,
+        EXTENSION_VERSION as _EXTENSION_VERSION,
+    )
+except ImportError:
+    # Extension not available - define fallback constants
+    _EXTENSION_NAME = "reformlab-openfisca-extend-fr"
+    _EXTENSION_VERSION = "unknown"
+    _EXTENSION_VARIABLES = (
+        "montant_subvention",
+        "eligible_subvention",
+        "malus_ecologique",
+        "aide_energie",
+    )
 
 # Story 9.3: Valid OpenFisca DateUnit periodicity values (StrEnum).
 # Sub-yearly periodicities use calculate_add(); year/eternity use calculate().

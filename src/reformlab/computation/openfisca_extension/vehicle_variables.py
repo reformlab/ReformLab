@@ -47,7 +47,7 @@ def _malus_ecologique_formula(
         emissions = menage("reformlab_malus_emissions", period)
     except Exception:
         # If emissions not available, no malus applies
-        return np.zeros(len(menage.household_index), dtype=float)
+        return np.zeros(menage.count, dtype=float)
 
     # Emission threshold (gCO2/km)
     threshold = 118.0

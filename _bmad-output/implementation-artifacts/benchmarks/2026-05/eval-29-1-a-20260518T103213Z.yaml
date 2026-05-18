@@ -1,0 +1,115 @@
+record_id: 851a9c0b-2e64-46c9-84ca-d9979f00620e
+created_at: '2026-05-18T10:32:13.157628+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 29
+  story_num: '1'
+  title: Story 29.1
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-05-18T10:26:35.873071Z'
+  end_time: '2026-05-18T10:30:27.276071Z'
+  duration_ms: 231403
+  input_tokens: 0
+  output_tokens: 5656
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 22627
+  heading_count: 15
+  list_depth_max: 2
+  code_block_count: 5
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: 17.0'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes & Readability
+  - ⚡ Performance & Scalability
+  - 🐛 Correctness & Safety
+  - 🎭 Lying Tests
+  - 🔧 Maintainability Issues
+  - 🛠️ Suggested Fixes
+  - 1. Fix Silent Extension Loading Failure
+  - 2. Add Boundary Condition Tests
+  - 3. Fix Lazy Import Violation
+  - 4. Make Extension Country-Agnostic
+  - 5. Implement Manifest Extension Tracking
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: cb8bc0233def
+findings:
+  total_count: 24
+  by_severity:
+    critical: 4
+    major: 9
+    minor: 11
+    nit: 0
+  by_category:
+    security: 0
+    performance: 1
+    correctness: 9
+    completeness: 7
+    clarity: 5
+    testability: 5
+  has_fix_count: 20
+  has_location_count: 22
+  has_evidence_count: 10
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: false
+  uses_conditionals: true
+  uncertainty_phrases_count: 5
+  confidence_phrases_count: 3
+linguistic:
+  avg_sentence_length: 62.65
+  vocabulary_richness: 0.28292098962490025
+  flesch_reading_ease: -1.165874307169645
+  vague_terms_count: 2
+  formality_score: 0.7
+  sentiment: positive
+quality:
+  actionable_ratio: 0.83
+  specificity_score: 0.92
+  evidence_quality: 0.42
+  follows_template: true
+  internal_consistency: 0.9
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 8
+  lines_of_code_reviewed: null
+  test_coverage_delta: null
