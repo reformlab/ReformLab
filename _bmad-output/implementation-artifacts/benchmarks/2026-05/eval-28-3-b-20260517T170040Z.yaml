@@ -1,0 +1,126 @@
+record_id: 40e1cf61-3c7d-4296-bf35-8074a5b8c996
+created_at: '2026-05-17T17:00:40.548699+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 28
+  story_num: '3'
+  title: Story 28.3
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: sonnet
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-05-17T16:55:34.524356Z'
+  end_time: '2026-05-17T17:00:16.089356Z'
+  duration_ms: 281565
+  input_tokens: 0
+  output_tokens: 3356
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 13427
+  heading_count: 26
+  list_depth_max: 3
+  code_block_count: 11
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: **10.2**'
+  - 🏛️ Architectural Sins
+  - OCP Violation — `_build_decision_columns` dual return type
+  - 🐍 Pythonic Crimes & Readability
+  - ⚡ Performance & Scalability
+  - 🐛 Correctness & Safety
+  - 'Bug 1: Integration test mutates frozen YearState'
+  - 'Line 634: state created as frozen YearState with data dict'
+  - 'Line 640: MUTATION of the frozen state''s internal dict — works at runtime'
+  - because frozen only prevents reassignment of the 'data' attribute itself,
+  - not mutation of the dict it references
+  - 'Line 644: mutating data dict of the returned (supposedly new) YearState'
+  - 'Bug 2: `{domain}_to` panel column shows "keep_current" sentinel, not resolved technology'
+  - 🎭 Lying Tests
+  - Tasks 5.9 and 5.10 — Marked `[x]` but not implemented
+  - → No matches found
+  - → No matches found
+  - 🔧 Maintainability Issues
+  - 🛠️ Suggested Fixes
+  - 1. Add missing panel transition column tests (Task 5.9 — unblocks green)
+  - 2. Add missing manifest technology_set tests (Task 5.10 — unblocks green)
+  - 3. Fix integration test frozen state mutation
+  - 4. Fix `_build_decision_columns` return type
+  - 5. Fix `capture_technology_set` type annotation
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: cbf09514860d
+findings:
+  total_count: 10
+  by_severity:
+    critical: 2
+    major: 4
+    minor: 4
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 4
+    completeness: 2
+    clarity: 3
+    testability: 1
+  has_fix_count: 10
+  has_location_count: 9
+  has_evidence_count: 3
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 0
+  confidence_phrases_count: 4
+linguistic:
+  avg_sentence_length: 29.096153846153847
+  vocabulary_richness: 0.3562458691341705
+  flesch_reading_ease: -2.666533318027888
+  vague_terms_count: 0
+  formality_score: 0.65
+  sentiment: negative
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.85
+  evidence_quality: 0.5
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 11
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

@@ -906,3 +906,220 @@ class TestLineageFieldValidation:
             match="Field 'child_manifests' must be a dictionary",
         ):
             RunManifest.from_json(invalid_json)
+
+
+class TestManifestTechnologySet:
+    """Story 28.3 / AC-6: Tests for technology_set field in manifest."""
+
+    def test_technology_set_field_in_manifest(self) -> None:
+        """technology_set field is captured and stored in manifest."""
+        manifest = RunManifest(
+            manifest_id="test-001",
+            created_at="2026-05-17T10:00:00Z",
+            engine_version="0.1.0",
+            openfisca_version="40.0.0",
+            adapter_version="1.0.0",
+            scenario_version="v1.0",
+            technology_set={
+                "version": "fr-default-2026-04-26",
+                "domains": {
+                    "heating": {
+                        "reference_alternative_id": "keep_current",
+                        "alternatives": [
+                            {"id": "keep_current", "name": "Keep", "attributes": {}},
+                        ],
+                    },
+                },
+            },
+        )
+
+        assert manifest.technology_set == {
+            "version": "fr-default-2026-04-26",
+            "domains": {
+                "heating": {
+                    "reference_alternative_id": "keep_current",
+                    "alternatives": [
+                        {"id": "keep_current", "name": "Keep", "attributes": {}},
+                    ],
+                },
+            },
+        }
+
+    def test_from_json_backward_compatible_missing_technology_set(self) -> None:
+        """Loading a pre-28.3 manifest without technology_set field returns empty dict."""
+        # Pre-28.3 manifest JSON (no technology_set field)
+        pre_283_json = json.dumps(
+            {
+                "manifest_id": "test-001",
+                "created_at": "2026-02-27T10:00:00Z",
+                "engine_version": "0.1.0",
+                "openfisca_version": "40.0.0",
+                "adapter_version": "1.0.0",
+                "scenario_version": "v1.0",
+                "data_hashes": {},
+                "output_hashes": {},
+                "seeds": {},
+                "policy": {},
+                "assumptions": [],
+                "mappings": [],
+                "warnings": [],
+                "step_pipeline": [],
+                "parent_manifest_id": "",
+                "child_manifests": {},
+                "integrity_hash": "",
+            }
+        )
+
+        manifest = RunManifest.from_json(pre_283_json)
+
+        # technology_set defaults to empty dict for backward compatibility
+        assert manifest.technology_set == {}
+
+    def test_from_json_none_technology_set_coerced_to_empty_dict(self) -> None:
+        """technology_set=null in JSON is coerced to {} (not None)."""
+        json_with_null = json.dumps(
+            {
+                "manifest_id": "test-001",
+                "created_at": "2026-05-17T10:00:00Z",
+                "engine_version": "0.1.0",
+                "openfisca_version": "40.0.0",
+                "adapter_version": "1.0.0",
+                "scenario_version": "v1.0",
+                "data_hashes": {},
+                "output_hashes": {},
+                "seeds": {},
+                "policy": {},
+                "assumptions": [],
+                "mappings": [],
+                "warnings": [],
+                "step_pipeline": [],
+                "parent_manifest_id": "",
+                "child_manifests": {},
+                "integrity_hash": "",
+                "technology_set": None,  # Explicit null
+            }
+        )
+
+        manifest = RunManifest.from_json(json_with_null)
+
+        # None is coerced to empty dict
+        assert manifest.technology_set == {}
+
+    def test_from_json_with_technology_set_populates_field(self) -> None:
+        """Loading manifest with technology_set field preserves values."""
+        json_with_tech_set = json.dumps(
+            {
+                "manifest_id": "test-001",
+                "created_at": "2026-05-17T10:00:00Z",
+                "engine_version": "0.1.0",
+                "openfisca_version": "40.0.0",
+                "adapter_version": "1.0.0",
+                "scenario_version": "v1.0",
+                "data_hashes": {},
+                "output_hashes": {},
+                "seeds": {},
+                "policy": {},
+                "assumptions": [],
+                "mappings": [],
+                "warnings": [],
+                "step_pipeline": [],
+                "parent_manifest_id": "",
+                "child_manifests": {},
+                "integrity_hash": "",
+                "technology_set": {
+                    "version": "test-2026-01-01",
+                    "domains": {
+                        "vehicle": {
+                            "reference_alternative_id": "keep_current",
+                            "alternatives": [
+                                {"id": "ev", "name": "EV", "attributes": {}},
+                            ],
+                        },
+                    },
+                },
+            }
+        )
+
+        manifest = RunManifest.from_json(json_with_tech_set)
+
+        assert manifest.technology_set == {
+            "version": "test-2026-01-01",
+            "domains": {
+                "vehicle": {
+                    "reference_alternative_id": "keep_current",
+                    "alternatives": [
+                        {"id": "ev", "name": "EV", "attributes": {}},
+                    ],
+                },
+            },
+        }
+
+    def test_to_json_includes_technology_set(self) -> None:
+        """Manifest serialization includes technology_set field."""
+        manifest = RunManifest(
+            manifest_id="test-001",
+            created_at="2026-05-17T10:00:00Z",
+            engine_version="0.1.0",
+            openfisca_version="40.0.0",
+            adapter_version="1.0.0",
+            scenario_version="v1.0",
+            technology_set={
+                "version": "fr-default-2026-04-26",
+                "domains": {},
+            },
+        )
+
+        json_str = manifest.to_json()
+        data = json.loads(json_str)
+
+        assert "technology_set" in data
+        assert data["technology_set"] == {
+            "version": "fr-default-2026-04-26",
+            "domains": {},
+        }
+
+    def test_to_json_omits_empty_technology_set(self) -> None:
+        """Empty technology_set is included in JSON (not omitted like evidence fields)."""
+        manifest = RunManifest(
+            manifest_id="test-001",
+            created_at="2026-05-17T10:00:00Z",
+            engine_version="0.1.0",
+            openfisca_version="40.0.0",
+            adapter_version="1.0.0",
+            scenario_version="v1.0",
+            technology_set={},  # Empty dict
+        )
+
+        json_str = manifest.to_json()
+        data = json.loads(json_str)
+
+        # Empty technology_set IS included (unlike evidence_assets which is omitted)
+        assert "technology_set" in data
+        assert data["technology_set"] == {}
+
+    def test_round_trip_preserves_technology_set(self) -> None:
+        """technology_set survives JSON round-trip."""
+        original = RunManifest(
+            manifest_id="test-001",
+            created_at="2026-05-17T10:00:00Z",
+            engine_version="0.1.0",
+            openfisca_version="40.0.0",
+            adapter_version="1.0.0",
+            scenario_version="v1.0",
+            technology_set={
+                "version": "fr-default-2026-04-26",
+                "domains": {
+                    "heating": {
+                        "reference_alternative_id": "keep_current",
+                        "alternatives": [
+                            {"id": "heat_pump", "name": "HP", "attributes": {}},
+                        ],
+                    },
+                },
+            },
+        )
+
+        json_str = original.to_json()
+        restored = RunManifest.from_json(json_str)
+
+        assert restored.technology_set == original.technology_set

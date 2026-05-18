@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from reformlab.computation.types import PolicyConfig
     from reformlab.discrete_choice.domain import DecisionDomain
     from reformlab.discrete_choice.eligibility import EligibilityFilter
+    from reformlab.discrete_choice.technology_set import TechnologySet
     from reformlab.discrete_choice.types import ExpansionResult
     from reformlab.orchestrator.types import YearState
 
@@ -133,6 +134,7 @@ class DiscreteChoiceStep:
         "_description",
         "_population_key",
         "_eligibility_filter",
+        "_technology_set",  # Story 28.2 / AC-1: Technology set for incumbent validation
     )
 
     def __init__(
@@ -145,6 +147,8 @@ class DiscreteChoiceStep:
         description: str | None = None,
         population_key: str = "population_data",
         eligibility_filter: EligibilityFilter | None = None,
+        # Story 28.2 / AC-1: Technology set for incumbent validation
+        technology_set: TechnologySet | None = None,
     ) -> None:
         """Initialize the discrete choice step.
 
@@ -158,6 +162,7 @@ class DiscreteChoiceStep:
             population_key: Key in YearState.data to retrieve PopulationData.
             eligibility_filter: Optional eligibility filter (Story 14-5).
                 When provided, only eligible households are expanded.
+            technology_set: Optional TechnologySet for incumbent validation (Story 28.2).
         """
         self._adapter = adapter
         self._domain = domain
@@ -170,6 +175,7 @@ class DiscreteChoiceStep:
         )
         self._population_key = population_key
         self._eligibility_filter = eligibility_filter
+        self._technology_set = technology_set  # Story 28.2 / AC-1
 
     @property
     def name(self) -> str:
@@ -200,7 +206,20 @@ class DiscreteChoiceStep:
 
         Raises:
             DiscreteChoiceError: If any phase fails.
+
+        Story 28.1 / AC-5: Short-circuit when investment decisions disabled.
         """
+        # Story 28.1 / AC-5: Short-circuit when investment decisions disabled
+        investment_decisions_enabled = state.metadata.get("investment_decisions_enabled", True)
+        if not investment_decisions_enabled:
+            logger.debug(
+                "year=%d step_name=%s event=short_circuit investment_decisions_enabled=false",
+                year,
+                self._name,
+            )
+            # Return state unchanged, no validation, no manifest capture
+            return state
+
         domain = self._domain
         alternatives = domain.alternatives
         choice_set = ChoiceSet(alternatives=alternatives)
@@ -215,6 +234,23 @@ class DiscreteChoiceStep:
                 f"Available keys: {list(state.data.keys())}",
                 step_name=self._name,
             )
+
+        # Story 28.2 / AC-1, AC-8: Validate population incumbents when technology_set provided
+        if self._technology_set is not None:
+            from reformlab.discrete_choice.population_validation import (
+                validate_population_for_technology_set,
+            )
+
+            warnings = validate_population_for_technology_set(
+                population, self._technology_set, entity_key="menage"
+            )
+            for warning in warnings:
+                logger.warning(
+                    "year=%d step_name=%s event=population_validation warning=%s",
+                    year,
+                    self._name,
+                    warning,
+                )
 
         n = 0
         if population.tables:

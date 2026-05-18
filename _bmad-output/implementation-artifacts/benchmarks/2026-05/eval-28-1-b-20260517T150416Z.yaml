@@ -1,0 +1,130 @@
+record_id: f626e39c-f491-4bb8-8f46-71c1e2d86c03
+created_at: '2026-05-17T15:04:16.871375+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 28
+  story_num: 1
+  title: Story 28.1
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true
+evaluator:
+  provider: claude-subprocess
+  model: sonnet
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-05-17T14:58:14.355116Z'
+  end_time: '2026-05-17T15:03:54.326116Z'
+  duration_ms: 339971
+  input_tokens: 0
+  output_tokens: 5845
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 23383
+  heading_count: 34
+  list_depth_max: 2
+  code_block_count: 12
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: **13.6**'
+  - 🎯 Ruthless Story Validation 28.1
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 🚨 Critical Issues (Must Fix)
+  - 1. TypeScript Schema in Dev Notes Incomplete and Inconsistent with Actual Spike
+  - 2. `app.py` Missing from Modified Files — New Route Is Never Reachable
+  - '...'
+  - 'in create_app():'
+  - 3. `RunRequest` Never Updated — AC-6 Contract Test Cannot Post `TechnologySet`
+  - 4. Manifest Capture in `runner.py` Never Updated — AC-6 Assertion Has No Target
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 5. `DomainTechnologySet` Python Schema Never Specified in Story
+  - 6. Wrong Spike File Referenced — Developer Will Open Old Incompatible Schema
+  - 7. AC-7 Migration Mechanism Unspecified — Synchronous Function Cannot Call Python
+  - ✨ Optimizations (Nice to Have)
+  - 8. Implementation Sequence is Missing the RunRequest/Manifest Steps
+  - 9. "Byte-Equal" Round-Trip Language in AC-4 is Fragile
+  - 🤖 LLM Optimization Improvements
+  - 10. Dev Notes "Existing Code Patterns" section has wrong EngineConfig code snippet
+  - 11. Tasks List Redundantly Checks "if there's a public API" for `__init__.py`
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 6611ffb1ffec
+findings:
+  total_count: 11
+  by_severity:
+    critical: 4
+    major: 3
+    minor: 2
+    nit: 2
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 3
+    completeness: 4
+    clarity: 3
+    testability: 1
+  has_fix_count: 11
+  has_location_count: 11
+  has_evidence_count: 11
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 0
+  confidence_phrases_count: 11
+linguistic:
+  avg_sentence_length: 29.718446601941746
+  vocabulary_richness: 0.24599803985625612
+  flesch_reading_ease: 17.99118483889879
+  vague_terms_count: 1
+  formality_score: 0.73
+  sentiment: mixed
+quality:
+  actionable_ratio: 0.95
+  specificity_score: 0.96
+  evidence_quality: 0.98
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true

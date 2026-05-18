@@ -1,0 +1,136 @@
+record_id: 5a45bb76-9781-4946-8d94-a2b9c77898ea
+created_at: '2026-05-17T21:27:06.920597+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 28
+  story_num: 5
+  title: Story 28.5
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: sonnet
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-05-17T21:22:39.133461Z'
+  end_time: '2026-05-17T21:26:49.074461Z'
+  duration_ms: 249941
+  input_tokens: 0
+  output_tokens: 6544
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 26177
+  heading_count: 40
+  list_depth_max: 3
+  code_block_count: 7
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Evidence Score Summary
+  - 'Evidence Score: 16.9'
+  - 🎯 Ruthless Story Validation 28.5
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 🚨 Critical Issues (Must Fix)
+  - 1. `PopulationSchemaError` Does Not Exist — AC#7 Will Immediately Fail
+  - 'Wrong — class does not exist:'
+  - 'Correct:'
+  - 2. `RunManifest.from_dict()` Does Not Exist — AC#8 and Task 9 Will Fail
+  - 3. `EngineConfigCompiler` Does Not Exist — Multi-Period Test Has No Valid Entry Point
+  - 'Note: use DEFAULT_TECHNOLOGY_SET IDs throughout (condensing_boiler, heat_pump_air, etc.)'
+  - do NOT mix with legacy heating.py IDs (gas_boiler, heat_pump, wood_pellet)
+  - 4. `incumbent_heating` Is Not a Panel Column — Multi-Period Chaining Test Code Will KeyError
+  - 'Correct: heating_from in year Y should equal heating_to in year Y-1'
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 5. Alternative ID Reconciliation Decision Is Required — Story Inherits Deferred Conflict
+  - 6. Manifest Reproducibility — Canonical JSON Must Strip More Fields
+  - 7. AC#5 Legacy Fallback Warning — Production Code Change Required
+  - 8. Step Pipeline Construction Guidance Is Missing Entirely
+  - 9. `@pytest.mark.nightly` Conflicts With Existing `scale` Marker
+  - ✨ Optimizations (Nice to Have)
+  - 10. Transition Counts Fixture Bootstrap Strategy
+  - '11. No-Decisions Baseline: Clarify What Columns to Compare'
+  - '12. Frontend Journey Test: Mock Granularity'
+  - 🤖 LLM Optimization Improvements
+  - 13. Dev Notes Section Has Redundant Content
+  - 14. Code Examples Reference Non-Existent APIs Without Warning
+  - 'In test code examples:'
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: bc4731368882
+findings:
+  total_count: 28
+  by_severity:
+    critical: 4
+    major: 9
+    minor: 12
+    nit: 3
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 6
+    completeness: 8
+    clarity: 6
+    testability: 8
+  has_fix_count: 25
+  has_location_count: 8
+  has_evidence_count: 20
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 1
+  confidence_phrases_count: 11
+linguistic:
+  avg_sentence_length: 24.828358208955223
+  vocabulary_richness: 0.25819056206792906
+  flesch_reading_ease: 16.48318468424887
+  vague_terms_count: 3
+  formality_score: 0.72
+  sentiment: mixed
+quality:
+  actionable_ratio: 0.89
+  specificity_score: 0.68
+  evidence_quality: 0.71
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false

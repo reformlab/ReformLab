@@ -69,6 +69,7 @@ OPTIONAL_JSON_FIELDS = (
     "runtime_mode",  # Story 23.1 / AC-4: Runtime mode (live or explicit replay)
     "population_id",  # Story 23.5 / AC-2: Population identifier
     "population_source",  # Story 23.5 / AC-2: Population source (bundled/uploaded/generated)
+    "technology_set",  # Story 28.3 / AC-6: Technology set for investment decisions
 )
 
 
@@ -178,6 +179,8 @@ class RunManifest:
     # Story 23.5 / AC-2: Population provenance for audit and comparison flows
     population_id: str = ""  # empty when run has no population
     population_source: str = ""  # "bundled" | "uploaded" | "generated" | ""
+    # Story 28.3 / AC-6: Technology set for investment decisions
+    technology_set: dict[str, Any] = field(default_factory=dict)
     integrity_hash: str = ""
 
     def __post_init__(self) -> None:
@@ -517,6 +520,11 @@ class RunManifest:
             population_id = data.get("population_id", "")
             population_source = data.get("population_source", "")
 
+            # Story 28.3 / AC-6: Technology set with backward-compatible defaults
+            technology_set = data.get("technology_set", {})
+            if technology_set is None:
+                technology_set = {}
+
             return cls(
                 manifest_id=data["manifest_id"],
                 created_at=data["created_at"],
@@ -544,6 +552,8 @@ class RunManifest:
                 # Story 23.5 / AC-5: Population provenance with defaults for backward compatibility
                 population_id=population_id,
                 population_source=population_source,
+                # Story 28.3 / AC-6: Technology set for investment decisions
+                technology_set=technology_set,
                 integrity_hash=data["integrity_hash"],
             )
         except (TypeError, KeyError) as e:
@@ -630,6 +640,8 @@ class RunManifest:
             # Story 23.5 / AC-2: Population provenance
             population_id=self.population_id,
             population_source=self.population_source,
+            # Story 28.3 / AC-6: Technology set for investment decisions
+            technology_set=self.technology_set,
             integrity_hash=computed_hash,
         )
 

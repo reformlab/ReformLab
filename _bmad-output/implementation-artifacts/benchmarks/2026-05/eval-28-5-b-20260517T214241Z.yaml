@@ -1,0 +1,126 @@
+record_id: ee101db2-6b67-4ee7-8c15-d782caba30a1
+created_at: '2026-05-17T21:42:41.827243+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 28
+  story_num: '5'
+  title: Story 28.5
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: sonnet
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-05-17T21:38:49.768148Z'
+  end_time: '2026-05-17T21:42:13.890148Z'
+  duration_ms: 204122
+  input_tokens: 0
+  output_tokens: 4198
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 16795
+  heading_count: 26
+  list_depth_max: 1
+  code_block_count: 12
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: **17.5**'
+  - 🏛️ Architectural Sins
+  - 🐛 Correctness & Safety
+  - '1. 🎭 Lying Test — AC-1: Chaining Invariant Never Asserted'
+  - '2. 🎭 Lying Test — AC-3: Fixture Never Loaded or Compared'
+  - '3. 🎭 Lying Test — AC-4: Test Runs Zero Actual Code'
+  - 'TODO: Generate or load baseline snapshot'
+  - '4. 🎭 Lying Test — AC-2: Reproducibility Is Tautological'
+  - '5. 🎭 Lying Test — AC-5: Fallback Behavior Not Tested'
+  - '6. 🎭 Lying Test — AC-10: Frontend Test Tests a Stub, Not Production Code'
+  - 🔧 Maintainability Issues
+  - 7. 💣 Missing Parquet Files Claimed as Created
+  - 8. 💣 `pytest_configure` in Test Module — Dead Code
+  - 9. 💣 `_compute_transition_counts` is Dead Code
+  - 10. 💣 `userEvent` Naming Conflict in Frontend Test
+  - 11. 💣 Transition Counts YAML Has Placeholder Data for 4 of 5 Years
+  - 'Note: Actual counts depend on logit draws with seed 43'
+  - Update after first test run with actual values
+  - 🛠️ Suggested Fixes
+  - '1. Fix AC-1: Actually Assert the Chaining Invariant'
+  - '2. Fix AC-3: Inject the Fixture and Actually Compare'
+  - '3. Fix AC-4: Run an Actual No-Decisions Scenario'
+  - 4. Fix `pytest_configure` Dead Code — Remove It
+  - 5. Fix Frontend Test — Wire Real Components or Fix Assertions
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 493d3ff8b4b6
+findings:
+  total_count: 20
+  by_severity:
+    critical: 4
+    major: 4
+    minor: 4
+    nit: 8
+  by_category:
+    security: 0
+    performance: 1
+    correctness: 9
+    completeness: 7
+    clarity: 1
+    testability: 2
+  has_fix_count: 5
+  has_location_count: 20
+  has_evidence_count: 8
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 1
+  confidence_phrases_count: 2
+linguistic:
+  avg_sentence_length: 25.276315789473685
+  vocabulary_richness: 0.323269130661114
+  flesch_reading_ease: 5.992764605796111
+  vague_terms_count: 1
+  formality_score: 0.65
+  sentiment: negative
+quality:
+  actionable_ratio: 0.25
+  specificity_score: 0.95
+  evidence_quality: 0.4
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 10
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

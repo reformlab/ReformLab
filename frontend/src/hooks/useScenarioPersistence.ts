@@ -16,7 +16,7 @@
  */
 
 import type { StageKey, WorkspaceScenario } from "@/types/workspace";
-import { isValidStage, DEFAULT_TASTE_PARAMETERS } from "@/types/workspace";
+import { isValidStage, DEFAULT_TASTE_PARAMETERS, DEFAULT_TECHNOLOGY_SET } from "@/types/workspace";
 
 // ============================================================================
 // localStorage key constants (exported for test access)
@@ -57,7 +57,10 @@ export function loadScenario(): WorkspaceScenario | null {
     const needsStageTouchedMigration = parsed.stageTouched === undefined;
     const needsInvestmentDecisionsMigration = parsed.engineConfig?.investmentDecisionsEnabled === false;
 
-    if (!needsTasteMigration && !needsCalibrationMigration && !needsStageTouchedMigration && !needsInvestmentDecisionsMigration) {
+    // Story 28.1 / AC-7: Migration for technologySet field
+    const needsTechnologySetMigration = parsed.engineConfig?.technologySet === undefined;
+
+    if (!needsTasteMigration && !needsCalibrationMigration && !needsStageTouchedMigration && !needsInvestmentDecisionsMigration && !needsTechnologySetMigration) {
       return parsed;
     }
 
@@ -66,6 +69,10 @@ export function loadScenario(): WorkspaceScenario | null {
       ...parsed.engineConfig,
       tasteParameters: parsed.engineConfig?.tasteParameters ?? DEFAULT_TASTE_PARAMETERS,
       calibrationState: parsed.engineConfig?.calibrationState ?? "not_configured",
+      // Story 28.1 / AC-7: Legacy scenarios with investmentDecisionsEnabled=true but no technologySet get DEFAULT_TECHNOLOGY_SET
+      ...(needsTechnologySetMigration && parsed.engineConfig?.investmentDecisionsEnabled === true
+        ? { technologySet: DEFAULT_TECHNOLOGY_SET }
+        : {}),
     };
 
     // Build migrated stageTouched
@@ -125,14 +132,15 @@ export function getSavedScenarios(): WorkspaceScenario[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw) as WorkspaceScenario[];
 
-    // Story 22.6 + Story 27.6: Migration logic for legacy scenarios (immutable - returns new objects)
+    // Story 22.6 + Story 27.6 + Story 28.1: Migration logic for legacy scenarios (immutable - returns new objects)
     return parsed.map((scenario) => {
       const needsTasteMigration = scenario.engineConfig?.tasteParameters === undefined;
       const needsCalibrationMigration = scenario.engineConfig?.calibrationState === undefined;
       const needsStageTouchedMigration = scenario.stageTouched === undefined;
       const needsInvestmentDecisionsMigration = scenario.engineConfig?.investmentDecisionsEnabled === false;
+      const needsTechnologySetMigration = scenario.engineConfig?.technologySet === undefined;
 
-      if (!needsTasteMigration && !needsCalibrationMigration && !needsStageTouchedMigration && !needsInvestmentDecisionsMigration) {
+      if (!needsTasteMigration && !needsCalibrationMigration && !needsStageTouchedMigration && !needsInvestmentDecisionsMigration && !needsTechnologySetMigration) {
         return scenario;
       }
 
@@ -141,6 +149,10 @@ export function getSavedScenarios(): WorkspaceScenario[] {
         ...scenario.engineConfig,
         tasteParameters: scenario.engineConfig?.tasteParameters ?? DEFAULT_TASTE_PARAMETERS,
         calibrationState: scenario.engineConfig?.calibrationState ?? "not_configured",
+        // Story 28.1 / AC-7: Legacy scenarios with investmentDecisionsEnabled=true but no technologySet get DEFAULT_TECHNOLOGY_SET
+        ...(needsTechnologySetMigration && scenario.engineConfig?.investmentDecisionsEnabled === true
+          ? { technologySet: DEFAULT_TECHNOLOGY_SET }
+          : {}),
       };
 
       // Build migrated stageTouched

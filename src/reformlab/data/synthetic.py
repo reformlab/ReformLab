@@ -115,6 +115,15 @@ def generate_synthetic_population(
             "energy_transport_fuel": pa.array(transport_fuel, type=pa.float64()),
             "energy_heating_fuel": pa.array(heating_fuel, type=pa.float64()),
             "energy_natural_gas": pa.array(natural_gas, type=pa.float64()),
+            # Story 28.2 / AC-6: Add incumbent technology columns for Quick Test Population
+            "incumbent_heating": pa.array(
+                ["keep_current"] * size,
+                type=pa.dictionary(pa.int32(), pa.utf8()),
+            ),
+            "incumbent_vehicle": pa.array(
+                ["keep_current"] * size,
+                type=pa.dictionary(pa.int32(), pa.utf8()),
+            ),
         }
     )
 

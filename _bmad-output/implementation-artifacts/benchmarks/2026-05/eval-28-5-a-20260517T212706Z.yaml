@@ -1,0 +1,147 @@
+record_id: 37d4998e-d696-405f-9553-41bd9460113b
+created_at: '2026-05-17T21:27:06.939099+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 28
+  story_num: 5
+  title: Story 28.5
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-05-17T21:22:39.133461Z'
+  end_time: '2026-05-17T21:26:09.970461Z'
+  duration_ms: 210837
+  input_tokens: 0
+  output_tokens: 7309
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 29237
+  heading_count: 51
+  list_depth_max: 3
+  code_block_count: 16
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 10.2'
+  - 🎯 Ruthless Story Validation 28.5
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 10.2 → REJECT'
+  - 🚨 Critical Issues (Must Fix)
+  - 1. Non-existent Exception Type
+  - 2. Non-existent Class Name
+  - Build orchestrator config from workflow config
+  - 3. OrchestratorConfig with Wrong Fields
+  - Create workflow config (which has investment_decisions_enabled)
+  - Convert to orchestrator config
+  - 4. Missing Pytest Marker Configuration
+  - 5. Wrong Panel Column Names
+  - 'Assert chaining invariant: heating_from in year N == heating_to in year N-1'
+  - 6. Frontend Workflow Test Missing Mock Specification
+  - 7. Manifest Warning Structure Not Specified
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Fixture Generation Script Guidance
+  - 2. Baseline Snapshot Bootstrapping Process
+  - 3. Reference to Existing Multi-Year Test Patterns
+  - 4. Integration Test Helper Functions
+  - 5. Frontend Test Workflow Helper
+  - ✨ Optimizations (Nice to Have)
+  - 1. Use PyArrow's filter() for Efficiency
+  - 'Efficient: use PyArrow filter'
+  - 'Avoid: converting to Python list first'
+  - year_indices = [i for i, y in enumerate(table.column("year").to_pylist()) if y == year]
+  - incumbent_list = [incumbent_col[i] for i in year_indices]
+  - 2. Parametrize Tests for Year Transitions
+  - 3. Shared Fixture for Expected Transition Counts
+  - 🤖 LLM Optimization Improvements
+  - 1. Remove Redundant Story Context
+  - 'Story Context: EPIC-28 Closing Story'
+  - 2. Condense Test Pattern Examples
+  - Test Patterns (Reference Existing Tests)
+  - 3. Simplify Task Descriptions
+  - 4. Consolidate Quality Gates
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: bc4731368882
+findings:
+  total_count: 19
+  by_severity:
+    critical: 7
+    major: 5
+    minor: 3
+    nit: 4
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 6
+    completeness: 6
+    clarity: 3
+    testability: 4
+  has_fix_count: 18
+  has_location_count: 19
+  has_evidence_count: 18
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 6
+  confidence_phrases_count: 6
+linguistic:
+  avg_sentence_length: 32.663636363636364
+  vocabulary_richness: 0.23545783467854162
+  flesch_reading_ease: 9.390679133858299
+  vague_terms_count: 0
+  formality_score: 0.6
+  sentiment: neutral
+quality:
+  actionable_ratio: 0.95
+  specificity_score: 0.89
+  evidence_quality: 0.9
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: true
+    has_api_changes: true
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false

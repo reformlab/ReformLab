@@ -61,6 +61,8 @@ class RunRequest(BaseModel):
     exogenous_series: list[str] | None = None  # Story 21.6 / AC2: exogenous series names for scenario
     # Story 23.1 / AC-1, AC-2: Runtime mode with live default
     runtime_mode: Literal["live", "replay"] = "live"
+    # Story 28.1 / AC-6: Technology set for investment decisions
+    technology_set: dict[str, Any] | None = None
 
     @field_validator("population_id")
     @classmethod
@@ -953,3 +955,42 @@ class ExogenousAssetResponse(BaseModel):
     interpolation_method: str
     aggregation_method: str
     revision_policy: str
+
+
+# ---------------------------------------------------------------------------
+# Technology set models — Story 28.1
+# ---------------------------------------------------------------------------
+
+
+class TechnologyAlternativeModel(BaseModel):
+    """Alternative in a technology set.
+
+    Story 28.1, AC-3: Pydantic model for TechnologyAlternative serialization.
+    """
+
+    id: str
+    name: str
+    attributes: dict[str, Any] = {}
+
+
+class DomainTechnologySetResponse(BaseModel):
+    """Per-domain technology set response.
+
+    Story 28.1, AC-3: Pydantic model for DomainTechnologySet API response.
+    """
+
+    domain: str  # "heating" | "vehicle"
+    enabled: bool
+    alternatives: list[TechnologyAlternativeModel]
+    referenceAlternativeId: str | None = None
+    costColumn: str | None = None
+
+
+class TechnologySetResponse(BaseModel):
+    """Full technology set response with version and all domains.
+
+    Story 28.1, AC-3: Pydantic model for TechnologySet API response.
+    """
+
+    version: str  # e.g., "fr-default-2026-04-26"
+    domains: dict[str, DomainTechnologySetResponse]

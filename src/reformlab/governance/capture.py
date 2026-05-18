@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from reformlab.computation.mapping import MappingConfig
+    from reformlab.discrete_choice.technology_set import TechnologySet
 
 
 def capture_assumptions(
@@ -376,3 +377,83 @@ def capture_discrete_choice_parameters(
         return sorted(entries, key=lambda x: x.get("domain_name", ""))
 
     return []
+
+
+def capture_technology_set(
+    technology_set: TechnologySet | dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Capture technology set configuration for manifest.
+
+    Story 28.3 / AC-6: Serialize TechnologySet to manifest-compatible dict.
+
+    Args:
+        technology_set: TechnologySet with domain alternatives, dict representation,
+            or None. Dict input is for backward compatibility with legacy code paths.
+
+    Returns:
+        Dict with domains, alternatives, reference IDs for reproducibility.
+    """
+    if technology_set is None:
+        return {}
+
+    # Handle dict-like and object types
+    if hasattr(technology_set, "domains") and hasattr(technology_set, "version"):
+        # TechnologySet object
+        version = getattr(technology_set, "version", "")
+        domains = getattr(technology_set, "domains", {})
+    elif isinstance(technology_set, dict):
+        # Dict representation
+        version = technology_set.get("version", "")
+        domains = technology_set.get("domains", {})
+    else:
+        return {}
+
+    domains_dict: dict[str, Any] = {}
+    for domain_name, domain_config in domains.items():
+        # Handle both dict and DomainTechnologySet object
+        if hasattr(domain_config, "alternatives"):
+            # DomainTechnologySet object
+            alternatives = getattr(domain_config, "alternatives", ())
+            enabled = getattr(domain_config, "enabled", True)
+            ref_id = getattr(domain_config, "reference_alternative_id", "")
+        elif isinstance(domain_config, dict):
+            # Dict representation
+            alternatives = domain_config.get("alternatives", [])
+            enabled = domain_config.get("enabled", True)
+            ref_id = domain_config.get("reference_alternative_id", "")
+        else:
+            continue
+
+        if not enabled:
+            continue
+
+        alternatives_list = []
+        for alt in alternatives:
+            # Handle both dict and Alternative object
+            if hasattr(alt, "id"):
+                # Alternative object
+                alt_dict = {
+                    "id": getattr(alt, "id", ""),
+                    "name": getattr(alt, "name", ""),
+                    "attributes": getattr(alt, "attributes", {}),
+                }
+            elif isinstance(alt, dict):
+                # Dict representation
+                alt_dict = {
+                    "id": alt.get("id", ""),
+                    "name": alt.get("name", ""),
+                    "attributes": alt.get("attributes", {}),
+                }
+            else:
+                continue
+            alternatives_list.append(alt_dict)
+
+        domains_dict[domain_name] = {
+            "reference_alternative_id": ref_id,
+            "alternatives": alternatives_list,
+        }
+
+    return {
+        "version": version,
+        "domains": domains_dict,
+    }

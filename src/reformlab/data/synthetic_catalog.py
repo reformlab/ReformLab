@@ -67,7 +67,8 @@ def _initialize_bundled_assets(registry: SyntheticAssetRegistry) -> None:
         description=(
             "100k synthetic households for France - exploratory use only. "
             "Generated deterministically with seed=42 for benchmarking and "
-            "scale validation. Not for production decision support."
+            "scale validation. Not for production decision support. "
+            "Includes incumbent_heating and incumbent_vehicle columns (Story 28.2)."
         ),
         origin="synthetic-public",
         access_mode="bundled",
@@ -96,7 +97,9 @@ def _initialize_bundled_assets(registry: SyntheticAssetRegistry) -> None:
         quality_notes=(
             "Synthetic data with deterministic generation (seed=42). "
             "Income distribution: 15k-95k EUR with linear ramp. "
-            "Age: uniform 20-80. Energy values correlated with income."
+            "Age: uniform 20-80. Energy values correlated with income. "
+            "Incumbent technology columns: all households defaulted to 'keep_current' "
+            "(Story 28.2)."
         ),
         references=(),
     )

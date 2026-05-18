@@ -1,0 +1,125 @@
+record_id: dbb6a8b6-e77e-4c37-b327-2662d9a59dad
+created_at: '2026-05-17T14:50:28.009642+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 28
+  story_num: '0'
+  title: Story 28.0
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: sonnet
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-05-17T14:46:43.438532Z'
+  end_time: '2026-05-17T14:50:10.306532Z'
+  duration_ms: 206868
+  input_tokens: 0
+  output_tokens: 3704
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 14817
+  heading_count: 25
+  list_depth_max: 2
+  code_block_count: 14
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: **11.5**'
+  - 🏛️ Architectural Sins
+  - '[10/10] Non-Existent Base Class: `ReformLabError`'
+  - '[9/10] `domain.alternative_ids` Called on `DecisionDomain` Protocol — Property Doesn''t Exist'
+  - '[6/10] `TechnologySet.domains: dict[str, ...]` Violates Frozen Dataclass Immutability'
+  - 🐍 Pythonic Crimes & Readability
+  - '`DiscreteChoiceError` Signature Change Silently Breaks Existing Call Sites'
+  - '`null` JSON Key in Manifest Example Is Invalid JSON (RFC 8259)'
+  - ⚡ Performance & Scalability
+  - '[Medium Impact] `ChoiceResult.chosen.to_pylist()` on Large Populations'
+  - 🐛 Correctness & Safety
+  - '`DecisionRecordStep` Step Position Contradicts Itself'
+  - '"Domain Not in technology_set" Has Two Contradictory Semantics'
+  - 🔧 Maintainability Issues
+  - '`MANIFEST_FORMAT_VERSION` Constant Is Invented — Real Gate Is `OPTIONAL_JSON_FIELDS`'
+  - sprint-status.yaml Claims `in-progress` Despite Story Claiming `pending-pm-review`
+  - Duplicate Reference-Alternative Discovery Algorithms With No Shared Implementation
+  - 🛠️ Suggested Fixes
+  - 1. Fix `domain.alternative_ids` → `domain.alternatives`
+  - 2. Fix `sprint-status.yaml`
+  - 3. Remove/qualify the `ReformLabError` reference
+  - 4. Fix JSON manifest example
+  - 5. Remove `MANIFEST_FORMAT_VERSION` fiction; reference actual mechanism
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 845f0716a73b
+findings:
+  total_count: 12
+  by_severity:
+    critical: 2
+    major: 5
+    minor: 5
+    nit: 0
+  by_category:
+    security: 0
+    performance: 1
+    correctness: 7
+    completeness: 2
+    clarity: 2
+    testability: 0
+  has_fix_count: 5
+  has_location_count: 12
+  has_evidence_count: 12
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: false
+  uses_conditionals: true
+  uncertainty_phrases_count: 1
+  confidence_phrases_count: 3
+linguistic:
+  avg_sentence_length: 32.43103448275862
+  vocabulary_richness: 0.32961190855927697
+  flesch_reading_ease: 3.7179260938019354
+  vague_terms_count: 0
+  formality_score: 0.65
+  sentiment: mixed
+quality:
+  actionable_ratio: 0.42
+  specificity_score: 0.92
+  evidence_quality: 1.0
+  follows_template: true
+  internal_consistency: 0.75
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: null
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

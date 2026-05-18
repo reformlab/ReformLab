@@ -29,6 +29,9 @@ EXPECTED_COLUMNS = [
     "energy_transport_fuel",
     "energy_heating_fuel",
     "energy_natural_gas",
+    # Story 28.2 / AC-6: Quick Test Population includes incumbent columns
+    "incumbent_heating",
+    "incumbent_vehicle",
 ]
 
 
@@ -51,6 +54,9 @@ class TestGenerateSyntheticPopulation:
         assert table.schema.field("energy_transport_fuel").type == pa.float64()
         assert table.schema.field("energy_heating_fuel").type == pa.float64()
         assert table.schema.field("energy_natural_gas").type == pa.float64()
+        # Story 28.2 / AC-6: Incumbent columns are dictionary-encoded
+        assert table.schema.field("incumbent_heating").type == pa.dictionary(pa.int32(), pa.utf8())
+        assert table.schema.field("incumbent_vehicle").type == pa.dictionary(pa.int32(), pa.utf8())
 
     def test_deterministic_same_seed(self) -> None:
         """Same (size, seed) produces identical output."""

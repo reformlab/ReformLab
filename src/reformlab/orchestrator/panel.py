@@ -26,14 +26,14 @@ import pyarrow.csv as pa_csv
 import pyarrow.parquet as pq
 
 from reformlab.computation.result_normalizer import MAPPING_APPLIED_KEY, NORMALIZED_KEY
-from reformlab.discrete_choice.decision_record import DECISION_LOG_KEY
+from reformlab.discrete_choice.decision_record import DECISION_LOG_KEY, TRANSITION_LOG_KEY
 from reformlab.discrete_choice.errors import DiscreteChoiceError
 from reformlab.orchestrator.computation_step import COMPUTATION_RESULT_KEY
 from reformlab.orchestrator.runner import SEED_LOG_KEY, STEP_EXECUTION_LOG_KEY
 
 if TYPE_CHECKING:
     from reformlab.computation.types import ComputationResult
-    from reformlab.discrete_choice.decision_record import DecisionRecord
+    from reformlab.discrete_choice.decision_record import DecisionRecord, TransitionRecord
     from reformlab.orchestrator.types import OrchestratorResult
 
 
@@ -115,11 +115,24 @@ class PanelOutput:
 
             # Story 14-6: Decision record columns
             decision_log = year_state.data.get(DECISION_LOG_KEY)
+            # Story 28.3 / Task 3.1: Read transition log for {domain}_from and {domain}_to columns
+            transitions = year_state.data.get(TRANSITION_LOG_KEY, ())
             if isinstance(decision_log, tuple) and decision_log:
-                output_table, year_domain_alts = _build_decision_columns(
-                    output_table, decision_log
+                build_result = _build_decision_columns(
+                    output_table, decision_log, transitions  # Story 28.3 / Task 3.2: Pass transitions
                 )
-                all_domain_alternatives.update(year_domain_alts)
+                # Handle both return types: tuple (with decision_log) or table (transitions only)
+                if isinstance(build_result, tuple):
+                    output_table, year_domain_alts = build_result
+                    all_domain_alternatives.update(year_domain_alts)
+                else:
+                    output_table = build_result
+                has_any_decision_columns = True
+            elif isinstance(transitions, tuple) and transitions:
+                # Handle case where only transitions exist (no decision log)
+                output_table = _build_decision_columns(
+                    output_table, (), transitions
+                )
                 has_any_decision_columns = True
 
             output_table = _ensure_household_id_column(
@@ -221,97 +234,130 @@ class PanelOutput:
 def _build_decision_columns(
     output_table: pa.Table,
     decision_log: tuple[DecisionRecord, ...],
-) -> tuple[pa.Table, dict[str, list[str]]]:
+    transitions: tuple[TransitionRecord, ...] = (),
+) -> tuple[pa.Table, dict[str, list[str]]] | pa.Table:
     """Add decision columns from the decision log to the output table.
 
     For each DecisionRecord, appends domain-prefixed columns for chosen
     alternative, probabilities (as list<float64>), and utilities
     (as list<float64>). Also adds a decision_domains list column.
 
+    Story 28.3 / AC-5: Extended to include {domain}_from and {domain}_to columns.
+    Note: Column naming follows existing convention: {domain}_chosen, {domain}_probabilities.
+    Transition columns use same pattern: {domain}_from, {domain}_to (no year prefix).
+
     Args:
         output_table: Yearly output table to extend.
         decision_log: Tuple of DecisionRecords for this year.
+        transitions: Tuple of TransitionRecords with from/to technology arrays.
 
     Returns:
-        Extended table and domain→alternative_ids mapping for metadata.
+        Extended table and domain→alternative_ids mapping for metadata (if decision_log non-empty),
+        otherwise just the extended table (if only transitions).
 
     Raises:
         DiscreteChoiceError: If duplicate domain names detected.
     """
-    # Validate unique domain names
-    domain_names_seen = [r.domain_name for r in decision_log]
-    duplicates = {n for n in domain_names_seen if domain_names_seen.count(n) > 1}
-    if duplicates:
-        raise DiscreteChoiceError(
-            f"Duplicate domain_name(s) in decision log: {sorted(duplicates)}. "
-            "Each domain must appear at most once per year."
+    # Validate unique domain names (only if decision_log exists)
+    domain_alternatives: dict[str, list[str]] = {}
+    if decision_log:
+        domain_names_seen = [r.domain_name for r in decision_log]
+        duplicates = {n for n in domain_names_seen if domain_names_seen.count(n) > 1}
+        if duplicates:
+            raise DiscreteChoiceError(
+                f"Duplicate domain_name(s) in decision log: {sorted(duplicates)}. "
+                "Each domain must appear at most once per year."
+            )
+
+        for record in decision_log:
+            domain = record.domain_name
+            alt_ids = record.alternative_ids
+            domain_alternatives[domain] = list(alt_ids)
+            n = len(record.chosen)
+
+            # Invariant: decision record must match table row count
+            if n != output_table.num_rows:
+                raise DiscreteChoiceError(
+                    f"Domain '{domain}': chosen array length ({n}) does not match "
+                    f"output table row count ({output_table.num_rows}). "
+                    "Row counts must match for panel column injection."
+                )
+
+            # Validate column presence upfront to catch misconfigured DecisionRecord
+            for table_name, tbl in [
+                ("probabilities", record.probabilities),
+                ("utilities", record.utilities),
+            ]:
+                missing = [aid for aid in alt_ids if aid not in tbl.column_names]
+                if missing:
+                    raise DiscreteChoiceError(
+                        f"Domain '{domain}': {table_name} table missing columns "
+                        f"for alternative_ids {missing}. "
+                        f"Available: {tbl.column_names}"
+                    )
+
+            # {domain}_chosen: string column
+            output_table = output_table.append_column(
+                f"{domain}_chosen", record.chosen
+            )
+
+            # Vectorized extraction: convert each column to Python list once,
+            # then zip rows — avoids per-cell Arrow bridge crossings (O(M) calls, not O(N*M))
+            prob_col_data = [record.probabilities.column(aid).to_pylist() for aid in alt_ids]
+            prob_lists: list[list[float]] = [
+                [prob_col_data[j][i] for j in range(len(alt_ids))]
+                for i in range(n)
+            ]
+            output_table = output_table.append_column(
+                f"{domain}_probabilities",
+                pa.array(prob_lists, type=pa.list_(pa.float64())),
+            )
+
+            util_col_data = [record.utilities.column(aid).to_pylist() for aid in alt_ids]
+            util_lists: list[list[float]] = [
+                [util_col_data[j][i] for j in range(len(alt_ids))]
+                for i in range(n)
+            ]
+            output_table = output_table.append_column(
+                f"{domain}_utilities",
+                pa.array(util_lists, type=pa.list_(pa.float64())),
+            )
+
+        # decision_domains: list<string> column (same value for all rows)
+        domain_names = [r.domain_name for r in decision_log]
+        n_rows = output_table.num_rows
+        output_table = output_table.append_column(
+            "decision_domains",
+            pa.array([domain_names] * n_rows, type=pa.list_(pa.string())),
         )
 
-    domain_alternatives: dict[str, list[str]] = {}
-
-    for record in decision_log:
+    # Story 28.3 / Task 3.3-3.4: Add transition columns
+    for record in transitions:
         domain = record.domain_name
-        alt_ids = record.alternative_ids
-        domain_alternatives[domain] = list(alt_ids)
-        n = len(record.chosen)
+        n = len(record.household_ids)
 
-        # Invariant: decision record must match table row count
+        # Invariant: transition record must match table row count
         if n != output_table.num_rows:
             raise DiscreteChoiceError(
-                f"Domain '{domain}': chosen array length ({n}) does not match "
+                f"Transition domain '{domain}': household_ids length ({n}) does not match "
                 f"output table row count ({output_table.num_rows}). "
                 "Row counts must match for panel column injection."
             )
 
-        # Validate column presence upfront to catch misconfigured DecisionRecord
-        for table_name, tbl in [
-            ("probabilities", record.probabilities),
-            ("utilities", record.utilities),
-        ]:
-            missing = [aid for aid in alt_ids if aid not in tbl.column_names]
-            if missing:
-                raise DiscreteChoiceError(
-                    f"Domain '{domain}': {table_name} table missing columns "
-                    f"for alternative_ids {missing}. "
-                    f"Available: {tbl.column_names}"
-                )
+        # {domain}_from: incumbent technology before choice
+        from_col_name = f"{domain}_from"
+        if from_col_name not in output_table.column_names:
+            output_table = output_table.append_column(from_col_name, record.from_alternative_ids)
 
-        # {domain}_chosen: string column
-        output_table = output_table.append_column(
-            f"{domain}_chosen", record.chosen
-        )
+        # {domain}_to: chosen technology after choice
+        to_col_name = f"{domain}_to"
+        if to_col_name not in output_table.column_names:
+            output_table = output_table.append_column(to_col_name, record.to_alternative_ids)
 
-        # Vectorized extraction: convert each column to Python list once,
-        # then zip rows — avoids per-cell Arrow bridge crossings (O(M) calls, not O(N*M))
-        prob_col_data = [record.probabilities.column(aid).to_pylist() for aid in alt_ids]
-        prob_lists: list[list[float]] = [
-            [prob_col_data[j][i] for j in range(len(alt_ids))]
-            for i in range(n)
-        ]
-        output_table = output_table.append_column(
-            f"{domain}_probabilities",
-            pa.array(prob_lists, type=pa.list_(pa.float64())),
-        )
-
-        util_col_data = [record.utilities.column(aid).to_pylist() for aid in alt_ids]
-        util_lists: list[list[float]] = [
-            [util_col_data[j][i] for j in range(len(alt_ids))]
-            for i in range(n)
-        ]
-        output_table = output_table.append_column(
-            f"{domain}_utilities",
-            pa.array(util_lists, type=pa.list_(pa.float64())),
-        )
-
-    # decision_domains: list<string> column (same value for all rows)
-    domain_names = [r.domain_name for r in decision_log]
-    n_rows = output_table.num_rows
-    output_table = output_table.append_column(
-        "decision_domains",
-        pa.array([domain_names] * n_rows, type=pa.list_(pa.string())),
-    )
-
-    return output_table, domain_alternatives
+    # Return appropriate type based on whether decision_log was provided
+    if decision_log:
+        return output_table, domain_alternatives
+    return output_table
 
 
 def _build_panel_metadata(result: OrchestratorResult) -> dict[str, Any]:

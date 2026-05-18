@@ -18,7 +18,8 @@ import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { CalibrationPanel } from "./CalibrationPanel";
-import type { EngineConfig, CalibrationState, TasteParameters } from "@/types/workspace";
+import { TechnologyStep } from "./TechnologyStep";
+import type { EngineConfig, CalibrationState, TasteParameters, DecisionDomainKey } from "@/types/workspace";
 import { DEFAULT_TASTE_PARAMETERS } from "@/types/workspace";
 
 // ============================================================================
@@ -30,9 +31,9 @@ interface InvestmentDecisionsWizardProps {
   onUpdateEngineConfig: (config: EngineConfig) => void;
 }
 
-type WizardStep = 0 | 1 | 2 | 3;  // Enable | Model | Parameters | Review
+type WizardStep = 0 | 1 | 2 | 3 | 4;  // Enable | Technology | Model | Parameters | Review
 
-const STEP_LABELS = ["Enable", "Model", "Parameters", "Review"] as const;
+const STEP_LABELS = ["Enable", "Technology", "Model", "Parameters", "Review"] as const;
 
 // ============================================================================
 // Helper: Model descriptions
@@ -55,6 +56,13 @@ export function InvestmentDecisionsWizard({ engineConfig, onUpdateEngineConfig }
   // Track the previous model value to preserve it on re-enable
   const previousLogitModelRef = useRef<EngineConfig["logitModel"]>(engineConfig.logitModel);
 
+  // TODO: Integrate with AppContext to get actual population incumbents (Story 28.4 deferred)
+  // For now, use empty sets - population-aware features (AC-4, AC-5, AC-6, AC-7) require population profile API extension
+  const [populationIncumbents] = useState<Record<DecisionDomainKey, Set<string>>>({
+    heating: new Set(),
+    vehicle: new Set(),
+  });
+
   // Update ref when model changes from external sources (not our own toggle)
   useEffect(() => {
     if (engineConfig.logitModel !== null) {
@@ -72,8 +80,8 @@ export function InvestmentDecisionsWizard({ engineConfig, onUpdateEngineConfig }
   useEffect(
     () => {
       if (isEnabled && activeStep === 0) {
-        setActiveStep(1);  // Move to Model step when enabled externally
-        setVisitedSteps((prev) => prev.has(1) ? prev : new Set([...prev, 1]));  // Mark Model as visited only if not already
+        setActiveStep(1);  // Move to Technology step when enabled externally
+        setVisitedSteps((prev) => prev.has(1) ? prev : new Set([...prev, 1]));  // Mark Technology as visited only if not already
       } else if (!isEnabled && activeStep > 0) {
         setActiveStep(0);  // Return to Enable step when disabled
       }
@@ -92,7 +100,7 @@ export function InvestmentDecisionsWizard({ engineConfig, onUpdateEngineConfig }
   };
 
   const handleNext = () => {
-    if (activeStep < 3) {
+    if (activeStep < 4) {
       const nextStep = (activeStep + 1) as WizardStep;
       setActiveStep(nextStep);
       setVisitedSteps((prev) => new Set([...prev, nextStep]));
@@ -122,7 +130,7 @@ export function InvestmentDecisionsWizard({ engineConfig, onUpdateEngineConfig }
       investmentDecisionsEnabled: enabled,
       logitModel: newLogitModel,
     });
-    // When enabling, auto-advance to Model step and mark as visited
+    // When enabling, auto-advance to Technology step and mark as visited
     if (enabled && activeStep === 0) {
       setActiveStep(1);
       setVisitedSteps((prev) => new Set([...prev, 1]));
@@ -362,7 +370,7 @@ export function InvestmentDecisionsWizard({ engineConfig, onUpdateEngineConfig }
                 variant="ghost"
                 size="sm"
                 className="h-6 text-xs text-blue-600 hover:text-blue-700 px-2"
-                onClick={() => goToStep(1)}
+                onClick={() => goToStep(2)}
               >
                 Edit
               </Button>
@@ -382,7 +390,7 @@ export function InvestmentDecisionsWizard({ engineConfig, onUpdateEngineConfig }
                 variant="ghost"
                 size="sm"
                 className="h-6 text-xs text-blue-600 hover:text-blue-700 px-2"
-                onClick={() => goToStep(2)}
+                onClick={() => goToStep(3)}
               >
                 Edit
               </Button>
@@ -434,10 +442,18 @@ export function InvestmentDecisionsWizard({ engineConfig, onUpdateEngineConfig }
       case 0:
         return renderEnableStep();
       case 1:
-        return renderModelStep();
+        return (
+          <TechnologyStep
+            engineConfig={engineConfig}
+            onUpdateEngineConfig={onUpdateEngineConfig}
+            populationIncumbents={populationIncumbents}
+          />
+        );
       case 2:
-        return renderParametersStep();
+        return renderModelStep();
       case 3:
+        return renderParametersStep();
+      case 4:
         return renderReviewStep();
       default:
         return null;
@@ -445,14 +461,15 @@ export function InvestmentDecisionsWizard({ engineConfig, onUpdateEngineConfig }
   };
 
   const renderNavigation = () => {
-    if (activeStep === 3) {
+    if (activeStep === 4) {
       // Review step has its own Edit buttons
       return null;
     }
 
     const canGoNext =
       activeStep === 0 ? isEnabled // Enable step: can proceed if enabled (will auto-advance)
-      : activeStep === 1 ? engineConfig.logitModel !== null // Model step: require selection
+      : activeStep === 1 ? engineConfig.technologySet != null // Technology step: require technology set (Story 28.4)
+      : activeStep === 2 ? engineConfig.logitModel !== null // Model step: require selection
       : true; // Parameters step: always can proceed
 
     return (
@@ -468,7 +485,7 @@ export function InvestmentDecisionsWizard({ engineConfig, onUpdateEngineConfig }
           Back
         </Button>
 
-        {activeStep < 3 && (
+        {activeStep < 4 && (
           <Button
             size="sm"
             onClick={handleNext}

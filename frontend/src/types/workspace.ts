@@ -66,6 +66,63 @@ export type ScenarioStatus = string;
 // Investment decisions types — Story 22.6
 // ============================================================================
 
+// Story 28.1 / AC-1: Technology set types for investment decisions
+export type DecisionDomainKey = "heating" | "vehicle";
+
+export interface TechnologyAlternative {
+  id: string;
+  name: string;
+  attributes: Record<string, string | number>;
+  isIncumbentOnly?: boolean;
+}
+
+export interface DomainTechnologySet {
+  domain: DecisionDomainKey;
+  enabled: boolean;
+  alternatives: TechnologyAlternative[];
+  referenceAlternativeId: string | null;
+  costColumn?: string;
+}
+
+export interface TechnologySet {
+  version: string;
+  domains: Partial<Record<DecisionDomainKey, DomainTechnologySet>>;
+}
+
+// Default technology set constant for legacy migration — Story 28.1 / AC-4, AC-7
+export const DEFAULT_TECHNOLOGY_SET: TechnologySet = {
+  version: "fr-default-2026-04-26",
+  domains: {
+    heating: {
+      domain: "heating",
+      enabled: true,
+      alternatives: [
+        { id: "keep_current", name: "Keep Current System", attributes: {}, isIncumbentOnly: true },
+        { id: "condensing_boiler", name: "Condensing Boiler", attributes: {}, isIncumbentOnly: false },
+        { id: "heat_pump_air", name: "Air Source Heat Pump", attributes: {}, isIncumbentOnly: false },
+        { id: "heat_pump_ground", name: "Ground Source Heat Pump", attributes: {}, isIncumbentOnly: false },
+        { id: "district_heating", name: "District Heating", attributes: {}, isIncumbentOnly: false },
+      ],
+      referenceAlternativeId: "keep_current",
+      costColumn: "heating_cost",
+    },
+    vehicle: {
+      domain: "vehicle",
+      enabled: true,
+      alternatives: [
+        { id: "keep_current", name: "Keep Current Vehicle", attributes: {}, isIncumbentOnly: true },
+        { id: "petrol", name: "Petrol Car", attributes: {}, isIncumbentOnly: false },
+        { id: "diesel", name: "Diesel Car", attributes: {}, isIncumbentOnly: false },
+        { id: "hybrid", name: "Hybrid Car", attributes: {}, isIncumbentOnly: false },
+        { id: "ev", name: "Electric Vehicle", attributes: {}, isIncumbentOnly: false },
+        { id: "plug_in_hybrid", name: "Plug-in Hybrid", attributes: {}, isIncumbentOnly: false },
+      ],
+      referenceAlternativeId: "keep_current",
+      costColumn: "total_vehicle_cost",
+    },
+  },
+};
+
 export interface TasteParameters {
   priceSensitivity: number;  // [-5, 0], default -1.5
   rangeAnxiety: number;      // [-3, 0], default -0.8
@@ -90,6 +147,8 @@ export interface EngineConfig {
   discountRate: number;  // fractional: 0.03 = 3%
   tasteParameters?: TasteParameters | null;  // Optional for backward compatibility
   calibrationState?: CalibrationState;  // Story 22.6; optional for persisted legacy scenarios
+  // Story 28.1 / AC-1: Technology set for investment decisions
+  technologySet?: TechnologySet | null;
 }
 
 export interface WorkspaceScenario {
@@ -139,4 +198,30 @@ const VALID_SUBVIEWS = new Set<string>([
 ]);
 export function isValidSubView(s: string): s is SubView {
   return VALID_SUBVIEWS.has(s);
+}
+
+// ============================================================================
+// Type guards for technology set — Story 28.1
+// ============================================================================
+
+export function hasTechnologySet(config: EngineConfig): config is EngineConfig & { technologySet: TechnologySet } {
+  if (!config.technologySet) return false;
+
+  // Validate structure: must have version and at least one domain
+  const ts = config.technologySet;
+  if (typeof ts.version !== "string" || !ts.version) return false;
+  if (!ts.domains || typeof ts.domains !== "object") return false;
+
+  const domainKeys = Object.keys(ts.domains);
+  if (domainKeys.length === 0) return false;
+
+  // Validate at least one domain has required structure
+  return domainKeys.some((key) => {
+    const domain = ts.domains[key as DecisionDomainKey];
+    return (
+      domain &&
+      typeof domain.enabled === "boolean" &&
+      Array.isArray(domain.alternatives)
+    );
+  });
 }

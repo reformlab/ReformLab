@@ -1,0 +1,128 @@
+record_id: c048d7df-1ea9-482a-a56b-670065e9c890
+created_at: '2026-05-17T16:26:57.831792+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 28
+  story_num: 3
+  title: Story 28.3
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true
+evaluator:
+  provider: claude-subprocess
+  model: sonnet
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-05-17T16:21:49.070771Z'
+  end_time: '2026-05-17T16:26:33.241771Z'
+  duration_ms: 284171
+  input_tokens: 0
+  output_tokens: 6119
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 24478
+  heading_count: 32
+  list_depth_max: 3
+  code_block_count: 8
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Evidence Score Summary
+  - 'Evidence Score: 10.5'
+  - 🎯 Ruthless Story Validation 28.3
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 🚨 Critical Issues (Must Fix)
+  - 1. `keep_current` Writeback Semantics Unspecified (Data Corruption)
+  - 'In the incumbent writeback block (after Task 1.2 loop):'
+  - 2. Alternative ID Mismatch Blocks Heating Domain (Runtime Error in Year 2)
+  - 3. AC-7 Eligibility Invariance Claim is Factually Incorrect
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 1. Panel Column Naming Must Match Existing Convention
+  - 2. `RunManifest` Backward Compatibility Gap
+  - 3. `domain_key` Parameter Backward Compatibility
+  - ✨ Optimizations (Nice to Have)
+  - 1. `TransitionRecord` Architectural Role vs. `DecisionRecord`
+  - 2. Clarify Year-1 Behavior When Incumbent Column Is Created Fresh
+  - 🤖 LLM Optimization Improvements
+  - 1. Eligibility Invariance Pattern (Dev Notes) Contains False Claims
+  - 2. Panel Output Task 3 Pseudocode is in the Wrong Scope
+  - Story pseudocode shows _build_decision_columns() iterating over yearly_states
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: b2d889cb4d40
+findings:
+  total_count: 14
+  by_severity:
+    critical: 3
+    major: 8
+    minor: 2
+    nit: 1
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 5
+    completeness: 4
+    clarity: 2
+    testability: 2
+  has_fix_count: 14
+  has_location_count: 11
+  has_evidence_count: 11
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: true
+  uses_conditionals: true
+  uncertainty_phrases_count: 0
+  confidence_phrases_count: 13
+linguistic:
+  avg_sentence_length: 24.133858267716537
+  vocabulary_richness: 0.26101141924959215
+  flesch_reading_ease: 14.096094549530108
+  vague_terms_count: 1
+  formality_score: 0.7
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.92
+  evidence_quality: 0.79
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true
