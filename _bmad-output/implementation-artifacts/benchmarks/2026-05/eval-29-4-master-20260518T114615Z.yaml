@@ -1,0 +1,57 @@
+record_id: 6664bf07-4926-4eac-b72b-117e0f2e0785
+created_at: '2026-05-18T11:46:15.815637+00:00'
+workflow:
+  id: create-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 29
+  story_num: 4
+  title: Story 29.4
+  complexity_flags: {}
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: master
+  role_id: null
+  session_id: 0e7c8b37-e201-4d12-9ad9-38d5f1d515d8
+execution:
+  start_time: '2026-05-18T11:43:13.659488Z'
+  end_time: '2026-05-18T11:46:15.787573Z'
+  duration_ms: 182128
+  input_tokens: 0
+  output_tokens: 0
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 3653
+  heading_count: 8
+  list_depth_max: 1
+  code_block_count: 0
+  sections_detected:
+  - Story Summary
+  - Key Files to Update
+  - What Was Already Done (Story 29.2)
+  - Implementation Strategy
+  - Story Summary
+  - Key Files to Update
+  - What Was Already Done (Story 29.2)
+  - Implementation Strategy
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 3eeed6419056
+findings: null
+reasoning: null
+linguistic: null
+quality: null
+consensus: null
+ground_truth: null
+custom: null
