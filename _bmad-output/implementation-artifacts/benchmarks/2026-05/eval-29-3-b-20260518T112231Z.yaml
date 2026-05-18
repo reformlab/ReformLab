@@ -1,0 +1,132 @@
+record_id: 2e756d80-ba21-453e-a97b-a569fd859eb8
+created_at: '2026-05-18T11:22:31.534499+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 29
+  story_num: 3
+  title: Story 29.3
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: sonnet
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-05-18T11:18:03.153930Z'
+  end_time: '2026-05-18T11:22:05.890930Z'
+  duration_ms: 242737
+  input_tokens: 0
+  output_tokens: 5949
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 23798
+  heading_count: 36
+  list_depth_max: 4
+  code_block_count: 9
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: **9.4**'
+  - 🎯 Ruthless Story Validation 29.3
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 🚨 Critical Issues (Must Fix)
+  - '1. `malus_ecologique` Always Returns 0 — AC #5 Is Impossible As Written'
+  - 2. Integration Test Population Missing `foyer_fiscal` Coverage — `irpp_economique` Will Not Be Exercised
+  - 3. Story Misrepresents Prerequisite Completeness — Silent Blocker Trap
+  - ⚡ Enhancement Opportunities (Should Add)
+  - '4. Existing `test_dependencies.py` Must Be Updated for AC #1'
+  - 5. Live Integration Test Must Be Runnable in CI Without Opt-In Env Var
+  - 'Instead of:'
+  - 'Use the pattern already established in test_openfisca_extension.py:'
+  - '6. Add Exact Count Assertion to Match AC #1''s "Exactly 9" Requirement'
+  - 7. Specify `cheque_energie` Input Requirements for `aide_energie` Test
+  - ✨ Optimizations (Nice to Have)
+  - 8. Consolidate Integration Test Into Existing `test_openfisca_extension.py`
+  - 9. Split the "Documentation Update" Task into Explicit Checks
+  - 🤖 LLM Optimization Improvements
+  - 10. Dev Notes "Current State" Section Is Redundant Token Waste
+  - From result_normalizer.py
+  - Derived automatically from mapping keys
+  - 11. Test Template Is a Stub That Misleads About Completeness
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: d8b8a11688ef
+findings:
+  total_count: 11
+  by_severity:
+    critical: 3
+    major: 4
+    minor: 2
+    nit: 2
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 1
+    completeness: 3
+    clarity: 2
+    testability: 5
+  has_fix_count: 11
+  has_location_count: 11
+  has_evidence_count: 11
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: false
+  uses_conditionals: true
+  uncertainty_phrases_count: 10
+  confidence_phrases_count: 11
+linguistic:
+  avg_sentence_length: 30.178217821782177
+  vocabulary_richness: 0.26410761154855644
+  flesch_reading_ease: 16.86343850267383
+  vague_terms_count: 1
+  formality_score: 0.75
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.95
+  evidence_quality: 1.0
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false

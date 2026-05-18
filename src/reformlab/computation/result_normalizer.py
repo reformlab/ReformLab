@@ -93,6 +93,9 @@ _DEFAULT_OUTPUT_MAPPING: dict[str, str] = {
 # that OpenFisca-France produces and that the normalizer maps to English.
 # Story 23.4: Default output variables for live OpenFisca execution.
 # Story 29.2: Updated to use actual OpenFisca-France variable names (irpp_economique, not irpp).
+# Story 29.3: Derivation behavior — _DEFAULT_LIVE_OUTPUT_VARIABLES is automatically
+# derived from _DEFAULT_OUTPUT_MAPPING.keys(). Any change to the mapping is reflected
+# in the live output tuple. This ensures the live output set always matches the mapping.
 _DEFAULT_LIVE_OUTPUT_VARIABLES: tuple[str, ...] = tuple(_DEFAULT_OUTPUT_MAPPING.keys())
 
 # Minimum required indicator columns for normalization to succeed.

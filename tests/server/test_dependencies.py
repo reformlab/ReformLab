@@ -127,18 +127,32 @@ class TestDefaultLiveOutputVariables:
 
         Story 29.2: Generic-name placeholders were resolved - irpp replaced with
         irpp_economique; others removed as no equivalents exist.
+        Story 29.3: Verify all 9 resolved variables present, no placeholders.
         """
-        # These are the keys from _DEFAULT_OUTPUT_MAPPING
+        # Core OpenFisca-France variables (5)
         assert "revenu_disponible" in _DEFAULT_LIVE_OUTPUT_VARIABLES
         assert "irpp_economique" in _DEFAULT_LIVE_OUTPUT_VARIABLES
         assert "impots_directs" in _DEFAULT_LIVE_OUTPUT_VARIABLES
         assert "salaire_net" in _DEFAULT_LIVE_OUTPUT_VARIABLES
         assert "prestations_sociales" in _DEFAULT_LIVE_OUTPUT_VARIABLES
+
+        # Custom ReformLab variables from Story 29.1 (4)
+        assert "montant_subvention" in _DEFAULT_LIVE_OUTPUT_VARIABLES
+        assert "eligible_subvention" in _DEFAULT_LIVE_OUTPUT_VARIABLES
+        assert "malus_ecologique" in _DEFAULT_LIVE_OUTPUT_VARIABLES
+        assert "aide_energie" in _DEFAULT_LIVE_OUTPUT_VARIABLES
+
         # Story 29.2: Verify removed placeholders are NOT in live output
         assert "irpp" not in _DEFAULT_LIVE_OUTPUT_VARIABLES
         assert "revenu_net" not in _DEFAULT_LIVE_OUTPUT_VARIABLES
         assert "revenu_brut" not in _DEFAULT_LIVE_OUTPUT_VARIABLES
         assert "taxe_carbone" not in _DEFAULT_LIVE_OUTPUT_VARIABLES
+
+        # Story 29.3: Exactly 9 variables total (no more, no less)
+        assert len(_DEFAULT_LIVE_OUTPUT_VARIABLES) == 9, (
+            f"Expected exactly 9 live output variables, got {len(_DEFAULT_LIVE_OUTPUT_VARIABLES)}: "
+            f"{sorted(_DEFAULT_LIVE_OUTPUT_VARIABLES)}"
+        )
 
     def test_default_live_output_variables_is_tuple(self) -> None:
         """_DEFAULT_LIVE_OUTPUT_VARIABLES is an immutable tuple."""
