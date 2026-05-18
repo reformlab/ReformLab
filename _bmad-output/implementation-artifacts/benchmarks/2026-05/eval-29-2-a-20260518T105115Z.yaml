@@ -1,0 +1,132 @@
+record_id: 7d80ebee-4b15-4932-9868-17d84a41bf43
+created_at: '2026-05-18T10:51:15.277992+00:00'
+workflow:
+  id: validate-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 29
+  story_num: 2
+  title: Story 29.2
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: sonnet
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-05-18T10:46:00.425106Z'
+  end_time: '2026-05-18T10:50:47.791106Z'
+  duration_ms: 287366
+  input_tokens: 0
+  output_tokens: 7080
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 28321
+  heading_count: 36
+  list_depth_max: 3
+  code_block_count: 10
+  sections_detected:
+  - 🎯 Story Context Validation Report
+  - Executive Summary
+  - Issues Overview
+  - Evidence Score Summary
+  - 'Evidence Score: 13.6'
+  - 🎯 Ruthless Story Validation 29.2
+  - INVEST Criteria Assessment
+  - INVEST Violations
+  - Acceptance Criteria Issues
+  - Hidden Risks and Dependencies
+  - Estimation Reality-Check
+  - Technical Alignment
+  - 'Evidence Score: 13.6 → REJECT'
+  - 🚨 Critical Issues (Must Fix)
+  - '1. False Context: Story Claims Hotfix Narrowed Live Output — Code Shows Otherwise'
+  - 2. Quality Gate Test Breaks On Implementation
+  - '3. AC #4 Is Architecturally Unsatisfiable Without Code Restructuring'
+  - Current code — derived from mapping
+  - ⚡ Enhancement Opportunities (Should Add)
+  - 4. Warn About Duplicate Key Risk When Substituting `irpp`
+  - 5. Address `_MINIMUM_REQUIRED_COLUMNS` Impact of Removing `taxe_carbone`
+  - 6. Flag Entity-Level Concern for French Income Tax Variables
+  - 7. Specify Which Tests Must Be Updated in THIS Story (Not Deferred to 29.4)
+  - 8. Add AC for Verifying Replacement Variables Normalize End-to-End
+  - ✨ Optimizations (Nice to Have)
+  - 9. Research Commands Should Check New Story 29.1 Custom Variables Are Resolvable
+  - Verify Story 29.1 custom variables are now in TBS
+  - 10. Consolidate "Placeholder Analysis" Into Tasks Section
+  - 🤖 LLM Optimization Improvements
+  - 11. Inaccurate "Critical Context" Wastes Tokens and Misleads
+  - 12. Expected Outcomes Section Contains Incorrect Statement
+  - 📝 Changes Applied
+  - 🏆 Competition Results
+  - Quality Metrics
+  - Disaster Prevention Assessment
+  - Competition Outcome
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: a4cf281de7da
+findings:
+  total_count: 12
+  by_severity:
+    critical: 3
+    major: 5
+    minor: 4
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 5
+    completeness: 4
+    clarity: 3
+    testability: 2
+  has_fix_count: 12
+  has_location_count: 11
+  has_evidence_count: 9
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: false
+  uses_conditionals: true
+  uncertainty_phrases_count: 13
+  confidence_phrases_count: 12
+linguistic:
+  avg_sentence_length: 25.315068493150687
+  vocabulary_richness: 0.21185064935064934
+  flesch_reading_ease: 23.607883817427393
+  vague_terms_count: 1
+  formality_score: 0.75
+  sentiment: mixed
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.92
+  evidence_quality: 0.75
+  follows_template: true
+  internal_consistency: 0.85
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false

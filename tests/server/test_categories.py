@@ -6,7 +6,6 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-
 # ============================================================================
 # Story 25.1 / AC-1: GET /api/categories returns categories with full schema
 # ============================================================================

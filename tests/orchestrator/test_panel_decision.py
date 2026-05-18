@@ -20,8 +20,8 @@ import pytest
 from reformlab.computation.types import ComputationResult
 from reformlab.discrete_choice.decision_record import (
     DECISION_LOG_KEY,
-    DecisionRecord,
     TRANSITION_LOG_KEY,
+    DecisionRecord,
     TransitionRecord,
 )
 from reformlab.discrete_choice.errors import DiscreteChoiceError

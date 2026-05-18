@@ -59,12 +59,12 @@ class TestNormalizeComputationResult:
     """Test normalize_computation_result function (AC: 1, 4)."""
 
     def test_renames_known_openfisca_variables(self) -> None:
-        """'revenu_disponible' -> 'disposable_income', 'salaire_net' -> 'income'."""
+        """Test known variable renames: French names to English project schema."""
         table = pa.table({
             "household_id": pa.array([1, 2, 3], type=pa.int64()),
             "revenu_disponible": pa.array([50000.0, 60000.0, 70000.0]),
             "salaire_net": pa.array([45000.0, 55000.0, 65000.0]),
-            "taxe_carbone": pa.array([100.0, 200.0, 300.0]),
+            "irpp_economique": pa.array([3000.0, 4000.0, 5000.0]),
         })
         comp_result = ComputationResult(
             output_fields=table,
@@ -77,17 +77,17 @@ class TestNormalizeComputationResult:
         # Known variables renamed
         assert "disposable_income" in result.column_names
         assert "income" in result.column_names
-        assert "carbon_tax" in result.column_names
+        assert "income_tax" in result.column_names
 
         # Original OpenFisca names removed
         assert "revenu_disponible" not in result.column_names
         assert "salaire_net" not in result.column_names
-        assert "taxe_carbone" not in result.column_names
+        assert "irpp_economique" not in result.column_names
 
         # Values preserved
         assert result.column("disposable_income").to_pylist() == [50000.0, 60000.0, 70000.0]
         assert result.column("income").to_pylist() == [45000.0, 55000.0, 65000.0]
-        assert result.column("carbon_tax").to_pylist() == [100.0, 200.0, 300.0]
+        assert result.column("income_tax").to_pylist() == [3000.0, 4000.0, 5000.0]
 
     def test_passes_through_unknown_columns(self) -> None:
         """Columns not in mapping are preserved."""
@@ -145,8 +145,7 @@ class TestNormalizeComputationResult:
         table = pa.table({
             "household_id": pa.array([1, 2, 3], type=pa.int64()),
             "salaire_net": pa.array([45000.0, 55000.0, 65000.0]),  # Maps to income (required)
-            "irpp": pa.array([3000.0, 4000.0, 5000.0]),  # Income tax
-            "revenu_net": pa.array([47000.0, 56000.0, 65000.0]),  # Net income
+            "irpp_economique": pa.array([3000.0, 4000.0, 5000.0]),  # Income tax
         })
         comp_result = ComputationResult(
             output_fields=table,
@@ -159,10 +158,8 @@ class TestNormalizeComputationResult:
         # Default mapping applied
         assert "income" in result.column_names
         assert "income_tax" in result.column_names
-        assert "net_income" in result.column_names
         assert "salaire_net" not in result.column_names
-        assert "irpp" not in result.column_names
-        assert "revenu_net" not in result.column_names
+        assert "irpp_economique" not in result.column_names
 
     def test_raises_on_empty_or_incompatible_schema(self) -> None:
         """NormalizationError when no columns from _MINIMUM_REQUIRED_COLUMNS are present."""
@@ -256,15 +253,21 @@ class TestNormalizeComputationResult:
         assert "person_id" in result.column_names
 
     def test_default_mapping_constants(self) -> None:
-        """Verify _DEFAULT_OUTPUT_MAPPING contains expected mappings."""
+        """Verify _DEFAULT_OUTPUT_MAPPING contains expected mappings.
+
+        Story 29.2: Generic-name placeholders (irpp, revenu_net, revenu_brut, taxe_carbone)
+        were resolved: irpp replaced with irpp_economique; others removed as no equivalents exist.
+        """
         assert _DEFAULT_OUTPUT_MAPPING.get("revenu_disponible") == "disposable_income"
-        assert _DEFAULT_OUTPUT_MAPPING.get("irpp") == "income_tax"
+        assert _DEFAULT_OUTPUT_MAPPING.get("irpp_economique") == "income_tax"
         assert _DEFAULT_OUTPUT_MAPPING.get("impots_directs") == "direct_taxes"
-        assert _DEFAULT_OUTPUT_MAPPING.get("revenu_net") == "net_income"
         assert _DEFAULT_OUTPUT_MAPPING.get("salaire_net") == "income"
-        assert _DEFAULT_OUTPUT_MAPPING.get("revenu_brut") == "gross_income"
         assert _DEFAULT_OUTPUT_MAPPING.get("prestations_sociales") == "social_benefits"
-        assert _DEFAULT_OUTPUT_MAPPING.get("taxe_carbone") == "carbon_tax"
+        # Story 29.2: Verify removed placeholders are NOT in mapping
+        assert "irpp" not in _DEFAULT_OUTPUT_MAPPING
+        assert "revenu_net" not in _DEFAULT_OUTPUT_MAPPING
+        assert "revenu_brut" not in _DEFAULT_OUTPUT_MAPPING
+        assert "taxe_carbone" not in _DEFAULT_OUTPUT_MAPPING
 
     def test_minimum_required_columns_constant(self) -> None:
         """Verify _MINIMUM_REQUIRED_COLUMNS contains expected indicator columns.
@@ -312,7 +315,7 @@ class TestCreateLiveNormalizer:
         table = pa.table({
             "household_id": pa.array([1, 2, 3], type=pa.int64()),
             "revenu_disponible": pa.array([50000.0, 60000.0, 70000.0]),
-            "taxe_carbone": pa.array([100.0, 200.0, 300.0]),
+            "irpp_economique": pa.array([3000.0, 4000.0, 5000.0]),
         })
         comp_result = ComputationResult(
             output_fields=table,
@@ -322,8 +325,9 @@ class TestCreateLiveNormalizer:
 
         result = normalizer(comp_result)
         assert "disposable_income" in result.column_names
-        assert "carbon_tax" in result.column_names
+        assert "income_tax" in result.column_names
         assert result.column("disposable_income").to_pylist() == [50000.0, 60000.0, 70000.0]
+        assert result.column("income_tax").to_pylist() == [3000.0, 4000.0, 5000.0]
 
 
 class TestNormalizeEntityTables:
@@ -393,13 +397,17 @@ class TestRuntimeModeBehavior:
         assert "disposable_income" in result.column_names
 
     def test_both_modes_produce_same_column_names(self) -> None:
-        """Both live (with normalizer) and replay (without) produce compatible column names."""
+        """Both live (with normalizer) and replay (without) produce compatible column names.
+
+        Story 29.2: Updated to use irpp_economique instead of taxe_carbone since
+        taxe_carbone is ReformLab-specific, not a core OpenFisca-France variable.
+        """
         # Live mode: French names, normalized
         live_table = pa.table({
             "household_id": pa.array([1, 2, 3], type=pa.int64()),
             "salaire_net": pa.array([45000.0, 55000.0, 65000.0]),
             "revenu_disponible": pa.array([47000.0, 57000.0, 67000.0]),
-            "taxe_carbone": pa.array([100.0, 200.0, 300.0]),
+            "irpp_economique": pa.array([3000.0, 4000.0, 5000.0]),
         })
         live_result = ComputationResult(
             output_fields=live_table,
@@ -414,7 +422,7 @@ class TestRuntimeModeBehavior:
             "household_id": pa.array([1, 2, 3], type=pa.int64()),
             "income": pa.array([45000.0, 55000.0, 65000.0]),
             "disposable_income": pa.array([47000.0, 57000.0, 67000.0]),
-            "carbon_tax": pa.array([100.0, 200.0, 300.0]),
+            "income_tax": pa.array([3000.0, 4000.0, 5000.0]),
         })
         replay_result = ComputationResult(
             output_fields=replay_table,
@@ -427,4 +435,4 @@ class TestRuntimeModeBehavior:
         assert set(live_normalized.column_names) == set(replay_normalized.column_names)
         assert "income" in live_normalized.column_names
         assert "disposable_income" in live_normalized.column_names
-        assert "carbon_tax" in live_normalized.column_names
+        assert "income_tax" in live_normalized.column_names

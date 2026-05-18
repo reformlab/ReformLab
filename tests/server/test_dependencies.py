@@ -123,16 +123,22 @@ class TestDefaultLiveOutputVariables:
     """Story 23.4: _DEFAULT_LIVE_OUTPUT_VARIABLES constant."""
 
     def test_default_live_output_variables_are_french_names(self) -> None:
-        """Default live output variables are French OpenFisca variable names."""
+        """Default live output variables are French OpenFisca variable names.
+
+        Story 29.2: Generic-name placeholders were resolved - irpp replaced with
+        irpp_economique; others removed as no equivalents exist.
+        """
         # These are the keys from _DEFAULT_OUTPUT_MAPPING
         assert "revenu_disponible" in _DEFAULT_LIVE_OUTPUT_VARIABLES
-        assert "irpp" in _DEFAULT_LIVE_OUTPUT_VARIABLES
+        assert "irpp_economique" in _DEFAULT_LIVE_OUTPUT_VARIABLES
         assert "impots_directs" in _DEFAULT_LIVE_OUTPUT_VARIABLES
-        assert "revenu_net" in _DEFAULT_LIVE_OUTPUT_VARIABLES
         assert "salaire_net" in _DEFAULT_LIVE_OUTPUT_VARIABLES
-        assert "revenu_brut" in _DEFAULT_LIVE_OUTPUT_VARIABLES
         assert "prestations_sociales" in _DEFAULT_LIVE_OUTPUT_VARIABLES
-        assert "taxe_carbone" in _DEFAULT_LIVE_OUTPUT_VARIABLES
+        # Story 29.2: Verify removed placeholders are NOT in live output
+        assert "irpp" not in _DEFAULT_LIVE_OUTPUT_VARIABLES
+        assert "revenu_net" not in _DEFAULT_LIVE_OUTPUT_VARIABLES
+        assert "revenu_brut" not in _DEFAULT_LIVE_OUTPUT_VARIABLES
+        assert "taxe_carbone" not in _DEFAULT_LIVE_OUTPUT_VARIABLES
 
     def test_default_live_output_variables_is_tuple(self) -> None:
         """_DEFAULT_LIVE_OUTPUT_VARIABLES is an immutable tuple."""

@@ -46,7 +46,11 @@ logger = logging.getLogger(__name__)
 try:
     from reformlab.computation.openfisca_extension.extension import (
         CUSTOM_VARIABLES as _EXTENSION_VARIABLES,
+    )
+    from reformlab.computation.openfisca_extension.extension import (
         EXTENSION_NAME as _EXTENSION_NAME,
+    )
+    from reformlab.computation.openfisca_extension.extension import (
         EXTENSION_VERSION as _EXTENSION_VERSION,
     )
 except ImportError:
@@ -390,7 +394,7 @@ class OpenFiscaApiAdapter:
 
         Returns:
             Dict mapping variable name to periodicity string
-            (e.g. ``{"salaire_net": "month", "irpp": "year"}``).
+            (e.g. ``{"salaire_net": "month", "irpp_economique": "year"}``).
 
         Raises:
             ApiMappingError: If a variable's periodicity cannot be determined
@@ -1112,7 +1116,7 @@ class OpenFiscaApiAdapter:
 
         Returns:
             Dict mapping entity plural name to list of variable names.
-            E.g. ``{"individus": ["salaire_net"], "foyers_fiscaux": ["irpp"]}``.
+            E.g. ``{"individus": ["salaire_net"], "foyers_fiscaux": ["irpp_economique"]}``.
 
         Raises:
             ApiMappingError: If a variable's entity cannot be determined.

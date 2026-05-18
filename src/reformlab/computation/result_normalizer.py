@@ -38,6 +38,37 @@ MAPPING_APPLIED_KEY: str = "mapping_applied"
 # Default output mapping from OpenFisca to project schema
 # ============================================================================
 
+# Story 29.2 (2026-05-18): Resolution of generic-name placeholders
+#
+# The following placeholder names were removed from the mapping as they do not
+# exist in core OpenFisca-France and no direct equivalents were found:
+#
+# Removed: irpp -> income_tax
+#   Rationale: "irpp" is a generic name that does not exist in OpenFisca-France.
+#   Use instead: "irpp_economique" (actual OpenFisca-France variable at foyer_fiscal entity level)
+#
+# Removed: revenu_net -> net_income
+#   Rationale: "revenu_net" does not exist in OpenFisca-France. The closest concepts are:
+#   - "revenu_disponible" (already mapped to "disposable_income")
+#   - "salaire_net" (already mapped to "income")
+#   Use instead: "revenu_disponible" for household-level disposable income,
+#                "salaire_net" for person-level net salary.
+#
+# Removed: revenu_brut -> gross_income
+#   Rationale: "revenu_brut" does not exist in OpenFisca-France. Person-level "salaire_de_base"
+#   exists but household-level gross income is not available as a single variable.
+#   Use instead: For person-level gross salary, use "salaire_de_base" (requires aggregation to household).
+#
+# Removed: taxe_carbone -> carbon_tax
+#   Rationale: "taxe_carbone" is a ReformLab-specific policy template output, not a core
+#   OpenFisca-France variable. Carbon tax calculations are performed by ReformLab's
+#   carbon_tax template pack, not by the OpenFisca-France core system.
+#   Use instead: The carbon_tax template produces this output directly (no OpenFisca mapping needed).
+#
+# Summary of changes:
+# - irpp replaced with irpp_economique (actual OpenFisca-France variable)
+# - revenu_net, revenu_brut, taxe_carbone removed (no core equivalents exist)
+
 # Mapping from common OpenFisca-France variable names to project schema names.
 # Used as fallback when no MappingConfig YAML file is provided.
 # Only output-direction mappings are included.
@@ -45,13 +76,10 @@ MAPPING_APPLIED_KEY: str = "mapping_applied"
 # Mapping precedence: explicit run config MappingConfig > _DEFAULT_OUTPUT_MAPPING
 _DEFAULT_OUTPUT_MAPPING: dict[str, str] = {
     "revenu_disponible": "disposable_income",
-    "irpp": "income_tax",
+    "irpp_economique": "income_tax",
     "impots_directs": "direct_taxes",
-    "revenu_net": "net_income",
     "salaire_net": "income",
-    "revenu_brut": "gross_income",
     "prestations_sociales": "social_benefits",
-    "taxe_carbone": "carbon_tax",
     # Story 24.2: Subsidy-family output variable mappings
     "montant_subvention": "subsidy_amount",
     "eligible_subvention": "subsidy_eligible",
@@ -63,6 +91,7 @@ _DEFAULT_OUTPUT_MAPPING: dict[str, str] = {
 # These are the keys of _DEFAULT_OUTPUT_MAPPING — the French variable names
 # that OpenFisca-France produces and that the normalizer maps to English.
 # Story 23.4: Default output variables for live OpenFisca execution.
+# Story 29.2: Updated to use actual OpenFisca-France variable names (irpp_economique, not irpp).
 _DEFAULT_LIVE_OUTPUT_VARIABLES: tuple[str, ...] = tuple(_DEFAULT_OUTPUT_MAPPING.keys())
 
 # Minimum required indicator columns for normalization to succeed.
