@@ -1,0 +1,116 @@
+record_id: 05b14ee7-1fdd-48c3-b13e-dcef74de1135
+created_at: '2026-05-18T11:39:27.944498+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 29
+  story_num: '3'
+  title: Story 29.3
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: sonnet
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-05-18T11:34:33.706146Z'
+  end_time: '2026-05-18T11:38:54.326146Z'
+  duration_ms: 260620
+  input_tokens: 0
+  output_tokens: 3022
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 12088
+  heading_count: 16
+  list_depth_max: 2
+  code_block_count: 3
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: **6.5**'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes & Readability
+  - ⚡ Performance & Scalability
+  - 🐛 Correctness & Safety
+  - Boundary Condition Bug in Subsidy Formula
+  - Fragile Subsidy Ineligibility Assertions
+  - Lying Tests
+  - 🔧 Maintainability Issues
+  - 🛠️ Suggested Fixes
+  - 1. Fix the Boundary Condition Bug (`<` vs `<=`)
+  - 2. Add a Real `aide_energie` Delegation Test
+  - 3. Add Normalization to the Integration Test
+  - Summary for Lucas
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 030c6731ecd4
+findings:
+  total_count: 12
+  by_severity:
+    critical: 1
+    major: 3
+    minor: 7
+    nit: 1
+  by_category:
+    security: 0
+    performance: 2
+    correctness: 2
+    completeness: 3
+    clarity: 3
+    testability: 3
+  has_fix_count: 9
+  has_location_count: 11
+  has_evidence_count: 4
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: false
+  uses_conditionals: true
+  uncertainty_phrases_count: 0
+  confidence_phrases_count: 5
+linguistic:
+  avg_sentence_length: 29.80851063829787
+  vocabulary_richness: 0.36117059243397576
+  flesch_reading_ease: 9.595648496240642
+  vague_terms_count: 0
+  formality_score: 0.65
+  sentiment: mixed
+quality:
+  actionable_ratio: 0.75
+  specificity_score: 0.83
+  evidence_quality: 0.58
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 5
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

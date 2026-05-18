@@ -61,7 +61,7 @@ def _montant_subvention_formula(
     subsidy_amount = 150.0
 
     # Calculate eligibility: income < cap
-    is_eligible = income <= income_cap
+    is_eligible = income < income_cap
 
     # Return subsidy amount for eligible households, 0 otherwise
     return np.where(is_eligible, subsidy_amount, 0.0)
@@ -86,7 +86,7 @@ def _eligible_subvention_formula(
     income_cap = 20000.0
 
     # Eligible if income < cap
-    return income <= income_cap
+    return income < income_cap
 
 
 # ============================================================================

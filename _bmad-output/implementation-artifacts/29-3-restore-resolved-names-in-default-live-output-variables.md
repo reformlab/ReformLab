@@ -347,6 +347,7 @@ No debug logs. Story creation based on comprehensive analysis of Stories 29.1 an
 
 **Files Modified:**
 - `src/reformlab/computation/result_normalizer.py` — Added derivation behavior comment explaining automatic derivation from mapping keys
+- `src/reformlab/computation/openfisca_extension/subsidy_variables.py` — Fixed boundary condition bug: changed `<=` to `<` to match AC #5 specification (income < 20000 EUR)
 - `tests/computation/test_openfisca_extension.py` — Added `test_live_computation_with_all_default_variables` to `TestIntegrationWithAdapter` class
 - `tests/server/test_dependencies.py` — Updated `test_default_live_output_variables_are_french_names` to assert all 4 custom variables and exact count
 
@@ -364,3 +365,41 @@ No debug logs. Story creation based on comprehensive analysis of Stories 29.1 an
 - Added derivation behavior documentation to `result_normalizer.py`
 - Discovered and documented multi-entity structure: menages (6), foyers_fiscaux (1), individus (1), familles (1)
 - All 6 acceptance criteria satisfied
+
+### 2026-05-18 (Code Review Synthesis)
+- Fixed boundary condition bug: changed `income <= income_cap` to `income < income_cap` in both `_montant_subvention_formula` and `_eligible_subvention_formula` to match AC #5 specification
+- Reviewed 2 adversarial code review findings (Evidence Scores: 12.0 REJECT, 6.5 MAJOR REWORK)
+- Applied 1 critical fix to source code
+- Documented 3 high-severity issues deferred due to architectural limitations (multi-entity normalization)
+
+## Senior Developer Review (AI)
+
+### Review: 2026-05-18
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 9.25 (average of 12.0 and 6.5) → CHANGES REQUESTED
+- **Issues Found:** 4 verified (1 critical, 3 high)
+- **Issues Fixed:** 1 (critical boundary condition bug)
+- **Action Items Created:** 3
+
+### Review Summary
+
+Two independent adversarial reviewers identified multiple issues with the validation story. The synthesis verified and applied fixes for:
+1. **Critical Bug:** Boundary condition mismatch — formulas used `<=` but AC #5 specified `<` for income threshold eligibility. Fixed in `subsidy_variables.py`.
+2. **High Priority:** AC #4 (normalization with no ApiMappingError) not tested — test explicitly defers multi-entity normalization to future story.
+3. **High Priority:** AC #5 (English column names in normalized output) not tested — test checks French names in entity_tables but never calls normalization.
+4. **High Priority:** Misleading test comment — line 318 says "subsidy_amount" but code checks French "montant_subvention".
+
+Deferred items requiring follow-up work:
+- AC #4 and AC #5 normalization testing (requires multi-entity normalization implementation)
+- Test comment documentation improvement (minor)
+
+### Reviewer Quality Assessment
+- **Reviewer A:** Identified 7 issues with good coverage of AC gaps. Some false positives on test data comments.
+- **Reviewer B:** Identified 9 issues with precise bug reproduction. Excellent focus on boundary condition bug. More conservative issue count with higher signal-to-noise ratio.
+- **Consensus Issues:** 3 critical/high issues identified by both reviewers (high confidence)
+
+#### Review Follow-ups (AI)
+- [ ] [AI-Review] HIGH: Implement AC #4 normalization testing — Add `normalize_computation_result()` call to integration test and verify no `ApiMappingError` occurs (tests/computation/test_openfisca_extension.py:309-312)
+- [ ] [AI-Review] HIGH: Implement AC #5 English column name verification — After normalization, assert that `subsidy_amount`, `subsidy_eligible`, `vehicle_malus`, and `energy_poverty_aid` appear in normalized output (tests/computation/test_openfisca_extension.py)
+- [ ] [AI-Review] MEDIUM: Fix misleading test comment — Line 318 says "subsidy_amount" but code checks French "montant_subvention"; clarify comment to distinguish semantic meaning from column name (tests/computation/test_openfisca_extension.py:318)
+

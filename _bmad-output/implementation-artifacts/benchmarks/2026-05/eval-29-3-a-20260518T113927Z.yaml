@@ -1,0 +1,112 @@
+record_id: 2b737cca-f36f-4574-b2e0-f6ff08f30ee8
+created_at: '2026-05-18T11:39:27.965360+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 29
+  story_num: '3'
+  title: Story 29.3
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: glm-4.7
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-05-18T11:34:33.706146Z'
+  end_time: '2026-05-18T11:37:22.956146Z'
+  duration_ms: 169250
+  input_tokens: 0
+  output_tokens: 2671
+  retries: 0
+  sequence_position: 1
+output:
+  char_count: 10687
+  heading_count: 12
+  list_depth_max: 2
+  code_block_count: 6
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: 12.0'
+  - 🎭 Lying Tests Detected
+  - 🐛 Correctness & Safety
+  - 📋 Missing Acceptance Criteria Coverage
+  - 🛠️ Suggested Fixes
+  - 1. Add normalization verification to test_live_computation_with_all_default_variables
+  - 2. Fix lying test comment
+  - 3. Add ApiMappingError verification
+  - 4. Fix test data to match comments
+  - 📝 Summary
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 030c6731ecd4
+findings:
+  total_count: 5
+  by_severity:
+    critical: 4
+    major: 1
+    minor: 0
+    nit: 0
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 3
+    completeness: 2
+    clarity: 1
+    testability: 4
+  has_fix_count: 4
+  has_location_count: 5
+  has_evidence_count: 5
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: false
+  uses_conditionals: true
+  uncertainty_phrases_count: 0
+  confidence_phrases_count: 1
+linguistic:
+  avg_sentence_length: 55.86363636363637
+  vocabulary_richness: 0.29292107404393813
+  flesch_reading_ease: 5.394343790012812
+  vague_terms_count: 2
+  formality_score: 0.85
+  sentiment: negative
+quality:
+  actionable_ratio: 0.8
+  specificity_score: 0.95
+  evidence_quality: 0.9
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 5
+  lines_of_code_reviewed: null
+  test_coverage_delta: null
