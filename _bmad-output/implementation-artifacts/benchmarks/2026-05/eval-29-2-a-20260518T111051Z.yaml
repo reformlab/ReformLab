@@ -1,0 +1,122 @@
+record_id: fd89fc07-d9ec-469c-bcd0-3264dc0cceed
+created_at: '2026-05-18T11:10:51.206189+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 29
+  story_num: '2'
+  title: Story 29.2
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true
+evaluator:
+  provider: claude-subprocess
+  model: sonnet
+  role: validator
+  role_id: a
+  session_id: ''
+execution:
+  start_time: '2026-05-18T11:06:04.000712Z'
+  end_time: '2026-05-18T11:09:45.562712Z'
+  duration_ms: 221562
+  input_tokens: 0
+  output_tokens: 2656
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 10627
+  heading_count: 22
+  list_depth_max: 2
+  code_block_count: 8
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: **5.1**'
+  - 🐛 Correctness & Safety
+  - 'Bug 1 — CRITICAL: Breaking Test Regression Not Caught'
+  - 'Bug 2 — HIGH: Quality Gate Did Not Run Full Test Suite'
+  - 🏛️ Architectural Sins
+  - Story 29.4 Migration Plan is Incomplete (HIGH)
+  - 🐍 Pythonic Crimes & Readability
+  - 'Documentation Error: "Removed" vs "Replaced" for `irpp` (MEDIUM)'
+  - 'Removed: irpp -> income_tax'
+  - 'Rationale: "irpp" is a generic name that does not exist in OpenFisca-France.'
+  - 'Use instead: "irpp_economique"'
+  - 🔧 Maintainability Issues
+  - '`_MINIMUM_REQUIRED_COLUMNS` Contains `carbon_tax` With Broken Semantics (MINOR)'
+  - '`_KNOWN_POLICY_TYPES` Defined Inside Function Body (MINOR)'
+  - 🛠️ Suggested Fixes
+  - 1. Fix the Breaking Test in `test_normalization_regression.py`
+  - 2. Fix the Comment for `irpp` Replacement
+  - 3. Update `_MINIMUM_REQUIRED_COLUMNS` Comment
+  - 4. Update Story 29.4 Migration Plan
+  - 3. `tests/computation/test_normalization_regression.py`
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: cd509dbd30ef
+findings:
+  total_count: 7
+  by_severity:
+    critical: 1
+    major: 3
+    minor: 3
+    nit: 0
+  by_category:
+    security: 0
+    performance: 1
+    correctness: 2
+    completeness: 2
+    clarity: 2
+    testability: 0
+  has_fix_count: 7
+  has_location_count: 7
+  has_evidence_count: 7
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: false
+  cites_story_sections: false
+  uses_conditionals: true
+  uncertainty_phrases_count: 1
+  confidence_phrases_count: 1
+linguistic:
+  avg_sentence_length: 27.829787234042552
+  vocabulary_richness: 0.32339449541284404
+  flesch_reading_ease: 19.048826015254605
+  vague_terms_count: 0
+  formality_score: 0.55
+  sentiment: neutral
+quality:
+  actionable_ratio: 1.0
+  specificity_score: 0.95
+  evidence_quality: 1.0
+  follows_template: true
+  internal_consistency: 1.0
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: true
+  phase: code-review
+  file_count: 7
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

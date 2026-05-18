@@ -60,6 +60,8 @@ The following tests were already updated in Story 29.2 and should pass as-is:
 | `test_result_normalizer.py` | `test_callable_produces_normalized_table` | Uses `irpp_economique` instead of `taxe_carbone` |
 | `test_result_normalizer.py` | `test_both_modes_produce_same_column_names` | Uses `irpp_economique` instead of `taxe_carbone` |
 | `test_dependencies.py` | `test_default_live_output_variables_are_french_names` | Updated to verify `irpp_economique` in live output, removed placeholders |
+| `test_normalization_regression.py` | `test_french_columns_normalized_through_panel_builder` | Fixed: replaced `taxe_carbone` with `irpp_economique`, asserts `income_tax` instead of `carbon_tax` |
+| `test_normalization_regression.py` | `test_live_panel_works_with_indicators` | Fixed: replaced `taxe_carbone` with `irpp_economique` in test data |
 
 ## Recommendations for Story 29.4
 
@@ -87,5 +89,6 @@ After completing the test cleanup in Story 29.4:
 ## Notes
 
 - Story 29.2 completed all high-priority test updates (tests that would fail quality gates)
+- Story 29.2 code review synthesis identified and fixed test_normalization_regression.py regressions
 - Story 29.4 handles lower-priority test cleanup (mock data, comments, fixtures)
 - The core functionality changes are complete and verified in Story 29.2

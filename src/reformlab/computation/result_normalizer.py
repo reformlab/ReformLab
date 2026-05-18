@@ -43,9 +43,10 @@ MAPPING_APPLIED_KEY: str = "mapping_applied"
 # The following placeholder names were removed from the mapping as they do not
 # exist in core OpenFisca-France and no direct equivalents were found:
 #
-# Removed: irpp -> income_tax
+# Replaced: irpp -> irpp_economique (still maps to income_tax output)
 #   Rationale: "irpp" is a generic name that does not exist in OpenFisca-France.
-#   Use instead: "irpp_economique" (actual OpenFisca-France variable at foyer_fiscal entity level)
+#   The actual variable is "irpp_economique" at foyer_fiscal entity level.
+#   The English output name "income_tax" is unchanged (backward compatible).
 #
 # Removed: revenu_net -> net_income
 #   Rationale: "revenu_net" does not exist in OpenFisca-France. The closest concepts are:
@@ -98,6 +99,9 @@ _DEFAULT_LIVE_OUTPUT_VARIABLES: tuple[str, ...] = tuple(_DEFAULT_OUTPUT_MAPPING.
 # At least one of these must be present after normalization.
 # household_id is excluded because the panel builder guarantees it via fallback;
 # this set validates that meaningful data columns survived the mapping.
+# Note (Story 29.2): "carbon_tax" is no longer produced by _DEFAULT_OUTPUT_MAPPING
+# (taxe_carbone was removed). It can still appear via carbon_tax template pack output
+# (template produces "carbon_tax" directly as English name).
 _MINIMUM_REQUIRED_COLUMNS: frozenset[str] = frozenset({
     "income", "disposable_income", "carbon_tax",
 })

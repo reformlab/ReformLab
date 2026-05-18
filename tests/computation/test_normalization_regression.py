@@ -279,7 +279,7 @@ class TestLiveNormalizationThroughPanelBuilder:
             "menage_id": pa.array([1, 2, 3, 4, 5], type=pa.int64()),
             "salaire_net": pa.array([40000.0, 50000.0, 60000.0, 70000.0, 80000.0]),
             "revenu_disponible": pa.array([36000.0, 45000.0, 54000.0, 63000.0, 72000.0]),
-            "taxe_carbone": pa.array([100.0, 200.0, 300.0, 400.0, 500.0]),
+            "irpp_economique": pa.array([1000.0, 2000.0, 3000.0, 4000.0, 5000.0]),
         })
         orch_result = _make_orchestrator_result(french_table, 2025, 2025)
 
@@ -289,11 +289,11 @@ class TestLiveNormalizationThroughPanelBuilder:
         # Columns should be English after normalization
         assert "income" in panel.table.column_names
         assert "disposable_income" in panel.table.column_names
-        assert "carbon_tax" in panel.table.column_names
+        assert "income_tax" in panel.table.column_names
         # French names should be gone
         assert "salaire_net" not in panel.table.column_names
         assert "revenu_disponible" not in panel.table.column_names
-        assert "taxe_carbone" not in panel.table.column_names
+        assert "irpp_economique" not in panel.table.column_names
         # Metadata should reflect actual mapping
         assert panel.metadata["normalized"] is True
         assert panel.metadata["mapping_applied"] is True
@@ -312,9 +312,9 @@ class TestLiveNormalizationThroughPanelBuilder:
                 18000.0, 27000.0, 36000.0, 45000.0, 54000.0,
                 63000.0, 72000.0, 81000.0, 90000.0, 99000.0,
             ]),
-            "taxe_carbone": pa.array([
-                50.0, 100.0, 150.0, 200.0, 250.0,
-                300.0, 350.0, 400.0, 450.0, 500.0,
+            "irpp_economique": pa.array([
+                500.0, 1000.0, 1500.0, 2000.0, 2500.0,
+                3000.0, 3500.0, 4000.0, 4500.0, 5000.0,
             ]),
         })
         orch_result = _make_orchestrator_result(french_table, 2025, 2025)
