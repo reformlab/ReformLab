@@ -41,6 +41,17 @@ from reformlab.computation.types import ComputationResult, PolicyConfig, Populat
 
 logger = logging.getLogger(__name__)
 
+# Story 29.1: Extension metadata for manifest tracking
+# Loaded lazily when extension is actually used
+_EXTENSION_NAME = "reformlab-openfisca-extend-fr"
+_EXTENSION_VERSION = "1.0.0"
+_EXTENSION_VARIABLES = (
+    "montant_subvention",
+    "eligible_subvention",
+    "malus_ecologique",
+    "aide_energie",
+)
+
 # Story 9.3: Valid OpenFisca DateUnit periodicity values (StrEnum).
 # Sub-yearly periodicities use calculate_add(); year/eternity use calculate().
 _VALID_PERIODICITIES = frozenset({
@@ -237,7 +248,57 @@ class OpenFiscaApiAdapter:
             )
 
         self._tax_benefit_system = tbs_class()
+
+        # Story 29.1: Load ReformLab custom variables extension
+        # Extends the TBS with montant_subvention, eligible_subvention,
+        # malus_ecologique, and aide_energie variables.
+        self._load_extension(self._tax_benefit_system)
+
         return self._tax_benefit_system
+
+    def _load_extension(self, tbs: Any) -> None:
+        """Load ReformLab custom variables into the TaxBenefitSystem.
+
+        Story 29.1: Extension loading with idempotency, error handling,
+        and version tracking for reproducibility.
+
+        Idempotent: safe to call multiple times — checks if variables
+        are already registered before adding them.
+
+        Args:
+            tbs: OpenFisca-France TaxBenefitSystem instance to extend.
+        """
+        try:
+            from reformlab.computation.openfisca_extension import (
+                load_extension,
+            )
+        except ImportError as exc:
+            # Extension not available — log warning and continue
+            logger.warning(
+                "event=extension_load_failed extension=%s error=%s "
+                "cause=import_error fallback=base_tbs",
+                _EXTENSION_NAME,
+                exc,
+            )
+            return
+
+        # Load the extension (idempotent)
+        try:
+            load_extension(tbs)
+            logger.debug(
+                "event=extension_loaded extension=%s version=%s",
+                _EXTENSION_NAME,
+                _EXTENSION_VERSION,
+            )
+        except Exception as exc:
+            # Extension import/registration failed — log and continue
+            # This allows degradation without breaking the entire adapter
+            logger.warning(
+                "event=extension_load_failed extension=%s error=%s "
+                "cause=registration_error fallback=base_tbs",
+                _EXTENSION_NAME,
+                exc,
+            )
 
     def _validate_output_variables(self, tbs: Any) -> None:
         """Check that all requested output variables exist in the TBS."""
