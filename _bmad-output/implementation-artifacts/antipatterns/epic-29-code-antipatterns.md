@@ -50,3 +50,17 @@
 | dismissed | No automated guard test for AC#5 invariant | FALSE POSITIVE: Valid idea but out of scope for this synthesis. The existing `test_default_mapping_constants` and `test_default_live_output_variables_are_french_names` guard the mapping layer. A grep-based guard test would be a new feature, not a bug fix. |
 | dismissed | `bmad-assist.yaml` changes bundled into story commit | FALSE POSITIVE: Already committed; not a source code issue. Noted for future workflow hygiene. |
 | dismissed | Completion notes count inaccuracy ("10 test methods" vs 11 actual) | FALSE POSITIVE: Documentation cosmetic error in story notes, not a code correctness issue. |
+
+## Story 29-5 (2026-05-23)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| high | Vacuous truth — null-check assertions on empty filtered sequences | Added `assert year_XXXX_rows.num_rows == n` guard before every `any()`/`all()` null check in all 4 original tests |
+| high | `heating_probabilities`, `heating_utilities`, `decision_domains` null-fill never asserted | Tests 1 & 2 now assert all 4 decision-injected columns are null-filled for the year without a record |
+| high | AC-2 symmetric direction untested (output column in year-2 only) | Added `test_output_column_in_second_year_only_fills_null_in_first` |
+| high | Type-mismatch test only exercises non-decision branch (line 163) | Added `test_int_float_type_mismatch_in_decision_branch_promotes_to_float` covering line 158 |
+| medium | `pa.types.is_floating()` accepts float16/float32/float64 — doesn't lock the specific promoted type | Changed to `== pa.float64()` |
+| medium | Test 4 only checks year-2024 int-promoted values; year-2025 float values unverified | Added `assert year_2025_rows.column("income").to_pylist() == [52000.5, 62000.5, 72000.5]` |
+| low | Redundant local import of `DECISION_LOG_KEY`/`DecisionRecord` in `test_normalizer_preserves_decision_columns` after module-level import was added | Removed the local import |
+| dismissed | Transition-only branch (`TRANSITION_LOG_KEY`) schema mismatch untested | FALSE POSITIVE: Story scope explicitly defines two paths: "decision-column branch" and "non-decision branch." The transition-only path is a third, out-of-scope code path. Deferred as a follow-up task in story file. |
+| dismissed | Git diff contains files outside story File List | FALSE POSITIVE: The `test_mapping.py`, `test_openfisca_api_adapter.py`, `test_result.py`, and `bmad-assist.yaml` changes are Story 29.4 code-review follow-ups committed at the same time. Not a code correctness issue. |

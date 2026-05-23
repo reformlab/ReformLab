@@ -392,7 +392,20 @@ None. Implementation was a pure test addition with no production code changes.
 2. **`TestConcatTablesSchemaMismatch` added** — 4 tests covering all ACs: decision-column-in-year-1-only (null fill in year 2), decision-column-in-year-2-only (null fill in year 1), output-column-in-year-1-only (non-decision branch), int64/float64 type promotion.
 3. **`DECISION_LOG_KEY` and `DecisionRecord` added to module-level imports** — `_make_minimal_decision_record` helper defined at module level.
 4. **Quality gates** — ruff: 0 new errors (3 pre-existing); mypy: 0 new errors (7 pre-existing); pytest tests/orchestrator/: 335 passed, 0 failed.
+5. **Code review synthesis fixes (2026-05-23)** — 6 issues applied to `test_panel.py`: (a) vacuous-truth guards: added `assert .num_rows == n` before null-check assertions in all 4 original tests; (b) full decision-column null coverage: tests 1 & 2 now assert `heating_probabilities`, `heating_utilities`, and `decision_domains` are null-filled for the year without a record; (c) tightened type assertion in test 4: `pa.types.is_floating` → `== pa.float64()`; (d) year-2025 value preservation added to test 4; (e) new test 5 `test_output_column_in_second_year_only_fills_null_in_first` (symmetric AC-2 case); (f) new test 6 `test_int_float_type_mismatch_in_decision_branch_promotes_to_float` (locks decision branch path at line 158); (g) removed redundant local import of `DECISION_LOG_KEY`/`DecisionRecord` inside `test_normalizer_preserves_decision_columns`. Final count: 337 passed, 0 failed.
 
 ### File List
 
 - `tests/orchestrator/test_panel.py`
+
+## Senior Developer Review (AI)
+
+### Review: 2026-05-23
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 3.3 (avg of 3.4 and 3.2) → REJECT
+- **Issues Found:** 8 (6 verified, 2 dismissed)
+- **Issues Fixed:** 6
+- **Action Items Created:** 1
+
+#### Review Follow-ups (AI)
+- [ ] [AI-Review] Medium: Transition-only branch (`TRANSITION_LOG_KEY`, panel.py:131) schema-mismatch across years is untested — consider a follow-up story to add `TestConcatTablesSchemaMismatch.test_transition_column_in_first_year_only_fills_null_in_second` (`tests/orchestrator/test_panel.py`)

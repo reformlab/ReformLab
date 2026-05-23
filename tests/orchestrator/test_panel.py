@@ -568,8 +568,6 @@ class TestPanelBuilderWithNormalizer:
 
     def test_normalizer_preserves_decision_columns(self) -> None:
         """Decision columns from Story 14-6 survive normalization."""
-        from reformlab.discrete_choice.decision_record import DECISION_LOG_KEY, DecisionRecord
-
         year = 2025
 
         # Create computation result
@@ -799,10 +797,16 @@ class TestConcatTablesSchemaMismatch:
         assert "heating_chosen" in panel.table.column_names
 
         year_2024_rows = panel.table.filter(pc.equal(panel.table.column("year"), 2024))
+        assert year_2024_rows.num_rows == n
         assert not any(v is None for v in year_2024_rows.column("heating_chosen").to_pylist())
 
         year_2025_rows = panel.table.filter(pc.equal(panel.table.column("year"), 2025))
+        assert year_2025_rows.num_rows == n
         assert all(v is None for v in year_2025_rows.column("heating_chosen").to_pylist())
+        # All decision-injected columns are null-filled for the year without a record
+        assert all(v is None for v in year_2025_rows.column("heating_probabilities").to_pylist())
+        assert all(v is None for v in year_2025_rows.column("heating_utilities").to_pylist())
+        assert all(v is None for v in year_2025_rows.column("decision_domains").to_pylist())
 
     def test_decision_column_in_second_year_only_fills_null_in_first(self) -> None:
         """AC-1: permissive promotion fills decision columns absent in year-2024 with null."""
@@ -862,9 +866,15 @@ class TestConcatTablesSchemaMismatch:
         assert "heating_chosen" in panel.table.column_names
 
         year_2024_rows = panel.table.filter(pc.equal(panel.table.column("year"), 2024))
+        assert year_2024_rows.num_rows == n
         assert all(v is None for v in year_2024_rows.column("heating_chosen").to_pylist())
+        # All decision-injected columns are null-filled for the year without a record
+        assert all(v is None for v in year_2024_rows.column("heating_probabilities").to_pylist())
+        assert all(v is None for v in year_2024_rows.column("heating_utilities").to_pylist())
+        assert all(v is None for v in year_2024_rows.column("decision_domains").to_pylist())
 
         year_2025_rows = panel.table.filter(pc.equal(panel.table.column("year"), 2025))
+        assert year_2025_rows.num_rows == n
         assert not any(v is None for v in year_2025_rows.column("heating_chosen").to_pylist())
 
     def test_output_column_in_first_year_only_fills_null_in_second(self) -> None:
@@ -915,6 +925,8 @@ class TestConcatTablesSchemaMismatch:
         year_2024_rows = panel.table.filter(pc.equal(panel.table.column("year"), 2024))
         year_2025_rows = panel.table.filter(pc.equal(panel.table.column("year"), 2025))
 
+        assert year_2024_rows.num_rows == n
+        assert year_2025_rows.num_rows == n
         assert not any(v is None for v in year_2024_rows.column("subsidy_amount").to_pylist())
         assert all(v is None for v in year_2025_rows.column("subsidy_amount").to_pylist())
 
@@ -959,8 +971,131 @@ class TestConcatTablesSchemaMismatch:
         panel = PanelOutput.from_orchestrator_result(result)
 
         assert panel.table.num_rows == n * 2
-        # Permissive promotion widens to float64
-        assert pa.types.is_floating(panel.table.schema.field("income").type)
-        # Original int values are preserved as floats
+        # Permissive promotion widens to float64 specifically (not float16/float32)
+        assert panel.table.schema.field("income").type == pa.float64()
+        # Original int values are preserved as floats (no data loss)
         year_2024_rows = panel.table.filter(pc.equal(panel.table.column("year"), 2024))
         assert year_2024_rows.column("income").to_pylist() == [50000.0, 60000.0, 70000.0]
+        # Float values in year-2025 are preserved without truncation
+        year_2025_rows = panel.table.filter(pc.equal(panel.table.column("year"), 2025))
+        assert year_2025_rows.column("income").to_pylist() == [52000.5, 62000.5, 72000.5]
+
+    def test_output_column_in_second_year_only_fills_null_in_first(self) -> None:
+        """AC-2: non-decision branch promotes missing output columns with null (symmetric case)."""
+        import pyarrow.compute as pc
+
+        n = 3
+        comp_2024 = ComputationResult(
+            output_fields=pa.table({
+                "household_id": pa.array(range(n), type=pa.int64()),
+                "income": pa.array([50000.0] * n),
+            }),
+            adapter_version="test-1.0.0",
+            period=2024,
+        )
+        comp_2025 = ComputationResult(
+            output_fields=pa.table({
+                "household_id": pa.array(range(n), type=pa.int64()),
+                "income": pa.array([52000.0] * n),
+                "subsidy_amount": pa.array([200.0] * n),  # present only in year-2
+            }),
+            adapter_version="test-1.0.0",
+            period=2025,
+        )
+
+        result = OrchestratorResult(
+            success=True,
+            yearly_states={
+                2024: YearState(year=2024, data={COMPUTATION_RESULT_KEY: comp_2024}, seed=42, metadata={}),
+                2025: YearState(year=2025, data={COMPUTATION_RESULT_KEY: comp_2025}, seed=43, metadata={}),
+            },
+            errors=[],
+            failed_year=None,
+            metadata={
+                "start_year": 2024,
+                "end_year": 2025,
+                "seed": 42,
+                "step_pipeline": ["computation"],
+            },
+        )
+
+        # No decision records → non-decision branch (panel.py:163)
+        panel = PanelOutput.from_orchestrator_result(result)
+
+        assert panel.table.num_rows == n * 2
+        assert "subsidy_amount" in panel.table.column_names
+
+        year_2024_rows = panel.table.filter(pc.equal(panel.table.column("year"), 2024))
+        year_2025_rows = panel.table.filter(pc.equal(panel.table.column("year"), 2025))
+
+        assert year_2024_rows.num_rows == n
+        assert year_2025_rows.num_rows == n
+        # Year-2024 has no subsidy_amount column → null-filled
+        assert all(v is None for v in year_2024_rows.column("subsidy_amount").to_pylist())
+        # Year-2025 has subsidy_amount → non-null
+        assert not any(v is None for v in year_2025_rows.column("subsidy_amount").to_pylist())
+
+    def test_int_float_type_mismatch_in_decision_branch_promotes_to_float(self) -> None:
+        """AC-3: permissive concat promotes int64/float64 mismatch to float64 in decision branch."""
+        import pyarrow.compute as pc
+
+        n = 3
+        comp_2024 = ComputationResult(
+            output_fields=pa.table({
+                "household_id": pa.array(range(n), type=pa.int64()),
+                "income": pa.array([50000, 60000, 70000], type=pa.int64()),
+            }),
+            adapter_version="test-1.0.0",
+            period=2024,
+        )
+        comp_2025 = ComputationResult(
+            output_fields=pa.table({
+                "household_id": pa.array(range(n), type=pa.int64()),
+                "income": pa.array([52000.5, 62000.5, 72000.5], type=pa.float64()),
+            }),
+            adapter_version="test-1.0.0",
+            period=2025,
+        )
+        decision = _make_minimal_decision_record("heating", n)
+
+        result = OrchestratorResult(
+            success=True,
+            yearly_states={
+                2024: YearState(
+                    year=2024,
+                    data={
+                        COMPUTATION_RESULT_KEY: comp_2024,
+                        DECISION_LOG_KEY: (decision,),
+                    },
+                    seed=42,
+                    metadata={},
+                ),
+                2025: YearState(
+                    year=2025,
+                    data={COMPUTATION_RESULT_KEY: comp_2025},
+                    seed=43,
+                    metadata={},
+                ),
+            },
+            errors=[],
+            failed_year=None,
+            metadata={
+                "start_year": 2024,
+                "end_year": 2025,
+                "seed": 42,
+                "step_pipeline": ["computation"],
+            },
+        )
+
+        # has_any_decision_columns=True → decision branch (panel.py:158)
+        panel = PanelOutput.from_orchestrator_result(result)
+
+        assert panel.table.num_rows == n * 2
+        # Permissive promotion widens to float64 specifically (not float16/float32)
+        assert panel.table.schema.field("income").type == pa.float64()
+        year_2024_rows = panel.table.filter(pc.equal(panel.table.column("year"), 2024))
+        assert year_2024_rows.num_rows == n
+        assert year_2024_rows.column("income").to_pylist() == [50000.0, 60000.0, 70000.0]
+        year_2025_rows = panel.table.filter(pc.equal(panel.table.column("year"), 2025))
+        assert year_2025_rows.num_rows == n
+        assert year_2025_rows.column("income").to_pylist() == [52000.5, 62000.5, 72000.5]
