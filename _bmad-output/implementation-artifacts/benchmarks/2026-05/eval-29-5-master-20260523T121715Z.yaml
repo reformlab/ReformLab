@@ -1,0 +1,49 @@
+record_id: 0357cacc-a699-4ca0-8567-1279acd63e3d
+created_at: '2026-05-23T12:17:15.580697+00:00'
+workflow:
+  id: create-story
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 29
+  story_num: 5
+  title: Story 29.5
+  complexity_flags: {}
+evaluator:
+  provider: claude-subprocess
+  model: sonnet
+  role: master
+  role_id: null
+  session_id: 47df9c46-f891-4a37-a398-0784898950d5
+execution:
+  start_time: '2026-05-23T12:11:41.151106Z'
+  end_time: '2026-05-23T12:17:15.553309Z'
+  duration_ms: 334402
+  input_tokens: 0
+  output_tokens: 0
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 2251
+  heading_count: 0
+  list_depth_max: 1
+  code_block_count: 0
+  sections_detected: []
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: c3e56e5ae8bc
+findings: null
+reasoning: null
+linguistic: null
+quality: null
+consensus: null
+ground_truth: null
+custom: null
