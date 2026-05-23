@@ -1,6 +1,6 @@
 # Story 29.5: Add `pa.concat_tables()` schema-mismatch regression tests
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -18,19 +18,19 @@ so that future schema drift can't silently break panel concatenation across year
 
 ## Tasks / Subtasks
 
-- [ ] Read and confirm both concat paths in `panel.py` (AC: #1, #2)
-  - [ ] Verify line 158 uses `promote_options="permissive"` in the decision branch
-  - [ ] Verify line 163 uses `promote_options="permissive"` in the non-decision branch
-  - [ ] Confirm the `has_any_decision_columns` flag (line 92, set at lines 130 and 136) gates the branch choice
-- [ ] Add `TestConcatTablesSchemaMismatch` class to `tests/orchestrator/test_panel.py` (AC: #3, #4)
-  - [ ] Test 1: Decision column in year-1, absent in year-2 → null fill (AC: #1)
-  - [ ] Test 2: Decision column absent in year-1, present in year-2 → null fill (AC: #1)
-  - [ ] Test 3: Data output column present in year-1, absent in year-2 → non-decision branch null fill (AC: #2)
-  - [ ] Test 4: `int64` vs `float64` type mismatch → promoted to `float64` (AC: #3)
-- [ ] Quality gates (AC: #5)
-  - [ ] `uv run ruff check src/ tests/`
-  - [ ] `uv run mypy src/`
-  - [ ] `uv run pytest tests/orchestrator/`
+- [x] Read and confirm both concat paths in `panel.py` (AC: #1, #2)
+  - [x] Verify line 158 uses `promote_options="permissive"` in the decision branch
+  - [x] Verify line 163 uses `promote_options="permissive"` in the non-decision branch
+  - [x] Confirm the `has_any_decision_columns` flag (line 92, set at lines 130 and 136) gates the branch choice
+- [x] Add `TestConcatTablesSchemaMismatch` class to `tests/orchestrator/test_panel.py` (AC: #3, #4)
+  - [x] Test 1: Decision column in year-1, absent in year-2 → null fill (AC: #1)
+  - [x] Test 2: Decision column absent in year-1, present in year-2 → null fill (AC: #1)
+  - [x] Test 3: Data output column present in year-1, absent in year-2 → non-decision branch null fill (AC: #2)
+  - [x] Test 4: `int64` vs `float64` type mismatch → promoted to `float64` (AC: #3)
+- [x] Quality gates (AC: #5)
+  - [x] `uv run ruff check src/ tests/`
+  - [x] `uv run mypy src/`
+  - [x] `uv run pytest tests/orchestrator/`
 
 ## Dev Notes
 
@@ -61,7 +61,7 @@ Both branches use `promote_options="permissive"`. The branch is selected by `has
 ### How permissive promotion works (PyArrow)
 
 `pa.concat_tables(tables, promote_options="permissive")` resolves schema differences by:
-- **Missing columns**: filled with a null-typed column (all values `null`) — column type is `null` for the missing rows
+- **Missing columns**: filled with null values for the rows that lack the column — the column retains the type from the schema of the year(s) that do have it (e.g., a `float64` column absent in one year appears as `float64` with null values, not as a `null`-typed column). Do not assert `pa.types.is_null(...)` for null-fill scenarios.
 - **Numeric type promotion**: `int64` + `float64` → `float64`; narrower types are widened
 - **Incompatible types** (e.g., `int64` vs `string`): raises `ArrowInvalid`; permissive does NOT handle these
 
@@ -169,7 +169,71 @@ def test_decision_column_in_first_year_only_fills_null_in_second(self) -> None:
 
 #### Test 2 — decision column absent in year-1, present in year-2
 
-Mirror of Test 1: swap the year that holds the decision record, assert null fills year-1.
+```python
+def test_decision_column_in_second_year_only_fills_null_in_first(self) -> None:
+    """AC-1: permissive promotion fills decision columns absent in year-2024 with null."""
+    n = 3
+    comp_2024 = ComputationResult(
+        output_fields=pa.table({
+            "household_id": pa.array(range(n), type=pa.int64()),
+            "income": pa.array([50000.0] * n),
+        }),
+        adapter_version="test-1.0.0",
+        period=2024,
+    )
+    comp_2025 = ComputationResult(
+        output_fields=pa.table({
+            "household_id": pa.array(range(n), type=pa.int64()),
+            "income": pa.array([52000.0] * n),
+        }),
+        adapter_version="test-1.0.0",
+        period=2025,
+    )
+    decision = _make_minimal_decision_record("heating", n)
+
+    result = OrchestratorResult(
+        success=True,
+        yearly_states={
+            2024: YearState(
+                year=2024,
+                data={COMPUTATION_RESULT_KEY: comp_2024},  # no decision record
+                seed=42,
+                metadata={},
+            ),
+            2025: YearState(
+                year=2025,
+                data={
+                    COMPUTATION_RESULT_KEY: comp_2025,
+                    DECISION_LOG_KEY: (decision,),
+                },
+                seed=43,
+                metadata={},
+            ),
+        },
+        errors=[],
+        failed_year=None,
+        metadata={"start_year": 2024, "end_year": 2025, "seed": 42, "step_pipeline": ["computation"]},
+    )
+
+    panel = PanelOutput.from_orchestrator_result(result)
+
+    # Does not raise — permissive handles missing decision columns
+    assert panel.table.num_rows == n * 2
+
+    # Decision column present (with null for year 2024)
+    assert "heating_chosen" in panel.table.column_names
+
+    # Year 2024 rows have null chosen value (no decision record)
+    import pyarrow.compute as pc
+    year_2024_mask = pc.equal(panel.table.column("year"), 2024)
+    year_2024_rows = panel.table.filter(year_2024_mask)
+    assert all(v is None for v in year_2024_rows.column("heating_chosen").to_pylist())
+
+    # Year 2025 rows have non-null chosen value
+    year_2025_mask = pc.equal(panel.table.column("year"), 2025)
+    year_2025_rows = panel.table.filter(year_2025_mask)
+    assert not any(v is None for v in year_2025_rows.column("heating_chosen").to_pylist())
+```
 
 #### Test 3 — output column in year-1 only (non-decision branch)
 
@@ -274,7 +338,7 @@ from reformlab.discrete_choice.decision_record import (
 )
 ```
 
-Check lines 22–26 of `test_panel.py` — `DECISION_LOG_KEY` and `DecisionRecord` are already imported inside one test method (line 570). Move them to the top-level imports if needed to avoid duplication, or keep them local per method — either is fine for this story.
+`DECISION_LOG_KEY` and `DecisionRecord` are NOT in the top-level imports of `test_panel.py`; they are imported locally at line 570 inside `test_normalizer_preserves_decision_columns`. Add them to top-level imports (after `from reformlab.orchestrator.types import ...`) or keep them local per method — either is fine for this story.
 
 ### `pyarrow.compute` import pattern
 
@@ -282,7 +346,7 @@ Tests use `import pyarrow.compute as pc` locally (inside test methods) — consi
 
 ### What NOT to do
 
-- Do not add tests to `test_panel_decision.py` — the mismatch tests belong with the panel builder tests, not the decision column injection tests
+- Do not add tests to `test_panel_decision.py` — the mismatch tests belong with the panel builder tests, not the decision column injection tests. Note: `test_panel_decision.py:384` already contains `TestPanelDecisionSchemaConsistency.test_partial_decisions_concat_with_promote`, which covers a similar scenario (year-1 has decisions, year-2 doesn't) using index-based assertions. The new Test 1 is not redundant — it uses explicit year-filtered assertions (`pc.equal`) and belongs with the panel builder tests. Test 2 (decisions in year-2 only) has no existing coverage anywhere.
 - Do not create a new test file — add the class to the existing `test_panel.py`
 - Do not use `promote_options="default"` or no promote_options in any new test — the story is specifically about documenting the `"permissive"` behavior
 - Do not fix any production code even if a test scenario unexpectedly raises — record it and stop
@@ -320,11 +384,15 @@ Claude Sonnet 4.6 (claude-sonnet-4-6)
 
 ### Debug Log References
 
-No debug logs. Story enhanced through direct analysis of `panel.py`, `test_panel.py`, and `test_panel_decision.py`.
+None. Implementation was a pure test addition with no production code changes.
 
 ### Completion Notes List
 
 1. **Both concat paths confirmed** — `panel.py:158` and `panel.py:163` both use `promote_options="permissive"`; the branch is gated by `has_any_decision_columns` (initialized at line 92, set True at lines 130 and 136).
-2. **Ultimate context engine analysis completed** — comprehensive developer guide created with exact code paths, concrete test scaffolds for all four scenarios, import guidance, and antipattern warnings.
+2. **`TestConcatTablesSchemaMismatch` added** — 4 tests covering all ACs: decision-column-in-year-1-only (null fill in year 2), decision-column-in-year-2-only (null fill in year 1), output-column-in-year-1-only (non-decision branch), int64/float64 type promotion.
+3. **`DECISION_LOG_KEY` and `DecisionRecord` added to module-level imports** — `_make_minimal_decision_record` helper defined at module level.
+4. **Quality gates** — ruff: 0 new errors (3 pre-existing); mypy: 0 new errors (7 pre-existing); pytest tests/orchestrator/: 335 passed, 0 failed.
 
 ### File List
+
+- `tests/orchestrator/test_panel.py`

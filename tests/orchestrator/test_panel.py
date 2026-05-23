@@ -20,6 +20,7 @@ from pathlib import Path
 import pyarrow as pa
 
 from reformlab.computation.types import ComputationResult
+from reformlab.discrete_choice.decision_record import DECISION_LOG_KEY, DecisionRecord
 from reformlab.orchestrator.computation_step import COMPUTATION_RESULT_KEY
 from reformlab.orchestrator.panel import PanelOutput, compare_panels
 from reformlab.orchestrator.runner import SEED_LOG_KEY, STEP_EXECUTION_LOG_KEY
@@ -710,3 +711,256 @@ class TestPanelBuilderWithNormalizer:
         assert panel.metadata["normalized"] is False
         assert "mapping_applied" in panel.metadata
         assert panel.metadata["mapping_applied"] is False
+
+
+# ============================================================================
+# Story 29.5: TestConcatTablesSchemaMismatch
+# ============================================================================
+
+
+def _make_minimal_decision_record(domain: str, n: int) -> DecisionRecord:
+    """Minimal DecisionRecord for schema-mismatch tests."""
+    return DecisionRecord(
+        domain_name=domain,
+        alternative_ids=("ev", "ice"),
+        chosen=pa.array(["ev"] * n, type=pa.string()),
+        probabilities=pa.table({"ev": [0.6] * n, "ice": [0.4] * n}),
+        utilities=pa.table({"ev": [-1.0] * n, "ice": [-2.0] * n}),
+        seed=42,
+        taste_parameters={"beta_cost": -0.01},
+        eligibility_summary=None,
+    )
+
+
+class TestConcatTablesSchemaMismatch:
+    """Regression tests for pa.concat_tables() schema-mismatch paths in panel.py.
+
+    Story 29.5 / AC-1–4: Verify permissive promotion handles:
+    - Decision columns present in one year only
+    - Output columns present in one year only (non-decision branch)
+    - Numeric type mismatches (int64 vs float64)
+    """
+
+    def test_decision_column_in_first_year_only_fills_null_in_second(self) -> None:
+        """AC-1: permissive promotion fills decision columns absent in year-2 with null."""
+        import pyarrow.compute as pc
+
+        n = 3
+        comp_2024 = ComputationResult(
+            output_fields=pa.table({
+                "household_id": pa.array(range(n), type=pa.int64()),
+                "income": pa.array([50000.0] * n),
+            }),
+            adapter_version="test-1.0.0",
+            period=2024,
+        )
+        comp_2025 = ComputationResult(
+            output_fields=pa.table({
+                "household_id": pa.array(range(n), type=pa.int64()),
+                "income": pa.array([52000.0] * n),
+            }),
+            adapter_version="test-1.0.0",
+            period=2025,
+        )
+        decision = _make_minimal_decision_record("heating", n)
+
+        result = OrchestratorResult(
+            success=True,
+            yearly_states={
+                2024: YearState(
+                    year=2024,
+                    data={
+                        COMPUTATION_RESULT_KEY: comp_2024,
+                        DECISION_LOG_KEY: (decision,),
+                    },
+                    seed=42,
+                    metadata={},
+                ),
+                2025: YearState(
+                    year=2025,
+                    data={COMPUTATION_RESULT_KEY: comp_2025},
+                    seed=43,
+                    metadata={},
+                ),
+            },
+            errors=[],
+            failed_year=None,
+            metadata={
+                "start_year": 2024,
+                "end_year": 2025,
+                "seed": 42,
+                "step_pipeline": ["computation"],
+            },
+        )
+
+        panel = PanelOutput.from_orchestrator_result(result)
+
+        assert panel.table.num_rows == n * 2
+        assert "heating_chosen" in panel.table.column_names
+
+        year_2024_rows = panel.table.filter(pc.equal(panel.table.column("year"), 2024))
+        assert not any(v is None for v in year_2024_rows.column("heating_chosen").to_pylist())
+
+        year_2025_rows = panel.table.filter(pc.equal(panel.table.column("year"), 2025))
+        assert all(v is None for v in year_2025_rows.column("heating_chosen").to_pylist())
+
+    def test_decision_column_in_second_year_only_fills_null_in_first(self) -> None:
+        """AC-1: permissive promotion fills decision columns absent in year-2024 with null."""
+        import pyarrow.compute as pc
+
+        n = 3
+        comp_2024 = ComputationResult(
+            output_fields=pa.table({
+                "household_id": pa.array(range(n), type=pa.int64()),
+                "income": pa.array([50000.0] * n),
+            }),
+            adapter_version="test-1.0.0",
+            period=2024,
+        )
+        comp_2025 = ComputationResult(
+            output_fields=pa.table({
+                "household_id": pa.array(range(n), type=pa.int64()),
+                "income": pa.array([52000.0] * n),
+            }),
+            adapter_version="test-1.0.0",
+            period=2025,
+        )
+        decision = _make_minimal_decision_record("heating", n)
+
+        result = OrchestratorResult(
+            success=True,
+            yearly_states={
+                2024: YearState(
+                    year=2024,
+                    data={COMPUTATION_RESULT_KEY: comp_2024},
+                    seed=42,
+                    metadata={},
+                ),
+                2025: YearState(
+                    year=2025,
+                    data={
+                        COMPUTATION_RESULT_KEY: comp_2025,
+                        DECISION_LOG_KEY: (decision,),
+                    },
+                    seed=43,
+                    metadata={},
+                ),
+            },
+            errors=[],
+            failed_year=None,
+            metadata={
+                "start_year": 2024,
+                "end_year": 2025,
+                "seed": 42,
+                "step_pipeline": ["computation"],
+            },
+        )
+
+        panel = PanelOutput.from_orchestrator_result(result)
+
+        assert panel.table.num_rows == n * 2
+        assert "heating_chosen" in panel.table.column_names
+
+        year_2024_rows = panel.table.filter(pc.equal(panel.table.column("year"), 2024))
+        assert all(v is None for v in year_2024_rows.column("heating_chosen").to_pylist())
+
+        year_2025_rows = panel.table.filter(pc.equal(panel.table.column("year"), 2025))
+        assert not any(v is None for v in year_2025_rows.column("heating_chosen").to_pylist())
+
+    def test_output_column_in_first_year_only_fills_null_in_second(self) -> None:
+        """AC-2: non-decision branch promotes missing output columns with null."""
+        import pyarrow.compute as pc
+
+        n = 3
+        comp_2024 = ComputationResult(
+            output_fields=pa.table({
+                "household_id": pa.array(range(n), type=pa.int64()),
+                "income": pa.array([50000.0] * n),
+                "subsidy_amount": pa.array([200.0] * n),
+            }),
+            adapter_version="test-1.0.0",
+            period=2024,
+        )
+        comp_2025 = ComputationResult(
+            output_fields=pa.table({
+                "household_id": pa.array(range(n), type=pa.int64()),
+                "income": pa.array([52000.0] * n),
+            }),
+            adapter_version="test-1.0.0",
+            period=2025,
+        )
+
+        result = OrchestratorResult(
+            success=True,
+            yearly_states={
+                2024: YearState(year=2024, data={COMPUTATION_RESULT_KEY: comp_2024}, seed=42, metadata={}),
+                2025: YearState(year=2025, data={COMPUTATION_RESULT_KEY: comp_2025}, seed=43, metadata={}),
+            },
+            errors=[],
+            failed_year=None,
+            metadata={
+                "start_year": 2024,
+                "end_year": 2025,
+                "seed": 42,
+                "step_pipeline": ["computation"],
+            },
+        )
+
+        # No decision records → non-decision branch (panel.py:163)
+        panel = PanelOutput.from_orchestrator_result(result)
+
+        assert panel.table.num_rows == n * 2
+        assert "subsidy_amount" in panel.table.column_names
+
+        year_2024_rows = panel.table.filter(pc.equal(panel.table.column("year"), 2024))
+        year_2025_rows = panel.table.filter(pc.equal(panel.table.column("year"), 2025))
+
+        assert not any(v is None for v in year_2024_rows.column("subsidy_amount").to_pylist())
+        assert all(v is None for v in year_2025_rows.column("subsidy_amount").to_pylist())
+
+    def test_int_float_type_mismatch_promotes_to_float(self) -> None:
+        """AC-3: permissive concat promotes int64/float64 mismatch to float64."""
+        import pyarrow.compute as pc
+
+        n = 3
+        comp_2024 = ComputationResult(
+            output_fields=pa.table({
+                "household_id": pa.array(range(n), type=pa.int64()),
+                "income": pa.array([50000, 60000, 70000], type=pa.int64()),
+            }),
+            adapter_version="test-1.0.0",
+            period=2024,
+        )
+        comp_2025 = ComputationResult(
+            output_fields=pa.table({
+                "household_id": pa.array(range(n), type=pa.int64()),
+                "income": pa.array([52000.5, 62000.5, 72000.5], type=pa.float64()),
+            }),
+            adapter_version="test-1.0.0",
+            period=2025,
+        )
+
+        result = OrchestratorResult(
+            success=True,
+            yearly_states={
+                2024: YearState(year=2024, data={COMPUTATION_RESULT_KEY: comp_2024}, seed=42, metadata={}),
+                2025: YearState(year=2025, data={COMPUTATION_RESULT_KEY: comp_2025}, seed=43, metadata={}),
+            },
+            errors=[],
+            failed_year=None,
+            metadata={
+                "start_year": 2024,
+                "end_year": 2025,
+                "seed": 42,
+                "step_pipeline": ["computation"],
+            },
+        )
+
+        panel = PanelOutput.from_orchestrator_result(result)
+
+        assert panel.table.num_rows == n * 2
+        # Permissive promotion widens to float64
+        assert pa.types.is_floating(panel.table.schema.field("income").type)
+        # Original int values are preserved as floats
+        year_2024_rows = panel.table.filter(pc.equal(panel.table.column("year"), 2024))
+        assert year_2024_rows.column("income").to_pylist() == [50000.0, 60000.0, 70000.0]
