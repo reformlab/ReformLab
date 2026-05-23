@@ -786,13 +786,13 @@ class TestResolveVariableEntities:
     def test_groups_variables_by_entity(self) -> None:
         """AC-1: Variables are correctly grouped by their entity."""
         adapter = OpenFiscaApiAdapter(
-            output_variables=("salaire_net", "irpp", "revenu_disponible"),
+            output_variables=("salaire_net", "irpp_economique", "revenu_disponible"),
             skip_version_check=True,
         )
         mock_tbs = _make_mock_tbs_with_entities(
             variable_entities={
                 "salaire_net": "individu",
-                "irpp": "foyer_fiscal",
+                "irpp_economique": "foyer_fiscal",
                 "revenu_disponible": "menage",
             },
         )
@@ -804,7 +804,7 @@ class TestResolveVariableEntities:
         assert "foyers_fiscaux" in result
         assert "menages" in result
         assert result["individus"] == ["salaire_net"]
-        assert result["foyers_fiscaux"] == ["irpp"]
+        assert result["foyers_fiscaux"] == ["irpp_economique"]
         assert result["menages"] == ["revenu_disponible"]
 
     def test_multiple_variables_same_entity(self) -> None:
@@ -886,23 +886,23 @@ class TestExtractResultsByEntity:
     def test_multi_entity_extraction(self) -> None:
         """AC-2, AC-3: Different entities produce separate tables with correct lengths."""
         adapter = OpenFiscaApiAdapter(
-            output_variables=("salaire_net", "irpp", "revenu_disponible"),
+            output_variables=("salaire_net", "irpp_economique", "revenu_disponible"),
             skip_version_check=True,
         )
         mock_simulation = _make_mock_simulation({
             "salaire_net": np.array([20000.0, 35000.0]),
-            "irpp": np.array([-1500.0]),
+            "irpp_economique": np.array([-1500.0]),
             "revenu_disponible": np.array([40000.0]),
         })
         vars_by_entity = {
             "individus": ["salaire_net"],
-            "foyers_fiscaux": ["irpp"],
+            "foyers_fiscaux": ["irpp_economique"],
             "menages": ["revenu_disponible"],
         }
         # Story 9.3: Pass variable_periodicities (required parameter)
         variable_periodicities = {
             "salaire_net": "year",
-            "irpp": "year",
+            "irpp_economique": "year",
             "revenu_disponible": "year",
         }
 
@@ -956,11 +956,11 @@ class TestSelectPrimaryOutput:
     def test_multi_entity_returns_person_table(self) -> None:
         """AC-4: With multiple entities, output_fields is the person-entity table."""
         adapter = OpenFiscaApiAdapter(
-            output_variables=("salaire_net", "irpp"),
+            output_variables=("salaire_net", "irpp_economique"),
             skip_version_check=True,
         )
         person_table = pa.table({"salaire_net": pa.array([20000.0, 35000.0])})
-        foyer_table = pa.table({"irpp": pa.array([-1500.0])})
+        foyer_table = pa.table({"irpp_economique": pa.array([-1500.0])})
         mock_tbs = _make_mock_tbs_with_entities()
 
         result = adapter._select_primary_output(
@@ -973,10 +973,10 @@ class TestSelectPrimaryOutput:
     def test_multi_entity_without_person_returns_first(self) -> None:
         """AC-4: Without person entity in results, returns first entity's table."""
         adapter = OpenFiscaApiAdapter(
-            output_variables=("irpp", "revenu_disponible"),
+            output_variables=("irpp_economique", "revenu_disponible"),
             skip_version_check=True,
         )
-        foyer_table = pa.table({"irpp": pa.array([-1500.0])})
+        foyer_table = pa.table({"irpp_economique": pa.array([-1500.0])})
         menage_table = pa.table({"revenu_disponible": pa.array([40000.0])})
         mock_tbs = _make_mock_tbs_with_entities()
 
@@ -1012,17 +1012,17 @@ class TestResolveVariablePeriodicities:
     def test_detects_yearly_periodicity(self) -> None:
         """AC-1: Yearly variable detected correctly."""
         adapter = OpenFiscaApiAdapter(
-            output_variables=("irpp",),
+            output_variables=("irpp_economique",),
             skip_version_check=True,
         )
         mock_tbs = _make_mock_tbs_with_entities(
-            variable_entities={"irpp": "foyer_fiscal"},
-            variable_periodicities={"irpp": "year"},
+            variable_entities={"irpp_economique": "foyer_fiscal"},
+            variable_periodicities={"irpp_economique": "year"},
         )
 
         result = adapter._resolve_variable_periodicities(mock_tbs)
 
-        assert result == {"irpp": "year"}
+        assert result == {"irpp_economique": "year"}
 
     def test_detects_monthly_periodicity(self) -> None:
         """AC-2: Monthly variable detected correctly."""
@@ -1057,18 +1057,18 @@ class TestResolveVariablePeriodicities:
     def test_detects_mixed_periodicities(self) -> None:
         """AC-1, AC-2, AC-6: Mixed periodicities detected for multiple variables."""
         adapter = OpenFiscaApiAdapter(
-            output_variables=("salaire_net", "irpp", "date_naissance"),
+            output_variables=("salaire_net", "irpp_economique", "date_naissance"),
             skip_version_check=True,
         )
         mock_tbs = _make_mock_tbs_with_entities(
             variable_entities={
                 "salaire_net": "individu",
-                "irpp": "foyer_fiscal",
+                "irpp_economique": "foyer_fiscal",
                 "date_naissance": "individu",
             },
             variable_periodicities={
                 "salaire_net": "month",
-                "irpp": "year",
+                "irpp_economique": "year",
                 "date_naissance": "eternity",
             },
         )
@@ -1077,7 +1077,7 @@ class TestResolveVariablePeriodicities:
 
         assert result == {
             "salaire_net": "month",
-            "irpp": "year",
+            "irpp_economique": "year",
             "date_naissance": "eternity",
         }
 
@@ -1138,16 +1138,16 @@ class TestCalculateVariable:
     def test_yearly_uses_calculate(self) -> None:
         """AC-1: Yearly variables use simulation.calculate()."""
         adapter = OpenFiscaApiAdapter(
-            output_variables=("irpp",),
+            output_variables=("irpp_economique",),
             skip_version_check=True,
         )
         sim = _make_mock_simulation_with_methods(
-            {"irpp": np.array([-1500.0])}
+            {"irpp_economique": np.array([-1500.0])}
         )
 
-        result = adapter._calculate_variable(sim, "irpp", "2024", "year")
+        result = adapter._calculate_variable(sim, "irpp_economique", "2024", "year")
 
-        sim.calculate.assert_called_once_with("irpp", "2024")
+        sim.calculate.assert_called_once_with("irpp_economique", "2024")
         sim.calculate_add.assert_not_called()
         assert result[0] == -1500.0
 
@@ -1403,22 +1403,22 @@ class TestPeriodicityMetadata:
     ) -> None:
         """AC-5: Metadata includes variable_periodicities dict."""
         adapter = OpenFiscaApiAdapter(
-            output_variables=("salaire_net", "irpp"),
+            output_variables=("salaire_net", "irpp_economique"),
             skip_version_check=True,
         )
         mock_tbs = _make_mock_tbs_with_entities(
             variable_entities={
                 "salaire_net": "individu",
-                "irpp": "foyer_fiscal",
+                "irpp_economique": "foyer_fiscal",
             },
             variable_periodicities={
                 "salaire_net": "month",
-                "irpp": "year",
+                "irpp_economique": "year",
             },
         )
         mock_simulation = _make_mock_simulation_with_methods({
             "salaire_net": np.array([24000.0, 40000.0]),
-            "irpp": np.array([-1500.0]),
+            "irpp_economique": np.array([-1500.0]),
         })
         adapter._tax_benefit_system = mock_tbs
 
@@ -1441,7 +1441,7 @@ class TestPeriodicityMetadata:
         assert "variable_periodicities" in result.metadata
         assert result.metadata["variable_periodicities"] == {
             "salaire_net": "month",
-            "irpp": "year",
+            "irpp_economique": "year",
         }
 
     def test_calculation_methods_in_metadata(
@@ -1449,22 +1449,22 @@ class TestPeriodicityMetadata:
     ) -> None:
         """AC-5: Metadata includes calculation_methods dict."""
         adapter = OpenFiscaApiAdapter(
-            output_variables=("salaire_net", "irpp"),
+            output_variables=("salaire_net", "irpp_economique"),
             skip_version_check=True,
         )
         mock_tbs = _make_mock_tbs_with_entities(
             variable_entities={
                 "salaire_net": "individu",
-                "irpp": "foyer_fiscal",
+                "irpp_economique": "foyer_fiscal",
             },
             variable_periodicities={
                 "salaire_net": "month",
-                "irpp": "year",
+                "irpp_economique": "year",
             },
         )
         mock_simulation = _make_mock_simulation_with_methods({
             "salaire_net": np.array([24000.0, 40000.0]),
-            "irpp": np.array([-1500.0]),
+            "irpp_economique": np.array([-1500.0]),
         })
         adapter._tax_benefit_system = mock_tbs
 
@@ -1487,7 +1487,7 @@ class TestPeriodicityMetadata:
         assert "calculation_methods" in result.metadata
         assert result.metadata["calculation_methods"] == {
             "salaire_net": "calculate_add",
-            "irpp": "calculate",
+            "irpp_economique": "calculate",
         }
 
     def test_eternity_variable_uses_calculate_in_metadata(self) -> None:
@@ -1563,20 +1563,20 @@ class TestComputeMultiEntity:
     def test_compute_multi_entity_populates_entity_tables(self) -> None:
         """AC-1, AC-3: Multi-entity output populates entity_tables."""
         adapter = OpenFiscaApiAdapter(
-            output_variables=("salaire_net", "irpp", "revenu_disponible"),
+            output_variables=("salaire_net", "irpp_economique", "revenu_disponible"),
             skip_version_check=True,
         )
 
         mock_tbs = _make_mock_tbs_with_entities(
             variable_entities={
                 "salaire_net": "individu",
-                "irpp": "foyer_fiscal",
+                "irpp_economique": "foyer_fiscal",
                 "revenu_disponible": "menage",
             },
         )
         mock_simulation = _make_mock_simulation({
             "salaire_net": np.array([20000.0, 35000.0]),
-            "irpp": np.array([-1500.0]),
+            "irpp_economique": np.array([-1500.0]),
             "revenu_disponible": np.array([40000.0]),
         })
         adapter._tax_benefit_system = mock_tbs
@@ -1615,19 +1615,19 @@ class TestComputeMultiEntity:
     def test_compute_multi_entity_metadata(self) -> None:
         """AC-1: Metadata includes output_entities and entity_row_counts."""
         adapter = OpenFiscaApiAdapter(
-            output_variables=("salaire_net", "irpp"),
+            output_variables=("salaire_net", "irpp_economique"),
             skip_version_check=True,
         )
 
         mock_tbs = _make_mock_tbs_with_entities(
             variable_entities={
                 "salaire_net": "individu",
-                "irpp": "foyer_fiscal",
+                "irpp_economique": "foyer_fiscal",
             },
         )
         mock_simulation = _make_mock_simulation({
             "salaire_net": np.array([20000.0, 35000.0]),
-            "irpp": np.array([-1500.0]),
+            "irpp_economique": np.array([-1500.0]),
         })
         adapter._tax_benefit_system = mock_tbs
 

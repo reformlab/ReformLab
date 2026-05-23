@@ -39,14 +39,10 @@ providers:
   master:
     provider: claude-subprocess        # Runs Claude CLI as a subprocess
     model: sonnet
-    model_name: glm-4.7                # Display name shown in logs instead of "sonnet"
-    settings: ~/.claude/glm.json       # Claude CLI settings file (permissions, allowed tools, etc.)
 
   helper:
     provider: claude-subprocess
     model: sonnet                      # Lightweight helper work, routed to GLM-4.7
-    model_name: glm-4.7
-    settings: ~/.claude/glm.json
 
 # --- Per-phase model assignment ---
 # Override which model runs each phase. Phases not listed here fall back to
@@ -57,15 +53,11 @@ phase_models:
   create_story:
     provider: claude-subprocess        # Runs Claude CLI as a subprocess
     model: sonnet
-    model_name: glm-4.7              # Display name shown in logs instead of "sonnet"
-    settings: ~/.claude/glm.json       # Claude CLI settings file (permissions, allowed tools, etc.)
 
   # Implementation: uses Sonnet via GLM settings for coding (reads files on demand)
   dev_story:
     provider: claude-subprocess
     model: sonnet
-    model_name: glm-4.7
-    settings: ~/.claude/glm.json
 
   # Validation: GLM-4.7 + Codex dual reviewers
   validate_story:
@@ -73,14 +65,10 @@ phase_models:
       model: sonnet                    # First reviewer
     - provider: claude-subprocess
       model: sonnet
-      model_name: glm-4.7
-      settings: ~/.claude/glm.json
 
   validate_story_synthesis:
     provider: claude-subprocess        # Runs Claude CLI as a subprocess
     model: sonnet
-    model_name: glm-4.7
-    settings: ~/.claude/glm.json
 
   # Code review: GLM-4.7 + Codex dual reviewers, synthesis upgraded to GLM-5-Turbo
   code_review:
@@ -88,21 +76,16 @@ phase_models:
       model: sonnet                    # First reviewer
     - provider: claude-subprocess
       model: sonnet
-      model_name: glm-4.7
-      settings: ~/.claude/glm.json
 
   code_review_synthesis:
     provider: claude-subprocess        # Last gate before code ships — upgraded model
     model: sonnet
-    model_name: glm-4.7
-    settings: ~/.claude/glm.json
 
   # Retrospective: runs after each epic completes
   retrospective:
     provider: claude-subprocess
     model: sonnet
-    model_name: glm-4.7
-    settings: ~/.claude/glm.json
+
 
 # --- Compiler configuration ---
 # The compiler assembles the final prompt sent to the agent by packing in source

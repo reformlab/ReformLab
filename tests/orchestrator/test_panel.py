@@ -511,11 +511,12 @@ class TestPanelBuilderWithNormalizer:
         yearly_states: dict[int, YearState] = {}
         for year in years:
             # Simulate OpenFisca output with French names
+            # Story 29.4: irpp_economique replaces the removed taxe_carbone placeholder
             table = pa.table({
                 "household_id": pa.array([1, 2, 3], type=pa.int64()),
                 "salaire_net": pa.array([45000.0 + year, 55000.0 + year, 65000.0 + year]),
                 "revenu_disponible": pa.array([47000.0 + year, 57000.0 + year, 67000.0 + year]),
-                "taxe_carbone": pa.array([100.0 + year, 200.0 + year, 300.0 + year]),
+                "irpp_economique": pa.array([100.0 + year, 200.0 + year, 300.0 + year]),
             })
             comp_result = ComputationResult(
                 output_fields=table,
@@ -547,7 +548,8 @@ class TestPanelBuilderWithNormalizer:
             rename_map = {
                 "salaire_net": "income",
                 "revenu_disponible": "disposable_income",
-                "taxe_carbone": "carbon_tax",
+                # Story 29.4: irpp_economique replaces removed taxe_carbone placeholder
+                "irpp_economique": "income_tax",
             }
             new_names = [rename_map.get(name, name) for name in comp_result.output_fields.column_names]
             return comp_result.output_fields.rename_columns(new_names)
@@ -557,12 +559,12 @@ class TestPanelBuilderWithNormalizer:
         # Normalization applied - English names present
         assert "income" in panel.table.column_names
         assert "disposable_income" in panel.table.column_names
-        assert "carbon_tax" in panel.table.column_names
+        assert "income_tax" in panel.table.column_names
 
         # French names removed
         assert "salaire_net" not in panel.table.column_names
         assert "revenu_disponible" not in panel.table.column_names
-        assert "taxe_carbone" not in panel.table.column_names
+        assert "irpp_economique" not in panel.table.column_names
 
     def test_normalizer_preserves_decision_columns(self) -> None:
         """Decision columns from Story 14-6 survive normalization."""

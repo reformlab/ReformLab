@@ -54,7 +54,14 @@ def sample_yaml(tmp_path: Path) -> Path:
 
 @pytest.fixture()
 def extension_yaml(tmp_path: Path) -> Path:
-    """An extension YAML mapping file that overrides one entry."""
+    """An extension YAML mapping file that overrides one entry.
+
+    Note: taxe_carbone is used here intentionally to test custom YAML mapping
+    functionality (load_mappings, by_openfisca_name). This is NOT the default
+    output mapping — Story 29.2 removed taxe_carbone from _DEFAULT_OUTPUT_MAPPING
+    because it is a ReformLab-specific policy output, not a core OpenFisca-France
+    variable. Custom mapping files may still define it when needed.
+    """
     content = textwrap.dedent("""\
         version: "1"
         description: "Extension mapping"
