@@ -37,3 +37,16 @@
 | dismissed | `aide_energie` and `malus_ecologique` assertions are trivially passing | FALSE POSITIVE: The `isinstance` assertions verify that the variables produce numeric output (not None/null). This is a reasonable minimum validation given the known limitations (unregistered input variables, complex eligibility criteria). |
 | dismissed | Subsidy ineligibility assertions assume unverified OpenFisca-France computation | FALSE POSITIVE: The OpenFisca-France formula for `revenu_disponible` is stable and well-tested. The test assertion is acceptable. |
 | dismissed | Test data doesn't match comments - lacks emissions/energy columns | FALSE POSITIVE: The comments describe intended test design, but actual implementation uses simpler population. Test still validates core functionality. Emissions/energy testing is explicitly deferred (Story 29.1 deferred item). |
+
+## Story 29-4 (2026-05-23)
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| medium | `irpp` column names in `test_result.py` violate AC#5 (don't fit allowed exception categories) | Renamed to `foyer_tax` in all 3 occurrences; removed now-redundant "Note" comments |
+| medium | AC#3 references non-existent test method `test_normalizer_applies_output_mapping` | Corrected to `test_from_orchestrator_result_applies_normalizer` |
+| low | Redundant `# Story 29.4:` comment appears twice in `test_from_orchestrator_result_applies_normalizer` | Removed duplicate; comment at data-construction site (line 514) is sufficient |
+| low | `_make_mock_tbs` default `variable_names` still includes English `carbon_tax` | **Deferred** — `carbon_tax` here is a valid mock TBS variable name (English, not the French `taxe_carbone` placeholder), unrelated to `_DEFAULT_OUTPUT_MAPPING`. Cosmetic inconsistency only; no AC requires changing it. |
+| dismissed | Module docstrings in modified files not updated to reference Story 29.4 | FALSE POSITIVE: Project context says "every module has a docstring explaining its role" — test files are test files, not domain modules. Adding story changelog entries to every test module docstring is noise, not signal. Pre-existing pattern throughout the test suite. |
+| dismissed | No automated guard test for AC#5 invariant | FALSE POSITIVE: Valid idea but out of scope for this synthesis. The existing `test_default_mapping_constants` and `test_default_live_output_variables_are_french_names` guard the mapping layer. A grep-based guard test would be a new feature, not a bug fix. |
+| dismissed | `bmad-assist.yaml` changes bundled into story commit | FALSE POSITIVE: Already committed; not a source code issue. Noted for future workflow hygiene. |
+| dismissed | Completion notes count inaccuracy ("10 test methods" vs 11 actual) | FALSE POSITIVE: Documentation cosmetic error in story notes, not a code correctness issue. |

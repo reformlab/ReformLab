@@ -92,9 +92,7 @@ class TestComputationResultEntityTables:
     def test_entity_tables_can_be_set(self) -> None:
         """AC-1, AC-3: entity_tables stores per-entity PyArrow Tables."""
         person_table = pa.table({"salary": pa.array([30000.0, 45000.0])})
-        # Note: "irpp" here is an arbitrary mock column name for testing
-        # entity_tables structure — not a reference to any OpenFisca variable.
-        foyer_table = pa.table({"irpp": pa.array([-1500.0])})
+        foyer_table = pa.table({"foyer_tax": pa.array([-1500.0])})
 
         result = ComputationResult(
             output_fields=person_table,
@@ -114,8 +112,7 @@ class TestComputationResultEntityTables:
         """AC-2: Per-entity tables have correct array lengths — they need
         not match each other or the person-level table."""
         person_table = pa.table({"salaire_net": pa.array([20000.0, 35000.0])})
-        # Note: "irpp" here is an arbitrary mock column name, not an OpenFisca variable.
-        foyer_table = pa.table({"irpp": pa.array([-2500.0])})
+        foyer_table = pa.table({"foyer_tax": pa.array([-2500.0])})
         menage_table = pa.table({"revenu_disponible": pa.array([40000.0])})
 
         result = ComputationResult(
@@ -136,8 +133,7 @@ class TestComputationResultEntityTables:
         """AC-4: output_fields remains the primary output — existing consumers
         accessing result.output_fields continue to work."""
         person_table = pa.table({"salary": pa.array([30000.0, 45000.0])})
-        # Note: "irpp" here is an arbitrary mock column name, not an OpenFisca variable.
-        foyer_table = pa.table({"irpp": pa.array([-1500.0])})
+        foyer_table = pa.table({"foyer_tax": pa.array([-1500.0])})
 
         result = ComputationResult(
             output_fields=person_table,

@@ -1,0 +1,112 @@
+record_id: 9aa59760-9b4f-42a4-8f88-c059b5dbe4ff
+created_at: '2026-05-23T12:09:21.058698+00:00'
+workflow:
+  id: code-review
+  version: 1.0.0
+  variant: default
+  patch:
+    applied: false
+    id: null
+    version: null
+    file_hash: null
+story:
+  epic_num: 29
+  story_num: '4'
+  title: Story 29.4
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+evaluator:
+  provider: claude-subprocess
+  model: sonnet
+  role: validator
+  role_id: b
+  session_id: ''
+execution:
+  start_time: '2026-05-23T12:03:15.320988Z'
+  end_time: '2026-05-23T12:08:09.478988Z'
+  duration_ms: 294158
+  input_tokens: 0
+  output_tokens: 2145
+  retries: 0
+  sequence_position: 0
+output:
+  char_count: 8582
+  heading_count: 12
+  list_depth_max: 2
+  code_block_count: 3
+  sections_detected:
+  - 📊 Review Summary
+  - Evidence Score Summary
+  - 'Evidence Score: **1.2**'
+  - 🏛️ Architectural Sins
+  - 🐍 Pythonic Crimes & Readability
+  - ⚡ Performance & Scalability
+  - 🐛 Correctness & Safety
+  - 🔧 Maintainability Issues
+  - 🛠️ Suggested Fixes
+  - '1. Fix AC #3 test name'
+  - '2. Rename `irpp` column in `test_result.py` to satisfy AC #5'
+  - 3. Move inline comments to docstrings in `test_panel.py`
+  anomalies: []
+environment:
+  bmad_assist_version: 0.4.34
+  python_version: 3.12.2
+  platform: Darwin
+  git_commit_hash: 0511b3feb98f
+findings:
+  total_count: 6
+  by_severity:
+    critical: 0
+    major: 2
+    minor: 3
+    nit: 1
+  by_category:
+    security: 0
+    performance: 0
+    correctness: 1
+    completeness: 1
+    clarity: 4
+    testability: 0
+  has_fix_count: 3
+  has_location_count: 6
+  has_evidence_count: 4
+  evidence_score: null
+  evidence_verdict: null
+  clean_pass_count: 0
+reasoning:
+  cites_prd: false
+  cites_architecture: true
+  cites_story_sections: false
+  uses_conditionals: false
+  uncertainty_phrases_count: 0
+  confidence_phrases_count: 0
+linguistic:
+  avg_sentence_length: 30.285714285714285
+  vocabulary_richness: 0.38113207547169814
+  flesch_reading_ease: 21.403202722225387
+  vague_terms_count: 0
+  formality_score: 0.65
+  sentiment: mixed
+quality:
+  actionable_ratio: 0.67
+  specificity_score: 0.85
+  evidence_quality: 0.75
+  follows_template: true
+  internal_consistency: 0.88
+consensus: null
+ground_truth: null
+custom:
+  complexity_flags:
+    has_ui_changes: false
+    has_api_changes: false
+    has_db_changes: false
+    has_security_impact: false
+    requires_migration: false
+  phase: code-review
+  file_count: 10
+  lines_of_code_reviewed: null
+  test_coverage_delta: null

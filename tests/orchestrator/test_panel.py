@@ -548,7 +548,6 @@ class TestPanelBuilderWithNormalizer:
             rename_map = {
                 "salaire_net": "income",
                 "revenu_disponible": "disposable_income",
-                # Story 29.4: irpp_economique replaces removed taxe_carbone placeholder
                 "irpp_economique": "income_tax",
             }
             new_names = [rename_map.get(name, name) for name in comp_result.output_fields.column_names]

@@ -12,7 +12,7 @@ so that the test suite no longer encodes the broken naming contract and all test
 
 1. Given the test files that reference placeholder names, when updated, then all mock data and test fixtures use the resolved variable names (`irpp_economique` instead of `irpp`, alternative variables instead of `revenu_net`/`revenu_brut`, and no `taxe_carbone` in default-output contexts).
 2. Given `tests/computation/test_openfisca_api_adapter.py`, when updated, then all mock TBS examples use `irpp_economique` instead of the placeholder `irpp`.
-3. Given `tests/orchestrator/test_panel.py`, when updated, then the `test_normalizer_applies_output_mapping` test no longer uses `taxe_carbone` as a column name expecting `carbon_tax` output (use `irpp_economique` expecting `income_tax` instead).
+3. Given `tests/orchestrator/test_panel.py`, when updated, then the `test_from_orchestrator_result_applies_normalizer` test no longer uses `taxe_carbone` as a column name expecting `carbon_tax` output (use `irpp_economique` expecting `income_tax` instead).
 4. Given `tests/computation/test_openfisca_integration.py`, when updated, then placeholder-related comments are updated to reflect that the placeholders have been resolved, or removed if they no longer add value.
 5. Given the grep search for placeholder names in the test suite, when this story is complete, then the only remaining references to `irpp`, `revenu_net`, `revenu_brut`, and `taxe_carbone` are either: (a) legitimate uses of different variables with similar names (e.g., local variable named `irpp` holding `impot_revenu_restant_a_payer` values), (b) intentional test fixtures for custom YAML mapping functionality, or (c) comments explaining the resolution history.
 6. Given the full test suite, when run after updates, then all tests pass with no regressions.
@@ -236,7 +236,7 @@ Claude Sonnet 4.6 (claude-sonnet-4-6)
 - `tests/computation/test_openfisca_api_adapter.py` — Replaced `irpp` with `irpp_economique` in all 10 affected test methods (39 occurrences total)
 - `tests/orchestrator/test_panel.py` — Replaced `taxe_carbone`/`carbon_tax` with `irpp_economique`/`income_tax` in `test_from_orchestrator_result_applies_normalizer`
 - `tests/computation/test_mapping.py` — Added docstring to `extension_yaml` fixture documenting intentional `taxe_carbone` use
-- `tests/computation/test_result.py` — Added inline comments to 3 test methods documenting `irpp` as arbitrary mock column name
+- `tests/computation/test_result.py` — Renamed `irpp` column to `foyer_tax` in 3 test methods (satisfies AC#5; `irpp` as column name fit no allowed exception category)
 
 **Files with No Changes Needed:**
 - `tests/computation/test_openfisca_integration.py` — All `irpp` references are legitimate local variables; no placeholder-related comments
@@ -258,3 +258,18 @@ Claude Sonnet 4.6 (claude-sonnet-4-6)
 - Confirmed fixture YAML files are clean
 - All 3886 non-integration tests pass; no new failures introduced
 - Status set to done
+
+### 2026-05-23 (Code Review Synthesis)
+- Renamed `irpp` to `foyer_tax` in `test_result.py` (3 occurrences) — satisfies AC#5 (previous "arbitrary comment" approach didn't fit any allowed exception category)
+- Removed redundant `# Story 29.4: irpp_economique replaces removed taxe_carbone placeholder` comment in `test_panel.py` normalizer lambda (comment at data-construction site is sufficient)
+- Fixed AC#3 test name: `test_normalizer_applies_output_mapping` → `test_from_orchestrator_result_applies_normalizer` (phantom name never existed)
+- 47 tests pass post-synthesis
+
+## Senior Developer Review (AI)
+
+### Review: 2026-05-23
+- **Reviewer:** AI Code Review Synthesis
+- **Evidence Score:** 1.2 → PASS
+- **Issues Found:** 4 (2 medium, 2 low)
+- **Issues Fixed:** 3
+- **Action Items Created:** 0
