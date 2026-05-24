@@ -589,6 +589,26 @@ ReformLab is delivered as a **web application** (React 19 SPA + FastAPI backend)
 - FR54: Analyst can export a self-contained replication package including data, configuration, manifests, and results.
 - FR55: Replication package is reproducible on a clean environment with only `pip install reformlab` and the package contents.
 
+### Workspace UX (delivered in Epics 20, 25–27; backfilled 2026-05-24)
+
+- FR56: Analyst navigates the no-code workspace through four top-level stages — Policies, Population, Scenario (engine), Run/Results/Compare — implemented as the canonical `StageKey` enum (`policies`, `population`, `engine`, `results`). Stage labels surface in the nav rail; sub-views (e.g., `data-fusion`, `decisions`, `runner`, `comparison`) route inside their owning stage. (Implemented by EPIC-26.)
+- FR57: The Policies stage exposes three first-class policy types — Tax, Subsidy, Transfer — with API-driven categories (`GET /api/categories`), per-category formula help, duplicate-instance policies, and editable parameter groups. (Implemented by EPIC-25.)
+- FR58: Policy Sets are first-class reusable artifacts independent from scenarios: analysts can save, load, rename, clone, and validate a Policy Set without committing to a scenario. Auto-name suggestions are deterministic and freeze after manual edit. The user-facing term replaces the legacy "portfolio" wording in Stage 1 surfaces. (Implemented by EPIC-25.5, EPIC-26.6.)
+- FR59: The Population Library surfaces built-in, generated, uploaded, and Quick Test populations as a single browseable catalog with profile previews, comparison, and explicit "Build new" entry into the Data Fusion workbench. (Implemented by EPIC-26.5 and EPIC-27.8.)
+- FR60: The Scenario (engine) stage hosts an optional Investment Decisions wizard with clickable step labels (Enable → Model → Parameters → Review). When investment decisions are disabled, the wizard is skipped without blocking run validation. (Implemented by EPIC-26.2 and EPIC-27.7.)
+- FR61: The Run / Results / Compare stage exposes a dedicated Run Manifest Viewer that exposes the full immutable manifest (FR25) — versions, hashes, parameters, assumptions, lineage — alongside results. (Implemented by EPIC-26.4.)
+
+### Investment Decisions — Technology Sets (delivered in Epic 28; backfilled 2026-05-24)
+
+- FR62: Analyst can declare a Technology Set per investment-decision domain (vehicle, heating, renovation), specifying which technologies are in scope for the run. The Technology Set is part of `EngineConfig`, exposed over the API, and persisted with the scenario. (Implemented by EPIC-28.1.)
+- FR63: Population data carries optional incumbent-technology columns per household per domain. The orchestrator reads incumbent state at year start and writes chosen technology back into the population frame after each discrete-choice step, so multi-year runs reflect technology transitions. (Implemented by EPIC-28.2 and EPIC-28.3.)
+- FR64: Multi-period runs that include investment decisions are validated end-to-end against analyst-journey regression coverage to ensure technology-set, incumbent-state, and discrete-choice outputs round-trip correctly across years. (Implemented by EPIC-28.5.)
+
+### Live OpenFisca Output Coverage (delivered in Epic 29; backfilled 2026-05-24)
+
+- FR65: The live OpenFisca path resolves French-named custom variables (`montant_subvention`, `eligible_subvention`, `malus_ecologique`, `aide_energie`) so that the canonical output schema (`subsidy_amount`, `subsidy_eligible`, `vehicle_malus`, `energy_poverty_aid`) is populated by live runs without replay fallbacks. Custom variables ship in a registered TaxBenefitSystem extension whose version is captured in the run manifest. (Implemented by EPIC-29.1, EPIC-29.3.)
+- FR66: Test fixtures and `_DEFAULT_LIVE_OUTPUT_VARIABLES` reference only resolvable French variable names; the generic placeholders (`irpp`, `revenu_net`, `revenu_brut`, `taxe_carbone`) used during the 2026-04-26 hotfix window are removed. (Implemented by EPIC-29.2, EPIC-29.4.)
+
 ## Non-Functional Requirements
 
 ### Performance
