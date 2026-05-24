@@ -1,7 +1,7 @@
 # Architecture — ReformLab
 
-**Generated:** 2026-03-08
-**Status:** Phase 2 Complete (Epics 1–17)
+**Generated:** 2026-03-08 (updated 2026-05-24)
+**Status:** Epics 1–29 complete. Latest closed: Epic 29 (custom OpenFisca variables — subsidy_amount, subsidy_eligible, vehicle_malus, energy_poverty_aid).
 
 ## How to Read This Document
 
@@ -452,7 +452,7 @@ Year 2026: state₁ → [ComputationStep] → [DiscreteChoiceStep] → [VintageS
 
 **Purpose:** HTTP facade over the Python API. Thin layer — no business logic in routes.
 
-**API surface (14 route modules):**
+**API surface (15 route modules under `server/routes/`, plus `auth` mounted from `server/`):**
 
 | Route prefix | Key endpoints |
 | ------------ | ------------- |
@@ -461,15 +461,17 @@ Year 2026: state₁ → [ComputationStep] → [DiscreteChoiceStep] → [VintageS
 | `/api/indicators/{type}` | `POST /` compute indicators |
 | `/api/comparison` | `POST /` baseline vs reform, `POST /portfolios` multi-run |
 | `/api/scenarios` | `GET /`, `GET /{name}`, `POST /`, `POST /{name}/clone` |
-| `/api/templates` | `GET /`, `GET /{name}`, `GET /categories` |
-| `/api/portfolios` | `GET /`, `POST /`, `PUT /{name}`, `POST /validate` |
-| `/api/populations` | `GET /`, `GET /{id}/preview`, `GET /{id}/profile`, `GET /{id}/crosstab`, `POST /upload` |
-| `/api/data-fusion` | `GET /sources/{provider}`, `POST /generate` |
-| `/api/exogenous` | Exogenous time series data |
+| `/api/templates` | `GET /`, `GET /{name}`, `POST /custom`, `DELETE /custom/{id}`, `POST /from-scratch` |
+| `/api/categories` | `GET /` API-driven policy categories with formula-help metadata (Epic 25) |
+| `/api/portfolios` | `GET /`, `POST /`, `PUT /{name}`, `DELETE /{name}`, `POST /{name}/clone`, `POST /validate` |
+| `/api/populations` | `GET /`, `GET /{id}/preview`, `GET /{id}/profile`, `GET /{id}/crosstab`, `POST /upload`, `GET /compare`, `DELETE /{id}` |
+| `/api/data-fusion` | `GET /sources`, `GET /sources/{provider}/{dataset_id}`, `GET /merge-methods`, `POST /generate` |
+| `/api/exogenous` | `GET /series`, plus two related lookup endpoints for exogenous time-series data |
+| `/api/discrete-choice/technology-sets` | `GET /default`, `GET /default/all` (Epic 28 — technology-set contract for investment decisions) |
 | `/api/results` | `GET /` list saved results |
 | `/api/exports` | `POST /` CSV export |
 | `/api/decisions` | `GET /` decision audit trail |
-| `/api/validation` | Preflight validation checks |
+| `/api/validation` | `POST /preflight` cross-stage validation checks before run |
 
 **Canonical analysis objects:** `Portfolio` stores reusable policy bundles. `Scenario` stores the versioned combination of portfolio, selected population(s), simulation configuration, mappings, and metadata. `Run` executes one scenario version, potentially as a scenario-by-population matrix when multiple populations are selected.
 
@@ -503,6 +505,42 @@ Note: The stage key `engine` refers to the simulation/execution configuration sc
 **State management:** Single `AppContext` manages data fetching, stage navigation, selected scenario, population/profile inspection state, and run execution. Typed hooks in `useApi.ts` handle individual data domains with loading/error/mock-fallback patterns.
 
 **Design system:** 18 Shadcn/Radix UI primitives styled with Tailwind v4. Chart colors defined as CSS custom properties (`--chart-baseline`, `--chart-reform-a` through `-d`).
+
+### 5.11 Vintage (`vintage/`)
+
+**Purpose:** Track and apply vintage transitions across multi-year horizon runs — i.e., the year-over-year evolution of household state (e.g., incumbent technology stock) that the discrete-choice and orchestrator layers depend on.
+
+**Modules:**
+
+- `config.py` — vintage configuration types.
+- `types.py` — vintage state and transition value types.
+- `transition.py` — `VintageTransitionStep` invoked by the orchestrator between yearly snapshots.
+- `errors.py` — domain errors raised when transitions are inconsistent.
+
+**Consumed by:** Orchestrator (§5.3), Discrete Choice (§5.4), Population (§5.6).
+
+### 5.12 Visualization (`visualization/`)
+
+**Purpose:** Shared rendering, styling, and plotting helpers used by Python-API consumers (notebooks, scripts). The web GUI does its own rendering in React; this module exists for the non-web interfaces.
+
+**Modules:**
+
+- `display.py` — text/table display helpers for notebook contexts.
+- `plotting.py` — matplotlib-based plots for indicator panels.
+- `styling.py` — shared color tokens and figure styling.
+
+**Consumed by:** `interfaces/api.py` and notebook users; not exposed via HTTP routes.
+
+### 5.13 Interfaces (`interfaces/`)
+
+**Purpose:** Stable Python API entry points for notebook and script use, independent of the FastAPI HTTP layer.
+
+**Modules:**
+
+- `api.py` — top-level Python-facing surface (`load_template`, `run_scenario`, etc.).
+- `errors.py` — typed Python errors for API consumers.
+
+**Relationship to Server:** The HTTP server (§5.9) and `interfaces/api.py` both sit on top of the same orchestrator and adapter — neither layer wraps the other. This keeps the Python API usable without a running web process.
 
 ---
 

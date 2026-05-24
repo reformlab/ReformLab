@@ -27,6 +27,21 @@ UX scope now assumes:
 - ReformLab UX focuses on no-code scenario operations, dynamic (10+ year) projections, and transparent run governance.
 - MVP prioritizes analyst workflow UX before public citizen-facing UX.
 
+## Reconciliation Note (2026-05-24)
+
+The shipped workspace uses **four** top-level stages, not five:
+
+| Stage key (code) | User-facing label (spec / UI)                                                       |
+| ---------------- | ----------------------------------------------------------------------------------- |
+| `policies`       | Policies                                                                            |
+| `population`     | Population                                                                          |
+| `engine`         | Scenario *(label updated in UI; key kept as `engine` for backwards compatibility)*  |
+| `results`        | Run / Results / Compare                                                             |
+
+**Investment Decisions** is an *optional wizard inside the Scenario (engine) stage*, not a top-level peer stage. Earlier revisions of this spec (3.0, 4.1) described a five-stage flow with Investment Decisions as a peer stage; that design was scoped down during Epic 26. The Stage 3 — Investment Decisions section below remains as the canonical spec for the wizard's information architecture, but read it as "the Investment Decisions wizard *inside* Stage 3 (Scenario / engine)", not as a top-level stage. All code-block `STAGES` examples that show an `"investment-decisions"` or `"scenario"` key are historical / aspirational — the implementation uses `"engine"` and embeds the wizard via `EngineStageScreen`.
+
+Authoritative references: `frontend/src/types/workspace.ts` (`StageKey`), `frontend/src/components/screens/EngineStageScreen.tsx`, `frontend/src/components/layout/WorkflowNavRail.tsx`.
+
 ## Revision 3.0 Update (2026-03-30)
 
 Revision 3.0 keeps the Revision 2 four-stage architecture but tightens the product around actual use: stronger brand presence, clearer scenario controls, denser policy editing, explicit population sub-steps, user-facing `Scenario` terminology in place of `Engine`, a guided investment-decision flow, a quick test population, and demo-grade phone usability.
@@ -51,7 +66,7 @@ Revision 4.1 redesigns Stage 1 and makes the canonical UX consistent with April 
 
 **Workspace and runtime:**
 
-- the workspace is now a five-stage flow: `Policies`, `Population`, `Investment Decisions`, `Scenario`, `Run / Results / Compare`,
+- the workspace is a four-stage flow in code (`policies`, `population`, `engine`, `results`) with Scenario as the user-facing label for the `engine` stage and Investment Decisions as an optional wizard inside it. (Earlier Revision 4.1 wording described a five-stage flow; see the Reconciliation Note at the top of this file.),
 - the primary population is selected in `Population` and shown as inherited context in `Scenario`,
 - `simulation_mode` belongs to the scenario definition and remains distinct from `runtime_mode`,
 - normal web execution defaults to live OpenFisca, while replay remains available only through explicit demo or manual flows,
@@ -1738,9 +1753,9 @@ For a categorical column `region` cross-tabbed with `tenure_type`:
 
 Colors: Slate 400 for first category, Blue 500 for second. Chart palette from the visual identity guide.
 
-### Revision: Stage 3 — Investment Decisions
+### Revision: Investment Decisions Wizard (inside Stage 3 — Scenario / engine)
 
-**Purpose:** Configure optional household decision behavior in a dedicated workspace. This stage is skipped in the happy path when decision behavior is disabled.
+**Purpose:** Configure optional household decision behavior. Implemented as a wizard rendered inside `EngineStageScreen` (the Scenario stage); skipped in the happy path when decision behavior is disabled. (Earlier revisions described this as a dedicated Stage 3; see the Reconciliation Note at the top of this file.)
 
 #### Information Architecture
 
@@ -1785,9 +1800,9 @@ The wizard step labels (Enable, Model, Parameters, Review) are clickable for bac
 
 #### Key Design Decisions
 
-- **Dedicated stage, not nested subsection.** Investment decisions are no longer configured inside `Scenario`.
-- **Optional by default.** The default path remains simple; analysts can skip directly to `Scenario` when decision behavior is off.
-- **Scenario consumes, not edits.** The later `Scenario` stage summarizes enabled decision behavior but does not own detailed editing.
+- **Wizard inside Scenario, not a separate top-level stage.** Investment decisions are configured via the `InvestmentDecisionsWizard` component rendered inside `EngineStageScreen`. (Spec revisions 3.0/4.1 originally proposed a dedicated stage; the implementation kept it as a wizard inside the Scenario stage. See the Reconciliation Note at the top of this file.)
+- **Optional by default.** The default path remains simple; analysts can skip past the wizard when decision behavior is off.
+- **Scenario is the owner.** The Scenario (engine) stage owns the wizard *and* the surrounding scenario-execution configuration; both surface in the same stage.
 
 ### Revision: Stage 4 — Scenario
 
