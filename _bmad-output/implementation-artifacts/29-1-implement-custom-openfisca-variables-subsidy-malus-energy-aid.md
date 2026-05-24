@@ -1,6 +1,6 @@
 # Story 29.1: Implement custom OpenFisca variables (subsidy_amount, subsidy_eligible, vehicle_malus, energy_poverty_aid)
 
-Status: in-dev
+Status: done
 
 **Prerequisite:** ✅ PM decision on `aide_energie` vs `cheque_energie` recorded. Decision: Implement `aide_energie` as a custom variable that aliases to OpenFisca-France's existing `cheque_energie` variable. The `cheque_energie` variable (value_type=float, entity=menage, definition_period=year) exists and is functionally equivalent for energy poverty aid calculations. This approach leverages the existing OpenFisca-France implementation while maintaining the French naming convention.
 

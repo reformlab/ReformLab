@@ -32,8 +32,8 @@ Epics 1-24 are complete (see git history and implementation artifacts for detail
 | EPIC-25 | Stage 1 Policies Redesign (Revision 4.1 UX) | 3 | done | 6 |
 | EPIC-26 | Five-Stage Workspace Migration and Stage Completion | 3 | done | 7 |
 | EPIC-27 | Workspace UX Stabilization | 3 | done | 16 |
-| EPIC-28 | Investment Decisions — Technology-Set as a First-Class Concept | 4 | backlog (gated on 28.0 spike) | 6 |
-| EPIC-29 | OpenFisca Variable Coverage and Live-Output Recovery | 3 | backlog | 5 |
+| EPIC-28 | Investment Decisions — Technology-Set as a First-Class Concept | 4 | done | 6 |
+| EPIC-29 | OpenFisca Variable Coverage and Live-Output Recovery | 3 | done | 5 |
 
 ## Conventions
 
@@ -47,7 +47,7 @@ Epics 1-24 are complete (see git history and implementation artifacts for detail
 
 To reduce agent context, this file contains only active and upcoming epics.
 Completed epics remain available through git history. Local implementation artifacts for older completed epics may be pruned once they are no longer useful for active planning or delivery.
-Current completed range: EPIC-1 through EPIC-24.
+Current completed range: EPIC-1 through EPIC-29. Epics 25–29 retained here for short-term reference; per-story status was updated 2026-05-23 to mirror `_bmad-output/implementation-artifacts/sprint-status.yaml`.
 
 ## Requirements Inventory
 
@@ -125,7 +125,7 @@ Analyst can move through the canonical five-stage workspace, configure optional 
 
 **User outcome:** The analyst builds reusable policy sets in a redesigned Policies stage with three policy types, API-driven categories, formula help, from-template or from-scratch creation, editable parameter groups, and policy set save/load independent from scenarios.
 
-**Status:** backlog
+**Status:** done
 
 **Builds on:** EPIC-13 (policy templates and extensibility), EPIC-17 (GUI showcase product), EPIC-20 (workspace alignment), EPIC-24 (surfaced live-capable catalog packs where available)
 
@@ -137,12 +137,12 @@ Analyst can move through the canonical five-stage workspace, configure optional 
 
 | ID | Type | Pri | SP | Title | Status | PRD Refs |
 |------|------|-----|----|-------|--------|----------|
-| BKL-2501 | Story | P0 | 8 | Add API-driven categories endpoint and formula-help metadata | backlog | FR46, UX-DR7 |
-| BKL-2502 | Story | P0 | 5 | Redesign Policies stage browser/composition layout with types, categories, and duplicate policy instances | backlog | FR43, UX-DR7, UX-DR9 |
-| BKL-2503 | Story | P0 | 8 | Implement create-from-scratch policy flow with compatible category picker and default parameter groups | backlog | FR46, UX-DR8 |
-| BKL-2504 | Story | P0 | 5 | Make parameter groups editable within policy cards | backlog | FR46, UX-DR9 |
-| BKL-2505 | Story | P0 | 8 | Make policy sets first-class reusable artifacts independent from scenarios | backlog | FR43, UX-DR10 |
-| BKL-2506 | Story | P1 | 3 | Add Stage 1 validation, responsive polish, and regression coverage | backlog | FR43, FR46, UX-DR7, UX-DR8, UX-DR9, UX-DR10 |
+| BKL-2501 | Story | P0 | 8 | Add API-driven categories endpoint and formula-help metadata | done | FR46, UX-DR7 |
+| BKL-2502 | Story | P0 | 5 | Redesign Policies stage browser/composition layout with types, categories, and duplicate policy instances | done | FR43, UX-DR7, UX-DR9 |
+| BKL-2503 | Story | P0 | 8 | Implement create-from-scratch policy flow with compatible category picker and default parameter groups | done | FR46, UX-DR8 |
+| BKL-2504 | Story | P0 | 5 | Make parameter groups editable within policy cards | done | FR46, UX-DR9 |
+| BKL-2505 | Story | P0 | 8 | Make policy sets first-class reusable artifacts independent from scenarios | done | FR43, UX-DR10 |
+| BKL-2506 | Story | P1 | 3 | Add Stage 1 validation, responsive polish, and regression coverage | done | FR43, FR46, UX-DR7, UX-DR8, UX-DR9, UX-DR10 |
 
 ## Epic-Level Acceptance Criteria
 
@@ -171,7 +171,7 @@ Analyst can move through the canonical five-stage workspace, configure optional 
 
 ## Story 25.1: Add API-driven categories endpoint and formula-help metadata
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 8
 
@@ -207,7 +207,7 @@ Implement the `GET /api/categories` backend endpoint and update the Policies sta
 
 ## Story 25.2: Redesign Policies stage browser/composition layout with types, categories, and duplicate policy instances
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 5
 
@@ -244,7 +244,7 @@ Update Stage 1 so the analyst works in the Revision 4.1 Policies model: a 50/50 
 
 ## Story 25.3: Implement create-from-scratch policy flow with type selection, category picker, and default parameter groups
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 8
 
@@ -285,7 +285,7 @@ Add the "create from scratch" path alongside the existing "from template" path i
 
 ## Story 25.4: Make parameter groups editable within policy cards
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 5
 
@@ -320,7 +320,7 @@ Enable editable parameter groups within policy cards. Group editing stays hidden
 
 ## Story 25.5: Make policy sets first-class reusable artifacts independent from scenarios
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 8
 
@@ -358,7 +358,7 @@ Decouple policy set persistence from scenario persistence. The analyst can save,
 
 ## Story 25.6: Add Stage 1 validation, responsive polish, and regression coverage
 
-**Status:** backlog
+**Status:** done
 **Priority:** P1
 **Estimate:** 3
 
@@ -395,7 +395,7 @@ Close the Policies redesign with validation and regression coverage for the revi
 
 **User outcome:** The analyst uses the canonical five-stage workspace (Policies → Population → Investment Decisions → Scenario → Run/Results/Compare), with optional investment decisions separated from Scenario, inherited population context visible before execution, completed run-manifest access, Quick Test Population support, and deterministic scenario naming.
 
-**Status:** backlog
+**Status:** done
 
 **Builds on:** EPIC-20 (workspace alignment and four-stage nav rail), EPIC-22 (Scenario-stage fit), EPIC-23 (live runtime metadata), EPIC-25 (policy set reference model)
 
@@ -408,13 +408,13 @@ Close the Policies redesign with validation and regression coverage for the revi
 
 | ID | Type | Pri | SP | Title | Status | PRD Refs |
 |------|------|-----|----|-------|--------|----------|
-| BKL-2601 | Story | P0 | 5 | Migrate nav rail and routing from four stages to five stages | backlog | FR32, UX-DR6 |
-| BKL-2602 | Story | P0 | 5 | Extract Investment Decisions into a dedicated Stage 3 with skip-when-disabled routing | backlog | UX-DR11 |
-| BKL-2603 | Story | P0 | 5 | Refactor Engine into Scenario stage with inherited population and runtime summary | backlog | FR32a, FR32c, UX-DR12 |
-| BKL-2604 | Story | P0 | 5 | Complete Stage 5 Run / Results / Compare with dedicated Run Manifest Viewer | backlog | FR25, FR26, UX-DR13 |
-| BKL-2605 | Story | P1 | 3 | Add Quick Test Population to the Population Library | backlog | UX-DR14 |
-| BKL-2606 | Story | P1 | 3 | Add deterministic scenario name suggestions from policy set and population context | backlog | UX-DR15 |
-| BKL-2607 | Story | P1 | 3 | Add five-stage migration, demo, restore, and cross-stage regression coverage | backlog | FR32, FR32a, FR32c, UX-DR6, UX-DR11, UX-DR12 |
+| BKL-2601 | Story | P0 | 5 | Migrate nav rail and routing from four stages to five stages | done | FR32, UX-DR6 |
+| BKL-2602 | Story | P0 | 5 | Extract Investment Decisions into a dedicated Stage 3 with skip-when-disabled routing | done | UX-DR11 |
+| BKL-2603 | Story | P0 | 5 | Refactor Engine into Scenario stage with inherited population and runtime summary | done | FR32a, FR32c, UX-DR12 |
+| BKL-2604 | Story | P0 | 5 | Complete Stage 5 Run / Results / Compare with dedicated Run Manifest Viewer | done | FR25, FR26, UX-DR13 |
+| BKL-2605 | Story | P1 | 3 | Add Quick Test Population to the Population Library | done | UX-DR14 |
+| BKL-2606 | Story | P1 | 3 | Add deterministic scenario name suggestions from policy set and population context | done | UX-DR15 |
+| BKL-2607 | Story | P1 | 3 | Add five-stage migration, demo, restore, and cross-stage regression coverage | done | FR32, FR32a, FR32c, UX-DR6, UX-DR11, UX-DR12 |
 
 ## Epic-Level Acceptance Criteria
 
@@ -444,7 +444,7 @@ Close the Policies redesign with validation and regression coverage for the revi
 
 ## Story 26.1: Migrate nav rail and routing from four stages to five stages
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 5
 
@@ -479,7 +479,7 @@ Update the workspace shell from the current four-stage layout to the canonical f
 
 ## Story 26.2: Extract Investment Decisions into a dedicated Stage 3 with skip-when-disabled routing
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 5
 
@@ -514,7 +514,7 @@ Move investment-decision configuration out of the Scenario/Engine stage into its
 
 ## Story 26.3: Refactor Engine into Scenario stage with inherited population and runtime summary
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 5
 
@@ -552,7 +552,7 @@ Make Stage 4 the Scenario stage described by Revision 4.1: inherited primary pop
 
 ## Story 26.4: Complete Stage 5 Run / Results / Compare with dedicated Run Manifest Viewer
 
-**Status:** backlog
+**Status:** done
 **Priority:** P0
 **Estimate:** 5
 
@@ -587,7 +587,7 @@ Make Stage 5 the canonical home for run queue, results, comparison, and run mani
 
 ## Story 26.5: Add Quick Test Population to the Population Library
 
-**Status:** backlog
+**Status:** done
 **Priority:** P1
 **Estimate:** 3
 
@@ -620,7 +620,7 @@ Add the UX-specified Quick Test Population near the top of the Population Librar
 
 ## Story 26.6: Add deterministic scenario name suggestions from policy set and population context
 
-**Status:** backlog
+**Status:** done
 **Priority:** P1
 **Estimate:** 3
 
@@ -652,7 +652,7 @@ Replace generic new-scenario names with deterministic suggestions derived from a
 
 ## Story 26.7: Add five-stage migration, demo, restore, and cross-stage regression coverage
 
-**Status:** backlog
+**Status:** done
 **Priority:** P1
 **Estimate:** 3
 
@@ -689,7 +689,7 @@ Close the workspace migration with regression coverage across first launch, retu
 
 **User outcome:** the analyst sees an honest "not started" workspace, can read help popovers, can run a single-policy assessment, gets useful information without expanding cards, never loses unsaved policy-set work, navigates Population and Investment Decisions in the way the UX spec already documents in prose, sees consistent units and labels in Run/Results/Compare, and benefits from a modest code consolidation that makes future polish cheaper.
 
-**Status:** backlog
+**Status:** done
 
 **Builds on:** EPIC-25, EPIC-26
 
@@ -705,22 +705,22 @@ Close the workspace migration with regression coverage across first launch, retu
 
 | ID | Type | Pri | SP | Title | Status | PRD Refs |
 |----|------|-----|----|-------|--------|----------|
-| BKL-2700 | Bug | P0 | 2 | Close out story-26.7 review patches and retro EPIC-26 | backlog | UX-DR15 |
-| BKL-2701 | Bug | P0 | 1 | Allow single-policy portfolio runs (drop ≥2 minimum) | backlog | FR43 |
-| BKL-2702 | Bug | P0 | 1 | Fix Popover transparent background (define `--popover` token) | backlog | UX-DR7 |
-| BKL-2703 | Story | P0 | 5 | Show actual parameter values inline in policy cards | backlog | UX-DR7, UX-DR9 |
-| BKL-2704 | Story | P0 | 3 | Unify template vs from-scratch policy-card visuals | backlog | UX-DR7, UX-DR8, UX-DR9 |
-| BKL-2705 | Story | P0 | 3 | Auto-save policy-set composition draft to localStorage | backlog | UX-DR10 |
-| BKL-2706 | Story | P0 | 3 | Add explicit "not started" nav-rail state and stop demo from pre-satisfying stages | backlog | UX-DR6 |
-| BKL-2707 | Story | P0 | 3 | Make Investment Decisions wizard step labels clickable | backlog | UX-DR11 |
-| BKL-2708 | Story | P1 | 3 | Restructure Population stage as Library-or-Build → Explorer | backlog | UX-DR14 |
-| BKL-2709 | Story | P1 | 2 | Improve policy-set auto-name suggestion | backlog | UX-DR10, UX-DR15 |
-| BKL-2710 | Story | P1 | 3 | Consolidate frontend formatters | backlog | (cross-cutting) |
-| BKL-2711 | Story | P1 | 3 | Consolidate portfolio dialog hooks and unify policy types | backlog | (cross-cutting) |
-| BKL-2712 | Story | P1 | 3 | Stage 5 polish — breadcrumb, palette, units, run-id, NaN guards, stale reset | backlog | UX-DR13 |
-| BKL-2713 | Story | P1 | 2 | AppContext naming-state hardening | backlog | UX-DR15 |
-| BKL-2714 | Story | P1 | 2 | Frontend cleanup sweep absorbing `deferred-work.md` items | backlog | (cleanup) |
-| BKL-2715 | Story | P2 | 2 | UX-spec amendments (not-started, Population IA, clickable wizard, Stage 5 breadcrumb) | backlog | UX-DR6, UX-DR11, UX-DR13 |
+| BKL-2700 | Bug | P0 | 2 | Close out story-26.7 review patches and retro EPIC-26 | done | UX-DR15 |
+| BKL-2701 | Bug | P0 | 1 | Allow single-policy portfolio runs (drop ≥2 minimum) | done | FR43 |
+| BKL-2702 | Bug | P0 | 1 | Fix Popover transparent background (define `--popover` token) | done | UX-DR7 |
+| BKL-2703 | Story | P0 | 5 | Show actual parameter values inline in policy cards | done | UX-DR7, UX-DR9 |
+| BKL-2704 | Story | P0 | 3 | Unify template vs from-scratch policy-card visuals | done | UX-DR7, UX-DR8, UX-DR9 |
+| BKL-2705 | Story | P0 | 3 | Auto-save policy-set composition draft to localStorage | done | UX-DR10 |
+| BKL-2706 | Story | P0 | 3 | Add explicit "not started" nav-rail state and stop demo from pre-satisfying stages | done | UX-DR6 |
+| BKL-2707 | Story | P0 | 3 | Make Investment Decisions wizard step labels clickable | done | UX-DR11 |
+| BKL-2708 | Story | P1 | 3 | Restructure Population stage as Library-or-Build → Explorer | done | UX-DR14 |
+| BKL-2709 | Story | P1 | 2 | Improve policy-set auto-name suggestion | done | UX-DR10, UX-DR15 |
+| BKL-2710 | Story | P1 | 3 | Consolidate frontend formatters | done | (cross-cutting) |
+| BKL-2711 | Story | P1 | 3 | Consolidate portfolio dialog hooks and unify policy types | done | (cross-cutting) |
+| BKL-2712 | Story | P1 | 3 | Stage 5 polish — breadcrumb, palette, units, run-id, NaN guards, stale reset | done | UX-DR13 |
+| BKL-2713 | Story | P1 | 2 | AppContext naming-state hardening | done | UX-DR15 |
+| BKL-2714 | Story | P1 | 2 | Frontend cleanup sweep absorbing `deferred-work.md` items | done | (cleanup) |
+| BKL-2715 | Story | P2 | 2 | UX-spec amendments (not-started, Population IA, clickable wizard, Stage 5 breadcrumb) | done | UX-DR6, UX-DR11, UX-DR13 |
 
 ## Epic-Level Acceptance Criteria
 
@@ -745,7 +745,7 @@ Reference: `_bmad-output/implementation-artifacts/27-0-close-out-26-7-review-pat
 
 ## Story 27.1: Allow single-policy portfolio runs
 
-**Status:** ready-for-dev
+**Status:** done
 **Dependencies:** Story 27.0
 
 Allow a one-policy portfolio to build, validate, and run without inventing a second placeholder policy.
@@ -754,7 +754,7 @@ Reference: `_bmad-output/implementation-artifacts/27-1-allow-single-policy-portf
 
 ## Story 27.2: Fix Popover transparent background
 
-**Status:** ready-for-dev
+**Status:** done
 **Dependencies:** Story 27.0
 
 Define the missing popover semantic tokens so help popovers render with an opaque readable background.
@@ -763,7 +763,7 @@ Reference: `_bmad-output/implementation-artifacts/27-2-fix-popover-transparent-b
 
 ## Story 27.3: Show actual parameter values inline in policy cards
 
-**Status:** ready-for-dev
+**Status:** done
 **Dependencies:** Story 27.1, Story 27.2
 
 Expose parameter values directly in policy cards so analysts can identify configured policies without expanding each card.
@@ -772,7 +772,7 @@ Reference: `_bmad-output/implementation-artifacts/27-3-show-actual-parameter-val
 
 ## Story 27.4: Unify template vs from-scratch policy-card visuals
 
-**Status:** ready-for-dev
+**Status:** done
 **Dependencies:** Story 27.2, Story 27.3
 
 Unify the rendering of template-based and from-scratch policies so both flows share one visual language and card structure.
@@ -781,7 +781,7 @@ Reference: `_bmad-output/implementation-artifacts/27-4-unify-template-vs-from-sc
 
 ## Story 27.5: Auto-save policy-set composition draft to localStorage
 
-**Status:** ready-for-dev
+**Status:** done
 **Dependencies:** Story 27.4
 
 Persist unsaved policy-set composition drafts locally so analysts do not lose in-progress work on refresh or navigation.
@@ -790,7 +790,7 @@ Reference: `_bmad-output/implementation-artifacts/27-5-auto-save-policy-set-comp
 
 ## Story 27.6: Add explicit "not started" nav-rail state and stop demo from pre-satisfying stages
 
-**Status:** ready-for-dev
+**Status:** done
 **Dependencies:** Story 27.5
 
 Make first-launch stage state truthful by separating "not started" from "complete" and preventing the demo from pre-satisfying later stages.
@@ -799,7 +799,7 @@ Reference: `_bmad-output/implementation-artifacts/27-6-add-not-started-nav-rail-
 
 ## Story 27.7: Make Investment Decisions wizard step labels clickable
 
-**Status:** ready-for-dev
+**Status:** done
 **Dependencies:** Story 27.6
 
 Let analysts navigate backward within the Investment Decisions wizard by clicking the step labels.
@@ -808,7 +808,7 @@ Reference: `_bmad-output/implementation-artifacts/27-7-make-investment-decisions
 
 ## Story 27.8: Restructure Population stage as Library-or-Build then Explorer
 
-**Status:** ready-for-dev
+**Status:** done
 **Dependencies:** Story 27.6
 
 Restructure Population so source selection comes first and exploration follows, matching the intended two-step information architecture.
@@ -817,7 +817,7 @@ Reference: `_bmad-output/implementation-artifacts/27-8-restructure-population-st
 
 ## Story 27.9: Improve policy-set auto-name suggestion
 
-**Status:** ready-for-dev
+**Status:** done
 **Dependencies:** Story 27.3, Story 27.5
 
 Improve auto-generated policy-set names so they reflect the actual composition more usefully while preserving the manual-edit freeze rule.
@@ -826,7 +826,7 @@ Reference: `_bmad-output/implementation-artifacts/27-9-improve-policy-set-auto-n
 
 ## Story 27.10: Consolidate frontend formatters
 
-**Status:** ready-for-dev
+**Status:** done
 **Dependencies:** Story 27.3
 
 Centralize number, currency, date, timestamp, and status formatting helpers so results surfaces behave consistently.
@@ -835,7 +835,7 @@ Reference: `_bmad-output/implementation-artifacts/27-10-consolidate-frontend-for
 
 ## Story 27.11: Consolidate portfolio dialog hooks and unify policy types
 
-**Status:** ready-for-dev
+**Status:** done
 **Dependencies:** Story 27.4, Story 27.5
 
 Merge the save/load/clone dialog hooks and reconcile the divergent portfolio policy types into one canonical shape.
@@ -844,7 +844,7 @@ Reference: `_bmad-output/implementation-artifacts/27-11-consolidate-portfolio-di
 
 ## Story 27.12: Stage 5 polish
 
-**Status:** ready-for-dev
+**Status:** done
 **Dependencies:** Story 27.10
 
 Polish Stage 5 with breadcrumb context, semantic palette, clearer units, run-id affordances, and guards against stale or invalid comparison output.
@@ -853,7 +853,7 @@ Reference: `_bmad-output/implementation-artifacts/27-12-stage-5-polish-breadcrum
 
 ## Story 27.13: AppContext naming-state hardening
 
-**Status:** ready-for-dev
+**Status:** done
 **Dependencies:** Story 27.9
 
 Harden AppContext naming logic around clone, restore, and direct-field-mutation edge cases that were deferred from Epic 26 review.
@@ -862,7 +862,7 @@ Reference: `_bmad-output/implementation-artifacts/27-13-appcontext-naming-state-
 
 ## Story 27.14: Frontend cleanup sweep absorbing deferred-work items
 
-**Status:** ready-for-dev
+**Status:** done
 **Dependencies:** Story 27.11, Story 27.13
 
 Absorb the remaining frontend-local deferred-work items so they stop drifting outside the active backlog.
@@ -871,7 +871,7 @@ Reference: `_bmad-output/implementation-artifacts/27-14-frontend-cleanup-sweep-d
 
 ## Story 27.15: UX-spec amendments
 
-**Status:** ready-for-dev
+**Status:** done
 **Dependencies:** Story 27.6, Story 27.7, Story 27.8, Story 27.12
 
 Update the UX specification so the Epic 27 interaction changes become part of the written source of truth.
@@ -884,7 +884,7 @@ Reference: `_bmad-output/implementation-artifacts/27-15-ux-spec-amendments.md`
 
 **User outcome:** the analyst can declare which technologies are in scope for an investment decision, the population carries an incumbent technology per household, the discrete-choice step writes chosen technologies back into the population, and multi-period runs reflect technology transitions.
 
-**Status:** backlog (gated on architect spike — story 28.0)
+**Status:** done
 
 **Builds on:** EPIC-23, EPIC-26, the existing `src/reformlab/discrete_choice/` module
 
@@ -897,12 +897,12 @@ Reference: `_bmad-output/implementation-artifacts/27-15-ux-spec-amendments.md`
 
 | ID | Type | Pri | SP | Title | Status | PRD Refs |
 |----|------|-----|----|-------|--------|----------|
-| BKL-2800 | Spike | P0 | 3 | Architect spike — technology-set contract and population state-transition model | backlog | (architecture) |
-| BKL-2801 | Story | P0 | 5 | Add `technology_set` to `EngineConfig`; expose API and persistence | backlog | (new FR pending) |
-| BKL-2802 | Story | P0 | 5 | Extend `PopulationData` schema with optional incumbent-technology columns | backlog | (new FR pending) |
-| BKL-2803 | Story | P0 | 5 | Wire `DiscreteChoiceStep` outputs back into the population frame | backlog | (new FR pending) |
-| BKL-2804 | Story | P0 | 3 | Investment Decisions wizard — Technology step | backlog | UX-DR11 |
-| BKL-2805 | Story | P1 | 3 | Regression and analyst-journey coverage for multi-period decisions runs | backlog | NFR9 |
+| BKL-2800 | Spike | P0 | 3 | Architect spike — technology-set contract and population state-transition model | done | (architecture) |
+| BKL-2801 | Story | P0 | 5 | Add `technology_set` to `EngineConfig`; expose API and persistence | done | (new FR pending) |
+| BKL-2802 | Story | P0 | 5 | Extend `PopulationData` schema with optional incumbent-technology columns | done | (new FR pending) |
+| BKL-2803 | Story | P0 | 5 | Wire `DiscreteChoiceStep` outputs back into the population frame | done | (new FR pending) |
+| BKL-2804 | Story | P0 | 3 | Investment Decisions wizard — Technology step | done | UX-DR11 |
+| BKL-2805 | Story | P1 | 3 | Regression and analyst-journey coverage for multi-period decisions runs | done | NFR9 |
 
 ## Epic-Level Acceptance Criteria
 
@@ -912,7 +912,7 @@ Reference: `_bmad-output/implementation-artifacts/27-15-ux-spec-amendments.md`
 
 ## Story 28.0: Architect spike — technology-set contract and population state-transition model
 
-**Status:** backlog
+**Status:** done
 **Dependencies:** None
 
 Define the architecture and data-contract decisions for technology-set configuration, incumbent-technology state, and multi-period transition writes so implementation stories can proceed against one approved model.
@@ -921,7 +921,7 @@ Reference: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-04-26.md
 
 ## Story 28.1: Add `technology_set` to `EngineConfig`; expose API and persistence
 
-**Status:** backlog
+**Status:** done
 **Dependencies:** Story 28.0
 
 Add `technology_set` to the engine/scenario contract, expose it through API and persistence layers, and keep existing scenarios backward compatible when decisions are disabled.
@@ -930,7 +930,7 @@ Reference: `_bmad-output/implementation-artifacts/28-1-add-technology-set-to-eng
 
 ## Story 28.2: Extend `PopulationData` schema with optional incumbent-technology columns
 
-**Status:** backlog
+**Status:** done
 **Dependencies:** Story 28.0
 
 Extend population data so households can carry incumbent technology state needed by later discrete-choice transitions without breaking populations that do not provide the new columns.
@@ -939,7 +939,7 @@ Reference: `_bmad-output/implementation-artifacts/28-2-extend-population-data-sc
 
 ## Story 28.3: Wire `DiscreteChoiceStep` outputs back into the population frame
 
-**Status:** backlog
+**Status:** done
 **Dependencies:** Story 28.1, Story 28.2
 
 Persist discrete-choice outputs back into the population frame so multi-period runs reflect chosen technologies and later steps operate on updated household state.
@@ -948,7 +948,7 @@ Reference: `_bmad-output/implementation-artifacts/28-3-wire-discrete-choice-step
 
 ## Story 28.4: Investment Decisions wizard — Technology step
 
-**Status:** backlog
+**Status:** done
 **Dependencies:** Story 28.0, Story 28.1
 
 Add the dedicated Technology step in the Investment Decisions wizard so analysts can declare which technologies are in scope before running decision-enabled scenarios.
@@ -957,7 +957,7 @@ Reference: `_bmad-output/implementation-artifacts/28-4-investment-decisions-wiza
 
 ## Story 28.5: Regression and analyst-journey coverage for multi-period decisions runs
 
-**Status:** backlog
+**Status:** done
 **Dependencies:** Story 28.2, Story 28.3, Story 28.4
 
 Lock down the new decision flow with regression coverage across technology-set configuration, incumbent-state updates, and multi-period result behavior.
@@ -970,7 +970,7 @@ Reference: `_bmad-output/implementation-artifacts/28-5-regression-coverage-for-m
 
 **User outcome:** the live OpenFisca path produces the full set of policy-relevant outputs (subsidies, malus, energy aid, French income variables) instead of the four currently-resolvable variables, and the test suite stops encoding the generic-name placeholders that blew up production on 2026-04-26.
 
-**Status:** backlog
+**Status:** done
 
 **Builds on:** EPIC-23 (live OpenFisca default) and the 2026-04-26 hotfix that narrowed `_DEFAULT_LIVE_OUTPUT_VARIABLES`
 
@@ -983,11 +983,11 @@ Reference: `_bmad-output/implementation-artifacts/28-5-regression-coverage-for-m
 
 | ID | Type | Pri | SP | Title | Status | PRD Refs |
 |----|------|-----|----|-------|--------|----------|
-| BKL-2901 | Story | P0 | 5 | Implement custom OpenFisca variables: subsidy_amount, subsidy_eligible, vehicle_malus, energy_poverty_aid | backlog | FR46 |
-| BKL-2902 | Story | P0 | 3 | Resolve generic-name placeholders (irpp/revenu_net/revenu_brut/taxe_carbone) | backlog | NFR21 |
-| BKL-2903 | Story | P0 | 2 | Restore resolved names in `_DEFAULT_LIVE_OUTPUT_VARIABLES` | backlog | FR43, NFR9 |
-| BKL-2904 | Story | P1 | 3 | Sweep test fixtures off the generic names | backlog | (test hygiene) |
-| BKL-2905 | Story | P1 | 3 | Add `pa.concat_tables()` schema-mismatch regression tests | backlog | (test hygiene) |
+| BKL-2901 | Story | P0 | 5 | Implement custom OpenFisca variables: subsidy_amount, subsidy_eligible, vehicle_malus, energy_poverty_aid | done | FR46 |
+| BKL-2902 | Story | P0 | 3 | Resolve generic-name placeholders (irpp/revenu_net/revenu_brut/taxe_carbone) | done | NFR21 |
+| BKL-2903 | Story | P0 | 2 | Restore resolved names in `_DEFAULT_LIVE_OUTPUT_VARIABLES` | done | FR43, NFR9 |
+| BKL-2904 | Story | P1 | 3 | Sweep test fixtures off the generic names | done | (test hygiene) |
+| BKL-2905 | Story | P1 | 3 | Add `pa.concat_tables()` schema-mismatch regression tests | done | (test hygiene) |
 
 ## Epic-Level Acceptance Criteria
 
@@ -998,7 +998,7 @@ Reference: `_bmad-output/implementation-artifacts/28-5-regression-coverage-for-m
 
 ## Story 29.1: Implement custom OpenFisca variables: subsidy_amount, subsidy_eligible, vehicle_malus, energy_poverty_aid
 
-**Status:** backlog
+**Status:** done
 **Dependencies:** None
 
 Implement the missing custom OpenFisca variables so live runs once again expose the intended policy outputs needed by analysts and downstream manifests.
@@ -1007,7 +1007,7 @@ Reference: `_bmad-output/implementation-artifacts/29-1-implement-custom-openfisc
 
 ## Story 29.2: Resolve generic-name placeholders (`irpp`, `revenu_net`, `revenu_brut`, `taxe_carbone`)
 
-**Status:** backlog
+**Status:** done
 **Dependencies:** Story 29.1
 
 Replace the remaining generic-name placeholders with resolved variables and restore explicit naming discipline in the live execution path.
@@ -1016,7 +1016,7 @@ Reference: `_bmad-output/implementation-artifacts/29-2-resolve-generic-name-plac
 
 ## Story 29.3: Restore resolved names in `_DEFAULT_LIVE_OUTPUT_VARIABLES`
 
-**Status:** backlog
+**Status:** done
 **Dependencies:** Story 29.1, Story 29.2
 
 Restore the default live output set now that the missing variables and resolved names are back in place.
@@ -1025,7 +1025,7 @@ Reference: `_bmad-output/implementation-artifacts/29-3-restore-resolved-names-in
 
 ## Story 29.4: Sweep test fixtures off the generic names
 
-**Status:** backlog
+**Status:** done
 **Dependencies:** Story 29.2
 
 Remove generic-name placeholders from fixtures and supporting test data so the suite stops encoding the broken naming contract.
@@ -1034,7 +1034,7 @@ Reference: `_bmad-output/implementation-artifacts/29-4-sweep-test-fixtures-off-g
 
 ## Story 29.5: Add `pa.concat_tables()` schema-mismatch regression tests
 
-**Status:** backlog
+**Status:** done
 **Dependencies:** Story 29.3, Story 29.4
 
 Add regression coverage for schema-mismatch handling in `panel.py` so future output-shape regressions are caught early.

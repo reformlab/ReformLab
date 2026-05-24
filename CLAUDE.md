@@ -12,7 +12,7 @@ OpenFisca-first environmental policy analysis platform. Builds data preparation,
 
 ## Architecture
 
-Layered design: Computation Adapter → Data Layer → Scenario Templates → Dynamic Orchestrator → Indicators → Governance → Interfaces (Python API, Notebooks, No-Code GUI).
+Layered design: Computation Adapter → Data Layer → Scenario Templates → Dynamic Orchestrator → Discrete Choice / Vintage / Calibration → Indicators → Population → Governance → Visualization → Server → Interfaces (Python API, Notebooks, No-Code GUI).
 
 The **dynamic orchestrator is the core product** — not a computation engine. OpenFisca handles policy calculations; this project handles everything above that.
 
@@ -41,11 +41,11 @@ _bmad-output/
 - `_bmad-output/planning-artifacts/prd.md` — Product requirements
 - `_bmad-output/planning-artifacts/architecture.md` — Technical architecture
 - `_bmad-output/planning-artifacts/ux-design-specification.md` — UX design
-- `_bmad-output/planning-artifacts/epics.md` — Active epics (23, 24); epics 1–22 archived in git history
+- `_bmad-output/planning-artifacts/epics.md` — Active epics (28, 29 archived next cycle); epics 1–24 complete and archived in git history
 
 ## Current Status
 
-Epic 23 done (stories 23.1–23.6 complete). Epic 24 in progress (story 24.1 next).
+Epics 23–29 complete. Latest closed: Epic 29 (custom OpenFisca variables — `montant_subvention`, `eligible_subvention`, `malus_ecologique`, `aide_energie`) finished 2026-05-23. See `_bmad-output/implementation-artifacts/sprint-status.yaml` for authoritative per-story state.
 
 ## Conventions
 

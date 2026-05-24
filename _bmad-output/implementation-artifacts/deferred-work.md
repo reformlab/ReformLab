@@ -16,7 +16,7 @@
 
 ### Deferred to Epic 29
 
-**[EXISTS] Backend regression tests**: `pa.concat_tables()` schema-mismatch paths in `src/reformlab/orchestrator/panel.py` → **Deferred to Epic 29** (backend work).
+~~**[EXISTS] Backend regression tests**: `pa.concat_tables()` schema-mismatch paths in `src/reformlab/orchestrator/panel.py` → **Deferred to Epic 29** (backend work).~~ (Completed in Story 29.5)
 
 ---
 
@@ -30,7 +30,7 @@
 
 ## Deferred from: adversarial review of deferred-work fixes (2026-04-19)
 
-- No regression tests cover `pa.concat_tables()` schema-mismatch paths in `src/reformlab/orchestrator/panel.py`; neither the `promote_options="permissive"` (decision columns) nor the non-decision branch has a test for divergent yearly schemas.
+~~- No regression tests cover `pa.concat_tables()` schema-mismatch paths in `src/reformlab/orchestrator/panel.py`; neither the `promote_options="permissive"` (decision columns) nor the non-decision branch has a test for divergent yearly schemas.~~ (Completed in Story 29.5)
 
 ## Deferred from: spec-extract-policies-screen-dialog-state review (2026-04-19)
 
